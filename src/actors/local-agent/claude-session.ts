@@ -41,6 +41,7 @@ import {
   ClaudeStreamGuard,
   claudeParticipantEnv,
   claudeParticipantFlags,
+  type ClaudeParticipantErrorCode,
 } from "./claude-participant.js";
 
 type JsonObject = Record<string, unknown>;
@@ -54,6 +55,8 @@ export interface ClaudeStreamTransport {
    */
   turn(message: JsonObject, timeoutMs: number, signal?: AbortSignal): Promise<JsonObject>;
   close(): void;
+  /** The first refusal the stream guard raised, if any. */
+  refusal?(): ClaudeParticipantError | undefined;
 }
 
 /** How long Claude Code may take to acknowledge an interrupt before the session is ended. */
@@ -135,8 +138,8 @@ function stdioClaudeTransport(
   let interrupts = 0;
   let stderrTail = "";
   let ended: Error | undefined;
-  // A refusal outlives a result already delivered: a forbidden line in the same stdout chunk as a
-  // result is read before the turn that awaits the result resumes.
+  // The first refusal outranks every other ending: a forbidden line in the same stdout chunk as a
+  // result, or as a line that desynchronized the session, is read before the waiting turn resumes.
   let refused: ClaudeParticipantError | undefined;
 
   const write = (message: JsonObject): void => {
@@ -259,14 +262,19 @@ function stdioClaudeTransport(
 
   return {
     async turn(message, timeoutMs, signal) {
-      if (ended !== undefined) throw ended;
+      if (ended !== undefined) throw refused ?? ended;
       await acknowledged;
-      if (ended !== undefined) throw ended;
+      if (ended !== undefined) throw refused ?? ended;
       if (signal?.aborted) throw new Error("run stopped");
       const id = randomUUID();
       const result = waitForTurn(waiting, id, timeoutMs, signal, () => abandon(id));
       write({ ...message, uuid: id });
-      const answer = await result;
+      let answer: JsonObject;
+      try {
+        answer = await result;
+      } catch (error) {
+        throw refused ?? error;
+      }
       if (refused !== undefined) throw refused;
       return answer;
     },
@@ -274,6 +282,7 @@ function stdioClaudeTransport(
       end(new Error("Claude Code session closed"));
       stop();
     },
+    refusal: () => refused,
   };
 }
 
@@ -297,8 +306,12 @@ const CLAUDE_SESSION_CAPABILITIES: ActorCapabilities = LOCAL_AGENT_CAPABILITIES;
 
 export interface ClaudeSession {
   provider: CuaProvider;
-  /** Ends the process and removes its scratch directory. The run owns the lifetime, not the provider. */
-  close(): Promise<void>;
+  /**
+   * Ends the process and removes its scratch directory. The run owns the lifetime, not the
+   * provider. `refusal` is a stream refusal no turn reported, such as a forbidden call after the
+   * last turn ended or was given up; it fails the run.
+   */
+  close(): Promise<{ refusal?: ClaudeParticipantErrorCode }>;
 }
 
 /** The argv of the session process: stream-json both ways, then the restricting flags. */
@@ -348,6 +361,8 @@ export async function startClaudeSession(
 
   let turnIndex = 0;
   let previousShot: string | undefined;
+  // Whether a turn already failed with the stream's refusal, so close does not report it twice.
+  let refusalReported = false;
   // A turn that delivered no result of its own spent tokens that no delivered turn reports. Its
   // late result is discarded rather than added to another turn, so the usage stays unknown.
   let usageIncomplete = false;
@@ -390,7 +405,10 @@ export async function startClaudeSession(
       } catch (error) {
         usageIncomplete = true;
         // A refused stream keeps its code: the run fails with it.
-        if (error instanceof ClaudeParticipantError) throw error;
+        if (error instanceof ClaudeParticipantError) {
+          refusalReported = true;
+          throw error;
+        }
         if (error instanceof ClaudeSessionDesyncError) {
           // The stream no longer pairs results with turns, so no later turn can trust it.
           throw new ComputerUseProviderError("protocol_error", {
@@ -414,6 +432,8 @@ export async function startClaudeSession(
       transport?.close();
       child?.kill();
       await rm(work, { recursive: true, force: true }).catch(() => undefined);
+      const late = refusalReported ? undefined : transport?.refusal?.();
+      return late === undefined ? {} : { refusal: late.code };
     },
   };
 }

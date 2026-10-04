@@ -428,6 +428,8 @@ export interface DetectedLocalAgent extends LocalAgentDescriptor {
 }
 
 export interface DetectLocalAgentsOptions {
+  /** Probe only this agent: a readiness check has no reason to run the other CLI. */
+  only?: LocalAgentId;
   /** Injected for tests: resolves a binary name to a path, or undefined. */
   which?: (bin: string) => Promise<string | undefined>;
   /** Injected for tests: does this path exist? */
@@ -575,6 +577,7 @@ export async function detectLocalAgents(
   const found: DetectedLocalAgent[] = [];
   const probe = options.authProbe ?? authProbe;
   for (const descriptor of LOCAL_AGENTS) {
+    if (options.only !== undefined && descriptor.id !== options.only) continue;
     const binPath = await which(descriptor.bin);
     if (binPath === undefined) continue;
     const file =

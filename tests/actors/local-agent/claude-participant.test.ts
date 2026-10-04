@@ -49,10 +49,10 @@ describe("the participant's flags and environment", () => {
   it("keeps only the names Claude Code needs to sign in and run", () => {
     const source = {
       PATH: "/usr/bin",
-      HOME: "/home/dev",
+      HOME: "/synthetic/operator",
       USER: "dev",
       LANG: "C.UTF-8",
-      CLAUDE_CONFIG_DIR: "/home/dev/.claude-alt",
+      CLAUDE_CONFIG_DIR: "/synthetic/operator/.claude-alt",
       HTTPS_PROXY: "http://proxy.example:3128",
       OPENAI_API_KEY: "sk-synthetic",
       E2B_API_KEY: "e2b_synthetic",
@@ -71,10 +71,10 @@ describe("the participant's flags and environment", () => {
     };
     expect(claudeParticipantEnv(source)).toEqual({
       PATH: "/usr/bin",
-      HOME: "/home/dev",
+      HOME: "/synthetic/operator",
       USER: "dev",
       LANG: "C.UTF-8",
-      CLAUDE_CONFIG_DIR: "/home/dev/.claude-alt",
+      CLAUDE_CONFIG_DIR: "/synthetic/operator/.claude-alt",
       HTTPS_PROXY: "http://proxy.example:3128",
       CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
     });
@@ -83,10 +83,15 @@ describe("the participant's flags and environment", () => {
   });
 
   it("leaves out a name a --dotenv file set, even one it would otherwise keep", () => {
-    const source = { PATH: "/usr/bin", HOME: "/home/dev", HTTPS_PROXY: "http://proxy.example:1" };
-    expect(claudeParticipantEnv(source, new Set(["HTTPS_PROXY"]))).toEqual({
+    const source = {
       PATH: "/usr/bin",
-      HOME: "/home/dev",
+      HOME: "/synthetic/operator",
+      HTTPS_PROXY: "http://proxy.example:1",
+      HUMANISH_DOTENV_NAMES: "SYNTHETIC_APP_SECRET,HTTPS_PROXY",
+    };
+    expect(claudeParticipantEnv(source)).toEqual({
+      PATH: "/usr/bin",
+      HOME: "/synthetic/operator",
       CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
     });
   });
@@ -203,34 +208,51 @@ describe("leftover participant transcripts", () => {
     "-tmp-humanish-claude-session-AbC123",
     "-tmp-humanish-claude-session-XyZ789",
     "-var-folders-ab-T-humanish-local-agent-Q1w2E3",
-    "-home-dev-humanish-claude-session-notes",
-    "-home-dev-humanish-claude-session-old-v1",
-    "-home-dev-project",
+    "-synthetic-operator-humanish-claude-session-notes",
+    "-synthetic-operator-humanish-claude-session-old-v1",
+    "-synthetic-operator-project",
   ];
 
   it("lists only participant folders and removes exactly those", async () => {
     let listed = "";
-    const found = await leftoverClaudeTranscripts({}, "/home/dev", async (directory) => {
+    const found = await leftoverClaudeTranscripts({}, "/synthetic/operator", async (directory) => {
       listed = directory;
       return names;
     });
-    expect(listed).toBe("/home/dev/.claude/projects");
+    expect(listed).toBe("/synthetic/operator/.claude/projects");
     expect(found).toEqual({
-      directory: "/home/dev/.claude/projects",
+      directory: "/synthetic/operator/.claude/projects",
       names: [
         "-tmp-humanish-claude-session-AbC123",
         "-tmp-humanish-claude-session-XyZ789",
         "-var-folders-ab-T-humanish-local-agent-Q1w2E3",
       ],
       removeCommand:
-        "rm -rf -- '/home/dev/.claude/projects/-tmp-humanish-claude-session-AbC123' '/home/dev/.claude/projects/-tmp-humanish-claude-session-XyZ789' '/home/dev/.claude/projects/-var-folders-ab-T-humanish-local-agent-Q1w2E3'",
+        "rm -rf -- '/synthetic/operator/.claude/projects/-tmp-humanish-claude-session-AbC123' '/synthetic/operator/.claude/projects/-tmp-humanish-claude-session-XyZ789' '/synthetic/operator/.claude/projects/-var-folders-ab-T-humanish-local-agent-Q1w2E3'",
+    });
+  });
+
+  it("counts no name Claude Code could not have made, and prints no command for a non-ASCII path", async () => {
+    const odd = await leftoverClaudeTranscripts({}, "/synthetic/operator", async () => [
+      "x\u2019;printf synthetic;#-humanish-claude-session-AbC123",
+      "-tmp-humanish-claude-session-AbC123",
+    ]);
+    expect("names" in odd && odd.names).toEqual(["-tmp-humanish-claude-session-AbC123"]);
+    const curly = await leftoverClaudeTranscripts(
+      { CLAUDE_CONFIG_DIR: "/synthetic/dev\u2019s claude" },
+      "/synthetic/operator",
+      async () => ["-tmp-humanish-claude-session-AbC123"],
+    );
+    expect(curly).toEqual({
+      directory: "/synthetic/dev\u2019s claude/projects",
+      names: ["-tmp-humanish-claude-session-AbC123"],
     });
   });
 
   it("quotes a projects folder whose path holds a quote", async () => {
     const found = await leftoverClaudeTranscripts(
       { CLAUDE_CONFIG_DIR: "/srv/dev's claude" },
-      "/home/dev",
+      "/synthetic/operator",
       async () => ["-tmp-humanish-claude-session-AbC123"],
     );
     expect("removeCommand" in found && found.removeCommand).toBe(
@@ -241,8 +263,8 @@ describe("leftover participant transcripts", () => {
   it("follows CLAUDE_CONFIG_DIR and prints no command when nothing matched", async () => {
     const found = await leftoverClaudeTranscripts(
       { CLAUDE_CONFIG_DIR: "/srv/claude" },
-      "/home/dev",
-      async () => ["-home-dev-project"],
+      "/synthetic/operator",
+      async () => ["-synthetic-operator-project"],
     );
     expect(found).toEqual({ directory: "/srv/claude/projects", names: [] });
   });
@@ -251,12 +273,12 @@ describe("leftover participant transcripts", () => {
     const failing = (code: string) => async () => {
       throw Object.assign(new Error("synthetic"), { code });
     };
-    expect(await leftoverClaudeTranscripts({}, "/home/dev", failing("ENOENT"))).toEqual({
-      directory: "/home/dev/.claude/projects",
+    expect(await leftoverClaudeTranscripts({}, "/synthetic/operator", failing("ENOENT"))).toEqual({
+      directory: "/synthetic/operator/.claude/projects",
       names: [],
     });
-    expect(await leftoverClaudeTranscripts({}, "/home/dev", failing("EACCES"))).toEqual({
-      directory: "/home/dev/.claude/projects",
+    expect(await leftoverClaudeTranscripts({}, "/synthetic/operator", failing("EACCES"))).toEqual({
+      directory: "/synthetic/operator/.claude/projects",
       unreadable: "EACCES",
     });
   });

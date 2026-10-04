@@ -18,18 +18,23 @@ export interface EnvFileLoadResult {
 
 const envNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-// Names `--dotenv` set in this process. A host-side participant (the Claude Code local agent) never
-// gets them, even when a name is one it would otherwise keep, such as a proxy.
-const dotenvNames = new Set<string>();
+/**
+ * Names a `--dotenv` file set, kept as a comma list in the environment the values went into, so a
+ * process humanish starts with that environment (a run the TUI launches) knows them too. A
+ * host-side participant (the Claude Code local agent) never gets these names, even ones it would
+ * otherwise keep, such as a proxy.
+ */
+const DOTENV_NAMES = "HUMANISH_DOTENV_NAMES";
 
-/** Records names a `--dotenv` file set, so participant environments can leave them out. */
-export function recordDotenvNames(names: readonly string[]): void {
-  for (const name of names) dotenvNames.add(name);
+/** Records in `env` the names a `--dotenv` file set there. */
+export function recordDotenvNames(env: NodeJS.ProcessEnv, names: readonly string[]): void {
+  if (names.length === 0) return;
+  env[DOTENV_NAMES] = [...new Set([...dotenvSetNames(env), ...names])].join(",");
 }
 
-/** The names `--dotenv` set in this process so far. */
-export function dotenvSetNames(): ReadonlySet<string> {
-  return dotenvNames;
+/** The names `--dotenv` set in `env`, as recordDotenvNames recorded them. */
+export function dotenvSetNames(env: Readonly<Record<string, string | undefined>>): Set<string> {
+  return new Set((env[DOTENV_NAMES] ?? "").split(",").filter((name) => name.length > 0));
 }
 
 export async function loadEnvFile(

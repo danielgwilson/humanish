@@ -165,7 +165,7 @@ export async function applyEnvFileOption(args: {
       return false;
     }
     for (const name of result.loaded) env[name] = stagedEnv[name];
-    recordDotenvNames(result.loaded);
+    recordDotenvNames(env, result.loaded);
     args.onLoaded?.({ path: args.envFile, names: result.loaded });
   }
 

@@ -425,6 +425,32 @@ describe("a participant whose stream shows what it may not do", () => {
     await session.close();
   });
 
+  it("keeps the refusal code when the same chunk also desynchronizes the session", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    const reply = { message: "m", done: true, actions: [] };
+    fake.writeChunk([resultFor("not-a-sent-message", reply), bashCall]);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    await expect(
+      session.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    expect(await session.close()).toEqual({});
+  });
+
+  it("reports at close a forbidden call that arrived after the last turn", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    fake.write(resultFor(fake.users()[0]?.uuid, { message: "m", done: true, actions: [] }));
+    await expect(turn).resolves.toMatchObject({ done: true });
+    fake.write(bashCall);
+    await vi.waitFor(() => expect(fake.signals).toContain("SIGKILL"));
+    expect(await session.close()).toEqual({ refusal: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+  });
+
   it("is killed when it reads outside its folder, even before Claude Code denies it", async () => {
     const fake = fakeClaudeChild();
     const session = await startClaudeSession({ spawnFn: fake.spawnFn });

@@ -90,8 +90,8 @@ export const CLAUDE_PARTICIPANT_ENV_NAMES: readonly string[] = [
  */
 export function claudeParticipantEnv(
   source: Readonly<Record<string, string | undefined>>,
-  fromDotenv: ReadonlySet<string> = dotenvSetNames(),
 ): NodeJS.ProcessEnv {
+  const fromDotenv = dotenvSetNames(source);
   const env: NodeJS.ProcessEnv = { CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1" };
   for (const name of CLAUDE_PARTICIPANT_ENV_NAMES) {
     const value = source[name];
@@ -246,18 +246,25 @@ export type LeftoverClaudeTranscripts =
       directory: string;
       /** The matched folder names. */
       names: string[];
-      /** Removes exactly `names`; absent when there are none. */
+      /** Removes exactly `names`; absent when there are none or the folder path is not ASCII. */
       removeCommand?: string;
     }
   /** The folder exists but could not be listed; `code` is the error code, such as `EACCES`. */
   | { directory: string; unreadable: string };
 
 /**
- * Claude Code names a transcript folder after the session's working directory with every other
- * character replaced by `-`, so `/tmp/humanish-claude-session-AbC123` becomes
- * `-tmp-humanish-claude-session-AbC123`. The suffix is mkdtemp's six characters.
+ * Claude Code names a transcript folder after the session's working directory with every
+ * character but letters and digits replaced by `-`, so `/tmp/humanish-claude-session-AbC123`
+ * becomes `-tmp-humanish-claude-session-AbC123`. The suffix is mkdtemp's six characters. A name
+ * with any other character was not made that way and is not counted.
  */
-const TRANSCRIPT_NAME = /-humanish-(?:claude-session|local-agent)-[A-Za-z0-9]{6}$/;
+const TRANSCRIPT_NAME = /^[A-Za-z0-9-]*-humanish-(?:claude-session|local-agent)-[A-Za-z0-9]{6}$/;
+
+/**
+ * A folder path the printed command may quote: printable ASCII. Terminal output transliterates
+ * other characters, and a curly quote turned into `'` would end the quoting early.
+ */
+const QUOTABLE_PATH = /^[\x20-\x7e]+$/;
 
 const shellQuoted = (text: string): string => `'${text.replaceAll("'", `'\\''`)}'`;
 
@@ -282,7 +289,7 @@ export async function leftoverClaudeTranscripts(
     directory,
     names,
     // Exact quoted paths: a glob would also match names doctor did not count.
-    ...(names.length === 0
+    ...(names.length === 0 || !QUOTABLE_PATH.test(directory)
       ? {}
       : {
           removeCommand: `rm -rf -- ${names.map((name) => shellQuoted(path.join(directory, name))).join(" ")}`,

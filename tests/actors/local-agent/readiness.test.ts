@@ -2,7 +2,7 @@
 // on a temporary `PATH` stands in for each case; computer use and shared world map the kind to their
 // own error codes.
 
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -113,6 +113,20 @@ describe("localAgentRefusal", () => {
     expect(old?.message).toContain("2.1.248");
     expect(old?.message).toContain("claude update");
     expect(await claudeRefusal("2.1.248")).toBeUndefined();
+  });
+
+  it("runs only the selected CLI", async () => {
+    // A codex on the same `PATH` that would fail the test if it ran.
+    const dir = await pathWithCodex('touch "$HOME/codex-ran"; exit 3');
+    await writeFile(
+      path.join(dir, "claude"),
+      `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "2.1.289 (Claude Code)"; exit 0; fi\necho '{"loggedIn": true}'\n`,
+    );
+    await chmod(path.join(dir, "claude"), 0o755);
+    expect(
+      await localAgentRefusal({ agent: "claude", env: { PATH: dir, HOME: dir }, caps: {} }),
+    ).toBeUndefined();
+    await expect(access(path.join(dir, "codex-ran"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("checks Claude Code's sign-in with the environment the participant gets", async () => {

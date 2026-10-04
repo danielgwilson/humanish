@@ -29,7 +29,7 @@ export async function localAgentRefusal(args: {
   caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
 }): Promise<LocalAgentRefusal | undefined> {
   const { agent, env, caps } = args;
-  const available = await detectLocalAgents({ env });
+  const available = await detectLocalAgents({ env, only: agent });
   const chosen = available.find((candidate) => candidate.id === agent);
   if (chosen === undefined) {
     return {

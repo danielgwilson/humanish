@@ -416,14 +416,17 @@ async function claudeTranscriptCheck(env: NodeJS.ProcessEnv): Promise<DoctorChec
       message: `could not list ${found.directory} (${found.unreadable}), so transcripts from earlier Claude Code participants were not counted. Check the folder for names ending in -humanish-claude-session-XXXXXX.`,
     };
   const count = found.names.length;
+  const folders = `${count} transcript folder${count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred.`;
   return {
     name,
     ok: true,
     ...(count === 0 ? {} : { status: "note" as const }),
     message:
-      found.removeCommand === undefined
+      count === 0
         ? `no transcript from an earlier Claude Code participant under ${found.directory}`
-        : `${count} transcript folder${count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred. Remove them with: ${found.removeCommand}`,
+        : found.removeCommand === undefined
+          ? `${folders} Remove these folders there: ${found.names.join(", ")}`
+          : `${folders} Remove them with: ${found.removeCommand}`,
   };
 }
 

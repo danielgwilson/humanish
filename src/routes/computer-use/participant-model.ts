@@ -257,7 +257,8 @@ export async function closeParticipantModel(
     }
   }
   try {
-    await model.claudeSession?.close();
+    const closed = await model.claudeSession?.close();
+    refusal ??= closed?.refusal;
   } catch {
     warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
   }
