@@ -4,8 +4,9 @@
 // provider error, capture of the exact id and kill authority, and a provider-qualified receipt in
 // the run directory before the caller gets the handle. The desktop startup guard
 // (guardDesktopSandboxCreate) is installed by loadE2BDesktopModule, so a create whose desktop
-// startup fails has already reclaimed its handle when the error reaches the retry here, and it
-// reports the id to the registry before desktop startup begins.
+// startup fails has already reclaimed its handle when the error reaches the retry here. The guard
+// reports the id before desktop startup begins, and the id goes to the registry and the receipt
+// journal at that point, so a startup error that quotes it is scrubbed from every run file.
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import {
   beginSandboxCreate,
@@ -82,6 +83,9 @@ async function acquire(
   // Refused before any provider call once the run is stopping.
   const ticket =
     target === null ? undefined : beginSandboxCreate(target.root, target.participantId);
+  // The receipts written when the guard reported an id, before desktop startup. A startup error
+  // can quote the id and the create may never return, so the journal holds it first.
+  const reported = new Map<string, Promise<boolean>>();
   try {
     // The owner tags let reclaim find this sandbox on E2B even if its id never reaches this
     // process: a create that throws after E2B allocated, or a process that dies mid-create. The
@@ -93,8 +97,28 @@ async function acquire(
       owner === undefined
         ? request.options
         : { ...request.options, metadata: { ...request.options.metadata, ...owner } };
+    const receipt = (sandboxId: string): Promise<boolean> => {
+      if (target === null) return Promise.resolve(false);
+      const { root, participantId, now = Date.now } = target;
+      return appendSandboxReceipt(root, {
+        at: new Date(now()).toISOString(),
+        laneId: participantId,
+        provider: "e2b",
+        sandboxId,
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      });
+    };
     if (ticket !== undefined)
-      observeDesktopAllocation(options, (sandboxId) => ticket.created(sandboxId));
+      observeDesktopAllocation(options, (sandboxId) => {
+        ticket.created(sandboxId);
+        // Started synchronously, so the run's writers know the id at once. A clock that throws
+        // fails only this write; the receipt after create throws it again.
+        if (!reported.has(sandboxId))
+          reported.set(
+            sandboxId,
+            new Promise<boolean>((resolve) => resolve(receipt(sandboxId))).catch(() => false),
+          );
+      });
     const sandbox = await withOneRetryOnTransientE2BError(
       () => {
         if (ticket?.stopping()) throw new SandboxCreateRefusedError();
@@ -108,18 +132,10 @@ async function acquire(
     ticket?.created(sandbox.sandboxId);
     const allocation = ownE2BSandbox(module, sandbox.sandboxId, ticket);
     try {
-      if (target !== null) {
-        const { root, participantId, now = Date.now } = target;
-        // Best effort by contract: a failed write leaves the owner tags and the TTL as the
-        // backstops and never fails the participant.
-        await appendSandboxReceipt(root, {
-          at: new Date(now()).toISOString(),
-          laneId: participantId,
-          provider: "e2b",
-          sandboxId: allocation.resourceId,
-          ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
-        });
-      }
+      // Best effort by contract: a failed write leaves the owner tags and the TTL as the
+      // backstops and never fails the participant. One line per sandbox: a receipt the guard's
+      // report wrote is not written again, so reclaim counts the sandbox once.
+      if (!(await reported.get(allocation.resourceId))) await receipt(allocation.resourceId);
     } catch (error) {
       // The caller never receives this sandbox, so release it here. A throwing or invalid injected
       // clock is the known case.
@@ -128,6 +144,9 @@ async function acquire(
     }
     return { sandbox, allocation };
   } finally {
+    // A create that threw settles once its reported receipts are on disk, as one that returned
+    // does. These writes never reject.
+    await Promise.all(reported.values());
     ticket?.settled();
   }
 }

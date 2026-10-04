@@ -2,7 +2,8 @@
 // hangup signal prints one line saying humanish is stopping, refuses any further sandbox create,
 // marks each unfinished run in this process interrupted, reclaims its sandboxes (by receipt, by
 // the ids its in-flight creates report, and by its E2B tags), runs the registered shutdown
-// cleanups (watch's Observer server and tunnel) and exits 128+n, all within one deadline. A
+// cleanups (watch's Observer server and tunnel), sweeps the interrupted runs' files of their raw
+// sandbox ids as Run.finish does for a finished run, and exits 128+n, all within one deadline. A
 // second signal prints the reclaim command for each run not yet reclaimed and exits at once.
 // Routes take no abort signal, so the bundle is not finished, but the record ends at once and no
 // sandbox the run created waits for its timeout. Analysis has its own cancel handlers
@@ -17,6 +18,7 @@ import {
   type ReclaimResult,
 } from "../../run/reclaim.js";
 import { stopSandboxCreates, type StoppedSandboxCreates } from "../../run/sandbox-creates.js";
+import { scrubRunSandboxIds } from "../../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../run/sandbox-receipts.js";
 import type { RunInterruptSignal } from "../../run/status.js";
 import { plural } from "../../run/text.js";
@@ -169,7 +171,16 @@ async function stopActiveRuns(
       stop.report = reclaimSummary(stop.run, reclaimed);
     }),
     ...[...shutdownCleanups].map((cleanup) => cleanup().catch(() => undefined)),
-  ]);
+  ]).then(() =>
+    // Last, so it also covers what the route recorded while reclaim ran, such as a desktop
+    // startup error that quotes the sandbox the kill cut short. A run stopped by the deadline is
+    // not swept; verify grades a file that names a receipt's id local_only.
+    Promise.all(
+      stopping
+        .filter((stop) => stop.report !== null)
+        .map((stop) => scrubRunSandboxIds(stop.run.paths).catch(() => undefined)),
+    ),
+  );
   const finished = await withDeadline(work, deadlineMs, options.deadline);
   for (const stop of stopping) {
     if (stop.report === null) continue;

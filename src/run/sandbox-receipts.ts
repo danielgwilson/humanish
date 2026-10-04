@@ -1,6 +1,8 @@
-// Every created sandbox id is journaled to the run dir the moment create returns, before any work
-// happens in it. The participant loop lives in the caller's local process, so a sleeping laptop, crash or
-// kill loses every in-memory id; this append-only file keeps them for `humanish reclaim`.
+// Every created sandbox id is journaled to the run dir as soon as it reaches this process: when the
+// desktop startup guard reports it, or when create returns, before any work happens in it. The
+// participant loop lives in the caller's local process, so a sleeping laptop, crash or kill loses
+// every in-memory id; this append-only file keeps them for `humanish reclaim`, and tells verify and
+// the sweep which ids to look for.
 import { appendFile } from "node:fs/promises";
 
 import { prepareContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
@@ -52,15 +54,16 @@ export function appendedSandboxIds(root: PreparedOutputRoot): string[] {
 }
 
 /**
- * Append one receipt. Best-effort by design: the receipt exists to protect the run, so a failed
- * receipt write must never fail the participant. The only cost of a miss is that `reclaim` cannot see
- * this id and the TTL backstop covers it instead. Containment is the same prepare step every
- * artifact write uses; append (not atomic-replace) keeps racing participants' receipts intact.
+ * Append one receipt; false when the write failed. Best-effort by design: the receipt exists to
+ * protect the run, so a failed receipt write must never fail the participant. The only cost of a
+ * miss is that `reclaim` cannot see this id and the TTL backstop covers it instead. Containment is
+ * the same prepare step every artifact write uses; append (not atomic-replace) keeps racing
+ * participants' receipts intact.
  */
 export async function appendSandboxReceipt(
   root: PreparedOutputRoot,
   receipt: SandboxReceipt,
-): Promise<void> {
+): Promise<boolean> {
   const key = rootKey(root);
   const ids = appended.get(key) ?? new Set<string>();
   appended.delete(key);
@@ -72,8 +75,10 @@ export async function appendSandboxReceipt(
   try {
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     await appendFile(filePath, `${JSON.stringify(receipt)}\n`, "utf8");
+    return true;
   } catch {
     // Swallowed on purpose; see the contract above.
+    return false;
   }
 }
 
