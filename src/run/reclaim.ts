@@ -24,7 +24,10 @@ import {
   listPreflightJournals,
   preflightReclaimDecision,
 } from "./preflight-receipts.js";
-import { resolveRunPath } from "./locate.js";
+import { readRunJsonIfExists, resolveRunPath } from "./locate.js";
+import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { RUN_STATUS_FILE } from "./status.js";
+import { isRecord } from "./type-guards.js";
 import {
   parseSandboxOwners,
   parseSandboxReceipts,
@@ -69,6 +72,11 @@ export interface ReclaimResult {
   tagSearch: ReclaimTagSearch;
   /** Creates that had not returned when reclaim finished; only the signal handler sees any. */
   createsInFlight: number;
+  /**
+   * Why there was nothing to look for: `dry-run` when run.json or status.json records the run as
+   * a dry run, which creates no sandboxes. Reclaim then contacts E2B for nothing.
+   */
+  reason?: "dry-run";
   warnings: string[];
   error?: {
     code:
@@ -150,6 +158,9 @@ async function reclaimRun(
     };
   }
   const runId = runIdOf(runPaths);
+  // The signal handler passes the creates it stopped and decides from what they reported.
+  if (hooks.creates === undefined && (await recordedDryRun(runPaths)))
+    return { ...base, ok: true, state: "clean", runId, reason: "dry-run" };
   const reclaimed = await reclaimRoot(runPaths, runId, hooks, warnings);
   if (reclaimed.kind === "module-unavailable")
     return {
@@ -175,6 +186,29 @@ async function reclaimRun(
     tagSearch,
     createsInFlight,
   };
+}
+
+/**
+ * Whether the run records that it was a dry run: run.json and status.json, each one present, say
+ * `dry-run`. A run with neither record is not taken for one. A journal with any line in it, or an
+ * earlier reclaim receipt that names a sandbox, means a create ran, so that run is reclaimed as a
+ * live one whatever its records say.
+ */
+async function recordedDryRun(runPaths: PreparedRunArtifactPaths): Promise<boolean> {
+  const modes: unknown[] = [];
+  for (const file of [RUN_BUNDLE_FILE, RUN_STATUS_FILE]) {
+    const record = await readRunJsonIfExists(runPaths, file);
+    if (isRecord(record)) modes.push(record.mode);
+  }
+  if (modes.length === 0 || modes.some((mode) => mode !== "dry-run")) return false;
+  if (!(await containedPathAbsent(runPaths, RECLAIM_RECEIPT_ARTIFACT))) {
+    const earlier = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
+    if (!isRecord(earlier) || !Array.isArray(earlier.outcomes) || earlier.outcomes.length > 0)
+      return false;
+  }
+  if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return true;
+  const journal = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
+  return journal !== null && journal.toString("utf8").trim() === "";
 }
 
 /**

@@ -1,7 +1,9 @@
 // The sandboxes this process is creating for each run directory, and the E2B tags that name the
-// directory. A receipt reaches sandbox-receipts.ndjson only after `Sandbox.create` resolves, and
-// on @e2b/desktop that is after desktop startup, seconds after E2B has created the sandbox. The
-// CLI's signal handler (src/cli/commands/run-signals.ts) uses this registry to cover that window:
+// directory. E2B creates a sandbox before its id reaches this process: on @e2b/desktop the startup
+// guard reports the id, and its receipt is written, only once the SDK has the handle, and a
+// create from an SDK without the guard reports it when `Sandbox.create` resolves, after desktop
+// startup. The CLI's signal handler (src/cli/commands/run-signals.ts) uses this registry to cover
+// the window before a receipt lands:
 // it stops new creates, kills every id a create has reported, and kills each in-flight create's
 // sandbox as soon as its id arrives. The tags let `humanish reclaim` find a sandbox whose id
 // never reached this process at all.

@@ -26,15 +26,26 @@ import {
   readE2BRelease,
 } from "../../../src/substrates/e2b/sandbox.js";
 import { sandboxOwnerTags } from "../../../src/run/sandbox-creates.js";
+import { guardedFakeDesktop } from "../../helpers/guarded-fake-desktop.js";
 
-// A receipt write can be held open so a test can observe what the caller sees meanwhile.
-const receiptGate = vi.hoisted(() => ({ hold: undefined as Promise<void> | undefined }));
+// A receipt write can be held open so a test can observe what the caller sees meanwhile, or fail.
+const receiptGate = vi.hoisted(() => ({
+  hold: undefined as Promise<void> | undefined,
+  /** How many of the next writes report failure without writing. */
+  fail: 0,
+  attempts: 0,
+}));
 vi.mock("../../../src/run/sandbox-receipts.js", async (importOriginal) => {
   const actual = await importOriginal<typeof ReceiptsModule>();
   return {
     ...actual,
     appendSandboxReceipt: async (...args: Parameters<typeof actual.appendSandboxReceipt>) => {
+      receiptGate.attempts += 1;
       await receiptGate.hold;
+      if (receiptGate.fail > 0) {
+        receiptGate.fail -= 1;
+        return false;
+      }
       return actual.appendSandboxReceipt(...args);
     },
   };
@@ -343,6 +354,90 @@ describe("E2B sandbox receipts", () => {
     });
     expect(acquired.sandbox).toBe(f.desktop);
     expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
+  });
+});
+
+// The desktop startup guard reports the id once the SDK has the handle, seconds before desktop
+// startup ends and create returns. A startup error can quote the id, so the receipt lands then.
+describe("E2B sandbox receipts from the desktop startup guard", () => {
+  let cwd: string;
+  let root: PreparedOutputRoot;
+  beforeEach(async () => {
+    receiptGate.fail = 0;
+    receiptGate.attempts = 0;
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-sandbox-"));
+    root = await prepareSelectedOutputDirectory(cwd, "run");
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const receipts = async () =>
+    parseSandboxReceipts(await readFile(path.join(cwd, "run", SANDBOX_RECEIPTS_ARTIFACT), "utf8"));
+
+  it("writes the receipt when the startup guard reports the id, and not again when create returns", async () => {
+    const fake = guardedFakeDesktop({ ids: ["fake-sb-reported"] });
+    let returned = false;
+    const pending = acquireE2BDesktopSandbox({
+      module: fake.module,
+      options: { apiKey: "synthetic", timeoutMs: 90_000 },
+      receipt: { root, participantId: "lane-01", now: () => Date.UTC(2026, 9, 4) },
+    }).then((acquired) => {
+      returned = true;
+      return acquired;
+    });
+    await vi.waitFor(async () =>
+      expect(await receipts()).toEqual([
+        {
+          at: "2026-10-04T00:00:00.000Z",
+          laneId: "lane-01",
+          provider: "e2b",
+          sandboxId: "fake-sb-reported",
+          timeoutMs: 90_000,
+        },
+      ]),
+    );
+    expect(returned).toBe(false);
+    fake.finishStartup();
+    const acquired = await pending;
+    expect(acquired.allocation.resourceId).toBe("fake-sb-reported");
+    // One line per sandbox, so reclaim counts it once.
+    expect((await receipts()).map((receipt) => receipt.sandboxId)).toEqual(["fake-sb-reported"]);
+    expect(receiptGate.attempts).toBe(1);
+  });
+
+  it("writes the receipt after create when the write at the guard's report failed", async () => {
+    receiptGate.fail = 1;
+    const fake = guardedFakeDesktop({ ids: ["fake-sb-retried"] });
+    const pending = acquireE2BDesktopSandbox({
+      module: fake.module,
+      options: { apiKey: "synthetic" },
+      receipt: { root, participantId: "lane-01" },
+    });
+    await vi.waitFor(() => expect(receiptGate.attempts).toBe(1));
+    fake.finishStartup();
+    await pending;
+    expect(receiptGate.attempts).toBe(2);
+    expect((await receipts()).map((receipt) => receipt.sandboxId)).toEqual(["fake-sb-retried"]);
+  });
+
+  it("releases a guarded sandbox when a throwing clock fails its receipt at the report and after create", async () => {
+    const fake = guardedFakeDesktop({ ids: ["fake-sb-clock"] });
+    const pending = acquireE2BDesktopSandbox({
+      module: fake.module,
+      options: { apiKey: "synthetic" },
+      receipt: {
+        root,
+        participantId: "lane-01",
+        now: () => {
+          throw new Error("synthetic clock failure");
+        },
+      },
+    }).catch((value: unknown) => value);
+    await vi.waitFor(() => expect(fake.constructed).toEqual(["fake-sb-clock"]));
+    fake.finishStartup();
+    expect(await pending).toMatchObject({ message: "synthetic clock failure" });
+    expect(fake.killed).toEqual(["fake-sb-clock"]);
   });
 });
 

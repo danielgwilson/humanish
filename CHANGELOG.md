@@ -8,6 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixes
+
+- A run interrupted during desktop startup no longer keeps the sandbox's raw id in its files. The
+  signal killed the sandbox before its create returned, startup failed with an E2B error that
+  quotes the id, and `run.json`, `events.ndjson`, `review.json`, `review.md` and
+  `observer-data.json` recorded it while the receipts named no sandbox, so `humanish review`
+  printed the id and `verify` graded the run `share_ready`. The receipt is now written once, when
+  the desktop startup guard reports the id, and after reclaim the signal handler rewrites the
+  interrupted run's files with the marker and digest, as a finished run's publish does.
+- `humanish reclaim` and `cleanup` reported every dry run `unknown` and exited 2, even with an
+  E2B key, because a dry run writes no owner line. A run whose `run.json` and `status.json` record
+  it as a dry run, with nothing journaled, is now `clean` with `reason: dry-run`, exits 0, and
+  reclaim loads no E2B SDK for it.
+
 ## 0.110.1: Claude participants restricted, sandboxes reclaimed by tag (2026-10-04)
 
 humanish 0.110.1 starts a Claude Code participant with Read as its only tool, in a scratch folder,
