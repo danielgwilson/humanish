@@ -46,11 +46,11 @@ export const DESKTOP_USD_PER_MINUTE = 0.000148 * 60;
 /** Observed desktop spend per Taskly run: 1.5 to 2 minutes. */
 export const TYPICAL_DESKTOP_USD = 0.02;
 /**
- * Typical single-participant analysis spend with gpt-6-astra at high effort: two-participant
- * analyses of this app cost $1.22 and $1.28 on 2026-10-04, about $0.7 of it per participant.
+ * Typical single-participant analysis spend with gpt-6-astra at high effort: $0.50 to $0.84 over
+ * the four runs in docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.json.
  */
 export const TYPICAL_ANALYSIS_USD = 0.7;
-/** The admission estimate `humanish analyze --dry-run` gives a single-participant Taskly run. */
+/** The admission estimate `humanish analyze --dry-run` gave the same four runs: $1.44 to $1.68. */
 export const TYPICAL_ADMISSION_USD = 1.55;
 
 export interface BudgetSettings {

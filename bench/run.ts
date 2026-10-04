@@ -191,7 +191,7 @@ const budget: BudgetSettings = {
 };
 
 process.stdout.write(
-  `humanish ${version} (${source}), mission ${mission.id}, ${runsPerArm} runs per arm, cap $${budget.maxUsdPerBrain} per brain\n`,
+  `humanish ${version} (${source}), mission ${mission.id}, ${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain\n`,
 );
 for (const brain of brains) {
   const projection = projectBrain(BRAINS[brain], runsPerArm * 2, budget);
