@@ -121,7 +121,7 @@ export default function StudyV3() {
           </div>
           <div className="repair-results">
             <table>
-              <caption>Blocked or stopped, by participant kind</caption>
+              <caption>Reported the problem, by participant kind</caption>
               <thead>
                 <tr>
                   <th scope="col">App · mission</th>
@@ -156,9 +156,11 @@ export default function StudyV3() {
             </p>
             <p className="repair-copy">
               Keyboard-first participants reported drawDB&rsquo;s database modal 5 of 5 times and
-              were blocked at TodoMVC&rsquo;s double-click rename 6 of 6 times; no mouse newcomer
-              was. Two to six runs per cell. A blocked synthetic participant identifies a place in
-              the app to check; it does not estimate how many people would be blocked.
+              TodoMVC&rsquo;s double-click rename 6 of 6 times; no mouse newcomer reported either.
+              Three of the five drawDB participants and two of the six TodoMVC participants were
+              blocked there; the others switched to the mouse, finished, and said so. Two to six
+              runs per cell. A blocked synthetic participant identifies a place in the app to check;
+              it does not estimate how many people would be blocked.
             </p>
             <div className="repair-links">
               <a href={`${RECEIPTS}/persona-contrast-live-2026-09-01.md`} rel="noopener">
