@@ -36,7 +36,7 @@ export function checkLiveTerminalMachine(
   // planTerminalStudy refuses a positive maxUsd without a costProbe, so one is present here.
   if (maxUsd > 0) {
     warnings.push(
-      `caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. caps.maxMinutes bounds the run while it runs.`,
+      `caps.maxUsd=${maxUsd} is checked after the session against the measured cost lines; a line left null (unmeasured) never trips it. caps.maxMinutes bounds the run while it runs.`,
     );
   }
 

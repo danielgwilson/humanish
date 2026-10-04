@@ -32,7 +32,7 @@ deferred approaches; link evidence rather than repeating its chronology.
 humanish is a persona simulation harness for apps, CLIs, and agent-facing product
 flows.
 
-- `humanish/` is committed source: lab manifests, personas, scenarios and
+- `humanish/` is committed source: study files, personas, scenarios and
   coverage notes.
 - `.humanish/` is ignored runtime state: runs, Observer output, transcripts,
   reviews, temporary clones, and local evidence.
@@ -64,14 +64,15 @@ Implemented:
 - public-safe feedback issue drafts without GitHub API mutation, gated on
   `share_ready` evidence;
 - skills.sh-compatible agent skill;
-- first-class lab manifest resolution through `humanish/labs/*.yaml` and
-  ignored `.humanish/labs/*.yaml` overlays, as `humanish.lab.v2` compositions
-  (`src/study/config.ts`) with one engine and no hardcoded lab kinds;
+- study file resolution through `humanish/studies/*.yaml` and the ignored
+  `.humanish/studies/` and `.humanish/local/studies/` folders, as `humanish.study.v3`
+  files that declare their `route:` (`src/study/config.ts`), with one engine and no
+  hardcoded study kinds;
 - a first-party actor registry with five registered descriptors
   (`src/actors/registry.ts`); `actor.type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
-  drives a lab-owner loopback app in a hosted desktop, and `subject.source:
+  drives a study-owner loopback app in a hosted desktop, and `subject.source:
 clone` + `serve` clones, installs, and serves a real app in-sandbox from
   config before the actor drives it (`src/routes/computer-use/route.ts`);
 - seven declared subject sources: `this-repo` (dry-run-only), `clone`, `app-url`,
@@ -95,19 +96,20 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
 - resolved-persona directives that actually shape the actor prompt on the
   terminal-product route (traits are applied and recorded in the actor trace, not
   decorative), reusing the same `persona.ts` compiler as the computer-use route;
-- a CLI-loadable adopter scorer seam (`review.scorer.ref` in the lab manifest, or
+- a CLI-loadable adopter scorer seam (`review.scorer.ref` in the study file, or
   a `--scorer <path>` override): a config-declared `.mjs` supplies
   `{score, deriveFeedback, deriveArtifacts}`, resolved with the same containment
   as `scenario` and digest-pinned in the bundle
   (`humanish.scorer-provenance.v1`); a config-declared scorer that fails to render
   a pass fails the run on the scorer-capable routes, while library callers keep
-  the additive behavior (`costProbe` stays library-only); on the terminal route
+  the additive behavior (a terminal `maxUsd` cap has no adopter cost source until
+  [issue 347](https://github.com/danielgwilson/humanish/issues/347) lands); on the terminal route
   the scoring context carries the full normalized transcript (byte-identical to
   the persisted `terminal-transcript.txt`) instead of the ~2KB tail projection. The
   [scorer example](../../examples/scorer/README.md) attaches one from the CLI and from a
   library caller;
 - containment checks for managed run storage, Observer and feedback reads,
-  actor artifacts, lab discovery, Git metadata, and source archives;
+  actor artifacts, study discovery, Git metadata, and source archives;
 - cleanup inspection receipts that do not treat mutable run-bundle IDs as
   provider-mutation authority;
 - every route publishes through the run lifecycle (`runScope` and `Run` in
@@ -123,39 +125,38 @@ Still not good enough:
   out-of-tree actor-registration API;
 - multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
-- the README hero is the drawDB real-application study, a legible capture of a
-  studied public subject (drawDB is not a humanish adopter); coverage beyond that single
-  studied subject (the stratified breadth panel) remains open.
+- the README hero is the eight-participant game lobby run replayed at humanish.dev/demo;
+  coverage beyond the few studied public subjects (the stratified breadth panel) remains open.
 
-## Check which compositions a lab can declare
+## Check which compositions a study can declare
 
 `parseStudy` (`src/study/config.ts`) enforces this matrix through `compositionReason`
 (`src/study/composition-rules.ts`), which uses the predicates in `src/study/routing.ts` and the reasons
 in `src/study/validation.ts`. The route entries check it again
-for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
+for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one study for each
 accepted row except the local browser row. `tests/study/task-route-preflight.test.ts` checks that
-each of those labs routes as shown. `tests/run-study-local-substrate.test.ts` covers the local
+each of those studies routes as shown. `tests/run-study-local-substrate.test.ts` covers the local
 browser row. Accepted rows have further required fields, such as `subject.serve` on `clone`, and
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.
 
-| Route          | `subject.source`                              | `execution.target`       | `actor.type`                           | Result                                                                         |
-| -------------- | --------------------------------------------- | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `computer-use` | `app-url`                                     | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `app-url`                                     | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
-| `computer-use` | `clone`, `local-tree`                         | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `desktop-cli`                                 | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
-| `computer-use` | `local-app`                                   | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
-| `shared-world` | `clone`, `local-tree` + `route: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `shared-world` | `app-url` + `route: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
-| `scripted`     | `app-url` with a loopback URL                 | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
-| `scripted`     | `clone`                                       | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
-| `terminal`     | `terminal-product`                            | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
-| `preview`      | `this-repo`                                   | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none           | any other pairing                             | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+| Route          | `subject.source`                              | `execution.target`       | `actor.type`                           | Result                                                                              |
+| -------------- | --------------------------------------------- | ------------------------ | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `computer-use` | `app-url`                                     | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `app-url`                                     | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                      |
+| `computer-use` | `clone`, `local-tree`                         | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `desktop-cli`                                 | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `local-app`                                   | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` | `clone`, `local-tree` + `route: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
+| `shared-world` | `app-url` + `route: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                                  |
+| `scripted`     | `app-url` with a loopback URL                 | `local` or absent        | `scripted-browser`                     | Supported                                                                           |
+| `scripted`     | `clone`                                       | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                           |
+| `terminal`     | `terminal-product`                            | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                           |
+| `preview`      | `this-repo`                                   | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                        |
+| none           | any other pairing                             | any                      | any                                    | Refused at parse with `HUMANISH_STUDY_INVALID`                                      |
 
 The fixture's `supported` field records which routes accept declared `actor.tasks`. The
-computer-use labs in the fixture accept them. The other routes refuse them at parse.
+computer-use studies in the fixture accept them. The other routes refuse them at parse.
 
 ## First Commands
 
@@ -178,12 +179,12 @@ For local product feel:
 pnpm humanish watch
 ```
 
-For private/local dogfood, author an ignored lab manifest under
-`.humanish/labs/` or `.humanish/local/labs/`, then invoke it explicitly with an
+For private/local dogfood, write an ignored study file under
+`.humanish/studies/` or `.humanish/local/studies/`, then invoke it explicitly with an
 ignored env file:
 
 ```bash
-pnpm humanish watch .humanish/labs/local-dogfood.yaml --dotenv .humanish/local/provider.env
+pnpm humanish watch .humanish/studies/local-dogfood.yaml --dotenv .humanish/local/provider.env
 ```
 
 ## How To Pick Work
@@ -285,8 +286,8 @@ sets; the paragraph underneath it is the finding, and it has twice repeated an
 adoption problem we already knew about in words no test could produce.
 
 This spends money and needs keys, so it is deliberately not part of `release:check`
-and never runs in CI. The lab's caps hold product spend to `$0`; what it costs is
-the agent's own tokens (on `gpt-5.6-sol` unless the lab names a model, estimated in `run.json`'s
+and never runs in CI. The study's caps hold product spend to `$0`; what it costs is
+the agent's own tokens (on `gpt-5.6-sol` unless the study names a model, estimated in `run.json`'s
 `cost`) and a few sandbox-minutes. The agent's model key stays outside
 the sandbox in an E2B egress rule (`runtimeAuth: openai-egress`), and its `web_search`
 fetches run on the model provider's side, so an error from one says nothing about the

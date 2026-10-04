@@ -54,6 +54,13 @@ const nextConfig = {
       { source: "/docs/known-limits", destination: "/failure-modes", permanent: false },
       // A study file was called a lab manifest before 0.108.0.
       { source: "/docs/lab-manifests", destination: "/docs/study-files", permanent: true },
+      // The budget half of this page joined the cost page, and its credentials section moved to
+      // the trust page. The budget headings keep their anchors on the cost page.
+      {
+        source: "/docs/budgets-and-privacy",
+        destination: "/docs/what-a-study-costs",
+        permanent: true,
+      },
       // The 2026-09-16 run was published here before the 2026-09-27 run replaced it on /demo.
       { source: "/runs/lobby-0916-full/:path*", destination: "/demo", permanent: true },
       // The 2026-09-14 homepage was kept here for review until the homepage experiment ended.

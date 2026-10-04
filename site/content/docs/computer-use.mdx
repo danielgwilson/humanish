@@ -16,7 +16,7 @@ Hosted browser studies support these sources:
   in `subject.env` are provisioned from `--dotenv` (provenance records names;
   persisted text uses known-value and pattern redaction). The bundle records provenance: repo, cloned commit, env names.
 - **`subject.source: app-url`**: drive your reachable deployment with
-  `policies.allowPublicTargets: true`. The standard independent-world route
+  `policies.allowPublicTargets: true`. The computer-use route
   accepts one participant for this shared URL. Library callers can also provision
   the target through `RunStudyOptions.prepareDesktop`.
 - **`subject.source: local-tree`**: package the study resolution directory, upload
@@ -79,11 +79,11 @@ to open, and that waiting for an email is a next step, not a blocker. The run bu
 gets a digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link
 digests + an OTP count; no raw address, link, or code persists); the readable proof a
 persona saw the email is its inbox-page screenshots. Hosted on the clone/local-tree
-computer-use route and the concurrent shared-world route (warned inert elsewhere),
+computer-use route and the shared-world route (refused elsewhere),
 vendor-neutral (Resend/SendGrid shaped, or a custom profile).
 An app-url study can instead use an adopter-hosted catch via
 `comms.email.external`; it must already be wired into your app. See the
-[schema contract](repo:docs/contracts/schemas.md) for the full `comms` shape and route limits.
+[study file reference](/docs/study-files#give-participants-an-inbox-in-comms) for every `comms` field.
 
 ## Screenshots are full-fidelity by default
 
@@ -148,7 +148,7 @@ for the method and limits; physical-device behavior was not tested.
 ## Desktop browser choice
 
 Hosted computer-use and shared-world participants use the
-route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
+desktop's default URL opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
 or `firefox`. A concrete value means "launch this browser or fail"; it never silently
 falls back to whatever the image prefers. When configured, run bundles record the requested
 browser and the resolved in-sandbox command as `desktopBrowser`.
@@ -193,13 +193,13 @@ including with a custom desktop template. `source: speech` requires a local-agen
 participant and cannot be combined with a hosted camera. This does not determine whether a custom template has its own
 working audio devices; humanish does not deliver the declared audio file to them.
 
-| Declared media route                                                                                       | Support                                          |
+| Declared media on                                                                                          | Support                                          |
 | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | Independent hosted computer-use browser participants (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera                       |
 | Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal                     | Media declarations rejected before execution     |
 | `media.microphone.source` other than `speech`, including custom desktop templates                          | File injection unsupported; declaration rejected |
 
-Camera-free studies keep their existing route behavior. A working camera does not
+Camera-free studies behave as before. A working camera does not
 establish audio, conferencing-provider, TURN or reconnection support.
 
 ## A declared observation window
@@ -262,7 +262,7 @@ this extra report. See [reading outcomes](/docs/read-results#separate-a-finding-
 
 ## Model selection and spend
 
-Use the [cost model and budgets](/docs/budgets-and-privacy#how-cost-estimates-work).
+Use the [cost model and budgets](/docs/what-a-study-costs#how-cost-estimates-work).
 Set both a study model budget (`maxTotalUsd`) and a per-participant backstop
 (`maxUsd`); desktop time is additional.
 

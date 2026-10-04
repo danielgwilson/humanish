@@ -28,7 +28,7 @@ the steps below update both.
 Open these when a step needs them:
 
 - [README.md](README.md): what humanish does and how a user runs a study.
-- [ARCHITECTURE.md](ARCHITECTURE.md): `humanish run <lab>` traced through the code, the code map
+- [ARCHITECTURE.md](ARCHITECTURE.md): `humanish run <study>` traced through the code, the code map
   and the invariants a change must keep.
 - [CONTEXT.md](CONTEXT.md): the domain terms and the field spellings that map to them.
 - [docs/ramp/README.md](docs/ramp/README.md): current state, how to pick work and the quality bar.
@@ -123,25 +123,25 @@ pnpm pack:dry-run
 
 Common changes touch these tests and contracts:
 
-| Change                    | Tests                                                                                                                                                        | Contract or doc to update                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| A lab manifest field      | `tests/study/config.test.ts`, the route's tests. Its cases pin each lab's warnings, so a new warning fails cases that expect none                            | `docs/contracts/schemas.md`, `site/content/docs/study-files.mdx`               |
-| A CLI option              | the command's tests under `tests/cli/`                                                                                                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                 |
-| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                                | `docs/contracts/run-bundle.md`                                                 |
-| An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                        | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md` |
-| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1`                                                                                 | `docs/architecture/observer.md`                                                |
-| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                                                                                                    | `observer/README.md`                                                           |
-| A route's behavior        | the route's folder in `tests/routes/` (the scripted route's main suite is `tests/routes/scripted/route.test.ts`), `tests/study/task-route-preflight.test.ts` | the support matrix in `docs/ramp/README.md`                                    |
-| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                          | `docs/architecture/actor-contract.md`                                          |
-| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                               | `docs/contracts/policy.md`                                                     |
-| Study analysis            | `tests/analysis/`                                                                                                                                            | `docs/contracts/study-analysis.md`                                             |
-| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                     | `tests/golden/public-api.json`, and a doc comment on the declaration           |
-| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                  | `examples/README.md`                                                           |
+| Change                    | Tests                                                                                                                                                        | Contract or doc to update                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| A study file field        | `tests/study/config.test.ts`, the route's tests. Its cases pin each study's warnings, so a new warning fails cases that expect none                          | `site/content/docs/study-files.mdx` (docs:check fails without a row), `docs/contracts/schemas.md` |
+| A CLI option              | the command's tests under `tests/cli/`                                                                                                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                                    |
+| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                                | `docs/contracts/run-bundle.md`                                                                    |
+| An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                        | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md`                    |
+| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1`                                                                                 | `docs/architecture/observer.md`                                                                   |
+| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                                                                                                    | `observer/README.md`                                                                              |
+| A route's behavior        | the route's folder in `tests/routes/` (the scripted route's main suite is `tests/routes/scripted/route.test.ts`), `tests/study/task-route-preflight.test.ts` | the support matrix in `docs/ramp/README.md`                                                       |
+| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                          | `docs/architecture/actor-contract.md`                                                             |
+| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                               | `docs/contracts/policy.md`                                                                        |
+| Study analysis            | `tests/analysis/`                                                                                                                                            | `docs/contracts/study-analysis.md`                                                                |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                     | `tests/golden/public-api.json`, and a doc comment on the declaration                              |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                  | `examples/README.md`                                                                              |
 
 Six folders hold fixtures:
 
 - `tests/fixtures/`: test inputs.
-- `humanish/fixtures/`: the synthetic apps this repo's own labs start.
+- `humanish/fixtures/`: the synthetic apps this repo's own studies start.
 - `fixtures/`: synthetic apps and cases that several tests and scripts copy, such as
   `fixtures/minimal-app/`.
 - `adapters/fixtures/`: the adapter evidence shapes `tests/study/adapter-fixtures.test.ts` checks.
@@ -152,10 +152,25 @@ Six folders hold fixtures:
 ### Find the test folders outside the `src/` mirror
 
 Most of `tests/` mirrors `src/`. Six folders sit outside that mirror. `tests/admission/` pins what the CLI and the
-library do when they refuse a lab before a run starts, and `tests/scripts/` tests `scripts/`.
+library do when they refuse a study before a run starts, and `tests/scripts/` tests `scripts/`.
 `tests/surface/` checks the README, the site, `site/public/llms.txt`, the agent skill and the package
 against the shipped CLI. `tests/helpers/`, `tests/fixtures/` and `tests/golden/` hold shared test
 code, inputs and goldens.
+
+## Keep releases compatible
+
+The [compatibility policy](README.md#check-the-compatibility-policy-before-upgrading) covers CLI
+commands and flags, study file fields, the run bundle, `--json` output, exit and error codes, and
+the library exports. A change to any of them follows three rules:
+
+- To remove a name, deprecate it first. The deprecated name keeps working for at least 30 days
+  and through at least one minor release, and the release notes say when it was deprecated.
+- Hold a removal or another breaking change for the next batched breaking release. That minor
+  release carries every breaking change at once, and its notes carry a migration table: each old
+  form, its new form and the change to make.
+- The study file schema (`humanish.study.v3`) and the run bundle schema
+  (`humanish.run-bundle.v1`) are versioned. A breaking change to either one bumps its version;
+  an additive optional field does not.
 
 ## Pull Requests
 

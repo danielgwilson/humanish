@@ -13,7 +13,7 @@ async function readmeTagline(): Promise<string | undefined> {
 }
 
 describe("the product sentence", () => {
-  it("reads the same in `README.md`, package.json, --help, bare humanish and the skill", async () => {
+  it("opens `README.md` and the skill, and reads the same in package.json, --help and bare humanish", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8")) as {
       description: string;
     };
@@ -30,7 +30,8 @@ describe("the product sentence", () => {
     });
 
     expect({
-      readme: await readmeTagline(),
+      // Line 3 of `README.md` goes on to say what a run does, so it is held to its opening sentence.
+      readme: (await readmeTagline())?.slice(0, PRODUCT_SENTENCE.length),
       packageJson: packageJson.description,
       help: createProgram().description(),
       orientation: orientation.split("\n")[0],

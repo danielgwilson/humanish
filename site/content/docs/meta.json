@@ -3,6 +3,7 @@
   "pages": [
     "---Start---",
     "index",
+    "concepts",
     "your-app",
     "read-results",
     "---Guides---",
@@ -22,7 +23,6 @@
     "project-layout",
     "---Background---",
     "what-a-study-costs",
-    "budgets-and-privacy",
     "trust-boundaries",
     "---Studies---",
     "todomvc-edit-study",

@@ -250,7 +250,7 @@
       ],
       "knownGaps": [
         "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
-        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
       ]
     },
     "summary": {
@@ -341,10 +341,10 @@
     "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
     "gaps": [
       "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
-      "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+      "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -701,7 +701,7 @@
       "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
       "gaps": [
         "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
-        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
       ]
     },
     "feedbackCandidates": [],
@@ -876,19 +876,19 @@
           "usd": null,
           "count": null,
           "source": "unmeasured",
-          "note": "product spend not measured: humanish has no product spend signal for this run, and an adapter may supply one through costProbe. Recorded as null, never guessed as 0."
+          "note": "product spend not measured: humanish has no product spend signal, and a study cannot supply one. Recorded as null, never guessed as 0."
         },
         "media": {
           "usd": null,
           "count": null,
           "source": "unmeasured",
-          "note": "media spend not measured: humanish has no media spend signal for this run, and an adapter may supply one through costProbe. Recorded as null, never guessed as 0."
+          "note": "media spend not measured: humanish has no media spend signal, and a study cannot supply one. Recorded as null, never guessed as 0."
         },
         "payment": {
           "usd": null,
           "count": null,
           "source": "unmeasured",
-          "note": "payment spend not measured: humanish has no payment spend signal for this run, and an adapter may supply one through costProbe. Recorded as null, never guessed as 0."
+          "note": "payment spend not measured: humanish has no payment spend signal, and a study cannot supply one. Recorded as null, never guessed as 0."
         },
         "provider": {
           "usd": null,

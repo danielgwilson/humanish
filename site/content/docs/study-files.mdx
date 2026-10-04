@@ -1,62 +1,28 @@
 ---
 title: Study file reference
-description: Choose a route, keep private studies local, and replay scripted browser scenarios.
+description: Every field a humanish.study.v3 file can set, with its type, default and meaning, plus persona files and scripted scenarios.
 ---
 
-Start with the complete [own-app study](/docs/your-app) and use this reference when changing its source, route, or execution controls.
+A study file is YAML with `schema: humanish.study.v3`. This page lists every field the parser accepts. [How a study works](/docs/concepts) explains the terms on one annotated file, and the [own-app guide](/docs/your-app) builds a complete study for your app.
 
-## Where studies live
-
-Studies are written as `.yaml` files:
+## Keep study files in one of three folders
 
 ```text
-humanish/studies/*.yaml          committed public-safe studies
+humanish/studies/*.yaml          committed studies anyone who clones the project can run
 .humanish/studies/*.yaml         ignored local studies
 .humanish/local/studies/*.yaml   ignored private or machine-specific studies
 ```
 
-Committed studies should be useful to anyone who clones the project. Private repo
-targets, token-backed provider settings, and local-only dogfood variants belong
-in ignored `.humanish/` study files and can be run explicitly:
+`humanish run <id>` finds a study by its `id` in these folders. Private repository targets, preview URLs and local variants belong in the ignored folders, and you can run any study file by path:
 
 ```bash
 npx humanish watch .humanish/studies/local-dogfood.yaml --dotenv .humanish/local/provider.env
 npx humanish run .humanish/studies/local-dogfood.yaml --json --no-open
 ```
 
-`--dotenv` loads values into the current humanish process; declared subject
-variables can then be provisioned to the sandbox. Environment provenance records
-names. Persisted text is scrubbed for known values and secret patterns, with the
-[coverage limits described under verify before sharing](/docs/read-results#verify-before-sharing).
+`--dotenv` loads values into the humanish process, and the names a study lists in `subject.env` are then passed to its sandbox. The run records those names and never their values. Persisted text is scrubbed for known values and secret patterns, with the [coverage limits described under verify before sharing](/docs/read-results#verify-before-sharing).
 
-## Move files from 0.107
-
-Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. humanish
-no longer runs those files or reads the `labs/` folders. Running one by name fails
-with the command that fixes it:
-
-```text
-humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-study.yaml to convert it and move it to humanish/studies/.
-code: HUMANISH_STUDY_V2_UNSUPPORTED
-```
-
-A v3 file left in a `labs/` folder fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`, and its
-message names the matching `studies/` folder to move it to; `migrate` skips v3 files.
-`humanish study list --json` lists each refused file in `retired`, with its code and message. Convert every v2 file at once:
-
-```bash
-npx humanish migrate --dry-run
-npx humanish migrate
-```
-
-`--dry-run` lists each file's destination and every key it moves or drops, with the
-dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 and
-moves it from `labs/` to the matching `studies/` folder; a v2 file outside `labs/` is
-rewritten in place. Comments move with their keys. A key the v2 file declared but its
-route never read is dropped and reported, and a file that uses YAML anchors is refused
-with the line number.
-
-## Inspect the route before running
+## Check a study before you run it
 
 ```bash
 npx humanish study list --json
@@ -64,39 +30,305 @@ npx humanish study show first-run --json
 npx humanish study check first-run --json
 ```
 
-A study names its route in `route:`: `preview`, `computer-use`, `shared-world`,
-`terminal` or `scripted`. The parser reads that route's keys only, and a key the route
-never reads is an error that names the route, such as "route: preview reads no
-`caps`; remove the block." The subject, execution target and actor must also fit the
-route. Read the `study check` warnings; an unsupported composition fails closed.
+None of the three creates a desktop or calls a model. `study show` prints the resolved study, including the persona text each participant receives. `study check` parses the file and reports problems with code `HUMANISH_STUDY_INVALID`:
 
-`participants` entries reject unknown fields before a run starts. For example, a
-misspelled `runtme` produces `HUMANISH_STUDY_INVALID` with the entry index; it cannot
-silently become a default. Use `instruction` to steer one participant.
+- A field the parser does not know fails, and the message lists the known fields at that level and suggests the closest one. A misspelled `runtme` in a participant entry fails with that entry's index.
+- A field the study's route does not read fails, and the message names the route, such as "route: preview reads no `caps`; remove the block."
+- The `route` must match the subject, `execution.target` and the actor. When they disagree, the message names the route they take.
 
-| Subject source     | Use                                                                                                                               |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `clone`            | Clone and serve a repository inside a hosted desktop (`execution.target: e2b-desktop`, a computer-use or scripted-browser actor). |
-| `local-tree`       | Pack the local working tree and serve it inside a hosted desktop (`execution.target: e2b-desktop`, a computer-use actor).         |
-| `app-url`          | Study a reachable app URL with a computer-use or scripted-browser actor; a public target requires explicit policy permission.     |
-| `local-app`        | Library integration with a custom state-driven executor and provider.                                                             |
-| `terminal-product` | Exercise a CLI product in the terminal route.                                                                                     |
-| `desktop-cli`      | Give a computer-use participant a hosted terminal product task.                                                                   |
-| `this-repo`        | Contract preview; live execution is unavailable for this source.                                                                  |
+The tables below give each field's type and its default when you leave it out. "required" means the study fails without it.
 
-[Computer-use controls](/docs/computer-use) cover hosted browsers, screenshots,
-devices, stopping, and reruns. For the complete schema and route validation, read
-[the study parser](repo:src/study/)
-and [schema contracts](repo:docs/contracts/schemas.md).
+## Look up a top-level field
 
-## Scripted browser scenarios
+| Field          | Type                                                                | Default                                                         | Meaning                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`       | string                                                              | required                                                        | `humanish.study.v3`. humanish refuses a `humanish.lab.v2` file, and `humanish migrate` [converts it](#move-files-from-0107).                                                      |
+| `id`           | string                                                              | required                                                        | The study's name on the command line. It starts with a letter or digit, followed by letters, digits, `_`, `.` or `-`.                                                             |
+| `title`        | string                                                              | none                                                            | One line that `study list`, `study show` and the TUI print.                                                                                                                       |
+| `description`  | string                                                              | none                                                            | Longer text that `study show` and the TUI print.                                                                                                                                  |
+| `route`        | `preview`, `computer-use`, `shared-world`, `scripted` or `terminal` | required                                                        | How the study runs. [How a study works](/docs/concepts#five-values-of-route-decide-how-a-study-runs) describes each one.                                                          |
+| `mode`         | `dry-run` or `live`                                                 | `dry-run`                                                       | `live` runs participants. A dry run writes a synthetic run with no browser, model, key or spend. `--dry-run` on the command line forces a dry run.                                |
+| `subject`      | mapping                                                             | required                                                        | The product under study. [Subject fields](#declare-the-product-in-subject).                                                                                                       |
+| `actor`        | mapping                                                             | required                                                        | What drives every participant, and the task. [Actor fields](#choose-the-actor-and-its-task-in-actor).                                                                             |
+| `participants` | number, mapping or list                                             | 4 on `preview`, 1 on `computer-use`; required on `shared-world` | Who takes part. [Participant fields](#list-the-participants-in-participants).                                                                                                     |
+| `surfaces`     | `[desktop]` or `[desktop, mobile]`                                  | `[desktop]`                                                     | `scripted` only: the viewports the scenario replays on.                                                                                                                           |
+| `caps`         | mapping                                                             | none                                                            | Spend and time limits. Each route reads its own keys. [Caps](#limit-spend-and-time-with-caps).                                                                                    |
+| `execution`    | mapping                                                             | none                                                            | Where participants run and for how long. [Execution fields](#say-where-participants-run-in-execution).                                                                            |
+| `scenario`     | string                                                              | required on `scripted`                                          | `scripted` only: a scenario id from `humanish/scenarios/`, or a path to a scenario file. [Scripted scenarios](#scripted-browser-scenarios).                                       |
+| `policies`     | mapping                                                             | every policy `false`                                            | Permissions the study grants. [Policies](#grant-permissions-in-policies).                                                                                                         |
+| `review`       | mapping                                                             | analysis on                                                     | What runs after the participants finish. [Review fields](#configure-analysis-in-review).                                                                                          |
+| `defaults`     | mapping                                                             | none                                                            | `defaults.open` (boolean): whether `run` and `watch` open the Observer when the run finishes. `--open` and `--no-open` override it. Without it, only `watch` in a terminal opens. |
+| `comms`        | mapping                                                             | none                                                            | An inbox each participant can read, for email-gated flows. [Comms fields](#give-participants-an-inbox-in-comms).                                                                  |
+
+## Declare the product in `subject`
+
+`subject.source` says what kind of product the study runs on, and each source takes its own fields. A field set on a source that cannot use it fails at parse.
+
+| `subject.source`   | The product                                                                                                                                  | Routes                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `app-url`          | An app that is already running at `subject.appUrl`.                                                                                          | `computer-use`, `shared-world`, `scripted` |
+| `clone`            | Repositories humanish clones, builds and serves inside each hosted desktop.                                                                  | `computer-use`, `shared-world`, `scripted` |
+| `local-tree`       | Your working tree, packed and served inside each hosted desktop. Gitignored files, `.env*` files and other secret-shaped files are left out. | `computer-use`, `shared-world`             |
+| `desktop-cli`      | A CLI the participant uses in a terminal window on a hosted desktop.                                                                         | `computer-use`                             |
+| `terminal-product` | A CLI an agent studies in a terminal sandbox, starting from its public pages.                                                                | `terminal`                                 |
+| `local-app`        | A dev server on your machine that your own code drives through the library. The CLI refuses it.                                              | `computer-use`                             |
+| `this-repo`        | Nothing runs: the preview writes a sample run.                                                                                               | `preview`                                  |
+
+| Field                  | Type                          | Default                                          | Meaning                                                                                                                                                                                                              |
+| ---------------------- | ----------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`       | one of the seven above        | required                                         | What kind of product this is.                                                                                                                                                                                        |
+| `subject.appUrl`       | http(s) URL                   | required on `app-url` and `local-app`            | The address participants open. A URL other than `127.0.0.1` or `localhost` needs `policies.allowPublicTargets: true`. On `local-app` it must be loopback.                                                            |
+| `subject.repos`        | list of `owner/repo`          | required on `clone`                              | The repositories to clone.                                                                                                                                                                                           |
+| `subject.clone`        | mapping                       | none                                             | `clone` only. `subject.clone.depth`: git clone depth, default 1. `subject.clone.keep`: keep a failed participant's sandbox for debugging, default `false`. `subject.clone.fanout` is read by no route and refused.   |
+| `subject.localTree`    | mapping                       | none                                             | `local-tree` only. `exclude`: extra paths or file names to leave out of the archive. `keep`: keep a failed participant's sandbox, default `false`. `maxArchiveBytes`: the upload limit, default 256 MiB.             |
+| `subject.serve`        | mapping                       | required on `clone` and `local-tree`             | How to start the app inside the sandbox ([below](#start-a-cloned-app-with-subjectserve)).                                                                                                                            |
+| `subject.env`          | list of variable names        | none                                             | `clone` and `local-tree`: names whose values humanish reads from your environment or `--dotenv` and passes to the app. The run records the names only.                                                               |
+| `subject.envValues`    | mapping of name to string     | none                                             | `clone` and `local-tree`: non-secret values committed with the study, such as a public base URL or a feature flag. They are recorded in the run, so a value that looks like a secret or a local path fails at parse. |
+| `subject.state`        | mapping                       | none                                             | `clone` and `local-tree`: seed steps, external state and shared-world checkpoints ([below](#seed-the-apps-state-with-subjectstate)).                                                                                 |
+| `subject.product`      | mapping                       | required on `terminal-product` and `desktop-cli` | The CLI under study ([below](#describe-a-cli-with-subjectproduct)).                                                                                                                                                  |
+| `subject.publicTarget` | `{ owner, authorized: true }` | none                                             | `app-url` on `shared-world` only, and required there: your statement that you own or operate the public deployment. `owner` is a public-safe label such as `owner/repo`, and it is recorded in the run.              |
+| `subject.exposure`     | `synthetic`                   | none                                             | Your statement that the app, served at a public sandbox URL during the run, holds only synthetic data. Required on `shared-world` with `clone` or `local-tree`, and on `scripted` with `clone`.                      |
+
+### Start a cloned app with `subject.serve`
+
+| Field                            | Type          | Default  | Meaning                                                                                             |
+| -------------------------------- | ------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `subject.serve.install`          | shell command | none     | Runs once before the build, such as `npm ci`.                                                       |
+| `subject.serve.installTimeoutMs` | milliseconds  | 600000   | The install step's time limit. Monorepos can need more.                                             |
+| `subject.serve.build`            | shell command | none     | Runs once before the app starts.                                                                    |
+| `subject.serve.buildTimeoutMs`   | milliseconds  | 600000   | The build step's time limit.                                                                        |
+| `subject.serve.start`            | shell command | required | The long-running command that serves the app. A `shared-world` study's command must bind `0.0.0.0`. |
+| `subject.serve.url`              | loopback URL  | required | The address humanish waits on and the participant opens, such as `http://127.0.0.1:3000/`.          |
+| `subject.serve.readyTimeoutMs`   | milliseconds  | 180000   | How long the app has to answer at `url` after it starts.                                            |
+
+The commands run inside the sandbox with the same trust as your own scripts. The run records a digest of each one.
+
+### Seed the app's state with `subject.state`
+
+| Field                      | Type                                | Default | Meaning                                                                                                                                                                                                                                              |
+| -------------------------- | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.state.seed`       | list of steps                       | none    | Commands that prepare data, in order. Each step has `name` (lowercase letters, digits and `-`, at most 40 characters), `command`, `when` (`before-build`, `before-start` or `after-ready`; default `before-start`) and `timeoutMs` (default 300000). |
+| `subject.state.external`   | list of variable names              | none    | Variables in `subject.env` that point at state the study does not control, such as a shared database. The run records its state as unpinned.                                                                                                         |
+| `subject.state.checkpoint` | list of `{ name, command, redact }` | none    | `shared-world` only, and required on a `clone` or `local-tree` plane: read-only commands run before and after each participant's turn. Only a digest of their output is kept; `redact` lists extra values to remove first.                           |
+
+### Describe a CLI with `subject.product`
+
+| Field                            | Type                  | Default            | Meaning                                                                                                                                                  |
+| -------------------------------- | --------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.product.name`           | string                | required           | The product's public-safe name, recorded in the run.                                                                                                     |
+| `subject.product.publicSurfaces` | list of http(s) URLs  | required           | The pages the participant starts from, such as docs or an `llms.txt`.                                                                                    |
+| `subject.product.install`        | shell command         | none               | Installs the product before the participant starts. Without it, installing is part of the participant's task.                                            |
+| `subject.product.workdir`        | path                  | the home directory | `desktop-cli` only: the directory the participant's terminal opens in.                                                                                   |
+| `subject.product.upload`         | project-relative path | none               | `terminal-product` only: a local file, such as an unpublished build, copied into the sandbox before `install` and exposed as `$HUMANISH_PRODUCT_UPLOAD`. |
+
+## Choose the actor and its task in `actor`
+
+A study has one `actor`. It drives every participant, and each participant entry can override some of its fields.
+
+| Field                   | Type                                                                                            | Default                                                                                    | Meaning                                                                                                                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `actor.type`            | `openai-computer-use`, `local-agent`, `scripted-browser`, `codex-exec`, or a label on `preview` | required                                                                                   | What drives each participant. [The actor table](/docs/concepts#an-actor-decides-what-each-participant-does) says what each needs.                                                                       |
+| `actor.mission`         | string                                                                                          | none                                                                                       | The brief every participant receives, written the way you would brief a person. Read on `computer-use`, `shared-world` and `terminal`.                                                                  |
+| `actor.persona`         | persona id                                                                                      | none                                                                                       | The [persona file](#describe-a-participant-in-a-persona-file) for every participant without its own. With none, a computer-use participant gets the id `cua-operator` and no persona text.              |
+| `actor.tasks`           | list of `{ id, goal, success }`                                                                 | none                                                                                       | `computer-use` only: discrete tasks added to the mission. The participant sees each `goal`. `success` is a stop rule, in the `stopWhen` shape, that marks the task done; the participant never sees it. |
+| `actor.model`           | string                                                                                          | `gpt-5.6-sol`; `gpt-6-astra` in a local browser; the agent's own on a hosted `local-agent` | The model name sent to the provider. A cap on a model humanish has no price for is refused before the run.                                                                                              |
+| `actor.maxOutputTokens` | positive integer                                                                                | none                                                                                       | `openai-computer-use` only: the most output tokens, reasoning included, in each model reply. The first request uses at most 1024. A capped study without it stops on a stalled request.                 |
+| `actor.localAgent`      | `codex` or `claude`                                                                             | `codex`                                                                                    | `local-agent` only: which signed-in coding agent drives the participant.                                                                                                                                |
+| `actor.reasoningEffort` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`                                    | the provider's default; `low` in a local browser                                           | How hard the model is asked to think each turn. A level the model does not accept fails on the first turn. The run records the level it sent.                                                           |
+| `actor.stopWhen`        | `{ any: [rules] }`                                                                              | none                                                                                       | Ends a computer-use participant as soon as any rule matches what it sees (below).                                                                                                                       |
+| `actor.dwell`           | mapping                                                                                         | none                                                                                       | A window in which humanish only watches: it takes no action and requests no model turn (below).                                                                                                         |
+
+A `stopWhen` rule sets at least one of `urlIncludes` (text in the URL), `urlPathEquals` (an exact path starting with `/`), `textIncludes` (text on the page) and `appStatePathEquals` (`{ path, equals }`, a value in the app state a custom executor reports). An optional `id` names the rule in the run.
+
+A `dwell` window has `ms`, its length from 1000 to 3600000 milliseconds, and is required. `everyMs` is how often a frame is captured, default 10000. `then` is `continue`, the default, or `stop` to end the session after the window. `when` is a `stopWhen`-shaped condition that opens the window; without it, the window opens after the first observation.
+
+## List the participants in `participants`
+
+`participants` takes the forms its route accepts:
+
+| Route          | Forms                                                                              | Default  |
+| -------------- | ---------------------------------------------------------------------------------- | -------- |
+| `preview`      | a count                                                                            | 4        |
+| `computer-use` | a count, `{ count, instruction }` for identical participants, or a list of entries | 1        |
+| `shared-world` | a list of at least two entries                                                     | required |
+| `scripted`     | refused; set `surfaces` instead                                                    |          |
+| `terminal`     | refused; one agent runs                                                            |          |
+
+A computer-use study runs at most 16 participants, each on its own desktop. A `local-app` subject takes no list. `--count` on the command line overrides a count. Each list entry accepts these fields, and an unknown one fails with the entry's index:
+
+| Field                            | Type                          | Default                                                 | Meaning                                                                                                                                                  |
+| -------------------------------- | ----------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `participants[].id`              | string, at most 40 characters | `lane-01`, `lane-02`, …; `role-01`, … on `shared-world` | Names the participant and its evidence folders. Ids are unique.                                                                                          |
+| `participants[].count`           | positive integer              | none                                                    | Makes the entry a group of that many participants, `<id>-01` to `<id>-NN`, which share its other fields. A group needs an `id` of at most 37 characters. |
+| `participants[].persona`         | persona id                    | `actor.persona`                                         | This participant's persona file.                                                                                                                         |
+| `participants[].instruction`     | string                        | none                                                    | Text added to the mission for this participant. In the `{ count, instruction }` form, `participants.instruction` goes to every participant.              |
+| `participants[].device`          | screen preset                 | `execution.desktop.device`                              | This participant's screen preset. It cannot be combined with `execution.desktop.resolution`.                                                             |
+| `participants[].reasoningEffort` | effort level                  | `actor.reasoningEffort`                                 | This participant's reasoning effort.                                                                                                                     |
+| `participants[].stopWhen`        | `{ any: [rules] }`            | `actor.stopWhen`                                        | This participant's stop rules.                                                                                                                           |
+| `participants[].dwell`           | mapping                       | `actor.dwell`                                           | This participant's observation window.                                                                                                                   |
+| `participants[].target`          | absolute http(s) URL          | `subject.appUrl`                                        | `computer-use` with `app-url` only: the URL this participant opens. A non-loopback one needs `policies.allowPublicTargets: true`.                        |
+| `participants[].entry`           | path                          | `subject.serve.url`                                     | `shared-world` only: a path on the served app where this participant starts.                                                                             |
+| `participants[].host`            | boolean                       | `false`                                                 | `shared-world` with `app-url` only: marks the one participant who creates the shared session, such as a game lobby, that the others join.                |
+| `participants[].actorType`       | label                         | none                                                    | A free-form label recorded in the run for grouping participants, such as `viewer`. It does not choose the actor.                                         |
+| `participants[].surface`         | label                         | none                                                    | A free-form label for the product area a participant starts from.                                                                                        |
+| `participants[].caseGroup`       | label                         | none                                                    | A free-form label that ties participants to one shared case, account or work item.                                                                       |
+
+## Limit spend and time with `caps`
+
+Every route reads the same top-level `caps` block, and each route refuses the keys it does not read. The caps act on humanish's estimates. They are not provider billing limits, and [what a study costs](/docs/what-a-study-costs#set-a-study-budget) explains what they leave out.
+
+| Field              | Type              | Default                            | Meaning                                                                                                                                                                                   |
+| ------------------ | ----------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `caps.maxUsd`      | number, 0 or more | none                               | `computer-use` and `shared-world`: stop a participant once its estimated model spend passes this. `terminal`: required for a live run, and it must be 0 ([below](#cap-a-terminal-study)). |
+| `caps.maxTotalUsd` | number, 0 or more | none                               | `computer-use` and `shared-world`: stop every participant once the study's estimated model spend passes this.                                                                             |
+| `caps.maxJobs`     | number, 0 or more | none                               | `terminal`: the billable product jobs the agent may trigger, checked after the session against measured job counts.                                                                       |
+| `caps.maxMinutes`  | number above 0    | required for a live `terminal` run | `terminal`: the agent command's time limit. A live run refuses more than 49, or 44 with `subject.product.install`, because the sandbox lives at most an hour.                             |
+
+`preview` and `scripted` take no `caps`.
+
+### Cap a terminal study
+
+humanish has no cost source for a terminal study: Codex reports no provider cost, and humanish measures no product, media or payment spend. A positive `caps.maxUsd` could never trip, so a live terminal run refuses it with `HUMANISH_TERMINAL_UNPRICED_CAP`. Set `caps.maxUsd: 0` and bound the run with `caps.maxMinutes`. `caps.maxJobs` has no measured job count to check for the same reason. Adopter-supplied cost sources are planned in [issue 347](https://github.com/danielgwilson/humanish/issues/347).
+
+## Say where participants run in `execution`
+
+| Field                           | Type                                     | Default                                                                                               | Meaning                                                                                                                                                                                                                                                                                                        |
+| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execution.target`              | `e2b-desktop`, `local` or `e2b-terminal` | `e2b-desktop` on `desktop-cli`, `e2b-terminal` on `terminal-product`, `local` on a scripted `app-url` | Where participants run. `e2b-desktop` is a hosted E2B desktop. `local` is a disposable VM on your machine for a computer-use `app-url` study, or this machine's browser for a scripted one. `clone` and `local-tree` need `e2b-desktop`, and a computer-use `app-url` study must set `local` or `e2b-desktop`. |
+| `execution.timeoutMs`           | milliseconds                             | see below                                                                                             | Each participant's session limit, on `computer-use`, `shared-world` and `scripted`. `terminal` refuses it: `caps.maxMinutes` is its limit.                                                                                                                                                                     |
+| `execution.concurrency`         | positive integer                         | every participant at once                                                                             | `computer-use` and `shared-world`: how many participants run at the same time. `shared-world` needs at least 2.                                                                                                                                                                                                |
+| `execution.desktop`             | mapping                                  | none                                                                                                  | The desktop's screen, browser, image, media and recording ([below](#set-up-the-desktop-with-executiondesktop)).                                                                                                                                                                                                |
+| `execution.egressAllow`         | list of host names                       | unrestricted                                                                                          | `terminal`: the only hosts the sandbox may reach. `*.example.com` matches subdomains at any depth, so list the apex domain separately. An empty list fails at parse.                                                                                                                                           |
+| `execution.runtimeAuth`         | `openai-env` or `openai-egress`          | `openai-env`                                                                                          | `terminal`: how the agent gets its OpenAI key. `openai-env` passes the key to the agent command. `openai-egress` keeps it in an E2B proxy rule, and sandbox processes can still spend through that proxy.                                                                                                      |
+| `execution.runtime`             | `{ version }`                            | the latest release                                                                                    | `terminal`: an exact Codex version to install, such as `0.153.3`. Without it, humanish resolves the latest release once and records it.                                                                                                                                                                        |
+| `execution.terminal`            | mapping                                  | `{ transport: exec-stream, stdin: disabled }`                                                         | `terminal`: `transport` takes only `exec-stream`, and `stdin` takes `disabled` or `planned`. `stdin: sent` fails at parse.                                                                                                                                                                                     |
+| `execution.completionTimeoutMs` | milliseconds                             | none                                                                                                  | No route reads it, so a study that sets it fails at parse.                                                                                                                                                                                                                                                     |
+
+Without `execution.timeoutMs`, a session gets 30 minutes on an `app-url` subject. On `clone` and `local-tree` it gets what the 60-minute sandbox leaves after the clone, build and seed steps: 20 minutes for a clone with no seed steps, and never less than 5. A local browser session defaults to 20 minutes, which is also its maximum, and a scripted session to 5 minutes.
+
+### Set up the desktop with `execution.desktop`
+
+| Field                                | Type                                         | Default                          | Meaning                                                                                                                                                                                |
+| ------------------------------------ | -------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execution.desktop.device`           | screen preset                                | `desktop`                        | Computer-use participants: `mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet` (820×1180), `desktop` (1440×950) or `wide` (1920×1080).                   |
+| `execution.desktop.resolution`       | `[width, height]`                            | none; 960×720 in a local browser | A raw screen size that overrides `device`.                                                                                                                                             |
+| `execution.desktop.browser`          | `default`, `chrome`, `chromium` or `firefox` | `default`                        | The browser on a hosted computer-use desktop. A named browser that fails to launch fails the participant.                                                                              |
+| `execution.desktop.template`         | string                                       | E2B's stock `desktop` image      | A custom E2B template name or id, for an app that needs runtimes the stock image lacks. The run records it.                                                                            |
+| `execution.desktop.sandboxTimeoutMs` | milliseconds                                 | derived from the session         | `computer-use`: the hosted sandbox's own lifetime. E2B allows at most 60 minutes.                                                                                                      |
+| `execution.desktop.fidelity`         | mapping                                      | none                             | Mobile emulation for hosted Chromium on a mobile preset: `mobileEmulation` (required), `deviceScaleFactor` (the preset's), `touch` (`true`) and `userAgent` (an iPhone Safari string). |
+| `execution.desktop.media`            | mapping                                      | none                             | `camera.source` (`synthetic`, or a `.y4m` file) and `microphone.source` (`speech`, with a Codex `local-agent` only). [Participant media](/docs/participant-media) has the limits.      |
+| `execution.desktop.recording`        | `{ audio }`                                  | none                             | Keep a screen video of each computer-use participant on its own desktop; `audio: true` adds sound. [Desktop recording](/docs/desktop-recording).                                       |
+| `execution.desktop.codexAppServer`   | boolean                                      | none                             | No route reads it, so a study that sets it fails at parse.                                                                                                                             |
+
+## Grant permissions in `policies`
+
+Each policy is `false` until the study sets it to an unquoted `true`.
+
+| Field                                                                                                                                      | Default                                                          | Meaning                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `policies.allowPublicTargets`                                                                                                              | `false`                                                          | Lets `subject.appUrl` or a participant's `target` be a non-loopback URL you own, such as a preview deployment. With more than one participant it is refused unless each participant has its own `target`; `route: shared-world` puts several on one public app. |
+| `policies.redactScreenshots`                                                                                                               | `false`                                                          | Blurs and downscales screenshots when they are saved. The model still sees full frames.                                                                                                                                                                         |
+| `policies.redactRepos`                                                                                                                     | `false`; `true` when the clone authenticates with `GITHUB_TOKEN` | Replaces repository names in saved evidence.                                                                                                                                                                                                                    |
+| `policies.mediaPermission`                                                                                                                 | `prompt`                                                         | How the browser's camera and microphone prompt is answered. `prompt` leaves the real dialog to the participant, and `granted` accepts it in advance.                                                                                                            |
+| `policies.allowPrivateRepoAccess`, `policies.allowProviderCredentials`, `policies.allowPaymentCredentials`, `policies.allowGitHubMutation` | `false`                                                          | `terminal`: recorded in the run as declared intent. No route passes these credentials to the agent.                                                                                                                                                             |
+
+## Configure analysis in `review`
+
+| Field                                                      | Type               | Default                        | Meaning                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------- | ------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `review.analysis`                                          | `false` or mapping | on, with OpenAI and a $3 limit | The separate model reading of a finished live run. `false` turns it off. A default analysis is skipped without `OPENAI_API_KEY` or when its estimate is over the limit. One the study declares fails when its estimate is over its limit. |
+| `review.scorer`                                            | `{ ref }`          | none                           | A project-relative path to a scorer module (`.mjs`) that exports `score`, `deriveFeedback` or `deriveArtifacts`. It runs as code, so review it as code. `scripted` refuses it.                                                            |
+| `review.scoring`, `review.milestones`, `review.vocabulary` | string             | none                           | No route reads them, so a study that sets one fails at parse.                                                                                                                                                                             |
+
+`review.analysis` as a mapping takes these keys:
+
+| Key               | Default                                                        | Meaning                                                                                                       |
+| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `provider`        | `openai`; `codex` for a Codex `local-agent` in a local browser | `openai` uses `OPENAI_API_KEY`. `codex` uses your signed-in Codex account and takes no dollar or token limit. |
+| `maxCostUsd`      | 3                                                              | `openai`: the analysis is refused before it starts when its estimate is over this. It is not a billing limit. |
+| `model`           | `gpt-6-astra`                                                  | The analysis model.                                                                                           |
+| `question`        | none                                                           | A question for the analysis to answer, up to 4000 characters.                                                 |
+| `timeoutMs`       | 600000                                                         | The analysis time limit, at most 600000.                                                                      |
+| `maxOutputTokens` | 16384                                                          | `openai`: the reply's token limit, at most 32768.                                                             |
+
+[Read results](/docs/read-results) shows the findings, and `humanish analyze` runs an analysis on demand.
+
+## Give participants an inbox in `comms`
+
+`comms.email` gives each participant an inbox for email-gated flows such as a signup link. By default humanish captures the mail your app sends inside the sandbox, which needs a `clone` or `local-tree` subject. [Email capture](/docs/comms-inbox) and [real email receiving](/docs/email-receiving) have complete examples.
+
+| Field                        | Type                        | Default                                      | Meaning                                                                                                                                                                                       |
+| ---------------------------- | --------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `comms.email`                | mapping                     | none                                         | The inbox settings below.                                                                                                                                                                     |
+| `comms.email.kind`           | `fake`                      | `fake`                                       | A captured inbox. A real inbox sets `connection` and leaves `kind` out.                                                                                                                       |
+| `comms.email.injectEnv`      | variable name               | required unless `smtp` or `external` is set  | The variable humanish sets to its catch's URL. Your app reads it as its email API's base URL.                                                                                                 |
+| `comms.email.port`           | port number                 | 8025                                         | The catch's port inside the sandbox.                                                                                                                                                          |
+| `comms.email.smtp`           | mapping                     | none                                         | SMTP capture: `hostEnv` and `portEnv` (required, the variables your app reads), `port` (default 2525), and `userEnv`, `user`, `passwordEnv` and `password` for apps that require credentials. |
+| `comms.email.linkOrigin`     | http(s) origin              | none                                         | The origin your app writes into email links, when it differs from the served URL.                                                                                                             |
+| `comms.email.recipients`     | list of `{ lane, address }` | `<participant id>@example.test` for each one | Each participant's address. `lane` holds the participant id.                                                                                                                                  |
+| `comms.email.external`       | mapping                     | none                                         | A catch you run yourself with `humanish comms catch`, for `app-url` subjects: `catchBaseUrl` (required), `inboxBaseUrl` (defaults to `catchBaseUrl`) and `authTokenEnv`.                      |
+| `comms.email.connection`     | connection name             | none                                         | A saved real-inbox connection from the TUI's Connections screen. It cannot be combined with the capture fields above.                                                                         |
+| `comms.email.allowedOrigins` | list of http(s) origins     | none                                         | With `connection`: up to 16 more exact origins that a real inbox's links may open.                                                                                                            |
+
+## Describe a participant in a persona file
+
+A persona file says who a participant is. humanish looks for `<id>.yaml` or `<id>.yml` in `humanish/personas/`, then in the ignored `.humanish/local/personas/`, and a committed file wins. A persona id uses letters, digits, `_` and `-`. `humanish init` writes two examples:
+
+```yaml title="humanish/personas/skeptical-power-user.yaml"
+schema: humanish.persona.v1
+id: skeptical-power-user
+name: Skeptical Power User
+summary: A privacy-safe experienced user looking for speed, reversibility, and clear proof.
+traits:
+  patience: low
+  technical_confidence: high
+  accessibility_needs: keyboard_first
+constraints:
+  - Do not use real personal data.
+  - Prefer synthetic fixture inputs.
+  - Flag unclear recovery paths.
+```
+
+| Field                         | Type                        | Default                         | Meaning                                                                                                                                   |
+| ----------------------------- | --------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`                      | string                      | none                            | `humanish.persona.v1`.                                                                                                                    |
+| `id`                          | string                      | the id the study names          | The persona's id, at most 120 characters.                                                                                                 |
+| `name`                        | string                      | the id in title case            | What the participant is called, at most 120 characters.                                                                                   |
+| `summary`                     | string                      | none                            | One line about the person. Text past 280 characters is cut with a warning.                                                                |
+| `background`                  | string                      | none                            | Who the person is, in as many paragraphs as you need, up to 32 KiB of UTF-8. A larger or empty background stops the run before it starts. |
+| `traits`                      | mapping                     | see below                       | Behavior directives, below.                                                                                                               |
+| `traits.patience`             | `low`, `medium` or `high`   | `medium` without a `background` | How much friction the participant works through before stopping.                                                                          |
+| `traits.technical_confidence` | `low`, `medium` or `high`   | `medium` without a `background` | Whether the participant sticks to visible controls or uses shortcuts and advanced options.                                                |
+| `traits.accessibility_needs`  | text, at most 80 characters | none                            | A need the participant works within. `none`, `none declared` and `not applicable` mean none.                                              |
+| `constraints`                 | list of strings             | none                            | Rules the participant is told to honor. The first 8 are used, each up to 160 characters.                                                  |
+
+With a `background`, a trait you leave out sends no directive, and a file that sets both a background and `patience` or `technical_confidence` gets a warning to check them for conflicts. Any other field or trait warns and is not sent. An invalid level warns and falls back to `medium`, or to no directive when there is a background.
+
+Each trait becomes one sentence of the participant's instructions:
+
+| Trait                  | Value                       | Sentence the participant receives                                                                                                                         |
+| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patience`             | `low`                       | You are impatient: if you hit repeated friction or stop making progress toward your goal, you are likely to stop. Describe what you actually encountered. |
+| `patience`             | `medium`                    | You have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.                               |
+| `patience`             | `high`                      | You are determined: you are willing to spend effort on recovery when the goal matters to you, but may stop at an unrecoverable dead-end.                  |
+| `technical_confidence` | `low`                       | You are not technically confident and generally rely on familiar, visible controls. Describe confusion only when you actually encounter it.               |
+| `technical_confidence` | `medium`                    | You have moderate technical confidence and generally use straightforward paths through the product.                                                       |
+| `technical_confidence` | `high`                      | You are technically confident and comfortable with keyboard shortcuts and advanced options on the surfaces this product gives you.                        |
+| `accessibility_needs`  | contains `keyboard_first`   | You prefer keyboard navigation, but can use a pointer when needed. Describe any difficulty you encounter switching between them.                          |
+| `accessibility_needs`  | contains `keyboard_only`    | You can only use the keyboard. If an essential control has no discoverable keyboard path, describe where you could not proceed.                           |
+| `accessibility_needs`  | mentions terminal or output | You rely on clear terminal output. Describe any difficulty understanding the output you actually encounter.                                               |
+| `accessibility_needs`  | anything else               | Your accessibility requirement is: (your text). Use the available interface within this requirement and describe any difficulty you encounter.            |
+
+These sentences are instructions. humanish does not stop a `keyboard_only` participant from using the mouse, and a persona certifies nothing about accessibility. `npx humanish study show <study> --json` prints the persona text each participant receives, and the run records it.
+
+## Replay scripted browser steps [#scripted-browser-scenarios]
 
 A scripted study replays committed browser steps against an app you run on
 a loopback URL. The steps come from the scenario named by `scenario` and make
 no model requests. Browser steps are public-safe source, so use synthetic fixture
 values and committed relative app paths only.
 
-```yaml
+```yaml title="humanish/scenarios/todo-onboarding.yaml"
 schema: humanish.scenario.v1
 id: todo-onboarding
 title: Todo onboarding
@@ -137,7 +369,7 @@ Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a study
 it. [`humanish/studies/scripted-demo.yaml`](repo:humanish/studies/scripted-demo.yaml)
 is a complete example.
 
-```yaml
+```yaml title="humanish/studies/todo-onboarding.yaml"
 schema: humanish.study.v3
 id: todo-onboarding
 route: scripted
@@ -153,8 +385,7 @@ review:
   analysis: false
 ```
 
-Save it as `humanish/studies/todo-onboarding.yaml`. `surfaces: [desktop, mobile]` adds a
-mobile surface to the desktop one. Without `mode: live` the study is a dry run: it validates the steps
+`surfaces: [desktop, mobile]` adds a mobile surface to the desktop one. Without `mode: live` the study is a dry run: it validates the steps
 and writes a contract bundle without opening a browser. Post-run analysis is separate
 from the steps: when `OPENAI_API_KEY` is set it runs by default, and it is refused when
 its estimate exceeds $3. `analysis: false` turns it off, so the study makes no model
@@ -173,3 +404,30 @@ npx humanish verify --run latest --json
 
 Traces are stored as JSON under `.humanish/runs/<run>/traces/` and summarized in
 the Observer.
+
+## Move files from 0.107
+
+Before 0.108.0 a study was a `humanish.lab.v2` file under a `labs/` folder. humanish
+no longer runs those files or reads the `labs/` folders. Running one by name fails
+with the command that fixes it:
+
+```text
+humanish run failed: humanish/labs/old-study.yaml is a humanish.lab.v2 file in humanish/labs/, which humanish no longer reads. Run humanish migrate humanish/labs/old-study.yaml to convert it and move it to humanish/studies/.
+code: HUMANISH_STUDY_V2_UNSUPPORTED
+```
+
+A v3 file left in a `labs/` folder fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`, and its
+message names the matching `studies/` folder to move it to; `migrate` skips v3 files.
+`humanish study list --json` lists each refused file in `retired`, with its code and message. Convert every v2 file at once:
+
+```bash
+npx humanish migrate --dry-run
+npx humanish migrate
+```
+
+`--dry-run` lists each file's destination and every key it moves or drops, with the
+dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 and
+moves it from `labs/` to the matching `studies/` folder; a v2 file outside `labs/` is
+rewritten in place. Comments move with their keys. A key the v2 file declared but its
+route never read is dropped and reported, and a file that uses YAML anchors is refused
+with the line number.

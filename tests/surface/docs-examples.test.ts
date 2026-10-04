@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { type Command, CommanderError } from "commander";
 import { parse } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -19,6 +22,52 @@ const llms = {
   name: "llms.txt",
   text: readFileSync(resolve(root, "site/public/llms.txt"), "utf8"),
 };
+
+/** The body of each fenced YAML block on a page. */
+function yamlBlocks(text: string): string[] {
+  return [...text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)].map((block) => block[1]!);
+}
+
+// A run id changes with every run, so shown and printed output compare with ids replaced.
+const RUN_ID = /dryrun-\d{4}-\d{2}-\d{2}T[\d-]+Z-[0-9a-f]{8}/g;
+
+/** The body of each fenced text block on a page, with run ids replaced. */
+function textBlocks(text: string): string[] {
+  return [...text.matchAll(/```text\n([\s\S]*?)```/g)].map((block) =>
+    block[1]!.replaceAll(RUN_ID, "<run>"),
+  );
+}
+
+let project: string | undefined;
+afterEach(async () => {
+  if (project) await rm(project, { recursive: true, force: true });
+  project = undefined;
+});
+
+/** Run the CLI in this process and return what it printed, with run ids replaced. */
+async function runCli(args: string[]): Promise<{ exitCode: number; output: string }> {
+  let exitCode = 0;
+  const out: string[] = [];
+  const program = createProgram({
+    writeOut: (text) => out.push(text),
+    writeErr: (text) => out.push(text),
+    setExitCode: (code) => {
+      exitCode = code;
+    },
+  });
+  const override = (command: Command): void => {
+    command.exitOverride();
+    command.commands.forEach(override);
+  };
+  override(program);
+  try {
+    await program.parseAsync(["node", "humanish", ...args], { from: "node" });
+  } catch (error) {
+    if (!(error instanceof CommanderError)) throw error;
+    exitCode = error.exitCode;
+  }
+  return { exitCode, output: out.join("").replaceAll(RUN_ID, "<run>") };
+}
 
 // The website is a runnable setup path. Catch unsupported flags and stale lab examples before
 // a reader spends provider money following them; parsing metadata never invokes CLI handlers.
@@ -112,9 +161,9 @@ describe("website documentation examples", () => {
       }
     }
     const scenario = parse(
-      pages
-        .find(({ name }) => name === "study-files")!
-        .text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!,
+      yamlBlocks(pages.find(({ name }) => name === "study-files")!.text).find((block) =>
+        block.includes("schema: humanish.scenario.v1"),
+      )!,
     );
     const parsed = parseBrowserPersonaJourneyFromScenario({
       raw: scenario,
@@ -148,5 +197,48 @@ describe("website documentation examples", () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+// The concepts page and `README.md` show a study file and the output a newcomer sees.
+describe("study files and command output on the docs pages", () => {
+  it("parses every complete study file on the concepts and study file pages", () => {
+    let checked = 0;
+    for (const name of ["concepts", "study-files"]) {
+      const page = pages.find((entry) => entry.name === name)!;
+      for (const block of yamlBlocks(page.text)) {
+        if (!block.includes("schema: humanish.study.v3")) continue;
+        const result = parseStudy(parse(block));
+        expect(result.ok, `${name}: ${JSON.stringify(result)}`).toBe(true);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows the output the CLI prints for the first run and the concepts study", async () => {
+    const cwd = (project = await mkdtemp(join(tmpdir(), "humanish-docs-output-")));
+    await runCli(["init", "--yes", "--cwd", cwd]);
+    const study = yamlBlocks(pages.find(({ name }) => name === "concepts")!.text)[0]!;
+    await writeFile(join(cwd, "humanish", "studies", "two-newcomers.yaml"), study);
+    const printed = {
+      run: (await runCli(["run", "first-run", "--cwd", cwd])).output,
+      verify: (await runCli(["verify", "--cwd", cwd])).output,
+      check: (await runCli(["study", "check", "two-newcomers", "--cwd", cwd])).output,
+    };
+    const shown = (text: string, opening: string) =>
+      textBlocks(text).find((block) => block.startsWith(opening));
+    const concepts = pages.find(({ name }) => name === "concepts")!.text;
+    expect({
+      readmeRun: shown(readme.text, "humanish run dry-run"),
+      readmeVerify: shown(readme.text, "verified "),
+      conceptsCheck: shown(concepts, "humanish study check"),
+      conceptsVerify: shown(concepts, "verified "),
+    }).toEqual({
+      readmeRun: printed.run,
+      readmeVerify: printed.verify,
+      conceptsCheck: printed.check,
+      conceptsVerify: printed.verify,
+    });
   });
 });

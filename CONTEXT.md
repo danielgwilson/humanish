@@ -1,9 +1,10 @@
 # Glossary
 
-humanish is "Synthetic user research for apps, CLIs, and agent-facing product flows." README.md line
-3, package.json, `humanish --help`, bare `humanish` and the humanish skill use that sentence
-(`PRODUCT_SENTENCE` in `src/cli/product-sentence.ts`), and tests/cli/product-sentence.test.ts holds
-them equal.
+humanish is "Synthetic user research for apps, CLIs, and agent-facing product flows." package.json,
+`humanish --help` and bare `humanish` use that sentence (`PRODUCT_SENTENCE` in
+`src/cli/product-sentence.ts`), line 3 of README.md and the humanish skill's description open with
+it, and tests/cli/product-sentence.test.ts holds them equal. [How a study works](https://humanish.dev/docs/concepts)
+is the user-facing version of the first table below.
 
 Use one word per concept. Docs and new code use the terms in the first table. Some manifest,
 bundle and output fields keep older spellings; the second table maps them.

@@ -1,25 +1,36 @@
 ---
 title: What a study costs
-description: The three lines you pay, to whom, with the maintainer's own measured numbers, and what the caps do and do not do.
+description: The lines you pay and to whom, the maintainer's measured numbers, how to set a budget, and what the caps do and do not do.
 ---
 
-There is no humanish price. A live study is billed by the providers you bring: a model for the participant, a hosted desktop, and a separate analysis call. This page puts numbers on each line from the maintainer's own kept runs. Every amount below is an estimate at dated rates, read from a run bundle or the [rate table](repo:src/run/pricing.ts); your provider bill is authoritative.
+There is no humanish price. humanish is free and MIT-licensed, and a live study is billed by the providers you bring: a model for the participant, a hosted desktop, and a separate analysis call. This page puts numbers on each line from the maintainer's own kept runs, then shows how to bound them. Every amount below is an estimate at dated rates, read from a run bundle or the [rate table](repo:src/run/pricing.ts); your provider bill is authoritative.
 
-## Three lines, three providers
+## Pay three providers for a live study
 
-| Line                                 | Who bills you                                      | How it is metered                                                                                     | Typical size                                                   |
-| ------------------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Participant model                    | OpenAI, by token, for `openai-computer-use`        | Every screenshot step is a model request; the bundle records tokens and prices them at the table rate | $0.13 to $1.10 per participant on the runs below               |
-| Participant model, local-agent route | Nobody per run: your Codex or Claude Code plan     | Plan limits apply; the bundle marks model usage unpriced                                              | $0 marginal, unpriced                                          |
-| Hosted desktop                       | E2B, by CPU-second and GiB-second                  | Host-measured span from acquired handle to cleanup, priced at the allocation's resources              | $0.009 per minute for the 8 vCPU / 8 GiB desktop the runs used |
-| Analysis                             | OpenAI, by token, one request per study            | Selected retained text and captures; refused when the admission estimate exceeds the limit            | $0.50 for one participant, $2.29 for eight; limit $3           |
-| Local browser runtime                | Nobody: Firecracker on Linux or Lima on an M3+ Mac | Your machine; the participant is your signed-in Codex, or `openai-computer-use` billed per token      | $0 desktop; model under your plan or per token                 |
+| Line                                       | Who bills you                                      | How it is metered                                                                                     | Typical size                                                   |
+| ------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Participant model                          | OpenAI, by token, for `openai-computer-use`        | Every screenshot step is a model request; the bundle records tokens and prices them at the table rate | $0.13 to $1.10 per participant on the runs below               |
+| Participant model, signed-in `local-agent` | Nobody per run: your Codex or Claude Code plan     | Plan limits apply; the bundle marks model usage unpriced                                              | $0 marginal, unpriced                                          |
+| Hosted desktop                             | E2B, by CPU-second and GiB-second                  | Host-measured span from acquired handle to cleanup, priced at the allocation's resources              | $0.009 per minute for the 8 vCPU / 8 GiB desktop the runs used |
+| Analysis                                   | OpenAI, by token, one request per study            | Selected retained text and captures; refused when the admission estimate exceeds the limit            | $0.50 for one participant, $2.29 for eight; limit $3           |
+| Local browser runtime                      | Nobody: Firecracker on Linux or Lima on an M3+ Mac | Your machine; the participant is your signed-in Codex, or `openai-computer-use` billed per token      | $0 desktop; model under your plan or per token                 |
 
-Rates in the table carry an `asOf` date and a source. On 2026-09-05 the desktop rate was $0.000014 per CPU-second and $0.0000045 per GiB-second (e2b.dev/pricing); on 2026-09-03 the default model `gpt-5.6-sol` was $4 per million input tokens and $20 per million output tokens (developers.openai.com/api/docs/pricing). A model without a table rate makes a capped run refuse to start rather than run unpriced.
+Rates in the table carry an `asOf` date and a source. On 2026-09-05 the desktop rate was $0.000014 per CPU-second and $0.0000045 per GiB-second (e2b.dev/pricing); on 2026-09-03 the default model `gpt-5.6-sol` was $4 per million input tokens and $20 per million output tokens (developers.openai.com/api/docs/pricing). A model without a table rate makes a capped run refuse to start instead of running unpriced.
 
-## Measured, from kept bundles
+## Start without spending
 
-`npx humanish stats --json` over the maintainer's project on 2026-09-28: 136 runs, 129 live, 152 participants, $61.63 of estimated run spend plus $2.29 of analysis. 23 runs are unpriced because they used the local-agent route.
+Four steps cost nothing and need no keys:
+
+1. `npx humanish watch` opens the Observer on a bundled sample run. It does not open your app and sends no participant anywhere.
+2. `npx humanish run <study> --dry-run` does a dry run of your study without a browser, keys or provider spend, so a mistake in the study file surfaces before a desktop exists.
+3. `npx humanish telemetry disable` (or `DO_NOT_TRACK=1`) stops usage telemetry.
+4. `review.analysis: false` in the study keeps the analysis call out of the first live run.
+
+The first paid step is one participant. [Store the keys](/docs/trust-boundaries#store-credentials) first, then run `npx humanish run try-live` against a synthetic account on the target, with the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
+
+## Read the measured costs from kept runs
+
+`npx humanish stats --json` over the maintainer's project on 2026-09-28: 136 runs, 129 live, 152 participants, $61.63 of estimated run spend plus $2.29 of analysis. 23 runs are unpriced because their participants were signed-in agents.
 
 | Study                                                                   | Participants per run | Median estimated cost per run      | Median duration        |
 | ----------------------------------------------------------------------- | -------------------- | ---------------------------------- | ---------------------- |
@@ -45,18 +56,73 @@ Add the lines for one participant, then multiply by the panel:
 2. Model: the runs above spent $0.10 to $0.55 per participant-minute of active use on `gpt-5.6-sol`; a quiet waiting-room participant spends far less than one that reads and types. Budget $0.30 per minute for a busy participant and you will be high.
 3. Analysis: one request per study. The estimate is printed before the request; the default limit is $3. On 2026-09-30 five one-participant `try-live` analyses cost $0.49 to $0.59, and the eight-participant study cost $2.29.
 
-A six-participant, ten-minute study on the hosted route therefore lands between about $3 and $20 in model spend, about $0.54 of desktop session time plus each desktop's build minutes, and one analysis, which by default is refused when its estimate exceeds $3. Run it once with `--dry-run` for the contract and once live with caps before scaling the panel.
+A six-participant, ten-minute study on hosted desktops therefore lands between about $3 and $20 in model spend, about $0.54 of desktop session time plus each desktop's build minutes, and one analysis, which by default is refused when its estimate exceeds $3. Run it once with `--dry-run` to check the file and once live with caps before scaling the panel.
 
-## What the caps do
+## Set a study budget
 
-`caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the _estimate_ reaches the number; neither is a provider billing limit. [Set a study budget](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules, including what the caps leave out.
+For the computer-use route, declare both the study budget and a per-participant backstop:
 
-## What is not in these numbers
+```yaml
+caps:
+  maxTotalUsd: 4
+  maxUsd: 2
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000
+```
+
+- `maxTotalUsd` tracks estimated model spend across the study.
+- `maxUsd` applies to each participant. Without a study cap, four participants at `$2` each have separate thresholds totaling `$8`; actual spend can exceed that sum.
+- Both thresholds are checked after model responses report usage. They do not reserve the cost of the next request. An in-flight model call and concurrent participants can cross a threshold before stopping. They are not hard provider billing limits.
+- E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
+- A model without a known rate cannot satisfy a computer-use cap, so the run is refused instead of being treated as free.
+
+The included `try-live` study uses one participant, `maxUsd: 2` and `maxOutputTokens: 8192`. It is sized for learning the product; set your own caps for other tasks. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant (Codex when it is signed in, otherwise Claude Code) and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
+
+Supported live runs also request post-run analysis by default. This sends selected retained text and captures to OpenAI, using `OPENAI_API_KEY`, with a separate $3 admission estimate limit. It is additional to participant budgets and desktop time, and is not a provider billing cap. Preflight and live-start output disclose it. Set `review.analysis: false` to disable the request, or `review.analysis.maxCostUsd` to choose another limit. A missing default analysis key records a skip and keeps a successful recording successful. So does a default analysis whose admission estimate is over its limit; the CLI then prints the `humanish analyze` command that runs it with a sufficient `--max-cost`. An analysis you declare in the study still fails when its estimate is over its limit. Dry runs and the preview route make no analysis request.
+
+Analysis usage is stored separately from participant costs. Inspect it with `humanish analyze list --run latest --json`; unknown usage remains unknown.
+
+```bash
+npx humanish stats --study try-live --json
+```
+
+Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A `budget_reached` computer-use session is `incomplete`; reaching a threshold does not establish task completion.
+
+### Cap a terminal study by time
+
+The terminal route reads `caps.maxUsd`, `caps.maxJobs` and `caps.maxMinutes` from the same top-level `caps` block, and refuses `caps.maxTotalUsd`. humanish has no cost source for a terminal study. Codex tokens are counted but unpriced, and humanish measures no product, media or payment spend, so a positive `maxUsd` could never trip. A live terminal run refuses it with `HUMANISH_TERMINAL_UNPRICED_CAP`. Adopter-supplied cost sources are planned in [issue 347](https://github.com/danielgwilson/humanish/issues/347).
+
+Set `maxUsd: 0` and bound the run with `caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and its timeout adds the setup before the agent command (up to 6 minutes, or 11 with `subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`. A live run therefore refuses a `maxMinutes` above 49, or 44 with a product install (`HUMANISH_TERMINAL_CAPS_INVALID`). The run's cost summary prices the terminal sandbox's compute time the way it prices a computer-use desktop, from its span and size; that estimate is not counted against `maxUsd`. A terminal run that exceeds its spend cap keeps the agent's own verdict and still fails, with `HUMANISH_TERMINAL_CAPS_EXCEEDED`; the review and `status.json` name the cap.
+
+## Choose a model
+
+The default computer-use model is `gpt-5.6-sol`. Set `actor.model` in the study to pin another supported model. The checked-in rate table also prices models such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in your installed version before assuming a newly available model is priced.
+
+For first-party OpenAI computer-use studies, optional `actor.maxOutputTokens` sets a positive integer limit on each response's output, including reasoning tokens. It applies to every participant, continuation and retry. A participant's first request and a closing report use the smaller of this value and 1024, and 1024 when it is omitted: a first turn that asks for a screenshot needs a few dozen tokens. The first request also shows the model the opening screen. The effective setting is recorded in the actor's `modelSettings`; omitting it keeps the provider's normal output behavior after the first request.
+
+A reply cut off by this limit runs no action. The same request is sent once more, after counting the cut-off reply's tokens against your caps, and the trace notes the retry. If the second reply is cut off too, the participant ends as `budget_reached` / `incomplete` with `provider_output_limit`; its partial output does not establish task completion. A small value can therefore end a session before it produces visible text. This setting does not bound input or context tokens, total requests, cumulative spend or desktop time. The terminal and scripted routes, `local-agent` participants, a custom provider passed through the library and per-participant overrides reject it.
+
+A declared computer-use cap (`maxUsd` or `maxTotalUsd`) on an unpriced model is refused at preflight with `HUMANISH_COMPUTER_USE_UNPRICED_CAP`, and a shared-world one with `HUMANISH_SHARED_WORLD_UNPRICED_CAP`. This checks whether a rate is available; it does not prepay or reserve the next request. An absent cap is uncapped. A zero threshold can still allow a paid model request before its reported usage triggers the stop, so `maxUsd: 0` is not a no-provider-call mode. Desktop provisioning can also incur charges.
+
+A cap is kept from the usage each model reply reports. If a capped participant's reply comes back without usage, humanish sends that participant no further request and records `usage_unreported`. A request that stalls or fails in transit may still have been billed, so humanish counts its worst case against the cap before sending it again: the previous request's input plus the actor's `maxOutputTokens`, at the model's rates. The retry happens only when that fits. Without `maxOutputTokens` the worst case has no bound, so a capped study without `maxOutputTokens` stops on a stall instead of retrying (`usage_unreported`). The `try-live` study and the capped studies in `humanish/studies/` set `maxOutputTokens: 8192` for that reason.
+
+## How cost estimates work
+
+Computer-use bundles carry a per-participant model estimate and an aggregate E2B compute estimate. Model estimates multiply recorded token usage by a dated rate table. On the computer-use route, each desktop records its observed CPU and memory and a host-measured span from acquired handle to cleanup. Different template sizes are priced separately. Every amount is an estimate and never an invoice.
+
+The [rate table](repo:src/run/pricing.ts) records its date, source, and whether a rate is a placeholder. Runtime desktop estimates use the allocation's resource readback; missing metadata stays unpriced. The legacy desktop helper uses a labeled 8-vCPU/8-GiB planning assumption, which is not a provider spending ceiling or a measurement of your template. Inspect those fields alongside the amount. An unknown model rate or missing token usage produces `estimatedCostUsd: null` with a reason; it is never silently counted as zero. Previews invent no spend.
+
+Where the model has separate cache or long-context rates, per-request usage lets the estimator apply them. Missing usage limits what can be priced; a complete-looking total is not proof that every provider charge was observed.
+
+Shared-world participants and their provisioned subject desktop, a scripted-browser clone's subject desktop, and the terminal sandbox are priced the same way.
+
+## Know what the numbers leave out
 
 - Anything your target app charges for, and any traffic it makes.
 - Desktop allocation and startup time before humanish holds the handle, plan fees, credits and negotiated prices.
 - Retries after provider interruptions, which appear as separate priced sessions in the bundle.
 - A desktop kept for debugging or with unconfirmed cleanup: its line is marked incomplete and you should check the provider console.
-- Model usage on the local-agent route, which stays unpriced by design.
+- Model usage of a signed-in `local-agent` participant, which stays unpriced by design. A dollar cap does not bound plan usage; [use a local coding agent](/docs/local-agents) has the setup and limits.
 
 Every kept bundle carries its own `cost` block with the same breakdown, and `npx humanish stats --study <id> --json` rolls them up per study.

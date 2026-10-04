@@ -5,20 +5,20 @@ participant; hidden success criteria go only to the observation tracker. A route
 that cannot carry both halves refuses the declaration before execution. Removing
 `tasks` is an explicit choice to run a mission-only study, not an automatic fallback.
 
-| Execution path                                        | Task support | Mechanism                                                                                     |
-| ----------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------- |
-| CUA, app-url, one participant or fan-out              | Supported    | The participant prompt composer renders goals; the CUA loop tracks observations               |
-| CUA, provisioned clone or local-tree, separate worlds | Supported    | Same prompt composer and loop                                                                 |
-| CUA, local-app with caller executor/provider          | Supported    | Same loop; the caller supplies observations                                                   |
-| CUA, desktop-cli                                      | Supported    | Same prompt and tracker; unavailable criterion inputs remain unmeasured                       |
-| Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                                     |
-| Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                                    |
-| Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed                            |
-| Synthetic (`this-repo`)                               | Rejected     | Study dispatch does not pass task declarations to the dry-run engine                          |
-| Any second or later `actors[]` entry                  | Rejected     | Current runners consume only the first actor; declare every participant under the first actor |
+| Execution path                                        | Task support | Mechanism                                                                       |
+| ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
+| CUA, app-url, one participant or fan-out              | Supported    | The participant prompt composer renders goals; the CUA loop tracks observations |
+| CUA, provisioned clone or local-tree, separate worlds | Supported    | Same prompt composer and loop                                                   |
+| CUA, local-app with caller executor/provider          | Supported    | Same loop; the caller supplies observations                                     |
+| CUA, desktop-cli                                      | Supported    | Same prompt and tracker; unavailable criterion inputs remain unmeasured         |
+| Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                       |
+| Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                      |
+| Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed              |
+| Preview (`this-repo`)                                 | Rejected     | Study dispatch does not pass task declarations to the dry-run engine            |
 
-Both registered CUA actors (`openai-computer-use` and `local-agent`) share the CUA
-session loop. Their task support does not depend on which provider chooses actions.
+A study has one `actor`, and its participants go in `participants`, so every participant
+gets the same tasks. Both registered CUA actors (`openai-computer-use` and `local-agent`) share
+the CUA session loop. Their task support does not depend on which provider chooses actions.
 Custom session hooks remain caller-owned implementations of that same contract;
 this preflight does not certify arbitrary hook behavior.
 

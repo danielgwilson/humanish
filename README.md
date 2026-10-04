@@ -1,12 +1,30 @@
 # humanish
 
-Synthetic user research for apps, CLIs, and agent-facing product flows.
+Synthetic user research for apps, CLIs, and agent-facing product flows. AI participants with a persona and a task use your app on real desktops, and each run leaves evidence you can verify: what they did, where they got stuck, and what it cost.
 
 [![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
 
 **[Watch a saved run](https://humanish.dev/demo).** Eight synthetic participants joined one
 lobby of a multiplayer game on its live deployment, each on its own hosted desktop. The page
 replays the real Observer; nothing runs from it.
+
+## Learn how a study works
+
+A study is a YAML file in your project. It names the app under study, the task, the
+participants and a spend limit. Each participant has a persona: a file that sets who they are
+and traits such as patience and keyboard use.
+
+`humanish run <study>` gives each participant a desktop, either a hosted E2B desktop or a
+disposable browser VM on your machine. On the computer-use route a model drives each
+participant: every turn it reads a screenshot and answers with mouse and keyboard actions, until
+the participant finishes, gets stuck or reaches a limit.
+
+The run writes its evidence to gitignored `.humanish/runs/<run id>/`: screenshots, every
+action, each participant's report and the estimated cost. The Observer replays it,
+`humanish review` prints the findings of the analysis that follows a live run, and
+`humanish verify` grades whether the evidence is safe to share.
+[How a study works](https://humanish.dev/docs/concepts) walks through one annotated study file,
+and the [study file reference](https://humanish.dev/docs/study-files) lists every field.
 
 ## Try it without keys
 
@@ -16,21 +34,43 @@ In a project directory, with Node.js 22.19 or newer:
 npm install --save-dev humanish
 npx humanish init --yes
 npx humanish run first-run
-npx humanish observe --run latest --open
 ```
 
-This writes a preview study with no model calls and no spend, so you can read the evidence format
-before you add keys. To run participants against your own app, follow the
-[own-app guide](https://humanish.dev/docs/your-app).
+`init` writes starter studies and personas under `humanish/`, adds `.humanish/` to
+`.gitignore`, and adds `humanish:*` scripts to `package.json` and a humanish section to
+`AGENTS.md`. It never overwrites an existing study file. `run first-run` is a dry run: four
+synthetic participants, with no browser, model, key or spend. It prints:
 
-[Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
+```text
+humanish run dry-run
+run: dryrun-2026-10-04T07-11-55-932Z-d11afab6
+participants: 4
+bundle: .humanish/runs/dryrun-2026-10-04T07-11-55-932Z-d11afab6/run.json
+review: .humanish/runs/dryrun-2026-10-04T07-11-55-932Z-d11afab6/review.md
+```
+
+Replay the run in the Observer, then check its evidence:
+
+```bash
+npx humanish observe --run latest --open
+npx humanish verify
+```
+
+```text
+verified dryrun-2026-10-04T07-11-55-932Z-d11afab6 · share_ready · 16 checks passed
+```
+
+A dry run shows the evidence format and tests no product behavior. To run participants against
+your own app, follow the [own-app guide](https://humanish.dev/docs/your-app).
+
+[Quickstart](https://humanish.dev/docs) · [How a study works](https://humanish.dev/docs/concepts) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
 
 ## Run a live study
 
-`@e2b/desktop` is the optional peer for live hosted desktops. Install it alongside
-humanish when choosing that route (`npm install --save-dev @e2b/desktop`) so the
-CLI can resolve it; a one-shot `npx humanish@latest` can miss the peer. The keyless
-preview and local-browser setup need only `humanish`.
+A live study gives each participant a computer to use. By default that computer is a hosted
+desktop from E2B, which humanish drives through the `@e2b/desktop` package. Install it in the
+same project: `npm install --save-dev @e2b/desktop`. A one-shot `npx humanish@latest` cannot see
+a copy installed elsewhere. The keyless preview and a study in a local browser do not need it.
 
 Choose how the participant runs:
 
@@ -81,7 +121,7 @@ browser, or use Codex account quota. The local study needs a supported Codex CLI
 version and ChatGPT login. Linux x64 also needs local rootful Docker, KVM and
 TUN; M3-or-newer Apple Silicon Macs need native ARM64 Node and Lima 2.2+.
 
-### Study drawDB through the API route
+### Study drawDB with an OpenAI key
 
 Set the desktop and model keys with hidden prompts, then send one synthetic participant into the
 included drawDB study:
@@ -97,7 +137,7 @@ npx humanish observe --run latest --open
 ```
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
-`doctor --study` checks the selected route's local setup without launching a
+`doctor --study` checks the study's local setup without launching a
 desktop or making a model request. It reports key presence, not remote key
 validity, model access, or quota. `study check` checks manifest metadata by default.
 `try-live` clones and studies drawDB, not your project. Set the keys before `init`:
@@ -110,20 +150,15 @@ dollar cap. Automatic analysis after the run is a separate request;
 [Read the results](#read-the-results) gives its limit and how to turn it off.
 Hosted desktop time is additional. Participant caps are checked
 between turns and are not provider billing ceilings. Allow a few minutes for
-the app to build and the participant to work. See [budgets and privacy](https://humanish.dev/docs/budgets-and-privacy).
+the app to build and the participant to work. See [what a study costs](https://humanish.dev/docs/what-a-study-costs).
 
 ## See what studies have found
 
-humanish runs studies. Realistic synthetic participants, each with its own
-goals, patience, and skill, actually use your product on isolated desktops while
-you watch. A study leaves verifiable evidence: screenshots, action traces,
-per-task completion funnels, participant outcomes with the denominator
-attached, and estimated cost lines. A fail-closed share-safety gate decides what
-goes into feedback drafts, export bundles and an `observe --all --safe` library, and the
-end of the pipeline is a public-safe feedback draft you can turn into a real
-issue. Committed study source lives under `humanish/`; run evidence lands under
-gitignored `.humanish/`. [ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <study>` through
-the code.
+A study's evidence includes per-task completion funnels and participant outcomes with the
+denominator attached. The share-safety gate decides what goes into feedback drafts, export
+bundles and an `observe --all --safe` library, and the end of the pipeline is a public-safe
+feedback draft you can turn into a real issue. [ARCHITECTURE.md](ARCHITECTURE.md) traces
+`humanish run <study>` through the code.
 
 The researcher declares the study, the participant tries the product, and the
 stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
@@ -141,7 +176,7 @@ maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
 drawDB 11 of 12, none invented
 ([TodoMVC](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-DRAWDB-2026-09-01.md)).
 Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
-the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
+the five with an OpenAI key cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
 unpriced ([study record](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/cold-install-try-live-2026-09-01.md)).
 Same mission, different personas: keyboard-first participants reported drawDB's
 database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
@@ -258,12 +293,22 @@ certified free of PII or PHI. A first-class PII/PHI detector is
 Feedback commands require `share_ready`. A valid local run can still be
 reviewed in Observer without being promoted into a public issue draft.
 
-## Know these limits before you depend on humanish
+## Check the compatibility policy before upgrading
 
-**Stability.** humanish is 0.x. There is no written compatibility policy, and
-a minor release can remove exports and options that an earlier release
-deprecated. Pin the exact version and read [CHANGELOG.md](CHANGELOG.md) before
-upgrading.
+humanish is 0.x, so a minor release can break things. These rules limit how. They cover CLI
+commands and flags, study file fields, the run bundle, `--json` output, exit and error codes,
+and the library exports.
+
+- A deprecated name keeps working for at least 30 days and through at least one minor release
+  before a release removes it.
+- Breaking changes ship together in one minor release. Its release notes carry a migration
+  table: each old form, its new form, and the change to make.
+- The study file and the run bundle carry versioned schemas, `humanish.study.v3` and
+  `humanish.run-bundle.v1`. A breaking change to either one bumps its version.
+
+Pin the exact version in `package.json` and read [CHANGELOG.md](CHANGELOG.md) before upgrading.
+
+## Know these limits before you depend on humanish
 
 **CI runs nothing live.** CI runs the offline test suite, the Observer browser
 proofs and, when guest files change, a guest-desktop container proof. It passes
@@ -294,7 +339,7 @@ fills from sources 2 to 4, never the value:
 4. `$XDG_CONFIG_HOME/humanish/keys.env` (by default `~/.config/humanish/keys.env`),
    which `humanish keys set` writes as plain text with mode `0600`.
 
-A dry run reads no provider key, so `run`, `run` and `watch` consult sources 2 to 4 only
+A dry run reads no provider key, so `run` and `watch` consult sources 2 to 4 only
 for a live study. A live run fills every key it finds and prints the ones its plan reads: its model,
 desktop and runtime keys, its `subject.env` names, the variable
 `comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code participant, and
@@ -324,19 +369,19 @@ has the providers' retention terms.
 Use `npx humanish` from your project. Full arguments and options are generated
 from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
-| Command                                                  | Purpose                                                                   |
-| -------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `humanish init --yes`                                    | Scaffold study source and ignored runtime state.                          |
-| `humanish doctor --study <study> --json`                 | Check the selected route's setup without exposing key values or spending. |
-| `humanish study list --json`                             | List available studies.                                                   |
-| `humanish study show <study> --json`                     | Read a study before running it.                                           |
-| `humanish study check <study> --json`                    | Check configuration and route warnings.                                   |
-| `humanish run <study>`                                   | Run the named preview or live study.                                      |
-| `humanish watch <study>`                                 | Run a study with an attached Observer.                                    |
-| `humanish runs --json`                                   | List local run history.                                                   |
-| `humanish review --run latest --json`                    | Read a run's outcome and its analysis findings.                           |
-| `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                                    |
-| `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft.                                         |
+| Command                                                  | Purpose                                                        |
+| -------------------------------------------------------- | -------------------------------------------------------------- |
+| `humanish init --yes`                                    | Scaffold study source and ignored runtime state.               |
+| `humanish doctor --study <study> --json`                 | Check a study's setup without exposing key values or spending. |
+| `humanish study list --json`                             | List available studies.                                        |
+| `humanish study show <study> --json`                     | Read a study before running it.                                |
+| `humanish study check <study> --json`                    | Check configuration and route warnings.                        |
+| `humanish run <study>`                                   | Run the named preview or live study.                           |
+| `humanish watch <study>`                                 | Run a study with an attached Observer.                         |
+| `humanish runs --json`                                   | List local run history.                                        |
+| `humanish review --run latest --json`                    | Read a run's outcome and its analysis findings.                |
+| `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                         |
+| `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft.                              |
 
 ## Check exit codes
 
@@ -370,12 +415,14 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 
 ## Find more guides
 
-- [Study files](https://humanish.dev/docs/study-files): source directories, route selection,
-  ignored private studies and
+- [How a study works](https://humanish.dev/docs/concepts): study, run, participant, persona,
+  actor, subject, route and the verify grades, on one annotated study file.
+- [Study files](https://humanish.dev/docs/study-files): every field with its type and default,
+  persona files and traits, ignored private studies and
   [scripted browser scenarios](https://humanish.dev/docs/study-files#scripted-browser-scenarios).
 - [Computer use](https://humanish.dev/docs/computer-use): subjects, screenshots, devices, mobile
   emulation, stop rules, dwell windows and reruns of failed participants. The
-  [cost model](https://humanish.dev/docs/budgets-and-privacy#how-cost-estimates-work) explains
+  [cost model](https://humanish.dev/docs/what-a-study-costs#how-cost-estimates-work) explains
   model selection, dated estimates, and study and per-participant caps.
 - [A signed-in coding agent](https://humanish.dev/docs/local-agents): Codex or Claude Code supplies
   the participant's model on your existing plan. E2B still needs a key and bills for desktops.
@@ -419,8 +466,8 @@ take which option.
 humanish sends anonymous usage events to PostHog by default. Each event carries
 the command, the humanish version, your OS and Node major version, whether it
 ran in CI, the exit code, a duration bucket and a random machine id made on
-first use. A study adds whether it was a dry run, an outcome word, the
-participant's brain route, stop and diagnostic categories, and humanish's error
+first use. A study adds whether it was a dry run, an outcome word, where the
+participant's model comes from (`brain`), stop and diagnostic categories, and humanish's error
 code when it fails. The study id is sent only when it is a starter study that
 `humanish init` writes; any other study is sent as `custom`. Your study ids,
 subjects, personas, prompts, paths, run ids and evidence are never sent.

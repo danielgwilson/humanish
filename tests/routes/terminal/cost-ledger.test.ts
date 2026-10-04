@@ -466,7 +466,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.cost.knownTotalUsd).toBe(0.5);
-    expect(result.warnings.some((w) => /costProbe measures/.test(w))).toBe(true);
+    expect(result.warnings.some((w) => /measured cost lines/.test(w))).toBe(true);
     expect(killed).toHaveLength(1);
   });
 });

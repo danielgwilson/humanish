@@ -266,7 +266,7 @@ export function buildLiveTerminalProductBundle(args: {
       // so a green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
         ? [
-            `${noSpendLineMeasured(noSpend) ? noSpendNotEstablished(noSpend.maxUsd ?? 0) : "No-spend proof is partial."} ${describeMeasuredSpend(args.ledgers.cost, args.trace.tokenUsage)} An adapter may supply the missing signals through costProbe.`,
+            `${noSpendLineMeasured(noSpend) ? noSpendNotEstablished(noSpend.maxUsd ?? 0) : "No-spend proof is partial."} ${describeMeasuredSpend(args.ledgers.cost, args.trace.tokenUsage)} humanish has no source for the missing lines, and a study cannot supply one.`,
           ]
         : []),
     ],

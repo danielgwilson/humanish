@@ -42,12 +42,14 @@ a one-shot `npx humanish@latest` can miss the optional desktop peer. The keyless
 only needs `humanish`.
 
 - Quickstart: https://humanish.dev/docs
+- How a study works (study, run, participant, persona, actor, subject, route): https://humanish.dev/docs/concepts
 - Your own app: https://humanish.dev/docs/your-app
 - Results and feedback: https://humanish.dev/docs/read-results
 - Paired Save-button study: https://humanish.dev/docs/save-button-study
 - TodoMVC keyboard repair: https://humanish.dev/docs/todomvc-edit-study
-- Budgets and privacy: https://humanish.dev/docs/budgets-and-privacy
-- Study files: https://humanish.dev/docs/study-files
+- What a study costs, and budgets: https://humanish.dev/docs/what-a-study-costs
+- Study file reference (every field, persona traits): https://humanish.dev/docs/study-files
+- Trust boundaries and credentials: https://humanish.dev/docs/trust-boundaries
 - Computer-use controls: https://humanish.dev/docs/computer-use
 - Local coding agents: https://humanish.dev/docs/local-agents
 - Observer, TUI, and JSON alternatives: https://humanish.dev/docs/review-surfaces
@@ -124,13 +126,13 @@ Details: https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts
 
 ## Credentials
 
-Choose the execution route before requesting credentials. Local browser studies
+Choose where the participant runs before requesting credentials. Local browser studies
 use a supported Codex CLI with file-backed ChatGPT login on Linux x64 with
 Docker/KVM/TUN or M3+ Mac with Lima. They need neither E2B nor an OpenAI API key;
 participants and the separate default analyst use account quota and remote
 inference. Setup: https://humanish.dev/docs/your-app#study-your-running-local-app
 
-The hosted API route needs:
+A hosted desktop with an OpenAI participant needs:
 
 - `E2B_API_KEY`: the hosted sandbox the persona works in. Set it with
   `npx humanish keys set e2b`, or `e2b auth login`.
@@ -139,7 +141,7 @@ The hosted API route needs:
   `E2B_API_KEY` is still required for that hosted desktop. Analysis defaults to
   the OpenAI API separately; an account participant does not change that default.
 
-`humanish doctor --study <study> --json` checks the selected route's setup and names
+`humanish doctor --study <study> --json` checks the study's setup and names
 the command to fix missing prerequisites without printing key values. Persisted text is scrubbed for known
 secret values and patterns; this is not a guarantee that all sensitive content is detected.
 
@@ -164,7 +166,7 @@ Excalidraw is the application studied; it is not a humanish adopter or endorser.
 
 ## Credentials and sharing
 
-- Computer-use model keys stay on the host. Terminal actors receive a command-scoped runtime key by default; opt-in `execution.runtimeAuth: openai-egress` keeps the raw key outside but still permits sandbox processes to spend through the proxy. See https://humanish.dev/docs/budgets-and-privacy#store-credentials.
+- Computer-use model keys stay on the host. Terminal actors receive a command-scoped runtime key by default; opt-in `execution.runtimeAuth: openai-egress` keeps the raw key outside but still permits sandbox processes to spend through the proxy. See https://humanish.dev/docs/trust-boundaries#store-credentials.
 - Evidence lands in gitignored `.humanish/` by default. Exposing Observer or sharing an export makes it accessible to others.
 - `humanish feedback issue` renders a draft; no GitHub API call exists on that path.
 - Verify fails closed: a bundle that cannot pass every gate grades `local_only` or `blocked`, never `share_ready`.
