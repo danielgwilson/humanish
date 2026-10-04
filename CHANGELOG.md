@@ -38,8 +38,32 @@ The Unreleased section holds the full notes for the next version until it is tag
   correction history, which it printed as JSON in both modes, now need `--json`.
 - The skill's "Reporting Back" section and the `AGENTS.md` section `humanish init` writes tell a
   coding agent to run `humanish review` after a live run and report its findings.
+- Claude Code participants need Claude Code 2.1.248 or newer, the first release with
+  `--restricted`. The readiness check refuses an older release, or one that reports no version,
+  before a desktop starts, with `HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED`
+  (`HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED` in a shared-world study) and names `claude update`.
+  `humanish doctor` shows the installed release. Sign-in is checked with the participant's
+  environment, so a login held only in `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` reads as
+  signed out: run `claude auth login`.
 
 ### Fixes
+
+- Security: a Claude Code participant (`localAgent: claude`) ran on the operator's machine with
+  the operator's own Claude Code permissions. humanish passed only `--allowedTools Read`, which
+  pre-approves Read and removes nothing, so the participant kept every other tool, the operator's
+  permission mode, hooks, MCP servers and CLAUDE.md, and the full environment, including provider
+  keys, `GH_TOKEN` and every `--dotenv` name. Text shown by the app under test could steer it to
+  read host files or, under a permissive configuration, run commands. Claude Code also saved every
+  screenshot the participant read, unblurred, under `~/.claude/projects/`. The participant now
+  starts with `--restricted`, `--tools Read`, `--strict-mcp-config`, `--permission-mode dontAsk`
+  and `--no-session-persistence`, in a scratch folder, with an environment of `PATH`, `HOME`,
+  `USER`, `LOGNAME`, locale, `CLAUDE_CONFIG_DIR` and proxy names. humanish checks every message Claude
+  Code streams: a session that starts with another tool, an MCP server or another permission mode
+  fails with `HUMANISH_CLAUDE_PARTICIPANT_UNRESTRICTED`, and a tool call other than Read inside
+  the folder kills the process and fails the run with `HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED`.
+  `humanish doctor` counts the transcript folders earlier participants left and prints the command
+  that removes them. The trust-boundaries and local-agents pages state what each local agent can
+  reach.
 
 - A run whose own `ok` is false no longer shows as a pass. The Observer, its run library, the
   served Observer, `humanish runs`, `humanish review`, `humanish stats`, the TUI and `review.md`

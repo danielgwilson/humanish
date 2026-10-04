@@ -21,6 +21,7 @@
       "runtime ignore",
       "e2b desktop sdk",
       "terminal surface",
+      "claude participant transcripts",
       "key OPENAI_API_KEY",
       "key E2B_API_KEY",
       "key GH_TOKEN",

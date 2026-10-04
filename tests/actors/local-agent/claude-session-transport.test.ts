@@ -12,7 +12,7 @@ import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 // The stdio transport of the persistent Claude Code session, driven through a fake `claude -p`
 // child. Its wire shapes follow tests/fixtures/claude-code-stream-json/interrupted-turn.ndjson,
-// captured from Claude Code 2.1.285.
+// captured from Claude Code 2.1.285, and restricted-denial.ndjson, captured from 2.1.289.
 
 type Json = Record<string, unknown>;
 
@@ -21,12 +21,26 @@ const request = (): CuaTurnRequest => ({
   observation: { screenshot: Buffer.from("89504e470d0a1a0a", "hex"), stateSignature: "s" },
 });
 
-/** A fake `claude -p --input-format stream-json` child: it records stdin and the test writes stdout. */
-function fakeClaudeChild() {
+/** The captured restricted session: its init message, then a Read outside the session folder. */
+const [restrictedInit, , outsideRead] = readFileSync(
+  new URL("../../fixtures/claude-code-stream-json/restricted-denial.ndjson", import.meta.url),
+  "utf8",
+)
+  .trim()
+  .split("\n")
+  .map((line) => JSON.parse(line) as Json);
+
+/**
+ * A fake `claude -p --input-format stream-json` child: it records stdin, answers the first user
+ * message with `init` (the captured restricted one unless the test passes another), and the test
+ * writes the rest of stdout.
+ */
+function fakeClaudeChild(init: Json | null = restrictedInit!) {
   const received: Json[] = [];
   const messages = new EventEmitter();
   const stdout = new PassThrough();
   let pendingText = "";
+  const write = (message: Json) => stdout.write(`${JSON.stringify(message)}\n`);
   const stdin = new Writable({
     write(chunk: Buffer, _encoding, callback) {
       pendingText += chunk.toString("utf8");
@@ -34,29 +48,46 @@ function fakeClaudeChild() {
         const message = JSON.parse(pendingText.slice(0, end)) as Json;
         pendingText = pendingText.slice(end + 1);
         received.push(message);
+        if (
+          message.type === "user" &&
+          init !== null &&
+          received.filter((m) => m.type === "user").length === 1
+        )
+          write(init);
         messages.emit("message", message);
       }
       callback();
     },
   });
   let kills = 0;
+  const signals: Array<NodeJS.Signals | undefined> = [];
   const child = Object.assign(new EventEmitter(), {
     stdin,
     stdout,
     stderr: new PassThrough(),
-    kill: () => {
+    kill: (signal?: NodeJS.Signals) => {
       kills += 1;
-      child.emit("close", null, "SIGTERM");
+      signals.push(signal);
+      child.emit("close", null, signal ?? "SIGTERM");
       return true;
     },
   });
+  const spawned: Array<{ bin: string; args: string[]; options: Json }> = [];
   return {
     received,
     messages,
     kills: () => kills,
+    signals,
+    spawned,
     users: () => received.filter((message) => message.type === "user"),
-    write: (message: Json) => stdout.write(`${JSON.stringify(message)}\n`),
-    spawnFn: (() => child) as unknown as typeof spawn,
+    write,
+    /** Several messages in one stdout chunk, as one read delivers them. */
+    writeChunk: (batch: Json[]) =>
+      stdout.write(batch.map((message) => `${JSON.stringify(message)}\n`).join("")),
+    spawnFn: ((bin: string, args: string[], options: Json) => {
+      spawned.push({ bin, args, options });
+      return child;
+    }) as unknown as typeof spawn,
   };
 }
 
@@ -310,5 +341,168 @@ describe("a stalled Claude turn inside the computer-use loop", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("what the Claude Code participant process gets", () => {
+  it("starts with the restricting flags, the model, and a minimal environment", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({
+      spawnFn: fake.spawnFn,
+      model: "synthetic-model",
+      env: {
+        PATH: "/usr/bin",
+        HOME: "/home/dev",
+        OPENAI_API_KEY: "sk-synthetic",
+        E2B_API_KEY: "e2b_synthetic",
+        CODEX_API_KEY: "synthetic",
+        GH_TOKEN: "synthetic",
+        GITHUB_TOKEN: "synthetic",
+        SYNTHETIC_DOTENV_SECRET: "synthetic",
+      },
+    });
+    const [launch] = fake.spawned;
+    expect(launch?.bin).toBe("claude");
+    expect(launch?.args).toEqual([
+      "-p",
+      "--input-format",
+      "stream-json",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--restricted",
+      "--tools",
+      "Read",
+      "--strict-mcp-config",
+      "--permission-mode",
+      "dontAsk",
+      "--no-session-persistence",
+      "--model",
+      "synthetic-model",
+    ]);
+    expect(launch?.args).not.toContain("--allowedTools");
+    expect(launch?.options.env).toEqual({
+      PATH: "/usr/bin",
+      HOME: "/home/dev",
+      CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1",
+    });
+    expect(String(launch?.options.cwd)).toMatch(/humanish-claude-session-[A-Za-z0-9]{6}$/);
+    await session.close();
+  });
+});
+
+describe("a participant whose stream shows what it may not do", () => {
+  const bashCall = {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [{ type: "tool_use", id: "toolu_1", name: "Bash", input: { command: "true" } }],
+    },
+  };
+
+  it("is killed at the first forbidden tool call, and every later turn fails", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    fake.write(bashCall);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    expect(fake.signals[0]).toBe("SIGKILL");
+    await expect(
+      session.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    await session.close();
+  });
+
+  it("fails the turn when a forbidden call follows its result in the same chunk", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    const done = { message: "Finished.", done: true, actions: [] };
+    fake.writeChunk([resultFor(fake.users()[0]?.uuid, done), bashCall]);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    await session.close();
+  });
+
+  it("keeps the refusal code when the same chunk also desynchronizes the session", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    const reply = { message: "m", done: true, actions: [] };
+    fake.writeChunk([resultFor("not-a-sent-message", reply), bashCall]);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    await expect(
+      session.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    expect(await session.close()).toEqual({});
+  });
+
+  it("reports at close a forbidden call that arrived after the last turn", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    fake.write(resultFor(fake.users()[0]?.uuid, { message: "m", done: true, actions: [] }));
+    await expect(turn).resolves.toMatchObject({ done: true });
+    fake.write(bashCall);
+    await vi.waitFor(() => expect(fake.signals).toContain("SIGKILL"));
+    expect(await session.close()).toEqual({ refusal: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+  });
+
+  it("is killed when it reads outside its folder, even before Claude Code denies it", async () => {
+    const fake = fakeClaudeChild();
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    fake.write(outsideRead!);
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED" });
+    expect(fake.kills()).toBeGreaterThan(0);
+    await session.close();
+  });
+
+  it("is refused when Claude Code starts with more than Read", async () => {
+    const fake = fakeClaudeChild({ ...restrictedInit, tools: ["Bash", "Read"] });
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    await expect(
+      session.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_UNRESTRICTED" });
+    await session.close();
+  });
+
+  it("is refused when a result arrives with no init before it", async () => {
+    const fake = fakeClaudeChild(null);
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    const turn = session.provider.nextTurn(request(), new AbortController().signal);
+    await vi.waitFor(() => expect(fake.users()).toHaveLength(1));
+    fake.write(resultFor(fake.users()[0]?.uuid, { message: "m", done: true, actions: [] }));
+    await expect(turn).rejects.toMatchObject({ code: "HUMANISH_CLAUDE_PARTICIPANT_UNRESTRICTED" });
+    await session.close();
+  });
+
+  it("ends the computer-use run with the refusal's code", async () => {
+    const fake = fakeClaudeChild();
+    fake.messages.on("message", (message: Json) => {
+      if (message.type === "user") fake.write(bashCall);
+    });
+    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+    let t = 0;
+    const result = await runComputerUseLoop({
+      instructions: "Finish the synthetic task.",
+      provider: session.provider,
+      executor: {
+        observe: async () => ({ screenshot: Buffer.from("frame"), stateSignature: "s" }),
+        execute: async () => undefined,
+      },
+      persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },
+      redaction: defaultRedactionHooks,
+      timeoutMs: 60_000,
+      now: () => (t += 1),
+    });
+    await session.close();
+    expect(result.completionReason).toBe("actor_error");
+    expect(result.reason).toContain("HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED");
+    expect(fake.users()).toHaveLength(1);
   });
 });

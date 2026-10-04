@@ -1,0 +1,5 @@
+{"type": "system", "subtype": "init", "tools": ["Read"], "mcp_servers": [], "permissionMode": "dontAsk", "claude_code_version": "2.1.289"}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_013UsRBNUuanRkvxArpErEGC", "name": "Read", "input": {"file_path": "/tmp/humanish-claude-session-AbC123/screen-001.png"}}]}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_019iqbuQX38H1srAAN9srwFf", "name": "Read", "input": {"file_path": "/tmp/outside/canary.txt"}}]}}
+{"type": "system", "subtype": "permission_denied", "tool_name": "Read", "tool_use_id": "toolu_019iqbuQX38H1srAAN9srwFf", "decision_reason_type": "other", "decision_reason": "--restricted: path outside the working directory"}
+{"type": "result", "subtype": "success", "is_error": false, "permission_denials": [{"tool_name": "Read", "tool_use_id": "toolu_019iqbuQX38H1srAAN9srwFf", "tool_input": {"file_path": "/tmp/outside/canary.txt"}}]}

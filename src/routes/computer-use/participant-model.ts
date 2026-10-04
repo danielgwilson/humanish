@@ -102,10 +102,12 @@ export async function startParticipantModel(
             ? {}
             : { reasoningEffort: spec.planned.limits.reasoningEffort }),
           ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
+          env,
         }),
       };
     }
     const claudeSession = await startClaudeSession({
+      env,
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
@@ -255,7 +257,8 @@ export async function closeParticipantModel(
     }
   }
   try {
-    await model.claudeSession?.close();
+    const closed = await model.claudeSession?.close();
+    refusal ??= closed?.refusal;
   } catch {
     warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
   }

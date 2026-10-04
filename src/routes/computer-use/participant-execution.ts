@@ -124,7 +124,9 @@ export async function runCuaParticipant(
         deps.scrubKnownValues(
           closed.refusal === "codex_tool_call"
             ? `Codex reported a disallowed item after the participant's last request (${closed.refusal}).`
-            : `Codex output after the participant's last request could not be checked against the item policy (${closed.refusal}).`,
+            : closed.refusal.startsWith("HUMANISH_CLAUDE_PARTICIPANT_")
+              ? `Claude Code's stream showed a call the participant may not make after its last turn (${closed.refusal}); the participant was stopped.`
+              : `Codex output after the participant's last request could not be checked against the item policy (${closed.refusal}).`,
         ),
       );
     try {
