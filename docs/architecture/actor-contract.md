@@ -444,7 +444,8 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
      receives them as thread/start `baseInstructions` (`threadStartParams` in
      `src/actors/codex/restricted-launch.ts`), on an ephemeral read-only thread whose only
      dynamic tool is `humanish_ui`. A local-agent Claude Code runs one `claude -p`
-     stream-json session with `--allowedTools Read`; the instructions open its first user
+     stream-json session restricted to Read in its folder (`claudeParticipantFlags` in
+     `src/actors/local-agent/claude-participant.ts`); the instructions open its first user
      message (`promptFor` in `src/actors/local-agent/cli.ts`), and later turns rely on the
      session's memory. `HUMANISH_LOCAL_AGENT_ONE_SHOT` instead spawns one `claude -p` per
      turn, which resends the instructions every turn.

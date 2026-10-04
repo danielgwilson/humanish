@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
@@ -20,6 +21,7 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
+import { leftoverClaudeTranscripts } from "../actors/local-agent/claude-participant.js";
 import {
   studySetupChecks,
   studiesByRequiredKey,
@@ -187,6 +189,7 @@ export async function doctor(
     await desktopSdkCheck(setup),
     terminalSurfaceCheck(),
     ...localAgentChecks(agents),
+    await claudeTranscriptCheck(env),
     ...keyChecks(probes, receivingKey, setup, keyUsers),
     ...(setup?.checks ?? [
       {
@@ -392,6 +395,27 @@ function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] 
     ...(agent.authStatus === "authenticated" ? {} : { status: "note" as const }),
     message: localAgentDoctorMessage(agent),
   }));
+}
+
+/**
+ * Earlier releases let Claude Code save a transcript for every participant, with each screenshot it
+ * read, under its projects folder and outside `.humanish/`. Participants now run with
+ * `--no-session-persistence`; this row counts what earlier runs left and prints the command that
+ * removes it. doctor never deletes anything.
+ */
+async function claudeTranscriptCheck(env: NodeJS.ProcessEnv): Promise<DoctorCheck> {
+  const found = await leftoverClaudeTranscripts(env, env.HOME ?? homedir(), (directory) =>
+    readdir(directory),
+  );
+  return {
+    name: "claude participant transcripts",
+    ok: true,
+    ...(found.count === 0 ? {} : { status: "note" as const }),
+    message:
+      found.removeCommand === undefined
+        ? `no transcript from an earlier Claude Code participant under ${found.directory}`
+        : `${found.count} transcript folder${found.count === 1 ? "" : "s"} from earlier Claude Code participants under ${found.directory} hold every screenshot those runs read, unblurred. Remove them with: ${found.removeCommand}`,
+  };
 }
 
 /** "try-live", "try-live and local-browser", "a, b and c". */

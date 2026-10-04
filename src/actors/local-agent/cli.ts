@@ -21,10 +21,11 @@
 // operator's machine. The same trick on the terminal route would be the opposite: it would move
 // code execution out of the sandbox and onto a real disk, which is why this is a computer-use
 // provider and nothing else. Even so, these are coding agents with their own shell and file tools,
-// so each one is spawned tool-restricted, in a scratch directory, with a per-turn timeout.
+// so each one is spawned tool-restricted, in a scratch directory, with a per-turn timeout. Claude
+// Code's flags, environment and stream checks are in claude-participant.ts.
 
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -33,6 +34,15 @@ import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "../compute
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { admitsCodexCliVersion, parseCodexCliVersion } from "../codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../codex/restricted-executable.js";
+import {
+  ClaudeStreamGuard,
+  type ClaudeParticipantError,
+  admitsClaudeCodeVersion,
+  claudeCodeVersionMessage,
+  claudeParticipantEnv,
+  claudeParticipantFlags,
+  parseClaudeCodeVersion,
+} from "./claude-participant.js";
 
 export type LocalAgentId = "codex" | "claude";
 
@@ -154,14 +164,26 @@ export interface SpawnResult {
 export type SpawnLike = (
   bin: string,
   args: readonly string[],
-  options: { cwd: string; timeoutMs: number; signal?: AbortSignal },
+  options: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    timeoutMs: number;
+    signal?: AbortSignal;
+    /** Called with each complete stdout line; returning true kills the process at once. */
+    onLine?: (line: string) => boolean;
+  },
 ) => Promise<SpawnResult>;
 
 const defaultSpawn: SpawnLike = async (bin, args, options) =>
   await new Promise<SpawnResult>((resolve) => {
-    const child = spawn(bin, [...args], { cwd: options.cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(bin, [...args], {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
+    let scanned = 0;
     const timer = setTimeout(() => child.kill("SIGKILL"), options.timeoutMs);
     // Stopping a run must stop the thinking too: a local agent mid-turn can hold a terminal for
     // minutes, and a Stop that leaves it running is not a stop.
@@ -175,6 +197,11 @@ const defaultSpawn: SpawnLike = async (bin, args, options) =>
     };
     child.stdout?.on("data", (chunk: Buffer) => {
       stdout += chunk.toString("utf8");
+      for (let end = stdout.indexOf("\n", scanned); end >= 0; end = stdout.indexOf("\n", scanned)) {
+        const line = stdout.slice(scanned, end);
+        scanned = end + 1;
+        if (options.onLine?.(line) === true) child.kill("SIGKILL");
+      }
     });
     child.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
@@ -204,6 +231,8 @@ export interface LocalAgentProviderOptions {
   spawnFn?: SpawnLike;
   /** Scratch root for the screenshot and schema handed to the CLI. */
   workRoot?: string;
+  /** Where the participant's few environment names come from. Absent = process.env. */
+  env?: Readonly<Record<string, string | undefined>>;
 }
 
 export const LOCAL_AGENT_CAPABILITIES: ActorCapabilities = {
@@ -278,38 +307,32 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
         const screenshotPath = path.join(work, "screen.png");
         await writeFile(screenshotPath, frame);
         const prompt = promptFor(request, screenshotPath);
+        const folders = [work, await realpath(work).catch(() => work)];
+        const watch = new ClaudeStreamGuard(folders);
 
-        const args = [
-          "-p",
-          "--output-format",
-          "json",
-          // Read is the only tool it needs (the screenshot) and the only one it gets.
-          "--allowedTools",
-          "Read",
-          ...(options.model === undefined ? [] : ["--model", options.model]),
-          // `--allowedTools` takes a list, so a prompt placed right after it is read as a tool
-          // name and Claude Code exits 1 with "Input must be provided". Three of three one-shot
-          // runs failed on turn one that way on 2026-09-01 (Claude Code 2.1.257); `--` ends the
-          // options so the prompt is the prompt.
-          "--",
-          prompt,
-        ];
-
-        const result = await spawnFn(descriptor.bin, args, {
+        const result = await spawnFn(descriptor.bin, claudeOneShotArgs(prompt, options.model), {
           cwd: work,
+          env: claudeParticipantEnv(options.env ?? process.env),
           timeoutMs,
           ...(signal === undefined ? {} : { signal }),
+          // Stops the process as soon as a line is refused; the full scan below decides the turn.
+          onLine: (line) => inspectLine(watch, line) !== undefined,
         });
+        const { refusal, result: final } = scanClaudeStream(result.stdout, folders);
+        if (refusal !== undefined) throw refusal;
         if (result.code !== 0) {
           // Fail loud with the CLI's own words. A rate-limited plan says so here, and that is a
           // sentence the operator can act on, unlike "turn failed".
           const detail = (result.stderr || result.stdout).trim().slice(-400);
           throw new Error(`${descriptor.label} exited ${result.code ?? "on a signal"}: ${detail}`);
         }
-
-        // Claude Code returns an envelope on stdout whose `result` field holds the text.
-        const envelope = parseAgentJson(result.stdout);
-        const payload = typeof envelope.result === "string" ? envelope.result : result.stdout;
+        if (final === undefined) throw new Error(`${descriptor.label} returned no result message`);
+        if (final.is_error === true) {
+          const ending = typeof final.subtype === "string" ? final.subtype : "in error";
+          const said = typeof final.result === "string" ? final.result.slice(0, 160) : "";
+          throw new Error(`${descriptor.label} turn ended ${ending}: ${said}`);
+        }
+        const payload = typeof final.result === "string" ? final.result : "";
 
         const turn = parseAgentJson(payload);
         const actions = toCuaActions(
@@ -339,6 +362,55 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
   };
 }
 
+/** The one-shot argv: stream-json out so every message can be checked, then the prompt after `--`. */
+function claudeOneShotArgs(prompt: string, model?: string): string[] {
+  return [
+    "-p",
+    "--output-format",
+    "stream-json",
+    // Required for stream-json output in -p mode.
+    "--verbose",
+    ...claudeParticipantFlags(model),
+    // `--tools` takes a list, so a prompt placed right after it would be read as a tool name.
+    // `--` ends the options so the prompt is the prompt.
+    "--",
+    prompt,
+  ];
+}
+
+/** The refusal one stdout line proves, if any. A line that is not JSON proves nothing. */
+function inspectLine(guard: ClaudeStreamGuard, line: string): ClaudeParticipantError | undefined {
+  let message: unknown;
+  try {
+    message = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  return message !== null && typeof message === "object" && !Array.isArray(message)
+    ? guard.inspect(message as Record<string, unknown>)
+    : undefined;
+}
+
+/** The first refusal in a finished one-shot stream, and its last `result` message. */
+function scanClaudeStream(
+  stdout: string,
+  folders: readonly string[],
+): { refusal?: ClaudeParticipantError; result?: Record<string, unknown> } {
+  const guard = new ClaudeStreamGuard(folders);
+  let result: Record<string, unknown> | undefined;
+  for (const line of stdout.split("\n")) {
+    const refusal = inspectLine(guard, line);
+    if (refusal !== undefined) return { refusal };
+    try {
+      const message = JSON.parse(line) as Record<string, unknown>;
+      if (message?.type === "result") result = message;
+    } catch {
+      // not a message
+    }
+  }
+  return result === undefined ? {} : { result };
+}
+
 export interface DetectedLocalAgent extends LocalAgentDescriptor {
   /** Resolved path to the binary. */
   binPath: string;
@@ -351,6 +423,8 @@ export interface DetectedLocalAgent extends LocalAgentDescriptor {
   authStatus: "authenticated" | "unauthenticated" | "unknown";
   /** Known Codex login billing class. Absent when the status text is not one of the pinned shapes. */
   billing?: "account-unknown" | "api";
+  /** Claude Code's `--version` release. Absent for Codex and when the output is not a version. */
+  version?: string;
 }
 
 export interface DetectLocalAgentsOptions {
@@ -499,6 +573,7 @@ export async function detectLocalAgents(
     });
 
   const found: DetectedLocalAgent[] = [];
+  const probe = options.authProbe ?? authProbe;
   for (const descriptor of LOCAL_AGENTS) {
     const binPath = await which(descriptor.bin);
     if (binPath === undefined) continue;
@@ -508,18 +583,30 @@ export async function detectLocalAgents(
         : descriptor.id === "claude" && env.CLAUDE_CONFIG_DIR
           ? path.join(env.CLAUDE_CONFIG_DIR, ".credentials.json")
           : path.join(home, descriptor.credentialPath);
-    const status = await (options.authProbe ?? authProbe)(
+    // Claude Code is asked with the participant's own environment, so a login that only works
+    // through a dropped variable (ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN) reads as signed out.
+    const probeEnv = descriptor.id === "claude" ? claudeParticipantEnv(env) : env;
+    const status = await probe(
       binPath,
       descriptor.id === "codex" ? ["login", "status"] : ["auth", "status"],
-      env,
+      probeEnv,
     )
       .then((result) => classifyAuth(descriptor.id, result))
       .catch(() => ({ authStatus: "unknown" as const }));
+    const version =
+      descriptor.id === "claude"
+        ? await probe(binPath, ["--version"], probeEnv)
+            .then((result) =>
+              result.code === 0 ? parseClaudeCodeVersion(result.stdout) : undefined,
+            )
+            .catch(() => undefined)
+        : undefined;
     found.push({
       ...descriptor,
       binPath,
       credentialsPresent: await exists(file).catch(() => false),
       ...status,
+      ...(version === undefined ? {} : { version }),
     });
   }
   return found;
@@ -529,10 +616,20 @@ export async function detectLocalAgents(
 export const NO_LOCAL_AGENT_MESSAGE =
   "no local coding agent found. openai-computer-use needs OPENAI_API_KEY; local-agent needs Codex or Claude Code installed and signed in. Hosted desktops also need E2B_API_KEY.";
 
+/** Whether a signed-in agent can still not run participants here: an old Claude Code. */
+export function localAgentVersionRefusal(agent: DetectedLocalAgent): string | undefined {
+  return agent.id === "claude" && !admitsClaudeCodeVersion(agent.version)
+    ? claudeCodeVersionMessage(agent.version)
+    : undefined;
+}
+
 /** Doctor's row for one installed agent, in the register the other rows use. */
 export function localAgentDoctorMessage(agent: DetectedLocalAgent): string {
+  const outdated = localAgentVersionRefusal(agent);
+  if (agent.authStatus === "authenticated" && outdated !== undefined)
+    return `${agent.label} reports signed in, but cannot run participants yet. ${outdated}`;
   if (agent.authStatus === "authenticated")
-    return `${agent.label} reports signed in; a study with actor.type: local-agent can use it instead of a provider API key. Account access and limits are untested.`;
+    return `${agent.label}${agent.version === undefined ? "" : ` ${agent.version}`} reports signed in; a study with actor.type: local-agent can use it instead of a provider API key. Account access and limits are untested.`;
   const status = agent.id === "codex" ? "codex login status" : "claude auth status";
   return agent.authStatus === "unauthenticated"
     ? `${agent.label} is installed and reports not signed in; run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``

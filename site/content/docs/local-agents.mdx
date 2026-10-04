@@ -80,10 +80,40 @@ the next screenshot. The same participant implementation drives local
 Firecracker and hosted E2B desktops. One app-server thread retains the persona
 and conversation through the final feedback.
 
-Claude Code uses `--allowedTools Read` and returns desktop actions through its
-existing conversation adapter. Both CLIs remain host processes under configured
-restrictions, not separate sandboxes for everything the CLI can access. Desktop
-inputs execute in the selected sandbox; credentials stay with the host CLI.
+humanish starts Claude Code with `--restricted`, `--tools Read`,
+`--strict-mcp-config`, `--permission-mode dontAsk` and `--no-session-persistence`,
+in a scratch folder that holds only the screenshots it is asked to read, and
+Claude Code returns desktop actions as JSON in one conversation. Read is the only tool in the session, and
+it cannot open a file outside that folder. Your user, project and local
+settings files are ignored, so their hooks, permission rules and plugins do not
+load; your CLAUDE.md does not load; no MCP server starts; and Claude Code saves
+no transcript. Managed (administrator) settings still apply.
+
+The Claude Code process gets `PATH`, `HOME`, `USER`, `LOGNAME`, `LANG`,
+`LC_ALL`, `LC_CTYPE`, `CLAUDE_CONFIG_DIR` and the proxy variables (`HTTPS_PROXY`,
+`HTTP_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`) from your environment, and
+nothing else: no provider key, no `GH_TOKEN` and no `--dotenv` name. It signs in
+with Claude Code's stored login from `claude auth login`. A login that exists
+only as `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` in your environment is
+not passed, and the readiness check reports it as signed out.
+
+humanish reads every message Claude Code streams. A tool call other than Read
+inside the folder stops the participant and fails the run with
+`HUMANISH_CLAUDE_PARTICIPANT_TOOL_REFUSED`. A session that starts with another
+tool, an MCP server or another permission mode fails with
+`HUMANISH_CLAUDE_PARTICIPANT_UNRESTRICTED`. These flags need Claude Code 2.1.248
+or newer: `doctor` shows the installed release, and an older one is refused
+before a desktop starts with `HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED`. Run
+`claude update` to replace it.
+
+Claude Code participants from earlier humanish releases saved a transcript of
+every screenshot they read under `~/.claude/projects/`. `humanish doctor`
+counts those folders and prints the command that removes them.
+
+The hosted Codex participant keeps your Codex home, your configuration and the
+environment humanish runs with, which can include provider keys. Both CLIs are
+host processes. Desktop inputs execute in the selected sandbox, and each CLI can
+reach whatever its restrictions leave open on your machine.
 
 ## Usage and limitations
 

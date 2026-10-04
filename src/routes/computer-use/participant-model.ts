@@ -102,10 +102,12 @@ export async function startParticipantModel(
             ? {}
             : { reasoningEffort: spec.planned.limits.reasoningEffort }),
           ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
+          env,
         }),
       };
     }
     const claudeSession = await startClaudeSession({
+      env,
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
