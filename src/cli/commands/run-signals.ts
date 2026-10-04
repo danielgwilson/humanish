@@ -43,6 +43,8 @@ export interface RunSignalOptions {
   exit?: (code: number) => void;
   reclaim?: ReclaimHooks;
   deadlineMs?: number;
+  /** Resolves when the deadline has passed; defaults to a timer of `deadlineMs`. */
+  deadline?: (ms: number) => Promise<void>;
 }
 
 let current: { end(): void; release(): void } | undefined;
@@ -168,7 +170,7 @@ async function stopActiveRuns(
     }),
     ...[...shutdownCleanups].map((cleanup) => cleanup().catch(() => undefined)),
   ]);
-  const finished = await withDeadline(work, deadlineMs);
+  const finished = await withDeadline(work, deadlineMs, options.deadline);
   for (const stop of stopping) {
     if (stop.report === null) continue;
     const text = stop.report?.text ?? deadlineText(stop, finished, deadlineMs);
@@ -188,7 +190,12 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function withDeadline<T>(work: Promise<T>, ms: number): Promise<T | "deadline"> {
+function withDeadline<T>(
+  work: Promise<T>,
+  ms: number,
+  wait: ((ms: number) => Promise<void>) | undefined,
+): Promise<T | "deadline"> {
+  if (wait !== undefined) return Promise.race([work, wait(ms).then(() => "deadline" as const)]);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<"deadline">((resolve) => {
     timer = setTimeout(() => resolve("deadline"), ms);
