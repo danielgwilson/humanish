@@ -28,7 +28,7 @@ export interface UnfinishedRun {
    * clean: the run's reclaim receipt records every sandbox gone and a finished search of E2B by
    * the run's tags. unconfirmed: it records a sandbox not confirmed gone, or the run journaled one
    * it does not cover. unknown: there is no reclaim receipt, or it records no finished tag search
-   * (written by humanish 0.110 or earlier, or by a reclaim that did not finish), so a sandbox whose
+   * (written by humanish 0.110.0 or earlier, or by a reclaim that did not finish), so a sandbox whose
    * id never reached a receipt could still run.
    */
   sandboxes: "clean" | "unconfirmed" | "unknown";

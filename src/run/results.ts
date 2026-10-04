@@ -1,4 +1,4 @@
-// The run command's options and result, the cleanup.json shape releases through 0.110 wrote, and
+// The run command's options and result, the cleanup.json shape releases through 0.110.0 wrote, and
 // the latest-run pointer (latest.json). None of them are stored in run.json.
 
 import type { ObserverResult } from "../observer/render.js";
@@ -62,7 +62,7 @@ export interface RunResult {
 }
 
 /**
- * A resource line of cleanup.json. `humanish cleanup` wrote the file through 0.110, and verify
+ * A resource line of cleanup.json. `humanish cleanup` wrote the file through 0.110.0, and verify
  * still reads one a run kept. v0.12.23 through v0.15.0 killed sandboxes and wrote `killed`.
  */
 export interface StoredCleanupResourceResult {
@@ -81,7 +81,7 @@ export interface CleanupAdapterResult {
   message: string;
 }
 
-/** cleanup.json as any release through 0.110 wrote it. */
+/** cleanup.json as any release through 0.110.0 wrote it. */
 export interface StoredCleanupResult {
   schema: typeof CLEANUP_SCHEMA;
   ok: boolean;

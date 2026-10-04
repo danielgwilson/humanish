@@ -1,4 +1,4 @@
-// A cleanup.json as `humanish cleanup` wrote it through 0.110. The command is gone, and verify and
+// A cleanup.json as `humanish cleanup` wrote it through 0.110.0. The command is gone, and verify and
 // export still read the file a run kept, so tests write one directly.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
