@@ -98,6 +98,12 @@
       "runId": "[run]",
       "mode": "live",
       "status": "fail",
+      "display": {
+        "state": "failed",
+        "label": "failed",
+        "tone": "fail",
+        "reason": "harness: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+      },
       "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-provider)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -216,7 +222,7 @@
     "summary": "The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- summary: The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -415,6 +421,19 @@
       },
       "desktopMinutes": "[desktopMinutes]",
       "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+          }
+        ]
+      }
     }
   },
   "sandbox-receipts.ndjson": [

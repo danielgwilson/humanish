@@ -12,7 +12,9 @@ import { liveObserverResult } from "../../src/observer/live.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { readRunIndex } from "../../src/run/run-index.js";
+import { OUTCOME_POLICIES } from "../../src/run/judge.js";
 import { FinishedRun, runScope, type RunScope } from "../../src/run/run.js";
+import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
@@ -32,6 +34,14 @@ vi.mock("../../src/run/contained-output.js", async (importOriginal) => {
 const actualWriters = await vi.importActual<typeof import("../../src/run/contained-output.js")>(
   "../../src/run/contained-output.js",
 );
+
+// The status outcome a preview bundle finished with PASSING_OUTCOME records: run.json's outcome
+// copied beside the verdict.
+const PUBLISHED_OUTCOME = {
+  verdict: "contract_proof_only",
+  ok: true,
+  execution: { succeeded: true, failures: [] },
+};
 
 let template: RunBundle;
 let templateRoot: string;
@@ -95,7 +105,7 @@ async function startOk(scope: RunScope, runId: string, now?: () => number) {
 
 async function publish(runId: string) {
   const { finished } = await runScope(async (scope) => {
-    await (await startOk(scope, runId)).finish(bundleFor(runId));
+    await (await startOk(scope, runId)).finish(bundleFor(runId), PASSING_OUTCOME);
   });
   return finished;
 }
@@ -144,13 +154,13 @@ describe("runScope closes a run on every exit", () => {
       runScope(async (scope) => {
         const run = await startOk(scope, "published");
         release.resolve();
-        return run.finish(bundleFor("published"));
+        return run.finish(bundleFor("published"), PASSING_OUTCOME);
       }),
     ]);
     expect(abandoned.finished).toBeUndefined();
     expect(published.finished?.runId).toBe("published");
     expect(await readStatus("abandoned")).not.toHaveProperty("outcome");
-    expect((await readStatus("published")).outcome).toEqual({ verdict: "contract_proof_only" });
+    expect((await readStatus("published")).outcome).toEqual(PUBLISHED_OUTCOME);
   });
 
   it("a scope or run leaked out of the scope admits nothing after it closes", async () => {
@@ -161,7 +171,7 @@ describe("runScope closes a run on every exit", () => {
       leakedRun = await startOk(scope, "leaked");
     });
     await expect(start(leakedScope!, "second")).rejects.toThrow(/closed/);
-    await expect(leakedRun!.finish(bundleFor("leaked"))).rejects.toThrow(/closed/);
+    await expect(leakedRun!.finish(bundleFor("leaked"), PASSING_OUTCOME)).rejects.toThrow(/closed/);
     await expect(readFile(path.join(runDir("leaked"), "run.json"))).rejects.toMatchObject({
       code: "ENOENT",
     });
@@ -174,10 +184,10 @@ describe("Run.finish publishes once, in order", () => {
       runScope(async (scope) => {
         const run = await startOk(scope, "review-fault");
         await mkdir(path.join(run.paths.physicalRunRoot, "review.md"));
-        await run.finish(bundleFor("review-fault"));
+        await run.finish(bundleFor("review-fault"), PASSING_OUTCOME);
       }),
     ).rejects.toThrow(/single-link regular files/);
-    expect((await readStatus("review-fault")).outcome).toEqual({ verdict: "contract_proof_only" });
+    expect((await readStatus("review-fault")).outcome).toEqual(PUBLISHED_OUTCOME);
     expect((await readJson(path.join(runDir("review-fault"), "run.json"))).runId).toBe(
       "review-fault",
     );
@@ -189,7 +199,7 @@ describe("Run.finish publishes once, in order", () => {
       runScope(async (scope) => {
         const run = await startOk(scope, "bundle-fault");
         await mkdir(path.join(run.paths.physicalRunRoot, "run.json"));
-        await run.finish(bundleFor("bundle-fault"));
+        await run.finish(bundleFor("bundle-fault"), PASSING_OUTCOME);
       }),
     ).rejects.toThrow(/single-link regular files/);
     const status = await readStatus("bundle-fault");
@@ -205,7 +215,7 @@ describe("Run.finish publishes once, in order", () => {
       runScope(async (scope) => {
         const run = await startOk(scope, "pointer-fault");
         try {
-          await run.finish(bundleFor("pointer-fault"));
+          await run.finish(bundleFor("pointer-fault"), PASSING_OUTCOME);
         } finally {
           const file = path.join(run.paths.physicalRunRoot, "observer", "observer-data.json");
           observerData = await readFile(file, "utf8");
@@ -219,10 +229,12 @@ describe("Run.finish publishes once, in order", () => {
   it("finish admits one call, sequential or concurrent, and keeps the first bytes", async () => {
     await runScope(async (scope) => {
       const run = await startOk(scope, "twice");
-      await run.finish(bundleFor("twice", "first"));
+      await run.finish(bundleFor("twice", "first"), PASSING_OUTCOME);
       const bytes = await readFile(path.join(run.paths.physicalRunRoot, "run.json"), "utf8");
       const status = await readFile(path.join(run.paths.physicalRunRoot, "status.json"), "utf8");
-      await expect(run.finish(bundleFor("twice", "second"))).rejects.toThrow(/one call/);
+      await expect(run.finish(bundleFor("twice", "second"), PASSING_OUTCOME)).rejects.toThrow(
+        /one call/,
+      );
       expect(await readFile(path.join(run.paths.physicalRunRoot, "run.json"), "utf8")).toBe(bytes);
       expect(await readFile(path.join(run.paths.physicalRunRoot, "status.json"), "utf8")).toBe(
         status,
@@ -231,8 +243,8 @@ describe("Run.finish publishes once, in order", () => {
     await runScope(async (scope) => {
       const run = await startOk(scope, "racing");
       const settled = await Promise.allSettled([
-        run.finish(bundleFor("racing", "first")),
-        run.finish(bundleFor("racing", "second")),
+        run.finish(bundleFor("racing", "first"), PASSING_OUTCOME),
+        run.finish(bundleFor("racing", "second"), PASSING_OUTCOME),
       ]);
       expect(settled.map((outcome) => outcome.status)).toEqual(["fulfilled", "rejected"]);
       const written = await readJson(path.join(run.paths.physicalRunRoot, "run.json"));
@@ -248,14 +260,16 @@ describe("Run.finish publishes once, in order", () => {
       const first = concurrent[0];
       if (first.status !== "fulfilled" || !first.value.ok) throw new Error("no run");
       const run = first.value.run;
-      await expect(run.finish(bundleFor("other"))).rejects.toThrow(/another run or mode/);
-      await expect(run.finish({ ...bundleFor("one"), mode: "live" })).rejects.toThrow(
+      await expect(run.finish(bundleFor("other"), PASSING_OUTCOME)).rejects.toThrow(
         /another run or mode/,
       );
       await expect(
+        run.finish({ ...bundleFor("one"), mode: "live" }, PASSING_OUTCOME),
+      ).rejects.toThrow(/another run or mode/);
+      await expect(
         readFile(path.join(run.paths.physicalRunRoot, "run.json")),
       ).rejects.toMatchObject({ code: "ENOENT" });
-      await run.finish(bundleFor("one"));
+      await run.finish(bundleFor("one"), PASSING_OUTCOME);
     });
   });
 
@@ -264,7 +278,7 @@ describe("Run.finish publishes once, in order", () => {
     await runScope(async (scope) => {
       const run = await startOk(scope, "clocked", () => at);
       expect(run.createdAt).toBe("2026-09-30T12:00:00.000Z");
-      await run.finish(bundleFor("clocked"));
+      await run.finish(bundleFor("clocked"), PASSING_OUTCOME);
     });
     expect(await readLatest()).toEqual({
       schema: "humanish.latest-run.v1",
@@ -294,7 +308,7 @@ describe("Run.finish publishes once, in order", () => {
     });
     await runScope(async (scope) => {
       const run = await startOk(scope, "barrier");
-      const finishing = run.finish(bundleFor("barrier", "barrier final gap"));
+      const finishing = run.finish(bundleFor("barrier", "barrier final gap"), PASSING_OUTCOME);
 
       await atReview.promise;
       const index = await readRunIndex(cwd);
@@ -445,7 +459,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
       const snapshot = run.writeSnapshot(bundleFor("held", "in progress"));
       await atSnapshot.promise;
       let finishSettled = false;
-      const finishing = run.finish(bundleFor("held", "final")).then(() => {
+      const finishing = run.finish(bundleFor("held", "final"), PASSING_OUTCOME).then(() => {
         finishSettled = true;
       });
       await expect(run.writeSnapshot(bundleFor("held", "late"))).rejects.toThrow(/no snapshot/);
@@ -489,7 +503,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
       await run.writeSnapshot(bundleFor("pointed"));
       expect(JSON.parse(await readFile(latest, "utf8")).runId).toBe("newer");
 
-      await run.finish(bundleFor("pointed"));
+      await run.finish(bundleFor("pointed"), PASSING_OUTCOME);
     });
     expect((await readLatest()).runId).toBe("pointed");
   });
@@ -499,10 +513,10 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     const { finished } = await runScope(async (scope) => {
       const run = await startOk(scope, "recovered");
       await expect(run.writeSnapshot(bundleFor("recovered"))).rejects.toThrow("snapshot failed");
-      return run.finish(bundleFor("recovered", "final"));
+      return run.finish(bundleFor("recovered", "final"), PASSING_OUTCOME);
     });
     expect(finished?.runId).toBe("recovered");
-    expect((await readStatus("recovered")).outcome).toEqual({ verdict: "contract_proof_only" });
+    expect((await readStatus("recovered")).outcome).toEqual(PUBLISHED_OUTCOME);
   });
 
   it("a throw while a snapshot rejects surfaces the original error and stops the status cadence", async () => {
@@ -565,6 +579,91 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
 // Run.finish moves .humanish/runs/latest.json after it publishes the bundle (architecture.md, step
 // 6). That holds only while it is the one writer: writePreparedRunLatestPointer is the only write
 // of the pointer, and only src/run/run.ts calls it.
+describe("run.json records how the run ended", () => {
+  const failedRender = (async () => ({
+    schema: "humanish.observer-result.v1",
+    ok: false,
+    cwd,
+    run: "rendered",
+    warnings: [],
+    error: { code: "HUMANISH_INVALID_RUN_BUNDLE", message: "Run bundle failed verification." },
+  })) as unknown as NonNullable<Parameters<RunScope["startRun"]>[0]["observer"]>["render"];
+
+  async function finishWith(
+    runId: string,
+    outcome: typeof PASSING_OUTCOME,
+  ): Promise<FinishedRun | undefined> {
+    const { finished } = await runScope(async (scope) => {
+      const started = await scope.startRun({
+        cwd,
+        runId,
+        mintRunId: () => runId,
+        mode: "dry-run",
+        renderReview: (bundle) => `# Review ${bundle.runId}\n`,
+        observer: { open: false, render: failedRender },
+      });
+      if (!started.ok) throw new Error(started.message);
+      const issued = await started.run.finish(bundleFor(runId), outcome);
+      await issued.renderObserver();
+    });
+    return finished;
+  }
+
+  it("finish writes the outcome to run.json and status.json copies it", async () => {
+    const failing = {
+      ...PASSING_OUTCOME,
+      ok: false,
+      execution: {
+        succeeded: false,
+        failures: [{ kind: "harness" as const, message: "the desktop did not start" }],
+      },
+    };
+    await runScope(async (scope) => {
+      await (await startOk(scope, "ended")).finish(bundleFor("ended"), failing);
+    });
+    const outcome = (await readJson(path.join(runDir("ended"), "run.json"))).outcome;
+    expect(outcome).toEqual({ state: "finished", ok: false, execution: failing.execution });
+    expect((await readStatus("ended")).outcome).toMatchObject({
+      ok: false,
+      execution: failing.execution,
+    });
+  });
+
+  it("an Observer that did not render fails the run on a route whose policy counts it", async () => {
+    const finished = await finishWith("unrendered", PASSING_OUTCOME);
+    const evidence = { kind: "evidence", message: "Run bundle failed verification." };
+    expect(finished?.outcome).toEqual({
+      ok: false,
+      execution: { succeeded: false, failures: [evidence] },
+    });
+    const run = await readJson(path.join(runDir("unrendered"), "run.json"));
+    expect(run.outcome).toEqual({
+      state: "finished",
+      ok: false,
+      execution: { succeeded: false, failures: [evidence] },
+    });
+    expect((await readStatus("unrendered")).outcome).toMatchObject({ ok: false });
+    const data = await readJson(path.join(runDir("unrendered"), "observer", "observer-data.json"));
+    expect(data.run.display.state).toBe("failed");
+  });
+
+  it("an Observer that did not render warns on a route whose policy lets it", async () => {
+    const finished = await finishWith("preview-unrendered", {
+      ...PASSING_OUTCOME,
+      policy: OUTCOME_POLICIES.preview,
+    });
+    expect(finished?.outcome).toEqual({
+      ok: true,
+      execution: {
+        succeeded: true,
+        failures: [],
+        warnings: [{ kind: "evidence", message: "Run bundle failed verification." }],
+      },
+    });
+    expect((await readStatus("preview-unrendered")).outcome).toMatchObject({ ok: true });
+  });
+});
+
 describe("the latest-run pointer", () => {
   it("has one writer in src: Run.finish in src/run/run.ts", async () => {
     const files = (await readdir("src", { recursive: true })).filter((file) =>

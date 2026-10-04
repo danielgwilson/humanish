@@ -33,6 +33,7 @@ import {
   judgeExecution,
   judgeTerminal,
   OUTCOME_POLICIES,
+  resultOk,
 } from "../../run/judge.js";
 import {
   terminalExecutionFailures,
@@ -263,23 +264,28 @@ export async function finishLiveTerminalSession(
   bundle.review = foldScorerFailures(bundle.review, scorer.failures);
   await validatePreparedRunArtifactPaths(runPaths);
 
-  const finished = await run.finish(bundle);
-  const observer = await finished.renderObserver();
-  await validatePreparedRunArtifactPaths(runPaths);
-
   // A failing agent is captured evidence on this route: only the execution and a declared scorer
-  // fail ok.
+  // fail ok. A declared scorer that did not render a pass (status:"fail", malformed or thrown) is a
+  // gate, so it fails ok as well as the persisted verdict.
+  const policy = OUTCOME_POLICIES.terminal;
   const execution = judgeExecution(
     terminalExecutionFailures({
       participant,
       capFailure,
       sessionReason: sanitize(session.reason),
       cleanup: session.cleanup,
-      observer,
     }),
-    OUTCOME_POLICIES.terminal,
+    policy,
   );
-  const result = terminalStudyResult({
+  const finished = await run.finish(bundle, {
+    ok: resultOk({ judgment, execution, scorerFailures: scorer.failures, policy }),
+    execution,
+    policy,
+  });
+  const observer = await finished.renderObserver();
+  await validatePreparedRunArtifactPaths(runPaths);
+
+  return terminalStudyResult({
     cwd,
     studyId: plan.studyId,
     actorId: plan.actor,
@@ -295,13 +301,10 @@ export async function finishLiveTerminalSession(
     noSpendProof,
     capFailure,
     declaredScorerFailure: scorer.failures[0],
-    judgment,
-    execution,
+    ok: finished.outcome.ok,
     observer,
     warnings,
   });
-  await finished.recordOutcome({ ok: result.ok, execution });
-  return result;
 }
 
 /** Persist the terminal evidence: redacted events, normalized transcript, ledgers, actor trace. */

@@ -7,7 +7,6 @@ import {
   formatDuration,
   groupRunsByStudy,
   listWindow,
-  livenessLabel,
   normalizeThought,
 } from "../../src/run/projection.js";
 
@@ -207,12 +206,5 @@ describe("small shared formatters", () => {
     expect(formatDuration(109_000)).toBe("1m 49s");
     expect(formatDuration(3_600_000)).toBe("1h");
     expect(formatDuration(5_400_000)).toBe("1h 30m");
-  });
-
-  it("labels a run by state, and a finished one by its own verdict", () => {
-    expect(livenessLabel({ liveness: "running" })).toBe("running");
-    expect(livenessLabel({ liveness: "interrupted" })).toBe("interrupted");
-    expect(livenessLabel({ liveness: "finished", verdict: "pass" })).toBe("pass");
-    expect(livenessLabel({ liveness: "finished" })).toBe("finished");
   });
 });

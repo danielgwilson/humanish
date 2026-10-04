@@ -9,6 +9,7 @@ import {
   type RunAdapterScore,
   type RunBundle,
   type RunEvent,
+  type RunOutcome,
   type RunProviderResource,
   type RunRerunLineage,
   type RunScorerProvenance,
@@ -27,6 +28,7 @@ import type { RunStream } from "./streams.js";
 import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./stream-shape.js";
 import { isLocalEvidenceArtifactPath } from "./paths.js";
 import { isRunFeedbackCandidate } from "./feedback-shape.js";
+import { EXECUTION_FAILURE_KINDS } from "./judge.js";
 import { isSharedWorldEvidence } from "./shared-world-shape.js";
 import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./type-guards.js";
 
@@ -88,7 +90,40 @@ export function isRunBundle(value: unknown): value is RunBundle {
         value.adapterArtifacts.every(isRunAdapterArtifact))) &&
     (value.providerResources === undefined ||
       (Array.isArray(value.providerResources) &&
-        value.providerResources.every(isRunProviderResource)))
+        value.providerResources.every(isRunProviderResource))) &&
+    (value.outcome === undefined || isRunOutcome(value.outcome))
+  );
+}
+
+function isExecutionFailureList(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (failure) =>
+        isRecord(failure) &&
+        typeof failure.kind === "string" &&
+        (EXECUTION_FAILURE_KINDS as readonly string[]).includes(failure.kind) &&
+        typeof failure.message === "string",
+    )
+  );
+}
+
+/** run.json's `outcome`: a finished run's ok and execution outcome, or the signal that stopped it. */
+export function isRunOutcome(value: unknown): value is RunOutcome {
+  if (!isRecord(value)) return false;
+  if (value.state === "interrupted")
+    return (
+      value.ok === false &&
+      (value.signal === "SIGINT" || value.signal === "SIGTERM" || value.signal === "SIGHUP") &&
+      typeof value.at === "string"
+    );
+  return (
+    value.state === "finished" &&
+    typeof value.ok === "boolean" &&
+    isRecord(value.execution) &&
+    typeof value.execution.succeeded === "boolean" &&
+    isExecutionFailureList(value.execution.failures) &&
+    (value.execution.warnings === undefined || isExecutionFailureList(value.execution.warnings))
   );
 }
 

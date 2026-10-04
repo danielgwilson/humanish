@@ -86,23 +86,16 @@ export async function runDryTerminalStudy(args: {
   });
   bundle.events.push(runtimeDeclaredEvent(plan.runtime, createdAt));
 
-  const finished = await run.finish(bundle);
+  const policy = OUTCOME_POLICIES.terminal;
+  const execution = judgeExecution([], policy);
+  const finished = await run.finish(bundle, {
+    ok: resultOk({ judgment, execution, scorerFailures: [], policy }),
+    execution,
+    policy,
+  });
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(finished.paths);
-  const policy = OUTCOME_POLICIES.terminal;
-  const execution = judgeExecution(
-    observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence",
-            message: observer.error?.message ?? "Observer failed for the terminal-product run.",
-          },
-        ],
-    policy,
-  );
-  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
-  await finished.recordOutcome({ ok, execution });
+  const { ok } = finished.outcome;
 
   return {
     ...studyResultIdentity("terminal", plan.studyId),

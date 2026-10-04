@@ -3,6 +3,7 @@ import React from "react";
 
 import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
+import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
@@ -492,10 +493,14 @@ function PastRun({
   columns: number;
 }): React.ReactElement {
   const when = shortDate(run.completedAt ?? run.startedAt);
+  const display = runDisplay(run);
+  const ended = display.state === "passed" ? "" : ` · ${display.label}`;
   const outcome =
     run.participants === undefined
-      ? (run.verdict ?? "no verdict")
-      : `${run.participants.reachedGoal}/${run.participants.total} reached the goal`;
+      ? display.state === "unknown"
+        ? "no verdict"
+        : display.label
+      : `${run.participants.reachedGoal}/${run.participants.total} reached the goal${ended}`;
   const cost =
     run.estimatedCostUsd === undefined ||
     (run.estimatedCostUsd === null && run.analysisCost === undefined)

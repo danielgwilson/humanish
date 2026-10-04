@@ -286,18 +286,6 @@ export function listWindow(args: {
   return { start, end: start + viewport };
 }
 
-/** The label for a run's state, in the register the surfaces share. */
-export function livenessLabel(entry: Pick<RunIndexEntry, "liveness" | "verdict">): string {
-  switch (entry.liveness) {
-    case "running":
-      return "running";
-    case "interrupted":
-      return "interrupted";
-    default:
-      return entry.verdict ?? "finished";
-  }
-}
-
 /** A study as the study list shows it: what is declared, joined to what actually happened. */
 export interface StudyRow {
   /**

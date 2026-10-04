@@ -33,7 +33,9 @@ import {
   type CleanupResult,
   type RunPointer,
 } from "./results.js";
-import { isReviewSummary, isRunBundle } from "./bundle-shape.js";
+import { isReviewSummary, isRunBundle, isRunOutcome } from "./bundle-shape.js";
+import { bundleDisplayFacts, runDisplay, type RunDisplay } from "./display.js";
+import { RUN_STATUS_FILE } from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./type-guards.js";
@@ -65,6 +67,8 @@ export interface RunsResult {
     createdAt: string | null;
     mode: string | null;
     path: string;
+    /** How the run reads (runDisplay in src/run/display.ts); absent when it has no readable run.json. */
+    display?: RunDisplay;
   }>;
   latest: string | null;
   error?: {
@@ -311,6 +315,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
       mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
       path: path.join(RUNS_RELATIVE_ROOT, entryName),
+      ...(await listedRunDisplay(entryRunPaths, bundle)),
     });
   }
 
@@ -331,6 +336,36 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
   };
 }
 
+/**
+ * A listed run's display, from its run.json and, for a bundle without an outcome, its status
+ * record. Like the listing's other fields it reads the file without verifying it; a run.json
+ * that is not an object naming a run gets none.
+ */
+async function listedRunDisplay(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: unknown,
+): Promise<{ display?: RunDisplay }> {
+  if (!isRecord(bundle) || typeof bundle.runId !== "string") return {};
+  const outcome = isRunOutcome(bundle.outcome) ? bundle.outcome : undefined;
+  const status =
+    outcome === undefined ? await readRunJsonIfExists(runPaths, RUN_STATUS_FILE) : undefined;
+  const facts = bundleDisplayFacts(
+    {
+      runId: bundle.runId,
+      ...(typeof bundle.mode === "string" ? { mode: bundle.mode } : {}),
+      ...(isRecord(bundle.review) && typeof bundle.review.verdict === "string"
+        ? { review: { verdict: bundle.review.verdict } }
+        : {}),
+      ...(Array.isArray(bundle.simulations)
+        ? { simulations: bundle.simulations.filter(isRecord) }
+        : {}),
+      ...(outcome === undefined ? {} : { outcome }),
+    },
+    status,
+  );
+  return { display: runDisplay(facts) };
+}
+
 function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
   return {
     schema: RUNS_SCHEMA,
@@ -348,7 +383,7 @@ function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
 export async function readReview(
   cwdInput: string,
   runInput: string,
-): Promise<VerifyResult | (ReviewSummary & { path: string; runId: string })> {
+): Promise<VerifyResult | (ReviewSummary & { path: string; runId: string; display?: RunDisplay })> {
   const cwd = path.resolve(cwdInput);
   let runPaths: PreparedRunArtifactPaths | null;
   try {
@@ -384,5 +419,6 @@ export async function readReview(
     ...projected,
     path: path.relative(cwd, path.join(runPaths!.absoluteRunRoot, "review.json")),
     runId: path.basename(runPaths!.absoluteRunRoot),
+    ...(runPaths ? await listedRunDisplay(runPaths, bundle) : {}),
   };
 }

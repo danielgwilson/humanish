@@ -217,6 +217,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "State-driven local app - Computer-use operator (pixel-pat)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -278,7 +283,7 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed ui actor artifacts",
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
@@ -352,7 +357,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -431,6 +436,7 @@
         "kind": "browser",
         "label": "lane-01 · browser",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -639,6 +645,14 @@
       },
       "desktopMinutes": null,
       "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "status.json": {

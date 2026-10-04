@@ -36,6 +36,7 @@ import {
   sharedWorldShortfall,
   verdictText,
 } from "../../run/judge.js";
+import { reviewOutcome } from "../../run/display.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { participantEvent, participantIds } from "../../run/participant-records.js";
@@ -576,6 +577,7 @@ export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
     `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
     `- personas: ${sw?.roleCount ?? 0}`,
     `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
+    `- outcome: ${reviewOutcome(bundle)}`,
     `- summary: ${bundle.review.summary}`,
     ...(plane ? [`- plane: ${plane.message}`] : []),
     ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),

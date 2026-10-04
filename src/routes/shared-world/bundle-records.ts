@@ -9,8 +9,10 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
+import { judgedStatus } from "../../run/judge.js";
 import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
+import { participantFactsOf } from "../computer-use/participant-facts.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantTaxonomyLabel } from "./participant-specs.js";
@@ -144,6 +146,9 @@ function sharedWorldStream(
 ): RunStream {
   const { args } = ctx;
   const { taxonomy, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
+  // The judge's status for the participant, so the Observer shows it the way the verdict judged it.
+  const judged =
+    view.outcome === undefined ? undefined : judgedStatus(participantFactsOf(view.outcome));
   return participantStream(spec, {
     ...(spec.evidenceAssignment === undefined
       ? {}
@@ -151,6 +156,7 @@ function sharedWorldStream(
     kind: "browser",
     label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.studyId}`,
     status: view.status,
+    ...(judged === undefined ? {} : { judgedStatus: judged }),
     transport: "snapshot",
     updatedAt: args.run.createdAt,
     embed: lastScreenshot

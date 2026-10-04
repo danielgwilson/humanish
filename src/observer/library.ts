@@ -1,3 +1,5 @@
+import type { RunDisplay } from "../run/display.js";
+
 export interface LibraryHistory {
   latestRunId: string | null;
   runs: Array<{
@@ -5,7 +7,10 @@ export interface LibraryHistory {
     createdAt: string | null;
     mode: string | null;
     href: string;
+    /** The participants' verdict. `display` says whether the run passed. */
     status: string;
+    /** How the run reads (runDisplay in src/run/display.ts); absent when its data could not be read. */
+    display?: RunDisplay;
     /** Current contained status-record observation, separate from the evidence verdict. */
     runtimeState?: "running" | "finished" | "interrupted" | "unknown";
     streamCount: number;
@@ -24,12 +29,13 @@ export interface LibraryRenderOptions {
   capabilities: { actions: boolean };
 }
 
-const STATUS_TONES: Record<string, string> = {
-  passed: "#3fb970",
-  running: "#4f8ff7",
-  failed: "#e5534b",
-  blocked: "#d29922",
-  timed_out: "#d29922",
+// The pip color for each RunDisplay tone; a run with no display gets the neutral gray.
+const DISPLAY_TONES: Record<RunDisplay["tone"], string> = {
+  pass: "#3fb970",
+  live: "#4f8ff7",
+  fail: "#e5534b",
+  warn: "#d29922",
+  neutral: "#57606f",
 };
 
 export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOptions): string {
@@ -115,7 +121,7 @@ main { padding: 1rem 1.1rem 3rem; max-width: 44rem; margin: 0 auto; }
 
 // prose-check: script (the library page's JavaScript)
 function libraryClientJs(): string {
-  const tones = JSON.stringify(STATUS_TONES);
+  const tones = JSON.stringify(DISPLAY_TONES);
   return `
 (function () {
   var TONES = ${tones};
@@ -135,9 +141,11 @@ function libraryClientJs(): string {
       link.href = run.href;
       var top = document.createElement("div");
       top.className = "run-top";
+      var display = run.display || null;
+      var live = display !== null && display.state === "running";
       var pip = document.createElement("span");
-      pip.className = run.status === "running" ? "pip running" : "pip";
-      pip.style.background = TONES[run.status] || "#57606f";
+      pip.className = live ? "pip running" : "pip";
+      pip.style.background = (display && TONES[display.tone]) || TONES.neutral;
       var id = document.createElement("span");
       id.className = "run-id";
       id.textContent = run.runId;
@@ -148,15 +156,15 @@ function libraryClientJs(): string {
         latest.className = "badge latest";
         latest.textContent = "latest";
         top.appendChild(latest);
-      } else if (run.status === "running") {
-        var live = document.createElement("span");
-        live.className = "badge";
-        live.textContent = "live";
-        top.appendChild(live);
+      } else if (live) {
+        var badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = "live";
+        top.appendChild(badge);
       }
       var meta = document.createElement("div");
       meta.className = "run-meta";
-      var metaBits = [run.mode || "unknown", run.streamCount + " participants", run.createdAt || ""];
+      var metaBits = [display ? display.label : "", run.mode || "unknown", run.streamCount + " participants", run.createdAt || ""];
       // Labeled cost token: ALWAYS "~$X est." (never a bare "$X"), so the library never implies an
       // authoritative charge. Null = omitted (advisory, fail-open on display).
       if (run.costLabel) {

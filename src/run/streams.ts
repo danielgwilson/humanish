@@ -210,8 +210,9 @@ export interface RunStream {
   /**
    * The judge's status for this participant (`judgedStatus` in src/run/judge.ts). It differs from
    * the trace status when a goal_satisfied session reported a blocker or never engaged. Computer-use
-   * fan-out writes it for a finished live participant; rerun selection reads it. Absent elsewhere,
-   * and in bundles written before it existed.
+   * and shared-world runs write it for a participant whose session finished; rerun selection and
+   * the Observer read it. Absent on the terminal and scripted routes, whose judge has no blocker
+   * rule, and in bundles written before it existed.
    */
   judgedStatus?: ActorStatus;
   transport: "snapshot" | "polling" | "sse" | "pty" | "app-server";

@@ -3,6 +3,7 @@ import React from "react";
 
 import { PALETTE } from "./palette.js";
 import { color } from "./text-props.js";
+import { runDisplay, type RunDisplay, type RunDisplayFacts } from "../../src/run/display.js";
 import { terminalRendersUnicode } from "../../src/routes/terminal/encoding.js";
 
 /**
@@ -95,23 +96,31 @@ export function gutter(active: boolean): string {
   return active ? (terminalRendersUnicode() ? "❯" : ">") : " ";
 }
 
-/** Verdict glyphs: a run's outcome readable before its text is. */
-export function verdictGlyph(args: { liveness: string; verdict?: string; tick?: number }): string {
-  if (args.liveness === "running") return spinnerFrame(args.tick ?? 0);
+/** A run as the glyph reads it: its display facts, and the spinner's tick while it runs. */
+type GlyphRun = RunDisplayFacts & { tick?: number };
+
+/**
+ * Verdict glyphs: a run's outcome readable before its text is. runDisplay decides the state, as on
+ * every other surface: a check mark only for a run that passed, a flag for one that failed, was
+ * blocked, timed out, ended with no verdict or was interrupted, and a dot for a dry run.
+ */
+export function verdictGlyph(run: GlyphRun): string {
+  const { state, tone } = runDisplay(run);
+  if (state === "running") return spinnerFrame(run.tick ?? 0);
   const unicode = terminalRendersUnicode();
-  if (args.liveness === "interrupted") return unicode ? "⚑" : "!";
-  if (args.verdict === "fail") return unicode ? "⚑" : "!";
-  if (args.verdict === undefined) return unicode ? "·" : "-";
-  return unicode ? "✓" : "+";
+  if (tone === "pass") return unicode ? "✓" : "+";
+  if (tone === "fail" || tone === "warn") return unicode ? "⚑" : "!";
+  return unicode ? "·" : "-";
 }
 
-function verdictColor(args: { liveness: string; verdict?: string }): string | undefined {
-  if (args.liveness === "running") return PALETTE.ok;
-  if (args.liveness === "interrupted") return PALETTE.warn;
-  if (args.verdict === "fail") return PALETTE.bad;
-  return undefined;
-}
+const TONE_COLORS: Record<RunDisplay["tone"], string | undefined> = {
+  live: PALETTE.ok,
+  fail: PALETTE.bad,
+  warn: PALETTE.warn,
+  pass: undefined,
+  neutral: undefined,
+};
 
 /** Convenience so callers spread colour without repeating the guard. */
-export const glyphColor = (args: { liveness: string; verdict?: string }): { color?: string } =>
-  color(verdictColor(args));
+export const glyphColor = (run: RunDisplayFacts): { color?: string } =>
+  color(TONE_COLORS[runDisplay(run).tone]);

@@ -158,6 +158,12 @@
       "runId": "[run]",
       "mode": "live",
       "status": "fail",
+      "display": {
+        "state": "failed",
+        "label": "failed",
+        "tone": "fail",
+        "reason": "harness: lane-01: provider exploded mid-session"
+      },
       "title": "CUA routing proof - Computer-use operator (first-time-visitor)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -276,7 +282,7 @@
     "summary": "provider exploded mid-session",
     "gaps": []
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- run gate: fail\n- summary: provider exploded mid-session\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: lane-01: provider exploded mid-session\n- summary: provider exploded mid-session\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -530,6 +536,19 @@
       },
       "desktopMinutes": 1,
       "note": "Estimated 0.00888 USD total. Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "lane-01: provider exploded mid-session"
+          }
+        ]
+      }
     }
   },
   "sandbox-receipts.ndjson": [

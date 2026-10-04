@@ -29,6 +29,14 @@ They do not suddenly include a separate analysis request. The bundle's
 `cost.estimatedTotalUsd`, `status.json`'s `outcome.estimatedCostUsd` and the run
 index's `estimatedCostUsd` stay participants and desktops only.
 
+Each study's `passed` counts the runs that show as passed on every surface
+(`runDisplay` in `src/run/display.ts`): a `pass` verdict and a run whose own `ok`
+is not false. `passRate` divides it by `judged`, the runs with a verdict.
+`totals.verdicts` counts the participants' verdicts; `totals.outcomes` counts
+every selected run by its display state (`passed`, `failed`, `blocked`,
+`timed_out`, `no_verdict`, `dry_run`, `interrupted`, `running`, `unknown`), and
+the human output prints that line.
+
 ## One run's cost
 
 A run's analysis spend has one reader, `readAnalysisAccounting` in

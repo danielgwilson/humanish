@@ -93,10 +93,23 @@ Served data may also include `runtime` with `state`, `observedAt`, and
 `source: "local-run-status"`. This is a current observation of a contained,
 matching `status.json`; it never changes the run's recorded verdict or participant
 outcomes. A fresh heartbeat means running, an explicitly finalized record means
-finished, and stale or invalid timing means unknown. Missing, malformed, or
-mismatched records omit the observation. A stale heartbeat alone does not prove
-interruption, and stored PIDs are neither probed nor returned. Static rendering
-and export do not create this served-only observation.
+finished, a record the CLI's signal handler wrote means interrupted, and stale or
+invalid timing means unknown. Missing, malformed, or mismatched records omit the
+observation. A stale heartbeat alone does not prove interruption, and stored PIDs
+are neither probed nor returned. Static rendering and export do not create this
+served-only observation.
+
+`run.display` says whether the run passed: `{ state, label, tone, reason? }` from
+`runDisplay` (`src/run/display.ts`), the function every surface that shows a run's
+result calls. `state` is `passed` only when `run.status` (the verdict) is `pass` and
+`run.json`'s `outcome` does not record the run as failed. A run whose execution
+failed under a pass verdict is `failed`, with the first failure in `reason`.
+`blocked`, `timed_out`, `no_verdict`, `interrupted`, `running`, `dry_run` and
+`unknown` are the other states. For a `run.json` without an `outcome`, the served
+Observer and `observe` read `status.json` for liveness and, on a run recorded
+before `run.json` carried an outcome, for its ok. The sidebar's dot is the pass
+accent only for `passed`. observer-data.json written before `display` existed
+keeps the verdict reading.
 
 Watch is deliberately distinct from `humanish observe --all`. Watch serves one
 attached run, and the process that created it may inject runtime stream URLs
@@ -167,9 +180,11 @@ origin-dependent scripts and modules in those artifacts may require independent
 hosting. See the [CSP sandbox standard](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox).
 
 History entries may include `runtimeState` from the same contained local status
-read as the Observer. Their existing `status` remains the recorded verdict.
-Running filters should use runtime state when present, preserving the difference
-between an active study and its provisional evidence outcome.
+read as the Observer, and `display` from the run's Observer data. Their existing
+`status` remains the recorded verdict. The library's pip color and the sidebar's
+label read `display`. Running filters should use runtime state when present,
+preserving the difference between an active study and its provisional evidence
+outcome.
 
 ## UI Shape
 

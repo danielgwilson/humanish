@@ -94,6 +94,9 @@
       "dryRun": "number",
       "estimatedSpendUsd": "number",
       "live": "number",
+      "outcomes": {
+        "dry_run": "number"
+      },
       "participants": {
         "reachedGoal": "number",
         "reportedFriction": "number",

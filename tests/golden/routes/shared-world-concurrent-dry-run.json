@@ -95,6 +95,11 @@
       "runId": "[run]",
       "mode": "dry-run",
       "status": "contract_proof_only",
+      "display": {
+        "state": "dry_run",
+        "label": "dry run",
+        "tone": "neutral"
+      },
       "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
       "createdAt": "[ts]",
       "simCount": 3,
@@ -256,7 +261,7 @@
       "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- summary: Concurrent shared-world dry run: 3 personas declared against one app served at a public sandbox URL (openai-computer-use); no sandboxes launched, $0 spent.\n- plane: Shared app declared: clone of example-org/collab-app, to be served in the sandbox at a public sandbox URL (dry run: nothing cloned). Seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants (dry run; $0); stateSeries 1 snapshot, 0 deltas. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- outcome: dry run\n- summary: Concurrent shared-world dry run: 3 personas declared against one app served at a public sandbox URL (openai-computer-use); no sandboxes launched, $0 spent.\n- plane: Shared app declared: clone of example-org/collab-app, to be served in the sandbox at a public sandbox URL (dry run: nothing cloned). Seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants (dry run; $0); stateSeries 1 snapshot, 0 deltas. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -687,6 +692,14 @@
           "ok": false
         }
       ]
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "status.json": {

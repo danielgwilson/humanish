@@ -5,7 +5,6 @@ import { scriptedExecutionFailures } from "../../../src/routes/scripted/result.j
 // A scripted surface that failed a step or timed out is captured evidence; these are the facts that
 // fail the run as an execution instead.
 describe("scriptedExecutionFailures", () => {
-  const observer = { ok: true as const };
   const passed = { completionReason: "goal_satisfied" as const, reason: "satisfied" };
   const base = {
     dryRun: false,
@@ -13,10 +12,9 @@ describe("scriptedExecutionFailures", () => {
     sessionError: undefined,
     expected: 2,
     subject: undefined,
-    observer,
   };
 
-  it("records nothing when every surface returned and the Observer rendered", () => {
+  it("records nothing when every surface returned", () => {
     expect(scriptedExecutionFailures({ ...base, sessionResults: [passed, passed] })).toEqual([]);
     expect(
       scriptedExecutionFailures({
@@ -67,22 +65,14 @@ describe("scriptedExecutionFailures", () => {
     ]);
   });
 
-  it("records a surface's harness error and an Observer that failed", () => {
+  it("records a surface's harness error", () => {
     expect(
       scriptedExecutionFailures({
         ...base,
         sessionResults: [passed, { completionReason: "harness_error", reason: "browser missing" }],
-        observer: {
-          ok: false,
-          error: {
-            code: "HUMANISH_INVALID_RUN_BUNDLE",
-            message: "Run bundle failed verification.",
-          },
-        },
       }),
     ).toEqual([
       { kind: "harness", message: "Scripted session ended with a harness error: browser missing" },
-      { kind: "evidence", message: "Run bundle failed verification." },
     ]);
   });
 });

@@ -158,6 +158,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "Terminal live proof - Autonomous terminal agent (autonomous-creative-agent)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -324,7 +329,7 @@
       "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -743,6 +748,14 @@
       },
       "desktopMinutes": 0,
       "note": "No cost line in this run has a price: each lacks a rate, usage or a duration, and none is guessed. Each line's reason says what is missing. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "sandbox-receipts.ndjson": [

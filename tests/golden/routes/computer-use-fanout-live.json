@@ -775,6 +775,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "Fan-out proof - Computer-use fan-out (4 participants)",
       "createdAt": "[ts]",
       "simCount": 4,
@@ -939,7 +944,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -2259,6 +2264,14 @@
       },
       "desktopMinutes": 0,
       "note": "Estimated 0 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "sandbox-receipts.ndjson": [

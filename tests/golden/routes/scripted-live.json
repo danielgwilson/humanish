@@ -166,6 +166,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-new-user)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -280,7 +285,7 @@
     "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 4 step actions, 4 raw screenshots\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 4 step actions, 4 raw screenshots\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -587,6 +592,14 @@
       },
       "desktopMinutes": null,
       "note": "This run made no model request and used no hosted desktop, so it cost $0."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "screenshots/desktop-step-01-load.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",

@@ -1,8 +1,10 @@
 import path from "node:path";
 import type { CommsReceivingEvidence } from "../comms/receiving-types.js";
 import { captureGitState, type CapturedGitState } from "./git-state.js";
+import type { ExecutionOutcome } from "./judge.js";
 import type { SharedWorldEvidence } from "./shared-world-evidence.js";
 import { studyFields, type RunStudyProvenance } from "./study-provenance.js";
+import type { RunInterruptSignal } from "./status.js";
 import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
@@ -283,6 +285,13 @@ export interface RunBundle {
     events: string;
   };
   review: ReviewSummary;
+  /**
+   * How the run ended as an execution. `review.verdict` is what the participants experienced;
+   * this is whether the run worked, which no surface may show as a pass when `ok` is false. Absent
+   * while the run is in progress, when its process died without writing it, and on runs recorded
+   * before this field, whose status.json holds the outcome instead.
+   */
+  outcome?: RunOutcome;
   feedbackCandidates: RunFeedbackCandidate[];
   /** Structured subject provenance. Optional and additive: emitted by the
    * computer-use and shared-world backends and the clone scripted-browser route; tolerated absent
@@ -373,6 +382,15 @@ export interface RunBundle {
    */
   cost?: RunCostSummary;
 }
+
+/**
+ * How a run ended. `finished`: Run.finish published the final bundle with the route result's `ok`
+ * and its execution outcome (`judgeExecution` in src/run/judge.ts). `interrupted`: the CLI's signal
+ * handler stopped the run before it finished; run.json is then the last live flush.
+ */
+export type RunOutcome =
+  | { state: "finished"; ok: boolean; execution: ExecutionOutcome }
+  | { state: "interrupted"; ok: false; signal: RunInterruptSignal; at: string };
 
 /**
  * One contributing cost line of a RunCostSummary. A line is present even when it cannot be priced

@@ -118,6 +118,11 @@
       "runId": "[run]",
       "mode": "dry-run",
       "status": "contract_proof_only",
+      "display": {
+        "state": "dry_run",
+        "label": "dry run",
+        "tone": "neutral"
+      },
       "title": "CUA routing proof - Computer-use operator (first-time-visitor)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -233,7 +238,7 @@
       "Live desktop session not yet run (dry run only)."
     ]
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- run gate: dry run\n- summary: Dry run: the evidence shape was written without launching a desktop or spending provider tokens.\n\n## Gaps\n- Live desktop session not yet run (dry run only).\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: the evidence shape was written without launching a desktop or spending provider tokens.\n\n## Gaps\n- Live desktop session not yet run (dry run only).\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -402,6 +407,14 @@
       "source": "app-url",
       "state": {
         "provenance": "undeclared"
+      }
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
       }
     }
   },

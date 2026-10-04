@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { historyRunHref } from "@/lib/artifact-href";
-import type { HistoryIndex } from "@/lib/live";
+import { historyRunDot, historyRunIsRunning, historyRunLabel, type HistoryIndex } from "@/lib/live";
 import type { ObserverData } from "@/lib/observer-data";
 import { Checkbox } from "./ui/checkbox";
 import { ThemeToggle } from "./theme-toggle";
@@ -32,6 +32,7 @@ export function Sidebar({
   const current: HistoryIndex["runs"][number] = {
     runId: data.run.runId,
     status: data.run.status,
+    ...(data.run.display ? { display: data.run.display } : {}),
     createdAt: data.run.createdAt,
     href: "",
     mode: data.run.mode,
@@ -47,10 +48,7 @@ export function Sidebar({
     : history?.runs.length
       ? history.runs.map((run) => (run.runId === current.runId ? current : run))
       : [current];
-  const isRunning = (run: HistoryIndex["runs"][number]) =>
-    run.runtimeState
-      ? run.runtimeState === "running"
-      : run.status === "running" || run.status === "preparing";
+  const isRunning = historyRunIsRunning;
   const titleFor = (run: HistoryIndex["runs"][number]) =>
     library?.entries.find((entry) => entry.runId === run.runId)?.title ??
     (run.runId === data.run.runId
@@ -112,14 +110,14 @@ export function Sidebar({
             const content = (
               <>
                 <span
-                  className={`dot${isRunning(run) ? (updating ? " active" : "") : ["pass", "passed", "complete"].includes(run.status) ? " ok" : ""}`}
+                  className={`dot${isRunning(run) ? (updating ? " active" : "") : historyRunDot(run)}`}
                 />
                 <span className="run-entry">
                   <span className="study-name">{titleFor(run)}</span>
                   <small>
                     {entry
                       ? entry.description
-                      : `${!updating && isRunning(run) ? `Captured while ${run.status}` : run.runtimeState === "running" ? "Running" : run.runtimeState === "unknown" || run.runtimeState === "interrupted" ? "Status unconfirmed" : run.status}${run.createdAt && Number.isFinite(Date.parse(run.createdAt)) ? ` · ${new Date(run.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}`}
+                      : `${!updating && isRunning(run) ? "Captured while running" : run.runtimeState === "running" ? "Running" : run.runtimeState === "unknown" ? "Status unconfirmed" : run.runtimeState === "interrupted" ? "Interrupted" : historyRunLabel(run)}${run.createdAt && Number.isFinite(Date.parse(run.createdAt)) ? ` · ${new Date(run.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}`}
                   </small>
                 </span>
               </>

@@ -28,6 +28,8 @@ import {
 } from "./status.js";
 import { studyProvenanceOf, type RunStudyProvenance } from "./study-provenance.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { isRunOutcome } from "./bundle-shape.js";
+import type { ExecutionFailure } from "./judge.js";
 
 const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
 
@@ -48,6 +50,14 @@ export interface RunIndexEntry {
   updatedAt?: string;
   completedAt?: string;
   verdict?: string;
+  /**
+   * The run's own ok, from run.json's outcome as status.json copies it, or from the status record
+   * alone for a run recorded before run.json carried one. Absent when the run recorded none.
+   * runDisplay (src/run/display.ts) reads it with `verdict` and `liveness`.
+   */
+  ok?: boolean;
+  /** The first execution failure that failed the run, beside `ok`. */
+  failure?: ExecutionFailure;
   participants?: { total: number; reachedGoal: number; reportedFriction?: number };
   /** Participants and desktops only; analysis bills separately and is in `analysisCost`. */
   estimatedCostUsd?: number | null;
@@ -153,6 +163,10 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
     updatedAt: record.updatedAt,
     ...(record.completedAt === undefined ? {} : { completedAt: record.completedAt }),
     ...(record.outcome?.verdict === undefined ? {} : { verdict: record.outcome.verdict }),
+    ...(typeof record.outcome?.ok === "boolean" ? { ok: record.outcome.ok } : {}),
+    ...(record.outcome?.execution?.failures[0] === undefined
+      ? {}
+      : { failure: record.outcome.execution.failures[0] }),
     ...(record.outcome?.participants === undefined
       ? {}
       : { participants: record.outcome.participants }),
@@ -181,6 +195,7 @@ interface BundleFacts {
     participants?: { total: number; reachedGoal: number; reportedFriction?: number };
   };
   cost?: { estimatedTotalUsd?: number | null; fullyEstimated?: unknown };
+  outcome?: unknown;
 }
 
 /** A status record this run can be classified from: well formed and naming this run. */
@@ -195,7 +210,8 @@ function usableStatusRecord(raw: unknown, runId: string): raw is RunStatusRecord
  * simulations `running`. With no status record there is no freshness to judge, and the
  * reading of "it started, and nothing here says it finished" is interrupted, not finished.
  */
-function bundleLiveness(bundle: Pick<BundleFacts, "simulations">): RunLiveness {
+function bundleLiveness(bundle: Pick<BundleFacts, "simulations" | "outcome">): RunLiveness {
+  if (isRunOutcome(bundle.outcome)) return bundle.outcome.state;
   const inProgress = (bundle.simulations ?? []).some(
     (simulation) => simulation?.status === "running",
   );
@@ -210,7 +226,7 @@ function bundleLiveness(bundle: Pick<BundleFacts, "simulations">): RunLiveness {
 export function runLiveness(
   runId: string,
   status: unknown,
-  bundle: Pick<BundleFacts, "simulations">,
+  bundle: Pick<BundleFacts, "simulations" | "outcome">,
   nowMs: number,
 ): { liveness: RunLiveness; record?: RunStatusRecord } {
   return usableStatusRecord(status, runId)
@@ -223,6 +239,8 @@ function studyEntry(study: RunStudyProvenance | undefined): { study?: RunStudyPr
 }
 
 function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
+  const outcome = isRunOutcome(bundle.outcome) ? bundle.outcome : undefined;
+  const failure = outcome?.state === "finished" ? outcome.execution.failures[0] : undefined;
   return {
     runId,
     derivedFrom: "bundle",
@@ -231,6 +249,8 @@ function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
     ...studyEntry(studyProvenanceOf(bundle)),
     ...(bundle.createdAt === undefined ? {} : { startedAt: bundle.createdAt }),
     ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(outcome === undefined ? {} : { ok: outcome.ok }),
+    ...(failure === undefined ? {} : { failure }),
     ...(bundle.review?.participants === undefined
       ? {}
       : { participants: bundle.review.participants }),

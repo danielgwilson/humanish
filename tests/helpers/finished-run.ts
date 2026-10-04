@@ -3,7 +3,15 @@ import path from "node:path";
 
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { runScope, type FinishedRun } from "../../src/run/run.js";
+import { OUTCOME_POLICIES } from "../../src/run/judge.js";
+import { runScope, type FinishedRun, type FinishOutcome } from "../../src/run/run.js";
+
+/** The outcome of a run that worked, on the computer-use route's policy. */
+export const PASSING_OUTCOME: FinishOutcome = {
+  ok: true,
+  execution: { succeeded: true, failures: [] },
+  policy: OUTCOME_POLICIES["computer-use"],
+};
 
 /**
  * Publish a run through the run scope and return the FinishedRun its final write issued, the only
@@ -37,7 +45,7 @@ export async function publishRun(
       renderReview: (published) => `# Review ${published.runId}\n`,
     });
     if (!started.ok) throw new Error(started.message);
-    await started.run.finish(options.shape ? options.shape(bundle) : bundle);
+    await started.run.finish(options.shape ? options.shape(bundle) : bundle, PASSING_OUTCOME);
   });
   if (finished === undefined) throw new Error(`run ${runId} did not publish`);
   return finished;

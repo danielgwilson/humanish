@@ -21,6 +21,11 @@
       "summary": "null",
       "warnings": []
     },
+    "display": {
+      "label": "string",
+      "state": "string",
+      "tone": "string"
+    },
     "gaps": [
       "string"
     ],

@@ -177,15 +177,18 @@ export function judgmentOf(verdict: Verdict, dryRun: boolean): Judgment {
   return { verdict, passed: dryRun || verdict === "pass" } as Judgment;
 }
 
-/** What kind of execution failure a run recorded. */
-type ExecutionFailureKind =
-  | "harness"
-  | "provider-cleanup"
-  | "provider-policy"
-  | "sandbox-cleanup"
-  | "evidence"
-  | "cap"
-  | "run";
+/** The kinds of execution failure a run records. */
+export const EXECUTION_FAILURE_KINDS = [
+  "harness",
+  "provider-cleanup",
+  "provider-policy",
+  "sandbox-cleanup",
+  "evidence",
+  "cap",
+  "run",
+] as const;
+
+type ExecutionFailureKind = (typeof EXECUTION_FAILURE_KINDS)[number];
 
 /** One way the run failed as an execution. The message is scrubbed; status.json shows it. */
 export interface ExecutionFailure {

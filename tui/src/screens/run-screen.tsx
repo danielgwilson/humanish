@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
+import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, normalizeThought } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
@@ -151,13 +152,17 @@ function headline(run: RunIndexEntry, participant: RunParticipant | undefined): 
     const who = participant?.personaId ?? participant?.label;
     return who === undefined ? "starting…" : `${who} is working`;
   }
+  const display = runDisplay(run);
   const counts = run.participants;
-  if (counts === undefined) return run.verdict ?? "finished, no verdict recorded";
+  if (counts === undefined)
+    return display.state === "unknown" ? "finished, no verdict recorded" : display.label;
   const friction =
     counts.reportedFriction === undefined || counts.reportedFriction === 0
       ? ""
       : ` · ${counts.reportedFriction} reported friction`;
-  return `${counts.reachedGoal}/${counts.total} reached the goal${friction}`;
+  // Reaching the goal is what the participants did; a run whose execution failed still failed.
+  const ended = display.state === "passed" ? "" : ` · ${display.label}`;
+  return `${counts.reachedGoal}/${counts.total} reached the goal${friction}${ended}`;
 }
 
 /** A finished run: what they said, then what it took, then what it cost. */
@@ -177,6 +182,8 @@ function FinishedFacts({
       ? undefined
       : normalizeThought(participant.thought.text, { width: Math.max(16, columns), maxLines: 3 });
 
+  // Why a run failed when its execution did, such as a sandbox whose teardown is unproven.
+  const { reason } = runDisplay(run);
   const shape = [
     run.durationMs === undefined ? undefined : formatDuration(run.durationMs),
     participant?.turns === undefined ? undefined : `${participant.turns} turns`,
@@ -198,6 +205,11 @@ function FinishedFacts({
         </Box>
       )}
       <Box marginTop={1} flexDirection="column">
+        {reason === undefined ? null : (
+          <Text dimColor wrap="truncate-end">
+            {`why: ${reason}`}
+          </Text>
+        )}
         {shape === "" ? null : <Text dimColor>{shape}</Text>}
         <Text dimColor>{costLine(run, participant)}</Text>
       </Box>

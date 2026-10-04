@@ -3,10 +3,16 @@
 // their own evidence files; this module owns when the run starts, how it is published, and how it
 // is closed on every exit.
 
+import { redactText } from "../evidence/redaction.js";
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
-import { RUN_BUNDLE_FILE, PUBLIC_TARGET_CWD, type RunBundle } from "./bundle.js";
-import type { ExecutionOutcome } from "./judge.js";
+import { RUN_BUNDLE_FILE, PUBLIC_TARGET_CWD, type RunBundle, type RunOutcome } from "./bundle.js";
+import {
+  judgeExecution,
+  type ExecutionFailure,
+  type ExecutionOutcome,
+  type OutcomePolicy,
+} from "./judge.js";
 import { type RunPointer } from "./results.js";
 import {
   createRunArtifactPaths,
@@ -17,7 +23,12 @@ import {
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
 import { scrubRunSandboxIds, withPublicSandboxIds } from "./sandbox-ids.js";
-import { beginRunStatus, runStatusOutcome, type RunStatusHandle } from "./status.js";
+import {
+  beginRunStatus,
+  runStatusOutcome,
+  type RunInterruptSignal,
+  type RunStatusHandle,
+} from "./status.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
 interface StartRunOptions {
@@ -34,6 +45,21 @@ interface StartRunOptions {
   observer?: { open: boolean; render?: typeof renderObserver | undefined };
   /** Clock for `createdAt` and the latest pointer. */
   now?: (() => number) | undefined;
+}
+
+/** How a run ended as an execution, as run.json records it: the result's ok and execution outcome. */
+interface RecordedOutcome {
+  ok: boolean;
+  execution: ExecutionOutcome;
+}
+
+/** What a route hands Run.finish about how its run ended, before the Observer renders. */
+export interface FinishOutcome extends RecordedOutcome {
+  /**
+   * The route's entry in OUTCOME_POLICIES. FinishedRun.renderObserver records an Observer that
+   * did not render under it, as a failure or a warning.
+   */
+  policy: OutcomePolicy;
 }
 
 interface Run {
@@ -55,14 +81,16 @@ interface Run {
    */
   writeSnapshot(bundle: RunBundle): Promise<void>;
   /**
-   * The one final publication: run.json, then the status outcome, then review.json, review.md,
-   * events.ndjson, observer/observer-data.json, and last the latest pointer. The status goes
-   * after run.json so the index never gets ahead of the evidence, and the pointer goes last so
-   * `latest` never selects a run whose projections are incomplete. Rejects before writing on a
-   * second call, after the scope closed, or when the bundle names another run or mode. A
-   * rejection partway leaves the files written so far and issues no FinishedRun.
+   * The one final publication: run.json with `outcome` set from `outcome`, then the status
+   * outcome copied from it, then review.json, review.md, events.ndjson,
+   * observer/observer-data.json, and last the latest pointer. The status goes after run.json so
+   * the index never gets ahead of the evidence, and the pointer goes last so `latest` never
+   * selects a run whose projections are incomplete. Every projection reads the outcome, so none
+   * shows a pass for a run whose ok is false. Rejects before writing on a second call, after the
+   * scope closed, or when the bundle names another run or mode. A rejection partway leaves the
+   * files written so far and issues no FinishedRun.
    */
-  finish(bundle: RunBundle): Promise<FinishedRun>;
+  finish(bundle: RunBundle, outcome: FinishOutcome): Promise<FinishedRun>;
 }
 
 export interface RunScope {
@@ -95,7 +123,8 @@ const issueKey = Symbol("FinishedRun");
  */
 export class FinishedRun {
   readonly #observer: ObserverTarget | undefined;
-  readonly #status: RunStatusHandle;
+  readonly #recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>;
+  #outcome: RecordedOutcome;
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
   readonly paths: PreparedRunArtifactPaths;
@@ -105,38 +134,67 @@ export class FinishedRun {
     runId: string,
     paths: PreparedRunArtifactPaths,
     observer: ObserverTarget | undefined,
-    status: RunStatusHandle,
+    outcome: RecordedOutcome,
+    recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
     this.paths = paths;
     this.#observer = observer;
-    this.#status = status;
+    this.#outcome = outcome;
+    this.#recordFailure = recordFailure;
   }
 
   static isIssued(value: unknown): value is FinishedRun {
     return typeof value === "object" && value !== null && #observer in value;
   }
 
-  /** Render the Observer for exactly these paths, never a directory re-resolved by name. */
-  renderObserver(): Promise<ObserverResult> {
-    const target = this.#observer;
-    if (target === undefined) {
-      return Promise.reject(new RunLifecycleError("This run was started without an Observer."));
-    }
-    return target.render(target.cwd, this.runId, { open: target.open, expectedRun: this.paths });
+  /**
+   * The run's ok and execution outcome as run.json records them: what the route passed to
+   * finish, plus an Observer that did not render. A route's result reads them from here.
+   */
+  get outcome(): RecordedOutcome {
+    return this.#outcome;
   }
 
   /**
-   * Record the result's ok and execution outcome in status.json. A route calls it once, after the
-   * Observer render, with the values its result returns, so the two agree.
+   * Render the Observer for exactly these paths, never a directory re-resolved by name. An
+   * Observer that did not render is an `evidence` failure: it is added to run.json's outcome and
+   * status.json under the route's policy before this resolves. No page exists then that could
+   * show the run without it. A render that throws records nothing and rejects.
    */
-  recordOutcome(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void> {
-    return this.#status.settle(result);
+  async renderObserver(): Promise<ObserverResult> {
+    const target = this.#observer;
+    if (target === undefined)
+      throw new RunLifecycleError("This run was started without an Observer.");
+    const observer = await target.render(target.cwd, this.runId, {
+      open: target.open,
+      expectedRun: this.paths,
+    });
+    if (!observer.ok) {
+      this.#outcome = await this.#recordFailure({
+        kind: "evidence",
+        message: observer.error?.message ?? "The Observer did not render.",
+      });
+    }
+    return observer;
   }
 }
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+
+/** An execution outcome as run.json records it, each message through the shape redaction. */
+function redactedExecution(execution: ExecutionOutcome): ExecutionOutcome {
+  const redacted = (failure: ExecutionFailure): ExecutionFailure => ({
+    kind: failure.kind,
+    message: redactText(failure.message),
+  });
+  return {
+    succeeded: execution.succeeded,
+    failures: execution.failures.map(redacted),
+    ...(execution.warnings === undefined ? {} : { warnings: execution.warnings.map(redacted) }),
+  };
+}
 
 /** Where FinishedRun renders the Observer, when the run was started with one. */
 function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
@@ -147,6 +205,144 @@ function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
         open: options.observer.open,
         render: options.observer.render ?? renderObserver,
       };
+}
+
+/** The writes of one run, queued in order: its snapshots, its final publication and its interrupt. */
+interface RunPublisher {
+  snapshot(bundle: RunBundle): Promise<void>;
+  publish(bundle: RunBundle, outcome: FinishOutcome): Promise<FinishedRun>;
+  /**
+   * A signal stopped the run: every later write carries the interrupted outcome, and the last
+   * bundle written or queued is written again with it. A run with no bundle yet writes nothing.
+   */
+  interrupt(signal: RunInterruptSignal): Promise<void>;
+}
+
+function runPublisher(args: {
+  options: StartRunOptions;
+  runId: string;
+  paths: PreparedRunArtifactPaths;
+  runStatus: RunStatusHandle;
+  now: () => number;
+  /** The scope's tracker, so the scope waits for a failure recorded after the Observer render. */
+  admit: <V>(operation: Promise<V>) => Promise<V>;
+}): RunPublisher {
+  const { options, runId, paths, runStatus, now, admit } = args;
+  const observer = observerTarget(options);
+  let pointerWritten = false;
+  // The bundle of the last write asked for, and the outcome every later write carries once a
+  // signal stopped the run, so no write after the interrupt can drop it.
+  let lastBundle: RunBundle | undefined;
+  let interrupted: Extract<RunOutcome, { state: "interrupted" }> | undefined;
+  // One chain serializes every write. A rejection reaches only the caller of that write; the
+  // chain itself continues, so a failed snapshot never blocks the final publication.
+  let tail: Promise<unknown> = Promise.resolve();
+  const enqueue = <V>(write: () => Promise<V>): Promise<V> => {
+    const written = tail.then(write);
+    tail = written.then(
+      () => undefined,
+      () => undefined,
+    );
+    return written;
+  };
+  const writePointer = async (): Promise<void> => {
+    const pointer: RunPointer = {
+      schema: "humanish.latest-run.v1",
+      runId,
+      path: paths.relativeRunRoot,
+      updatedAt: new Date(now()).toISOString(),
+    };
+    await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
+    pointerWritten = true;
+  };
+
+  /** run.json with its outcome, then `afterBundle`, then the review and projections. */
+  const writeBundleFiles = async (
+    bundle: RunBundle,
+    outcome: RunOutcome | undefined,
+    afterBundle: (publicBundle: RunBundle) => Promise<void>,
+  ): Promise<void> => {
+    await validatePreparedRunArtifactPaths(paths);
+    // The run owns `outcome`: a bundle read back from disk keeps none of its own.
+    const { outcome: _previous, ...evidence } = bundle;
+    const recorded = interrupted ?? outcome;
+    const publicBundle = await withPublicSandboxIds(paths, {
+      ...evidence,
+      cwd: PUBLIC_TARGET_CWD,
+      ...(recorded === undefined ? {} : { outcome: recorded }),
+    });
+    await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
+    await afterBundle(publicBundle);
+    await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
+    await writeContainedOutputFile(paths, "review.md", options.renderReview(publicBundle), "utf8");
+    const events = publicBundle.events.map((event) => JSON.stringify(event)).join("\n");
+    await writeContainedOutputFile(paths, "events.ndjson", `${events}\n`, "utf8");
+    await writeContainedOutputFile(
+      paths,
+      "observer/observer-data.json",
+      json(buildObserverData(publicBundle)),
+      "utf8",
+    );
+  };
+
+  const snapshot = async (bundle: RunBundle): Promise<void> => {
+    await writeBundleFiles(bundle, undefined, async () => {});
+    if (!pointerWritten) await writePointer();
+  };
+
+  const finishedOutcome = (outcome: RecordedOutcome): RunOutcome => ({
+    state: "finished",
+    ok: outcome.ok,
+    execution: redactedExecution(outcome.execution),
+  });
+
+  const publish = async (bundle: RunBundle, outcome: FinishOutcome): Promise<FinishedRun> => {
+    await writeBundleFiles(bundle, finishedOutcome(outcome), (publicBundle) =>
+      runStatus.finish(runStatusOutcome(publicBundle)),
+    );
+    await scrubRunSandboxIds(paths);
+    await writePointer();
+    let current: RecordedOutcome = { ok: outcome.ok, execution: outcome.execution };
+    // An Observer that did not render, judged under the route's policy and written to run.json
+    // and status.json, so the two agree with the result the route returns. A run directory that
+    // can no longer be written (replaced, or a disk error) keeps the files it has, and the
+    // result still carries the failure.
+    const recordFailure = (failure: ExecutionFailure): Promise<RecordedOutcome> =>
+      admit(
+        enqueue(async () => {
+          const { failures, warnings = [] } = current.execution;
+          const execution = judgeExecution([...failures, ...warnings, failure], outcome.policy);
+          current = { ok: current.ok && execution.succeeded, execution };
+          await writeBundleFiles(bundle, finishedOutcome(current), (publicBundle) =>
+            runStatus.restate(runStatusOutcome(publicBundle)),
+          ).catch(() => undefined);
+          return current;
+        }),
+      );
+    return new FinishedRun(issueKey, runId, paths, observer, current, recordFailure);
+  };
+
+  const interrupt = async (signal: RunInterruptSignal): Promise<void> => {
+    interrupted = { state: "interrupted", ok: false, signal, at: new Date(now()).toISOString() };
+    const written = lastBundle;
+    if (written === undefined) return;
+    // A failed write leaves status.json as the record of the interrupt.
+    await enqueue(() => writeBundleFiles(written, undefined, async () => {})).catch(
+      () => undefined,
+    );
+  };
+
+  return {
+    snapshot(bundle) {
+      lastBundle = bundle;
+      return enqueue(() => snapshot(bundle));
+    },
+    publish(bundle, outcome) {
+      lastBundle = bundle;
+      return enqueue(() => publish(bundle, outcome));
+    },
+    interrupt,
+  };
 }
 
 /**
@@ -184,12 +380,28 @@ export async function runScope<T>(
         const created = await createRunArtifactPaths(options.cwd, runId);
         if (!created.ok) return created;
         // beginRunStatus reads only the mode and the study provenance from the run's options.
-        status = beginRunStatus(created.paths, { ...options, runId });
+        const runStatus = beginRunStatus(created.paths, { ...options, runId });
+        status = runStatus;
+        let interruptBundle: ((signal: RunInterruptSignal) => Promise<void>) | undefined;
         // Registered before the first write lands: a signal while it is still settling reaches
-        // the handle, whose interrupt queues behind that write.
-        unregister = registerActiveRun({ cwd: options.cwd, runId, paths: created.paths, status });
-        await status.started;
-        return { ok: true as const, run: openRun(options, runId, created.paths, status) };
+        // the handle, whose interrupt queues behind that write. The interrupt lands in
+        // status.json first, then in run.json once the run has written one.
+        unregister = registerActiveRun({
+          cwd: options.cwd,
+          runId,
+          paths: created.paths,
+          status: {
+            async interrupt(signal) {
+              const recorded = await runStatus.interrupt(signal);
+              if (recorded) await interruptBundle?.(signal);
+              return recorded;
+            },
+          },
+        });
+        await runStatus.started;
+        const run = openRun(options, runId, created.paths, runStatus);
+        interruptBundle = run.interrupt;
+        return { ok: true as const, run: run.run };
       })(),
     );
   };
@@ -199,80 +411,17 @@ export async function runScope<T>(
     runId: string,
     paths: PreparedRunArtifactPaths,
     runStatus: RunStatusHandle,
-  ): Run => {
+  ): { run: Run; interrupt: (signal: RunInterruptSignal) => Promise<void> } => {
     const now = options.now ?? Date.now;
     const createdAt = new Date(now()).toISOString();
-    const observer = observerTarget(options);
+    const publisher = runPublisher({ options, runId, paths, runStatus, now, admit });
     let finishCalled = false;
-    let pointerWritten = false;
-    // One chain serializes every write. A rejection reaches only the caller of that write; the
-    // chain itself continues, so a failed snapshot never blocks the final publication.
-    let tail: Promise<unknown> = Promise.resolve();
-    const enqueue = <V>(write: () => Promise<V>): Promise<V> => {
-      const written = tail.then(write);
-      tail = written.then(
-        () => undefined,
-        () => undefined,
-      );
-      return written;
-    };
     const checkIdentity = (bundle: RunBundle): string | undefined =>
       bundle.runId !== runId || bundle.mode !== options.mode
         ? "The bundle names another run or mode than this run."
         : undefined;
 
-    const writePointer = async (): Promise<void> => {
-      const pointer: RunPointer = {
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: paths.relativeRunRoot,
-        updatedAt: new Date(now()).toISOString(),
-      };
-      await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
-      pointerWritten = true;
-    };
-
-    /** run.json, then `afterBundle`, then the review and projections. */
-    const writeBundleFiles = async (
-      bundle: RunBundle,
-      afterBundle: (publicBundle: RunBundle) => Promise<void>,
-    ): Promise<void> => {
-      await validatePreparedRunArtifactPaths(paths);
-      const publicBundle = await withPublicSandboxIds(paths, { ...bundle, cwd: PUBLIC_TARGET_CWD });
-      await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
-      await afterBundle(publicBundle);
-      await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
-      await writeContainedOutputFile(
-        paths,
-        "review.md",
-        options.renderReview(publicBundle),
-        "utf8",
-      );
-      const events = publicBundle.events.map((event) => JSON.stringify(event)).join("\n");
-      await writeContainedOutputFile(paths, "events.ndjson", `${events}\n`, "utf8");
-      await writeContainedOutputFile(
-        paths,
-        "observer/observer-data.json",
-        json(buildObserverData(publicBundle)),
-        "utf8",
-      );
-    };
-
-    const snapshot = async (bundle: RunBundle): Promise<void> => {
-      await writeBundleFiles(bundle, async () => {});
-      if (!pointerWritten) await writePointer();
-    };
-
-    const publish = async (bundle: RunBundle): Promise<FinishedRun> => {
-      await writeBundleFiles(bundle, (publicBundle) =>
-        runStatus.finish(runStatusOutcome(publicBundle)),
-      );
-      await scrubRunSandboxIds(paths);
-      await writePointer();
-      return new FinishedRun(issueKey, runId, paths, observer, runStatus);
-    };
-
-    return {
+    const run: Run = {
       runId,
       createdAt,
       mode: options.mode,
@@ -283,22 +432,23 @@ export async function runScope<T>(
         if (finishCalled) return refuse("Run.finish was called; no snapshot follows it.");
         const mismatch = checkIdentity(bundle);
         if (mismatch !== undefined) return refuse(mismatch);
-        return admit(enqueue(() => snapshot(bundle)));
+        return admit(publisher.snapshot(bundle));
       },
-      finish(bundle) {
+      finish(bundle, outcome) {
         if (closed) return refuse("The run scope has closed.");
         if (finishCalled) return refuse("Run.finish admits one call.");
         const mismatch = checkIdentity(bundle);
         if (mismatch !== undefined) return refuse(mismatch);
         finishCalled = true;
         return admit(
-          enqueue(() => publish(bundle)).then((issued) => {
+          publisher.publish(bundle, outcome).then((issued) => {
             finished = issued;
             return issued;
           }),
         );
       },
     };
+    return { run, interrupt: publisher.interrupt };
   };
 
   let outcome: { result: T } | undefined;

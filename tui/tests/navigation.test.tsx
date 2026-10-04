@@ -218,8 +218,11 @@ describe("moving through the surface", () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
-    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*no verdict/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("interrupted"));
+    // The row says interrupted, as every surface does through runDisplay.
+    await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*interrupted/.test(frame));
+    const run = await surface.press(KEY.enter, (frame) =>
+      frame.includes("interrupted: no outcome recorded"),
+    );
     surface.unmount();
 
     // The interrupted card sits at the same level as a finished one: what it managed, what it

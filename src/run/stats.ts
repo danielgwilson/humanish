@@ -4,6 +4,7 @@
 
 import path from "node:path";
 
+import { runDisplay, runDisplayLabel, type RunDisplayState } from "./display.js";
 import { readRunIndex, type RunIndexEntry } from "./run-index.js";
 import {
   addCostTotals,
@@ -31,6 +32,7 @@ interface StatsStudyRow {
   dryRun: number;
   /** Runs whose bundle carries a verdict; the denominator for passRate. */
   judged: number;
+  /** Runs that show as passed (runDisplay in src/run/display.ts): a pass verdict and an ok run. */
   passed: number;
   /** passed / judged, absent when judged is 0. */
   passRate?: number;
@@ -72,7 +74,10 @@ export interface StatsResult {
     estimatedSpendUsd: number;
     unpricedRuns: number;
     participants: StatsParticipants;
+    /** The participants' verdicts. `outcomes` says how many runs passed. */
     verdicts: Record<string, number>;
+    /** Runs by the state every surface shows them in (runDisplay in src/run/display.ts). */
+    outcomes: Partial<Record<RunDisplayState, number>>;
     costs: CostTotals;
   };
   studies: StatsStudyRow[];
@@ -169,7 +174,7 @@ function addToStudyRow(
   if (entry.mode === "dry-run") row.dryRun += 1;
   if (entry.verdict !== undefined) {
     row.judged += 1;
-    if (entry.verdict === "pass") row.passed += 1;
+    if (runDisplay(entry).state === "passed") row.passed += 1;
   }
   if (entry.mode === "live" && entry.durationMs !== undefined) row.durations.push(entry.durationMs);
   if (runUsd === undefined) row.unpricedRuns += 1;
@@ -263,6 +268,7 @@ export async function computeStats(
     unpricedRuns: 0,
     participants: emptyParticipants(),
     verdicts: {},
+    outcomes: {},
     costs: emptyCostTotals(),
   };
   const studies = new Map<string, StudyAccumulator>();
@@ -283,6 +289,8 @@ export async function computeStats(
     addParticipants(totals.participants, entry);
     if (entry.verdict !== undefined)
       totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
+    const { state } = runDisplay(entry);
+    totals.outcomes[state] = (totals.outcomes[state] ?? 0) + 1;
 
     addToStudyRow(studies, entry, runUsd, accounting.costs);
     addToDayRow(days, entry, runUsd, accounting.costs);
@@ -350,7 +358,7 @@ function runCountLines(t: StatsResult["totals"]): string[] {
   return [`live runs: ${t.live}${running}`, ...(t.dryRun > 0 ? [`dry runs: ${t.dryRun}`] : [])];
 }
 
-/** Spend, analysis, participants and verdicts across the selected live runs. */
+/** Spend, analysis, participants and outcomes across the selected live runs. */
 function totalsLines(t: StatsResult["totals"]): string[] {
   const c = t.costs;
   const incomplete =
@@ -361,7 +369,9 @@ function totalsLines(t: StatsResult["totals"]): string[] {
     c.analysisUnpricedAttempts > 0 || c.analysisUnresolvedAttempts > 0
       ? `; ${c.analysisUnpricedAttempts} unpriced, ${c.analysisUnresolvedAttempts} unresolved`
       : "";
-  const verdicts = Object.entries(t.verdicts).map(([verdict, count]) => `${verdict} ${count}`);
+  const outcomes = Object.entries(t.outcomes).map(
+    ([state, count]) => `${runDisplayLabel(state as RunDisplayState)} ${count}`,
+  );
   return [
     `known estimated spend: ${knownMoney(c.estimatedTotalUsd)}`,
     `participants and desktops: ${knownMoney(c.runEstimatedUsd)}${incomplete}`,
@@ -378,7 +388,7 @@ function totalsLines(t: StatsResult["totals"]): string[] {
           `participants: ${t.participants.reachedGoal} of ${t.participants.total} reached the goal, ${t.participants.reportedFriction} reported friction`,
         ]
       : []),
-    ...(verdicts.length > 0 ? [`verdicts: ${verdicts.join(", ")}`] : []),
+    ...(outcomes.length > 0 ? [`outcomes: ${outcomes.join(", ")}`] : []),
   ];
 }
 

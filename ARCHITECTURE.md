@@ -63,11 +63,14 @@ not.
    `judgeComputerUseRun` (`src/routes/computer-use/bundle.ts`) and builds the bundle with
    `buildCuaRunBundle` (`src/routes/computer-use/bundle.ts`), by the rules in `src/run/judge.ts`. A
    declared scorer's failures fold in through `foldScorerFailures` (`src/run/judge.ts`), so a scorer
-   can fail a run and never pass one. `Run.finish` publishes `run.json`, then the `status.json`
-   outcome, the review and Observer data, and `.humanish/runs/latest.json` last.
+   can fail a run and never pass one. `Run.finish` publishes `run.json` with the run's `ok` and
+   execution outcome in its `outcome`, then the `status.json` outcome copied from it, the review
+   and Observer data, and `.humanish/runs/latest.json` last.
 7. **Observer.** `renderObserver` (`src/observer/render.ts`) verifies the bundle with
    `verifyRunPrepared` (`src/verify/verify.ts`) and writes `observer/index.html` from
-   `buildObserverData` (`src/observer/data.ts`).
+   `buildObserverData` (`src/observer/data.ts`). When it does not render, `FinishedRun.renderObserver`
+   (`src/run/run.ts`) adds the `evidence` failure to `run.json`'s outcome. Every surface that shows
+   whether a run passed reads that outcome through `runDisplay` (`src/run/display.ts`).
 8. **Analysis.** `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`) runs
    `runAutomaticAnalysis` (`src/analysis/automatic.ts`) on the `FinishedRun` that `Run.finish`
    issued. Dry runs and studies with `review.analysis: false` skip it.

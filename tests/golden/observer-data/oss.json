@@ -6,6 +6,11 @@
     "runId": "golden-oss",
     "mode": "dry-run",
     "status": "contract_proof_only",
+    "display": {
+      "state": "dry_run",
+      "label": "dry run",
+      "tone": "neutral"
+    },
     "title": "OSS Observer-of-Observers Meta-Lab - Codex TUI OSS Setup Operators",
     "createdAt": "2026-08-19T07:38:07.591Z",
     "simCount": 4,

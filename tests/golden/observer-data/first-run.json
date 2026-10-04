@@ -6,6 +6,11 @@
     "runId": "golden-first-run",
     "mode": "dry-run",
     "status": "contract_proof_only",
+    "display": {
+      "state": "dry_run",
+      "label": "dry run",
+      "tone": "neutral"
+    },
     "title": "humanish CLI first-run smoke - First-Time Trial User",
     "createdAt": "2026-10-03T02:31:08.772Z",
     "simCount": 4,

@@ -409,5 +409,13 @@
       "No model, provider, or E2B substrate was used."
     ]
   },
-  "feedbackCandidates": []
+  "feedbackCandidates": [],
+  "outcome": {
+    "state": "finished",
+    "ok": true,
+    "execution": {
+      "succeeded": true,
+      "failures": []
+    }
+  }
 }

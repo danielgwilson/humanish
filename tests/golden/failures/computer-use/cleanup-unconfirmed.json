@@ -285,6 +285,11 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
+      "display": {
+        "state": "passed",
+        "label": "passed",
+        "tone": "pass"
+      },
       "title": "CUA routing proof - Computer-use operator (first-time-visitor)",
       "createdAt": "[ts]",
       "simCount": 1,
@@ -346,7 +351,7 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
@@ -428,7 +433,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -508,6 +513,7 @@
         "kind": "browser",
         "label": "lane-01 · browser",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -846,6 +852,20 @@
       },
       "desktopMinutes": 1,
       "note": "Estimated 0.00888 USD total (a lower bound: some lines are unmeasured or unpriced). Every figure multiplies usage by a rate table (rates as of 2026-09-05, the oldest rate used), so it is an estimate and not the provider's charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    },
+    "outcome": {
+      "state": "finished",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": [],
+        "warnings": [
+          {
+            "kind": "sandbox-cleanup",
+            "message": "lane-01: Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop. Reclaim it by recorded id with `humanish reclaim --run [run]`."
+          }
+        ]
+      }
     }
   },
   "sandbox-receipts.ndjson": [
