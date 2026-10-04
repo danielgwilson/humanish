@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { PNG } from "pngjs";
 import { isRecord } from "../../src/run/type-guards.js";
 import { inflateProjections } from "./run-golden-projections.js";
 
@@ -75,13 +76,19 @@ async function golden(name: string): Promise<Record<string, unknown>> {
 
 const clone = <T>(value: T): T => structuredClone(value);
 
+/** A blank 1x1 PNG, written where the golden holds a screenshot's digest. */
+const PLACEHOLDER_PNG = PNG.sync.write(new PNG({ width: 1, height: 1 }));
+
 function record(files: Record<string, unknown>, file: string): Record<string, unknown> {
   const value = files[file];
   if (!isRecord(value)) throw new Error(`${file} is not a JSON object in the golden`);
   return value;
 }
 
-/** The passing golden with its participant judged `verdict`, as a gate route then fails it. */
+/**
+ * The passing golden with its participant judged `verdict`, as a gate route then fails it; the run
+ * writes review.json from run.json's review, so both carry the verdict.
+ */
 function judgedAs(
   files: Record<string, unknown>,
   verdict: "blocked" | "timed_out",
@@ -89,6 +96,7 @@ function judgedAs(
   const next = clone(files);
   const run = record(next, "run.json");
   run.review = { ...(run.review as object), verdict };
+  next["review.json"] = run.review;
   if (isRecord(run.outcome)) run.outcome = { ...run.outcome, ok: false };
   const status = record(next, "status.json");
   status.outcome = { ...(status.outcome as object), verdict, ok: false };
@@ -98,12 +106,14 @@ function judgedAs(
 
 /**
  * The passing golden stopped by SIGINT before it finished: run.json is the last live flush, with
- * the outcome the signal handler writes, and status.json is the interrupted record.
+ * the outcome the signal handler writes, review.json is that flush's review, and status.json is
+ * the interrupted record.
  */
 function interrupted(files: Record<string, unknown>): Record<string, unknown> {
   const next = clone(files);
   const run = record(next, "run.json");
   run.review = { ...(run.review as object), verdict: "contract_proof_only" };
+  next["review.json"] = run.review;
   run.simulations = (run.simulations as Record<string, unknown>[]).map((simulation) => ({
     ...simulation,
     status: "running",
@@ -154,7 +164,9 @@ export async function outcomeCases(): Promise<OutcomeCase[]> {
 
 /**
  * Write one case as the only run of a new project under `root`, with the placeholders replaced by
- * readable values. Binary files and the Observer page are left out: no reader here opens them.
+ * readable values. A binary file the golden holds only as a digest (every one is a screenshot) is
+ * written as a blank 1x1 PNG, so verify, which `humanish review` runs first, finds each referenced
+ * frame. The Observer page is left out: no reader here opens it.
  */
 export async function writeOutcomeCase(
   root: string,
@@ -167,9 +179,12 @@ export async function writeOutcomeCase(
   await mkdir(runDir, { recursive: true });
   for (const [file, value] of Object.entries(outcome.files)) {
     if (file.startsWith("<") || file === "observer/index.html") continue;
-    if (typeof value === "string" && value.startsWith("sha256:")) continue;
     const target = path.resolve(runDir, file);
     await mkdir(path.dirname(target), { recursive: true });
+    if (typeof value === "string" && value.startsWith("sha256:")) {
+      await writeFile(target, PLACEHOLDER_PNG);
+      continue;
+    }
     const restored = restore(value, runId);
     const text =
       typeof restored === "string"

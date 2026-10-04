@@ -5,7 +5,11 @@ import type { StudyConfig } from "./types.js";
 import type { StudyRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
-import { localAgentVersionRefusal, type DetectedLocalAgent } from "../actors/local-agent/cli.js";
+import {
+  localAgentReady,
+  localAgentVersionRefusal,
+  type DetectedLocalAgent,
+} from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import {
   protocolAdditionsWarning,
@@ -378,7 +382,7 @@ async function participantChecks(
   return [
     {
       name: "local participant authentication",
-      ok: agent?.authStatus === "authenticated" && outdated === undefined,
+      ok: agent !== undefined && localAgentReady(agent),
       message:
         agent?.authStatus === "authenticated"
           ? (outdated ??

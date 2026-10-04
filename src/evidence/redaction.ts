@@ -25,7 +25,11 @@ const SECRET_PATTERNS: RegExp[] = [
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
   /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g,
   /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g,
-  /https?:\/\/[^/\s]*e2b[^)\s]+/gi,
+  // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
+  // key. One URL is exempt: E2B's dashboard, as the SDK's missing-key error names it
+  // (https://e2b.dev/dashboard?tab=keys), with no userinfo, no path below /dashboard, no query but
+  // one short `tab`, and only closing punctuation before the next space or ")".
+  /(?!https:\/\/(?:www\.)?e2b\.dev\/dashboard\/?(?:\?tab=[a-z]{1,16})?[.,;:!?'"]*(?:[)\s]|$))https?:\/\/[^/\s]*e2b[^)\s]+/gi,
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 

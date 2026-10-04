@@ -17,6 +17,7 @@ import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/
 import {
   detectLocalAgents,
   localAgentDoctorMessage,
+  localAgentReady,
   NO_LOCAL_AGENT_MESSAGE,
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
@@ -384,7 +385,9 @@ async function probeDoctorKeys(
  * The operator's own coding agents, one row each, reported as a capability and never a gate: a
  * machine with none is not broken, it just needs a provider key. These rows exist because "go make
  * an API key" is where most people trying humanish stop, and a developer very often already has one
- * of these signed in. An agent that is installed but not signed in is a note.
+ * of these signed in. An agent that cannot run participants (not signed in under the participant's
+ * environment, sign-in unknown, or a Claude Code below the floor) is a note; `--study` fails on it
+ * when the study selects that agent.
  */
 function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] {
   if (agents.length === 0)
@@ -392,7 +395,7 @@ function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] 
   return agents.map((agent) => ({
     name: `local agent ${agent.bin}`,
     ok: true,
-    ...(agent.authStatus === "authenticated" ? {} : { status: "note" as const }),
+    ...(localAgentReady(agent) ? {} : { status: "note" as const }),
     message: localAgentDoctorMessage(agent),
   }));
 }

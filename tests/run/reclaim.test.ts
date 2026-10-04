@@ -341,6 +341,22 @@ describe("humanish reclaim beyond the receipts", () => {
     expect(receipt.state).toBe("unknown");
   });
 
+  it("keeps E2B's dashboard URL in a failed tag search's detail, and redacts a token in it", async () => {
+    await dryRun(cwd);
+    const search = async (message: string) =>
+      (
+        await reclaimRunSandboxes(cwd, "latest", {
+          loadModule: async () => fakeModule({}, [], { listError: new Error(message) }),
+        })
+      ).tagSearch;
+    const missingKey =
+      "API key is required, please visit the API Keys tab at https://e2b.dev/dashboard?tab=keys to get your API key.";
+    expect(await search(missingKey)).toMatchObject({ status: "failed", detail: missingKey });
+    expect(
+      await search("see https://e2b.dev/dashboard?tab=keys&token=synthetic-dashboard-token now"),
+    ).toMatchObject({ status: "failed", detail: "see [REDACTED_SECRET] now" });
+  });
+
   it("kills a sandbox that never reached a receipt, found by the run's exact tags", async () => {
     const runPaths = await dryRun(cwd);
     const tags = sandboxOwnerTags(runPaths);
