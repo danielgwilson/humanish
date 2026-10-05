@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The Observer gives recordings more room. The focus view puts back, the participant pager, the
+  name, the status and the inspector toggle on one line, and moves the assigned task and
+  participant background into the Details tab, so the frame at 1600x1000 is 171 px taller. Every
+  grid card has the same 44 px caption, so phone-sized and desktop cards in a row end at the same
+  height.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library
