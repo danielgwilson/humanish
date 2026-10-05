@@ -53,7 +53,7 @@ import {
   type RefusedStudy,
   type RouteAdmission,
 } from "../../run/route-shell.js";
-import { planTerminalStudy, type TerminalRefusal } from "./plan.js";
+import { type TerminalRefusal } from "./plan.js";
 import { runDryTerminalStudy } from "./dry-run.js";
 import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
@@ -64,27 +64,10 @@ import {
   type LiveTerminalAuth,
   type LiveTerminalPlan,
   type RunLiveTerminalSessionArgs,
-  type RunTerminalProductStudyOptions,
   type TerminalProductStudyResult,
   type TerminalRunInput,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
-
-/**
- * The config-taking entry point. It plans, returns a refusal with the same envelope and analysis
- * record the route has always returned, and otherwise runs the plan.
- */
-export async function runTerminalProductStudy(
-  options: RunTerminalProductStudyOptions,
-): Promise<TerminalProductStudyResult> {
-  const { config, dryRun, ...input } = options;
-  const planned = planTerminalStudy(config, {
-    dryRun,
-    hasCostProbe: input.deps?.costProbe !== undefined,
-  });
-  if (planned.ok) return runTerminalPlan(planned.plan, input);
-  return terminalStudyRefusal(options, planned.refusal);
-}
 
 /** A refused terminal study's result: the route's envelope, and the analysis record a refusal gets. */
 export function terminalStudyRefusal(
@@ -117,15 +100,6 @@ type AdmittedTerminalRun =
 
 type DryTerminalPlan = Extract<TerminalPlan, { readonly dryRun: true }>;
 
-/** Run a terminal plan: its local checks, then the run. */
-export async function runTerminalPlan(
-  plan: TerminalPlan,
-  input: TerminalRunInput,
-): Promise<TerminalProductStudyResult> {
-  const admitted = await admitTerminalPlan(plan, input);
-  return (admitted.ok ? await admitted.run() : admitted.outcome).result;
-}
-
 /**
  * runStudyWith's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
  * before any run scope opens, so the CLI can present their refusal before it loads a declared
@@ -140,7 +114,7 @@ export function admitTerminalPlan(
     analysis: plan.analysis,
     input,
     admit: () => admitTerminalRun(plan, input),
-    withScorer: (admitted, scorer) => withLateScorer(admitted, scorer, terminalRouteScorer),
+    withScorer: (base, scorer) => withLateScorer(base, scorer, terminalRouteScorer),
     runInScope: runTerminalPlanInScope,
   });
 }

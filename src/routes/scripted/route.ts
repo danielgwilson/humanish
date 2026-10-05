@@ -27,35 +27,14 @@ import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { type RunScope } from "../../run/run.js";
 import { admitRoute, completeRefusalAnalysis, type RefusedStudy } from "../../run/route-shell.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { injectedBrowser, planScriptedStudy, type ScriptedRefusal } from "./plan.js";
+import { type ScriptedRefusal } from "./plan.js";
 import { finishScriptedRun } from "./result.js";
 import { UnsafeScriptedSessionResultError } from "./session-result.js";
 import { prepareScriptedRun } from "./setup.js";
 import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
-import {
-  type RunScriptedBrowserStudyOptions,
-  type ScriptedBrowserStudyResult,
-  type ScriptedRunInput,
-} from "./types.js";
+import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
-
-/**
- * The config-taking entry point. It plans, returns a refusal with the envelope the route has always
- * returned at that refusal's stage, and otherwise runs the plan.
- */
-export async function runScriptedBrowserStudy(
-  options: RunScriptedBrowserStudyOptions,
-): Promise<ScriptedBrowserStudyResult> {
-  const { config, dryRun, ...input } = options;
-  // planScriptedStudy makes every configuration refusal, in the order this route always has.
-  const planned = planScriptedStudy(config, {
-    dryRun,
-    injectedBrowser: injectedBrowser(input.deps),
-  });
-  if (planned.ok) return runScriptedPlan(planned.plan, input);
-  return scriptedStudyRefusal(options, planned.refusal);
-}
 
 /**
  * A refused scripted study's result, at the refusal's stage: a before-scope refusal has its own field
@@ -114,15 +93,6 @@ export function admitScriptedPlan(
     admit: () => ({ ok: true, admitted: plan }),
     runInScope: runScriptedPlanInScope,
   });
-}
-
-/** Run a scripted plan through admitScriptedPlan. */
-export async function runScriptedPlan(
-  plan: ScriptedPlan,
-  input: ScriptedRunInput,
-): Promise<ScriptedBrowserStudyResult> {
-  const admitted = await admitScriptedPlan(plan, input);
-  return (admitted.ok ? await admitted.run() : admitted.outcome).result;
 }
 
 async function runScriptedPlanInScope(

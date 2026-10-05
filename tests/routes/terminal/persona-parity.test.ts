@@ -17,8 +17,8 @@ import {
   buildTerminalProductBundle,
 } from "../../../src/routes/terminal/bundle.js";
 import { composePrompt } from "../../../src/routes/terminal/dry-run.js";
-import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { passingRun, terminalConfig } from "../../helpers/terminal-live-fake.js";
+import { runTerminal } from "../../helpers/route-run.js";
 
 vi.mock("../../../src/routes/terminal/bundle.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../src/routes/terminal/bundle.js")>();
@@ -82,9 +82,9 @@ const personaWarnings = (warnings: readonly string[]) =>
 
 /** Runs the lab dry, then live, and checks that both resolved the same persona. */
 async function expectSamePersona(lab: StudyConfig) {
-  const dry = await runTerminalProductStudy({ cwd, config: lab, dryRun: true, open: false });
+  const dry = await runTerminal({ cwd, config: lab, dryRun: true, open: false });
   const commands: string[] = [];
-  const live = await runTerminalProductStudy({
+  const live = await runTerminal({
     cwd,
     config: lab,
     dryRun: false,

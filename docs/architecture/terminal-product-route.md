@@ -24,19 +24,19 @@ fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
 
-| Axis                              | Value                                                                                                                                                       |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subject.source`                  | `terminal-product`                                                                                                                                          |
-| `subject.product`                 | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                                    |
-| `execution.target`                | `e2b-terminal` (or absent → implied)                                                                                                                        |
-| `execution.terminal`              | `{ transport: exec-stream, stdin: disabled }`                                                                                                               |
-| `execution.runtimeAuth`           | `openai-egress` (default) or opt-in `openai-env`; names-only durable evidence                                                                               |
-| `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                                     |
-| `actor.model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                          |
-| `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused: no adopter cost source exists until issue 347 lands                    |
-| `policies`                        | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                                |
-| `actor.type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                       |
-| route                             | `terminal` → `runTerminalProductStudy` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
+| Axis                              | Value                                                                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`                  | `terminal-product`                                                                                                                                    |
+| `subject.product`                 | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                              |
+| `execution.target`                | `e2b-terminal` (or absent → implied)                                                                                                                  |
+| `execution.terminal`              | `{ transport: exec-stream, stdin: disabled }`                                                                                                         |
+| `execution.runtimeAuth`           | `openai-egress` (default) or opt-in `openai-env`; names-only durable evidence                                                                         |
+| `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                               |
+| `actor.model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                    |
+| `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused: no adopter cost source exists until issue 347 lands              |
+| `policies`                        | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all default false                          |
+| `actor.type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                 |
+| route                             | `terminal` → `admitTerminalPlan` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
 Routing is `routeOf` (`src/study/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.

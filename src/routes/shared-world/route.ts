@@ -46,7 +46,7 @@ import {
 } from "../../run/route-shell.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
-import { planSharedWorldStudy, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
+import { sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentStudyFailure, finishConcurrentRun } from "./result.js";
@@ -64,7 +64,6 @@ import {
   type LiveParticipants,
   type PlaneContext,
   type PlaneResults,
-  type RunConcurrentSharedWorldStudyOptions,
   type PlaneSelection,
 } from "./types.js";
 import { rosterOf } from "../../study/parse/actors.js";
@@ -76,23 +75,6 @@ const LOCAL_AGENT_REFUSAL_CODES = {
   unsupported: "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED",
   "unpriced-cap": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
 } as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldStudyErrorCode>;
-
-/**
- * The library entry for a shared-world study. It plans the config with planSharedWorldStudy and runs
- * the plan with runSharedWorldPlan.
- */
-export async function runConcurrentSharedWorld(
-  options: RunConcurrentSharedWorldStudyOptions,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  const { config, dryRun, ...input } = options;
-  // planSharedWorldStudy makes every configuration refusal, in the order this route always has.
-  const planned = planSharedWorldStudy(config, {
-    dryRun,
-    hasRunSession: input.deps?.runSession !== undefined,
-  });
-  if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);
-  return sharedWorldStudyRefusal(options, planned.refusal);
-}
 
 /** A refused shared-world study's result: the route's envelope, and a refusal's analysis record. */
 export function sharedWorldStudyRefusal(
@@ -135,20 +117,10 @@ export function admitSharedWorldPlan(
     analysis: plan.analysis,
     input,
     admit: () => admitSharedWorldRun(plan, input),
-    withScorer: (admitted, scorer) => withLateScorer(admitted, scorer, browserRouteScorer),
+    withScorer: (base, scorer) => withLateScorer(base, scorer, browserRouteScorer),
     runInScope: (_admitted, running, scope) => runPlanInScope(plan, running, config, scope),
     commsSecrets: true,
   });
-}
-
-/** Run a shared-world plan: its local checks, then the run. */
-export async function runSharedWorldPlan(
-  plan: SharedWorldPlan,
-  input: SharedWorldRunInput,
-  config: StudyConfig,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  const admitted = await admitSharedWorldPlan(plan, input, config);
-  return (admitted.ok ? await admitted.run() : admitted.outcome).result;
 }
 
 /**

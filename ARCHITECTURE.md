@@ -23,12 +23,6 @@ the analysis of the run:
 - preview: `admitPreviewPlan` (`src/routes/preview.ts`); its `run()` calls `runPreviewPlan`
   (`src/routes/preview.ts`), which publishes a fixture bundle.
 
-`runComputerUsePlan` (`src/routes/computer-use/route.ts`), `runTerminalPlan`
-(`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`)
-admit and run in one call. Only tests call them, directly or through the route modules'
-`runCuaActorStudy`, `runTerminalProductStudy` and `runConcurrentSharedWorld`. `runStudyWith` and the CLI do
-not.
-
 1. **Parse.** `runStudyCommand` (`src/cli/commands/study-run.ts`) calls `resolveStudyManifest`
    (`src/study/discover.ts`), which calls `parseStudy` (`src/study/config.ts`). It rejects unknown
    keys and the compositions the

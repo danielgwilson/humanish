@@ -30,37 +30,12 @@ import { browserRouteScorer } from "../../study/adapter-scorer-loader.js";
 import { withLateScorer } from "../../study/route-inputs.js";
 import type { AdmittedPlan } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
-import { callerDrivingOf, planComputerUseStudy, type ComputerUseRefusal } from "./plan.js";
+import { type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runStudyParticipants } from "./live-phase.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaStudy, startCuaRun } from "./setup.js";
-import {
-  type ComputerUseRunInput,
-  type CuaActorStudyResult,
-  type RunCuaActorStudyOptions,
-} from "./types.js";
+import { type ComputerUseRunInput, type CuaActorStudyResult } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
-
-/**
- * Plans and runs a computer-use study in one call. It is not exported from src/index.ts; tests call
- * it. It plans the config with planComputerUseStudy and runs
- * the plan with runComputerUsePlan.
- */
-export async function runCuaActorStudy(
-  options: RunCuaActorStudyOptions,
-): Promise<CuaActorStudyResult> {
-  const { config, dryRun, ...input } = options;
-  // planComputerUseStudy makes every configuration refusal, in the order this route always has.
-  const planned = planComputerUseStudy(config, {
-    dryRun,
-    hasRunSession: input.deps?.runSession !== undefined,
-    driving: callerDrivingOf(input),
-    ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
-    ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
-  });
-  if (planned.ok) return runComputerUsePlan(planned.plan, input, config);
-  return computerUseStudyRefusal(options, planned.refusal);
-}
 
 /**
  * A refused computer-use study's result, at the refusal's stage: a before-scope refusal has its own
@@ -108,25 +83,11 @@ export function admitComputerUsePlan(
     analysis: plan.analysis,
     input,
     admit: () => admitCuaRun(plan, input, config),
-    withScorer: (admitted, scorer) => withLateScorer(admitted, scorer, browserRouteScorer),
+    withScorer: (base, scorer) => withLateScorer(base, scorer, browserRouteScorer),
     runInScope: (admitted, running, scope) => runPlanInScope(plan, running, admitted, scope),
     ...(analysisRefusal === undefined ? {} : { analysisRefusal }),
     commsSecrets: true,
   });
-}
-
-/**
- * Run a computer-use plan: its local checks, then the run. Participants, the brain, the subject,
- * the caps and the residual config come from the plan. `config` is what the caller's
- * createProvider and inProcess executor receive.
- */
-export async function runComputerUsePlan(
-  plan: ComputerUsePlan,
-  input: ComputerUseRunInput,
-  config: StudyConfig,
-): Promise<CuaActorStudyResult> {
-  const admitted = await admitComputerUsePlan(plan, input, config);
-  return (admitted.ok ? await admitted.run() : admitted.outcome).result;
 }
 
 async function runPlanInScope(

@@ -2,12 +2,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
 import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { participantAssignment } from "../../src/study/participant-assignment.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
+import { runComputerUse } from "../helpers/route-run.js";
 
 describe("participant assignment evidence", () => {
   let cwd: string;
@@ -75,7 +75,7 @@ describe("participant assignment evidence", () => {
         execution: { target: "e2b-desktop" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: parsed.config,
         dryRun: true,
@@ -137,7 +137,7 @@ describe("participant assignment evidence", () => {
       execution: { target: "e2b-desktop" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: parsed.config,
       dryRun: true,

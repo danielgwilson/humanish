@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runComputerUse } from "../../helpers/route-run.js";
 
 // Email receiving is prepared after the run's first snapshot and before any desktop. A failure there
 // is a refusal after the run started, driven here through the real route.
@@ -65,7 +65,7 @@ describe("computer-use email receiving setup failure", () => {
     } as unknown as E2BDesktopModule;
     const analysis = automaticAnalysisBoundary();
 
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: realEmailCloneConfig(),
       dryRun: false,

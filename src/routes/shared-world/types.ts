@@ -50,13 +50,11 @@ export const CONCURRENT_ATTRIBUTION_LIMITS = [
   "state-change-not-isolated-to-actors",
 ] as const;
 
-export interface RunConcurrentSharedWorldStudyOptions {
+/** What a shared-world run takes besides its plan. The plan carries the config, dry run and study. */
+export interface SharedWorldRunInput {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
-  config: StudyConfig;
-  /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
-  dryRun: boolean;
   open?: boolean;
   runId?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
@@ -80,9 +78,6 @@ export interface RunConcurrentSharedWorldStudyOptions {
    *  core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
-
-/** What a shared-world run takes besides its plan. The plan carries the config, dry run and study. */
-export type SharedWorldRunInput = Omit<RunConcurrentSharedWorldStudyOptions, "config" | "dryRun">;
 
 export type ConcurrentSharedWorldStudyErrorCode =
   | "HUMANISH_STUDY_ANALYSIS_INVALID"

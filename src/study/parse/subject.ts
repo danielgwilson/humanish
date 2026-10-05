@@ -234,7 +234,7 @@ function parseServedApp(
     return stateResult;
   }
   if (stateResult.value) {
-    // Semantic validation is shared with the engine (runCuaActorStudy re-enforces it for
+    // Semantic validation is shared with the engine (planComputerUseStudy re-enforces it for
     // configs that arrive through the library API without the parser).
     const reason = subjectStateInvalidReason(stateResult.value, subject.env);
     if (reason) {

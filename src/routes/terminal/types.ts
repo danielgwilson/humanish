@@ -11,7 +11,6 @@ import type { RunScope } from "../../run/run.js";
 import type { buildRuntimeAuth } from "./credentials.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
 import type { StudyDeps } from "../../study/study-deps.js";
-import type { StudyConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import {
   type RunAdapterScore,
@@ -132,15 +131,13 @@ export interface TerminalScorer {
   ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
 }
 
-export interface RunTerminalProductStudyOptions {
+/** What a terminal run takes besides its plan. The plan carries the config, dry run and study. */
+export interface TerminalRunInput {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
   emit?: (event: StudyEvent) => void;
   cwd: string;
-  config: StudyConfig;
-  /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
-  dryRun: boolean;
   open?: boolean;
   runId?: string;
   /**
@@ -382,9 +379,6 @@ export interface TerminalLedgers {
   /** The no-spend proof derived from `cost`. Never an independent assertion. */
   noSpendProof: NoSpendProof;
 }
-
-/** What a terminal run takes besides its plan. The plan carries the config, dry run and study. */
-export type TerminalRunInput = Omit<RunTerminalProductStudyOptions, "config" | "dryRun">;
 
 /** A live terminal plan: its caps are the fail-closed ones planTerminalStudy required. */
 export type LiveTerminalPlan = Extract<TerminalPlan, { readonly dryRun: false }>;
