@@ -1,10 +1,11 @@
 import { z } from "zod";
 import {
+  BROWSER_CONTROL_LIMITS,
   browserControlActionSchema,
   browserOnlyControlActionSchema,
   validateBrowserControlAction,
 } from "../../browser-control/protocol.js";
-import { validClosingReport, type CuaTurn } from "../computer-use/loop.js";
+import { validClosingReport, type CuaTurn, type ShortenedWait } from "../computer-use/loop.js";
 import type { ActorExecutionProfile, ParticipantClosingReport } from "../contract.js";
 
 /** The declared profile. A participant replaces cliVersion with its detected CLI release, or with
@@ -27,6 +28,8 @@ export const PARTICIPANT_LIMITS = Object.freeze({
   narration: 2000,
   output: 256 * 1024,
   actions: 4,
+  /** The longest wait one action lasts; a longer one is shortened to it. */
+  waitMs: BROWSER_CONTROL_LIMITS.waitMs,
   requestMs: 180_000,
   cleanupMs: 5000,
 });
@@ -56,15 +59,43 @@ export const PARTICIPANT_FINAL_SCHEMA = {
     },
   },
 };
+/**
+ * Shorten each wait longer than one browser-control request may wait. A failed tool call ends the
+ * native run, so a wait that asks too much would otherwise end the whole session.
+ */
+function shortenWaits(value: unknown): { value: unknown; shortened: ShortenedWait[] } {
+  const actions = (value as { actions?: unknown } | null)?.actions;
+  if (typeof value !== "object" || !Array.isArray(actions)) return { value, shortened: [] };
+  const shortened: ShortenedWait[] = [];
+  const limit = PARTICIPANT_LIMITS.waitMs;
+  const next = actions.map((action: unknown, index) => {
+    const wait = action as { kind?: unknown; ms?: unknown } | null;
+    if (
+      wait?.kind !== "wait" ||
+      typeof wait.ms !== "number" ||
+      !Number.isFinite(wait.ms) ||
+      wait.ms <= limit
+    )
+      return action;
+    shortened.push({ index, requestedMs: wait.ms, ms: limit });
+    return { ...wait, ms: limit };
+  });
+  return shortened.length === 0
+    ? { value, shortened }
+    : { value: { ...value, actions: next }, shortened };
+}
+
 /** humanish tool arguments, validated before the shared executor sees a batch. */
 export function parseParticipantTool(value: unknown, speechEnabled = false): CuaTurn {
   if (Buffer.byteLength(JSON.stringify(value) ?? "") > PARTICIPANT_LIMITS.output)
     throw new Error("invalid_response");
-  const v = toolInput(speechEnabled).parse(value);
+  const { value: admitted, shortened } = shortenWaits(value);
+  const v = toolInput(speechEnabled).parse(admitted);
   if (Buffer.byteLength(v.narration) > PARTICIPANT_LIMITS.narration)
     throw new Error("invalid_response");
   return {
     actions: v.actions.map(validateBrowserControlAction),
+    ...(shortened.length === 0 ? {} : { shortenedWaits: shortened }),
     pendingSafetyChecks: [],
     done: false,
     ...(v.narration ? { message: v.narration } : {}),
