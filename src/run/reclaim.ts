@@ -28,6 +28,7 @@ import { readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 import { RUN_STATUS_FILE } from "./status.js";
 import { isRecord } from "./type-guards.js";
+import { isRunOutcome } from "./bundle-shape.js";
 import {
   parseSandboxOwners,
   parseSandboxReceipts,
@@ -196,7 +197,8 @@ type NoSandboxReason = "dry-run" | "no-sandbox";
  * Why the run's own records say it created no sandbox. `dry-run`: run.json and status.json, each
  * one present, say `dry-run`. `no-sandbox`: status.json, written at start, names this run and
  * records `sandboxes: none`, which the route sets only when it has no way to create one (a
- * scripted run against an app-url subject). A run with no such record is not taken for one, so an
+ * scripted run against an app-url subject), and run.json agrees (scriptedAppUrlBundle). A status
+ * record alone can be stale or copied from another run, so it never decides on its own, and an
  * empty journal alone never makes a run clean. A journal with any line in it, or an earlier
  * reclaim receipt that names a sandbox, means a create ran, so that run is reclaimed as a live one
  * whatever its records say.
@@ -210,7 +212,10 @@ async function recordedNoSandbox(
   const reason: NoSandboxReason | undefined =
     records.length > 0 && records.every((record) => record.mode === "dry-run")
       ? "dry-run"
-      : isRecord(status) && status.runId === runIdOf(runPaths) && status.sandboxes === "none"
+      : isRecord(status) &&
+          status.runId === runIdOf(runPaths) &&
+          status.sandboxes === "none" &&
+          scriptedAppUrlBundle(bundle, runIdOf(runPaths))
         ? "no-sandbox"
         : undefined;
   if (reason === undefined) return undefined;
@@ -222,6 +227,41 @@ async function recordedNoSandbox(
   if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return reason;
   const journal = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
   return journal !== null && journal.toString("utf8").trim() === "" ? reason : undefined;
+}
+
+/** The execution failure kinds that leave a sandbox or a provider's resources unconfirmed. */
+const CLEANUP_KINDS: ReadonlySet<string> = new Set(["sandbox-cleanup", "provider-cleanup"]);
+
+/**
+ * run.json for `runId` agrees that its run could create no sandbox: the scripted route wrote it
+ * (each lifecycle event is a `scripted-lab.` one), its subject is not a provisioned clone (a clone
+ * records `subject`), it lists no provider resource and no desktop minutes, and its outcome marks
+ * no sandbox or provider cleanup unconfirmed. A run.json that is missing, unreadable or says
+ * otherwise does not agree.
+ */
+function scriptedAppUrlBundle(bundle: unknown, runId: string): boolean {
+  if (!isRecord(bundle) || bundle.runId !== runId || bundle.subject !== undefined) return false;
+  const { lifecycle, providerResources, cost, outcome } = bundle;
+  const scripted =
+    Array.isArray(lifecycle) &&
+    lifecycle.length > 0 &&
+    lifecycle.every(
+      (entry) =>
+        isRecord(entry) &&
+        typeof entry.event === "string" &&
+        entry.event.startsWith("scripted-lab."),
+    );
+  if (!scripted) return false;
+  if (
+    providerResources !== undefined &&
+    !(Array.isArray(providerResources) && providerResources.length === 0)
+  )
+    return false;
+  if (cost !== undefined && !(isRecord(cost) && cost.desktopMinutes === null)) return false;
+  if (!isRunOutcome(outcome)) return false;
+  if (outcome.state !== "finished") return true;
+  const { failures, warnings = [] } = outcome.execution;
+  return ![...failures, ...warnings].some((failure) => CLEANUP_KINDS.has(failure.kind));
 }
 
 /**

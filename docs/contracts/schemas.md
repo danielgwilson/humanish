@@ -1152,8 +1152,11 @@ signal?, outcome? }`. A record written by 0.108 or earlier also has `lab`, with 
 `study`, and readers accept it. `sandboxes: none` is written at run start by a route that has no
 way to create a sandbox for the run: a scripted run against an `app-url` subject. A run that may
 create one has no `sandboxes` field. `humanish reclaim` reports such a run `clean` with
-`reason: no-sandbox` without contacting E2B, unless its journal or an earlier reclaim receipt
-names a sandbox.
+`reason: no-sandbox` without contacting E2B only when its `run.json` agrees: the scripted route
+wrote it, its subject is no clone, it lists no provider resource or desktop minutes, and its
+outcome marks no sandbox or provider cleanup unconfirmed. A missing or contradicting `run.json`,
+a journal line or an earlier reclaim receipt that names a sandbox sends the run through the
+normal E2B search.
 `outcome` carries the bundle's `verdict`, `participants`, `estimatedCostUsd` and
 `estimatedCostComplete` when the run finishes, with `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` copied from `run.json`'s `outcome`

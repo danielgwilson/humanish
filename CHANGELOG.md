@@ -12,9 +12,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - `humanish reclaim --check` on a live scripted run against an `app-url` subject reported
   `unknown` and exited 2, though that route creates no sandbox. The run's `status.json` now records
-  `sandboxes: none` at start, and reclaim reports such a run `clean` with `reason: no-sandbox`,
-  exits 0 and does not contact E2B. A scripted clone run, which serves its subject from a sandbox,
-  records no such field. Runs recorded before this release still report `unknown`.
+  `sandboxes: none` at start. When its `run.json` agrees (scripted route, no clone subject, no
+  provider resource, no unconfirmed cleanup), reclaim reports such a run `clean` with
+  `reason: no-sandbox`, exits 0 and does not contact E2B. A scripted clone run, which serves its
+  subject from a sandbox, records no such field. Runs recorded before this release, and runs whose
+  `run.json` is missing or disagrees, still go through the E2B search.
 - `humanish review` on a computer-use run stopped by Ctrl-C after its desktop started printed
   "Live computer-use session is running…" and the gap "Live desktop session is still running."
   under its `interrupted` headline. Those came from the review the run's last live flush wrote.
