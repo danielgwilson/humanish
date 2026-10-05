@@ -289,7 +289,6 @@ Useful commands:
 ```bash
 npx humanish study list
 npx humanish study show first-run
-npx humanish watch first-run
 npx humanish run first-run --json --no-open
 ```
 
@@ -377,25 +376,30 @@ inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and
 ## First Proof Run
 
 Run the no-credentials path first. It is a dry run: humanish writes a synthetic
-run bundle and tests no target app behavior:
+run bundle and tests no target app behavior. Every command in this block
+finishes and exits, needs no key and spends nothing; lines marked
+`# live only` need keys and spend money, so run them only when the user has
+approved a live run. `run` prints the run id; use it in place of `<id>`.
 
 ```bash
-npx humanish doctor
-npx humanish watch
-npx humanish verify --run latest --json
-npx humanish feedback issue --run latest --repo example/app --format markdown
-```
-
-For CI or non-interactive proof:
-
-```bash
-npx humanish watch --json --no-open
+npx humanish doctor --json
 npx humanish run first-run --json --no-open
+npx humanish verify --run <id> --json
+npx humanish review --run <id> --json
+npx humanish observe --run <id>
+npx humanish run try-live --json --no-open  # live only
+npx humanish feedback issue --run <id> --repo example/app --format markdown  # live only
 ```
 
-The feedback command prints a public-safe Markdown draft. It must not call the
-GitHub API, require a token, update Projects, use provider credits, or claim
-product behavior proof from a dry run.
+`observe` prints the path of the run's Observer page for the person you are
+working for. Without an interactive terminal, `observe` and `watch` print the
+result and exit; at a person's terminal they serve the Observer until Ctrl-C.
+
+`feedback issue` drafts from a live run only and refuses a dry run with
+`HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN`. Its Markdown draft is checked for
+secret, key, token and local-path shapes; it is not checked for personal data. It
+must not call the GitHub API, require a token, update Projects, use provider
+credits, or claim product behavior proof from a dry run.
 
 When the target app can run locally, prove a known browser path with a
 scripted-browser study after starting the app on loopback. The study replays a
@@ -414,8 +418,8 @@ no browser.
 # in another terminal, start the target app on 127.0.0.1 or localhost
 npx humanish study show <study> --json
 npx humanish run <study> --json --no-open
-npx humanish verify --run latest --json
-npx humanish observe --run latest --open   # for a person; it serves until Ctrl-C
+npx humanish verify --run <id> --json
+npx humanish observe --run <id> --open   # for a person; at their terminal it serves until Ctrl-C
 ```
 
 Do not use `humanish watch --count ...` as a substitute for a scripted-browser
@@ -442,7 +446,7 @@ Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 Load local values only at invocation time:
 
 ```bash
-npx humanish watch .humanish/studies/local-live.yaml --dotenv .humanish/local/provider.env
+npx humanish run .humanish/studies/local-live.yaml --dotenv .humanish/local/provider.env --json --no-open
 ```
 
 When choosing dogfood targets, prefer apps, CLIs, or agent-facing tools with a

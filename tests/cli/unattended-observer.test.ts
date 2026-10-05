@@ -93,7 +93,7 @@ describe("watch and observe without an interactive terminal", () => {
     expect(envelope.serverUrl).toBeUndefined();
   });
 
-  // util-linux `script` gives the child a terminal; the BSD `script` on macOS takes other flags.
+  // util-linux `script` gives the child a terminal; the `script` on macOS takes other flags.
   it.skipIf(process.platform !== "linux" || !existsSync(PTY_WRAPPER)).each([
     { name: "observe", args: ["observe", "--run", "saved"], attached: /serving: http:\/\/127/ },
     { name: "watch", args: ["watch", "--count", "1"], attached: /watching: http:\/\/127/ },
