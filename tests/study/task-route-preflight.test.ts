@@ -2,8 +2,9 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudyDocument } from "../../src/study/config.js";
-import { type StudyConfig } from "../../src/study/types.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { actorOf } from "../../src/study/study-fields.js";
+import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import * as synthetic from "../../src/run/dry-run.js";
@@ -13,7 +14,7 @@ const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{
   name: string;
-  config: StudyConfig;
+  config: Record<string, unknown>;
   supported: boolean;
   route: string;
 }>;
@@ -24,8 +25,8 @@ const tasks = [
     success: { any: [{ textIncludes: "HIDDEN_SUCCESS_SENTINEL" }] },
   },
 ];
-function validConfig(raw: StudyConfig): StudyConfig {
-  const parsed = parseStudyDocument(raw);
+function validConfig(raw: Record<string, unknown>): StudyConfig {
+  const parsed = parseStudy(raw);
   expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -46,10 +47,10 @@ describe("declared task protocol admission", () => {
     ({ config, supported, route }) => {
       expect(routeOf(validConfig(config))).toBe(route);
       const declared = structuredClone(config);
-      declared.actors[0]!.tasks = tasks;
-      const result = parseStudyDocument(declared);
+      (declared.actor as Record<string, unknown>).tasks = tasks;
+      const result = parseStudy(declared);
       expect(result.ok, JSON.stringify(result)).toBe(supported);
-      if (result.ok) expect(result.config.actors[0]!.tasks).toEqual(tasks);
+      if (result.ok) expect(actorOf(result.config)!.tasks).toEqual(tasks);
       else {
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain("actor.tasks is unsupported");
@@ -62,7 +63,7 @@ describe("declared task protocol admission", () => {
     "refuses live runStudy $name before any runner side effect",
     async ({ config }) => {
       const parsed = validConfig(config);
-      parsed.actors[0]!.tasks = tasks; // Direct library caller bypasses parse.
+      actorOf(parsed)!.tasks = tasks; // Direct library caller bypasses parse.
       const forbidden = vi.fn(async () => {
         throw new Error("provider/user hook forbidden");
       });
@@ -100,7 +101,7 @@ describe("declared task protocol admission", () => {
     "direct %s entry refuses tasks even when given a CUA-shaped config",
     async (_route, runner) => {
       const config = validConfig(fixtures.find((row) => row.supported)!.config);
-      config.actors[0]!.tasks = tasks;
+      actorOf(config)!.tasks = tasks;
       const result = await runner({ cwd: path.join(cwd, "must-not-exist"), config, dryRun: false });
       expect(result.error?.code).toBe("HUMANISH_STUDY_TASKS_UNSUPPORTED");
       await expect(access(path.join(cwd, "must-not-exist"))).rejects.toMatchObject({
@@ -113,7 +114,8 @@ describe("declared task protocol admission", () => {
   it("rejects ignored later-actor tasks at parse and direct CUA admission", async () => {
     const config = validConfig(fixtures.find((row) => row.supported)!.config);
     config.actors.push({ type: "openai-computer-use", tasks });
-    const parsed = parseStudyDocument(config);
+    // A second actor is a v2 shape: the v2 parser refuses it, and a library caller can pass it.
+    const parsed = parseStudyDocument({ ...config, schema: V2_SCHEMA });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("Multiple actors are not supported");
     const result = await runComputerUse({

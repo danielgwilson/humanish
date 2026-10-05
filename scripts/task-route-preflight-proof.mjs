@@ -1,21 +1,16 @@
 // After build: real CLI inspect/run admission, including live-mode unsupported labs.
 // Configs and SDK imports are real; side-effect ports are forbidden before CLI loading.
-// The fixtures are humanish.lab.v2, which the CLI no longer reads, so each is converted to v3 with
-// the built converter (the one humanish migrate uses) before it is written.
+// The fixtures are humanish.study.v3 configs, written as they are with a task added.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
-import { parse, stringify } from "yaml";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
 const preload = join(root, "tests/fixtures/task-route-preflight/deny-side-effects.mjs");
-const { convertStudyText } = await import(
-  pathToFileURL(join(root, "dist/study/migrate/convert.js")).href
-);
 const fixtures = JSON.parse(
   await readFile(join(root, "tests/fixtures/task-route-preflight/labs.json"), "utf8"),
 );
@@ -23,9 +18,7 @@ let cases = 0;
 for (const fixture of fixtures.filter(({ supported }) => !supported)) {
   const cwd = await mkdtemp(join(tmpdir(), "humanish-task-admission-"));
   try {
-    const converted = convertStudyText(stringify(fixture.config), root);
-    assert.ok(converted.ok, `${fixture.name}: ${converted.reason}`);
-    const config = parse(converted.conversion.text);
+    const config = structuredClone(fixture.config);
     config.actor.tasks = [
       {
         id: "inspect",

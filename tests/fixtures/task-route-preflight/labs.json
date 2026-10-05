@@ -2,14 +2,12 @@
   {
     "name": "shared-clone-concurrent",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "shared-world",
+      "mode": "live",
       "subject": {
         "source": "clone",
-        "topology": "shared-world",
         "repos": [
           "example-org/collab-app"
         ],
@@ -28,20 +26,18 @@
         },
         "exposure": "synthetic"
       },
-      "actors": [
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
+      "participants": [
         {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture.",
-          "lanes": [
-            {
-              "id": "author",
-              "instruction": "Create a note."
-            },
-            {
-              "id": "reviewer",
-              "instruction": "Review the note."
-            }
-          ]
+          "id": "author",
+          "instruction": "Create a note."
+        },
+        {
+          "id": "reviewer",
+          "instruction": "Review the note."
         }
       ],
       "execution": {
@@ -56,14 +52,12 @@
   {
     "name": "shared-local-tree-concurrent",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "shared-world",
+      "mode": "live",
       "subject": {
         "source": "local-tree",
-        "topology": "shared-world",
         "serve": {
           "install": "pnpm install",
           "start": "pnpm start --host 0.0.0.0",
@@ -79,20 +73,18 @@
         },
         "exposure": "synthetic"
       },
-      "actors": [
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
+      "participants": [
         {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture.",
-          "lanes": [
-            {
-              "id": "author",
-              "instruction": "Create a note."
-            },
-            {
-              "id": "reviewer",
-              "instruction": "Review the note."
-            }
-          ]
+          "id": "author",
+          "instruction": "Create a note."
+        },
+        {
+          "id": "reviewer",
+          "instruction": "Review the note."
         }
       ],
       "execution": {
@@ -107,35 +99,31 @@
   {
     "name": "shared-external-public",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "shared-world",
+      "mode": "live",
       "subject": {
         "source": "app-url",
-        "topology": "shared-world",
         "appUrl": "https://example.com/collab",
         "publicTarget": {
           "owner": "synthetic-operator",
           "authorized": true
         }
       },
-      "actors": [
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
+      "participants": [
         {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture.",
-          "lanes": [
-            {
-              "id": "author",
-              "instruction": "Create a note.",
-              "host": true
-            },
-            {
-              "id": "reviewer",
-              "instruction": "Review the note."
-            }
-          ]
+          "id": "author",
+          "instruction": "Create a note.",
+          "host": true
+        },
+        {
+          "id": "reviewer",
+          "instruction": "Review the note."
         }
       ],
       "execution": {
@@ -153,16 +141,10 @@
   {
     "name": "terminal",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live",
-        "caps": {
-          "maxUsd": 1,
-          "maxJobs": 1,
-          "maxMinutes": 1
-        }
-      },
+      "route": "terminal",
+      "mode": "live",
       "subject": {
         "source": "terminal-product",
         "product": {
@@ -172,16 +154,18 @@
           ]
         }
       },
-      "actors": [
-        {
-          "type": "codex-exec",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "codex-exec",
+        "mission": "Explore the synthetic study fixture."
+      },
+      "caps": {
+        "maxUsd": 1,
+        "maxJobs": 1,
+        "maxMinutes": 1
+      },
       "execution": {
         "target": "e2b-terminal",
         "runtimeAuth": "openai-env",
-        "timeoutMs": 60000,
         "terminal": {
           "transport": "exec-stream",
           "stdin": "disabled"
@@ -194,22 +178,18 @@
   {
     "name": "scripted-app-url",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live",
-        "ref": "scripted-first-run"
-      },
+      "route": "scripted",
+      "mode": "live",
+      "scenario": "scripted-first-run",
       "subject": {
         "source": "app-url",
         "appUrl": "http://127.0.0.1:3000/"
       },
-      "actors": [
-        {
-          "type": "scripted-browser",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "scripted-browser"
+      },
       "execution": {
         "target": "local",
         "timeoutMs": 60000
@@ -221,12 +201,11 @@
   {
     "name": "scripted-clone",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live",
-        "ref": "scripted-first-run"
-      },
+      "route": "scripted",
+      "mode": "live",
+      "scenario": "scripted-first-run",
       "subject": {
         "source": "clone",
         "repos": [
@@ -246,12 +225,9 @@
           ]
         }
       },
-      "actors": [
-        {
-          "type": "scripted-browser",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "scripted-browser"
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -263,19 +239,16 @@
   {
     "name": "synthetic",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "dry-run"
-      },
+      "route": "preview",
+      "mode": "dry-run",
       "subject": {
         "source": "this-repo"
       },
-      "actors": [
-        {
-          "type": "synthetic-persona"
-        }
-      ]
+      "actor": {
+        "type": "synthetic-persona"
+      }
     },
     "supported": false,
     "route": "preview"
@@ -283,21 +256,18 @@
   {
     "name": "cua-openai-computer-use-app-url",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "app-url",
         "appUrl": "http://127.0.0.1:3000/"
       },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -309,11 +279,10 @@
   {
     "name": "cua-openai-computer-use-clone",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "clone",
         "serve": {
@@ -324,12 +293,10 @@
           "example-org/collab-app"
         ]
       },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -341,11 +308,10 @@
   {
     "name": "cua-openai-computer-use-local-tree",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "local-tree",
         "serve": {
@@ -353,12 +319,10 @@
           "url": "http://127.0.0.1:3000/"
         }
       },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -370,21 +334,18 @@
   {
     "name": "cua-openai-computer-use-local-app",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "local-app",
         "appUrl": "http://127.0.0.1:3000/"
       },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "local",
         "timeoutMs": 60000
@@ -396,11 +357,10 @@
   {
     "name": "cua-openai-computer-use-desktop-cli",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "desktop-cli",
         "product": {
@@ -410,12 +370,10 @@
           ]
         }
       },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "openai-computer-use",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -427,21 +385,18 @@
   {
     "name": "cua-local-agent-app-url",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "app-url",
         "appUrl": "http://127.0.0.1:3000/"
       },
-      "actors": [
-        {
-          "type": "local-agent",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "local-agent",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -453,11 +408,10 @@
   {
     "name": "cua-local-agent-clone",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "clone",
         "serve": {
@@ -468,12 +422,10 @@
           "example-org/collab-app"
         ]
       },
-      "actors": [
-        {
-          "type": "local-agent",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "local-agent",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -485,11 +437,10 @@
   {
     "name": "cua-local-agent-local-tree",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "local-tree",
         "serve": {
@@ -497,12 +448,10 @@
           "url": "http://127.0.0.1:3000/"
         }
       },
-      "actors": [
-        {
-          "type": "local-agent",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "local-agent",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
@@ -514,21 +463,18 @@
   {
     "name": "cua-local-agent-local-app",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "local-app",
         "appUrl": "http://127.0.0.1:3000/"
       },
-      "actors": [
-        {
-          "type": "local-agent",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "local-agent",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "local",
         "timeoutMs": 60000
@@ -540,11 +486,10 @@
   {
     "name": "cua-local-agent-desktop-cli",
     "config": {
-      "schema": "humanish.lab.v2",
+      "schema": "humanish.study.v3",
       "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
+      "route": "computer-use",
+      "mode": "live",
       "subject": {
         "source": "desktop-cli",
         "product": {
@@ -554,12 +499,10 @@
           ]
         }
       },
-      "actors": [
-        {
-          "type": "local-agent",
-          "mission": "Explore the synthetic study fixture."
-        }
-      ],
+      "actor": {
+        "type": "local-agent",
+        "mission": "Explore the synthetic study fixture."
+      },
       "execution": {
         "target": "e2b-desktop",
         "timeoutMs": 60000
