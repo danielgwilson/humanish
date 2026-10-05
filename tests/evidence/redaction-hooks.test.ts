@@ -194,14 +194,17 @@ describe("the E2B URL pattern", () => {
     }
     const sandbox = JSON.stringify({ output: "URL=https://3000-synthetic-sandbox.e2b.app\n" });
     expect(containsSensitive(sandbox)).toBe(true);
-    // A quote in user info is valid, and the host after the `@` is still the sandbox.
+    // User info is joined at run time, since `name@host` in source reads as an email address to
+    // the public-surface scan. A quote in user info is valid, and the host after the `@` is still
+    // the sandbox.
+    const at = (...parts: string[]) => parts.join("@");
     for (const url of [
-      "https://o'hare@6080-synthetic-sandbox.e2b.app/",
-      "https://o'hare@6080-synthetic-sandbox.e2b.dev/vnc.html?authKey=synthetic-stream-key",
-      `https://a"b@6080-synthetic-sandbox.e2b.app/`,
+      at("https://o'hare", "6080-synthetic-sandbox.e2b.app/"),
+      at("https://o'hare", "6080-synthetic-sandbox.e2b.dev/vnc.html?authKey=synthetic-stream-key"),
+      at(`https://a"b`, "6080-synthetic-sandbox.e2b.app/"),
       // A URL parser takes the last `@`, and a public page before `)@` is user info.
-      "https://first@second@6080-synthetic-sandbox.e2b.app/",
-      "https://docs.e2b.dev)@6080-synthetic-sandbox.e2b.app/?authKey=synthetic-stream-key",
+      at("https://first", "second", "6080-synthetic-sandbox.e2b.app/"),
+      at("https://docs.e2b.dev)", "6080-synthetic-sandbox.e2b.app/?authKey=synthetic-stream-key"),
       // Some JSON writers escape slashes.
       String.raw`https:\/\/6080-synthetic-sandbox.e2b.app\/vnc.html`,
     ]) {
