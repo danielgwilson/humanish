@@ -11,7 +11,7 @@ description: >-
   more to recruit. If the two come back the same, effort does not change behavior on this task. One run
   proves nothing about scale or repeatability. See docs/principles/actor-fidelity.md. Committed as a dry
   run, which builds a dry-run bundle at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and a
-  gitignored .humanish/labs/ copy with mode: live.
+  gitignored copy in .humanish/studies/ with mode: live, run by its path.
 route: computer-use
 mode: dry-run # committed fixture stays contract-only
 subject:
