@@ -125,7 +125,12 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   await planStarterFiles(
     preparedProjectRoot,
     cwd,
-    starterFilesFor(starterActor, localBrowser.value, starterLocalAgentFor(machine)),
+    starterFilesFor(
+      starterActor,
+      localBrowser.value,
+      starterLocalAgentFor(machine),
+      machine.humanish,
+    ),
     options.localBrowser !== undefined,
     plan,
   );

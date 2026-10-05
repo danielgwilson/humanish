@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
-const renamed = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.111.0.";
+const renamed = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.112.0.";
 const cwd = await mkdtemp(join(tmpdir(), "humanish-dotenv-proof-"));
 
 function humanish(...args) {

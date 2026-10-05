@@ -4,7 +4,9 @@ import path from "node:path";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { OUTCOME_POLICIES } from "../../src/run/judge.js";
+import { activeRuns } from "../../src/run/active-runs.js";
 import { runScope, type FinishedRun, type FinishOutcome } from "../../src/run/run.js";
+import type { RunInterruptSignal } from "../../src/run/status.js";
 
 /** The outcome of a run that worked, on the computer-use route's policy. */
 export const PASSING_OUTCOME: FinishOutcome = {
@@ -21,7 +23,12 @@ export const PASSING_OUTCOME: FinishOutcome = {
 export async function publishRun(
   cwd: string,
   runId: string,
-  options: { mode?: "dry-run" | "live"; shape?: (bundle: RunBundle) => RunBundle } = {},
+  options: {
+    mode?: "dry-run" | "live";
+    shape?: (bundle: RunBundle) => RunBundle;
+    /** Interrupt the run as the CLI's signal handler does, before the route finishes it. */
+    interruptedBy?: RunInterruptSignal;
+  } = {},
 ): Promise<FinishedRun> {
   const mode = options.mode ?? "live";
   const templateId = `${runId}-template`;
@@ -45,6 +52,11 @@ export async function publishRun(
       renderReview: (published) => `# Review ${published.runId}\n`,
     });
     if (!started.ok) throw new Error(started.message);
+    if (options.interruptedBy !== undefined) {
+      const active = activeRuns().find((run) => run.runId === runId);
+      if (active === undefined) throw new Error(`run ${runId} is not registered as active`);
+      await active.status.interrupt(options.interruptedBy);
+    }
     await started.run.finish(options.shape ? options.shape(bundle) : bundle, PASSING_OUTCOME);
   });
   if (finished === undefined) throw new Error(`run ${runId} did not publish`);

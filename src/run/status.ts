@@ -128,6 +128,8 @@ export interface RunStatusHandle {
    *  `running` or `finished` over it. When the run had finished it writes nothing, waits for the
    *  writes already queued and resolves false. */
   interrupt(signal: RunInterruptSignal): Promise<boolean>;
+  /** True from the moment `interrupt` accepts a signal, before its write lands. */
+  readonly interrupted: boolean;
 }
 
 export interface BeginRunStatusOptions {
@@ -159,6 +161,7 @@ export function beginRunStatus(
   };
 
   let finished = false;
+  let interrupted = false;
   let finishedRecord: RunStatusRecord | undefined;
   let writing: Promise<void> = Promise.resolve();
   const write = (record: RunStatusRecord): Promise<void> => {
@@ -216,10 +219,14 @@ export function beginRunStatus(
         return false;
       }
       finished = true;
+      interrupted = true;
       clearInterval(timer);
       const completedAt = iso();
       await write({ ...base, state: "interrupted", updatedAt: completedAt, completedAt, signal });
       return true;
+    },
+    get interrupted() {
+      return interrupted;
     },
   };
   return handle;

@@ -14,7 +14,7 @@ description: >-
   what it tried first; 3) whether it chose the right credentials for the right route; 4) whether it
   believed it had succeeded when it had not. Committed as a dry run, which builds a dry-run bundle
   at no cost. A live run needs OPENAI_API_KEY for the participant, E2B_API_KEY for its sandbox and
-  a gitignored .humanish/labs/ copy.
+  a gitignored copy in .humanish/studies/, run by its path.
 route: terminal
 mode: dry-run # committed fixture stays contract-only
 subject:

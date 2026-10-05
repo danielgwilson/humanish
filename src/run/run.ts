@@ -124,6 +124,7 @@ const issueKey = Symbol("FinishedRun");
 export class FinishedRun {
   readonly #observer: ObserverTarget | undefined;
   readonly #recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>;
+  readonly #interrupted: () => boolean;
   #outcome: RecordedOutcome;
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
@@ -136,6 +137,7 @@ export class FinishedRun {
     observer: ObserverTarget | undefined,
     outcome: RecordedOutcome,
     recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>,
+    interrupted: () => boolean,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
@@ -143,6 +145,15 @@ export class FinishedRun {
     this.#observer = observer;
     this.#outcome = outcome;
     this.#recordFailure = recordFailure;
+    this.#interrupted = interrupted;
+  }
+
+  /**
+   * A signal stopped this run's process: status.json and run.json record it `interrupted`. Read
+   * when asked, since the signal can arrive after the bundle was published.
+   */
+  get interrupted(): boolean {
+    return this.#interrupted();
   }
 
   static isIssued(value: unknown): value is FinishedRun {
@@ -319,7 +330,15 @@ function runPublisher(args: {
           return current;
         }),
       );
-    return new FinishedRun(issueKey, runId, paths, observer, current, recordFailure);
+    return new FinishedRun(
+      issueKey,
+      runId,
+      paths,
+      observer,
+      current,
+      recordFailure,
+      () => runStatus.interrupted,
+    );
   };
 
   const interrupt = async (signal: RunInterruptSignal): Promise<void> => {
