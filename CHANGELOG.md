@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Deprecated
+
+- `execution.egressAllow` on any route except `terminal` is ignored: only the terminal sandbox is
+  created with that allowlist, and computer-use, shared-world, scripted and preview desktops and
+  browsers can reach any site. `humanish study check` and every run now warn when a study sets it
+  there, and the run records the warning in its bundle as a `study.warning` event. 0.112.0, which
+  ships on or after 2026-11-03, refuses the field on those routes. Remove it from such a study; the
+  run behaves the same without it.
+
 ### Fixed
 
 - `humanish doctor` run inside a terminal study's sandbox reported the `CODEX_API_KEY` placeholder

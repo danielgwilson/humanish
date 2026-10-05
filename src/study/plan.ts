@@ -17,6 +17,7 @@ import { routeOf, type StudyRoute } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 import { declaredParticipantCount } from "./study-fields.js";
+import { egressAllowIgnoredWarning } from "./warnings.js";
 
 export { routeOf, type StudyRoute } from "./routing.js";
 
@@ -96,8 +97,13 @@ export function planStudy(
   const result = planRoute(routeOf(config), study, options, input, deps);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
-  // plan.study for the run's status record and bundle.
-  const plan = options.study === undefined ? result.plan : { ...result.plan, study: options.study };
+  // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
+  const warning = egressAllowIgnoredWarning(study);
+  const plan = {
+    ...result.plan,
+    ...(options.study === undefined ? {} : { study: options.study }),
+    ...(warning === undefined ? {} : { warnings: [warning] }),
+  };
   return { ok: true, planned: { plan } };
 }
 

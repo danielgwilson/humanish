@@ -328,6 +328,18 @@ export function inertFieldPaths(config: StudyConfig): string[] {
   return inertRows(config).map((row) => row.field);
 }
 
+/**
+ * The warning for `execution.egressAllow` on a route that ignores it, or undefined. Only the
+ * terminal route creates its sandbox with the list as an outbound allowlist; on any other route the
+ * study author would trust a list that blocks nothing. `humanish study check` and every run print
+ * it, and the run records it in its bundle.
+ * Removed in 0.112.0: deprecated on 2026-10-05. 0.112.0 refuses the field off the terminal route.
+ */
+export function egressAllowIgnoredWarning(config: StudyConfig): string | undefined {
+  if (config.execution?.egressAllow === undefined || config.route === "terminal") return undefined;
+  return `\`execution.egressAllow\` is ignored on route: ${config.route}. Only route: terminal creates its sandbox with that outbound allowlist, and this route's browser desktops can reach any site. Remove the field: humanish 0.112.0 refuses it on every route except terminal.`;
+}
+
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
 // setting that silently does nothing.
 export function forwardDeclaredWarnings(config: StudyConfig): string[] {
@@ -339,6 +351,8 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
       : [
           `These fields are set, but no route reads them yet, so they have no effect: ${inert.join(", ")}.`,
         ];
+  const egressIgnored = egressAllowIgnoredWarning(config);
+  if (egressIgnored !== undefined) warnings.push(egressIgnored);
   // A declared cap below the participant count is legal but loud: the roster promises N live actors
   // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
   // waves is otherwise indistinguishable from the all-live run the author meant.

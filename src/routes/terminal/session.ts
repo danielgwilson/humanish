@@ -83,6 +83,7 @@ export async function runLiveTerminalSession(
     // This entry point is the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
     study: plan.study,
+    warnings: plan.warnings,
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
     now,
