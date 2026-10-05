@@ -71,7 +71,7 @@ Next, check that a hosted desktop can reach the preview. This needs `E2B_API_KEY
 npx humanish study check .humanish/studies/your-app.yaml --reachability public-preview
 ```
 
-The probe only confirms reachability from E2B; it does not log in through preview protection. Make the deployment reachable, then run:
+The probe only confirms reachability from E2B; it does not log in through preview protection. Make the deployment reachable without a credential in the URL: a `subject.appUrl` with a user name, a password, or a bypass or share token in its query is refused when the study is parsed, because the participant's address bar would show it in every screenshot. Then run:
 
 ```bash
 npx humanish run .humanish/studies/your-app.yaml

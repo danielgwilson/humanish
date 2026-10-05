@@ -279,7 +279,7 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
   an interactive PTY would overstate the mechanism (a duplex PTY
   transport does not ship). `terminal.stdin` defaults to `disabled`
   (`sent`/assisted input is rejected until the interventions ledger + a
-  non-comparable marker exist). `runtimeAuth` (`openai-env`, the default, or `openai-egress`)
+  non-comparable marker exist). `runtimeAuth` (`openai-egress`, the default, or `openai-env`)
   declares the agent's runtime-auth channel, recorded as names only. On a live run, the engine
   resolves the registered terminal descriptor and requires
   `keyPlacement: in-sandbox-command-scoped` before creating a sandbox. With `openai-env`
@@ -1068,9 +1068,9 @@ contract.
 ## Terminal Cost Ledger And No-Spend Proof
 
 The terminal-product route (`src/routes/terminal/route.ts`), under the default
-`runtimeAuth: openai-env`, passes a real provider key only to the in-sandbox agent
-command; `openai-egress` gives the command a placeholder and keeps the key in an
-external E2B header transform. Neither mode puts it in sandbox-global env or
+`runtimeAuth: openai-egress`, gives the in-sandbox agent command a placeholder and
+keeps the key in an external E2B header transform; `openai-env` passes a real
+provider key only to that command. Neither mode puts it in sandbox-global env or
 metadata, so the no-spend claim must be derived from a ledger, never asserted. The
 live run writes both to `terminal-ledgers.json` (a `cost` block + a
 `noSpendProof` block, additive to `humanish.terminal-ledgers.v1`).

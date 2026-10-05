@@ -254,7 +254,9 @@ ngrok's edge authenticates viewers with Google OAuth (restricted to your
 `--allow-email`/`--allow-domain` allow rules) before any request reaches the
 loopback server; humanish carries no in-process auth. The third is a secretless
 safe observer: no login, but only runs whose `humanish verify` shareSafety is
-`share_ready` exist at all; everything else is absent and 404s. A run is verified
+`share_ready` exist at all; everything else is absent and 404s. In every mode a run's
+`sandbox-receipts.ndjson` and `status.json` 404 as a missing file does: they hold
+the raw sandbox ids and the recording process id. A run is verified
 again before it is served whenever any of its files changes, so a file added or
 rewritten after verification is not served until the run grades `share_ready`
 again. [Verify before sharing](/docs/read-results#verify-before-sharing) lists what

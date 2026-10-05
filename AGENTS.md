@@ -105,7 +105,8 @@ Assume this repository is public.
   `share_ready` evidence is shared. Feedback drafts do not mutate GitHub by default. Live spend,
   publishing, external mutation and broader credential access each need an explicit choice.
 - Credential placement depends on the route. The computer-use model key stays on the host; the
-  default terminal runtime gets command-scoped credentials.
+  default terminal runtime keeps its key in E2B's egress proxy, and `openai-env` passes it
+  command-scoped.
 - Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
   than one participant where a claim depends on replication.
 - Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,

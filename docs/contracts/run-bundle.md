@@ -585,7 +585,9 @@ shareSafety:
 bundle is safe to promote into a public issue. Public promotion should branch on
 `shareSafety.status`:
 
-- `share_ready`: feedback draft commands may render public issue payloads;
+- `share_ready`: feedback draft commands may render public issue payloads, and `observe --all --safe`
+  serves the run. The folder still holds `sandbox-receipts.ndjson` (raw sandbox ids) and `status.json`
+  (the recording pid); no Observer server serves them and bundle export omits them;
 - `local_only`: keep the run local; only supported redaction-only cases can produce a shareable derivative;
   `RAW_SANDBOX_ID` is one: a file other than `sandbox-receipts.ndjson` names one of the run's raw
   sandbox ids, which verify reads from the receipts and from any raw `providerResources[].id` in
@@ -657,6 +659,16 @@ candidates, adapter artifacts or stream artifact entries cite, and a PNG an acto
 trace references outside `screenshots/`. An unregistered
 `.mp4`, and a file or directory whose name contains `\`, are public-safety
 findings and block the run.
+
+The patterns live in `src/evidence/redaction.ts`: provider key formats (OpenAI,
+Anthropic, E2B, GitHub, GitLab, npm, Vercel, AWS, Google, Stripe, Slack,
+SendGrid, Hugging Face), JWTs, bearer and basic `Authorization` values, private
+key headers, database URLs with a password, the password in any URL's user info,
+credential query and fragment parameters with a value of 16 characters or more,
+credential-named upper-case variables set to a value of 16 characters or more
+with a digit, an AWS secret access key next to its name, E2B URLs, and Linux,
+macOS and Windows local paths. `tests/verify/secret-formats.test.ts` lists the
+formats and the ordinary values that must not match.
 
 Before matching, the scan undoes JSON and JS escapes, percent-encoding and HTML
 character references, the decoding bundle export applies (`decodeEscapes`), and

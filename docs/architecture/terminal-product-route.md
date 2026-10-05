@@ -1,7 +1,7 @@
 # Terminal-product route
 
 The live terminal-product route has shipped since `0.8.0`, with the in-sandbox runtime,
-command-scoped credential placement, exact-id cleanup proof, an interventions ledger, a cost and
+explicit credential placement (an E2B egress proxy by default, or command-scoped), exact-id cleanup proof, an interventions ledger, a cost and
 no-spend ledger, caps, and product scoring and feedback hooks. The
 [original plan](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/terminal-product-lane/goal.md)
 holds the build order and the safety contract.
@@ -30,7 +30,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `subject.product`                 | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                                    |
 | `execution.target`                | `e2b-terminal` (or absent → implied)                                                                                                                        |
 | `execution.terminal`              | `{ transport: exec-stream, stdin: disabled }`                                                                                                               |
-| `execution.runtimeAuth`           | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                               |
+| `execution.runtimeAuth`           | `openai-egress` (default) or opt-in `openai-env`; names-only durable evidence                                                                               |
 | `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                                     |
 | `actor.model` / `reasoningEffort` | Passed to Codex as `--model` (default `gpt-5.6-sol`) and `-c model_reasoning_effort`; declarations, not observed provider identity                          |
 | `caps`                            | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused: no adopter cost source exists until issue 347 lands                    |
@@ -86,11 +86,8 @@ product's no-spend boundary still needs separate interpretation.
 
 ## Runtime auth: raw-key placement and remaining provider access
 
-`execution.runtimeAuth: openai-env` remains the compatible default. It supplies
-`CODEX_API_KEY` command-scoped to Codex, with `OPENAI_API_KEY` also supplied when
-that was the host source. Child processes can read and use the raw key.
-
-Opt in to keeping the raw key outside the sandbox:
+`execution.runtimeAuth: openai-egress` is the default: a study that declares no
+`runtimeAuth` keeps the raw key outside the sandbox, as if it declared:
 
 ```yaml
 execution:
@@ -115,7 +112,7 @@ output and errors, including errors during sandbox creation.
 This mode supports the default OpenAI endpoint only. humanish explicitly sets Codex's
 built-in `openai` provider and `openai_base_url` to `https://api.openai.com/v1` for
 that invocation. It does not support a custom provider, proxy base URL, or regional
-endpoint under this mode. `openai-env` retains its existing command behavior. E2B
+endpoint under this mode; a study that needs one declares `openai-env`. E2B
 header rules are a public-beta capability;
 `tests/routes/terminal/runtime-auth.test.ts` checks the local contract against the
 installed Desktop SDK (the lockfile has `@e2b/desktop` 2.4.0, resolving `e2b` 2.49.0).
@@ -135,6 +132,11 @@ fallback without adding hosts. If an allowlist omits `api.openai.com`, provider
 requests can fail. E2B domain allowlists are routing controls rather than strict
 destination isolation on shared infrastructure. An existing exact OpenAI host
 rule is rejected instead of silently overwritten.
+
+`execution.runtimeAuth: openai-env` is the opt-in alternative. It supplies
+`CODEX_API_KEY` command-scoped to Codex, with `OPENAI_API_KEY` also supplied when
+that was the host source. Child processes can read and use the raw key, and so can
+anything the agent runs or a page it reads asks it to run.
 
 Evidence records the selected auth mode and the residual proxy capability.
 Resolved live actor traces use `keyPlacement: external` in `openai-egress`; the
@@ -197,10 +199,10 @@ deadline.
 
 ## The original command-scoped safety contract
 
-The default mode **inverts** the credential-placement default of every other E2B route.
-On the computer-use route the model's key stays _outside_ the sandbox; here the
-agent-under-test runs _inside_ with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and
-is **presumed exfiltratable**. The placement rule in invariants-and-defaults.md
+The `openai-env` mode **inverts** the credential-placement default of every other E2B route.
+On the computer-use route the model's key stays _outside_ the sandbox; under `openai-env` the
+agent-under-test runs _inside_ with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and is **presumed
+exfiltratable**. The placement rule in invariants-and-defaults.md
 applies: _keys live where the keyed process runs, and nowhere else;
 blast radius is bounded by key scoping and budgets, not by hoping._
 

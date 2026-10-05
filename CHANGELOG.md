@@ -8,7 +8,40 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A study URL that carries a credential is refused when the study is parsed, with
+  `HUMANISH_STUDY_INVALID`: a user name or password in `subject.appUrl`, `subject.serve.url`,
+  `subject.product.publicSurfaces` or a participant's `target` or `entry`, or a path, query or
+  fragment that `verify` flags, such as `x-vercel-protection-bypass=`, `_vercel_share=`, `token=`
+  or `access_token=` with a value of 16 characters or more. A run recorded such a URL as given,
+  and the participant's address bar showed it in every screenshot and model request. Remove the
+  credential from the URL; for a protected preview, open the deployment to the study or build the
+  app in the desktop with a clone subject. Ordinary parameters such as `?page=2` still parse. The
+  computer-use planner refuses the same URLs in a library caller's config with
+  `HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE`.
+- A terminal study that declares no `execution.runtimeAuth` now runs with `openai-egress`: the raw
+  OpenAI key stays in E2B's host-side proxy rule and Codex gets a placeholder. Under the old
+  default, `openai-env`, the key was in the Codex command's environment, where the agent and
+  everything it ran could read it. Declare `runtimeAuth: openai-env` to keep that placement, for
+  example for a custom OpenAI endpoint, which `openai-egress` does not support. Every sandbox
+  process can still spend through the proxy until teardown.
+
 ### Fixes
+
+- `humanish verify` caught 12 of 31 common secret formats in a run file. It now also catches
+  Vercel tokens and preview bypass and share parameters, the password in a URL's user info,
+  credential query and fragment parameters such as `token=`, `access_token=` and
+  `X-Amz-Signature=`, AWS secret access keys next to their name, Google OAuth access tokens,
+  Stripe test and webhook keys, Slack webhook URLs and app tokens, basic `Authorization` values,
+  npm, GitLab and SendGrid tokens, upper-case `*_TOKEN`, `*_SECRET`, `*_PASSWORD` and `*_API_KEY`
+  variables set to a long value with a digit, and Windows profile paths, as written,
+  percent-encoded or base64-encoded. Redaction keeps the parameter or user name and replaces the
+  value: `?token=[REDACTED_SECRET]`.
+- `humanish observe --all --safe` served a `share_ready` run's `sandbox-receipts.ndjson`, which
+  holds the raw sandbox ids, and its `status.json`, which holds the recording process id, to
+  anyone the library admits, on a tunnel without edge auth too. No Observer server serves either
+  file now, in any mode; both answer as a missing file does.
 
 - A run interrupted during desktop startup no longer keeps the sandbox's raw id in its files. The
   signal killed the sandbox before its create returned, startup failed with an E2B error that
