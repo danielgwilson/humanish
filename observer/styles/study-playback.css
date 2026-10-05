@@ -2,11 +2,12 @@
 .main {
   container: observer-workspace / inline-size;
 }
+/* 32px controls match the header's icon buttons; touch widths keep 44px targets below. */
 .study-playback {
   flex: none;
   min-width: 0;
-  padding: var(--space-6) var(--space-20);
-  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  padding: var(--space-4) var(--space-20);
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
@@ -18,8 +19,8 @@
 }
 .study-playback .tbtn {
   flex: none;
-  width: 36px;
-  min-height: 36px;
+  width: 32px;
+  min-height: 32px;
   height: auto;
   border-radius: var(--radius-6);
 }
@@ -43,7 +44,7 @@
 }
 .study-playback .scrubwrap {
   flex: 1;
-  height: 36px;
+  height: 32px;
   min-width: 60px;
 }
 .study-playback .scrubwrap:has(input:disabled) {
