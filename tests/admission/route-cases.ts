@@ -5,7 +5,7 @@
 import { lab } from "./fixtures.js";
 import { realEmail, type AdmissionCase } from "./parser-cases.js";
 
-const live = { scenario: { mode: "live" } };
+const live = { mode: "live" };
 const task = [{ id: "sign-up", goal: "Create an account." }];
 const camera = { camera: { source: "synthetic" } };
 const email = { kind: "fake", injectEnv: "RESEND_BASE_URL" };
@@ -52,12 +52,12 @@ export const routeCases: readonly AdmissionCase[] = [
   // Live-only rules
   {
     name: "terminal live without caps",
-    raw: lab("terminal", { scenario: { mode: "live", caps: undefined } }),
+    raw: lab("terminal", { mode: "live", caps: undefined }),
     parser: "accepts",
   },
   {
     name: "terminal sandbox deadline too long",
-    raw: lab("terminal", { scenario: { mode: "live", caps: { maxUsd: 0, maxMinutes: 56 } } }),
+    raw: lab("terminal", { mode: "live", caps: { maxUsd: 0, maxMinutes: 56 } }),
     parser: "accepts",
   },
   {
@@ -72,29 +72,17 @@ export const routeCases: readonly AdmissionCase[] = [
   },
   {
     name: "shared world unpriced cap",
-    raw: lab(
-      "sharedProvisioned",
-      { ...live, execution: { caps: { maxUsd: 1 } } },
-      { model: "unpriced-model" },
-    ),
+    raw: lab("sharedProvisioned", { ...live, caps: { maxUsd: 1 } }, { model: "unpriced-model" }),
     parser: "accepts",
   },
   {
     name: "cu unpriced cap without keys",
-    raw: lab(
-      "cuAppUrl",
-      { ...live, execution: { caps: { maxUsd: 1 } } },
-      { model: "unpriced-model" },
-    ),
+    raw: lab("cuAppUrl", { ...live, caps: { maxUsd: 1 } }, { model: "unpriced-model" }),
     parser: "accepts",
   },
   {
     name: "cu unpriced cap with keys",
-    raw: lab(
-      "cuAppUrl",
-      { ...live, execution: { caps: { maxUsd: 1 } } },
-      { model: "unpriced-model" },
-    ),
+    raw: lab("cuAppUrl", { ...live, caps: { maxUsd: 1 } }, { model: "unpriced-model" }),
     parser: "accepts",
     options: { env: "keys" },
   },
@@ -138,7 +126,7 @@ export const routeCases: readonly AdmissionCase[] = [
   },
   {
     name: "terminal live positive maxUsd",
-    raw: lab("terminal", { scenario: { mode: "live", caps: { maxUsd: 1, maxMinutes: 5 } } }),
+    raw: lab("terminal", { mode: "live", caps: { maxUsd: 1, maxMinutes: 5 } }),
     parser: "accepts",
     options: { env: "keys" },
   },
@@ -182,13 +170,13 @@ export const routeCases: readonly AdmissionCase[] = [
   // participants.
   {
     name: "count override on a raw config",
-    raw: lab("cuClone", { comms: { email } }, { count: 2 }),
+    raw: lab("cuClone", { comms: { email }, participants: 2 }),
     parser: "accepts",
     options: { count: 3 },
   },
   {
     name: "count override on a parsed config",
-    raw: lab("cuClone", { comms: { email } }, { count: 2 }),
+    raw: lab("cuClone", { comms: { email }, participants: 2 }),
     parser: "accepts",
     options: { count: 3, parsed: true },
   },
@@ -229,7 +217,11 @@ export const routeCases: readonly AdmissionCase[] = [
   },
   {
     name: "overlap shared world: tasks and one seat",
-    raw: lab("sharedProvisioned", {}, { tasks: task, lanes: [{ id: "author", entry: "/seat-1" }] }),
+    raw: lab(
+      "sharedProvisioned",
+      { participants: [{ id: "author", entry: "/seat-1" }] },
+      { tasks: task },
+    ),
     parser: "list of at least 2",
   },
 ];

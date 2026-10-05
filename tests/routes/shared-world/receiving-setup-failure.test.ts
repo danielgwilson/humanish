@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { StudyConfig } from "../../../src/study/types.js";
 import { lab } from "../../admission/fixtures.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
 
 // Email receiving is prepared after the run starts and before any sandbox. A failure there is a
@@ -18,10 +19,12 @@ vi.mock("../../../src/comms/receiving-runtime.js", async (importOriginal) => ({
 }));
 
 function realEmailSharedWorldConfig(): StudyConfig {
-  return lab("sharedProvisioned", {
-    comms: { email: { kind: "real", connection: "team-inbox" } },
-    scenario: { mode: "live" },
-  }) as unknown as StudyConfig;
+  return libraryConfig(
+    lab("sharedProvisioned", {
+      comms: { email: { kind: "real", connection: "team-inbox" } },
+      mode: "live",
+    }),
+  );
 }
 
 describe("shared-world email receiving setup failure", () => {

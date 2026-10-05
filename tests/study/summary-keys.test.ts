@@ -96,7 +96,7 @@ describe("TUI key summary follows the configured route", () => {
   it("names a clone subject's missing env after the provider keys", async () => {
     const clone = admissionLab("cuClone", {
       id: "key-check",
-      scenario: { mode: "live" },
+      mode: "live",
       subject: { env: ["SYNTHETIC_SUBJECT_TOKEN"] },
     });
     expect(await summary(clone, {})).toMatchObject({

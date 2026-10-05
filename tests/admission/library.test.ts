@@ -9,12 +9,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import type { ComputerUseRunInput } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
@@ -203,7 +204,7 @@ function normalize(value: Json, paths: string[]): Json {
 
 async function pin(testCase: AdmissionCase): Promise<void> {
   const options = testCase.options ?? {};
-  const parsed = parseStudyDocument(testCase.raw);
+  const parsed = parseStudy(testCase.raw);
   if (testCase.parser === "accepts") {
     expect(parsed.ok, parsed.ok ? "" : parsed.error.message).toBe(true);
   } else {
@@ -213,9 +214,8 @@ async function pin(testCase: AdmissionCase): Promise<void> {
   const record: Record<string, Json> = {
     parser: parsed.ok ? { ok: true } : parsed.error,
   };
-  const config = (
-    options.parsed && parsed.ok ? parsed.config : (testCase.typed ?? testCase.raw)
-  ) as StudyConfig;
+  const config =
+    options.parsed && parsed.ok ? parsed.config : libraryConfig(testCase.typed ?? testCase.raw);
   for (const entry of testCase.entries ?? (["runStudy", "runner"] as const)) {
     const pinned = await runEntry(entry, config, options);
     if (pinned.runs === false) {
@@ -242,11 +242,9 @@ describe("library admission today", () => {
   it.skipIf(process.platform === "darwin")(
     "refuses a live scripted run with no browser before any side effect",
     async () => {
-      const raw = lab("scriptedAppUrl", { scenario: { mode: "live", ref: "adm-journey" } });
+      const raw = lab("scriptedAppUrl", { mode: "live" });
       for (const entry of ["runStudy", "runner"] as const) {
-        expect(
-          await runEntry(entry, raw as unknown as StudyConfig, { isolateBrowser: true }),
-        ).toMatchObject({
+        expect(await runEntry(entry, libraryConfig(raw), { isolateBrowser: true })).toMatchObject({
           runs: false,
           calls: { desktop: 0, executor: 0, provider: 0 },
           result: { error: { code: "HUMANISH_SCRIPTED_BROWSER_MISSING" } },

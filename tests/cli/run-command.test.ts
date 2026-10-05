@@ -129,7 +129,7 @@ describe("run takes the rerun and scorer flags", () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-command-"));
     await writeFile(path.join(cwd, "package.json"), '{ "name": "run-command-fixture" }\n');
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
-    const raw = lab("cuAppUrl", {}, { lanes: [{ id: "lane-01" }, { id: "lane-02" }] });
+    const raw = lab("cuAppUrl", { participants: [{ id: "lane-01" }, { id: "lane-02" }] });
     await writeFile(
       path.join(cwd, "humanish", "studies", "fanout.yaml"),
       studyFileText({ ...raw, id: "fanout" }, cwd),
