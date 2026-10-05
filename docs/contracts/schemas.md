@@ -1563,7 +1563,8 @@ Refusals:
   `RunStudyOptions` no longer has (below); that message names the field and where its job went.
 - `HUMANISH_STUDY_V2_UNSUPPORTED`: the config is `humanish.lab.v2`, or it still sets a
   `StudyConfig` field of humanish 0.110 that 0.111.0 renamed: `actors`, a `scenario` object,
-  `execution.caps`, `subject.topology` or `personas`. The message names each one's v3 field. The
+  `execution.caps`, `subject.topology`, `personas`, or `count`, `lanes`, `roster` or `laneFocus` on
+  `actor`. The message names each one's v3 field. The
   planners read only the v3 fields, so a budget left in `execution.caps` would otherwise run
   uncapped.
 - `HUMANISH_STUDY_INVALID`: the config has no `actor` object, or its `route` is missing or is not

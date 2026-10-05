@@ -36,7 +36,8 @@ file. The `StudyConfig` it returns has the file's keys (`route`, `actor`, `parti
 `parsed.config.caps?.maxUsd` the budget. A config you build yourself has the same keys.
 
 `runStudy` refuses a config that still sets a `StudyConfig` field of humanish 0.110 (`actors`, a
-`scenario` object, `execution.caps`, `subject.topology` or `personas`) with
+`scenario` object, `execution.caps`, `subject.topology`, `personas`, or `count`, `lanes`, `roster`
+or `laneFocus` on `actor`) with
 `HUMANISH_STUDY_V2_UNSUPPORTED`, naming each field's v3 key. It refuses a config with no `actor`,
 or a `route` its subject and actor do not take, with `HUMANISH_STUDY_INVALID`. Each refusal comes
 in the route's result before anything runs. `runStudy`'s options are `RunStudyOptions`:

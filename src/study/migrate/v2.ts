@@ -70,6 +70,15 @@ const V2_FIELDS: readonly { readonly present: (config: Raw) => boolean; readonly
       present: (config) => config.actors !== undefined,
       move: "`actors[0]` is `actor`, and its `count`, `lanes`, `roster` and `laneFocus` are `participants` (`surfaces` on the scripted route)",
     },
+    // A caller that moved `actors[0]` to `actor` as it was.
+    {
+      present: (config) =>
+        isRecord(config.actor) &&
+        ["count", "lanes", "roster", "laneFocus"].some(
+          (key) => (config.actor as Raw)[key] !== undefined,
+        ),
+      move: "`actor.count`, `actor.lanes`, `actor.roster` and `actor.laneFocus` are `participants` (`surfaces` on the scripted route)",
+    },
     {
       present: (config) => isRecord(config.scenario),
       move: "`scenario.ref` is `scenario`, a string, `scenario.mode` is `mode` and `scenario.caps` is `caps`",

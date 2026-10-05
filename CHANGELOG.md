@@ -36,9 +36,10 @@ before. A library caller that reads or builds a `StudyConfig`, including a `crea
 result envelope, before anything runs:
 
 - A config that still sets a 0.110 field (`actors`, a `scenario` object, `execution.caps`,
-  `subject.topology` or `personas`) is refused with `HUMANISH_STUDY_V2_UNSUPPORTED`, and the
-  message names each field's v3 key. The planners read only the v3 fields, so a budget left in
-  `execution.caps` would otherwise run uncapped.
+  `subject.topology`, `personas`, or `count`, `lanes`, `roster` or `laneFocus` on `actor`) is
+  refused with `HUMANISH_STUDY_V2_UNSUPPORTED`, and the message names each field's v3 key. The
+  planners read only the v3 fields, so a budget left in `execution.caps` would otherwise run
+  uncapped.
 - A config with no `actor` object is refused with `HUMANISH_STUDY_INVALID`. 0.110 ran it with an
   empty actor type.
 - A config whose `route` is missing, or is not the route its subject and actor take, is refused

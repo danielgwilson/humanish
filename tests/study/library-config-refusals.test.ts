@@ -48,6 +48,16 @@ describe("runStudy with a config built without parseStudy", () => {
       "`subject.topology: shared-world` is `route: shared-world`",
     ],
     ["personas", { ...study, personas: [{ id: "x" }] }, "`personas` has no field now"],
+    [
+      "a participant key on the actor",
+      { ...study, actor: { type: "openai-computer-use", count: 3 } },
+      "`actor.count`, `actor.lanes`, `actor.roster` and `actor.laneFocus` are `participants`",
+    ],
+    [
+      "laneFocus on the actor",
+      { ...study, actor: { type: "openai-computer-use", laneFocus: { instruction: "Export." } } },
+      "`actor.count`, `actor.lanes`, `actor.roster` and `actor.laneFocus` are `participants`",
+    ],
   ])("refuses a config that still sets %s", async (_field, config, move) => {
     const outcome = await refused(config);
     expect(outcome.route).toBe("computer-use");
