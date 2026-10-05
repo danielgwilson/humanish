@@ -461,6 +461,17 @@ function keyChecks(
       probe.name === receivingKey
         ? `provide ${probe.name} through process env or --dotenv`
         : probe.hint;
+    if (probe.placeholder) {
+      // A participant in a terminal study's sandbox reads this row. It names the placeholder so the
+      // participant is not told it holds a key.
+      const required = setup?.keys.includes(probe.name) === true;
+      return {
+        name: `key ${probe.name}`,
+        ok: !required,
+        ...(required ? {} : { status: "note" as const }),
+        message: `not a key: ${probe.name} holds the placeholder humanish sets in a terminal study's sandbox, so no usable ${probe.name} is available here; ${hint}`,
+      };
+    }
     if (!setup) {
       const users = keyUsers?.get(probe.name) ?? [];
       const usedBy = users.length > 0 ? `used by ${studyList(users)}` : undefined;
