@@ -15,7 +15,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   item the server never stored, as on a zero-data-retention organization. The provider read
   zero-data-retention rejections only from 400 responses, so this one stopped the participant
   with "OpenAI Responses 404". The actor trace's `conversation.rejection` and the run warning now
-  say which answer made the switch.
+  say which answer made the switch. An error with a code of its own, such as `invalid_prompt` or
+  `model_not_found`, no longer counts as such an answer when its message echoes
+  `previous_response_id`: a usage-policy refusal stops the participant instead of switching and
+  retrying.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

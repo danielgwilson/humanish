@@ -359,18 +359,35 @@ describe("the zero-data-retention rejections", () => {
   });
 
   it("leaves a 404 for a missing model as an error and stays threaded", async () => {
-    const { bodies, provider, turns } = await rejectedOnce(
-      2,
-      404,
-      storeLessFixture("model-not-found.json"),
+    // The message echoes the model name, so a name that reads like a retention answer must not count.
+    const echoed = storeLessFixture("model-not-found.json").replace(
+      "gpt-5.6-nonexistent",
+      "previous_response_id zero data retention",
     );
+    for (const body of [storeLessFixture("model-not-found.json"), echoed]) {
+      const { bodies, provider, turns } = await rejectedOnce(2, 404, body);
+      expect(turns[1]).toMatchObject({
+        status: "rejected",
+        reason: { message: "OpenAI Responses 404 model_not_found" },
+      });
+      expect(bodies).toHaveLength(2);
+      expect(provider.conversation).toMatchObject({ mode: "threaded" });
+      expect(provider.conversation!.rejection).toBeUndefined();
+    }
+  });
+
+  it("stops on a usage-policy refusal whose message echoes previous_response_id", async () => {
+    const refusal = readFileSync(
+      new URL("../../fixtures/openai-invalid-prompt/refusal.json", import.meta.url),
+      "utf8",
+    ).replace("Please try again", "previous_response_id zero data retention. Please try again");
+    const { bodies, provider, turns } = await rejectedOnce(2, 400, refusal);
     expect(turns[1]).toMatchObject({
       status: "rejected",
-      reason: { message: "OpenAI Responses 404 model_not_found" },
+      reason: { name: "ComputerUsePromptRefusedError" },
     });
     expect(bodies).toHaveLength(2);
     expect(provider.conversation).toMatchObject({ mode: "threaded" });
-    expect(provider.conversation!.rejection).toBeUndefined();
   });
 
   it("stops with a named error when an explicit-context request is refused a stored item", async () => {
