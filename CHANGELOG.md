@@ -8,105 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.110.2: Credential URLs refused, terminal key proxied, watch exits for agents (2026-10-05)
 
-- `humanish watch` and `humanish observe` (one run) print the result and the Observer path and
-  exit 0 when nobody is at a terminal: stdin or stdout is not a terminal, or an agent runner
-  (Claude Code or Codex) is named in the environment. At a person's terminal they still serve
-  until Ctrl-C. `--serve` keeps serving without a terminal; `observe --all` always serves.
-  `watch --expose` without a terminal needs `--serve`.
-- `humanish init` lists `run try-live` as its live next step when an E2B key and a provider key or
-  signed-in Codex or Claude Code allow it. `doctor --study local-browser` is listed only where a
-  quick host check passes (Linux x64 with `/dev/kvm`, `/dev/net/tun` and `docker` on `PATH`, or an
-  M3-or-newer Mac) and Codex is signed in.
-- Suggested commands use one invocation, chosen from where humanish is installed: `npx humanish`
-  in a project, `npx humanish@<version>` from an npx cache, and `humanish` for a global install.
-  init's next steps, its `AGENTS.md` section, doctor's rows and key hints, review and analysis
-  next lines, reclaim hints and the bare `humanish` screen use it.
-- init's `AGENTS.md` section ends with `<!-- /humanish:agents-guide -->`. A rerun of init replaces
-  the section between its markers and leaves the rest of the file byte for byte. A section from
-  0.59.0 to 0.110.1, which has no end marker, is replaced when it matches what that release wrote;
-  an edited one is left as it is, with a warning.
-- init no longer writes `humanish/coverage-map.md`, `humanish/coverage-matrix.md`,
-  `humanish/scenarios/onboarding-regression.yaml` or `humanish/studies/lobby-trivia-3player.yaml`.
-  Nothing read the first three. The lobby example stays in the humanish repository, and the public
-  lobby page links it. init's output names each file it created or updated.
-- The skill's First Proof Run block runs to completion for an agent: `doctor`, `run first-run`,
-  then `verify`, `review` and `observe` on the printed run id. `watch` and the dry-run
-  `feedback issue`, which refuses dry runs, are gone from it; the live run and feedback draft are
-  marked live only.
-- A study URL that carries a credential is refused when the study is parsed, with
-  `HUMANISH_STUDY_INVALID`: a user name or password in `subject.appUrl`, `subject.serve.url`,
-  `subject.product.publicSurfaces` or a participant's `target` or `entry`, or a path, query or
-  fragment that `verify` flags, such as `x-vercel-protection-bypass=`, `_vercel_share=`, `token=`
-  or `access_token=` with a value of 16 characters or more, or a tab, line break or other control
-  character, which the URL parser drops. A run recorded such a URL as given,
-  and the participant's address bar showed it in every screenshot and model request. Remove the
-  credential from the URL; for a protected preview, open the deployment to the study or build the
-  app in the desktop with a clone subject. Ordinary parameters such as `?page=2` still parse. In a
-  library caller's config, which skips the parser, the computer-use, shared-world and terminal
-  planners refuse the same URLs (`HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE`,
-  `HUMANISH_SHARED_WORLD_INVALID`, `HUMANISH_TERMINAL_SUBJECT_INVALID`); the scripted route already
-  dropped a loopback URL's user info, query and fragment before recording it.
-- A terminal study that declares no `execution.runtimeAuth` now runs with `openai-egress`: the raw
-  OpenAI key stays in E2B's host-side proxy rule and Codex gets a placeholder. Under the old
-  default, `openai-env`, the key was in the Codex command's environment, where the agent and
-  everything it ran could read it. Declare `runtimeAuth: openai-env` to keep that placement, for
-  example for a custom OpenAI endpoint, which `openai-egress` does not support. Every sandbox
-  process can still spend through the proxy until teardown. A library caller's `runtimeAuth` other
-  than those two values is refused with `HUMANISH_TERMINAL_CREDENTIAL_DENIED`; it used to place the
-  raw key as `openai-env` does.
+humanish 0.110.2 refuses a study URL that carries a user name, password or credential parameter,
+and `humanish verify` catches all 41 secret formats its test lists, where 0.110.1 caught 13. A
+terminal study that declares no `execution.runtimeAuth` keeps the OpenAI key in E2B's host-side
+proxy rule (`openai-egress`) and gives Codex a placeholder. No Observer server hands out
+`sandbox-receipts.ndjson` or `status.json`, and a Ctrl-C during desktop startup no longer writes
+the raw sandbox id outside `sandbox-receipts.ndjson`. For a coding agent, `watch` and `observe`
+print the Observer path and exit when nobody is at a terminal, a rerun of `init` rewrites only its
+own `AGENTS.md` section, and suggested commands use one invocation style.
 
-### Fixes
-
-- init sent M1 and M2 Macs to the local browser study, which needs an M3 or newer Mac and which
-  doctor refuses on them. init now reads the chip name and leaves the local step out there.
-- `humanish verify` caught 13 of the 41 secret formats `tests/verify/secret-formats.test.ts` lists.
-  It now catches all 41, as written, percent-encoded or base64-encoded, including base64 in a URL
-  path segment. The additions: Vercel tokens and preview bypass and share parameters, the password
-  in a URL's user info, credential query and fragment parameters such as `token=`,
-  `access_token=` and `X-Amz-Signature=` up to the next delimiter, AWS secret access keys next to
-  their name, Google OAuth access tokens, Stripe test and webhook keys, Slack webhook URLs and app
-  tokens, basic `Authorization` values, npm, GitLab and SendGrid tokens, upper-case `*_TOKEN`,
-  `*_SECRET`, `*_PASSWORD` and `*_API_KEY` variables set to a long value with a digit and a letter,
-  quoted or not and also inside JSON strings, and Windows profile paths. A value that is only a
-  placeholder, such as `[REDACTED_SECRET]`, `${TOKEN}` or `<your-token>`, does not count; a value
-  that merely starts with `*` or `$` does. Redaction keeps the parameter or user name and replaces
-  the value: `?token=[REDACTED_SECRET]`.
-- A run file holding a token-shaped run of several megabytes, such as `sk-` or `Bearer ` followed
-  by 8 MB of letters, made `verify` and redaction throw `Maximum call stack size exceeded`, and so
-  did 8 MB of base64 or hex in verify's decoding stage. The patterns and the decoder now read such a
-  run in linear time.
-- `humanish observe --all --safe` served a `share_ready` run's `sandbox-receipts.ndjson`, which
-  holds the raw sandbox ids, and its `status.json`, which holds the recording process id, to
-  anyone the library admits, on a tunnel without edge auth too. No Observer server serves either
-  file now, in any mode; both answer as a missing file does.
-- A run interrupted during desktop startup no longer keeps the sandbox's raw id in its files. The
-  signal killed the sandbox before its create returned, startup failed with an E2B error that
-  quotes the id, and `run.json`, `events.ndjson`, `review.json`, `review.md` and
-  `observer-data.json` recorded it while the receipts named no sandbox, so `humanish review`
-  printed the id and `verify` graded the run `share_ready`. The receipt is now written once, when
-  the desktop startup guard reports the id, and after reclaim the signal handler rewrites the
-  interrupted run's files with the marker and digest, as a finished run's publish does.
-- `humanish reclaim` and `cleanup` reported every dry run `unknown` and exited 2, even with an
-  E2B key, because a dry run writes no owner line. A run whose `run.json` and `status.json` record
-  it as a dry run, with nothing journaled, is now `clean` with `reason: dry-run`, exits 0, and
-  reclaim loads no E2B SDK for it.
-- `humanish review` on an interrupted run led with its participants' last verdict, such as `fail`
-  or `no verdict`, while `humanish runs`, review.md's `outcome:` line and the Observer said
-  `interrupted`. Review's headline now uses the same display state as those surfaces, with a verdict
-  that names another state in parentheses: `interrupted (verdict fail)`. A passing run's headline
-  reads `passed`, and a dry run's reads `dry run; no product behavior was tested`. Read
-  `review --json`'s `display` where a script parses the text.
-- `humanish doctor` marked the Claude Code row `ok` while its message said Claude Code could not
-  run participants: a release below 2.1.248, or one that reported no version. That row is now a
-  note, as a signed-out agent's row already was. It does not fail a bare `doctor`, and
-  `doctor --study` still fails on a study whose participant is that Claude Code.
-- Redacted output, `humanish reclaim` among it, printed the E2B dashboard link from the SDK's
-  missing-key error, `https://e2b.dev/dashboard?tab=keys`, as `[REDACTED_SECRET]`. The E2B URL
-  pattern now passes `https://e2b.dev/dashboard` when it has no userinfo, no path below
-  `/dashboard` and no query but a short `tab`. A dashboard URL with a token or credential in it, a
-  sandbox host, a stream URL and every other E2B URL are still redacted.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.110.2)
 
 ## 0.110.1: Claude participants restricted, sandboxes reclaimed by tag (2026-10-04)
 
