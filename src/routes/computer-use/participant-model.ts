@@ -302,13 +302,19 @@ export async function recordParticipantTrace(
  * carried it on every request. It says why, and how many early turns became a text summary.
  */
 export function explicitContextWarning(conversation: ActorConversation): string {
+  const answer =
+    conversation.rejection === "stored_item"
+      ? " (a stored item the request referenced was not found)"
+      : conversation.rejection === "previous_response"
+        ? " (the previous response was refused or not found)"
+        : "";
   const why =
     conversation.explicitReason === "zdr_rejection"
       ? `The OpenAI organization rejected server-side conversation state (zero data retention)${
           conversation.switchedAtRequest === undefined
             ? ""
             : ` on request ${conversation.switchedAtRequest}`
-        }`
+        }${answer}`
       : "zeroDataRetention is set";
   const summarized =
     conversation.summarizedTurns === 0

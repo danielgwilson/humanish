@@ -8,12 +8,36 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The Observer gives recordings more room. The focus view puts back, the participant pager, the
+  name, the status and the inspector toggle on one line, and moves the assigned task and
+  participant background into the Details tab, so the frame at 1600x1000 is 171 px taller. Every
+  grid card has the same 44 px caption, so phone-sized and desktop cards in a row end at the same
+  height.
+
 ### Fixed
 
 - An open Observer page whose server stopped says so once, with the run id and both ways back:
   `humanish observe --run <id>`, or the run's `observer/index.html` opened from disk. Its tiles no
   longer report every capture as "Frame unavailable"; a missing frame on a running server still
   does.
+
+## 0.111.1: E2B URLs in study URLs, fan-out dry runs verify, zero-data-retention cache holds (2026-10-06)
+
+humanish 0.111.1 fixes a study URL refusal and two verify problems that an adopter met on 0.111.0,
+and the input cost of long computer-use sessions on zero-data-retention OpenAI organizations. A
+study URL may carry an E2B app URL in a query parameter or fragment, which 0.110.2 through 0.111.0
+refused as a credential. A computer-use dry run with more than one participant against an E2B app
+URL verifies `share_ready`, and verify finds a hex-encoded secret or E2B URL after `=`. On a
+zero-data-retention organization, a participant past about 64,000 tokens of carried conversation
+keeps the provider's prompt cache, and an OpenAI 404 for a stored item switches it to carrying its
+own conversation where 0.111.0 stopped it. A Codex participant's wait over 30 seconds is shortened
+to 30 seconds, a terminal session past 512 KiB of output keeps its verdict, and `humanish doctor`
+in a terminal study's sandbox reports the egress placeholder as no key. `execution.egressAllow` on
+a route other than `terminal` now warns, and 0.112.0 refuses it there.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.111.1)
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

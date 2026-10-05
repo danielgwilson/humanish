@@ -550,6 +550,33 @@ describe("observer scaffold rendering a live-shaped participant", () => {
     expect(window.location.hash).toBe("");
   });
 
+  it("gives the frame the space under one heading line and keeps context in Details", async () => {
+    const data = liveShapedData();
+    data.streams[0]!.assignment = { mission: "Add two fictional tasks." };
+    await mount(<App data={data} />);
+    await click(container.querySelector(".open-overlay") as Element);
+    const heading = container.querySelector(".player-heading")!;
+    expect(heading.querySelector('[aria-label="Back to participants"]')).not.toBeNull();
+    expect(heading.querySelector('[aria-label="Next participant"]')).not.toBeNull();
+    expect(heading.querySelector(".player-participant")?.textContent).not.toBe("");
+    expect(heading.querySelector(".player-mode strong")?.textContent).toContain("Recording");
+    expect(container.querySelector(".study-context-actions")).toBeNull();
+    // The frame follows the heading directly; the capture time sits under it.
+    expect(heading.parentElement?.firstElementChild).toBe(heading);
+    expect(heading.nextElementSibling?.classList.contains("evidence-stage")).toBe(true);
+    expect(container.querySelector(".player-evidence-note")?.textContent).toContain(
+      "Capture timestamps unavailable",
+    );
+    expect(container.querySelector(".participant-assignment")).toBeNull();
+    const detailsTab = [...container.querySelectorAll('[role="tab"]')].find(
+      (el) => el.textContent === "details",
+    );
+    await click(detailsTab!);
+    expect(container.querySelector(".inspector")?.textContent).toContain(
+      "Add two fictional tasks.",
+    );
+  });
+
   it("thought rows: reported thinking in its own register, anchored to the prior frame", async () => {
     await mount(<App data={liveShapedData()} />);
     await click(container.querySelector(".open-overlay") as Element);
@@ -569,9 +596,12 @@ describe("observer scaffold rendering a live-shaped participant", () => {
     expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe(
       "../screenshots/lane/turn-01.png",
     );
-    // The transport tally separates thoughts from recorded actions.
-    expect(container.querySelector(".t-meta")?.textContent).toContain("2 actions");
-    expect(container.querySelector(".t-meta")?.textContent).toContain("2 thoughts");
+    // The Details tally separates thoughts from recorded actions.
+    const detailsTab = [...container.querySelectorAll('[role="tab"]')].find(
+      (el) => el.textContent === "details",
+    );
+    await click(detailsTab!);
+    expect(container.querySelector(".kv")?.textContent).toContain("2 actions · 2 thoughts");
   });
 
   it("keeps the newest reported thought in the live participant details", async () => {

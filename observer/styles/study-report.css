@@ -109,11 +109,12 @@
 .side .item {
   padding-block: var(--space-10);
 }
+/* Same height as the study playback dock beside it, so their top borders align. */
 .library-utilities {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-8) var(--space-16);
+  padding: var(--space-4) var(--space-16);
   border-top: 1px solid var(--line-soft);
   font-size: var(--text-11);
   color: var(--muted);

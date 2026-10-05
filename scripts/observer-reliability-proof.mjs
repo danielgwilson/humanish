@@ -355,15 +355,20 @@ try {
             "A direct control is clipped",
           );
           assert(
-            card.name.width > 40 &&
+            card.name.width >= 40 &&
               card.outcome.width > 0 &&
-              (card.width > 192 || card.outcome.width >= card.width - 18),
+              card.outcome.width >= card.name.width - 1 &&
+              card.caption.height <= 44,
             "Direct controls hide participant identity or capture status",
+          );
+          // Only a card too narrow for a 48px name beside both controls drops the direct pin.
+          assert(
+            card.pin.width > 0 || card.width < (phone ? 146 : 114),
+            "A card with room for the direct pin lost it",
           );
           if (phone)
             assert(
-              card.pin.width >= 44 &&
-                card.pin.height >= 44 &&
+              (card.pin.width === 0 || (card.pin.width >= 44 && card.pin.height >= 44)) &&
                 card.details.width >= 44 &&
                 card.details.height >= 44,
               "Phone direct controls need 44px targets",

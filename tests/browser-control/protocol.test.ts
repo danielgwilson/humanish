@@ -95,6 +95,37 @@ describe("browser control closed v1 protocol", () => {
     reply(2, "OBSERVE"),
     reply(1, "HELLO", { extra: true }),
     reply(1, "HELLO", { ok: false, error: { code: "secret text", disposition: "not_dispatched" } }),
+    reply(2, "EXECUTE", {
+      actionId: "action-2",
+      ok: false,
+      error: { code: "action_rejected", disposition: "not_dispatched", reason: "secret text" },
+    }),
+    reply(2, "EXECUTE", {
+      actionId: "action-2",
+      ok: false,
+      error: { code: "transport_failed", disposition: "not_dispatched", reason: "extra_tab" },
+    }),
+    reply(2, "EXECUTE", {
+      actionId: "action-2",
+      ok: false,
+      error: { code: "action_rejected", disposition: "outcome_uncertain", reason: "extra_tab" },
+    }),
+    reply(1, "HELLO", {
+      ok: false,
+      error: {
+        code: "transport_failed",
+        disposition: "not_dispatched",
+        diagnostic: { step: "insert_text", category: "target_closed", message: "Target closed." },
+      },
+    }),
+    reply(1, "HELLO", {
+      ok: false,
+      error: {
+        code: "transport_failed",
+        disposition: "not_dispatched",
+        diagnostic: { step: "Input.insertText", category: "target_closed" },
+      },
+    }),
   ])("rejects inconsistent replies", (value) =>
     expect(() => parseBrowserControlReply(value)).toThrow(ComputerUseExecutorError),
   );
@@ -213,6 +244,22 @@ describe("browser control closed v1 protocol", () => {
     expect(safeBrowserControlFailure(forged, true)).toEqual({
       code: "action_rejected",
       disposition: "outcome_uncertain",
+    });
+    const named = new ComputerUseExecutorError("action_rejected", "not_dispatched", {
+      reason: "extra_tab",
+    });
+    expect(safeBrowserControlFailure(named, false)).toEqual({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
+    });
+    const declared = new ComputerUseExecutorError("transport_failed", "outcome_uncertain", {
+      diagnostic: { step: "insert_text", category: "target_closed" },
+    });
+    expect(safeBrowserControlFailure(declared, true)).toEqual({
+      code: "transport_failed",
+      disposition: "outcome_uncertain",
+      diagnostic: { step: "insert_text", category: "target_closed" },
     });
   });
 });

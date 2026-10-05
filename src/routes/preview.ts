@@ -55,6 +55,7 @@ function runPreviewPlan(
 ): Promise<RunResult> {
   return runDryRun({
     ...(plan.study === undefined ? {} : { study: plan.study }),
+    ...(plan.warnings === undefined ? {} : { warnings: plan.warnings }),
     cwd: input.cwd,
     dryRun: true,
     participantCount: plan.participantCount,

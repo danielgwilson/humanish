@@ -827,12 +827,6 @@ a:hover {
   min-width: 60px;
   text-align: center;
 }
-.t-meta {
-  font-family: var(--mono);
-  font-size: var(--text-11);
-  color: var(--muted);
-  white-space: nowrap;
-}
 .rawchip {
   font-family: var(--mono);
   font-size: var(--text-11);

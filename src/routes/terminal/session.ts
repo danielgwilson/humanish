@@ -83,6 +83,7 @@ export async function runLiveTerminalSession(
     // This entry point is the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
     study: plan.study,
+    warnings: plan.warnings,
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
     now,
@@ -100,7 +101,7 @@ export async function runLiveTerminalSession(
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
-  const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues });
+  const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues, verdictNonce });
   const { version, model, modelSource, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
     ...(version === undefined ? {} : { version }),

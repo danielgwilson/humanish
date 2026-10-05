@@ -255,13 +255,28 @@ describe("browser control client and dispatcher", () => {
     });
     await client.ready();
     await expect(client.executor.execute(click)).rejects.toMatchObject({
+      code: "transport_failed",
       disposition: "outcome_uncertain",
+      diagnostic: { step: "channel", category: "channel_closed" },
     });
     await expect(client.executor.execute(click)).rejects.toMatchObject({
       disposition: "not_dispatched",
     });
     expect(execute).toHaveBeenCalledOnce();
     peer.close();
+  });
+  it("hands the host the diagnostic a guest declared with its failure", async () => {
+    const diagnostic = { step: "insert_text", category: "target_closed" } as const;
+    const execute = vi.fn(async () => {
+      throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain", { diagnostic });
+    });
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(f.client.executor.execute(click)).rejects.toMatchObject({
+      code: "transport_failed",
+      disposition: "outcome_uncertain",
+      diagnostic,
+    });
+    f.close();
   });
   it("terminally closes on an explicit uncertain error even when the peer keeps its channel open", async () => {
     const pipes = pair();
@@ -471,6 +486,22 @@ describe("browser control client and dispatcher", () => {
     await expect(f.client.executor.observe()).resolves.toHaveProperty("screenshot");
     await expect(f.client.executor.execute(click)).resolves.toBeUndefined();
     expect(execute).toHaveBeenCalledTimes(2);
+    f.close();
+  });
+  it("carries a rejection reason to the host and keeps the channel usable", async () => {
+    const execute = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ComputerUseExecutorError("action_rejected", "not_dispatched", { reason: "extra_tab" }),
+      )
+      .mockResolvedValue(undefined);
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(f.client.executor.execute(click)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
+    });
+    await expect(f.client.executor.execute(click)).resolves.toBeUndefined();
     f.close();
   });
   it("still closes the channel when an observation is rejected before dispatch", async () => {

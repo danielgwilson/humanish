@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 
 import { readPlainText } from "./plain-text.js";
-import { containsSecret, containsSensitive } from "./redaction.js";
+import { containsSensitive } from "./redaction.js";
 
 // HTML5 named references that stand for printable ASCII. Letters and digits have only numeric
 // references, which decodeEscapes handles.
@@ -202,12 +202,12 @@ function decodeTransferEscapes(text: string): string {
 export interface EncodedTextScanOptions {
   /** Do not count an encoded binary run as opaque. */
   readonly allowOpaqueBase64?: boolean;
-  /** Match secret shapes only, leaving local paths out, as a URL's path may look like one. */
-  readonly secretsOnly?: boolean;
+  /** What counts as sensitive in the text and in each decoding of it; containsSensitive by default. */
+  readonly matches?: (text: string) => boolean;
 }
 
 const matcherOf = (options: EncodedTextScanOptions): ((text: string) => boolean) =>
-  options.secretsOnly === true ? containsSecret : containsSensitive;
+  options.matches ?? containsSensitive;
 
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
@@ -299,7 +299,13 @@ export function scanEncodedText(
   for (const bytes of slashStarts)
     if (inspectDecoded(bytes, "", { ...options, allowOpaqueBase64: true }, depth).sensitive)
       return SENSITIVE;
-  for (const [match] of expanded.matchAll(HEX_RUN)) {
+  // Hex is read before transfer escapes too: the quoted-printable pass reads `=68` in `state=6874...`
+  // as one byte, which shifts every hex pair after it.
+  const hexRuns = new Set([
+    ...[...expanded.matchAll(HEX_RUN)].map(([match]) => match),
+    ...(expanded === decoded ? [] : [...decoded.matchAll(HEX_RUN)].map(([match]) => match)),
+  ]);
+  for (const match of hexRuns) {
     const plain = readPlainText(Buffer.from(match, "hex"));
     if (plain.ok && depth < MAX_DEPTH && scanEncodedText(plain.text, options, depth + 1).sensitive)
       return SENSITIVE;
@@ -310,7 +316,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 2;
+const ENCODED_SCAN_VERSION = 3;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();
@@ -324,12 +330,11 @@ const scanCache = new Map<string, EncodedTextScan>();
  */
 export function scanEncodedTextCached(
   text: string,
-  options: EncodedTextScanOptions = {},
+  options: Pick<EncodedTextScanOptions, "allowOpaqueBase64"> = {},
 ): EncodedTextScan {
   const key = [
     ENCODED_SCAN_VERSION,
     options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
-    options.secretsOnly === true ? "secrets-only" : "secrets-and-paths",
     createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
   ].join(":");
   const cached = scanCache.get(key);

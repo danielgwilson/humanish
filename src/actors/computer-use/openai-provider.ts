@@ -267,24 +267,56 @@ export interface OpenAiResponsesProviderOptions {
   env?: Record<string, string | undefined>;
 }
 
+/** Which answer told the provider that the organization keeps no server-side conversation. */
+type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
+
 // A typed error so nextTurn can distinguish a ZDR-policy rejection (recoverable
 // by switching to explicit-context mode) from any other non-ok status. It never
 // carries the apiKey or the response body.
 class ZdrError extends Error {
-  constructor() {
-    super("OpenAI Responses rejected server-side state (zero data retention)");
+  constructor(readonly rejection: ZdrRejection) {
+    super(
+      rejection === "stored_item"
+        ? "OpenAI Responses could not find an item the request referenced: the server keeps none for this organization (zero data retention)"
+        : "OpenAI Responses rejected server-side state (zero data retention)",
+    );
     this.name = "ZdrError";
   }
 }
 
-// A 400 whose body mentions any of these means the account/org cannot use
-// server-side response state, so we must fall back to explicit-context mode.
-function isZdrRejection(bodyText: string): boolean {
-  return (
-    bodyText.includes("Zero Data Retention") ||
-    bodyText.includes("zero data retention") ||
-    bodyText.includes("previous_response_id")
-  );
+/** The message of a 404 for an item the server never kept, as the wire sends it. */
+const STORED_ITEM_NOT_FOUND = /Item with id '?[A-Za-z0-9_-]+'? not found/;
+
+/**
+ * Error codes that name a failure of their own. Their messages can echo request text, such as a
+ * model name or the prompt, so the words below must not turn them into a retention answer.
+ */
+const OTHER_FAILURE_CODES: ReadonlySet<string> = new Set([
+  "invalid_prompt",
+  "model_not_found",
+  "context_length_exceeded",
+  "rate_limit_exceeded",
+  "insufficient_quota",
+  "invalid_image",
+  "invalid_image_format",
+  "invalid_base64_image",
+  "invalid_image_url",
+  "image_too_large",
+  "image_parse_error",
+  "image_content_policy_violation",
+]);
+
+// A 400 or 404 whose body says the organization cannot use server-side response state, so the
+// provider must carry the conversation itself (explicit-context mode). A 404 counts only with the
+// stored-item message. Captured bodies are in tests/fixtures/openai-store-less/.
+function zdrRejection(status: 400 | 404, bodyText: string): ZdrRejection | undefined {
+  const code = namedProviderErrorCode(bodyText);
+  if (code !== undefined && OTHER_FAILURE_CODES.has(code)) return undefined;
+  if (status === 404) return STORED_ITEM_NOT_FOUND.test(bodyText) ? "stored_item" : undefined;
+  if (/zero[ -]data[ -]retention/i.test(bodyText)) return "zero_data_retention";
+  if (bodyText.includes("previous_response_id")) return "previous_response";
+  if (STORED_ITEM_NOT_FOUND.test(bodyText)) return "stored_item";
+  return undefined;
 }
 
 // A typed error so nextTurn can latch reasoning summaries off and retry the turn
@@ -437,11 +469,18 @@ async function postResponse(
       return parsed;
     }
     lastStatus = res.status;
+    if (res.status === 404) {
+      // A store-less organization answers a reference to an item it never kept with 404.
+      const bodyText = await res.text().catch(() => "");
+      const rejection = zdrRejection(404, bodyText);
+      if (rejection !== undefined) throw new ZdrError(rejection);
+      const code = namedProviderErrorCode(bodyText);
+      throw new Error(`OpenAI Responses 404${code === undefined ? "" : ` ${code}`}`);
+    }
     if (res.status === 400) {
       const bodyText = await res.text();
-      if (isZdrRejection(bodyText)) {
-        throw new ZdrError();
-      }
+      const rejection = zdrRejection(400, bodyText);
+      if (rejection !== undefined) throw new ZdrError(rejection);
       if (isSummaryRejection(bodyText)) {
         throw new SummaryRejectionError();
       }
@@ -578,7 +617,7 @@ export function createOpenAiResponsesProvider(
           continue;
         }
         if (error instanceof ZdrError && state.mode !== "explicit_context") {
-          record.switched();
+          record.switched(error.rejection);
           state.mode = "explicit_context";
           continue;
         }
