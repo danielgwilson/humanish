@@ -296,7 +296,7 @@ describe("Player projects the shared study clock", () => {
     expect(container.querySelector('[aria-label="Image zoom"]')).toBeNull();
     expect(container.querySelector('[aria-label="Recorded frames"]')).toBeNull();
     expect(container.textContent).not.toContain("0 / 0");
-    expect(container.querySelector(".player-mode")?.textContent).toContain(
+    expect(container.querySelector(".player-evidence-note")?.textContent).toContain(
       "Desktop video · 2026-09-01T10:00:05.000Z",
     );
   });

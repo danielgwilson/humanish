@@ -3,7 +3,7 @@ import { Checkbox } from "./ui/checkbox";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
 import { Tabs } from "@base-ui/react/tabs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
 import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
@@ -30,7 +30,6 @@ import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
-import { recordedParticipantAssignment } from "../lib/participant-assignment";
 import {
   recordingContains,
   recordingInterval as streamRecordingInterval,
@@ -100,7 +99,13 @@ export function Player({
   recordedActorStatus,
   analysisReview,
   studyPlayback,
+  navigation,
+  outcome,
 }: {
+  /** Return and participant paging controls, shown at the start of the heading line. */
+  navigation?: ReactNode;
+  /** The analyzed outcome, shown after the recorded status. */
+  outcome?: ReactNode;
   data: ObserverData;
   stream: ObserverStream;
   model: PlayerModel;
@@ -530,6 +535,28 @@ export function Player({
             ? `${lifecycle} · Study replay`
             : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
       : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
+  const participantName = participantLabels(data.streams).get(stream.id) ?? stream.label;
+  // The study note below already says when a selected frame has no capture time.
+  const studyCaptureNote =
+    !showRecording &&
+    studyPlayback?.reviewing &&
+    current &&
+    studyPlayback.moment.kind === "capture";
+  const captureLine = live
+    ? "Read-only desktop; connection health is managed by the provider."
+    : following && active && current
+      ? captureAge === null
+        ? "Capture time unavailable"
+        : `Captured ${formatDuration(captureAge)} ago`
+      : showRecording && studyPlayback?.atMs !== null
+        ? `Desktop video · ${new Date(studyPlayback.atMs).toISOString()}`
+        : current?.atMs !== undefined
+          ? `Captured ${new Date(current.atMs).toISOString()}`
+          : studyPlayback?.moment.kind === "before-first"
+            ? "No capture yet"
+            : studyCaptureNote
+              ? null
+              : "Capture timestamps unavailable";
   const emptyText = studyPlayback?.unavailableFrame
     ? "This addressed frame is unavailable in the current recording. Choose another moment below."
     : studyPlayback?.reviewing && studyPlayback.moment.kind === "before-first"
@@ -555,26 +582,13 @@ export function Player({
     >
       <div className="viewer" ref={viewerRef}>
         <div className="player-heading">
+          {navigation ? <div className="player-navigation">{navigation}</div> : null}
           <div className="player-mode">
-            <b className="player-participant">
-              {participantLabels(data.streams).get(stream.id) ?? stream.label}
+            <b className="player-participant" title={participantName}>
+              {participantName}
             </b>
             <strong>{modeLabel}</strong>
-            <span>
-              {live
-                ? "Read-only desktop; connection health is managed by the provider."
-                : following && active && current
-                  ? captureAge === null
-                    ? "Capture time unavailable"
-                    : `Captured ${formatDuration(captureAge)} ago`
-                  : showRecording && studyPlayback?.atMs !== null
-                    ? `Desktop video · ${new Date(studyPlayback.atMs).toISOString()}`
-                    : current?.atMs !== undefined
-                      ? `Captured ${new Date(current.atMs).toISOString()}`
-                      : studyPlayback?.moment.kind === "before-first"
-                        ? "No capture yet"
-                        : "Capture timestamps unavailable"}
-            </span>
+            {outcome}
           </div>
           {live ? (
             <button
@@ -610,7 +624,6 @@ export function Player({
             Inspector {preferences.inspector ? "−" : "+"}
           </button>
         </div>
-        {recordedParticipantAssignment(stream) ? <ParticipantAssignment stream={stream} /> : null}
         {selectedRow || eventId ? (
           <div className="player-entry-context" role="group" aria-label="Selected evidence">
             {selectedRow ? (
@@ -941,6 +954,7 @@ export function Player({
           ) : null}
         </div>
         <div className="player-evidence-note">
+          {captureLine ? <span className="capture-line">{captureLine}</span> : null}
           {frames.length === 0 ? (
             <span>
               {active
@@ -948,13 +962,6 @@ export function Player({
                 : "No recorded screenshots"}
             </span>
           ) : null}
-          <span className="t-meta">
-            {rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}
-            {rowIndex.thoughtCount > 0
-              ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}`
-              : ""}{" "}
-            · {timing}
-          </span>
           {recordingFailed ? (
             <span>
               Desktop video could not load; showing recorded screenshot evidence when available.
@@ -965,10 +972,7 @@ export function Player({
               when available.
             </span>
           ) : null}
-          {!showRecording &&
-          studyPlayback?.reviewing &&
-          current &&
-          studyPlayback.moment.kind === "capture" ? (
+          {studyCaptureNote && studyPlayback.moment.kind === "capture" ? (
             <span>
               {current.atMs === undefined ? (
                 "Capture time unavailable; frame selected directly."
@@ -1220,14 +1224,10 @@ export function Player({
             </Tabs.Panel>
             <Tabs.Panel value="details" className="ipanel">
               {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
-              {!recordedParticipantAssignment(stream) ? (
-                <ParticipantAssignment stream={stream} />
-              ) : null}
+              <ParticipantAssignment stream={stream} />
               <div className="kv">
                 <span className="k">Persona</span>
-                <span className="v">
-                  {participantLabels(data.streams).get(stream.id) ?? stream.label}
-                </span>
+                <span className="v">{participantName}</span>
                 <span className="k">Scenario</span>
                 <span className="v">{data.run.scenario.title}</span>
                 <span className="k">Participant</span>
@@ -1243,6 +1243,15 @@ export function Player({
                     <span className="v">{formatDuration(actor.durationMs)}</span>
                   </>
                 ) : null}
+                <span className="k">Recorded</span>
+                <span className="v">
+                  {rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}
+                  {rowIndex.thoughtCount > 0
+                    ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}`
+                    : ""}
+                </span>
+                <span className="k">Timing</span>
+                <span className="v">{timing}</span>
                 {viewport ? (
                   <>
                     <span className="k">Viewport</span>
