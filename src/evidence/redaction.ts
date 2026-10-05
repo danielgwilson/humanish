@@ -142,10 +142,11 @@ const SECRET_PATTERNS: RegExp[] = [
     "g",
   ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
-  // key. The host part stops at a backslash or quote, so a URL followed by an escaped line break
-  // and an `E2B_...` variable in JSON text is not read as an E2B host.
+  // key. User info runs to its `@` and may hold any character but a slash or space. The host part
+  // stops at a backslash, quote or angle bracket, so a URL followed by an escaped line break and an
+  // `E2B_...` variable in JSON text is not read as an E2B host.
   new RegExp(
-    String.raw`(?!https:\/\/(?:${E2B_PUBLIC_PAGE})[.,;:!?'"]*(?:[)\s]|$))https?:\/\/[^/\s\\"'<>]*e2b[^)\s]+`,
+    String.raw`(?!https:\/\/(?:${E2B_PUBLIC_PAGE})[.,;:!?'"]*(?:[)\s]|$))https?:\/\/(?:[^/\s@]*@)?[^/\s\\"'<>@]*e2b[^)\s]+`,
     "gi",
   ),
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,

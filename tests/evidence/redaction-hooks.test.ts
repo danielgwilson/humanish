@@ -194,5 +194,14 @@ describe("the E2B URL pattern", () => {
     }
     const sandbox = JSON.stringify({ output: "URL=https://3000-synthetic-sandbox.e2b.app\n" });
     expect(containsSensitive(sandbox)).toBe(true);
+    // A quote in user info is valid, and the host after the `@` is still the sandbox.
+    for (const url of [
+      "https://o'hare@6080-synthetic-sandbox.e2b.app/",
+      "https://o'hare@6080-synthetic-sandbox.e2b.dev/vnc.html?authKey=synthetic-stream-key",
+      `https://a"b@6080-synthetic-sandbox.e2b.app/`,
+    ]) {
+      expect(containsSensitive(url), url).toBe(true);
+      expect(redactText(`see ${url}`), url).toBe("see [REDACTED_SECRET]");
+    }
   });
 });
