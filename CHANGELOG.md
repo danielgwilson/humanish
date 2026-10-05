@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `humanish reclaim --check` on a live scripted run against an `app-url` subject reported
+  `unknown` and exited 2, though that route creates no sandbox. The run's `status.json` now records
+  `sandboxes: none` at start, and reclaim reports such a run `clean` with `reason: no-sandbox`,
+  exits 0 and does not contact E2B. A scripted clone run, which serves its subject from a sandbox,
+  records no such field. Runs recorded before this release still report `unknown`.
+
 ## 0.110.3: Ctrl-C at the watch prompt, review says analysis is off, E2B docs links kept (2026-10-05)
 
 humanish 0.110.3 runs the `watch` and `observe` shutdown, and prints `watch stopped` or `observe

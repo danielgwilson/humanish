@@ -421,6 +421,7 @@
     "runId": "[run]",
     "state": "finished",
     "mode": "dry-run",
+    "sandboxes": "none",
     "pid": "[pid]",
     "startedAt": "[ts]",
     "updatedAt": "[ts]",

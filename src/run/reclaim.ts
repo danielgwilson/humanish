@@ -75,9 +75,10 @@ export interface ReclaimResult {
   createsInFlight: number;
   /**
    * Why there was nothing to look for: `dry-run` when run.json or status.json records the run as
-   * a dry run, which creates no sandboxes. Reclaim then contacts E2B for nothing.
+   * a dry run, which creates no sandboxes, and `no-sandbox` when status.json records that the
+   * route created none for this run. Reclaim then contacts E2B for nothing.
    */
-  reason?: "dry-run";
+  reason?: NoSandboxReason;
   warnings: string[];
   error?: {
     code:
@@ -160,8 +161,8 @@ async function reclaimRun(
   }
   const runId = runIdOf(runPaths);
   // The signal handler passes the creates it stopped and decides from what they reported.
-  if (hooks.creates === undefined && (await recordedDryRun(runPaths)))
-    return { ...base, ok: true, state: "clean", runId, reason: "dry-run" };
+  const reason = hooks.creates === undefined ? await recordedNoSandbox(runPaths) : undefined;
+  if (reason !== undefined) return { ...base, ok: true, state: "clean", runId, reason };
   const reclaimed = await reclaimRoot(runPaths, runId, hooks, warnings);
   if (reclaimed.kind === "module-unavailable")
     return {
@@ -189,27 +190,38 @@ async function reclaimRun(
   };
 }
 
+type NoSandboxReason = "dry-run" | "no-sandbox";
+
 /**
- * Whether the run records that it was a dry run: run.json and status.json, each one present, say
- * `dry-run`. A run with neither record is not taken for one. A journal with any line in it, or an
- * earlier reclaim receipt that names a sandbox, means a create ran, so that run is reclaimed as a
- * live one whatever its records say.
+ * Why the run's own records say it created no sandbox. `dry-run`: run.json and status.json, each
+ * one present, say `dry-run`. `no-sandbox`: status.json, written at start, names this run and
+ * records `sandboxes: none`, which the route sets only when it has no way to create one (a
+ * scripted run against an app-url subject). A run with no such record is not taken for one, so an
+ * empty journal alone never makes a run clean. A journal with any line in it, or an earlier
+ * reclaim receipt that names a sandbox, means a create ran, so that run is reclaimed as a live one
+ * whatever its records say.
  */
-async function recordedDryRun(runPaths: PreparedRunArtifactPaths): Promise<boolean> {
-  const modes: unknown[] = [];
-  for (const file of [RUN_BUNDLE_FILE, RUN_STATUS_FILE]) {
-    const record = await readRunJsonIfExists(runPaths, file);
-    if (isRecord(record)) modes.push(record.mode);
-  }
-  if (modes.length === 0 || modes.some((mode) => mode !== "dry-run")) return false;
+async function recordedNoSandbox(
+  runPaths: PreparedRunArtifactPaths,
+): Promise<NoSandboxReason | undefined> {
+  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  const status = await readRunJsonIfExists(runPaths, RUN_STATUS_FILE);
+  const records = [bundle, status].filter(isRecord);
+  const reason: NoSandboxReason | undefined =
+    records.length > 0 && records.every((record) => record.mode === "dry-run")
+      ? "dry-run"
+      : isRecord(status) && status.runId === runIdOf(runPaths) && status.sandboxes === "none"
+        ? "no-sandbox"
+        : undefined;
+  if (reason === undefined) return undefined;
   if (!(await containedPathAbsent(runPaths, RECLAIM_RECEIPT_ARTIFACT))) {
     const earlier = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
     if (!isRecord(earlier) || !Array.isArray(earlier.outcomes) || earlier.outcomes.length > 0)
-      return false;
+      return undefined;
   }
-  if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return true;
+  if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return reason;
   const journal = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
-  return journal !== null && journal.toString("utf8").trim() === "";
+  return journal !== null && journal.toString("utf8").trim() === "" ? reason : undefined;
 }
 
 /**

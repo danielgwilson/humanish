@@ -39,6 +39,8 @@ interface StartRunOptions {
   mintRunId: () => string;
   mode: "dry-run" | "live";
   study?: RunStudyProvenance | undefined;
+  /** `none` when the route creates no sandbox for this run; status.json records it for reclaim. */
+  sandboxes?: "none" | undefined;
   /** review.md for the published bundle. */
   renderReview: (bundle: RunBundle) => string;
   /** Used by `FinishedRun.renderObserver`; `render` is the `StudyDeps.renderObserver` seam. */
@@ -398,7 +400,8 @@ export async function runScope<T>(
         const runId = options.runId ?? options.mintRunId();
         const created = await createRunArtifactPaths(options.cwd, runId);
         if (!created.ok) return created;
-        // beginRunStatus reads only the mode and the study provenance from the run's options.
+        // beginRunStatus reads only the mode, the study provenance and the sandboxes field from
+        // the run's options.
         const runStatus = beginRunStatus(created.paths, { ...options, runId });
         status = runStatus;
         let interruptBundle: ((signal: RunInterruptSignal) => Promise<void>) | undefined;

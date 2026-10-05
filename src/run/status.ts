@@ -100,6 +100,11 @@ export interface RunStatusRecord {
    * Read either through studyProvenanceOf.
    */
   lab?: RunStudyProvenance;
+  /**
+   * `none` when the route recorded at start that this run creates no sandbox, as a scripted run
+   * against an app-url subject does. Absent when the run may create one. Reclaim reads it.
+   */
+  sandboxes?: "none";
   /** The pid that owns the run, for local liveness checks. */
   pid: number;
   startedAt: string;
@@ -136,6 +141,7 @@ export interface BeginRunStatusOptions {
   runId: string;
   mode: "dry-run" | "live";
   study?: RunStudyProvenance | undefined;
+  sandboxes?: "none" | undefined;
 }
 
 /**
@@ -155,6 +161,7 @@ export function beginRunStatus(
     state: "running",
     mode: options.mode,
     ...studyFields(options.study),
+    ...(options.sandboxes === undefined ? {} : { sandboxes: options.sandboxes }),
     pid: process.pid,
     startedAt,
     updatedAt: startedAt,
