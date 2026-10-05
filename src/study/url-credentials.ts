@@ -4,6 +4,7 @@
 import { rosterOf } from "./parse/actors.js";
 import { entryCredentialReason, urlCredentialReason } from "./parse/url-credentials.js";
 import type { StudyConfig } from "./types.js";
+import { actorsOf } from "./study-fields.js";
 
 /**
  * The first URL in `config` that carries a credential, with why: the subject's app, serve and
@@ -23,7 +24,7 @@ export function studyUrlCredentialReason(config: StudyConfig): string | undefine
     ...(subject.product?.publicSurfaces ?? []).map(
       (surface) => () => urlCredentialReason("subject.product.publicSurfaces", surface),
     ),
-    ...config.actors.flatMap((actor) =>
+    ...actorsOf(config).flatMap((actor) =>
       (rosterOf(actor) ?? []).flatMap((participant, index) => [
         () =>
           participant.target === undefined

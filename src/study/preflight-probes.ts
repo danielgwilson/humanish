@@ -23,9 +23,9 @@ import type { StudyRoute } from "./plan.js";
 import type { StudyPreflightResult, StudyPreflightTarget, PreflightContext } from "./preflight.js";
 import { digest, fail, finalize } from "./preflight-result.js";
 import type { StudyConfig } from "./types.js";
-import { rosterOf } from "./parse/actors.js";
 import { plural } from "../run/text.js";
 import { cli } from "../cli/invocation.js";
+import { participantList } from "./study-fields.js";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 // Room on the probe's lease for desktop boot and teardown around the work it does.
@@ -370,7 +370,7 @@ function targetUrlFor(config: StudyConfig, target: StudyPreflightTarget): string
     return config.subject.appUrl;
   }
   if (target.kind === "actors[0].lanes[].target") {
-    const rosterTarget = rosterOf(config.actors[0])?.find(
+    const rosterTarget = participantList(config)?.find(
       (entry) => entry.target && digest(entry.target) === target.targetDigest,
     )?.target;
     if (rosterTarget) return rosterTarget;

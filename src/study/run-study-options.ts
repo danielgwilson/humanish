@@ -10,8 +10,8 @@ import type { InternalRunStudyOptions, StudyOutcome, RunStudyOptions } from "../
 import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
 import { knownSecretValues, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
-import { rosterOf } from "./parse/actors.js";
 import { studyResultIdentity } from "../run/study-result.js";
+import { actorOf, participantList } from "./study-fields.js";
 
 type Refusal = {
   ok: false;
@@ -156,7 +156,7 @@ export function optionRefusalOutcome(
 ): StudyOutcome {
   const cwd = path.resolve(options.cwd);
   const error = { code: refusal.code, message: refusal.message };
-  const actor = config.actors[0]?.type ?? "";
+  const actor = actorOf(config)?.type ?? "";
   const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
   const runId = options.runId ?? "not-created";
   const common = { ok: false, cwd, actor, dryRun, runId, warnings: [], error };
@@ -205,7 +205,7 @@ export function optionRefusalOutcome(
         },
       };
     case "shared-world": {
-      const participantCount = rosterOf(config.actors[0])?.length ?? 0;
+      const participantCount = participantList(config)?.length ?? 0;
       return {
         route: "shared-world",
         result: {

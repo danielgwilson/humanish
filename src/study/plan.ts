@@ -16,6 +16,7 @@ import type { StudyPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./p
 import { routeOf, type StudyRoute } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
+import { declaredParticipantCount, modeOf } from "./study-fields.js";
 
 export { routeOf, type StudyRoute } from "./routing.js";
 
@@ -28,10 +29,10 @@ export function resolveStudyDryRun(
   if (override !== undefined) {
     return override;
   }
-  if (config.scenario?.mode === "live") {
+  if (modeOf(config) === "live") {
     return false;
   }
-  if (config.scenario?.mode === "dry-run") {
+  if (modeOf(config) === "dry-run") {
     return true;
   }
   return fallback;
@@ -61,7 +62,7 @@ function planPreview(
   if (unsupported) return refuse("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
-  const participantCount = options.count ?? config.actors[0]?.count ?? 4;
+  const participantCount = options.count ?? declaredParticipantCount(config) ?? 4;
   if (!Number.isSafeInteger(participantCount) || participantCount < 1)
     return refuse("HUMANISH_INVALID_PARTICIPANT_COUNT", "count must be a positive integer.");
   if (!input.dryRun) return refuse("HUMANISH_LIVE_RUN_UNIMPLEMENTED", THIS_REPO_DRY_RUN_ONLY);

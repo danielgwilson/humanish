@@ -35,6 +35,7 @@ import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
 import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf } from "../../study/study-fields.js";
 
 /**
  * A refused scripted study's result, at the refusal's stage: a before-scope refusal has its own field
@@ -46,7 +47,7 @@ export async function scriptedStudyRefusal(
 ): Promise<ScriptedBrowserStudyResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
-  const actorType = config.actors[0]?.type ?? "";
+  const actorType = actorOf(config)?.type ?? "";
   if (refusal.beforeScope)
     return {
       ...studyResultIdentity("scripted", config.id),

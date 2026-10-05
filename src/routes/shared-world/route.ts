@@ -66,7 +66,7 @@ import {
   type PlaneResults,
   type PlaneSelection,
 } from "./types.js";
-import { rosterOf } from "../../study/parse/actors.js";
+import { actorOf, participantList } from "../../study/study-fields.js";
 
 /** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
 const LOCAL_AGENT_REFUSAL_CODES = {
@@ -82,11 +82,11 @@ export function sharedWorldStudyRefusal(
   refusal: SharedWorldRefusal,
 ): Promise<ConcurrentSharedWorldStudyResult> {
   const { config, dryRun } = options;
-  const declared = rosterOf(config.actors[0]) ?? [];
+  const declared = participantList(config) ?? [];
   const fail = concurrentStudyFailure({
     cwd: path.resolve(options.cwd),
     studyId: config.id,
-    actor: config.actors[0]?.type ?? "",
+    actor: actorOf(config)?.type ?? "",
     participantCount: declared.length,
     // The parser fills concurrency for multi-participant studies, so this fallback serves only
     // library callers: every declared participant runs at once unless the author declared a cap.

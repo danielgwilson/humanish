@@ -20,10 +20,10 @@ import {
 } from "../actors/computer-use/openai-provider.js";
 import { inspectStudyManifest } from "./discover.js";
 import { isComputerUseComposition } from "./routing.js";
-import type { StudyActor, StudyConfig } from "./types.js";
+import type { StudyConfig } from "./types.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
-import { rosterOf } from "./parse/actors.js";
+import { actorOf, participantList, declaredParticipantCount, capsOf } from "./study-fields.js";
 
 export const STUDY_SUMMARY_SCHEMA = "humanish.study-summary.v1";
 
@@ -82,11 +82,9 @@ export interface StudySummary {
  * inherits the actor's, and an actor that declares nothing gets the provider default, which is
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
-function reasoningEffortOf(config: Record<string, unknown>): string {
-  const actors = config.actors as Pick<StudyActor, "reasoningEffort" | "lanes">[] | undefined;
-  const actor = actors?.[0];
-  const fallback = actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
-  const roster = rosterOf(actor) ?? [];
+function reasoningEffortOf(config: StudyConfig): string {
+  const fallback = actorOf(config)?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
+  const roster = participantList(config) ?? [];
   const resolved = new Set(roster.map((entry) => entry.reasoningEffort ?? fallback));
   if (resolved.size > 1) return "per-lane";
   return resolved.size === 1 ? [...resolved][0]! : fallback;
@@ -105,16 +103,16 @@ function subjectOf(config: Record<string, unknown>): string | undefined {
 }
 
 /** How many participants, and who; collapsed when they are all the same persona. */
-function participantsOf(config: Record<string, unknown>): string | undefined {
-  const actors = config.actors as Pick<StudyActor, "count" | "persona" | "lanes">[] | undefined;
-  const actor = actors?.[0];
+function participantsOf(config: StudyConfig): string | undefined {
+  const actor = actorOf(config);
   if (actor === undefined) return undefined;
-  const rosterPersonas = (rosterOf(actor) ?? [])
+  const rosterPersonas = (participantList(config) ?? [])
     .map((entry) => entry.persona)
     .filter((persona): persona is string => typeof persona === "string");
   const personas =
     rosterPersonas.length > 0 ? rosterPersonas : actor.persona === undefined ? [] : [actor.persona];
-  const count = actor.count ?? rosterOf(actor)?.length ?? personas.length ?? 1;
+  const count =
+    declaredParticipantCount(config) ?? participantList(config)?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
   // Several participants of one persona reads as "3 × skeptical-power-user"; genuinely different people
@@ -123,9 +121,9 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
 }
 
 /** The computer-use caps; `execution.caps` is inert on other routes, so none is drawn there. */
-function capsOf(config: StudyConfig): StudyCaps {
+function summaryCapsOf(config: StudyConfig): StudyCaps {
   if (!isComputerUseComposition(config)) return {};
-  const caps = config.execution?.caps;
+  const caps = capsOf(config, "computer-use");
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
     ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {}),
@@ -152,7 +150,6 @@ export async function readStudySummary(
   const inspected = await inspectStudyManifest(cwd, study).catch(() => null);
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
-  const actors = config.actors as { model?: string }[] | undefined;
   const route = routeOf(inspected.config);
 
   let keysReady: boolean | undefined;
@@ -200,7 +197,7 @@ export async function readStudySummary(
   // Computed once: a test-then-use pair reads as though the two calls could differ.
   const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, route);
   const subject = subjectOf(config);
-  const participants = participantsOf(config);
+  const participants = participantsOf(inspected.config);
   const runtime =
     options.checkKeys === true && isLocalBrowserStudy(inspected.config)
       ? await localRuntimeStatus({
@@ -213,7 +210,7 @@ export async function readStudySummary(
   const participantReadiness =
     options.checkKeys === true &&
     isLocalBrowserStudy(inspected.config) &&
-    inspected.config.actors[0]?.type === "local-agent"
+    actorOf(inspected.config)?.type === "local-agent"
       ? await localCodexParticipantCheck({ env: options.env ?? process.env })
       : undefined;
 
@@ -241,9 +238,9 @@ export async function readStudySummary(
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),
     ...(participants === undefined ? {} : { participants }),
-    model: actors?.[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
-    reasoningEffort: reasoningEffortOf(config),
-    caps: capsOf(inspected.config),
+    model: actorOf(inspected.config)?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    reasoningEffort: reasoningEffortOf(inspected.config),
+    caps: summaryCapsOf(inspected.config),
     ...(keysReady === undefined ? {} : { keysReady }),
     ...(missingKeys === undefined ? {} : { missingKeys }),
     ...(planRefusal === undefined ? {} : { planRefusal }),

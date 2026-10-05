@@ -68,6 +68,7 @@ import {
   type TerminalRunInput,
 } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf } from "../../study/study-fields.js";
 
 /** A refused terminal study's result: the route's envelope, and the analysis record a refusal gets. */
 export function terminalStudyRefusal(
@@ -79,7 +80,7 @@ export function terminalStudyRefusal(
     ...studyResultIdentity("terminal", config.id),
     ok: false,
     cwd: path.resolve(options.cwd),
-    actor: refusal.actor ?? config.actors[0]?.type ?? "",
+    actor: refusal.actor ?? actorOf(config)?.type ?? "",
     product: config.subject.product?.name ?? "",
     dryRun,
     runId: options.runId ?? "not-created",
