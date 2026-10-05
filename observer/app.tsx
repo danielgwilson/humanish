@@ -635,6 +635,11 @@ export function App({
                 ? "Back to comparison"
                 : "Back to participants"
         }
+        title={
+          source.kind === "finding"
+            ? report?.findings.find((finding) => finding.id === source.findingId)?.title
+            : undefined
+        }
         onClick={returnToSource}
       >
         ←{" "}
