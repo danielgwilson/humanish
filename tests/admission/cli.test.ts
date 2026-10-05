@@ -8,10 +8,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { CommanderError } from "commander";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const subprocess = vi.hoisted(() => ({ calls: 0 }));
 
@@ -101,14 +101,14 @@ async function projectDir(): Promise<string> {
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(dir, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
   for (const [id, raw] of Object.entries(labs)) {
-    await writeFile(path.join(dir, "humanish", "studies", `${id}.yaml`), studyText(id, raw, dir));
+    await writeFile(path.join(dir, "humanish", "studies", `${id}.yaml`), studyText(id, raw));
   }
   return dir;
 }
 
 /** Each fixture as a v3 file under its own id. */
-function studyText(id: string, raw: RawLab, dir: string): string {
-  return studyFileText({ ...raw, id }, dir);
+function studyText(id: string, raw: RawLab): string {
+  return stringify({ ...raw, id });
 }
 
 /** Runs the CLI. `log` also receives its stderr, so a test can order it among other writes. */

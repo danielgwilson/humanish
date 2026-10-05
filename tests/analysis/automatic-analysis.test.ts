@@ -21,7 +21,7 @@ import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
 import { readStudySummary } from "../../src/study/summary.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { runStudyWith } from "../../src/run-study.js";
 import { claimAutomaticAnalysis } from "../../src/analysis/job.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
@@ -33,7 +33,6 @@ import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 import { libraryConfig } from "../helpers/library-config.js";
-import { studyFileText } from "../helpers/study-file.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const fixtures = JSON.parse(
@@ -254,7 +253,7 @@ describe("automatic analysis admission and producer boundary", () => {
       };
       await writeFile(
         path.join(cwd, "humanish", "studies", "budget.yaml"),
-        studyFileText(manifest, cwd),
+        stringifyYaml(manifest),
       );
       const preflight = await runStudyPreflight({ cwd, study: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
@@ -670,10 +669,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await mkdir(path.join(cwd, ".humanish", "runs", "taken-run"), { recursive: true });
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
       await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
-      await writeFile(
-        path.join(cwd, "humanish", "studies", "default.yaml"),
-        studyFileText(base, cwd),
-      );
+      await writeFile(path.join(cwd, "humanish", "studies", "default.yaml"), stringifyYaml(base));
       let stdout = "";
       let stderr = "";
       const program = createProgram({
@@ -715,7 +711,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
       await writeFile(
         path.join(cwd, "humanish", "studies", "review.yaml"),
-        studyFileText({ ...base, review: { analysis: { maxCostUsd: 5 } } }, cwd),
+        stringifyYaml({ ...base, review: { analysis: { maxCostUsd: 5 } } }),
       );
       let stdout = "";
       let stderr = "";
