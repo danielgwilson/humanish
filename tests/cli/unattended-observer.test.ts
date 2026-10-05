@@ -136,7 +136,8 @@ describe("watch and observe without an interactive terminal", () => {
           person.kill("SIGKILL");
           reject(new Error(`${name} never attached or never stopped: ${output}`));
         }, 60_000);
-        person.once("exit", (code) => {
+        // `close` waits for stdout to drain; `exit` can fire before the last line arrives.
+        person.once("close", (code) => {
           clearTimeout(timer);
           resolve(code);
         });

@@ -26,6 +26,7 @@ import type { ExposureErrorCode } from "./exposure.js";
 import { isSafeRunIdSegment } from "../run/paths.js";
 import { listRuns } from "../run/stored-runs.js";
 import { verifyRun } from "../verify/verify.js";
+import { cli } from "../cli/invocation.js";
 
 export const SERVE_SCHEMA = "humanish.serve-result.v1";
 
@@ -378,8 +379,7 @@ export async function serveObserverLibrary(
       ok: false,
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message:
-          "No run library found under .humanish/runs. Run `humanish watch` to create the first run.",
+        message: `No run library found under .humanish/runs. Run \`${cli("run first-run")}\` to create the first run.`,
       },
     };
   }

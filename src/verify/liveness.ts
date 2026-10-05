@@ -15,6 +15,7 @@ import { runLiveness } from "../run/run-index.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { plural } from "../run/text.js";
+import { cli } from "../cli/invocation.js";
 
 /** The stable code every RUN_NOT_FINISHED warning starts with. */
 const RUN_NOT_FINISHED = "RUN_NOT_FINISHED";
@@ -93,7 +94,7 @@ async function reclaimState(
       sandboxIdDigest(receipt.sandboxId),
     ),
   );
-  const command = `\`humanish reclaim --run ${runId}\``;
+  const command = `\`${cli(`reclaim --run ${runId}`)}\``;
   const receipt = reclaimReceipt(
     await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT),
     runId,

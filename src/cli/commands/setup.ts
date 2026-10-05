@@ -35,6 +35,7 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
+import { cli } from "../invocation.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
   parent
@@ -368,7 +369,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
         names,
         message:
           names.length === 0
-            ? "The store is empty. Add a key with `humanish keys set <vendor>`."
+            ? `The store is empty. Add a key with \`${cli("keys set <vendor>")}\`.`
             : `${plural(names.length, "key name")} stored. Values are never printed.`,
       };
       writeResult(command, io, result, formatKeysHuman);

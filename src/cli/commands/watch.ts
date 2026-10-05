@@ -25,6 +25,7 @@ import {
   unattendedObserverWarning,
   watchExposeRequested,
 } from "../observer-follow.js";
+import { cli } from "../invocation.js";
 
 export function registerWatchCommand(parent: Command, io: CliIo): void {
   // A run's flags come from addRunOptions, the helper `run` uses, so the two cannot drift.
@@ -166,8 +167,7 @@ async function handleWatch(
   if (watchExposeRequested(options)) {
     refuseWatch(command, io, options.cwd, {
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
-      message:
-        "--expose/--tunnel/--oauth apply only to a live computer-use run; to expose finished evidence use `humanish observe --all --expose`.",
+      message: `--expose/--tunnel/--oauth apply only to a live computer-use run; to expose finished evidence use \`${cli("observe --all --expose")}\`.`,
     });
     return;
   }
