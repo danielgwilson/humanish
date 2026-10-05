@@ -56,6 +56,12 @@ The CLI follows the config:
 - `humanish study check --json` names a participant's target `participants[<i>].target`, with
   `kind: participants[].target`, where it said `actors[0].lanes[<i>].target`.
 
+### Changed
+
+- The refusal for a local-app study with more than one participant says "Remove `participants`, or
+  set `participants: 1`", where 0.110.4 said "Set participants to 1 and drop participants".
+  `humanish migrate` quotes the same text when it refuses a v2 local-app file with a count above 1.
+
 ### Fixed
 
 - A parsed study with a receiving email holds `kind: real` beside its `connection`, and
