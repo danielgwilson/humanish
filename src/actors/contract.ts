@@ -401,6 +401,12 @@ export interface ActorConversation {
   mode: "threaded" | "explicit_context";
   /** Why the session used explicit_context: configured, or the org rejected server-side state. */
   explicitReason?: "configured" | "zdr_rejection";
+  /**
+   * With `zdr_rejection`, the answer that made the switch: the error named zero data retention, it
+   * refused or could not find the previous response, or it could not find a stored item that the
+   * request referenced.
+   */
+  rejection?: "zero_data_retention" | "previous_response" | "stored_item";
   /** When a threaded session switched to explicit_context (ISO-8601), and on which request. */
   switchedAt?: string;
   switchedAtRequest?: number;
