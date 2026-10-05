@@ -111,6 +111,7 @@ async function runScriptedPlanInScope(
     mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
     study: plan.study,
+    warnings: plan.warnings,
     // Only a clone subject is served from a sandbox; an app-url run drives a local browser.
     sandboxes: setup.clone ? undefined : "none",
     renderReview: renderScriptedReviewMarkdown,

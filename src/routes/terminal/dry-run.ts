@@ -47,6 +47,7 @@ export async function runDryTerminalStudy(args: {
     mintRunId: makeTerminalRunId,
     mode: "dry-run",
     study: plan.study,
+    warnings: plan.warnings,
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: input.deps?.renderObserver },
   });

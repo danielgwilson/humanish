@@ -70,6 +70,8 @@ interface PlanBase {
   /** The study's declared title, which bundles record. */
   readonly title?: string;
   readonly study?: RunStudyProvenance;
+  /** Warnings about the study's own fields, which the run records in its bundle as warn events. */
+  readonly warnings?: readonly string[];
   /** A frozen copy owned by the plan. */
   readonly residual: Readonly<ResidualConfig>;
   readonly dryRun: boolean;
