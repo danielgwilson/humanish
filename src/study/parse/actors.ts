@@ -21,6 +21,7 @@ import type {
   StudyParticipantEntry,
   StudyParticipantFocus,
   StudyParseFailure,
+  StudyV3,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
@@ -77,16 +78,10 @@ export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | S
     if (!isRecord(entry)) {
       return invalid(`actors[${index}] must be an object.`);
     }
-    const type = str(entry.type);
-    if (!type) {
-      return invalid(`actors[${index}].type is required.`);
-    }
-    if (REMOVED_ACTOR_TYPES.has(type)) {
-      return invalid(
-        `actors[${index}].type "${type}" is no longer a humanish actor. Use an actor a study route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
-      );
-    }
-    const actor: StudyActor = { type };
+    const path = `actors[${index}]`;
+    const type = parseActorType(entry, path);
+    if (!type.ok) return type;
+    const actor: StudyActor = { type: type.value };
     const count = posInt(entry.count);
     if (count !== undefined) actor.count = count;
     if (entry.lanes !== undefined && entry.roster !== undefined) {
@@ -107,53 +102,119 @@ export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | S
     const rosterResult =
       entry.roster !== undefined
         ? parseRosterGroups(entry.roster, index)
-        : parseParticipantEntries(entry.lanes, index);
+        : parseParticipantEntries(entry.lanes, lanePaths(index));
     if (!rosterResult.ok) {
       return rosterResult;
     }
     if (rosterResult.value) actor.lanes = rosterResult.value;
-    const persona = str(entry.persona);
-    if (persona) actor.persona = persona;
-    const mission = str(entry.mission);
-    if (mission) actor.mission = mission;
-    const model = str(entry.model);
-    if (model) actor.model = model;
-    if (entry.maxOutputTokens !== undefined) {
-      if (!isMaxOutputTokens(entry.maxOutputTokens))
-        return invalid(`actors[${index}].maxOutputTokens must be a positive safe integer.`);
-      actor.maxOutputTokens = entry.maxOutputTokens;
-    }
-    const localAgent = str(entry.localAgent);
-    if (entry.localAgent !== undefined) {
-      if (localAgent !== "codex" && localAgent !== "claude") {
-        return invalid(
-          `actors[${index}].localAgent must be "codex" or "claude" (the locally signed-in CLI that drives the study).`,
-        );
-      }
-      actor.localAgent = localAgent;
-    }
-    if (entry.reasoningEffort !== undefined) {
-      if (!isReasoningEffort(entry.reasoningEffort)) {
-        return invalid(
-          `actors[${index}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
-        );
-      }
-      actor.reasoningEffort = entry.reasoningEffort;
-    }
-    const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${index}].stopWhen`);
-    if (!stopWhenResult.ok) return stopWhenResult;
-    if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
-    const dwellResult = parseDwell(entry.dwell, `actors[${index}].dwell`);
-    if (!dwellResult.ok) return dwellResult;
-    if (dwellResult.value !== undefined) actor.dwell = dwellResult.value;
-    const tasksResult = parseTasks(entry.tasks, `actors[${index}].tasks`);
-    if (!tasksResult.ok) return tasksResult;
-    if (tasksResult.value !== undefined) actor.tasks = tasksResult.value;
+    const fields = parseActorFields(entry, path);
+    if (!fields.ok) return fields;
+    Object.assign(actor, fields.value);
     const focus = parseFocus(entry.laneFocus);
     if (focus) actor.laneFocus = focus;
     actors.push(actor);
   }
   return { ok: true, value: actors };
+}
+
+/** An actor's `type`, which a study route must run. `path` names the actor in messages. */
+export function parseActorType(
+  entry: Record<string, unknown>,
+  path: string,
+): { ok: true; value: string } | StudyParseFailure {
+  const type = str(entry.type);
+  if (!type) {
+    return invalid(`${path}.type is required.`);
+  }
+  if (REMOVED_ACTOR_TYPES.has(type)) {
+    return invalid(
+      `${path}.type "${type}" is no longer a humanish actor. Use an actor a study route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
+    );
+  }
+  return { ok: true, value: type };
+}
+
+/** An actor's keys other than `type` and the keys that declare its participants. */
+type ActorFields = Omit<StudyV3["actor"], "type">;
+
+/**
+ * Every actor key other than `type` and the participant keys. The v2 parser reads them after the
+ * participant entries, so a file with errors in both reports the entry first.
+ */
+export function parseActorFields(
+  entry: Record<string, unknown>,
+  path: string,
+): { ok: true; value: ActorFields } | StudyParseFailure {
+  const actor: ActorFields = {};
+  const persona = str(entry.persona);
+  if (persona) actor.persona = persona;
+  const mission = str(entry.mission);
+  if (mission) actor.mission = mission;
+  const model = str(entry.model);
+  if (model) actor.model = model;
+  if (entry.maxOutputTokens !== undefined) {
+    if (!isMaxOutputTokens(entry.maxOutputTokens))
+      return invalid(`${path}.maxOutputTokens must be a positive safe integer.`);
+    actor.maxOutputTokens = entry.maxOutputTokens;
+  }
+  const localAgent = str(entry.localAgent);
+  if (entry.localAgent !== undefined) {
+    if (localAgent !== "codex" && localAgent !== "claude") {
+      return invalid(
+        `${path}.localAgent must be "codex" or "claude" (the locally signed-in CLI that drives the study).`,
+      );
+    }
+    actor.localAgent = localAgent;
+  }
+  if (entry.reasoningEffort !== undefined) {
+    if (!isReasoningEffort(entry.reasoningEffort)) {
+      return invalid(
+        `${path}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+      );
+    }
+    actor.reasoningEffort = entry.reasoningEffort;
+  }
+  const stopWhenResult = parseStopWhen(entry.stopWhen, `${path}.stopWhen`);
+  if (!stopWhenResult.ok) return stopWhenResult;
+  if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;
+  const dwellResult = parseDwell(entry.dwell, `${path}.dwell`);
+  if (!dwellResult.ok) return dwellResult;
+  if (dwellResult.value !== undefined) actor.dwell = dwellResult.value;
+  const tasksResult = parseTasks(entry.tasks, `${path}.tasks`);
+  if (!tasksResult.ok) return tasksResult;
+  if (tasksResult.value !== undefined) actor.tasks = tasksResult.value;
+  return { ok: true, value: actor };
+}
+
+/** The participants a v2 actor declares, which a v3 study declares outside its actor. */
+interface ActorParticipants {
+  readonly count?: number | undefined;
+  readonly entries?: StudyParticipantEntry[] | undefined;
+  readonly instruction?: string | undefined;
+}
+
+/** A v3 study's actor in the v2 spelling: the actor holds its participants. */
+export function withParticipants(
+  actor: StudyV3["actor"],
+  { count, entries, instruction }: ActorParticipants,
+): StudyActor {
+  const { type, ...fields } = actor;
+  return {
+    type,
+    ...(count === undefined ? {} : { count }),
+    ...(entries === undefined ? {} : { lanes: entries }),
+    ...fields,
+    ...(instruction === undefined ? {} : { laneFocus: { instruction } }),
+  };
+}
+
+/** A v2 actor without the keys that declare its participants: the actor of a v3 study. */
+export function withoutParticipants(actor: StudyActor): StudyV3["actor"] {
+  const fields: StudyActor = { ...actor };
+  delete fields.count;
+  delete fields.lanes;
+  delete fields.laneFocus;
+  return fields;
 }
 
 function parseFocus(raw: unknown): StudyParticipantFocus | undefined {
@@ -229,11 +290,26 @@ function parseRosterGroups(
     }
   }
 
-  return parseParticipantEntries(expanded, actorIndex);
+  return parseParticipantEntries(expanded, lanePaths(actorIndex));
+}
+
+/** How a participant list's messages name the list and each entry in it. */
+export interface ParticipantPaths {
+  readonly list: string;
+  readonly entry: (index: number) => string;
+}
+
+// The v2 spelling, `actors[0].lanes[3]`. A roster group's participants are named the same way.
+function lanePaths(actorIndex: number): ParticipantPaths {
+  return {
+    list: `actors[${actorIndex}].lanes`,
+    entry: (index) => `actors[${actorIndex}].lanes[${index}]`,
+  };
 }
 
 /**
- * Parse `actors[index].lanes` into a fan-out roster (computer-use E2B route). Structural only:
+ * Parse a participant list into a fan-out roster (computer-use E2B route): `actors[index].lanes` in
+ * a v2 file, `participants` in a v3 one, each named in messages by `paths`. Structural only:
  * each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?,
  * entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
@@ -241,16 +317,16 @@ function parseRosterGroups(
  * route-scoped cross-validation (`lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap 16)
  * runs in parseStudy where the route is known.
  */
-function parseParticipantEntries(
+export function parseParticipantEntries(
   raw: unknown,
-  actorIndex: number,
+  paths: ParticipantPaths,
 ): { ok: true; value: StudyParticipantEntry[] | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `actors[${actorIndex}].lanes must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
+      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
   const entries: StudyParticipantEntry[] = [];
@@ -258,7 +334,7 @@ function parseParticipantEntries(
   for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `actors[${actorIndex}].lanes[${entryIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
+        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
     const parsedEntry: StudyParticipantEntry = {};
@@ -266,11 +342,11 @@ function parseParticipantEntries(
     if (id !== undefined) {
       if (!PARTICIPANT_ID_PATTERN.test(id) || id.length > PARTICIPANT_ID_MAX_CHARS) {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars (it names the participant's evidence paths); got "${id}".`,
+          `${paths.entry(entryIndex)}.id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars (it names the participant's evidence paths); got "${id}".`,
         );
       }
       if (seenIds.has(id)) {
-        return invalid(`actors[${actorIndex}].lanes ids must be unique (duplicate "${id}").`);
+        return invalid(`${paths.list} ids must be unique (duplicate "${id}").`);
       }
       seenIds.add(id);
       parsedEntry.id = id;
@@ -279,46 +355,34 @@ function parseParticipantEntries(
     if (device !== undefined) {
       if (!isDevicePresetName(device)) {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
+          `${paths.entry(entryIndex)}.device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
         );
       }
       parsedEntry.device = device;
     }
     const persona = str(entry.persona);
     if (persona !== undefined) parsedEntry.persona = persona;
-    const actorType = parseEntryMetadata(
-      entry.actorType,
-      `actors[${actorIndex}].lanes[${entryIndex}].actorType`,
-    );
+    const actorType = parseEntryMetadata(entry.actorType, `${paths.entry(entryIndex)}.actorType`);
     if (!actorType.ok) return actorType;
     if (actorType.value !== undefined) parsedEntry.actorType = actorType.value;
-    const surface = parseEntryMetadata(
-      entry.surface,
-      `actors[${actorIndex}].lanes[${entryIndex}].surface`,
-    );
+    const surface = parseEntryMetadata(entry.surface, `${paths.entry(entryIndex)}.surface`);
     if (!surface.ok) return surface;
     if (surface.value !== undefined) parsedEntry.surface = surface.value;
-    const caseGroup = parseEntryMetadata(
-      entry.caseGroup,
-      `actors[${actorIndex}].lanes[${entryIndex}].caseGroup`,
-    );
+    const caseGroup = parseEntryMetadata(entry.caseGroup, `${paths.entry(entryIndex)}.caseGroup`);
     if (!caseGroup.ok) return caseGroup;
     if (caseGroup.value !== undefined) parsedEntry.caseGroup = caseGroup.value;
     const instruction = str(entry.instruction);
     if (instruction !== undefined) parsedEntry.instruction = instruction;
-    const stopWhenResult = parseStopWhen(
-      entry.stopWhen,
-      `actors[${actorIndex}].lanes[${entryIndex}].stopWhen`,
-    );
+    const stopWhenResult = parseStopWhen(entry.stopWhen, `${paths.entry(entryIndex)}.stopWhen`);
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) parsedEntry.stopWhen = stopWhenResult.value;
-    const dwellResult = parseDwell(entry.dwell, `actors[${actorIndex}].lanes[${entryIndex}].dwell`);
+    const dwellResult = parseDwell(entry.dwell, `${paths.entry(entryIndex)}.dwell`);
     if (!dwellResult.ok) return dwellResult;
     if (dwellResult.value !== undefined) parsedEntry.dwell = dwellResult.value;
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+          `${paths.entry(entryIndex)}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
         );
       }
       parsedEntry.reasoningEffort = entry.reasoningEffort;
@@ -326,14 +390,9 @@ function parseParticipantEntries(
     const target = str(entry.target);
     if (target !== undefined) {
       if (!isHttpUrl(target)) {
-        return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].target must be an absolute http(s) URL.`,
-        );
+        return invalid(`${paths.entry(entryIndex)}.target must be an absolute http(s) URL.`);
       }
-      const credential = urlCredentialReason(
-        `actors[${actorIndex}].lanes[${entryIndex}].target`,
-        target,
-      );
+      const credential = urlCredentialReason(`${paths.entry(entryIndex)}.target`, target);
       if (credential) return invalid(credential);
       parsedEntry.target = target;
     }
@@ -341,10 +400,7 @@ function parseParticipantEntries(
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const entryPath = str(entry.entry);
     if (entryPath !== undefined) {
-      const credential = entryCredentialReason(
-        `actors[${actorIndex}].lanes[${entryIndex}].entry`,
-        entryPath,
-      );
+      const credential = entryCredentialReason(`${paths.entry(entryIndex)}.entry`, entryPath);
       if (credential) return invalid(credential);
       parsedEntry.entry = entryPath;
     }
@@ -353,7 +409,7 @@ function parseParticipantEntries(
     if (entry.host !== undefined) {
       if (typeof entry.host !== "boolean") {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].host must be a boolean (marks the designated host participant on the external-public shared-world route).`,
+          `${paths.entry(entryIndex)}.host must be a boolean (marks the designated host participant on the external-public shared-world route).`,
         );
       }
       if (entry.host) parsedEntry.host = true;

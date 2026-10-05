@@ -226,6 +226,16 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
   const commsResult = parseComms(raw.comms);
   if (!commsResult.ok) return commsResult;
   if (commsResult.value) config.comms = commsResult.value;
+  return checkStudyConfig(config);
+}
+
+/**
+ * The checks that read more than one section of a parsed config, and the defaults they fill:
+ * shared-world `execution.concurrency`, `comms.email.recipients` and the local browser's defaults.
+ * parseV2 runs them once every section has parsed. parse/study.ts runs them on its v2 view of a v3
+ * study.
+ */
+export function checkStudyConfig(config: StudyConfig): StudyParseResult {
   if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
     return invalid(
       "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.",

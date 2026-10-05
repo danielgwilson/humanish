@@ -2,6 +2,7 @@ import { type StudyAnalysis } from "../analysis/automatic-config.js";
 import type { StudyTask } from "./tasks.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import { type ReasoningEffort } from "../actors/reasoning-effort.js";
+import type { StudyRoute } from "./routing.js";
 
 export const V2_SCHEMA = "humanish.lab.v2";
 
@@ -847,6 +848,49 @@ export interface StudyConfig {
   defaults?: StudyDefaults;
   comms?: StudyComms;
 }
+
+/**
+ * A humanish.study.v3 file as src/study/parse/study.ts reads it: the declared route, one actor, its
+ * participants and one caps block. It has the keys the file has. parseStudy still returns the
+ * StudyConfig above.
+ */
+export interface StudyV3 {
+  schema: typeof STUDY_SCHEMA;
+  id: string;
+  title?: string;
+  description?: string;
+  route: StudyRoute;
+  /** Absent: a dry run. */
+  mode?: StudyScenarioMode;
+  subject: Omit<StudySubject, "topology">;
+  actor: Omit<StudyActor, "count" | "lanes" | "laneFocus">;
+  /** Preview, computer-use and shared-world, in the form the file used. */
+  participants?: StudyParticipants;
+  /** Scripted only. */
+  surfaces?: StudySurfaces;
+  /** The caps keys the route reads. */
+  caps?: StudyScenarioCaps;
+  execution?: Omit<StudyExecution, "caps">;
+  /** Scripted: a committed scenario id or path. */
+  scenario?: string;
+  policies?: StudyPolicies;
+  review?: StudyReview;
+  defaults?: StudyDefaults;
+  comms?: StudyComms;
+}
+
+/**
+ * A count, a count with one instruction for every participant, or a list. A list entry with a
+ * `count` is expanded into its participants, `<id>-01` to `<id>-NN`.
+ */
+type StudyParticipants = number | StudyParticipantGroup | StudyParticipantEntry[];
+
+interface StudyParticipantGroup {
+  count?: number;
+  instruction?: string;
+}
+
+type StudySurfaces = readonly ["desktop"] | readonly ["desktop", "mobile"];
 
 interface StudyParseSuccess {
   ok: true;
