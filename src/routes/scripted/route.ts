@@ -112,6 +112,8 @@ async function runScriptedPlanInScope(
     mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
     study: plan.study,
+    // Only a clone subject is served from a sandbox; an app-url run drives a local browser.
+    sandboxes: setup.clone ? undefined : "none",
     renderReview: renderScriptedReviewMarkdown,
     observer: { open: input.open === true, render: setup.deps.renderObserver },
   });
@@ -166,6 +168,7 @@ async function runScriptedPlanInScope(
           deps: setup.deps,
           browserCommand: setup.browserCommand,
           runPaths,
+          onSessionStart: () => run.participantStarted(),
         },
       );
     } catch (error) {

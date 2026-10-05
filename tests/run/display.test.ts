@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { bundleDisplayFacts, reviewOutcome, runDisplay } from "../../src/run/display.js";
+import {
+  bundleDisplayFacts,
+  displayedReview,
+  reviewOutcome,
+  runDisplay,
+} from "../../src/run/display.js";
 
 // runDisplay is the one rule every surface that says whether a run passed reads. These pin the
 // states the failure goldens in tests/run/outcome-surfaces.test.ts do not reach.
@@ -123,5 +128,36 @@ describe("bundleDisplayFacts", () => {
     const live = { ...bundle, simulations: [{ status: "running" }] };
     expect(runDisplay(bundleDisplayFacts(live)).state).toBe("running");
     expect(reviewOutcome(live)).toBe("running");
+  });
+});
+
+describe("displayedReview", () => {
+  const live = {
+    summary: "The session is running.",
+    gaps: ["The session is still running."],
+  };
+  const stopped = {
+    runId: "run-a",
+    simulations: [{ status: "running" }, { status: "passed" }, { status: "running" }],
+    outcome: {
+      state: "interrupted" as const,
+      ok: false as const,
+      signal: "SIGTERM" as const,
+      at: "x",
+    },
+  };
+
+  it("replaces a live flush's summary and gaps once the run reads as interrupted", () => {
+    const shown = displayedReview(live, stopped, runDisplay(bundleDisplayFacts(stopped)));
+    expect(shown.summary).toMatch(/^Interrupted by SIGTERM while 2 of 3 participants were/);
+    expect(shown.gaps).toHaveLength(1);
+    expect(shown.gaps).not.toEqual(live.gaps);
+  });
+
+  it("keeps the review of a run that is not interrupted or had no participant running", () => {
+    const running = { runId: "run-a", simulations: [{ status: "running" }] };
+    expect(displayedReview(live, running, runDisplay(bundleDisplayFacts(running)))).toBe(live);
+    const ended = { ...stopped, simulations: [{ status: "passed" }] };
+    expect(displayedReview(live, ended, runDisplay(bundleDisplayFacts(ended)))).toBe(live);
   });
 });

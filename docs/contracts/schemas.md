@@ -1147,9 +1147,16 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
 every route at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
-finished | interrupted, mode, study?, pid, startedAt, updatedAt, completedAt?,
+finished | interrupted, mode, study?, sandboxes?, pid, startedAt, updatedAt, completedAt?,
 signal?, outcome? }`. A record written by 0.108 or earlier also has `lab`, with the same value as
-`study`, and readers accept it.
+`study`, and readers accept it. `sandboxes: none` is written at run start by a route that has no
+way to create a sandbox for the run: a scripted run against an `app-url` subject. A run that may
+create one has no `sandboxes` field. `humanish reclaim` reports such a run `clean` with
+`reason: no-sandbox` without contacting E2B only when its `run.json` agrees: the scripted route
+wrote it, its subject is no clone, it lists no provider resource or desktop minutes, and its
+outcome marks no sandbox or provider cleanup unconfirmed. A missing or contradicting `run.json`,
+a journal line or an earlier reclaim receipt that names a sandbox sends the run through the
+normal E2B search.
 `outcome` carries the bundle's `verdict`, `participants`, `estimatedCostUsd` and
 `estimatedCostComplete` when the run finishes, with `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` copied from `run.json`'s `outcome`
@@ -1203,7 +1210,7 @@ nothing at all until they completed.
 It is a derived index, not evidence. `run.json` remains the evidence-of-record;
 `verify` never gates on `status.json`, nothing in it is a claim about what a
 participant did, and when the two disagree the bundle wins. Fields that cannot be
-rebuilt from `run.json`: `pid`, `startedAt`, `updatedAt` and `completedAt`, which
+rebuilt from `run.json`: `pid`, `startedAt`, `updatedAt`, `completedAt` and `sandboxes`, which
 no bundle records, and, on a record written before `run.json` carried an
 `outcome`, `outcome.ok` and `outcome.execution`. A `running` record whose `updatedAt` is older than three
 touch intervals is interrupted, not alive. A dropped connection or a killed
@@ -1532,7 +1539,9 @@ sandbox. 0.109.0 removed the 0.107 names (`runLab`, `RunLabOptions`, `parseLabCo
   `durationMs` on completed phases. Computer use sends a participant target, shared world the
   subject.
 - `analysis-started` and `analysis-finished`, around post-run analysis. `analysis-finished`
-  fires after success, failure and cancellation.
+  fires after success, failure and cancellation. Neither fires for a run where no participant's
+  session started, such as one whose E2B key was refused before a desktop existed. A session that
+  started and then threw counts as started. That run's analysis outcome is still recorded.
 
 `onEvent` is never awaited, and it changes no output: subject phases still print to stderr. A
 throw or a rejected promise becomes a redacted run warning.

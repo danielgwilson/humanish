@@ -8,6 +8,34 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `humanish reclaim --check` on a live scripted run against an `app-url` subject reported
+  `unknown` and exited 2, though that route creates no sandbox. The run's `status.json` now records
+  `sandboxes: none` at start. When its `run.json` agrees (scripted route, no clone subject, no
+  provider resource, no unconfirmed cleanup), reclaim reports such a run `clean` with
+  `reason: no-sandbox`, exits 0 and does not contact E2B. A scripted clone run, which serves its
+  subject from a sandbox, records no such field. Runs recorded before this release, and runs whose
+  `run.json` is missing or disagrees, still go through the E2B search.
+- `humanish review` on a computer-use run stopped by Ctrl-C after its desktop started printed
+  "Live computer-use session is running…" and the gap "Live desktop session is still running."
+  under its `interrupted` headline. Those came from the review the run's last live flush wrote.
+  When `runDisplay` reads a run as interrupted and a participant was still running, review now
+  says the run was interrupted, by which signal, and how many participants have no verdict, in
+  both its text and `--json` output. review.json on disk is unchanged.
+- A live run that failed before any participant started, such as one whose E2B key was refused,
+  printed "Participants finished; preparing analysis…". The line, and the `analysis-started` and
+  `analysis-finished` events behind it, now come only when a participant's session started, on
+  any route; a session that started and then threw counts. The analysis outcome is recorded and
+  printed as before, for example "analysis: skipped because no participant left evidence".
+- A live scripted run failed every surface with "Scripted browser launch failed:
+  browserType.launch: Target page, context or browser has been closed" when `TMPDIR` was a long
+  path. Chrome puts its singleton socket at `$TMPDIR/com.google.Chrome.XXXXXX/SingletonSocket`, a
+  Unix socket path holds at most 107 bytes on Linux, and Chrome aborts with "Socket path too
+  long". When `TMPDIR` is too long for that path, the scripted browser now launches Chrome with
+  `TMPDIR=/tmp`. If /tmp is not a writable directory, or Chrome still aborts on the socket path,
+  the launch error says so and names the longest `TMPDIR` that fits.
+
 ## 0.110.3: Ctrl-C at the watch prompt, review says analysis is off, E2B docs links kept (2026-10-05)
 
 humanish 0.110.3 runs the `watch` and `observe` shutdown, and prints `watch stopped` or `observe

@@ -129,6 +129,36 @@ describe("automatic analysis admission and producer boundary", () => {
     ) as { outcome?: { state?: string } };
     expect(bundle.outcome?.state).toBe("interrupted");
   });
+  it("records the analysis of a run where no participant ran, without the analysis events", async () => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    // A run that failed at E2B login: its route reported no session start.
+    const ran = await publishRun(cwd, "participant-ran");
+    const none = await publishRun(cwd, "no-participant", { noParticipant: true });
+    const skip = {
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
+    } as AutomaticAnalysisOutcome;
+    const run = vi.fn(async () => skip);
+    const writeErr = vi.fn();
+    const { onEvent } = cliAnalysisOptions({ writeErr });
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "no-participant", dryRun: false, ok: false },
+      none,
+      config,
+      { deps: { analysis: { run } }, emit: (event) => void onEvent!(event) },
+    );
+    expect(run).toHaveBeenCalledOnce();
+    expect(result.automaticAnalysis).toEqual(skip);
+    expect(writeErr).not.toHaveBeenCalled();
+    await completeAutomaticAnalysis(
+      { cwd, runId: "participant-ran", dryRun: false, ok: false },
+      ran,
+      config,
+      { deps: { analysis: { run } }, emit: (event) => void onEvent!(event) },
+    );
+    expect(writeErr).toHaveBeenCalledOnce();
+    expect([ran.participantsRan, none.participantsRan]).toEqual([true, false]);
+  });
   it("a run that finished before any signal is not marked interrupted", async () => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
     const finished = await publishRun(cwd, "finished", { shape: asLiveRecording });

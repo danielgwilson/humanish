@@ -6,6 +6,7 @@
 import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
 import { classifyRunStatus, isRunStatusRecord, type RunLiveness } from "./status.js";
+import { plural } from "./text.js";
 
 /** The states a run is shown in. */
 export type RunDisplayState =
@@ -158,4 +159,29 @@ export function bundleDisplayFacts(
  */
 export function reviewOutcome(bundle: DisplayedBundle): string {
   return runDisplayLine(runDisplay(bundleDisplayFacts(bundle)));
+}
+
+/**
+ * The summary and gaps a review shows beside its run's display. A run stopped while a participant
+ * was still running keeps the review its last live flush wrote, which describes that session as
+ * running. Once runDisplay reads the run as interrupted, the review says how many participants the
+ * stop cut off instead.
+ */
+export function displayedReview<T extends { summary: string; gaps: string[] }>(
+  review: T,
+  bundle: DisplayedBundle,
+  display: RunDisplay,
+): T {
+  const records = bundle.simulations ?? [];
+  const running = records.filter((record) => record?.status === "running").length;
+  if (display.state !== "interrupted" || running === 0) return review;
+  const signal = bundle.outcome?.state === "interrupted" ? ` by ${bundle.outcome.signal}` : "";
+  const one = running === 1;
+  return {
+    ...review,
+    summary: `Interrupted${signal} while ${running} of ${plural(records.length, "participant")} ${one ? "was" : "were"} still running.`,
+    gaps: [
+      `${plural(running, "participant")} ${one ? "has" : "have"} no verdict: the run stopped before ${one ? "its session" : "their sessions"} ended.`,
+    ],
+  };
 }

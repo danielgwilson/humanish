@@ -28,6 +28,8 @@ export async function publishRun(
     shape?: (bundle: RunBundle) => RunBundle;
     /** Interrupt the run as the CLI's signal handler does, before the route finishes it. */
     interruptedBy?: RunInterruptSignal;
+    /** Publish a run whose route reported no participant session start. */
+    noParticipant?: boolean;
   } = {},
 ): Promise<FinishedRun> {
   const mode = options.mode ?? "live";
@@ -52,6 +54,7 @@ export async function publishRun(
       renderReview: (published) => `# Review ${published.runId}\n`,
     });
     if (!started.ok) throw new Error(started.message);
+    if (options.noParticipant !== true) started.run.participantStarted();
     if (options.interruptedBy !== undefined) {
       const active = activeRuns().find((run) => run.runId === runId);
       if (active === undefined) throw new Error(`run ${runId} is not registered as active`);

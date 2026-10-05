@@ -111,7 +111,14 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
     if (!dryRun)
       ({ outcomes, failFastReason } = await runAllCuaParticipants(
         participantRuns,
-        deps,
+        {
+          ...deps,
+          // A session that throws returns no trace; the run still records that it started.
+          runSession: (options) => {
+            run.participantStarted();
+            return deps.runSession(options);
+          },
+        },
         participantPlan,
         inProcess,
       ));

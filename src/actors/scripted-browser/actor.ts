@@ -63,20 +63,28 @@ import {
   type ScriptedPageLike,
 } from "./types.js";
 import type { Browser } from "playwright-core";
+import { chromeLaunchEnv, chromeLaunchError } from "./launch-env.js";
 
 /** Production default: lazy playwright-core import + chromium.launch, exactly as the driver
- *  always did. Kept in one place so the optional peer is touched by exactly one code path. */
+ *  always did. Kept in one place so the optional peer is touched by exactly one code path. A
+ *  `TMPDIR` too long for Chrome's singleton socket is replaced for Chrome (chromeLaunchEnv). */
 async function launchPlaywrightChromium(
   args: ScriptedBrowserLaunchArgs,
 ): Promise<ScriptedBrowserLike> {
   const { chromium } = await import("playwright-core");
-  const browser: Browser = await chromium.launch({
-    executablePath: args.browserCommand,
-    headless: true,
-    args: [...CHROMIUM_EVIDENCE_HYGIENE_FLAGS, "--disable-gpu", "--disable-dev-shm-usage"],
-    timeout: args.timeoutMs,
-  });
-  return browser as unknown as ScriptedBrowserLike;
+  const env = await chromeLaunchEnv();
+  try {
+    const browser: Browser = await chromium.launch({
+      executablePath: args.browserCommand,
+      headless: true,
+      args: [...CHROMIUM_EVIDENCE_HYGIENE_FLAGS, "--disable-gpu", "--disable-dev-shm-usage"],
+      timeout: args.timeoutMs,
+      ...(env === undefined ? {} : { env }),
+    });
+    return browser as unknown as ScriptedBrowserLike;
+  } catch (error) {
+    throw chromeLaunchError(error, env);
+  }
 }
 
 function assertScriptedSessionPathIds(options: ScriptedBrowserSessionOptions): void {

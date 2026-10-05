@@ -903,6 +903,33 @@ describe("runScriptedBrowserLab", () => {
     });
   });
 
+  it("a live app-url run records that it created no sandbox, so reclaim --check is clean", async () => {
+    await writeCommittedScenario(cwd);
+    await withHttpServer(async (appUrl) => {
+      const hooks: ScriptedTestInputs = {
+        deps: { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome" }) },
+      };
+      const outcome = await runStudyWith(
+        scriptedConfig({ appUrl, count: 1, mode: "live" }),
+        { cwd, ...scriptedOptions(hooks) },
+        hooks.deps,
+      );
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
+      const { runId } = outcome.result;
+      const status = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", runId, "status.json"), "utf8"),
+      ) as { mode?: string; sandboxes?: string };
+      expect(status).toMatchObject({ mode: "live", sandboxes: "none" });
+      const reclaimed = await reclaimRunSandboxes(cwd, runId, {
+        check: true,
+        loadModule: async () => {
+          throw new Error("the E2B SDK was loaded");
+        },
+      });
+      expect(reclaimed).toMatchObject({ ok: true, state: "clean", reason: "no-sandbox" });
+    });
+  });
+
   it("a browser that cannot launch is a harness error: lab ok false, failed-evidence bundle persisted", async () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
@@ -1791,11 +1818,14 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
       outcome?: { verdict?: string; ok?: boolean };
+      sandboxes?: string;
     };
     expect(bundle.review.verdict).toBe("pass");
     expect(status.outcome?.verdict).toBe("pass");
     expect(outcome.result.ok).toBe(true);
     expect(status.outcome?.ok).toBe(outcome.result.ok);
+    // A clone is served from a sandbox, so the run does not record that it created none.
+    expect(status.sandboxes).toBeUndefined();
   });
 
   it("after a failed subject teardown, reclaim kills the receipted subject", async () => {

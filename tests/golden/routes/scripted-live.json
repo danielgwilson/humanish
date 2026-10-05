@@ -611,6 +611,7 @@
     "runId": "[run]",
     "state": "finished",
     "mode": "live",
+    "sandboxes": "none",
     "pid": "[pid]",
     "startedAt": "[ts]",
     "updatedAt": "[ts]",

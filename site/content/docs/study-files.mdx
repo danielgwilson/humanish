@@ -394,7 +394,9 @@ requests.
 A live run drives a local Chrome or Chromium against your app, so start the app on
 `http://127.0.0.1:3000` first. If humanish finds no browser, the run stops with
 `HUMANISH_SCRIPTED_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
-binary. `--dry-run` checks the steps without either:
+binary. Chrome keeps a Unix socket under `TMPDIR`, and a socket path holds at most 107
+bytes, so when `TMPDIR` is longer than about 60 bytes humanish launches the browser with
+`TMPDIR=/tmp`. `--dry-run` checks the steps without either:
 
 ```bash
 npx humanish run todo-onboarding --dry-run --json --no-open

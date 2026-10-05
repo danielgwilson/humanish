@@ -137,4 +137,37 @@ describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mecha
       }
     },
   );
+
+  it(
+    "launches Chrome under a temp directory too long for its singleton socket",
+    { timeout: 120_000 },
+    async () => {
+      // About 150 bytes; Chrome's socket under it would pass the 107-byte limit.
+      const long = path.join(cwd, "t".repeat(100));
+      await mkdir(long);
+      const saved = process.env.TMPDIR;
+      process.env.TMPDIR = long;
+      try {
+        const parsed = parseStudyDocument({
+          schema: V2_SCHEMA,
+          id: "scripted-long-tmpdir",
+          title: "Scripted launch under a long TMPDIR",
+          subject: { source: "app-url", appUrl },
+          actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 1 }],
+          scenario: { ref: "scripted-first-run", mode: "live" },
+          review: { analysis: false },
+          execution: { target: "local", timeoutMs: 60_000 },
+        });
+        if (!parsed.ok) throw new Error(parsed.error.message);
+        const outcome = await runStudyWith(parsed.config, { cwd });
+        if (outcome.route !== "scripted") throw new Error(`unexpected route ${outcome.route}`);
+        expect(outcome.result.sessions.map((session) => session.completionReason)).toEqual([
+          "goal_satisfied",
+        ]);
+      } finally {
+        if (saved === undefined) delete process.env.TMPDIR;
+        else process.env.TMPDIR = saved;
+      }
+    },
+  );
 });

@@ -141,6 +141,7 @@ export async function runLiveTerminalSession(
       (await session.verifyRuntimeVersion()) &&
       (await session.prepareProduct())
     ) {
+      run.participantStarted();
       await session.execCodex();
     }
   } catch (error) {

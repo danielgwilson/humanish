@@ -16,7 +16,13 @@ import {
 import { RUN_BUNDLE_FILE, type ReviewSummary } from "./bundle.js";
 import type { RunPointer } from "./results.js";
 import { isReviewSummary, isRunOutcome } from "./bundle-shape.js";
-import { bundleDisplayFacts, runDisplay, type RunDisplay } from "./display.js";
+import {
+  bundleDisplayFacts,
+  displayedReview,
+  runDisplay,
+  type DisplayedBundle,
+  type RunDisplay,
+} from "./display.js";
 import { RUN_STATUS_FILE } from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
@@ -146,25 +152,33 @@ async function listedRunDisplay(
   runPaths: PreparedRunArtifactPaths,
   bundle: unknown,
 ): Promise<{ display?: RunDisplay }> {
-  if (!isRecord(bundle) || typeof bundle.runId !== "string") return {};
-  const outcome = isRunOutcome(bundle.outcome) ? bundle.outcome : undefined;
+  const displayed = displayedBundle(bundle);
+  if (displayed === undefined) return {};
   const status =
-    outcome === undefined ? await readRunJsonIfExists(runPaths, RUN_STATUS_FILE) : undefined;
-  const facts = bundleDisplayFacts(
-    {
-      runId: bundle.runId,
-      ...(typeof bundle.mode === "string" ? { mode: bundle.mode } : {}),
-      ...(isRecord(bundle.review) && typeof bundle.review.verdict === "string"
-        ? { review: { verdict: bundle.review.verdict } }
-        : {}),
-      ...(Array.isArray(bundle.simulations)
-        ? { simulations: bundle.simulations.filter(isRecord) }
-        : {}),
-      ...(outcome === undefined ? {} : { outcome }),
-    },
-    status,
-  );
-  return { display: runDisplay(facts) };
+    displayed.outcome === undefined
+      ? await readRunJsonIfExists(runPaths, RUN_STATUS_FILE)
+      : undefined;
+  return { display: runDisplay(bundleDisplayFacts(displayed, status)) };
+}
+
+/** The fields runDisplay reads from an unchecked run.json; none when it does not name a run. */
+function displayedBundle(bundle: unknown): DisplayedBundle | undefined {
+  if (!isRecord(bundle) || typeof bundle.runId !== "string") return undefined;
+  return {
+    runId: bundle.runId,
+    ...(typeof bundle.mode === "string" ? { mode: bundle.mode } : {}),
+    ...(isRecord(bundle.review) && typeof bundle.review.verdict === "string"
+      ? { review: { verdict: bundle.review.verdict } }
+      : {}),
+    ...(Array.isArray(bundle.simulations)
+      ? {
+          simulations: bundle.simulations
+            .filter(isRecord)
+            .map((record) => (typeof record.status === "string" ? { status: record.status } : {})),
+        }
+      : {}),
+    ...(isRunOutcome(bundle.outcome) ? { outcome: bundle.outcome } : {}),
+  };
 }
 
 function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
@@ -216,10 +230,14 @@ export async function readReview(
     isRecord(bundle) && Array.isArray(bundle.streams)
       ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord))
       : review;
+  const displayed = displayedBundle(bundle);
+  const { display } = runPaths ? await listedRunDisplay(runPaths, bundle) : {};
   return {
-    ...projected,
+    ...(displayed === undefined || display === undefined
+      ? projected
+      : displayedReview(projected, displayed, display)),
     path: path.relative(cwd, path.join(runPaths!.absoluteRunRoot, "review.json")),
     runId: path.basename(runPaths!.absoluteRunRoot),
-    ...(runPaths ? await listedRunDisplay(runPaths, bundle) : {}),
+    ...(display === undefined ? {} : { display }),
   };
 }
