@@ -45,6 +45,16 @@ export type CuaAction =
   | { kind: "speak"; text: string }
   | { kind: "screenshot" };
 
+/** A wait action whose duration the provider shortened before the loop dispatched it. */
+export interface ShortenedWait {
+  /** The action's index in its turn. */
+  index: number;
+  /** What the participant asked for. */
+  requestedMs: number;
+  /** What the action waits: the `ms` it carries. */
+  ms: number;
+}
+
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
 export interface CuaObservation {
   /**
@@ -156,6 +166,11 @@ export interface CuaTurn {
   message?: string;
   /** Actions to perform this turn. Empty means the model is done. */
   actions: CuaAction[];
+  /**
+   * Waits the provider shortened to the longest wait its desktop accepts, by index into
+   * `actions`. The loop records each one and tells the participant on its next request.
+   */
+  shortenedWaits?: ReadonlyArray<ShortenedWait>;
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
