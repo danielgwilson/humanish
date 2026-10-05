@@ -79,6 +79,18 @@ const E2B_PUBLIC_PAGE = [
   String.raw`(?:docs\.e2b\.dev|(?:www\.)?e2b\.dev\/docs)(?:\/[a-z][a-z-]{0,39}){0,8}\/?`,
 ].join("|");
 
+// Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
+// key. The slashes may be JSON-escaped (`https:\/\/`). User info runs to its last `@`, as a URL
+// parser reads it, and may hold any character but a slash or space. The host part stops at a
+// backslash, quote or angle bracket, so a URL followed by an escaped line break and an `E2B_...`
+// variable in JSON text is not read as an E2B host. A public page followed by `)@` is user info.
+// A stream URL's auth key rides its `password` parameter, 16 characters from the SDK, which the
+// credential parameter pattern matches as well.
+const SANDBOX_URL = new RegExp(
+  String.raw`(?!https:\/\/(?:${E2B_PUBLIC_PAGE})[.,;:!?'")]*(?:\s|$))https?:\\?\/\\?\/(?:[^/\s@]*@)*[^/\s\\"'<>@]*e2b[^)\s]+`,
+  "gi",
+);
+
 // A pattern that matches a credential by its context puts the context in a `keep` group, which
 // redaction leaves in place: `?token=[REDACTED_SECRET]`. Context goes in a group and not in a
 // lookbehind, because a pattern that starts with a lookbehind is tried at every position of the
@@ -141,15 +153,7 @@ const SECRET_PATTERNS: RegExp[] = [
     String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${notAPlaceholder(VARIABLE_END)}${NOT_A_NUMBER}(?=[^\s"'\\,;&]{0,255}[0-9])(?=[^\s"'\\,;&]{0,255}[A-Za-z])[^\s"'\\,;&]{16}[^\s"'\\,;&]*`,
     "g",
   ),
-  // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
-  // key. The slashes may be JSON-escaped (`https:\/\/`). User info runs to its last `@`, as a URL
-  // parser reads it, and may hold any character but a slash or space. The host part stops at a
-  // backslash, quote or angle bracket, so a URL followed by an escaped line break and an `E2B_...`
-  // variable in JSON text is not read as an E2B host. A public page followed by `)@` is user info.
-  new RegExp(
-    String.raw`(?!https:\/\/(?:${E2B_PUBLIC_PAGE})[.,;:!?'")]*(?:\s|$))https?:\\?\/\\?\/(?:[^/\s@]*@)*[^/\s\\"'<>@]*e2b[^)\s]+`,
-    "gi",
-  ),
+  SANDBOX_URL,
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 
@@ -181,8 +185,18 @@ function matchesPattern(pattern: RegExp, text: string): boolean {
 }
 
 /** True if the text contains a secret-shaped token. Local paths do not count. */
-export function containsSecret(text: string): boolean {
+function containsSecret(text: string): boolean {
   return SECRET_PATTERNS.some((pattern) => matchesPattern(pattern, text));
+}
+
+// Every secret pattern but the sandbox URL. A URL on an E2B host names a sandbox, which verify
+// keeps out of a shared run, but the host is no credential: a key, token, password or signature in
+// such a URL matches one of these patterns on its own.
+const CREDENTIAL_PATTERNS = SECRET_PATTERNS.filter((pattern) => pattern !== SANDBOX_URL);
+
+/** True if the text contains a credential. Local paths and a URL on an E2B host alone do not count. */
+export function containsCredential(text: string): boolean {
+  return CREDENTIAL_PATTERNS.some((pattern) => matchesPattern(pattern, text));
 }
 
 /** True if the text contains any secret-shaped token or known local path. */

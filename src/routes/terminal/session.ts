@@ -100,7 +100,7 @@ export async function runLiveTerminalSession(
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
-  const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues });
+  const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues, verdictNonce });
   const { version, model, modelSource, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
     ...(version === undefined ? {} : { version }),

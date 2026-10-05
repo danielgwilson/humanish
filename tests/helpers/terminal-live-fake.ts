@@ -9,7 +9,7 @@ import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 const FAKE_RUNTIME_KEY = "FAKEKEY-scorer-loader-do-not-leak-1234567890";
 
 function makeFakeModule(opts: {
-  codexBehavior: (cmd: string) => { exitCode: number; stdout?: string };
+  codexBehavior: (cmd: string) => { exitCode: number; stdout?: string | string[] };
   killed: string[];
 }): E2BDesktopModule {
   let counter = 0;
@@ -26,7 +26,9 @@ function makeFakeModule(opts: {
                 return { exitCode: 0, stdout: "codex-cli 0.153.3\n" };
               if (command.includes("codex")) {
                 const behavior = opts.codexBehavior(command);
-                if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);
+                // An array arrives one callback per element, as a long session streams.
+                for (const chunk of [behavior.stdout ?? []].flat())
+                  if (chunk && runOptions?.onStdout) runOptions.onStdout(chunk);
                 return { exitCode: behavior.exitCode };
               }
               if (runOptions?.onStdout) runOptions.onStdout("HUMANISH_SHELL_READY\n");
@@ -134,4 +136,17 @@ export function passingRun(
       ...extra.deps,
     },
   };
+}
+
+/** A live run whose codex command streams the chunks `stdout(nonce)` returns, one per callback. */
+export function streamingRun(stdout: (nonce: string) => string[]): TerminalTestInputs {
+  return passingRun({
+    deps: {
+      desktopModule: async () =>
+        makeFakeModule({
+          killed: [],
+          codexBehavior: (cmd) => ({ exitCode: 0, stdout: stdout(nonceFrom(cmd)) }),
+        }),
+    },
+  });
 }

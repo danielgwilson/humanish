@@ -137,14 +137,14 @@ function finishExchange(session: ClientSession): void {
     void operation.raw.then(() => operation.resolve(operation.reply!), operation.reject);
   } else if (operation.reply!.ok) operation.resolve(operation.reply!);
   else {
-    const { code, disposition } = operation.reply!.error;
+    const { code, disposition, reason } = operation.reply!.error;
     if (
       operation.request.operation !== "EXECUTE" ||
       code !== "action_rejected" ||
       disposition !== "not_dispatched"
     )
       session.transport.close(code);
-    operation.reject(new ComputerUseExecutorError(code, disposition));
+    operation.reject(new ComputerUseExecutorError(code, disposition, { reason }));
   }
 }
 

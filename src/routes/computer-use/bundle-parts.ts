@@ -5,7 +5,8 @@
 
 import { feedbackProofCommands } from "../../feedback/proof.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { containsSensitive, digestText, redactText } from "../../evidence/redaction.js";
+import { scanEncodedText } from "../../evidence/encoded-text.js";
+import { digestText, redactText } from "../../evidence/redaction.js";
 import {
   type RunFeedbackCandidate,
   type RunProviderResource,
@@ -212,8 +213,12 @@ export function providerResourcesForOutcome(args: {
   ];
 }
 
+/**
+ * The app URL as a run records it: the URL, or its digest when verify would flag it. verify reads the
+ * URL decoded, so an E2B URL percent-encoded in a parameter gets the digest too.
+ */
 export function publicSafeAppUrlLabel(url: string): string {
-  return containsSensitive(url) ? `[target-url:${digestUrl(url)}]` : url;
+  return scanEncodedText(url).sensitive ? `[target-url:${digestUrl(url)}]` : url;
 }
 
 /** Short id-safe suffix for a subject-phase RunEvent: drops the shared prefix/suffix so each

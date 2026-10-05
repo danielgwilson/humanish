@@ -38,6 +38,11 @@ world checks actual document focus and binds preparation to the editable element
 page changes, additional tabs, dialogs, iframe focus and ambiguous focus are
 refused. The owner acquires the one page and native window before untrusted
 navigation. The driver never chooses another tab or brings one to the front.
+Playwright emulates focus in every page it drives, so the focus probe also passes
+in a background tab and cannot tell which tab is in front; text therefore needs the
+owned page to be the context's only page. That refusal carries the fixed reason
+`extra_tab` over browser control, and the study loop tells the participant to close
+the other tab.
 Focus can change between protocol messages; this is not atomic element-targeted
 input or a general multi-window driver.
 

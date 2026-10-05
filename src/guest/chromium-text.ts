@@ -185,14 +185,15 @@ function checkScope(settings: TextPortSettings, state: TextPortState, expected: 
   if (state.generation !== expected)
     throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
   const pages = context.pages();
-  if (
-    state.dialogSeen ||
-    page.isClosed() ||
-    page.context() !== context ||
-    pages.length !== 1 ||
-    pages[0] !== page
-  )
+  if (state.dialogSeen || page.isClosed() || page.context() !== context || !pages.includes(page))
     throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
+  // Playwright emulates focus in every page it drives, so the focus probe passes in a background
+  // tab too and cannot say which tab is in front. The participant learns why, and can close the
+  // other tab.
+  if (pages.length !== 1)
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched", {
+      reason: "extra_tab",
+    });
 }
 
 /**
@@ -253,7 +254,13 @@ async function runOperation<T>(
     controller.abort();
     if (dispatched) state.unusable = true;
     const code = stopped ?? (isComputerUseExecutorError(error) ? error.code : "transport_failed");
-    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched");
+    const reason =
+      !dispatched && stopped === undefined && isComputerUseExecutorError(error)
+        ? error.reason
+        : undefined;
+    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched", {
+      reason,
+    });
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", abort);
