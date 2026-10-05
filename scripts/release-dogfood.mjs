@@ -21,11 +21,29 @@ import { terminalParticipantReport } from "./lib/terminal-report.mjs";
 
 const cwd = process.cwd();
 const STUDY_ID = "release-dogfood";
-const studyPath = path.join(cwd, ".humanish", "labs", `${STUDY_ID}.yaml`);
+// humanish reads a live copy of a committed study from .humanish/studies/, run by its path.
+const studyRelativePath = path.join(".humanish", "studies", `${STUDY_ID}.yaml`);
+const studyPath = path.join(cwd, studyRelativePath);
 
 function fail(message) {
-  console.error(`release:dogfood — ${message}`);
+  console.error(`release:dogfood: ${message}`);
   process.exit(1);
+}
+
+// Each rewrite of the committed study must apply exactly once. A rewrite that silently matches
+// nothing would leave the fixture as committed, for example still a dry run, and the gate would
+// report on a run that never met the candidate.
+function rewriteOnce(text, pattern, replacement, what) {
+  const matches =
+    typeof pattern === "string"
+      ? text.split(pattern).length - 1
+      : (text.match(pattern) ?? []).length;
+  if (matches !== 1) {
+    fail(
+      `first-contact.yaml has changed shape: ${what} matched ${matches} times, where this gate needs 1.`,
+    );
+  }
+  return text.replace(pattern, replacement);
 }
 
 for (const name of ["OPENAI_API_KEY"]) {
@@ -40,7 +58,7 @@ if (!process.env.E2B_API_KEY) {
 }
 
 const version = JSON.parse(await readFile(path.join(cwd, "package.json"), "utf8")).version;
-console.log(`release:dogfood — packing ${version}`);
+console.log(`release:dogfood: packing ${version}`);
 execFileSync("npm", ["pack", "--silent"], { cwd, stdio: ["ignore", "ignore", "inherit"] });
 const tarball = (await readdir(cwd)).find((f) => f.startsWith("humanish-") && f.endsWith(".tgz"));
 if (!tarball) fail("npm pack produced no tarball.");
@@ -56,14 +74,9 @@ if (!tarball) fail("npm pack produced no tarball.");
 // lost, it just lives in the committed fixture, which anyone can run for free as a dry run.
 const fixture = await readFile(path.join(cwd, "humanish", "studies", "first-contact.yaml"), "utf8");
 const productBlock = "  product:\n    name: humanish\n";
-if (!fixture.includes(productBlock)) {
-  fail(
-    "first-contact.yaml has changed shape — this gate rewrites its product block and cannot any more.",
-  );
-}
 if (!/^review:\s*\n\s+analysis: false\s*$/m.test(fixture)) {
   fail(
-    "first-contact.yaml must explicitly disable automatic analysis to preserve this gate’s zero-spend product contract.",
+    "first-contact.yaml must explicitly disable automatic analysis to preserve this gate's zero-spend product contract.",
   );
 }
 if (!/^\s+runtimeAuth: openai-egress\b/m.test(fixture)) {
@@ -71,13 +84,14 @@ if (!/^\s+runtimeAuth: openai-egress\b/m.test(fixture)) {
     "first-contact.yaml must use runtimeAuth: openai-egress, so the participant never holds the raw runtime key.",
   );
 }
-let study = fixture
-  .replace("id: first-contact", `id: ${STUDY_ID}`)
-  .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")
-  .replace(
-    productBlock,
-    `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`,
-  );
+let study = rewriteOnce(fixture, /^id: first-contact$/m, `id: ${STUDY_ID}`, "the study id");
+study = rewriteOnce(study, /^mode: dry-run\b.*$/m, "mode: live", "the dry-run mode line");
+study = rewriteOnce(
+  study,
+  productBlock,
+  `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`,
+  "the product block",
+);
 
 // The mission has to change, and the first version of this gate missed it. first-contact tells the
 // participant to find and install humanish from its public surfaces, so it did exactly that:
@@ -85,27 +99,29 @@ let study = fixture
 // published release and never touched the candidate we had just installed for it. The gate spent a
 // dollar telling us the last release worked. So the gate's copy says plainly that the build under
 // test is already here and must not be fetched.
-const missionAnchor = "    mission: >-\n";
-if (!study.includes(missionAnchor))
-  fail("first-contact.yaml has changed shape — cannot rewrite its mission.");
-study = study.replace(
+const missionAnchor = "  mission: >-\n";
+study = rewriteOnce(
+  study,
   missionAnchor,
   missionAnchor +
-    "      The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n" +
-    "      a release candidate that is NOT on npm. Use the installed `humanish` command directly.\n" +
-    "      Do NOT run `npm install humanish`, `npx humanish`, or otherwise fetch it from a registry —\n" +
-    "      that would test a different build than the one under test.\n",
+    "    The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n" +
+    "    a release candidate that is NOT on npm. Use the installed `humanish` command directly.\n" +
+    "    Do NOT run `npm install humanish`, `npx humanish`, or otherwise fetch it from a registry:\n" +
+    "    that would test a different build than the one under test.\n",
+  "the mission line",
 );
+if (!/^mode: live$/m.test(study))
+  fail("the gate's copy of first-contact.yaml is not a live study.");
 
 await mkdir(path.dirname(studyPath), { recursive: true });
 await writeFile(studyPath, study, "utf8");
 
 console.log(
-  `release:dogfood — sending a participant to meet humanish@${version} (product spend capped at $0)`,
+  `release:dogfood: sending a participant to meet humanish@${version} (product spend capped at $0)`,
 );
 let raw = "";
 try {
-  raw = execFileSync("node", ["dist/cli.js", "run", STUDY_ID, "--json"], {
+  raw = execFileSync("node", ["dist/cli.js", "run", studyRelativePath, "--json"], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
@@ -139,7 +155,7 @@ console.log("");
 
 // Read the report. The verdict is a marker the participant sets; the paragraph underneath it is
 // the actual finding, and a gate that only checks the marker throws away the reason it exists.
-console.log("  What the participant said — read this before you tag:");
+console.log("  What the participant said; read this before you tag:");
 console.log("  " + "-".repeat(70));
 const transcript = path.join(
   cwd,
@@ -163,7 +179,7 @@ try {
     );
   }
 } catch {
-  console.log("  (no transcript on disk — the run did not get far enough to report)");
+  console.log("  (no transcript on disk: the run did not get far enough to report)");
 }
 console.log("  " + "-".repeat(70));
 console.log(
@@ -184,7 +200,7 @@ try {
     fail(
       `the participant never exercised ${version}.` +
         (others.length > 0
-          ? ` It used ${others.join(", ")} instead — it fetched a published build.`
+          ? ` It used ${others.join(", ")} instead, so it fetched a published build.`
           : "") +
         " The gate cannot vouch for this candidate.",
     );
@@ -226,7 +242,7 @@ try {
   }
   if (session.status !== "passed") {
     console.log(
-      `  note: the participant reported "${session.status}" — it completed the no-spend path and`,
+      `  note: the participant reported "${session.status}": it completed the no-spend path and`,
     );
     console.log("        then stopped at the credentials this gate deliberately withholds.");
   }
@@ -239,8 +255,8 @@ if (result.ok !== true) {
   fail(`the run itself did not complete on this build. Do not tag ${version} until you know why.`);
 }
 if (result.noSpend?.satisfied !== true) {
-  fail("the no-spend proof was not satisfied — the run spent where it declared it would not.");
+  fail("the no-spend proof was not satisfied: the run spent where it declared it would not.");
 }
 console.log(
-  `release:dogfood ok — a participant met humanish@${version} and got where it was going.`,
+  `release:dogfood ok: a participant met humanish@${version} and got where it was going.`,
 );
