@@ -6,7 +6,13 @@
 import { redactText } from "../evidence/redaction.js";
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
-import { RUN_BUNDLE_FILE, PUBLIC_TARGET_CWD, type RunBundle, type RunOutcome } from "./bundle.js";
+import {
+  RUN_BUNDLE_FILE,
+  PUBLIC_TARGET_CWD,
+  type RunBundle,
+  type RunEvent,
+  type RunOutcome,
+} from "./bundle.js";
 import {
   judgeExecution,
   type ExecutionFailure,
@@ -47,6 +53,8 @@ interface StartRunOptions {
   observer?: { open: boolean; render?: typeof renderObserver | undefined };
   /** Clock for `createdAt` and the latest pointer. */
   now?: (() => number) | undefined;
+  /** Warnings about the study's own fields. Every bundle write records each as a warn event. */
+  warnings?: readonly string[] | undefined;
 }
 
 /** How a run ended as an execution, as run.json records it: the result's ok and execution outcome. */
@@ -248,6 +256,7 @@ interface RunPublisher {
 function runPublisher(args: {
   options: StartRunOptions;
   runId: string;
+  createdAt: string;
   paths: PreparedRunArtifactPaths;
   runStatus: RunStatusHandle;
   now: () => number;
@@ -256,8 +265,20 @@ function runPublisher(args: {
   /** Whether the route reported a participant's session started. */
   participantsRan: () => boolean;
 }): RunPublisher {
-  const { options, runId, paths, runStatus, now, admit, participantsRan } = args;
+  const { options, runId, createdAt, paths, runStatus, now, admit, participantsRan } = args;
   const observer = observerTarget(options);
+  // The study's warnings join whatever events the route wrote, once, in every write.
+  const studyWarnings: RunEvent[] = (options.warnings ?? []).map((message, index) => ({
+    id: `event-study-warning-${String(index + 1).padStart(3, "0")}`,
+    at: createdAt,
+    level: "warn",
+    type: "study.warning",
+    message,
+  }));
+  const withStudyWarnings = (events: readonly RunEvent[]): RunEvent[] => [
+    ...events.filter((event) => !studyWarnings.some((warning) => warning.id === event.id)),
+    ...studyWarnings,
+  ];
   let pointerWritten = false;
   // The bundle of the last write asked for, and the outcome every later write carries once a
   // signal stopped the run, so no write after the interrupt can drop it.
@@ -297,6 +318,7 @@ function runPublisher(args: {
     const recorded = interrupted ?? outcome;
     const publicBundle = await withPublicSandboxIds(paths, {
       ...evidence,
+      events: withStudyWarnings(evidence.events),
       cwd: PUBLIC_TARGET_CWD,
       ...(recorded === undefined ? {} : { outcome: recorded }),
     });
@@ -457,6 +479,7 @@ export async function runScope<T>(
     const publisher = runPublisher({
       options,
       runId,
+      createdAt,
       paths,
       runStatus,
       now,

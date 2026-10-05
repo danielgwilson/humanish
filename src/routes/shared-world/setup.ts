@@ -137,6 +137,7 @@ function startConcurrentRun(
     mintRunId: makeRunId,
     mode: plan.dryRun ? "dry-run" : "live",
     study: plan.study,
+    warnings: plan.warnings,
     renderReview: renderConcurrentReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
   });

@@ -10,6 +10,8 @@ export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 export interface RunOptions {
   /** Which manifest produced this run. */
   study?: RunStudyProvenance;
+  /** Warnings about the study's own fields, recorded in the bundle as warn events. */
+  warnings?: readonly string[];
   cwd: string;
   dryRun?: boolean;
   runId?: string;

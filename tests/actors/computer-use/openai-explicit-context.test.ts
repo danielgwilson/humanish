@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
@@ -165,8 +166,8 @@ describe("an explicit-context conversation", () => {
     const noteText = note.content[0]!.text;
     const lines = noteText.split("\n").slice(1);
     expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) expect(line.length).toBeLessThanOrEqual(1_200);
-    expect(noteText.length).toBeLessThan(17_000);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(2_000);
+    expect(noteText.length).toBeLessThan(33_000);
   });
 
   it("reports no summarized turns for a threaded conversation", async () => {
@@ -184,6 +185,119 @@ describe("an explicit-context conversation", () => {
     expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
   });
 });
+
+describe("cutting past the budget", () => {
+  it("cuts in one step past the budget, so each request between cuts starts with the previous one", async () => {
+    const { bodies, provider } = await runTurns(200, { zeroDataRetention: true });
+    const record = provider.conversation!;
+    // A request that does not start with the whole previous request breaks the prompt cache.
+    const misses: number[] = [];
+    for (let i = 1; i < bodies.length; i += 1) {
+      const previous = bodies[i - 1]!.input.map((item) => JSON.stringify(item));
+      const head = bodies[i]!.input.slice(0, previous.length).map((item) => JSON.stringify(item));
+      if (head.join("\n") !== previous.join("\n")) misses.push(i + 1);
+    }
+    expect(misses.length).toBeGreaterThan(0);
+    // Each miss follows a cut: that request carries fewer exchanges than the one before it.
+    for (const request of misses)
+      expect(record.requests[request - 1]!.carriedExchanges!).toBeLessThan(
+        record.requests[request - 2]!.carriedExchanges!,
+      );
+    // A cut frees half the budget, which at 1280x800 is more than 15 turns of screenshots.
+    for (let i = 1; i < misses.length; i += 1)
+      expect(misses[i]! - misses[i - 1]!).toBeGreaterThan(15);
+    const estimates = record.requests.map((request) => request.estimatedInputTokens ?? 0);
+    for (const estimate of estimates) expect(estimate).toBeLessThan(CONTEXT_TOKEN_BUDGET + 3_000);
+  });
+
+  it("keeps the note's first turns when the note reaches its cap", async () => {
+    const chatty = (n: number): Record<string, unknown> => {
+      const value = reply(n);
+      const output = value.output as Array<Record<string, unknown>>;
+      output[1] = {
+        ...output[1],
+        content: [
+          {
+            type: "output_text",
+            text:
+              n === 1
+                ? "turn-1 said: my account code is 4417"
+                : `turn-${n} said: ${"still working through the form. ".repeat(9)}`,
+          },
+        ],
+      };
+      return value;
+    };
+    const { bodies, provider } = await runTurns(200, { zeroDataRetention: true }, chatty);
+    const summarized = provider.conversation!.summarizedTurns;
+    const note = bodies[199]!.input[1] as { role: string; content: Array<{ text: string }> };
+    expect(note.role).toBe("assistant");
+    const lines = note.content[0]!.text.split("\n");
+    const turnLines = lines.filter((line) => line.startsWith("Turn "));
+    // The note dropped some summarized turns to stay under its cap, and kept turn 1.
+    expect(turnLines.length).toBeLessThan(summarized);
+    expect(turnLines[0]).toMatch(/^Turn 1: .*4417/);
+    expect(note.content[0]!.text.length).toBeLessThan(33_000);
+  });
+
+  it("keeps a summarized turn's typed values and the text that came back with its screenshot", async () => {
+    const four = await turnThreeNoteLine(4);
+    expect(four).toMatch(
+      /type "PIN4417", click \(3, 3\); was told: Your click on turn 3 was not run\.$/,
+    );
+    // Twenty long fields pass the line cap: the actions give up room, and the hint stays whole.
+    const twenty = await turnThreeNoteLine(20);
+    expect(twenty).toMatch(/\.\.\.; was told: Your click on turn 3 was not run\.$/);
+    expect(twenty.length).toBeLessThanOrEqual(2_000);
+  });
+});
+
+/**
+ * Turn 3's note line after 80 turns, where turn 3 types `fields` long form fields, then a short
+ * code, then clicks, and the request that answers it carries a hint that the click did not run.
+ */
+async function turnThreeNoteLine(fields: number): Promise<string> {
+  const form = (n: number): Record<string, unknown> => {
+    const value = reply(n);
+    const output = value.output as Array<Record<string, unknown>>;
+    output[2] = {
+      ...output[2],
+      actions: [
+        ...Array.from({ length: fields }, (_, i) => ({
+          type: "type",
+          text: `field ${i}: ${"x".repeat(110)}`,
+        })),
+        { type: "type", text: "PIN4417" },
+        { type: "click", x: n, y: n },
+      ],
+    };
+    return value;
+  };
+  const bodies: SentBody[] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    bodies.push(JSON.parse(init.body) as SentBody);
+    const value = bodies.length === 3 ? form(3) : reply(bodies.length);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    zeroDataRetention: true,
+  });
+  for (let turn = 1; turn <= 80; turn += 1)
+    await provider.nextTurn(
+      turn === 4 ? { ...request(), contextHint: "Your click on turn 3 was not run." } : request(),
+      new AbortController().signal,
+    );
+  const note = bodies[79]!.input[1] as { content: Array<{ text: string }> };
+  return note.content[0]!.text.split("\n").find((line) => line.startsWith("Turn 3: ")) ?? "";
+}
 
 describe("the mode switch", () => {
   it("switches mid-session and records when, keeping what came before the switch", async () => {
@@ -273,6 +387,156 @@ describe("the mode switch", () => {
   });
 });
 
+/** Error bodies captured from the live API; see tests/fixtures/openai-store-less/README.md. */
+function storeLessFixture(name: string): string {
+  return readFileSync(new URL(`../../fixtures/openai-store-less/${name}`, import.meta.url), "utf8");
+}
+
+/** A provider whose `rejectAt`th request is answered with `status` and the fixture `body`. */
+async function rejectedOnce(
+  rejectAt: number,
+  status: number,
+  body: string,
+  options: { zeroDataRetention?: boolean } = {},
+): Promise<{
+  bodies: SentBody[];
+  provider: ReturnType<typeof createOpenAiResponsesProvider>;
+  turns: PromiseSettledResult<unknown>[];
+}> {
+  const bodies: SentBody[] = [];
+  let replies = 0;
+  const fetchFn: FetchLike = async (_url, init) => {
+    bodies.push(JSON.parse(init.body) as SentBody);
+    if (bodies.length === rejectAt)
+      return { ok: false, status, text: async () => body, json: async () => JSON.parse(body) };
+    replies += 1;
+    const value = reply(replies);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    now: () => Date.parse("2026-10-05T00:00:00Z"),
+    ...options,
+  });
+  const turns: PromiseSettledResult<unknown>[] = [];
+  for (let turn = 0; turn < 3; turn += 1) {
+    const [settled] = await Promise.allSettled([
+      provider.nextTurn(request(), new AbortController().signal),
+    ]);
+    turns.push(settled!);
+    if (settled!.status === "rejected") break;
+  }
+  return { bodies, provider, turns };
+}
+
+describe("the zero-data-retention rejections", () => {
+  it("switches on a 404 for a stored item and records which answer made the switch", async () => {
+    const { bodies, provider, turns } = await rejectedOnce(
+      2,
+      404,
+      storeLessFixture("stored-item-not-found.json"),
+    );
+    expect(turns.map((turn) => turn.status)).toEqual(["fulfilled", "fulfilled", "fulfilled"]);
+    expect(bodies[1]!.previous_response_id).toBe("resp_1");
+    const retried = bodies[2]!;
+    expect(retried.previous_response_id).toBeUndefined();
+    expect(retried.store).toBe(false);
+    expect(text(retried)).toContain("turn-1 said");
+    expect(provider.conversation).toMatchObject({
+      mode: "explicit_context",
+      explicitReason: "zdr_rejection",
+      rejection: "stored_item",
+      switchedAtRequest: 2,
+    });
+  });
+
+  it("reads the zero-data-retention wording in any case", async () => {
+    const { provider } = await rejectedOnce(
+      2,
+      400,
+      JSON.stringify({
+        error: {
+          message: "Zero data retention organizations cannot use this parameter.",
+          type: "invalid_request_error",
+          param: null,
+          code: null,
+        },
+      }),
+    );
+    expect(provider.conversation).toMatchObject({ rejection: "zero_data_retention" });
+  });
+
+  it("switches on a 400 for the previous response and records it", async () => {
+    const { provider, turns } = await rejectedOnce(
+      2,
+      400,
+      storeLessFixture("previous-response-not-found.json"),
+    );
+    expect(turns.every((turn) => turn.status === "fulfilled")).toBe(true);
+    expect(provider.conversation).toMatchObject({
+      mode: "explicit_context",
+      rejection: "previous_response",
+      switchedAtRequest: 2,
+    });
+  });
+
+  it("leaves a 404 for a missing model as an error and stays threaded", async () => {
+    // The message echoes the model name, so a name that reads like a retention answer must not count.
+    const echoed = (text: string): string =>
+      storeLessFixture("model-not-found.json").replace("gpt-5.6-nonexistent", text);
+    for (const body of [
+      storeLessFixture("model-not-found.json"),
+      echoed("previous_response_id zero data retention"),
+      echoed("Item with id 'rs_fixture' not found"),
+    ]) {
+      const { bodies, provider, turns } = await rejectedOnce(2, 404, body);
+      expect(turns[1]).toMatchObject({
+        status: "rejected",
+        reason: { message: "OpenAI Responses 404 model_not_found" },
+      });
+      expect(bodies).toHaveLength(2);
+      expect(provider.conversation).toMatchObject({ mode: "threaded" });
+      expect(provider.conversation!.rejection).toBeUndefined();
+    }
+  });
+
+  it("stops on a usage-policy refusal whose message echoes previous_response_id", async () => {
+    const refusal = readFileSync(
+      new URL("../../fixtures/openai-invalid-prompt/refusal.json", import.meta.url),
+      "utf8",
+    ).replace("Please try again", "previous_response_id zero data retention. Please try again");
+    const { bodies, provider, turns } = await rejectedOnce(2, 400, refusal);
+    expect(turns[1]).toMatchObject({
+      status: "rejected",
+      reason: { name: "ComputerUsePromptRefusedError" },
+    });
+    expect(bodies).toHaveLength(2);
+    expect(provider.conversation).toMatchObject({ mode: "threaded" });
+  });
+
+  it("stops with a named error when an explicit-context request is refused a stored item", async () => {
+    const { bodies, turns } = await rejectedOnce(
+      2,
+      404,
+      storeLessFixture("stored-item-not-found.json"),
+      { zeroDataRetention: true },
+    );
+    expect(turns[1]).toMatchObject({
+      status: "rejected",
+      reason: { message: expect.stringMatching(/^OpenAI Responses could not find an item/) },
+    });
+    // Already carrying the conversation, the provider has nothing to switch to and sends no retry.
+    expect(bodies).toHaveLength(2);
+  });
+});
+
 describe("the actor trace", () => {
   it("records how the conversation was carried", async () => {
     let n = 0;
@@ -342,6 +606,16 @@ describe("the explicit-context run warning", () => {
         requests: [],
       }),
     ).toMatch(/rejected server-side conversation state.*on request 2.*summarized the 12 oldest/);
+    expect(
+      explicitContextWarning({
+        mode: "explicit_context",
+        explicitReason: "zdr_rejection",
+        rejection: "stored_item",
+        switchedAtRequest: 2,
+        summarizedTurns: 0,
+        requests: [],
+      }),
+    ).toMatch(/on request 2 \(a stored item the request referenced was not found\), so humanish/);
     expect(
       explicitContextWarning({
         mode: "explicit_context",

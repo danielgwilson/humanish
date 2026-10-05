@@ -164,6 +164,7 @@ export function acceptReply(
 /** The trace's account of how a session carried its conversation (ActorConversation). */
 export class ConversationRecord {
   private explicitReason: ActorConversation["explicitReason"];
+  private rejection: ActorConversation["rejection"];
   private switchedAt: string | undefined;
   private switchedAtRequest: number | undefined;
   private summarizedTurns = 0;
@@ -177,8 +178,9 @@ export class ConversationRecord {
   }
 
   /** The organization rejected server-side state, so the request being sent is explicit_context. */
-  switched(): void {
+  switched(rejection: NonNullable<ActorConversation["rejection"]>): void {
     this.explicitReason = "zdr_rejection";
+    this.rejection = rejection;
     this.switchedAt = new Date(this.now()).toISOString();
     // Counted like requests[], which includes replies set aside at their output limit.
     this.switchedAtRequest = this.requests.length + 1;
@@ -205,6 +207,7 @@ export class ConversationRecord {
     return {
       mode: state.mode === "explicit_context" ? "explicit_context" : "threaded",
       ...(this.explicitReason === undefined ? {} : { explicitReason: this.explicitReason }),
+      ...(this.rejection === undefined ? {} : { rejection: this.rejection }),
       ...(this.switchedAt === undefined ? {} : { switchedAt: this.switchedAt }),
       ...(this.switchedAtRequest === undefined
         ? {}

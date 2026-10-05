@@ -333,6 +333,7 @@ export async function startCuaRun(
     mintRunId: makeCuaRunId,
     mode: dryRun ? "dry-run" : "live",
     study: plan.study,
+    warnings: plan.warnings,
     renderReview: renderCuaReviewMarkdown,
     observer: { open: input.open === true, render: seams.renderObserver },
   });
