@@ -5,34 +5,39 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 import { runScripted } from "../helpers/route-run.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
 function cloneLab(actor: string, target: string | undefined): Record<string, unknown> {
+  const scripted = actor === "scripted-browser";
   return {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "clone-target",
+    route: scripted ? "scripted" : "computer-use",
+    mode: "live",
     subject: {
       source: "clone",
-      exposure: "synthetic",
+      // Only the scripted route reads exposure; v3 refuses a field its route does not read.
+      ...(scripted ? { exposure: "synthetic" } : {}),
       repos: ["example-org/example-app"],
       serve: { start: "pnpm start --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
       state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
     },
-    actors: [{ type: actor }],
-    scenario: { mode: "live", ...(actor === "scripted-browser" ? { ref: "first-run" } : {}) },
+    actor: { type: actor },
+    ...(scripted ? { scenario: "first-run" } : {}),
     ...(target === undefined ? {} : { execution: { target } }),
   };
 }
 
 /** A config that never went through the parser, as a library caller can hand one to runStudyWith. */
 function unparsedCloneLab(actor: string, target: string | undefined): StudyConfig {
-  return cloneLab(actor, target) as unknown as StudyConfig;
+  return libraryConfig(cloneLab(actor, target));
 }
 
 /** Counts desktop module loads; a refused lab must never reach one. */
@@ -55,7 +60,7 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
     { target: "e2b-terminal", got: 'got "e2b-terminal"' },
     { target: undefined, got: "it is absent" },
   ])("rejects a computer-use clone lab with target $target at parse", ({ target, got }) => {
-    const result = parseStudyDocument(cloneLab("openai-computer-use", target));
+    const result = parseStudy(cloneLab("openai-computer-use", target));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
@@ -66,12 +71,12 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
   it("no longer lets an absent target skip the clone serve check", () => {
     const lab = cloneLab("openai-computer-use", undefined);
     const { serve: _serve, ...subject } = lab.subject as Record<string, unknown>;
-    const result = parseStudyDocument({ ...lab, subject });
+    const result = parseStudy({ ...lab, subject });
     expect(result.ok).toBe(false);
   });
 
   it("accepts a computer-use clone lab on e2b-desktop", () => {
-    expect(parseStudyDocument(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
+    expect(parseStudy(cloneLab("openai-computer-use", "e2b-desktop")).ok).toBe(true);
   });
 
   it.each(["local", undefined])(

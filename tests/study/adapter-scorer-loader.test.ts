@@ -809,26 +809,26 @@ describe("parser: review.scorer consumed on scorer-capable routes, typos rejecte
   });
 
   it("a typo'd review.scorrer is rejected (a declared gate must not vanish silently)", () => {
-    const result = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const result = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "typo-scorer",
+      route: "terminal",
+      mode: "live",
       subject: {
         source: "terminal-product",
         product: { name: "widget-cli", publicSurfaces: ["https://example.com/widget"] },
       },
-      actors: [
-        {
-          type: "codex-exec",
-          persona: "autonomous-creative-agent",
-          mission: "Discover widget-cli.",
-        },
-      ],
+      actor: {
+        type: "codex-exec",
+        persona: "autonomous-creative-agent",
+        mission: "Discover widget-cli.",
+      },
+      caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
       execution: {
         target: "e2b-terminal",
         runtimeAuth: "openai-env",
         terminal: { transport: "exec-stream", stdin: "disabled" },
       },
-      scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
       review: { scorrer: { ref: "scorers/product.mjs" } },
     });
     expect(result.ok).toBe(false);

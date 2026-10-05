@@ -2,8 +2,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { participantList } from "../../src/study/study-fields.js";
 import { participantAssignment } from "../../src/study/participant-assignment.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
@@ -47,31 +48,29 @@ describe("participant assignment evidence", () => {
     "persists exact declarative assignments and only task goals for %i computer-use participants",
     async (count) => {
       const secret = "synthetic-task-known-secret";
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "assignment-proof",
+        route: "computer-use",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-        actors: [
-          {
-            type: "openai-computer-use",
-            mission: `Use the settings screen with ${secret}.`,
-            ...(count === 1
-              ? { laneFocus: { instruction: "Use the keyboard." } }
-              : {
-                  lanes: [
-                    { id: "keyboard", instruction: "Use the keyboard." },
-                    { id: "pointer", instruction: "Use the pointer." },
-                  ],
-                }),
-            tasks: [
-              {
-                id: "save",
-                goal: `Save a setting with ${secret}.`,
-                success: { any: [{ textIncludes: "hidden-save-confirmation" }] },
-              },
-            ],
-          },
-        ],
+        actor: {
+          type: "openai-computer-use",
+          mission: `Use the settings screen with ${secret}.`,
+          tasks: [
+            {
+              id: "save",
+              goal: `Save a setting with ${secret}.`,
+              success: { any: [{ textIncludes: "hidden-save-confirmation" }] },
+            },
+          ],
+        },
+        participants:
+          count === 1
+            ? { instruction: "Use the keyboard." }
+            : [
+                { id: "keyboard", instruction: "Use the keyboard." },
+                { id: "pointer", instruction: "Use the pointer." },
+              ],
         execution: { target: "e2b-desktop" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
@@ -152,7 +151,7 @@ describe("participant assignment evidence", () => {
       focus: "Use [REDACTED_SECRET] from [REDACTED_LOCAL_PATH]",
     });
     expect(JSON.stringify(bundle)).not.toContain(secret);
-    expect(parsed.config.actors[0]!.lanes![1]!.instruction).toContain(secret);
+    expect(participantList(parsed.config)![1]!.instruction).toContain(secret);
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 });
