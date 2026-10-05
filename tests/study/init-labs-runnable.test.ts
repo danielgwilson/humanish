@@ -12,8 +12,8 @@ import { starterFilesFor } from "../../src/study/init-templates.js";
 import { resolveStudyManifest, listStudyManifests } from "../../src/study/discover.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
 import { isLocalBrowserStudy } from "../../src/substrates/local/runtime-config.js";
+import { runComputerUse } from "../helpers/route-run.js";
 
 // The studies `humanish init` writes must actually run.
 //
@@ -133,7 +133,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
       const local = isLocalBrowserStudy(config);
       let refusal = "";
       try {
-        const live = await runCuaActorStudy({
+        const live = await runComputerUse({
           cwd,
           config: { ...config, scenario: { ...config.scenario, mode: "live" } },
           dryRun: false,

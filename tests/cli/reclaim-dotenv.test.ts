@@ -11,10 +11,10 @@ import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { appendSandboxOwner, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
-import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { parseStudyDocument } from "../../src/study/config.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+import { runTerminal } from "../helpers/route-run.js";
 
 const CANARY = "synthetic-reclaim-e2b-canary";
 const seenKeys: Array<string | undefined> = [];
@@ -93,7 +93,7 @@ describe("humanish reclaim --dotenv", () => {
     vi.stubEnv("E2B_DEBUG", undefined);
     seenKeys.length = 0;
     loadModule.mockClear();
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,

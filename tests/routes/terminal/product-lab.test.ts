@@ -18,8 +18,9 @@ import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { runTerminalPlan, runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
+import { admitTerminalPlan } from "../../../src/routes/terminal/route.js";
 import { planTerminalStudy } from "../../../src/routes/terminal/plan.js";
+import { runAdmitted, runTerminal } from "../../helpers/route-run.js";
 
 const ROOT = process.cwd();
 
@@ -97,7 +98,7 @@ describe("terminal actor registration + keyPlacement metadata", () => {
     expect(TERMINAL_AGENT_CAPABILITIES.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(descriptor.capabilities.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(TERMINAL_AGENT_CAPABILITIES.byoModel).toBe(false);
-    // It runs only inside runTerminalProductStudy, so the registry gives it no session entry.
+    // It runs only inside the terminal route, so the registry gives it no session entry.
     expect("runSession" in descriptor).toBe(false);
   });
 });
@@ -380,9 +381,9 @@ describe("runTerminalProductLab (dry-run)", () => {
 
   it("refuses a run id already in use and names the actor", async () => {
     const config = parsedTerminalConfig();
-    const first = await runTerminalProductStudy({ cwd, config, dryRun: true, runId: "taken" });
+    const first = await runTerminal({ cwd, config, dryRun: true, runId: "taken" });
     expect(first.ok).toBe(true);
-    const second = await runTerminalProductStudy({ cwd, config, dryRun: true, runId: "taken" });
+    const second = await runTerminal({ cwd, config, dryRun: true, runId: "taken" });
     expect(second.ok).toBe(false);
     expect(second.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
     expect(second.actor).toBe("codex-exec");
@@ -398,7 +399,7 @@ describe("runTerminalProductLab (dry-run)", () => {
       stdin: "planned" as const,
       runtime: { ...planned.plan.runtime, auth: "openai-egress" as const },
     };
-    const result = await runTerminalPlan(plan, { cwd });
+    const result = await runAdmitted(admitTerminalPlan(plan, { cwd }));
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -417,7 +418,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     async (keyName) => {
       const secret = "synthetic-opaque-terminal-secret";
       const config = parsedTerminalConfig({ mission: `Discover the product using ${secret}.` });
-      const result = await runTerminalProductStudy({
+      const result = await runTerminal({
         cwd,
         config,
         dryRun: true,
@@ -545,7 +546,7 @@ describe("runTerminalProductLab (dry-run)", () => {
       ...parsedTerminalConfig(),
       actors: [{ type: "codex-app-server" }],
     } as StudyConfig;
-    const result = await runTerminalProductStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runTerminal({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_ACTOR_UNSUPPORTED");
     expect(result.runId).toBe("not-created");

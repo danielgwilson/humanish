@@ -8,10 +8,10 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { StudyConfig } from "../../../src/study/types.js";
-import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
-import type { RunCuaActorStudyOptions } from "../../../src/routes/computer-use/types.js";
+import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
+import { runComputerUse } from "../../helpers/route-run.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -192,7 +192,7 @@ const pairs: [string, string][] = [
 function caseOf(names: readonly string[]): {
   config: StudyConfig;
   deps: StudyDeps;
-  driving: Pick<RunCuaActorStudyOptions, "inProcess" | "createProvider">;
+  driving: Pick<ComputerUseRunInput, "inProcess" | "createProvider">;
   countOverride?: number;
 } {
   const config = lab("cuAppUrl");
@@ -231,7 +231,7 @@ describe("computer-use admission order", () => {
       dirs.push(cwd);
       const { config, deps, driving, countOverride } = caseOf(names);
       const dryRun = config.scenario?.mode !== "live";
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config,
         dryRun,
@@ -260,7 +260,7 @@ describe("computer-use admission order", () => {
     );
     const { config, deps } = caseOf([]);
     await expect(
-      runCuaActorStudy({ cwd, config, dryRun: true, env: {}, deps, countOverride: 17 }),
+      runComputerUse({ cwd, config, dryRun: true, env: {}, deps, countOverride: 17 }),
     ).rejects.toThrow("Persona background must be text.");
   });
 });

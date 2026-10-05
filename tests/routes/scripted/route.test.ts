@@ -30,14 +30,13 @@ import {
   SANDBOX_RECEIPTS_ARTIFACT,
   type ParsedSandboxReceipt,
 } from "../../../src/run/sandbox-receipts.js";
-import { runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
-import { runScriptedBrowserStudy, runScriptedPlan } from "../../../src/routes/scripted/route.js";
+import { admitScriptedPlan } from "../../../src/routes/scripted/route.js";
 import { planScriptedStudy } from "../../../src/routes/scripted/plan.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
-import type { RunScriptedBrowserStudyOptions } from "../../../src/routes/scripted/types.js";
+import type { ScriptedRunInput } from "../../../src/routes/scripted/types.js";
 
 /** A scripted test's typed options and seams, as it spreads them into a runner's options. */
-type ScriptedTestInputs = Pick<RunScriptedBrowserStudyOptions, "env" | "prepareDesktop" | "deps">;
+type ScriptedTestInputs = Pick<ScriptedRunInput, "env" | "prepareDesktop" | "deps">;
 
 /** The typed options of a test's inputs, to spread beside the rest of runStudyWith's options. */
 const scriptedOptions = ({ deps: _deps, ...options }: ScriptedTestInputs) => options;
@@ -51,6 +50,7 @@ import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
+import { runAdmitted, runComputerUse, runScripted } from "../../helpers/route-run.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -388,7 +388,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     expect(routeOf(tampered)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
     try {
-      const result = await runCuaActorStudy({ cwd, config: tampered, dryRun: true });
+      const result = await runComputerUse({ cwd, config: tampered, dryRun: true });
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
     } finally {
@@ -618,7 +618,7 @@ describe("runScriptedBrowserLab", () => {
       personaId: "planned-persona",
       surfaces: planned.plan.surfaces.slice(0, 1),
     };
-    const result = await runScriptedPlan(plan, { cwd });
+    const result = await runAdmitted(admitScriptedPlan(plan, { cwd }));
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -1249,7 +1249,7 @@ describe("runScriptedBrowserLab", () => {
     };
 
     await expect(
-      runScriptedBrowserStudy({
+      runScripted({
         cwd,
         config: scriptedConfig({ count: 1, mode: "live" }),
         dryRun: false,
@@ -1303,7 +1303,7 @@ describe("runScriptedBrowserLab", () => {
           await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
           await writeFile(path.join(cwd, "humanish", "scenarios", `${ref}.yaml`), text, "utf8");
         }
-        const result = await runScriptedBrowserStudy({
+        const result = await runScripted({
           cwd,
           config: scriptedConfig({ ref }),
           dryRun: true,
@@ -1316,7 +1316,7 @@ describe("runScriptedBrowserLab", () => {
     );
 
     it("clamps path-style refs inside the target cwd (no ../../ escape recorded as provenance)", async () => {
-      const result = await runScriptedBrowserStudy({
+      const result = await runScripted({
         cwd,
         config: scriptedConfig({ ref: "../../outside/evil.yaml" }),
         dryRun: true,
@@ -1334,7 +1334,7 @@ describe("runScriptedBrowserLab", () => {
       );
       await mkdir(path.join(cwd, "custom"), { recursive: true });
       await writeFile(path.join(cwd, "custom", "journey.yaml"), text, "utf8");
-      const result = await runScriptedBrowserStudy({
+      const result = await runScripted({
         cwd,
         config: scriptedConfig({ ref: "custom/journey.yaml" }),
         dryRun: true,
@@ -1357,7 +1357,7 @@ describe("runScriptedBrowserLab", () => {
       await symlink(outsideScenario, path.join(cwd, "humanish", "scenarios", "linked.yaml"));
       let hookCalled = false;
 
-      const result = await runScriptedBrowserStudy({
+      const result = await runScripted({
         cwd,
         config: scriptedConfig({ ref: "linked", mode: "live" }),
         dryRun: false,
@@ -1381,7 +1381,7 @@ describe("runScriptedBrowserLab", () => {
   it("rejects a non-scripted actor at the engine even if a config bypasses the parser", async () => {
     await writeCommittedScenario(cwd);
     const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as StudyConfig;
-    const result = await runScriptedBrowserStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runScripted({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED");
   });
@@ -1393,7 +1393,7 @@ describe("runScriptedBrowserLab", () => {
       ...config,
       subject: { source: "app-url" as const, appUrl: "https://example.com/" },
     };
-    const result = await runScriptedBrowserStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runScripted({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
     expect(result.runId).toBe("not-created");

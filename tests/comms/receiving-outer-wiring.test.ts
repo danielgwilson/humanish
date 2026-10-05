@@ -5,8 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { parseStudyDocument } from "../../src/study/config.js";
@@ -27,6 +25,7 @@ import {
 } from "../../src/run/contained-output.js";
 import { fullScreenXwininfo } from "../helpers/full-screen-xwininfo.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
+import { runComputerUse, runSharedWorld } from "../helpers/route-run.js";
 
 type Preparation = {
   participants: string[];
@@ -404,8 +403,8 @@ describe("configured receiving through exported study runners", () => {
       readLobbyCodeFromFrame: async () => undefined,
     };
     const result = route.startsWith("cua-")
-      ? await runCuaActorStudy({ cwd, config, dryRun: false, env, deps })
-      : await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
+      ? await runComputerUse({ cwd, config, dryRun: false, env, deps })
+      : await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(events.indexOf("receiving-acquire")).toBeGreaterThanOrEqual(0);
     expect(events.indexOf("receiving-acquire")).toBeLessThan(events.indexOf("desktop-create"));
     expect(finish).toHaveBeenCalledOnce();
