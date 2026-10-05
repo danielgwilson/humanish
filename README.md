@@ -38,7 +38,8 @@ npx humanish run first-run
 
 `init` writes starter studies and personas under `humanish/`, adds `.humanish/` to
 `.gitignore`, and adds `humanish:*` scripts to `package.json` and a humanish section to
-`AGENTS.md`. It never overwrites an existing study file. `run first-run` is a dry run: four
+`AGENTS.md`, and lists each file it created or changed. It never overwrites an existing study
+file; a rerun replaces only its own `AGENTS.md` section. `run first-run` is a dry run: four
 synthetic participants, with no browser, model, key or spend. It prints:
 
 ```text

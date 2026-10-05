@@ -364,7 +364,7 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
-  it("keeps the next action visible after setup while JSON and dry-run retain the file inventory", async () => {
+  it("names each file setup wrote and keeps the next action on one screen", async () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }),
@@ -374,10 +374,20 @@ describe("humanish CLI scaffold", () => {
         expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
         const applied = await runCli(["init", "--yes", "--cwd", cwd]);
         expect(applied.exitCode).toBe(0);
-        const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
-        expect(firstScreen).toContain("humanish run first-run");
-        expect(firstScreen).toContain("a dry run: no browser or model runs");
-        expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
+        const lines = applied.stdout.trimEnd().split("\n");
+        expect(lines.length).toBeLessThanOrEqual(24);
+        const created = lines.slice(lines.indexOf("created:") + 1, lines.indexOf("updated:"));
+        expect(created).toEqual(
+          expect.arrayContaining([
+            "  AGENTS.md",
+            "  .gitignore",
+            "  humanish/personas/synthetic-new-user.yaml",
+            "  humanish/studies/try-live.yaml",
+          ]),
+        );
+        expect(lines.find((line) => line.startsWith("  package.json"))).toBeDefined();
+        const next = lines.slice(lines.indexOf("next:"));
+        expect(next[1]).toBe("  humanish run first-run");
         const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
         expect(JSON.parse(details.stdout).changes).toContainEqual(
           expect.objectContaining({

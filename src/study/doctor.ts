@@ -26,6 +26,7 @@ import {
   type CodexInstallation,
 } from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
+import { cli } from "../cli/invocation.js";
 
 type Check = DoctorCheckDraft;
 /**
@@ -320,7 +321,7 @@ async function localBrowserChecks(
       ok: healthy,
       message: healthy
         ? "Recipient inbox routes are ready. Point your app's email sends at this catch; delivery remains untested. No mailbox-provider credentials are needed, and this does not receive arbitrary internet mail."
-        : "Captured inbox is unavailable or outdated. Start or upgrade and restart humanish comms catch, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated.",
+        : `Captured inbox is unavailable or outdated. Start or upgrade and restart ${cli("comms catch")}, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated.`,
     });
   }
   return checks;
@@ -342,7 +343,7 @@ async function realEmailCheck(
         ? "The selected email connection is missing or invalid. Open Connections in the TUI."
         : !args.keyPresent(name)
           ? `Missing ${name} for the selected email connection. Provide it through process env or --dotenv. Authentication has not been checked.`
-          : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested.",
+          : `Fresh hosted inbox per participant. Local presence only; run ${cli("comms check --online")} to authenticate. Provider permissions/capacity and delivery remain untested.`,
   };
 }
 

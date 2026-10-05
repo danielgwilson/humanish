@@ -25,6 +25,7 @@ import { plural } from "../../run/text.js";
 import { shellArg } from "../../substrates/shell.js";
 import type { CliIo } from "../io.js";
 import { exitCodeForSignal } from "../observer-follow.js";
+import { cli } from "../invocation.js";
 
 /** How long the handler waits for interrupt, reclaim and cleanups before it exits anyway. */
 const INTERRUPT_RECLAIM_DEADLINE_MS = 10_000;
@@ -220,9 +221,9 @@ function withDeadline<T>(
  */
 function recovery(run: ActiveRun): string {
   if (run.runId === LATEST_RUN_ALIAS)
-    return `its id is \`${LATEST_RUN_ALIAS}\`, which \`humanish reclaim --run\` reads as the newest run, so kill the ids in ${path.join(run.paths.relativeRunRoot, SANDBOX_RECEIPTS_ARTIFACT)} by hand`;
+    return `its id is \`${LATEST_RUN_ALIAS}\`, which \`${cli("reclaim --run")}\` reads as the newest run, so kill the ids in ${path.join(run.paths.relativeRunRoot, SANDBOX_RECEIPTS_ARTIFACT)} by hand`;
   const cwd = path.resolve(run.cwd) === process.cwd() ? "" : ` --cwd ${shellArg(run.cwd)}`;
-  return `run \`humanish reclaim --run ${shellArg(run.runId)}${cwd}\``;
+  return `run \`${cli(`reclaim --run ${shellArg(run.runId)}${cwd}`)}\``;
 }
 
 function reclaimSummary(

@@ -37,6 +37,7 @@ import {
   verdictText,
 } from "./judge.js";
 import { reviewOutcome } from "./display.js";
+import { cli } from "../cli/invocation.js";
 
 /**
  * The preview route's run. The run scope closes the run it started on every exit, including
@@ -85,8 +86,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   if (!options.dryRun) {
     return refused(requestedCwd, warnings, {
       code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-      message:
-        "humanish run needs a study. List studies with humanish study list, or run humanish run --dry-run for a sample bundle.",
+      message: `humanish run needs a study. List studies with ${cli("study list")}, or run ${cli("run --dry-run")} for a sample bundle.`,
     });
   }
 

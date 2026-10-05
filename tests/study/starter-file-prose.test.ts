@@ -85,7 +85,7 @@ describe("the files humanish init writes", () => {
           expect.arrayContaining([
             "AGENTS.md",
             "humanish/studies/try-live.yaml",
-            "humanish/studies/lobby-trivia-3player.yaml",
+            "humanish/studies/first-run.yaml",
           ]),
         );
         const hits: string[] = [];

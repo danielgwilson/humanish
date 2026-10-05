@@ -1,7 +1,6 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import {
-  AGENTS_SECTION_MARKER,
   agentsSection,
   firstRunGuidance,
   starterActorFor,
@@ -9,6 +8,9 @@ import {
   type FirstRunEnvironment,
 } from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
+import { humanishCommand } from "../cli/invocation.js";
+import { replaceAgentsSection } from "./agents-section.js";
+import { probeLocalBrowserHost } from "./local-browser-host.js";
 import { probeKeySources } from "../keys/key-resolution.js";
 
 import {
@@ -114,12 +116,11 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     return failed(initialPathCheck);
   }
 
-  await planAgentsFile(preparedProjectRoot, cwd, plan);
-
   // The starter live study is written for the brain this machine can actually use. Shipping it as
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
   // a file that asks for a credential they were just told they do not need.
   const machine = await firstRunEnvironment(options.env ?? process.env, requestedCwd);
+  await planAgentsFile(preparedProjectRoot, cwd, plan, humanishCommand());
   const starterActor = starterActorFor(machine);
   await planStarterFiles(
     preparedProjectRoot,
@@ -180,49 +181,50 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 // `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
 // that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
 //
-// Append-only and idempotent: an existing `AGENTS.md` is a file someone wrote, so humanish adds its
-// own section once and never rewrites theirs.
+// An existing `AGENTS.md` is a file someone wrote. init appends its own section once, and on a
+// rerun replaces only that section, between its two markers, so the commands match the installed
+// humanish. Every byte outside the markers stays as it was.
 async function planAgentsFile(
   preparedProjectRoot: PreparedSelectedOutputDirectory,
   cwd: string,
   plan: InitPlan,
+  humanish: string,
 ): Promise<void> {
   const agentsPath = "AGENTS.md";
   const existingAgents = await readTextIfExists(preparedProjectRoot, agentsPath);
-  const section = agentsSection();
+  const section = agentsSection(humanish);
+  const write = (contents: string, action: "create" | "update", reason: string) => {
+    plan.changes.push({ path: agentsPath, action, target: "source", reason });
+    plan.writes.push({
+      absolutePath: path.join(cwd, agentsPath),
+      relativePath: agentsPath,
+      contents,
+      target: "source",
+    });
+  };
+  const skip = (reason: string) =>
+    plan.changes.push({ path: agentsPath, action: "skip", target: "source", reason });
+
   if (existingAgents === null) {
-    plan.changes.push({
-      path: agentsPath,
-      action: "create",
-      target: "source",
-      reason: "how a coding agent runs humanish here",
-    });
-    plan.writes.push({
-      absolutePath: path.join(cwd, agentsPath),
-      relativePath: agentsPath,
-      contents: `# AGENTS.md\n${section}`,
-      target: "source",
-    });
-  } else if (existingAgents.includes(AGENTS_SECTION_MARKER)) {
-    plan.changes.push({
-      path: agentsPath,
-      action: "skip",
-      target: "source",
-      reason: "humanish section already present",
-    });
+    write(`# AGENTS.md\n${section}`, "create", "how a coding agent runs humanish here");
+    return;
+  }
+  const replaced = replaceAgentsSection(existingAgents, section);
+  if (replaced.kind === "absent") {
+    write(
+      `${existingAgents.replace(/\s*$/, "")}\n${section}`,
+      "update",
+      "append how a coding agent runs humanish",
+    );
+  } else if (replaced.kind === "unknown") {
+    skip("humanish section edited by hand");
+    plan.warnings.push(
+      `Left the humanish section of ${agentsPath} unchanged: it has no end marker and does not match a version init wrote, so it may hold your edits. To get the current section, delete it from the "## humanish" heading to the end of the section and run init again.`,
+    );
+  } else if (replaced.contents === existingAgents) {
+    skip("humanish section is current");
   } else {
-    plan.changes.push({
-      path: agentsPath,
-      action: "update",
-      target: "source",
-      reason: "append how a coding agent runs humanish",
-    });
-    plan.writes.push({
-      absolutePath: path.join(cwd, agentsPath),
-      relativePath: agentsPath,
-      contents: `${existingAgents.replace(/\s*$/, "")}\n${section}`,
-      target: "source",
-    });
+    write(replaced.contents, "update", "refresh the humanish section");
   }
 }
 
@@ -456,8 +458,9 @@ async function firstRunEnvironment(
     localAgents: agents
       .filter((agent) => agent.authStatus === "authenticated")
       .map((agent) => ({ id: agent.id, label: agent.label })),
+    localBrowserHost: await probeLocalBrowserHost(),
     platform: process.platform,
-    arch: process.arch,
+    humanish: humanishCommand(),
   };
 }
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  AGENTS_SECTION_END_MARKER,
   AGENTS_SECTION_MARKER,
   agentsSection,
   firstRunSteps,
@@ -48,33 +49,83 @@ describe("what to do next, resolved against this machine", () => {
     }
   });
 
-  it("offers supported hosts the local route without sending them to E2B or an API key", () => {
+  it("offers the local route where the host passed its checks and Codex is signed in", () => {
     const linux = firstRunSteps({
       hasE2bKey: false,
       hasProviderKey: false,
-      localAgents: [],
+      localAgents: [CODEX],
       hasDesktopSdk: false,
       desktopPeerCommand: "npm i -D @e2b/desktop",
+      localBrowserHost: { ok: true },
       platform: "linux",
-      arch: "x64",
     });
-    expect(linux.at(-1)?.command).toBe("npx humanish doctor --study local-browser");
+    expect(linux.map((step) => step.command)).toEqual([
+      "npx humanish run first-run",
+      "npx humanish doctor --study local-browser",
+    ]);
     expect(linux.at(-1)?.why).toContain("Docker, KVM, TUN");
-    expect(linux.at(-1)?.why).toContain("no E2B or model API key");
-    expect(linux.at(-1)?.why).toContain("npx humanish runtime setup");
     expect(linux.at(-1)?.why).toContain("npx humanish run local-browser");
 
     const mac = firstRunSteps({
       hasE2bKey: false,
       hasProviderKey: false,
-      localAgents: [],
+      localAgents: [CODEX],
       hasDesktopSdk: false,
       desktopPeerCommand: "npm i -D @e2b/desktop",
+      localBrowserHost: { ok: true },
       platform: "darwin",
-      arch: "arm64",
     });
-    expect(mac.at(-1)?.why).toContain("M3-or-newer Mac");
     expect(mac.at(-1)?.why).toContain("Lima 2.2+");
+  });
+
+  it("puts try-live first on a Linux x64 host with both keys, and the local route second", () => {
+    const steps = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [CODEX],
+      hasDesktopSdk: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
+      localBrowserHost: { ok: true },
+      platform: "linux",
+    });
+    expect(steps.map((step) => step.command)).toEqual([
+      "npx humanish run first-run",
+      "npx humanish run try-live",
+      "npx humanish doctor --study local-browser",
+    ]);
+  });
+
+  it("offers try-live without the local route when the host failed its checks or Codex is signed out", () => {
+    for (const env of [
+      { localBrowserHost: { ok: false as const, reason: "they need an M3 or newer Mac" } },
+      { localBrowserHost: { ok: true as const }, localAgents: [CLAUDE] },
+    ]) {
+      const steps = firstRunSteps({
+        hasE2bKey: true,
+        hasProviderKey: true,
+        localAgents: [],
+        hasDesktopSdk: true,
+        desktopPeerCommand: "npm i -D @e2b/desktop",
+        ...env,
+      });
+      expect(steps.map((step) => step.command)).toEqual([
+        "npx humanish run first-run",
+        "npx humanish run try-live",
+      ]);
+    }
+  });
+
+  it("uses the invocation it is given in every step", () => {
+    const steps = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [CODEX],
+      hasDesktopSdk: true,
+      desktopPeerCommand: "npm i -D @e2b/desktop",
+      localBrowserHost: { ok: true },
+      humanish: "npx humanish@0.0.1",
+    });
+    for (const step of steps) expect(step.command.startsWith("npx humanish@0.0.1 ")).toBe(true);
   });
 
   it("asks for the one credential a live study always needs, when it is missing", () => {
@@ -84,11 +135,10 @@ describe("what to do next, resolved against this machine", () => {
       localAgents: [CODEX],
       hasDesktopSdk: true,
       desktopPeerCommand: "npm i -D @e2b/desktop",
-      platform: "win32",
-      arch: "x64",
+      localBrowserHost: { ok: false, reason: "they need Linux x64 or an M3-or-newer Mac" },
     });
     expect(steps.at(-1)?.command).toBe("npx humanish keys set e2b");
-    expect(steps.at(-1)?.why).toContain("Local browsers are unavailable on this host");
+    expect(steps.at(-1)?.why).toContain("they need Linux x64 or an M3-or-newer Mac");
   });
 
   it("offers the real run when the machine can do one: by key or by signed-in agent", () => {
@@ -492,6 +542,7 @@ describe("init leaves instructions for the next coding agent", () => {
       expect(agents).toContain("humanish run first-run");
       // The agent must know the human surface exists and that it is not for the agent.
       expect(agents).toContain("humanish tui");
+      expect(agents).toContain(AGENTS_SECTION_END_MARKER);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

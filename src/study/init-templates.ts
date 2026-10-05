@@ -223,24 +223,6 @@ steps:
 `,
   },
   {
-    path: "humanish/scenarios/onboarding-regression.yaml",
-    plane: "source",
-    contents: `schema: humanish.scenario.v1
-id: onboarding-regression
-title: Onboarding regression
-persona: skeptical-power-user
-goal: Exercise onboarding friction using synthetic inputs and explicit recovery checks.
-mode: dry-run
-steps:
-  - name: Start onboarding
-    expectation: Required information is clear.
-  - name: Use synthetic fixture data
-    expectation: No real user data is entered.
-  - name: Check recovery path
-    expectation: The user can back out or retry safely.
-`,
-  },
-  {
     path: "humanish/studies/first-run.yaml",
     plane: "source",
     contents: `schema: humanish.study.v3
@@ -334,83 +316,6 @@ execution:
 #   allowPublicTargets: true      # required to drive a non-loopback app-url (a deployment you own)
 defaults:
   open: true
-`,
-  },
-  {
-    path: "humanish/studies/lobby-trivia-3player.yaml",
-    plane: "source",
-    contents: `schema: humanish.study.v3
-id: lobby-trivia-3player
-title: "Shared world on a public app: three mobile participants in one lobby"
-description: >-
-  A worked example of the external-public shared-world route: three participants on mobile layouts
-  play the same multiplayer lobby on a public deployment at the same time. The public site is the
-  shared plane, so there is no clone, subject sandbox or seed. The host participant creates the
-  lobby, humanish reads the session code from the host's page URL, and the other participants get
-  it in their missions and join through the app's own join flow. Starts as a dry run, which writes
-  one evidence bundle at no cost. A live run needs OPENAI_API_KEY, E2B_API_KEY and mode: live. Point appUrl and publicTarget at a public deployment you own or operate. Mobile layout:
-  Chrome's physical window is at least 500px wide and has no touch emulation, desktop pixel ratio
-  and a desktop user agent. Set execution.desktop.fidelity.mobileEmulation to true to request the
-  preset's CSS viewport, touch, pixel ratio and mobile user agent on Chrome or Chromium; the bundle
-  records the measured geometry and emulation fidelity. A run on a public site proves less than a
-  provisioned one: its provenance is external-public, it carries no synthetic-data attestation and
-  no authoritative shared-state proof, and concurrency rests on overlapping sessions and every
-  participant reaching the same lobby.
-route: shared-world
-mode: dry-run # a live run opens three mobile-layout desktops against the public app
-subject:
-  source: app-url # the public deployment is the shared plane: no clone and no getHost
-  appUrl: https://your-public-app.example/ # a deployment you own or operate
-  publicTarget: # required: your attestation that you own or operate this deployment
-    owner: your-org/your-app
-    authorized: true
-policies:
-  allowPublicTargets: true # required: the shared plane is a public, non-loopback deployment
-actor:
-  type: openai-computer-use
-  mission: You are one of several users on the same shared session at once. Play your role, then stop.
-participants: # at least two participants, exactly one with host: true
-  - id: host
-    host: true # this participant creates the shared session
-    device: mobile # 414x896 preset; physical window width floors to 500 (see emulation above)
-    instruction: Create a shared lobby, wait for the others to join, then start and play.
-  - id: player-2
-    device: mobile
-    instruction: Join the lobby you're told the code for, then play.
-  - id: player-3
-    device: small-mobile
-    instruction: Join the lobby you're told the code for, then play.
-execution:
-  target: e2b-desktop
-  # Each participant's session budget, which also bounds the host's handoff deadline. It has to
-  # cover provisioning, joining the shared session and play; 420000 ms (7 minutes) does.
-  timeoutMs: 420000
-  concurrency: 3 # all three participants at once, the default; lower it only to limit paid desktops
-  # desktop:
-  #   fidelity: { mobileEmulation: true } # opt into mobile CSS viewport, touch, DPR and user agent
-defaults:
-  open: true
-`,
-  },
-  {
-    path: "humanish/coverage-map.md",
-    plane: "source",
-    contents: `# Coverage Map
-
-This file should enumerate screens, roles, states, and paths before scenarios are treated as complete.
-
-Current starter coverage is intentionally minimal and synthetic.
-`,
-  },
-  {
-    path: "humanish/coverage-matrix.md",
-    plane: "source",
-    contents: `# Coverage Matrix
-
-| Area | Persona | Happy Path | Sad Path | Status |
-| --- | --- | --- | --- | --- |
-| First run | synthetic-new-user | planned | planned | starter |
-| Onboarding | skeptical-power-user | planned | planned | starter |
 `,
   },
 ];

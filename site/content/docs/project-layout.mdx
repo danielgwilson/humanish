@@ -12,7 +12,8 @@ humanish/   # committed study source
 
 ## Committed study source: `humanish/`
 
-`init` writes:
+`init` writes these files, plus an `AGENTS.md` section for coding agents, and prints each file it
+created or changed:
 
 ```text
 humanish/
@@ -22,16 +23,16 @@ humanish/
     try-live.yaml           # first live study
     cua-browser.yaml        # computer-use participants on a hosted desktop
     local-browser.yaml      # computer-use participants on a local desktop
-    lobby-trivia-3player.yaml
   personas/
     synthetic-new-user.yaml
     skeptical-power-user.yaml
   scenarios/
-    first-run-smoke.yaml
-    onboarding-regression.yaml
-  coverage-map.md
-  coverage-matrix.md
+    first-run-smoke.yaml    # the dry run's scenario
 ```
+
+Rerunning `init` creates only missing files. It replaces its own `AGENTS.md` section, between the
+`<!-- humanish:agents-guide -->` and `<!-- /humanish:agents-guide -->` markers, and leaves the rest
+of the file as it was.
 
 Studies select their subject, actor, participants, personas, scenarios, tasks,
 budgets and policies. Personas and scenarios are referenced by id. An adopter scorer is an
