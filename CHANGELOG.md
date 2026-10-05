@@ -15,6 +15,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   `sandboxes: none` at start, and reclaim reports such a run `clean` with `reason: no-sandbox`,
   exits 0 and does not contact E2B. A scripted clone run, which serves its subject from a sandbox,
   records no such field. Runs recorded before this release still report `unknown`.
+- `humanish review` on a computer-use run stopped by Ctrl-C after its desktop started printed
+  "Live computer-use session is running…" and the gap "Live desktop session is still running."
+  under its `interrupted` headline. Those came from the review the run's last live flush wrote.
+  When `runDisplay` reads a run as interrupted and a participant was still running, review now
+  says the run was interrupted, by which signal, and how many participants have no verdict, in
+  both its text and `--json` output. review.json on disk is unchanged.
 
 ## 0.110.3: Ctrl-C at the watch prompt, review says analysis is off, E2B docs links kept (2026-10-05)
 
