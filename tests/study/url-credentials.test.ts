@@ -202,6 +202,16 @@ const NESTED_CREDENTIALS: readonly (readonly [string, string, string])[] = [
     TOKEN,
   ],
   [
+    "a URL with an apostrophe in its password, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://user:p4ss'${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a token parameter whose = is an HTML character reference",
+    `https://app.example.com/?token&#61;${TOKEN}`,
+    TOKEN,
+  ],
+  [
     "a URL with an apostrophe in its user info",
     `https://app.example.com/?next=${encodeURIComponent(`https://o'hare:${TOKEN}${"@"}${APP_HOST}/`)}`,
     TOKEN,

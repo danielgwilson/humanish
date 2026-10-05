@@ -20,9 +20,14 @@ const MAX_NESTED_DEPTH = 4;
 // A URL inside one decoded value. It runs to the next space, as the value is one parameter's.
 const NESTED_URL = /[a-z][a-z0-9+.-]{0,31}:\/\/\S+/gi;
 
-// A URL in text decoded from a whole query or from base64, which may join several values or be
-// JSON: it runs to the next space, `&`, quote, angle bracket or backslash.
-const URL_IN_TEXT = /[a-z][a-z0-9+.-]{0,31}:\/\/[^\s&"'<>\\`]+/gi;
+// A URL in text decoded from a whole value or from base64, which may join several values or be
+// JSON: it runs to the next space, `&`, or character no URL may hold as written (`"`, `<`, `>`, `\`
+// and a backtick), which ends a JSON string. An apostrophe may be part of user info.
+const URL_IN_TEXT = /[a-z][a-z0-9+.-]{0,31}:\/\/[^\s&"<>\\`]+/gi;
+
+// A raw `&` that ends a parameter value. One that starts an HTML character reference, such as
+// `&#61;` for `=`, is part of the text around it.
+const VALUE_END = /(?=&(?![a-z]+;|#))/i;
 
 /** Whether a URL in the text, parsed, has a user name or password. */
 function holdsUserInfo(text: string): boolean {
@@ -82,8 +87,8 @@ function urlPartsHoldCredential(value: string, url: URL, depth = 0): boolean {
   const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
   const normalized = `${url.pathname}${url.search}${url.hash}`;
   const pieces = [
-    ...written.split(/(?=&)/),
-    ...normalized.split(/(?=&)/),
+    ...written.split(VALUE_END),
+    ...normalized.split(VALUE_END),
     ...written.split(/[/?#&=;]/),
     ...normalized.split(/[/?#&=;]/),
   ];
