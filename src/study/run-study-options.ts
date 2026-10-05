@@ -15,7 +15,10 @@ import { actorOf, participantList } from "./study-fields.js";
 
 type Refusal = {
   ok: false;
-  code: "HUMANISH_STUDY_OPTION_UNSUPPORTED" | "HUMANISH_STUDY_V2_UNSUPPORTED";
+  code:
+    | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+    | "HUMANISH_STUDY_V2_UNSUPPORTED"
+    | "HUMANISH_STUDY_INVALID";
   message: string;
 };
 

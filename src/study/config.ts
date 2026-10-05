@@ -34,7 +34,7 @@ import {
 } from "../substrates/local/runtime-config.js";
 import { isRecord } from "../run/type-guards.js";
 import { compositionReason } from "./composition-rules.js";
-import { V2_SCHEMA, V2_UNSUPPORTED_MESSAGE } from "./migrate/v2.js";
+import { V2_SCHEMA, V2_UNSUPPORTED_MESSAGE, v2FieldMoves } from "./migrate/v2.js";
 import { parseActorFields, parseActorType, parseParticipantEntries } from "./parse/actors.js";
 import { parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
@@ -44,7 +44,13 @@ import {
   parsePolicies,
   parseReview,
 } from "./parse/execution.js";
-import { readStudyFront, type Participants, type StudyFront } from "./parse/front.js";
+import {
+  ACTOR_REQUIRED,
+  readStudyFront,
+  routeNameReason,
+  type Participants,
+  type StudyFront,
+} from "./parse/front.js";
 import { parseSubject } from "./parse/subject.js";
 import { invalid, optionalStr, str } from "./parse/values.js";
 import { isComputerUseComposition, isSharedWorldComposition, routeOf } from "./routing.js";
@@ -117,12 +123,8 @@ export function parseStudyV3(
   if (!checked.ok) return checked;
   const { config, warnings } = checked;
   const { route } = config;
-  const taken = routeOf(config);
-  if (taken !== route) {
-    return invalid(
-      `This study declares route: ${route}, but its subject (source: ${config.subject.source}) and actor (type: ${config.actor.type}) take the ${taken} route. Change \`route\`, or change the subject or actor.`,
-    );
-  }
+  const mismatch = routeMismatchReason(config);
+  if (mismatch) return invalid(mismatch);
   if (options.inert === "report") {
     return { ok: true, config, warnings, inert: inertFieldPaths(config) };
   }
@@ -133,6 +135,41 @@ export function parseStudyV3(
     );
   }
   return { ok: true, config, warnings };
+}
+
+/** Why a config's declared route is not the one its subject and actor take, or undefined. */
+function routeMismatchReason(config: StudyConfig): string | undefined {
+  const taken = routeOf(config);
+  if (taken === config.route) return undefined;
+  return `This study declares route: ${config.route}, but its subject (source: ${config.subject.source}) and actor (type: ${config.actor.type}) take the ${taken} route. Change \`route\`, or change the subject or actor.`;
+}
+
+/** Why runStudy refuses a config before anything runs. */
+interface ConfigRefusal {
+  readonly code: "HUMANISH_STUDY_V2_UNSUPPORTED" | "HUMANISH_STUDY_INVALID";
+  readonly message: string;
+}
+
+/**
+ * Why runStudy refuses a config a library caller passes, or undefined: a humanish.lab.v2 config,
+ * one that still sets a StudyConfig field of humanish 0.110, one with no `actor` object, and one
+ * whose `route` is not the route its subject and actor take, with parseStudy's message. A planner
+ * reads only the v3 fields, so a budget left in `execution.caps` would otherwise run uncapped.
+ */
+export function libraryConfigRefusal(config: StudyConfig): ConfigRefusal | undefined {
+  const raw: unknown = config;
+  if (!isRecord(raw)) return undefined;
+  if (raw.schema === V2_SCHEMA)
+    return { code: "HUMANISH_STUDY_V2_UNSUPPORTED", message: V2_UNSUPPORTED_MESSAGE };
+  const moves = v2FieldMoves(raw);
+  if (moves.length > 0)
+    return {
+      code: "HUMANISH_STUDY_V2_UNSUPPORTED",
+      message: `This StudyConfig sets fields that humanish 0.111.0 renamed: ${moves.join("; ")}. Set the humanish.study.v3 fields, or parse the study file with parseStudy. The 0.111.0 release notes list each renamed field.`,
+    };
+  if (!isRecord(raw.actor)) return { code: "HUMANISH_STUDY_INVALID", message: ACTOR_REQUIRED };
+  const message = routeNameReason(raw.route) ?? routeMismatchReason(config);
+  return message === undefined ? undefined : { code: "HUMANISH_STUDY_INVALID", message };
 }
 
 // Each section in a fixed order, so a file with more than one error always reports the same one
