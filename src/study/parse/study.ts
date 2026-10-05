@@ -230,9 +230,12 @@ function parseParticipants(
   };
 }
 
-// readStudyFront has checked the keys against the route. A value that is not a non-negative number
-// refuses the study: a cap that does nothing must not look like one that holds.
-function parseCaps(raw: unknown): Parsed<StudyScenarioCaps | undefined> {
+/**
+ * A caps block's values. A value that is not a non-negative number refuses the study: a cap that
+ * does nothing must not look like one that holds. readStudyFront has checked the keys against the
+ * route; migrate checks a v2 file's two blocks with it.
+ */
+export function parseCaps(raw: unknown): Parsed<StudyScenarioCaps | undefined> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) {
     return invalid("`caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");

@@ -31,6 +31,8 @@ export const EXEMPT_PATHS = [
   "src/study/types.ts",
   // The accessors over the manifest's actors[0].lanes and laneFocus keys.
   "src/study/study-fields.ts",
+  // migrate's reader of a v2 file, whose actors[0].lanes and laneFocus keys it checks and moves.
+  "src/study/migrate/v2.ts",
   // The saved run bundle's fields (laneId, simId, simIds), checked when a bundle is read.
   "src/run/bundle-shape.ts",
   // The saved sharedWorld block (roleId, laneWindows, simId), checked when a bundle is read.
