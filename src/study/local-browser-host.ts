@@ -40,7 +40,8 @@ export async function probeLocalBrowserHost(
       () => false,
     );
   if (probe.platform === "linux" && probe.arch === "x64") {
-    // The same device checks doctor makes; the rootful Docker daemon opens them, not this user.
+    // The same device checks doctor makes. The rootful Docker daemon opens these devices, so this
+    // user needs no access to them.
     if (!(await can("/dev/kvm", constants.F_OK)))
       return { ok: false, reason: "/dev/kvm is missing" };
     if (!(await can("/dev/net/tun", constants.F_OK)))
