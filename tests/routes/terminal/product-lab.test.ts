@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { actorOf, capsOf } from "../../../src/study/study-fields.js";
 import { libraryConfig } from "../../helpers/library-config.js";
-import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import {
   isComputerUseComposition,
   isScriptedBrowserComposition,
@@ -275,24 +275,28 @@ describe("terminal-product parse matrix", () => {
     expect(parseStudy(stdinRaw).ok).toBe(false);
   });
 
-  it("forward-declared: caps/product/runtimeAuth set on a non-terminal route fire inert warnings", () => {
+  it("forward-declared: caps/product/runtimeAuth set on a non-terminal route are refused", () => {
     // A this-repo subject that (illegally for that route) carries caps/runtimeAuth: these cannot
-    // act there, so they must warn. product cannot be set on this-repo at all (it is
+    // act there, so they are refused. product cannot be set on this-repo at all (it is
     // a parse error), so we exercise caps + runtimeAuth here; product is covered by the
     // never-falsely-flagged assertion below.
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const study = {
+      schema: STUDY_SCHEMA,
       id: "inert-fields",
+      route: "preview",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }],
-      scenario: { caps: { maxUsd: 0 } },
-      execution: { runtimeAuth: "openai-env" },
-    });
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-    const warned = parsed.warnings.join(" ");
-    expect(warned).toContain("scenario.caps");
-    expect(warned).toContain("execution.runtimeAuth");
+      actor: { type: "synthetic-persona" },
+    };
+    const refusal = (raw: unknown) => {
+      const parsed = parseStudy(raw);
+      return parsed.ok ? "parsed" : parsed.error.message;
+    };
+    expect(refusal({ ...study, caps: { maxUsd: 0 } })).toBe(
+      "route: preview reads no `caps`; remove the block.",
+    );
+    expect(refusal({ ...study, execution: { runtimeAuth: "openai-env" } })).toMatch(
+      /^route: preview does not read execution\.runtimeAuth /,
+    );
   });
 
   it("forward-declared: on the terminal route, product/caps/runtimeAuth/mission are not falsely flagged inert", () => {
@@ -349,18 +353,17 @@ describe("cua/scripted/local-app/synthetic/meta routing + warnings untouched", (
     expect(isScriptedBrowserComposition(terminal)).toBe(false);
   });
 
-  it("scripted-browser mission inert warning still fires", () => {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+  it("scripted-browser mission is still refused as unread", () => {
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "scripted-warn",
+      route: "scripted",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
-      actors: [{ type: "scripted-browser", mission: "this cannot act here" }],
-      scenario: { ref: "scripted-first-run" },
+      actor: { type: "scripted-browser", mission: "this cannot act here" },
+      scenario: "scripted-first-run",
     });
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-    expect(parsed.warnings.join(" ")).toContain(
-      "actors[0].mission (the scripted-browser actor runs no model)",
+    expect(parsed.ok ? "parsed" : parsed.error.message).toBe(
+      "route: scripted does not read actor.mission (the scripted-browser actor runs no model). Remove it.",
     );
   });
 });

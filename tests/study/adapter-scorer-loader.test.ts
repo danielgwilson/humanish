@@ -13,8 +13,8 @@ import {
   DECLARED_SCORER_MALFORMED,
 } from "../../src/study/adapter-extension.js";
 import { foldScorerFailures } from "../../src/run/judge.js";
-import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { RunAdapterScore, RunBundle } from "../../src/index.js";
@@ -793,19 +793,21 @@ describe("parser: review.scorer consumed on scorer-capable routes, typos rejecte
     expect(result.warnings.some((w) => w.includes("review.scorer"))).toBe(false);
   });
 
-  it("a scripted study declaring review.scorer warns inert (the scripted actor has no scorer seam)", () => {
-    const result = parseStudyDocument({
-      schema: V2_SCHEMA,
+  it("a scripted study declaring review.scorer is refused (the scripted actor has no scorer seam)", () => {
+    const result = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "scripted-scorer",
+      route: "scripted",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
-      actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
-      scenario: { ref: "scripted-first-run" },
+      actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+      surfaces: ["desktop", "mobile"],
+      scenario: "scripted-first-run",
       execution: { target: "local", timeoutMs: 60000 },
       review: { scorer: { ref: "scorers/product.mjs" } },
     });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.warnings.some((w) => w.includes("review.scorer"))).toBe(true);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toMatch(/^route: scripted does not read review\.scorer /);
   });
 
   it("a typo'd review.scorrer is rejected (a declared gate must not vanish silently)", () => {
