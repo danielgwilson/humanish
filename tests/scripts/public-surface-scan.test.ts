@@ -237,6 +237,32 @@ describe("public-surface commit email policy", () => {
       await rm(root, { recursive: true, force: true });
     }
   }, 45_000);
+
+  it("fails on each token format share safety redacts, built here so no literal is committed", async () => {
+    const root = await createGitHistory(["noreply@github.com"]);
+    const tokens: Record<string, string> = {
+      gitlab_token: `glpat-${"a1".repeat(12)}`,
+      npm_token: `npm_${"a1b2".repeat(9)}`,
+      vercel_token: `vcp_${"a1".repeat(12)}`,
+      aws_access_key: `ASIA${"A1".repeat(8)}`,
+      google_oauth_token: `ya29.${"a1".repeat(12)}`,
+      stripe_secret_key: `sk_test_${"a1".repeat(8)}`,
+      stripe_webhook_secret: `whsec_${"a1".repeat(12)}`,
+      sendgrid_api_key: `SG.${"a".repeat(22)}.${"b".repeat(43)}`,
+      slack_token: `xoxe-${"a1".repeat(12)}`,
+      slack_app_token: `xapp-1-${"a1".repeat(12)}`,
+      slack_webhook_url: `hooks.slack.com/services/T00/B00/${"x".repeat(16)}`,
+      basic_auth_header: `Authorization: Basic ${"dXNlcjpw".repeat(3)}`,
+    };
+    try {
+      await writeFile(join(root, "tokens.txt"), `${Object.values(tokens).join("\n")}\n`);
+      const scan = runScan(root);
+      expect(scan.status).toBe(1);
+      for (const name of Object.keys(tokens)) expect(scan.stderr, name).toContain(name);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
 });
 
 describe("public-surface packed history", () => {
