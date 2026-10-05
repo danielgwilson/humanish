@@ -112,6 +112,10 @@ Later participant actions and observations do not use this startup wait.
 - Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
   enclosing memory limit is 3 GiB. Start with a small concurrency for your host;
   these allocations are not a promise of measured peak memory or capacity.
+- Typing works only while the study's original tab is the browser's only tab. With a
+  second tab open, every `type` action is refused before any text is sent, and the
+  participant is told to switch to the other tab, close it and type again. Clicks, keys
+  and scrolling still work with several tabs open.
 - Browser-only by default. [Optional camera and spoken conversation](/docs/participant-media)
   use a separate media image and the same study loop.
 - [Captured inboxes](/docs/comms-inbox#local-browser-studies) use an operator-run mail catch.

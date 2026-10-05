@@ -533,6 +533,7 @@ export interface StudyExecution {
   runtime?: { version: string };
   /**
    * `terminal-product` route: outbound routing allowlist passed to E2B with a deny-all fallback.
+   * Every other route leaves egress open and ignores it with a warning; 0.112.0 refuses it there.
    * Domain filtering is a routing control, not strict destination isolation on shared hosting.
    * It does not constrain spending through an allowed runtime provider, including when
    * openai-egress keeps the raw runtime key outside the sandbox.

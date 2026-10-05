@@ -463,9 +463,13 @@ export class LiveTerminalSandbox {
 
     // Score by the verdict-nonce marker over the scrubbed, redacted and normalized transcript, with
     // the exact same logic the local-actor routes use (extractLocalActorVerdict/normalizeLocalActorTranscript).
+    // Output past the transcript cap is scanned as it arrives, since it is not stored.
     const rawTranscript = terminalEvents.map((e) => e.chunk).join("");
     const normalizedTranscript = normalizeLocalActorTranscript(rawTranscript);
-    const markerStatus = extractLocalActorVerdict(normalizedTranscript, verdictNonce);
+    const cut = this.inputs.recorder.transcriptCut();
+    const markerStatus =
+      extractLocalActorVerdict(normalizedTranscript, verdictNonce) ?? cut?.verdict ?? null;
+    if (cut) recordLifecycle("terminal-lab.transcript.exceeded", cut.notice);
 
     if (this.timedOut) {
       this.status = "timed_out";

@@ -5,6 +5,10 @@ import {
   isComputerUseExecutorError,
 } from "../actors/computer-use/executor-error.js";
 import type { CuaExecutorErrorCode } from "../actors/computer-use/executor-error.js";
+import {
+  classifyExecutorFailure,
+  type CuaDiagnosticStep,
+} from "../actors/computer-use/executor-diagnostic.js";
 
 const DEADLINE_MS = 5_000;
 
@@ -49,7 +53,8 @@ export interface GuestChromiumText {
 interface Operation {
   signal: AbortSignal;
   check(): void;
-  step<T>(call: () => Promise<T>, dispatch?: boolean): Promise<T>;
+  /** One awaited call; `step` names it in the diagnostic when it throws an undeclared error. */
+  step<T>(step: CuaDiagnosticStep, call: () => Promise<T>, dispatch?: boolean): Promise<T>;
 }
 
 /**
@@ -185,19 +190,22 @@ function checkScope(settings: TextPortSettings, state: TextPortState, expected: 
   if (state.generation !== expected)
     throw new ComputerUseExecutorError("session_revoked", "not_dispatched");
   const pages = context.pages();
-  if (
-    state.dialogSeen ||
-    page.isClosed() ||
-    page.context() !== context ||
-    pages.length !== 1 ||
-    pages[0] !== page
-  )
+  if (state.dialogSeen || page.isClosed() || page.context() !== context || !pages.includes(page))
     throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
+  // Playwright emulates focus in every page it drives, so the focus probe passes in a background
+  // tab too and cannot say which tab is in front. The participant learns why, and can close the
+  // other tab.
+  if (pages.length !== 1)
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched", {
+      reason: "extra_tab",
+    });
 }
 
 /**
  * One bounded operation: a 5 s deadline, the caller's abort, and any interrupt race every step.
- * A failure after a dispatching step makes the port unusable and reports outcome_uncertain.
+ * A failure after a dispatching step makes the port unusable and reports outcome_uncertain. An
+ * undeclared error becomes transport_failed with a diagnostic naming the failing step and a
+ * category; its message is classified and dropped.
  */
 async function runOperation<T>(
   settings: TextPortSettings,
@@ -208,6 +216,7 @@ async function runOperation<T>(
 ): Promise<T> {
   let dispatched = false;
   let stopped: CuaExecutorErrorCode | undefined;
+  let phase: CuaDiagnosticStep | undefined;
   const controller = new AbortController();
   let rejectStop!: (error: ComputerUseExecutorError) => void;
   const stop = new Promise<never>((_resolve, reject) => {
@@ -241,10 +250,12 @@ async function runOperation<T>(
     return await body({
       signal: controller.signal,
       check,
-      async step<T>(call: () => Promise<T>, dispatch = false): Promise<T> {
+      async step<T>(name: CuaDiagnosticStep, call: () => Promise<T>, dispatch = false): Promise<T> {
         check();
         if (dispatch) dispatched = true;
+        phase = name;
         const value = await Promise.race([call(), stop]);
+        phase = undefined;
         check();
         return value;
       },
@@ -252,8 +263,19 @@ async function runOperation<T>(
   } catch (error) {
     controller.abort();
     if (dispatched) state.unusable = true;
-    const code = stopped ?? (isComputerUseExecutorError(error) ? error.code : "transport_failed");
-    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched");
+    const declared = isComputerUseExecutorError(error);
+    const code = stopped ?? (declared ? error.code : "transport_failed");
+    const reason = !dispatched && stopped === undefined && declared ? error.reason : undefined;
+    const diagnostic =
+      stopped !== undefined
+        ? undefined
+        : declared
+          ? error.diagnostic
+          : classifyExecutorFailure(phase ?? "text_port", error);
+    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched", {
+      reason,
+      diagnostic,
+    });
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", abort);
@@ -282,9 +304,11 @@ function sessionDetacher(state: TextPortState): DetachSession {
             );
           }),
         ]);
-      } catch {
+      } catch (error) {
         state.unusable = true;
-        throw new ComputerUseExecutorError("transport_failed", "not_dispatched");
+        throw new ComputerUseExecutorError("transport_failed", "not_dispatched", {
+          diagnostic: classifyExecutorFailure("cdp_detach", error),
+        });
       } finally {
         clearTimeout(timer);
         state.sessions.delete(session);
@@ -300,7 +324,7 @@ function sessionDetacher(state: TextPortState): DetachSession {
 /** The owner's native window check, as one step of an operation. */
 async function assertOwnerReady(settings: TextPortSettings, op: Operation): Promise<void> {
   const { assertFocusedWindow } = settings;
-  await op.step(() => assertFocusedWindow(op.signal));
+  await op.step("owner_window_check", () => assertFocusedWindow(op.signal));
 }
 
 /** One fixed probe in the isolated world; anything but a boolean true refuses the action. */
@@ -310,7 +334,7 @@ async function probeElement(
   contextId: number,
   expression: string,
 ): Promise<void> {
-  const result = await op.step(() =>
+  const result = await op.step("focus_probe", () =>
     session.send("Runtime.evaluate", evaluateParams(expression, contextId)),
   );
   if (!probeAccepted(result))
@@ -347,18 +371,18 @@ async function acquireIsolatedWorld(
   op: Operation,
 ): Promise<void> {
   await assertOwnerReady(settings, op);
-  prepared.session = await op.step(() =>
+  prepared.session = await op.step("cdp_session", () =>
     settings.context.newCDPSession(settings.page).then((acquired) => {
       state.sessions.add(acquired);
       if (op.signal.aborted || state.closed) void detach(acquired).catch(() => {});
       return acquired;
     }),
   );
-  const tree = await op.step(() => prepared.session!.send("Page.getFrameTree"));
+  const tree = await op.step("frame_tree", () => prepared.session!.send("Page.getFrameTree"));
   const frameId = ownedFrameId(tree);
   if (frameId === undefined)
     throw new ComputerUseExecutorError("invalid_response", "not_dispatched");
-  const world = await op.step(() =>
+  const world = await op.step("isolated_world", () =>
     prepared.session!.send("Page.createIsolatedWorld", {
       frameId,
       worldName: settings.worldName,
@@ -385,9 +409,13 @@ function disposePrepared(
       try {
         if (prepared.session) await detach(prepared.session);
       } catch (error) {
+        const declared = isComputerUseExecutorError(error);
         throw new ComputerUseExecutorError(
-          isComputerUseExecutorError(error) ? error.code : "transport_failed",
+          declared ? error.code : "transport_failed",
           prepared.dispatchedText ? "outcome_uncertain" : "not_dispatched",
+          {
+            diagnostic: declared ? error.diagnostic : classifyExecutorFailure("cdp_detach", error),
+          },
         );
       } finally {
         state.busy = false;
@@ -423,10 +451,14 @@ function preparedHandle(
           await probeElement(op, prepared.session!, prepared.contextId!, RECHECK);
           await assertOwnerReady(settings, op);
           op.check();
-          await op.step(() => {
-            prepared.dispatchedText = true;
-            return prepared.session!.send("Input.insertText", { text: prepared.text });
-          }, true);
+          await op.step(
+            "insert_text",
+            () => {
+              prepared.dispatchedText = true;
+              return prepared.session!.send("Input.insertText", { text: prepared.text });
+            },
+            true,
+          );
         },
       );
     },

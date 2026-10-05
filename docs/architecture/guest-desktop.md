@@ -38,6 +38,11 @@ world checks actual document focus and binds preparation to the editable element
 page changes, additional tabs, dialogs, iframe focus and ambiguous focus are
 refused. The owner acquires the one page and native window before untrusted
 navigation. The driver never chooses another tab or brings one to the front.
+Playwright emulates focus in every page it drives, so the focus probe also passes
+in a background tab and cannot tell which tab is in front; text therefore needs the
+owned page to be the context's only page. That refusal carries the fixed reason
+`extra_tab` over browser control, and the study loop tells the participant to close
+the other tab.
 Focus can change between protocol messages; this is not atomic element-targeted
 input or a general multi-window driver.
 
@@ -56,7 +61,8 @@ text paths likewise need application readback to establish task outcomes.
 Native children use fixed paths and a minimal explicit environment. Operator
 credentials and inherited Xauthority are not forwarded. Native address-bar text travels over the
 helper's stdin; web text travels over the private browser pipe, never a shell. Helpers have bounded deadlines and output;
-raw diagnostic text is never returned as an executor error. Only an acquired,
+raw diagnostic text is never returned as an executor error. A text port failure the
+driver did not declare carries only a fixed step and category. Only an acquired,
 still-live child handle authorizes termination. If capture-helper exit cannot
 be confirmed, its private files stay for runtime-owner reclamation.
 

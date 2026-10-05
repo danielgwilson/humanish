@@ -86,13 +86,34 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   // the combined event order that the transcript uses; either view can assemble a split value.
   scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
 
-  // Build the actor trace first (the cost ledger reads its tokenUsage).
-  const normalizedTranscript = normalizeLocalActorTranscript(
+  // Build the actor trace first (the cost ledger reads its tokenUsage). A session past the cap
+  // ends its transcript with what was not stored, and its trace says the same.
+  const cut = inputs.recorder.transcriptCut();
+  const normalizedTranscript = `${normalizeLocalActorTranscript(
     terminalEvents.map((e) => e.chunk).join(""),
-  );
+  )}${cut ? `\n[humanish] ${cut.notice}` : ""}`;
   // Parsed from the full stream: usage records arrive once per turn, and the tail
-  // would drop all but the last.
-  const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
+  // would drop all but the last. Records past the cap were kept as they arrived.
+  const terminalTokenUsage = parseTerminalTokenUsage(
+    [normalizedTranscript, ...(cut?.usage ?? [])].join("\n"),
+  );
+  const read = inputs.recorder.participantText.finish();
+  const participant = cut
+    ? {
+        ...read,
+        items: [
+          ...read.items,
+          {
+            id: "notice-transcript",
+            kind: "notice" as const,
+            lifecycle: "completed" as const,
+            status: "truncated",
+            title: "terminal output truncated",
+            text: cut.notice,
+          },
+        ],
+      }
+    : read;
   const trace = buildTerminalActorTrace({
     persona,
     productName: product.name,
@@ -105,7 +126,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     terminalEvents,
     commandLog,
     transcriptTail: tailOf(normalizedTranscript),
-    participant: inputs.recorder.participantText.finish(),
+    participant,
     runtimeAuth: runtimeEnv.mode,
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),

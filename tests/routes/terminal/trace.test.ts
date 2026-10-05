@@ -137,6 +137,7 @@ describe("terminal participant text items", () => {
       nowIso: () => "2026-10-02T00:00:00.000Z",
       sanitize,
       knownSecretValues: [key],
+      verdictNonce: "synthetic-nonce",
     });
     const stdout = [
       said("Try https://e2b.example/test", "a"),
