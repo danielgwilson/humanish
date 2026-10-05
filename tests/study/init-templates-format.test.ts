@@ -25,7 +25,7 @@ describe("the README init writes", () => {
       )!;
       const commands = [
         ...readme.contents.matchAll(/`([^`]*humanish(?:@[^\s`]+)? [a-z][^`]*)`/g),
-      ].map((match) => match[1]);
+      ].map((match) => match[1] ?? "");
       expect(commands.length).toBeGreaterThan(0);
       for (const text of commands) expect(text.startsWith(`${command} `), text).toBe(true);
     },
