@@ -184,7 +184,7 @@ function nestedUrls(url: URL): { text: string; url: URL }[] {
     /^\s*[a-z][a-z0-9+.-]{0,31}:\/\//i.test(text) ? NESTED_URL : URL_IN_TEXT;
   return [
     ...values.flatMap(read(() => NESTED_URL)),
-    ...values.flatMap(encodedText).flatMap(read(oneUrl)),
+    ...values.flatMap((value) => encodedText(value)).flatMap(read(oneUrl)),
   ];
 }
 
