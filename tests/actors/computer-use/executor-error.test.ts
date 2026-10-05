@@ -86,7 +86,7 @@ describe("bounded executor error declarations", () => {
       disposition: "not_dispatched",
       reason: "extra_tab",
     });
-    expect(() => Object.assign(error, { reason: "raw backend text" })).toThrow();
+    expect(() => Object.assign(error, { reason: "raw backend text" })).toThrow(TypeError);
     expect(
       () =>
         new ComputerUseExecutorError("action_rejected", "not_dispatched", {
