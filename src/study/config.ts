@@ -87,6 +87,7 @@ import {
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   scenarioCapsValidationReason,
+  smtpValidationReason,
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
@@ -113,7 +114,7 @@ export function parseStudy(raw: unknown): StudyParseResult {
  * Validate a parsed YAML object, humanish.study.v3 or humanish.lab.v2, into a StudyConfig. Pure:
  * the caller owns file IO. Structural validation only. Fields the engine does not yet consume are
  * accepted but reported in `warnings` so `study show` never silently swallows a setting that does
- * nothing. migrate's conversion (migrate/convert.ts) calls it directly, since it reads v2 files.
+ * nothing. The v2 parser's tests call it directly; migrate reads v2 files through migrate/v2.ts.
  */
 export function parseStudyDocument(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {
@@ -236,11 +237,8 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
  * study.
  */
 export function checkStudyConfig(config: StudyConfig): StudyParseResult {
-  if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
-    return invalid(
-      "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.",
-    );
-  }
+  const smtpReason = smtpValidationReason(config);
+  if (smtpReason) return invalid(smtpReason);
 
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return invalid(mediaReason);

@@ -106,9 +106,15 @@ export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
 /**
  * The checks a v3 document passes before its sections parse: no v2 key and no unknown key, a
  * route, a mode, an `actor` object, a scenario string, and the `participants`, `surfaces` and
- * `caps` keys its route takes.
+ * `caps` keys its route takes. `anySharedWorldParticipants`, for migrate's v3 form of a v2 file:
+ * a shared world takes `participants` in every form computer use takes, or none, because a v2
+ * shared world could declare a count or no list. The shared-world checks then refuse it, as the v2
+ * parser does.
  */
-export function readStudyFront(raw: Record<string, unknown>): Parsed<StudyFront> {
+export function readStudyFront(
+  raw: Record<string, unknown>,
+  anySharedWorldParticipants = false,
+): Parsed<StudyFront> {
   const moved = movedKeyReason(raw);
   if (moved) return invalid(moved);
   const unknownKey = findUnknownStudyKey(raw);
@@ -128,7 +134,10 @@ export function readStudyFront(raw: Record<string, unknown>): Parsed<StudyFront>
     return invalid("`scenario` is a scenario id or a path to one, as a string.");
   }
 
-  const participants = participantsOf(route, raw.participants);
+  const participants = participantsOf(
+    anySharedWorldParticipants && route === "shared-world" ? "computer-use" : route,
+    raw.participants,
+  );
   if (!participants.ok) return participants;
   const surfaces = surfaceCount(route, raw.surfaces);
   if (!surfaces.ok) return surfaces;

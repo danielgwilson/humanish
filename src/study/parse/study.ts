@@ -32,7 +32,9 @@ import { invalid, nonNegNumber, optionalStr, str } from "./values.js";
 interface StudyV3Options {
   /**
    * `report`, for `humanish migrate`: list the fields the route does not read in `inert`, as v2
-   * paths, in place of refusing the study for them.
+   * paths, in place of refusing the study for them, and give the checks' messages as they wrote
+   * them, in the v2 spelling of the file migrate converts. A shared world may then give
+   * `participants` as a count or leave it out, as a v2 file could (readStudyFront).
    */
   readonly inert?: "refuse" | "report";
 }
@@ -52,13 +54,15 @@ export function parseStudyV3(raw: unknown, options: StudyV3Options = {}): StudyV
   if (raw.schema !== STUDY_SCHEMA) {
     return invalid(`The study schema must be ${STUDY_SCHEMA} or ${V2_SCHEMA}.`);
   }
-  const front = readStudyFront(raw);
+  const front = readStudyFront(raw, options.inert === "report");
   if (!front.ok) return front;
   const study = parseSections(raw, front.value);
   if (!study.ok) return study;
 
   const spell = (message: string) =>
-    studySpelling(message, front.value.route, front.value.participants.source);
+    options.inert === "report"
+      ? message
+      : studySpelling(message, front.value.route, front.value.participants.source);
   const checked = checkStudyConfig(toLegacy(study.value));
   if (!checked.ok) return invalid(spell(checked.error.message));
   const { route } = study.value;
@@ -226,9 +230,12 @@ function parseParticipants(
   };
 }
 
-// readStudyFront has checked the keys against the route. A value that is not a non-negative number
-// refuses the study: a cap that does nothing must not look like one that holds.
-function parseCaps(raw: unknown): Parsed<StudyScenarioCaps | undefined> {
+/**
+ * A caps block's values. A value that is not a non-negative number refuses the study: a cap that
+ * does nothing must not look like one that holds. readStudyFront has checked the keys against the
+ * route; migrate checks a v2 file's two blocks with it.
+ */
+export function parseCaps(raw: unknown): Parsed<StudyScenarioCaps | undefined> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) {
     return invalid("`caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");

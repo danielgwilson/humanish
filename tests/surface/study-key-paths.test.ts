@@ -61,6 +61,9 @@ const SPELLED = new Set([
   "src/study/parse/values.ts",
 ]);
 
+// migrate's reader of a v2 file, whose messages and dropped keys are the v2 file's own paths.
+const V2_READER = "src/study/migrate/v2.ts";
+
 const MIGRATE = "migrate names the v2 keys of the file it converts";
 const V2_ONLY = "a v3 file cannot set this key, so only migrate's v2 parse reaches the message";
 const V2_SHAPE =
@@ -173,6 +176,7 @@ interface Hit {
 function namedPaths(): Hit[] {
   const found: Hit[] = [];
   for (const file of [...sourceFiles("src"), ...sourceFiles("tui/src")]) {
+    if (file === V2_READER) continue;
     const text = readFileSync(file, "utf8");
     const spelled = SPELLED.has(file);
     for (const string of stringsOf(parseSync(file, text).program, false, true)) {

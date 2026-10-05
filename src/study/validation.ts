@@ -175,6 +175,13 @@ function provisionedSharedWorldStructureReason(config: StudyConfig): string | nu
   return null;
 }
 
+/** SMTP capture runs only where each participant has its own world, so a shared world refuses it. */
+export function smtpValidationReason(config: StudyConfig): string | undefined {
+  return config.comms?.email?.smtp && declaresSharedWorld(config)
+    ? "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies."
+    : undefined;
+}
+
 /**
  * Declared capture devices must be implemented by the selected execution route.
  * Unsupported backends pass false when called directly, where the declared

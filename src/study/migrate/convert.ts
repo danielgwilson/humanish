@@ -1,7 +1,7 @@
 // Convert a humanish.lab.v2 study file to humanish.study.v3. It edits the parsed YAML document in
 // place and moves each pair node, so the comments on a moved key move with it. The result lists
 // every key it moved and every key it dropped. It refuses a file whose v3 form would parse or plan
-// differently from the v2 source with the dropped keys removed.
+// differently from the v2 source with the dropped keys removed. v2.ts reads the v2 source.
 
 import {
   isAlias,
@@ -17,19 +17,19 @@ import {
   YAMLSeq,
   type Document,
 } from "yaml";
-import { parseStudyDocument } from "../config.js";
-import { focusOf } from "../parse/actors.js";
+import { parseStudy } from "../config.js";
+import { parseStudyV3 } from "../parse/study.js";
 import { posInt } from "../parse/values.js";
 import { planStudy } from "../plan.js";
-import { routeOf, type StudyRoute } from "../routing.js";
-import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../types.js";
-import { inertFieldPaths } from "../warnings.js";
+import type { StudyRoute } from "../routing.js";
+import { V2_SCHEMA, STUDY_SCHEMA } from "../types.js";
 import {
   deleteNodeFieldPath,
   deletePlainFieldPath,
   pairIndex,
   readFieldPath,
 } from "../field-paths.js";
+import { checkV2, droppedPaths, v2ShapeReason, v2ToV3Raw } from "./v2.js";
 
 /** A key the conversion moved, by its v2 path and its v3 path. */
 export interface MovedKey {
@@ -87,9 +87,16 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
   const raw: unknown = doc.toJS();
   if (!isPlainRecord(raw) || !isMap(doc.contents)) return refuse("it is not a YAML mapping.");
   if (raw.schema !== V2_SCHEMA) return refuse(`its schema is not ${V2_SCHEMA}.`);
-  const source = parseStudyDocument(raw);
-  if (!source.ok) return refuse(`it does not parse: ${source.error.message}`);
-  const route = routeOf(source.config);
+  // The v2 parser's checks: the sections and the v2-only budget rule, then the checks the formats
+  // share on the v3 form of the file, then the rules on v2 shapes the v3 form cannot hold.
+  const source = checkV2(raw);
+  if (!source.ok) return refuse(`it does not parse: ${source.message}`);
+  const study = source.value;
+  const { route } = study;
+  const view = parseStudyV3(v2ToV3Raw(raw, route), { inert: "report" });
+  if (!view.ok) return refuse(`it does not parse: ${view.error.message}`);
+  const shape = v2ShapeReason(study);
+  if (shape) return refuse(`it does not parse: ${shape}`);
 
   const actorRaw = Array.isArray(raw.actors) ? raw.actors[0] : undefined;
   if (route === "terminal" && isPlainRecord(actorRaw)) {
@@ -104,7 +111,7 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
 
   const root = doc.contents;
   const dropped: DroppedKey[] = [];
-  for (const path of droppedPaths(source.config, route, raw)) {
+  for (const path of droppedPaths(study, view.inert ?? [])) {
     const value = readFieldPath(raw, path);
     const pairs = deleteNodeFieldPath(root, path);
     if (value === undefined || pairs.length === 0) continue;
@@ -114,8 +121,7 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
 
   const moved: MovedKey[] = [];
   // v2 reads some laneFocus values as no focus at all ({}, a valueless key, valueless fields).
-  const focused = focusOf(source.config.actors[0]) !== undefined;
-  const converted = convertDocument(root, route, focused, moved);
+  const converted = convertDocument(root, route, study.focus !== undefined, moved);
   if (!converted.ok) return converted;
   const out = doc.toString({ lineWidth: foldWidth(text), flowCollectionPadding: false });
   // Fail closed: a comment the conversion did not carry over or report stops it.
@@ -124,6 +130,7 @@ export function convertStudyText(text: string, cwd: string): StudyConversionResu
 
   const check = samePlans(
     raw,
+    route,
     dropped.map((key) => key.path),
     out,
     cwd,
@@ -164,17 +171,6 @@ function lostComment(
     kept.set(line, left - 1);
   }
   return undefined;
-}
-
-// The inert-field table's paths for the route, plus terminal `execution.timeoutMs`, which no
-// terminal code reads. Parents come before their children, so a child under a dropped parent is
-// reported with the parent.
-function droppedPaths(config: StudyConfig, route: StudyRoute, raw: PlainRecord): string[] {
-  const paths = inertFieldPaths(config);
-  if (route === "terminal" && readFieldPath(raw, "execution.timeoutMs") !== undefined)
-    paths.push("execution.timeoutMs");
-  const depth = (path: string) => path.split(".").length;
-  return [...new Set(paths)].sort((left, right) => depth(left) - depth(right));
 }
 
 // Folded text is folded again on output. Most of a file's long lines end near the width its author
@@ -486,24 +482,24 @@ function plain(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value)) as unknown;
 }
 
+// The YAML rewrite against v2ToV3Raw of the source without the dropped keys: two rewrites written
+// separately, which must parse to the same study and plan the same runs.
 function samePlans(
   raw: PlainRecord,
+  route: StudyRoute,
   dropped: readonly string[],
   text: string,
   cwd: string,
 ): { ok: true } | { ok: false; reason: string } {
   const projected = structuredClone(raw);
   for (const path of dropped) deletePlainFieldPath(projected, path);
-  const before = parseStudyDocument(projected);
+  const before = parseStudy(v2ToV3Raw(projected, route));
   if (!before.ok) {
     return refuse(`it does not parse once the unread keys are dropped: ${before.error.message}`);
   }
-  const after = parseStudyDocument(parseDocument(text).toJS());
+  const after = parseStudy(parseDocument(text).toJS());
   if (!after.ok) return refuse(`its v3 form does not parse: ${after.error.message}`);
-  if (
-    JSON.stringify(plain({ ...after.config, schema: V2_SCHEMA })) !==
-    JSON.stringify(plain(before.config))
-  ) {
+  if (JSON.stringify(plain(after.config)) !== JSON.stringify(plain(before.config))) {
     return refuse("its v3 form parses to a different study.");
   }
   for (const dryRun of [true, false]) {
