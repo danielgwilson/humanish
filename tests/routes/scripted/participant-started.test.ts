@@ -11,8 +11,8 @@ import { runScriptedBrowserSession } from "../../../src/actors/scripted-browser/
 import type { AutomaticAnalysisOutcome } from "../../../src/analysis/job.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import type { StudyEvent } from "../../../src/study/run-study-events.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
 
 describe("scripted run whose surface session throws after it started", () => {
@@ -24,13 +24,16 @@ describe("scripted run whose surface session throws after it started", () => {
     );
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "scenarios", "scripted-first-run.yaml"), scenario);
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "scripted-started",
       title: "Scripted session start",
+      route: "scripted",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:9/" },
-      actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
-      scenario: { ref: "scripted-first-run", mode: "live" },
+      actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+      surfaces: ["desktop", "mobile"],
+      scenario: "scripted-first-run",
       review: { analysis: { maxCostUsd: 1 } },
       execution: { target: "local", timeoutMs: 30_000 },
     });
