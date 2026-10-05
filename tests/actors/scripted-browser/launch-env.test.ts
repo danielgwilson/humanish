@@ -120,7 +120,7 @@ describe("the scripted browser's Chrome launch under a long temp directory", () 
       appUrl: "http://127.0.0.1:9/",
       journey,
       surface: browserSurfaces[0]!,
-      persona: { id: "scripted-journey", traitsApplied: [], promptDigest: "abcd1234abcd1234" },
+      persona: { id: "scripted-journey", traitsApplied: [], promptDigest: "digest" },
       timeoutMs: 10_000,
       artifactRoot,
       browserCommand: command,
