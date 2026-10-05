@@ -620,6 +620,46 @@ export function App({
       }
     />
   );
+  const recordingNavigation = selected ? (
+    <>
+      <button
+        className="recording-return"
+        type="button"
+        data-return-kind={source.kind}
+        aria-label={
+          source.kind === "finding"
+            ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}`
+            : source.kind === "concerns"
+              ? "Back to concerns considered"
+              : source.kind === "comparison"
+                ? "Back to comparison"
+                : "Back to participants"
+        }
+        title={
+          source.kind === "finding"
+            ? report?.findings.find((finding) => finding.id === source.findingId)?.title
+            : undefined
+        }
+        onClick={returnToSource}
+      >
+        ←{" "}
+        {source.kind === "finding"
+          ? (report?.findings.find((finding) => finding.id === source.findingId)?.title ??
+            "Back to finding")
+          : source.kind === "concerns"
+            ? "Back to concerns considered"
+            : source.kind === "comparison"
+              ? "Back to comparison"
+              : "Back to participants"}
+      </button>
+      <ParticipantPager data={data} selected={selected} onStep={stepParticipant} />
+    </>
+  ) : null;
+  const outcomeContext = selectedReview ? (
+    <span className="report-outcome-context">
+      Analyzed outcome: <strong>{selectedReview.label}</strong>
+    </span>
+  ) : null;
   const participantContent = (
     <>
       {selected || comparison ? (
@@ -627,43 +667,11 @@ export function App({
           {selected ? `${labels.get(selected.id)} recording` : "Compare participants"}
         </h2>
       ) : null}
-      {selected || (!comparison && compareIds.length > 0) ? (
+      {/* The player shows this navigation in its heading line, above the frame. */}
+      {(selected && !model) || (!selected && !comparison && compareIds.length > 0) ? (
         <div className="study-context-actions">
-          {selected ? (
-            <button
-              className="recording-return"
-              type="button"
-              data-return-kind={source.kind}
-              aria-label={
-                source.kind === "finding"
-                  ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}`
-                  : source.kind === "concerns"
-                    ? "Back to concerns considered"
-                    : source.kind === "comparison"
-                      ? "Back to comparison"
-                      : "Back to participants"
-              }
-              onClick={returnToSource}
-            >
-              ←{" "}
-              {source.kind === "finding"
-                ? (report?.findings.find((finding) => finding.id === source.findingId)?.title ??
-                  "Back to finding")
-                : source.kind === "concerns"
-                  ? "Back to concerns considered"
-                  : source.kind === "comparison"
-                    ? "Back to comparison"
-                    : "Back to participants"}
-            </button>
-          ) : null}
-          {selected ? (
-            <ParticipantPager data={data} selected={selected} onStep={stepParticipant} />
-          ) : null}
-          {selectedReview && selected ? (
-            <span className="report-outcome-context">
-              Analyzed outcome: <strong>{selectedReview.label}</strong>
-            </span>
-          ) : null}
+          {recordingNavigation}
+          {selected ? outcomeContext : null}
           {!selected && !comparison && compareIds.length ? (
             <span className="compare-selection">
               <button type="button" className="review-tool" onClick={openComparison}>
@@ -705,6 +713,8 @@ export function App({
             initialFrame={route.frame}
             initialMode={route.mode ?? null}
             initialEventId={route.eventId ?? null}
+            navigation={recordingNavigation}
+            outcome={outcomeContext}
             navigationRevision={navigationRevision}
             updating={connection.state !== "offline"}
             onViewChange={viewChanged}

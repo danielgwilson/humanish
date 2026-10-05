@@ -7,32 +7,60 @@
   /* The phone stage height follows the viewer's width. */
   container: evidence-viewer / inline-size;
 }
+/* One heading line: navigation, who and in what state, then view toggles. Context that
+   does not change with the frame lives in the inspector's Details tab. */
 .evidence-player .player-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-10) var(--space-16);
+  gap: var(--space-4) var(--space-16);
+  padding: var(--space-4) var(--space-12) var(--space-4) var(--space-16);
   border-bottom: 1px solid var(--line-soft);
   flex: none;
 }
-.evidence-player .player-mode {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-  flex: 1;
+/* A long "Back to finding" title truncates; its full text is the button's label and tooltip.
+   When the line cannot give the name and status 360px, they move to a second line. */
+.evidence-player .player-navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex: none;
+  max-width: 100%;
 }
-.evidence-player .player-mode strong {
-  font: 500 13px var(--sans);
-  color: var(--ink);
+.evidence-player .player-navigation .recording-return {
+  display: block;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.evidence-player .player-mode {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-12);
+  min-width: 0;
+  flex: 1 1 360px;
 }
 .evidence-player .player-mode .player-participant {
-  display: block;
-  font: 500 14px var(--sans);
+  min-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 var(--text-13) var(--sans);
   color: var(--ink);
 }
-.evidence-player .player-mode > span {
-  font: 11px var(--mono);
-  color: var(--muted);
+.evidence-player .player-mode strong {
+  flex: none;
+  white-space: nowrap;
+  font: 400 var(--text-12) var(--sans);
+  color: var(--body-c);
+}
+.evidence-player .player-mode .report-outcome-context {
+  flex: none;
+  white-space: nowrap;
+}
+.evidence-player .capture-line {
+  font-family: var(--mono);
   overflow-wrap: anywhere;
 }
 .evidence-player .player-entry-context {
@@ -298,10 +326,6 @@
   font: 11px var(--sans);
   line-height: 1.5;
 }
-.evidence-player .player-evidence-note .t-meta {
-  display: inline;
-  font-size: var(--text-11);
-}
 .evidence-player .player-notice {
   flex: none;
   margin: 0;
@@ -507,16 +531,21 @@
 }
 @container observer-content (max-width: 880px) {
   .evidence-player .player-heading {
-    padding: var(--space-8) var(--space-10);
-    gap: var(--space-8);
+    padding: var(--space-2) var(--space-10) var(--space-6);
+    gap: 0 var(--space-8);
     flex-wrap: wrap;
   }
+  .evidence-player .player-heading .pager-word {
+    display: none;
+  }
+  /* Navigation and toggles share the first row; the name and status wrap below it. */
   .evidence-player .player-mode {
-    flex-basis: 180px;
+    order: 1;
+    flex-basis: 100%;
+    flex-wrap: wrap;
   }
   .evidence-player .player-mode .player-participant {
-    display: block;
-    overflow-wrap: anywhere;
+    flex-basis: 100%;
   }
   .evidence-player .evidence-stage {
     height: 52dvh;
@@ -625,9 +654,6 @@
   }
   .evidence-player .fs .im {
     height: 60px;
-  }
-  .evidence-player .player-heading {
-    padding-block: var(--space-8);
   }
   .evidence-player .player-evidence-note {
     padding-block: var(--space-4);

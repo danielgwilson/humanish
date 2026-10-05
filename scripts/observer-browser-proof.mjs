@@ -417,18 +417,19 @@ async function assertClearGridScreens(page) {
           visible: css.visibility === "visible" && Number(css.opacity) === 1,
         };
       };
-      const controls = [
-        ...captionNode.querySelectorAll(".card-pin-toggle, .card-details-trigger"),
-      ].map((element) => ({
-        label: element.getAttribute("aria-label"),
-        box: element.getBoundingClientRect().toJSON(),
-      }));
+      const controls = [...captionNode.querySelectorAll(".card-pin-toggle, .card-details-trigger")]
+        .map((element) => ({
+          label: element.getAttribute("aria-label"),
+          box: element.getBoundingClientRect().toJSON(),
+        }))
+        .filter((control) => control.box.width > 0);
       return {
         gutter: Math.abs(area.width - screen.width),
         left: Math.abs(area.left - screen.left),
+        cardBox: cardBox.toJSON(),
         contentWidth,
         narrow,
-        captionLimit: narrow ? 78 : 44,
+        captionLimit: 44,
         caption: caption.toJSON(),
         captionBelow: caption.top >= area.bottom - 1,
         captionHeight: caption.height,
@@ -444,13 +445,20 @@ async function assertClearGridScreens(page) {
     }),
   );
   assert(screens.length > 0);
+  // Every capture aspect shares one caption, so cards in a grid row end together.
+  for (const screen of screens)
+    for (const other of screens)
+      if (Math.abs(screen.cardBox.top - other.cardBox.top) < 1)
+        assert(
+          Math.abs(screen.cardBox.bottom - other.cardBox.bottom) <= 1,
+          `Cards in one grid row end at different heights: ${JSON.stringify([screen.cardBox, other.cardBox])}`,
+        );
   for (const screen of screens) {
     assert(
       screen.gutter < 1 && screen.left < 1,
       "The card adds horizontal padding beside the captured screen",
     );
-    // Only the approved <=190px direct-pin layout has three caption rows.
-    // All wider cards retain the one-row 44px caption and original preview.
+    // One 44px caption for portrait and landscape captures alike.
     assert(
       screen.captionBelow &&
         screen.captionHeight <= screen.captionLimit &&
@@ -492,12 +500,19 @@ async function assertClearGridScreens(page) {
         Math.min(screen.metadata.painted.width, screen.name.box.width) - 1,
       "Participant metadata is unnecessarily clipped",
     );
-    if (screen.narrow)
-      for (const text of [screen.name, screen.metadata])
-        assert(
-          Math.abs(text.box.width - screen.caption.width) <= 1,
-          "Narrow participant text lost its full-width row",
-        );
+    assert(screen.name.box.width >= 40, "The participant name has no readable width");
+    // Pointer controls leave the status the whole second row; touch controls span both rows.
+    if (!screen.touch)
+      assert(
+        Math.abs(screen.metadata.box.right - screen.caption.right) <= 1,
+        "Participant status lost its full-width row",
+      );
+    // The direct pin yields only where it would squeeze the name under 48px.
+    assert(
+      screen.controls.some((control) => control.label?.startsWith("Participant details:")) &&
+        (screen.controls.length === 2 || screen.contentWidth < (screen.touch ? 144 : 112)),
+      `A caption control is missing: ${JSON.stringify(screen.controls)}`,
+    );
     for (const control of screen.controls) {
       assert(inside(control.box), "A caption control is outside the card");
       assert(
@@ -977,12 +992,9 @@ try {
           const index = record.checks.cardChrome.findIndex((card) => card.narrow === narrow);
           assert(index >= 0, "Caption proof needs both narrow and wide cards");
           const caption = page.locator(".card").nth(index).locator(".card-caption");
-          await caption.evaluate(
-            (element, height) => {
-              element.style.height = `${height}px`;
-            },
-            narrow ? 90 : 78,
-          );
+          await caption.evaluate((element) => {
+            element.style.height = "56px";
+          });
           let rejected = false;
           try {
             await assertClearGridScreens(page);
@@ -3210,6 +3222,10 @@ try {
     },
     async ({ page, record, snap }) => {
       await openLane(page);
+      // The assignment lives in Details, so it never pushes the frame down.
+      assert.equal(await page.locator(".viewer .participant-assignment").count(), 0);
+      const details = page.getByRole("tab", { name: "details", exact: true });
+      await details.click();
       const assignment = page
         .locator(".participant-assignment")
         .filter({ has: page.locator("summary", { hasText: "Assigned task" }) });
@@ -3226,6 +3242,7 @@ try {
       assert((await background.innerText()).includes("Concerned about public rosters."));
       await snap("first-participant-assignment");
       await page.getByRole("button", { name: "Next participant", exact: true }).click();
+      await details.click();
       await assignment.locator("summary").click();
       assert(
         (await assignment.locator(".assignment-body").innerText()).includes(
