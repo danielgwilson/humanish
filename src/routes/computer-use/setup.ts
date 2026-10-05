@@ -49,6 +49,7 @@ import {
 } from "./types.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf } from "../../study/study-fields.js";
 
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
@@ -76,7 +77,7 @@ export async function refuseCuaStudy(
     ...studyResultIdentity("computer-use", config.id),
     ok: false,
     cwd: projectRoot.physicalPath,
-    actor: refusal.actor ?? config.actors[0]?.type ?? "",
+    actor: refusal.actor ?? actorOf(config)?.type ?? "",
     appUrl: declaredAppUrl(config),
     dryRun,
     runId: options.runId ?? "not-created",

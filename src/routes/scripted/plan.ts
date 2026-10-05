@@ -20,6 +20,7 @@ import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
+import { actorOf, surfaceCount, scenarioRefOf } from "../../study/study-fields.js";
 
 // Default surface roster is 1 (desktop only): the defaults-table single-participant row governs;
 // `count: 2` is the declared override that adds the mobile surface.
@@ -93,7 +94,7 @@ export function planScriptedStudy(
   if (mediaReason) return refuse("HUMANISH_SCRIPTED_SCENARIO_INVALID", mediaReason);
   const cloneTargetReason = cloneTargetValidationReason(config);
   if (cloneTargetReason) return refuse("HUMANISH_SCRIPTED_SUBJECT_UNSAFE", cloneTargetReason);
-  const actorType = config.actors[0]?.type ?? "";
+  const actorType = actorOf(config)?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor))
     return refuse(
@@ -126,7 +127,7 @@ export function planScriptedStudy(
   }
 
   // The steps are the actor, so there is no built-in journey to fall back on.
-  const scenarioRef = config.scenario?.ref;
+  const scenarioRef = scenarioRefOf(config);
   if (!scenarioRef?.trim())
     return refuse(
       "HUMANISH_SCRIPTED_SCENARIO_INVALID",
@@ -141,7 +142,7 @@ export function planScriptedStudy(
   }
   // The browser runs on this machine on both subjects; a clone's is pointed at its getHost URL.
   if (!input.dryRun && input.injectedBrowser !== true) requirements.push({ kind: "host-browser" });
-  const persona = config.actors[0]?.persona;
+  const persona = actorOf(config)?.persona;
   const timeoutMs = config.execution?.timeoutMs;
   return {
     ok: true,
@@ -154,7 +155,7 @@ export function planScriptedStudy(
       actor,
       subject,
       scenarioRef,
-      surfaces: browserSurfaces.slice(0, config.actors[0]?.count ?? DEFAULT_SURFACE_COUNT),
+      surfaces: browserSurfaces.slice(0, surfaceCount(config) ?? DEFAULT_SURFACE_COUNT),
       ...(persona === undefined ? {} : { personaId: persona }),
       ...(timeoutMs === undefined ? {} : { sessionTimeoutMs: timeoutMs }),
       requirements,

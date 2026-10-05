@@ -11,6 +11,7 @@ import {
 } from "../io.js";
 import { planObserver, showObserver, staticObserverOpen } from "../observer-follow.js";
 import type { RouteRun } from "./study-route-run.js";
+import { declaredParticipantCount } from "../../study/study-fields.js";
 
 interface PreviewRouteArgs {
   command: Command;
@@ -26,7 +27,10 @@ interface PreviewRouteArgs {
  * presents the outcome. Undefined when setup has already written its own result.
  */
 export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
-  const participantCount = parseStudyCount(args.options.count, args.config.actors[0]?.count ?? 4);
+  const participantCount = parseStudyCount(
+    args.options.count,
+    declaredParticipantCount(args.config) ?? 4,
+  );
   if (participantCount === null) {
     const result: PreviewStudyResult = {
       ...studyResultIdentity("preview", args.config.id),

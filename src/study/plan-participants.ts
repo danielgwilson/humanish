@@ -7,7 +7,12 @@ import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js
 import { isSharedWorldComposition, participantIdAt } from "./routing.js";
 import type { StudyTask } from "./tasks.js";
 import type { StudyParticipantEntry, StudyConfig } from "./types.js";
-import { focusOf, rosterOf } from "./parse/actors.js";
+import {
+  actorOf,
+  participantList,
+  declaredParticipantCount,
+  participantInstruction,
+} from "./study-fields.js";
 
 /** Who one participant is. Every route with participants carries this record. */
 export interface Participant {
@@ -85,7 +90,7 @@ function desktopParticipant(
   kind: "lane" | "seat",
   focus: string | undefined,
 ): DesktopParticipant {
-  const actor = config.actors[0];
+  const actor = actorOf(config);
   const device = resolveParticipantDevice(config, entry?.device);
   const personaId = entry?.persona ?? actor?.persona;
   const mission = actor?.mission;
@@ -124,12 +129,14 @@ export function computerUseParticipants(
   config: StudyConfig,
   countOverride?: number,
 ): ComputerUseParticipant[] {
-  const actor = config.actors[0];
-  const roster = rosterOf(actor);
-  const count = roster ? roster.length : Math.max(1, countOverride ?? actor?.count ?? 1);
+  const actor = actorOf(config);
+  const roster = participantList(config);
+  const count = roster
+    ? roster.length
+    : Math.max(1, countOverride ?? declaredParticipantCount(config) ?? 1);
   return Array.from({ length: count }, (_, index) => {
     const entry = roster?.[index];
-    const focus = roster ? entry?.instruction : focusOf(actor)?.instruction;
+    const focus = roster ? entry?.instruction : participantInstruction(config);
     return {
       ...desktopParticipant(config, entry, index, "lane", focus),
       ...(actor?.tasks === undefined ? {} : { tasks: actor.tasks }),
@@ -140,7 +147,7 @@ export function computerUseParticipants(
 
 /** The participants of a shared-world study, one per roster entry, typed by the plane they share. */
 export function sharedWorldParticipants(config: StudyConfig): SharedWorldRoster {
-  const roster = rosterOf(config.actors[0]) ?? [];
+  const roster = participantList(config) ?? [];
   const participantAt = (entry: StudyParticipantEntry, index: number): DesktopParticipant =>
     desktopParticipant(config, entry, index, "seat", entry.instruction);
   if (config.subject.source === "app-url") {
@@ -163,19 +170,18 @@ export function sharedWorldParticipants(config: StudyConfig): SharedWorldRoster 
 
 /** The ids of the participants a computer-use or shared-world study runs, in roster order. */
 export function declaredParticipantIds(config: StudyConfig): string[] {
-  const actor = config.actors[0];
-  const roster = rosterOf(actor);
+  const roster = participantList(config);
   const kind = isSharedWorldComposition(config) ? "seat" : "lane";
   if (roster && roster.length > 0) {
     return roster.map((entry, index) => participantIdAt(index, entry.id, kind));
   }
-  const count = Math.max(1, actor?.count ?? 1);
+  const count = Math.max(1, declaredParticipantCount(config) ?? 1);
   return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
 }
 
 /** The entry URLs roster entries declare in place of the subject URL (computer use, app-url). */
 export function declaredTargets(config: StudyConfig): string[] {
-  return (rosterOf(config.actors[0]) ?? [])
+  return (participantList(config) ?? [])
     .map((entry) => entry.target)
     .filter((target): target is string => target !== undefined);
 }

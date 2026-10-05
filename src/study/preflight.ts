@@ -7,7 +7,7 @@ import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./prefli
 import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
 import { type StudyRoute, routeOf } from "./plan.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
-import { rosterOf } from "./parse/actors.js";
+import { participantList } from "./study-fields.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 
@@ -210,7 +210,7 @@ function collectTargets(config: StudyConfig): StudyPreflightTarget[] {
   if (config.subject.appUrl) {
     targets.push(makeTarget("subject.appUrl", "subject.appUrl", config.subject.appUrl));
   }
-  for (const [index, entry] of (rosterOf(config.actors[0]) ?? []).entries()) {
+  for (const [index, entry] of (participantList(config) ?? []).entries()) {
     if (entry.target) {
       targets.push(
         makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", entry.target),

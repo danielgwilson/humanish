@@ -39,6 +39,7 @@ import { formatCuaStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf, declaredParticipantCount } from "../../study/study-fields.js";
 
 interface ComputerUseRouteArgs {
   command: Command;
@@ -120,7 +121,7 @@ function refuseCua(
     ...studyResultIdentity("computer-use", args.config.id),
     ok: false,
     cwd: args.options.cwd,
-    actor: args.config.actors[0]?.type ?? "",
+    actor: actorOf(args.config)?.type ?? "",
     appUrl: "",
     dryRun,
     runId: args.options.runId ?? "not-created",
@@ -146,7 +147,7 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     args.io.setExitCode(2);
     return undefined;
   }
-  const count = parseStudyCount(args.options.count, args.config.actors[0]?.count ?? 1);
+  const count = parseStudyCount(args.options.count, declaredParticipantCount(args.config) ?? 1);
   if (count === null) {
     args.io.writeErr("error: --count must be a positive integer.\n");
     args.io.setExitCode(2);

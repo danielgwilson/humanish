@@ -36,6 +36,7 @@ import { runStudyParticipants } from "./live-phase.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaStudy, startCuaRun } from "./setup.js";
 import { type ComputerUseRunInput, type CuaActorStudyResult } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf } from "../../study/study-fields.js";
 
 /**
  * A refused computer-use study's result, at the refusal's stage: a before-scope refusal has its own
@@ -52,7 +53,7 @@ export async function computerUseStudyRefusal(
       ...studyResultIdentity("computer-use", config.id),
       ok: false,
       cwd: path.resolve(options.cwd),
-      actor: config.actors[0]?.type ?? "",
+      actor: actorOf(config)?.type ?? "",
       dryRun,
       runId: options.runId ?? "not-created",
       appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
