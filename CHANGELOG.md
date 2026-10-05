@@ -8,6 +8,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `watch` and `observe` install their Ctrl-C handler before they print "press Ctrl-C to stop".
+  A Ctrl-C between the two skipped the shutdown: no tunnel close and no `watch stopped` line.
+
 ## 0.110.2: Credential URLs refused, terminal key proxied, watch exits for agents (2026-10-05)
 
 humanish 0.110.2 refuses a study URL that carries a user name, password or credential parameter,
