@@ -78,8 +78,8 @@ const SECRET_PATTERNS: RegExp[] = [
     String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${NOT_A_PLACEHOLDER}[A-Za-z0-9._~+/=%-]{16,}`,
     "gi",
   ),
-  // An AWS secret access key next to its name, as a credentials file, an env line or STS JSON
-  // writes it. The key itself is 40 characters with no prefix.
+  // An Amazon Web Services secret access key next to its name, as a credentials file, an env
+  // line or a temporary-credentials JSON response writes it. The key is 40 characters, no prefix.
   /(?<keep>\b(?:aws_?)?secret_?access_?key["']?[ \t]{0,4}[:=][ \t]{0,4}["']?)[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])/gi,
   // A credential-named variable set to a long value with a digit in it. Words and placeholders
   // such as humanish-egress-auth-placeholder have none.
