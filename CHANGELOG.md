@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Planner refusals for a library config built without `parseStudy` name v3 keys, as the same
+  refusal through `parseStudy` already did: `actor.type`, `participants[].target`,
+  `route: shared-world`, `caps`, `scenario` and `surfaces`, where they said `actors[0].type`,
+  `actors[0].lanes[].target`, `subject.topology: shared-world`, `scenario.caps`, `scenario.ref` and
+  `actors[0].count`. Codes do not change, and `humanish migrate` quotes the same text when it
+  refuses a v2 file.
+
 ### Fixed
 
 - `humanish reclaim --check` on a live scripted run against an `app-url` subject reported
