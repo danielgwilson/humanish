@@ -44,6 +44,7 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
+import { actorOf } from "../../../src/study/study-fields.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -854,7 +855,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
       ],
     });
-    config.actors[0]!.mission = "Explore with test-openai-key.";
+    actorOf(config)!.mission = "Explore with test-openai-key.";
     const runId = "cua-fanout-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
