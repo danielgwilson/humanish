@@ -199,6 +199,11 @@ describe("the E2B URL pattern", () => {
       "https://o'hare@6080-synthetic-sandbox.e2b.app/",
       "https://o'hare@6080-synthetic-sandbox.e2b.dev/vnc.html?authKey=synthetic-stream-key",
       `https://a"b@6080-synthetic-sandbox.e2b.app/`,
+      // A URL parser takes the last `@`, and a public page before `)@` is user info.
+      "https://first@second@6080-synthetic-sandbox.e2b.app/",
+      "https://docs.e2b.dev)@6080-synthetic-sandbox.e2b.app/?authKey=synthetic-stream-key",
+      // Some JSON writers escape slashes.
+      String.raw`https:\/\/6080-synthetic-sandbox.e2b.app\/vnc.html`,
     ]) {
       expect(containsSensitive(url), url).toBe(true);
       expect(redactText(`see ${url}`), url).toBe("see [REDACTED_SECRET]");
