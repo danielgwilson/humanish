@@ -16,23 +16,6 @@
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
-  "tasks on a second actor": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "dryRun": true,
-    "runId": "not-created",
-    "appUrl": "http://127.0.0.1:3000/",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-      "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
-    }
-  },
   "unregistered actor": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
@@ -92,28 +75,6 @@
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "actor.maxOutputTokens must be a positive safe integer."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
-  "scenario dollar cap": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "appUrl": "http://127.0.0.1:3000/",
-    "dryRun": true,
-    "runId": "not-created",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -407,28 +368,6 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "lanes and count": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "appUrl": "http://127.0.0.1:3000/",
-    "dryRun": true,
-    "runId": "not-created",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
   "sandbox deadline": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
@@ -605,24 +544,7 @@
       "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
-  "invalid analysis and tasks on a second actor": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "dryRun": true,
-    "runId": "not-created",
-    "appUrl": "http://127.0.0.1:3000/",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
-      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
-    }
-  },
-  "tasks on a second actor and unregistered actor": {
+  "invalid analysis and unregistered actor": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
     "studyId": "adm-cuappurl",
@@ -635,8 +557,8 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-      "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
   "unregistered actor and media with firefox": {
@@ -683,7 +605,7 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "invalid output limit and scenario dollar cap": {
+  "invalid output limit and output limit with a caller provider": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
     "studyId": "adm-cuappurl",
@@ -698,28 +620,6 @@
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "actor.maxOutputTokens must be a positive safe integer."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
-  "scenario dollar cap and output limit with a caller provider": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "appUrl": "http://127.0.0.1:3000/",
-    "dryRun": true,
-    "runId": "not-created",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -969,7 +869,7 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "local-app without executor and lanes and count": {
+  "local-app without executor and sandbox deadline": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
     "studyId": "adm-cuappurl",
@@ -984,28 +884,6 @@
     "error": {
       "code": "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
       "message": "subject.source: local-app has no built-in driver. Supply one through runStudy(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
-  "lanes and count and local browser without a runtime": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "appUrl": "http://127.0.0.1:3000/",
-    "dryRun": true,
-    "runId": "not-created",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1099,28 +977,6 @@
     "automaticAnalysis": {
       "state": "skipped",
       "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
-    }
-  },
-  "lanes and count and sandbox deadline": {
-    "schema": "humanish.study-result.v1",
-    "route": "computer-use",
-    "studyId": "adm-cuappurl",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "appUrl": "http://127.0.0.1:3000/",
-    "dryRun": true,
-    "runId": "not-created",
-    "lanes": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "sandbox deadline and count override above the cap": {

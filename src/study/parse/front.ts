@@ -1,12 +1,11 @@
-// humanish.study.v3, the study format. A study declares its route, one `actor`, its `participants`
-// and one `caps` block. studyToV2 rewrites a v3 document into the v2 spelling, so both formats run
-// through one parser and parse into the same StudyConfig. parseStudy then checks the declared
-// route against the one the config takes, and refuses any field that route does not read.
+// What a humanish.study.v3 document declares before its sections parse: its route, one `actor`,
+// its `participants` or `surfaces`, and the `caps` keys the route reads. config.ts parses the
+// sections after these checks pass.
 
 import { isRecord } from "../../run/type-guards.js";
 import { findUnknownStudyKey } from "../keys.js";
 import type { StudyRoute } from "../routing.js";
-import { V2_SCHEMA, type StudyParseFailure } from "../types.js";
+import type { StudyParseFailure, StudySurfaces } from "../types.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./actors.js";
 import { invalid, posInt } from "./values.js";
 
@@ -29,14 +28,6 @@ const CAPS_KEYS: Readonly<Record<StudyRoute, readonly string[]>> = {
   scripted: [],
 };
 
-export interface StudyDocument {
-  readonly route: StudyRoute;
-  /** The same document in the humanish.lab.v2 spelling. */
-  readonly v2: Record<string, unknown>;
-  /** For each expanded participant, the index of the `participants` entry it came from. */
-  readonly participantSource: readonly number[];
-}
-
 /** A document's `participants`, read before the participant entries parse. */
 export interface Participants {
   count?: number;
@@ -52,56 +43,10 @@ export interface StudyFront {
   readonly route: StudyRoute;
   readonly actor: Record<string, unknown>;
   readonly participants: Participants;
-  /** The scripted surfaces as a count: 1 is desktop, 2 adds mobile. */
-  readonly surfaces: number | undefined;
+  readonly surfaces: StudySurfaces | undefined;
 }
 
 type Parsed<T> = { ok: true; value: T } | StudyParseFailure;
-
-/** Rewrite a humanish.study.v3 document into humanish.lab.v2, or refuse it. */
-export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
-  const front = readStudyFront(raw);
-  if (!front.ok) return front;
-  const { route } = front.value;
-  const { count, instruction, entries, source } = front.value.participants;
-  // The v2 actor keys that hold participants.
-  const v2Participants: [string, unknown][] = [
-    ["count", count ?? front.value.surfaces],
-    ["laneFocus", instruction === undefined ? undefined : { instruction }],
-    ["lanes", entries],
-  ];
-  const actor: Record<string, unknown> = { ...front.value.actor };
-  for (const [key, value] of v2Participants) if (value !== undefined) actor[key] = value;
-
-  const caps = raw.caps;
-  const scenario: Record<string, unknown> = {};
-  if (raw.scenario !== undefined) scenario.ref = raw.scenario;
-  if (raw.mode !== undefined) scenario.mode = raw.mode;
-  if (caps !== undefined && route === "terminal") scenario.caps = caps;
-  const execution =
-    caps !== undefined && route !== "terminal"
-      ? withKey(raw.execution, "caps", caps)
-      : raw.execution;
-  const subject =
-    route === "shared-world" ? withKey(raw.subject, "topology", "shared-world") : raw.subject;
-
-  const v2: Record<string, unknown> = { schema: V2_SCHEMA };
-  const fields: [string, unknown][] = [
-    ["id", raw.id],
-    ["title", raw.title],
-    ["description", raw.description],
-    ["subject", subject],
-    ["actors", [actor]],
-    ["execution", execution],
-    ["scenario", Object.keys(scenario).length > 0 ? scenario : undefined],
-    ["policies", raw.policies],
-    ["review", raw.review],
-    ["defaults", raw.defaults],
-    ["comms", raw.comms],
-  ];
-  for (const [key, value] of fields) if (value !== undefined) v2[key] = value;
-  return { ok: true, value: { route, v2, participantSource: source } };
-}
 
 /**
  * The checks a v3 document passes before its sections parse: no v2 key and no unknown key, a
@@ -139,11 +84,11 @@ export function readStudyFront(
     raw.participants,
   );
   if (!participants.ok) return participants;
-  const surfaces = surfaceCount(route, raw.surfaces);
+  const surfaces = surfacesOf(route, raw.surfaces);
   if (!surfaces.ok) return surfaces;
   const capsReason = capsKeysReason(route, raw.caps);
   if (capsReason) return invalid(capsReason);
-  // The v2 inert-field table does not list this one, but the terminal planner never reads it.
+  // The inert-field rows (warnings.ts) do not list this one; the terminal planner never reads it.
   if (route === "terminal" && isRecord(raw.execution) && raw.execution.timeoutMs !== undefined) {
     return invalid(
       "route: terminal does not read `execution.timeoutMs`: `caps.maxMinutes` is the command deadline. Remove it.",
@@ -153,34 +98,6 @@ export function readStudyFront(
     ok: true,
     value: { route, actor: raw.actor, participants: participants.value, surfaces: surfaces.value },
   };
-}
-
-/**
- * Spell a v2 parser message the way the study file is written: `actors[0].lanes[3]` becomes the
- * `participants` entry it came from, `execution.caps` and `scenario.caps` become `caps`, and so on.
- */
-export function studySpelling(
-  message: string,
-  route: StudyRoute,
-  participantSource: readonly number[],
-): string {
-  return (
-    message
-      .replaceAll(
-        /actors\[0\]\.lanes\[(\d+)\]/g,
-        (_match, index: string) => `participants[${participantSource[Number(index)] ?? index}]`,
-      )
-      // "an `actors[0].lanes` roster" reads "a `participants` list" in a v3 file.
-      .replaceAll(/\ban `actors\[0\]\.(lanes|roster)` roster\b/g, "a `participants` list")
-      .replaceAll(/actors\[0\]\.(lanes|roster)\b/g, "participants")
-      .replaceAll(/actors\[0\]\.laneFocus(\.instruction)?/g, "participants.instruction")
-      .replaceAll(/actors\[0\]\.count\b/g, route === "scripted" ? "surfaces" : "participants")
-      .replaceAll("actors[0]", "actor")
-      .replaceAll(/\b(execution|scenario)\.caps\b/g, "caps")
-      .replaceAll(/\bscenario\.mode\b/g, "mode")
-      .replaceAll(/\bscenario\.ref\b/g, "scenario")
-      .replaceAll("subject.topology: shared-world", "route: shared-world")
-  );
 }
 
 // The v2 keys a hand-converted file is most likely to keep, each with where it went.
@@ -264,7 +181,7 @@ function homogeneousOf(raw: unknown): Parsed<Participants> {
 }
 
 // A list entry with `count: n` is a group: n participants `<id>-01` to `<id>-NN`, even when n is 1.
-// The v2 parser then checks every entry and the expanded ids for collisions.
+// config.ts then checks every entry and the expanded ids for collisions.
 function entriesOf(raw: unknown[]): Parsed<Participants> {
   const entries: unknown[] = [];
   const source: number[] = [];
@@ -298,17 +215,18 @@ function entriesOf(raw: unknown[]): Parsed<Participants> {
   return { ok: true, value: { entries, source } };
 }
 
-// Scripted surfaces become the v2 count: 1 is desktop, 2 adds mobile.
-function surfaceCount(route: StudyRoute, raw: unknown): Parsed<number | undefined> {
+function surfacesOf(route: StudyRoute, raw: unknown): Parsed<StudySurfaces | undefined> {
   if (raw === undefined) return { ok: true, value: undefined };
   if (route !== "scripted") {
     return invalid(
       `\`surfaces\` belongs to route: scripted. This study's route is ${route}; remove it.`,
     );
   }
-  if (Array.isArray(raw) && raw.length === 1 && raw[0] === "desktop") return { ok: true, value: 1 };
+  if (Array.isArray(raw) && raw.length === 1 && raw[0] === "desktop") {
+    return { ok: true, value: ["desktop"] };
+  }
   if (Array.isArray(raw) && raw.length === 2 && raw[0] === "desktop" && raw[1] === "mobile") {
-    return { ok: true, value: 2 };
+    return { ok: true, value: ["desktop", "mobile"] };
   }
   return invalid("`surfaces` must be [desktop] or [desktop, mobile].");
 }
@@ -321,11 +239,4 @@ function capsKeysReason(route: StudyRoute, raw: unknown): string | undefined {
   const unread = Object.keys(raw).filter((key) => !read.includes(key));
   if (unread.length === 0) return undefined;
   return `route: ${route} reads only ${read.map((key) => `caps.${key}`).join(", ")}. Remove ${unread.map((key) => `caps.${key}`).join(", ")}.`;
-}
-
-// Add one key to a section. A section that is not an object passes through unchanged, so the v2
-// parser refuses it with its own message.
-function withKey(section: unknown, key: string, value: unknown): unknown {
-  if (section === undefined) return { [key]: value };
-  return isRecord(section) ? { ...section, [key]: value } : section;
 }

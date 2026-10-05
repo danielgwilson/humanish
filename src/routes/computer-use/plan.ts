@@ -36,7 +36,6 @@ import {
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
-  scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { desktopCliProductReason } from "../../study/composition-rules.js";
@@ -188,10 +187,7 @@ function unsupportedDeclarationReason(
   driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
-  const reason =
-    desktopMediaValidationReason(config) ||
-    outputTokenLimitValidationReason(config) ||
-    scenarioCapsValidationReason(config);
+  const reason = desktopMediaValidationReason(config) || outputTokenLimitValidationReason(config);
   if (reason) return invalid(reason);
   if (
     actorOf(config)?.maxOutputTokens !== undefined &&
@@ -302,7 +298,7 @@ function driverReason(
 
 /** The participant roster, then the sandbox deadline its session budget derives. */
 function rosterShapeReason(config: StudyConfig): Rejection {
-  // `lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap, unique ids,
+  // Device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = computerUseValidationReason(config);
   if (fanoutReason) return { code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID", message: fanoutReason };
@@ -476,7 +472,7 @@ export function planComputerUseStudy(
       concurrency: boundedConcurrency(declared, n),
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
-      caps: planCaps(config, "computer-use"),
+      caps: planCaps(config),
       ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:
         base.dryRun || runner.desktop === "in-process"

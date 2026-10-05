@@ -12,36 +12,33 @@ import type {
 import { isRecord } from "../../run/type-guards.js";
 import { urlCredentialReason } from "./url-credentials.js";
 
+const SOURCES: readonly StudySubject["source"][] = [
+  "this-repo",
+  "clone",
+  "app-url",
+  "local-app",
+  "desktop-cli",
+  "terminal-product",
+  "local-tree",
+];
+
+/** True when `raw` is a subject mapping whose `source` parseSubject accepts. */
+export function hasSubjectSource(raw: unknown): boolean {
+  return isRecord(raw) && SOURCES.some((name) => name === str(raw.source));
+}
+
 export function parseSubject(raw: unknown): { ok: true; value: StudySubject } | StudyParseFailure {
   if (!isRecord(raw)) {
     return invalid("`subject` is required and must be an object.");
   }
-  const source = str(raw.source);
-  if (
-    source !== "this-repo" &&
-    source !== "clone" &&
-    source !== "app-url" &&
-    source !== "local-app" &&
-    source !== "desktop-cli" &&
-    source !== "terminal-product" &&
-    source !== "local-tree"
-  ) {
+  const source = SOURCES.find((name) => name === str(raw.source));
+  if (source === undefined) {
     return invalid(
       "`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree.",
     );
   }
   const subject: StudySubject = { source };
 
-  // topology is enum-validated everywhere; its semantics (shared-world requires clone × e2b-desktop
-  // × a ≥2 roster) are enforced in the shared-world cross-validation below, and a set-but-unconsumed
-  // topology warns as inert off the shared-world route.
-  if (raw.topology !== undefined) {
-    const topology = str(raw.topology);
-    if (topology !== "per-lane-worlds" && topology !== "shared-world") {
-      return invalid("`subject.topology` must be per-lane-worlds (the default) or shared-world.");
-    }
-    subject.topology = topology;
-  }
   // exposure is enum-validated everywhere; it is required on the concurrent shared-world route (the
   // getHost synthetic-subject attestation) and warns inert elsewhere.
   if (raw.exposure !== undefined) {

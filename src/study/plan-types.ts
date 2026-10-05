@@ -21,7 +21,7 @@ import type {
   StudyConfig,
   StudyExecutionTerminal,
   StudyRuntimeAuth,
-  StudyScenarioCaps,
+  StudyCaps,
   StudySubjectProduct,
   StudySubjectServe,
   StudySubjectState,
@@ -53,10 +53,7 @@ export type Requirement =
  * VM study read it before a plan exists. Shared world, terminal and scripted still read some config
  * fields at run time.
  */
-export type ResidualConfig = Pick<
-  StudyConfig,
-  "comms" | "policies" | "personas" | "defaults" | "review"
-> & {
+export type ResidualConfig = Pick<StudyConfig, "comms" | "policies" | "defaults" | "review"> & {
   readonly execution?: Pick<NonNullable<StudyConfig["execution"]>, "desktop" | "target">;
   readonly subject: Pick<StudyConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
 };
@@ -95,7 +92,7 @@ interface PreviewPlan extends PlanBase {
 
 /**
  * The model driving a desktop participant. `caller` is the library caller's createProvider.
- * `declaredModel` is actors[0].model as the study wrote it, absent when undeclared: the providers
+ * `declaredModel` is actor.model as the study wrote it, absent when undeclared: the providers
  * take it as written, and spend is priced at it, else the default (pricedModel). An openai
  * brain's `model` is the one its provider runs, with that default applied.
  */
@@ -229,10 +226,10 @@ export type TerminalPlan = PlanBase & {
   /** The declared operator stdin posture; the route defaults to "disabled". */
   readonly stdin?: NonNullable<StudyExecutionTerminal["stdin"]>;
 } & (
-    | { readonly dryRun: true; readonly caps?: StudyScenarioCaps }
+    | { readonly dryRun: true; readonly caps?: StudyCaps }
     | {
         readonly dryRun: false;
-        readonly caps: StudyScenarioCaps & { readonly maxUsd: number; readonly maxMinutes: number };
+        readonly caps: StudyCaps & { readonly maxUsd: number; readonly maxMinutes: number };
       }
   );
 

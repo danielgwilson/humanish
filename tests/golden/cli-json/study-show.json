@@ -2,20 +2,17 @@
   "exitCode": 0,
   "shape": {
     "config": {
-      "actors": [
-        {
-          "count": "number",
-          "type": "string"
-        }
-      ],
+      "actor": {
+        "type": "string"
+      },
       "defaults": {
         "open": "boolean"
       },
       "description": "string",
       "id": "string",
-      "scenario": {
-        "mode": "string"
-      },
+      "mode": "string",
+      "participants": "number",
+      "route": "string",
       "schema": "string",
       "subject": {
         "source": "string"

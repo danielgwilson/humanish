@@ -5,12 +5,13 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
+import { DEFAULT_LOCAL_BROWSER_STARTER, starterFilesFor } from "../../src/study/init-templates.js";
 import { planStudy, resolveStudyDryRun } from "../../src/study/plan.js";
-import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 
 type Raw = Record<string, unknown>;
 
@@ -32,22 +33,14 @@ const scripted: Raw = {
   scenario: "scripted-first-run",
 };
 
-// The same file in the v2 spelling: `changes` holds its v2 keys.
-function asV2(raw: Raw, changes: Raw): Raw {
-  const copy: Raw = { ...raw, schema: V2_SCHEMA, ...changes };
-  for (const key of ["route", "actor", "participants", "surfaces", "mode", "caps"])
-    delete copy[key];
-  return copy;
-}
-
 function config(raw: Raw): StudyConfig {
-  const result = parseStudyDocument(raw);
+  const result = parseStudy(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
 function refusal(raw: Raw): string {
-  const result = parseStudyDocument(raw);
+  const result = parseStudy(raw);
   if (result.ok) throw new Error("parsed");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
@@ -73,7 +66,7 @@ describe("participants", () => {
         { id: "one", count: 1 },
       ],
     });
-    expect(parsed.actors[0]?.lanes).toEqual([
+    expect(parsed.participants).toEqual([
       { id: "new-01", persona: "synthetic-new-user" },
       { id: "new-02", persona: "synthetic-new-user" },
       { id: "solo" },
@@ -99,16 +92,9 @@ describe("participants", () => {
     );
   });
 
-  it("reads `{ count, instruction }` as v2's count with laneFocus, so --count still applies", () => {
+  it("keeps `{ count, instruction }` as a count, so --count still applies", () => {
     const homogeneous = { ...study, participants: { count: 3, instruction: "Try the export." } };
-    const v2 = config(
-      asV2(study, {
-        actors: [
-          { type: "openai-computer-use", count: 3, laneFocus: { instruction: "Try the export." } },
-        ],
-      }),
-    );
-    expect({ ...config(homogeneous), schema: V2_SCHEMA }).toEqual(v2);
+    expect(config(homogeneous).participants).toEqual({ count: 3, instruction: "Try the export." });
     expect(participantCount(homogeneous)).toBe(3);
     expect(participantCount(homogeneous, 5)).toBe(5);
     expect(participantCount({ ...study, participants: 2 })).toBe(2);
@@ -149,18 +135,13 @@ describe("participants", () => {
 });
 
 describe("surfaces", () => {
-  it("is the scripted route's count: desktop, or desktop and mobile", () => {
-    const v2 = (count?: number) =>
-      config(
-        asV2(scripted, {
-          scenario: { ref: "scripted-first-run" },
-          actors: [{ type: "scripted-browser", ...(count === undefined ? {} : { count }) }],
-        }),
-      );
-    const v3 = (raw: Raw) => ({ ...config(raw), schema: V2_SCHEMA });
-    expect(v3(scripted)).toEqual(v2());
-    expect(v3({ ...scripted, surfaces: ["desktop"] })).toEqual(v2(1));
-    expect(v3({ ...scripted, surfaces: ["desktop", "mobile"] })).toEqual(v2(2));
+  it("is the scripted route's surfaces: desktop, or desktop and mobile", () => {
+    expect(config(scripted).surfaces).toBeUndefined();
+    expect(config({ ...scripted, surfaces: ["desktop"] }).surfaces).toEqual(["desktop"]);
+    expect(config({ ...scripted, surfaces: ["desktop", "mobile"] }).surfaces).toEqual([
+      "desktop",
+      "mobile",
+    ]);
   });
 
   it("refuses other lists and other routes", () => {
@@ -174,8 +155,8 @@ describe("surfaces", () => {
 });
 
 describe("caps", () => {
-  it("moves to the route's own location", () => {
-    expect(config({ ...study, caps: { maxUsd: 2 } }).execution?.caps).toEqual({ maxUsd: 2 });
+  it("is one top-level block", () => {
+    expect(config({ ...study, caps: { maxUsd: 2 } }).caps).toEqual({ maxUsd: 2 });
   });
 
   it("refuses a caps key the route does not read", () => {
@@ -213,7 +194,7 @@ describe("route, mode and the keys a route does not read", () => {
     );
   });
 
-  it("reads mode as v2's scenario.mode and refuses other values", () => {
+  it("reads mode and refuses other values", () => {
     expect(resolveStudyDryRun(config({ ...study, mode: "live" }), undefined, true)).toBe(false);
     expect(resolveStudyDryRun(config(study), undefined, true)).toBe(true);
     expect(refusal({ ...study, mode: "livee" })).toBe(
@@ -240,7 +221,8 @@ describe("route, mode and the keys a route does not read", () => {
   });
 
   it("points a v2 key at its v3 place", () => {
-    expect(refusal(asV2(study, { schema: STUDY_SCHEMA, actors: [{ type: "x" }] }))).toContain(
+    const { actor: _actor, ...withoutActor } = study;
+    expect(refusal({ ...withoutActor, actors: [{ type: "x" }] })).toContain(
       "A study has one `actor:` object",
     );
     expect(refusal({ ...study, actor: { type: "openai-computer-use", count: 2 } })).toContain(
@@ -278,9 +260,46 @@ describe("discovery", () => {
       const resolved = await resolveStudyManifest(root, file);
       if (!resolved.ok) throw new Error(resolved.error.message);
       expect(resolved.config.schema).toBe(STUDY_SCHEMA);
-      expect(resolved.config.actors[0]?.count).toBe(2);
+      expect(resolved.config.participants).toBe(2);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("a parsed config", () => {
+  it("parses back to itself with a receiving email connection", () => {
+    const parsed = config({ ...study, comms: { email: { connection: "team-inbox" } } });
+    expect(parsed.comms?.email).toEqual({ kind: "real", connection: "team-inbox" });
+    expect(config(structuredClone(parsed) as unknown as Raw)).toEqual(parsed);
+    expect(
+      refusal({ ...study, comms: { email: { kind: "fake", connection: "team-inbox" } } }),
+    ).toContain("An email connection cannot be mixed with capture settings, kind");
+  });
+});
+
+describe("init's starters", () => {
+  it("are v3 studies that parse with no warnings", () => {
+    const variants = [
+      starterFilesFor("openai-computer-use"),
+      starterFilesFor("local-agent", DEFAULT_LOCAL_BROWSER_STARTER, "codex"),
+      starterFilesFor("local-agent", DEFAULT_LOCAL_BROWSER_STARTER, "claude"),
+    ];
+    const seen = new Set<string>();
+    for (const files of variants) {
+      for (const file of files.filter((f) => /^humanish\/studies\/.*\.yaml$/.test(f.path))) {
+        const result = parseStudy(parse(file.contents));
+        if (!result.ok) throw new Error(`${file.path}: ${result.error.message}`);
+        expect(result.config.schema, file.path).toBe(STUDY_SCHEMA);
+        expect(result.warnings, file.path).toEqual([]);
+        seen.add(file.path);
+      }
+    }
+    expect([...seen].sort()).toEqual([
+      "humanish/studies/cua-browser.yaml",
+      "humanish/studies/first-run.yaml",
+      "humanish/studies/local-browser.yaml",
+      "humanish/studies/try-live.yaml",
+    ]);
   });
 });

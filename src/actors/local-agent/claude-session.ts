@@ -1,6 +1,6 @@
 // One Claude Code process as the computer-use brain, instead of a fresh `claude -p` per turn.
 //
-// Why: `actors[].localAgent: codex` already runs through a persistent app-server thread,
+// Why: `actor.localAgent: codex` already runs through a persistent app-server thread,
 // so the participant remembers what it tried. `claude` spawned `claude -p` per turn, so every
 // turn started cold. Measured on the same study with the same credentials (n=1 each): one-shot,
 // 188 actions over 90 turns and never finished; a thread that remembers, 21 actions over 8 turns

@@ -49,7 +49,7 @@ export interface ScriptedBrowserStudyResult
   subject?: RunSubjectProvenance;
   subjectSandbox?: { sandboxId: string; sandboxIdDigest?: string; killed: boolean };
   hostDigest?: string;
-  /** The consumed scenario.ref: digest-pinned provenance of the executable steps. */
+  /** The consumed `scenario`: digest-pinned provenance of the executable steps. */
   scenario?: {
     id: string;
     source: string;

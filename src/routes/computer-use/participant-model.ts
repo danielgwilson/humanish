@@ -127,7 +127,7 @@ export function participantSessionOptions(
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
 ): CuaActorSessionOptions {
   const { executor, inbox } = ready;
-  // The fail-closed spend cap (execution.caps.maxUsd) is wired into the loop as maxUsd + an
+  // The fail-closed spend cap (caps.maxUsd) is wired into the loop as maxUsd + an
   // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
   // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
   // model id here matches provider.version (openai-responses-cu resolves the default when unset).

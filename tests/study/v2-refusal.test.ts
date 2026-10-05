@@ -1,12 +1,13 @@
 // humanish no longer runs a humanish.lab.v2 study. The package's parser and runner refuse one with
-// HUMANISH_STUDY_V2_UNSUPPORTED, naming humanish migrate; migrate's own parser still reads it.
+// HUMANISH_STUDY_V2_UNSUPPORTED, naming humanish migrate, which converts the file.
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runStudy } from "../../src/run-study.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { V2_SCHEMA } from "../../src/study/migrate/v2.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const v2 = {
@@ -23,10 +24,8 @@ const refusal = {
 };
 
 describe("a humanish.lab.v2 study", () => {
-  it("is refused by parseStudy and still read by parseStudyDocument", () => {
+  it("is refused by parseStudy", () => {
     expect(parseStudy(v2)).toEqual({ ok: false, error: refusal });
-    const read = parseStudyDocument(v2);
-    expect(read.ok && read.config.schema).toBe(V2_SCHEMA);
   });
 
   it.each([
@@ -44,10 +43,8 @@ describe("a humanish.lab.v2 study", () => {
     "is refused by runStudy in the %s route's envelope before anything runs",
     async (route, study) => {
       const cwd = await makeTestTempDir("humanish-v2-refusal-");
-      const read = parseStudyDocument(study);
-      if (!read.ok) throw new Error(read.error.message);
-
-      const outcome = await runStudy(read.config, { cwd, dryRun: true });
+      // A JavaScript caller can pass the v2 record as it is.
+      const outcome = await runStudy(study as unknown as StudyConfig, { cwd, dryRun: true });
       expect(outcome.route).toBe(route);
       expect(outcome.result).toMatchObject({ ok: false, error: refusal });
       await expect(readdir(path.join(cwd, ".humanish"))).rejects.toThrow(/ENOENT/);

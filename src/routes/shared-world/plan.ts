@@ -34,7 +34,6 @@ import {
   externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
-  scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
@@ -108,7 +107,6 @@ export function planSharedWorldStudy(
     // A library caller's config skips the parser, which refuses these first.
     studyUrlCredentialReason(config) ??
     outputTokenLimitValidationReason(config) ??
-    scenarioCapsValidationReason(config) ??
     (externalPublic
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));
@@ -116,7 +114,7 @@ export function planSharedWorldStudy(
   if (actorOf(config)?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
 
-  const caps = capsOf(config, "shared-world");
+  const caps = capsOf(config);
   if (!input.dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
     const model = (actorOf(config)?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
@@ -169,7 +167,7 @@ export function planSharedWorldStudy(
         ? {}
         : { sessionTimeoutMs: config.execution.timeoutMs }),
       brain,
-      caps: planCaps(config, "shared-world"),
+      caps: planCaps(config),
       requirements: base.dryRun
         ? []
         : [

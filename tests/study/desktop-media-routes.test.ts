@@ -155,10 +155,9 @@ describe("declared camera capabilities must reach an implemented route", () => {
     const seams = { desktopModule: loadDesktopModule, runSession };
     try {
       const firefox = libraryConfig(changed((c) => (c.execution.desktop.browser = "firefox")));
-      // A shared world with no participants list has no v3 manifest; the library caller sets the
-      // topology on the config it passes.
-      const shared = libraryConfig(structuredClone(base));
-      shared.subject.topology = "shared-world";
+      // A shared world with no participants list: parseStudy refuses it, and a library caller can
+      // still pass it.
+      const shared = libraryConfig({ ...structuredClone(base), route: "shared-world" });
       const scripted = libraryConfig(
         changed((c) => {
           c.route = "scripted";

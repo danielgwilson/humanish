@@ -21,7 +21,7 @@ import {
   type HumanOutput,
   humanError,
 } from "../io.js";
-import { actorsOf } from "../../study/study-fields.js";
+import { actorOf } from "../../study/study-fields.js";
 
 export function registerStudyCommands(parent: Command, io: CliIo): void {
   const study = parent
@@ -187,9 +187,7 @@ function formatStudyShowHuman(result: StudyInspectResult): HumanOutput {
       `id: ${config.id}`,
       `subject: ${config.subject.source}`,
       ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
-      `actors: ${actorsOf(config)
-        .map((actor) => actor.type)
-        .join(", ")}`,
+      `actors: ${actorOf(config)?.type ?? ""}`,
       ...(config.title ? [`title: ${config.title}`] : []),
       ...(config.description ? [`description: ${config.description}`] : []),
       ...(result.path ? [`path: ${result.path}`] : []),

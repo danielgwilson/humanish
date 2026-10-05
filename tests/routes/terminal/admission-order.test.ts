@@ -16,7 +16,6 @@ afterAll(async () => {
   await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-// The rules below edit the v2 shape a library caller passes until StudyConfig takes the v3 one.
 const valid = libraryConfig({
   schema: STUDY_SCHEMA,
   id: "terminal-admission",
@@ -38,8 +37,8 @@ const rules: [string, Patch][] = [
     (c) => (c.execution = { ...(c.execution as object), desktop: { recording: { audio: false } } }),
   ],
   ["invalid analysis", (c) => (c.review = { analysis: "yes" })],
-  ["tasks", (c) => (c.actors = [{ type: "codex-exec", tasks: [{ id: "t", goal: "g" }] }])],
-  ["unregistered actor", (c) => (c.actors = [{ type: "not-an-actor" }])],
+  ["tasks", (c) => (c.actor = { type: "codex-exec", tasks: [{ id: "t", goal: "g" }] })],
+  ["unregistered actor", (c) => (c.actor = { type: "not-an-actor" })],
   [
     "runtime version",
     (c) => (c.execution = { ...(c.execution as object), runtime: { version: "latest" } }),
@@ -48,10 +47,19 @@ const rules: [string, Patch][] = [
     "product without surfaces",
     (c) => (c.subject = { source: "terminal-product", product: { name: "w", publicSurfaces: [] } }),
   ],
-  ["live without caps", (c) => (c.scenario = { mode: "live" })],
+  [
+    "live without caps",
+    (c) => {
+      c.mode = "live";
+      delete c.caps;
+    },
+  ],
   [
     "live positive maxUsd",
-    (c) => (c.scenario = { mode: "live", caps: { maxUsd: 1, maxMinutes: 5 } }),
+    (c) => {
+      c.mode = "live";
+      c.caps = { maxUsd: 1, maxMinutes: 5 };
+    },
   ],
 ];
 
@@ -72,7 +80,7 @@ const cases: [string, StudyConfig][] = [
         ? [
             patch,
             (c: Record<string, unknown>) =>
-              (c.actors = [{ type: "not-an-actor", tasks: [{ id: "t", goal: "g" }] }]),
+              (c.actor = { type: "not-an-actor", tasks: [{ id: "t", goal: "g" }] }),
           ]
         : [nextPatch, patch];
     return [`${name} and ${next}`, configWith(patches)] as [string, StudyConfig];

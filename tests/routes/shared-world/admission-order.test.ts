@@ -29,7 +29,7 @@ interface Rule {
 }
 
 const record = (config: Raw, key: string): Raw => (config[key] ??= {}) as Raw;
-const actor = (config: Raw): Raw => (config.actors as Raw[])[0]!;
+const actor = (config: Raw): Raw => config.actor as Raw;
 const external = libraryLab("sharedExternal");
 
 const rules = new Map<string, Rule>([
@@ -41,7 +41,6 @@ const rules = new Map<string, Rule>([
   ["tasks", { mutate: (c) => (actor(c).tasks = [{ id: "t", goal: "g" }]) }],
   ["unregistered actor", { mutate: (c) => (actor(c).type = "not-an-actor") }],
   ["invalid output limit", { mutate: (c) => (actor(c).maxOutputTokens = 0) }],
-  ["scenario dollar cap", { mutate: (c) => (record(c, "scenario").caps = { maxUsd: 1 }) }],
   ["provisioned plane concurrency 1", { mutate: (c) => (record(c, "execution").concurrency = 1) }],
   [
     "external plane without authorization",
@@ -50,7 +49,7 @@ const rules = new Map<string, Rule>([
         c.subject = structuredClone(external.subject);
         record(record(c, "subject"), "publicTarget").authorized = false;
         c.policies = structuredClone(external.policies);
-        actor(c).lanes = structuredClone((external.actors as Raw[])[0]!.lanes);
+        c.participants = structuredClone(external.participants);
       },
     },
   ],
@@ -62,9 +61,9 @@ const rules = new Map<string, Rule>([
     "live cap on an unpriced model",
     {
       mutate: (c) => {
-        record(c, "scenario").mode = "live";
+        c.mode = "live";
         actor(c).model = "unpriced-model";
-        record(c, "execution").caps = { maxUsd: 1 };
+        c.caps = { maxUsd: 1 };
       },
     },
   ],
@@ -89,14 +88,14 @@ const rules = new Map<string, Rule>([
       },
     },
   ],
-  ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
+  ["live without keys", { mutate: (c) => (c.mode = "live") }],
   [
     "live external catch unreachable",
     {
       mutate: (c) => {
         rules.get("external plane without authorization")!.mutate(c);
         record(record(c, "subject"), "publicTarget").authorized = true;
-        record(c, "scenario").mode = "live";
+        c.mode = "live";
         c.comms = { email: { kind: "fake", external: { catchBaseUrl: "http://127.0.0.1:9/" } } };
       },
       keys: true,
@@ -110,8 +109,7 @@ const pairs: [string, string][] = [
   ["invalid analysis", "tasks"],
   ["tasks", "unregistered actor"],
   ["unregistered actor", "invalid output limit"],
-  ["invalid output limit", "scenario dollar cap"],
-  ["scenario dollar cap", "provisioned plane concurrency 1"],
+  ["invalid output limit", "provisioned plane concurrency 1"],
   ["provisioned plane concurrency 1", "output limit with a custom session"],
   ["external plane without authorization", "output limit with a custom session"],
   ["output limit with a custom session", "live cap on an unpriced model"],

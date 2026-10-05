@@ -17,7 +17,7 @@
 //      spending. Opt-in openai-env injects the raw key command-scoped, never through
 //      Sandbox.create({envs}).
 //      Enforced in credentials.ts and runtime-auth.ts.
-//   2. Fail-closed cap. The live key is never exercised without scenario.caps in force: maxUsd
+//   2. Fail-closed cap. The live key is never exercised without `caps` in force: maxUsd
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
 //      Enforced in plan.ts (caps required), live-sandbox.ts and lifetime.ts (the wall clock).
 //   3. Public surfaces only. The mission references only subject.product.publicSurfaces + the

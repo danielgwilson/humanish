@@ -4,12 +4,21 @@
 // rules the two formats share. The converter (convert.ts) rewrites the YAML document separately and
 // compares what the two rewrites parse to.
 //
-// The v2-only rules are copies of the parser's and the planners' (the actor list and roster in
-// parse/actors.ts, the scenario object in parse/execution.ts, and checks in validation.ts and
-// composition-rules.ts), which stay there while a library config can still take the v2 shape.
+// The v2 parser itself is gone. The rules here on keys v3 does not have (the actor list and roster,
+// `laneFocus`, the `scenario` object, `subject.topology`, `execution.caps`, and the checks on their
+// combinations) are kept with that parser's messages, so migrate refuses what it refused.
 
 import { isRecord } from "../../run/type-guards.js";
-import { findUnknownV2Key } from "../keys.js";
+import {
+  ACTOR,
+  CAPS,
+  EXECUTION,
+  findUnknownKey,
+  PARTICIPANT_ENTRY,
+  SHARED_SECTIONS,
+  SUBJECT,
+  type KeyShape,
+} from "../keys.js";
 import {
   parseActorFields,
   parseActorType,
@@ -19,9 +28,8 @@ import {
   type ParticipantPaths,
 } from "../parse/actors.js";
 import { parseComms } from "../parse/comms.js";
-import { parseExecution, parsePolicies, parseReview } from "../parse/execution.js";
-import { parseCaps } from "../parse/study.js";
-import { parseSubject } from "../parse/subject.js";
+import { parseCaps, parseExecution, parsePolicies, parseReview } from "../parse/execution.js";
+import { hasSubjectSource, parseSubject } from "../parse/subject.js";
 import { posInt, str } from "../parse/values.js";
 import {
   isComputerUseComposition,
@@ -39,12 +47,18 @@ import {
 import {
   ID_PATTERN,
   STUDY_SCHEMA,
-  V2_SCHEMA,
   type StudyActor,
+  type StudyCaps,
   type StudyConfig,
   type StudyParticipantEntry,
-  type StudyScenarioCaps,
 } from "../types.js";
+
+/** The schema of the study format before humanish.study.v3. */
+export const V2_SCHEMA = "humanish.lab.v2";
+
+/** The message for a humanish.lab.v2 document, which the package and the CLI no longer run. */
+export const V2_UNSUPPORTED_MESSAGE =
+  "This is a humanish.lab.v2 study, which humanish no longer reads. Convert its file with humanish migrate <path>.";
 
 type Raw = Record<string, unknown>;
 
@@ -62,25 +76,66 @@ interface V2Scenario {
   ref?: string;
   mode?: "dry-run" | "live";
   inline?: Raw;
-  caps?: StudyScenarioCaps;
+  caps?: StudyCaps;
 }
 
 /** A v2 file that checkV2 accepted, as the v2 parser reads it. */
 export interface V2Study {
   readonly route: StudyRoute;
   /**
-   * The sections that decide the route and that the v2 parser's first cross-section checks read:
-   * subject, the actor without its participant keys, execution, policies and comms.
+   * The sections that decide the route and that the v2 parser's first cross-section checks read,
+   * as a StudyConfig: subject, the actor, execution, policies and comms. Its `route` is the file's
+   * route, `shared-world` when `subject.topology` declares one, so routeOf and the composition
+   * checks read the declaration as the v2 parser did.
    */
   readonly composition: StudyConfig;
+  readonly topology: "per-lane-worlds" | "shared-world" | undefined;
   readonly count: number | undefined;
   /** `actors[0].lanes`, or the participants `actors[0].roster` expands into. */
   readonly entries: readonly StudyParticipantEntry[] | undefined;
   readonly focus: V2Focus | undefined;
-  readonly executionCaps: StudyScenarioCaps | undefined;
+  readonly executionCaps: StudyCaps | undefined;
   readonly scenario: V2Scenario | undefined;
   readonly personas: boolean;
   readonly terminalTimeout: boolean;
+}
+
+// The keys of a humanish.lab.v2 file, in the order its parser listed them: the v3 sections with
+// `subject.topology`, the actor list with its participant keys, `execution.caps`, `personas` and
+// the `scenario` object.
+const V2_KEYS: KeyShape = {
+  schema: true,
+  id: true,
+  title: true,
+  description: true,
+  subject: { source: true, topology: true, ...without(SUBJECT, "source") },
+  actors: {
+    type: true,
+    count: true,
+    lanes: PARTICIPANT_ENTRY,
+    // Roster groups are participants with a count; the parser expanded them into `lanes[]`.
+    roster: { ...PARTICIPANT_ENTRY, count: true },
+    ...without(ACTOR, "type"),
+    laneFocus: { id: true, label: true, instruction: true },
+  },
+  execution: withAfter(EXECUTION, "egressAllow", { caps: CAPS }),
+  // Inline personas were validated by the persona resolver.
+  personas: true,
+  scenario: { ref: true, mode: true, inline: true, caps: CAPS },
+  ...SHARED_SECTIONS,
+};
+
+function without(shape: KeyShape, ...keys: string[]): KeyShape {
+  return Object.fromEntries(Object.entries(shape).filter(([key]) => !keys.includes(key)));
+}
+
+// `shape` with `added` inserted after the key `after`.
+function withAfter(shape: KeyShape, after: string, added: KeyShape): KeyShape {
+  return Object.fromEntries(
+    Object.entries(shape).flatMap((entry) =>
+      entry[0] === after ? [entry, ...Object.entries(added)] : [entry],
+    ),
+  );
 }
 
 function refused(message: string): { ok: false; message: string } {
@@ -99,7 +154,7 @@ const ENTRY_PATHS: ParticipantPaths = {
  * message.
  */
 export function checkV2(raw: Raw): Read<V2Study> {
-  const unknownKey = findUnknownV2Key(raw);
+  const unknownKey = findUnknownKey(raw, V2_KEYS);
   if (unknownKey) return refused(unknownKey);
   const id = str(raw.id);
   if (!id || !ID_PATTERN.test(id)) {
@@ -107,12 +162,15 @@ export function checkV2(raw: Raw): Read<V2Study> {
       "The study id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).",
     );
   }
+  // The v2 parser checked `subject.topology` right after `subject.source`.
+  const topology = hasSubjectSource(raw.subject) ? readTopology(raw.subject) : undefined;
+  if (topology?.ok === false) return topology;
   const subject = parseSubject(raw.subject);
   if (!subject.ok) return refused(subject.error.message);
   const actor = readActor(raw.actors);
   if (!actor.ok) return actor;
-  const execution = parseExecution(raw.execution);
-  if (!execution.ok) return refused(execution.error.message);
+  const execution = readExecution(raw.execution);
+  if (!execution.ok) return execution;
   const scenario = readScenario(raw.scenario);
   if (!scenario.ok) return scenario;
   if (
@@ -137,22 +195,26 @@ export function checkV2(raw: Raw): Read<V2Study> {
   if (!comms.ok) return refused(comms.error.message);
 
   const composition: StudyConfig = {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id,
+    // A shared world is declared; any other route is derived below.
+    route: topology?.value === "shared-world" ? "shared-world" : "computer-use",
     subject: subject.value,
-    actors: [{ type: actor.value.type, ...actor.value.fields }],
-    ...(execution.value === undefined ? {} : { execution: execution.value }),
+    actor: { type: actor.value.type, ...actor.value.fields },
+    ...(execution.value.execution === undefined ? {} : { execution: execution.value.execution }),
     ...(policies.value === undefined ? {} : { policies: policies.value }),
     ...(comms.value === undefined ? {} : { comms: comms.value }),
   };
   const route = v2RouteOf(composition);
+  composition.route = route;
   const study: V2Study = {
     route,
     composition,
+    topology: topology?.value,
     count: actor.value.count,
     entries: actor.value.entries,
     focus: actor.value.focus,
-    executionCaps: execution.value?.caps,
+    executionCaps: execution.value.caps,
     scenario: scenario.value,
     personas: Array.isArray(raw.personas) && raw.personas.some(isRecord),
     terminalTimeout:
@@ -176,12 +238,42 @@ export function checkV2(raw: Raw): Read<V2Study> {
  * the shared-world checks' refusal, as it does from the v2 parser.
  */
 function v2RouteOf(composition: StudyConfig): StudyRoute {
-  return composition.subject.topology === "shared-world" ? "shared-world" : routeOf(composition);
+  return composition.route === "shared-world" ? "shared-world" : routeOf(composition);
+}
+
+// parse/subject.ts read `subject.topology` as one of two values.
+function readTopology(subject: unknown): Read<V2Study["topology"]> {
+  if (!isRecord(subject) || subject.topology === undefined) return { ok: true, value: undefined };
+  const topology = str(subject.topology);
+  if (topology !== "per-lane-worlds" && topology !== "shared-world") {
+    return refused("`subject.topology` must be per-lane-worlds (the default) or shared-world.");
+  }
+  return { ok: true, value: topology };
+}
+
+// parse/execution.ts parseExecution, which read `execution.caps` after `execution.desktop` and
+// before `execution.terminal`.
+function readExecution(
+  raw: unknown,
+): Read<{ execution: StudyConfig["execution"]; caps: StudyCaps | undefined }> {
+  let caps: StudyCaps | undefined;
+  if (isRecord(raw)) {
+    const { target, timeoutMs, completionTimeoutMs, concurrency, desktop } = raw;
+    const head = parseExecution({ target, timeoutMs, completionTimeoutMs, concurrency, desktop });
+    if (!head.ok) return refused(head.error.message);
+    const parsed = parseCaps(raw.caps);
+    if (!parsed.ok) return refused(parsed.error.message);
+    caps = parsed.value;
+  }
+  // parseExecution reads every key but `caps`.
+  const execution = parseExecution(raw);
+  if (!execution.ok) return refused(execution.error.message);
+  return { ok: true, value: { execution: execution.value, caps } };
 }
 
 interface V2Actor {
   type: string;
-  fields: Omit<StudyActor, "type" | "count" | "lanes" | "laneFocus">;
+  fields: Omit<StudyActor, "type">;
   count: number | undefined;
   entries: StudyParticipantEntry[] | undefined;
   focus: V2Focus | undefined;
@@ -336,7 +428,7 @@ export function v2ShapeReason(study: V2Study): string | undefined {
   const { route, composition, count, entries, focus } = study;
   if (route === "scripted") {
     // composition-rules.ts scriptedBrowserValidationReason, in its order.
-    if (composition.subject.source === "clone" && composition.subject.topology !== undefined) {
+    if (composition.subject.source === "clone" && study.topology !== undefined) {
       return "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`.";
     }
     if ((count ?? 1) > 2) {
@@ -365,7 +457,7 @@ export function v2ShapeReason(study: V2Study): string | undefined {
   if (
     composition.subject.source === "app-url" &&
     composition.execution?.target === "local" &&
-    composition.actors[0]?.type === "local-agent" &&
+    composition.actor.type === "local-agent" &&
     (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)
   ) {
     return "Local Codex participants currently use gpt-6-astra at low effort. Account dollar/output-token caps are unavailable; use API participants for those controls.";
@@ -373,8 +465,8 @@ export function v2ShapeReason(study: V2Study): string | undefined {
   return undefined;
 }
 
-// The caps keys each route reads, as study-v3.ts CAPS_KEYS has them.
-const CAPS_READ: Readonly<Record<StudyRoute, readonly (keyof StudyScenarioCaps)[]>> = {
+// The caps keys each route reads, as parse/front.ts CAPS_KEYS has them.
+const CAPS_READ: Readonly<Record<StudyRoute, readonly (keyof StudyCaps)[]>> = {
   preview: [],
   "computer-use": ["maxUsd", "maxTotalUsd"],
   "shared-world": ["maxUsd", "maxTotalUsd"],
@@ -498,7 +590,7 @@ const V2_DROP_ROWS: readonly {
   },
   {
     path: "subject.topology",
-    applies: (study, routes) => !routes.shared && study.composition.subject.topology !== undefined,
+    applies: (study, routes) => !routes.shared && study.topology !== undefined,
   },
   {
     path: "execution.caps",
@@ -565,14 +657,31 @@ const DROP_ORDER = [
 ];
 
 /**
+ * The v2 path of a field parseStudyV3 reports in report mode. Each of these keys exists in both
+ * formats: `actor.<key>` is `actors[0].<key>`, a `participants` entry's key is
+ * `actors[0].lanes[].<key>` (field-paths.ts finds it under `roster` when the file has one), `mode`
+ * is `scenario.mode` and `scenario` is `scenario.ref`. Every other path is the same.
+ */
+function v2PathOf(path: string): string {
+  if (path.startsWith("actor.")) return `actors[0].${path.slice("actor.".length)}`;
+  if (path.startsWith("participants[]")) {
+    return `actors[0].lanes[]${path.slice("participants[]".length)}`;
+  }
+  if (path === "mode") return "scenario.mode";
+  if (path === "scenario") return "scenario.ref";
+  return path;
+}
+
+/**
  * The keys migrate drops: the v2-only rows above and `inert`, the fields parseStudyV3 reports the
- * route does not read, then terminal `execution.timeoutMs`, which no terminal code reads. Parents
- * come before their children, so a child under a dropped parent is reported with the parent.
+ * route does not read (v3 paths, mapped back to the file's), then terminal `execution.timeoutMs`,
+ * which no terminal code reads. Parents come before their children, so a child under a dropped
+ * parent is reported with the parent.
  */
 export function droppedPaths(study: V2Study, inert: readonly string[]): string[] {
   const routes = routesOf(study);
   const found = new Set([
-    ...inert,
+    ...inert.map(v2PathOf),
     ...V2_DROP_ROWS.filter((row) => row.applies(study, routes)).map((row) => row.path),
   ]);
   const paths = [

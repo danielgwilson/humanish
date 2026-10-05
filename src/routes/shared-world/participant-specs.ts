@@ -259,7 +259,7 @@ export async function buildParticipantSpecs(
   cwd: string,
   scrubKnownValues: (text: string) => string,
 ): Promise<DesktopParticipantRun[]> {
-  // Only the personas the participants use: an actors[0].persona that every participant overrides
+  // Only the personas the participants use: an actor.persona that every participant overrides
   // is never applied, so it is not read.
   const personaResolution = await resolveCommittedPersonasForCwd(
     cwd,

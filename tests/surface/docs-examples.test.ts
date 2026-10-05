@@ -132,7 +132,7 @@ describe("website documentation examples", () => {
     if (!result.ok) return;
     expect(declaredParticipantCount(result.config)).toBe(1);
     expect(modeOf(result.config)).toBe("live");
-    expect(capsOf(result.config, "computer-use")?.maxTotalUsd).toBe(4);
+    expect(capsOf(result.config)?.maxTotalUsd).toBe(4);
     expect(result.config.policies?.allowPublicTargets).toBe(true);
     const blocks = [...page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)];
     const isolated = parse(yaml);

@@ -15,14 +15,8 @@ import {
   registeredScriptedBrowserActors,
   registeredTerminalActors,
 } from "../routing.js";
-import { invalid, posInt, str } from "./values.js";
-import type {
-  StudyActor,
-  StudyParticipantEntry,
-  StudyParticipantFocus,
-  StudyParseFailure,
-  StudyV3,
-} from "../types.js";
+import { invalid, str } from "./values.js";
+import type { StudyActor, StudyParticipantEntry, StudyParseFailure } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
@@ -33,23 +27,8 @@ export const PARTICIPANT_ID_MAX_CHARS = 40;
 
 const METADATA_MAX_CHARS = 80;
 
-/** The participant entries an actor declares, after roster groups expand into them. The manifest
- *  spells them `actors[].lanes`. Undefined when the actor declares none. */
-export function rosterOf<Entry = StudyParticipantEntry>(
-  actor: { readonly lanes?: readonly Entry[] } | undefined,
-): readonly Entry[] | undefined {
-  return actor?.lanes;
-}
-
-/** An actor's per-participant focus on the app-url route. The manifest spells it `laneFocus`. */
-export function focusOf(
-  actor: Pick<StudyActor, "laneFocus"> | undefined,
-): StudyParticipantFocus | undefined {
-  return actor?.laneFocus;
-}
-
 // Actor ids humanish no longer registers. Rejecting them at parse keeps a study that names one
-// from running on a route that ignores actors[0].type, such as a this-repo dry run.
+// from running on a route that ignores actor.type, such as a this-repo dry run.
 const REMOVED_ACTOR_TYPES: ReadonlySet<string> = new Set(["pi-agent-core", "claude-agent-sdk"]);
 
 // Only actors of a run kind a route dispatches. codex-app-server is registered but declares only
@@ -60,61 +39,6 @@ function routableActorTypes(): string[] {
     ...registeredScriptedBrowserActors(),
     ...registeredTerminalActors(),
   ];
-}
-
-export function parseActors(raw: unknown): { ok: true; value: StudyActor[] } | StudyParseFailure {
-  if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid("`actors` must be a non-empty array.");
-  }
-  // Multi-actor fan-out is not wired yet (only actors[0] is consumed). Fail closed rather than
-  // silently ignore actors[1..]; multi-actor support lands in a later slice.
-  if (raw.length > 1) {
-    return invalid(
-      "Multiple actors are not supported yet (only the first actor runs); declare a single actor.",
-    );
-  }
-  const actors: StudyActor[] = [];
-  for (const [index, entry] of raw.entries()) {
-    if (!isRecord(entry)) {
-      return invalid(`actors[${index}] must be an object.`);
-    }
-    const path = `actors[${index}]`;
-    const type = parseActorType(entry, path);
-    if (!type.ok) return type;
-    const actor: StudyActor = { type: type.value };
-    const count = posInt(entry.count);
-    if (count !== undefined) actor.count = count;
-    if (entry.lanes !== undefined && entry.roster !== undefined) {
-      return invalid(
-        `Set either actors[${index}].lanes or actors[${index}].roster, not both: list participants one by one in \`lanes\`, or in groups in \`roster\`.`,
-      );
-    }
-    if (entry.roster !== undefined && count !== undefined) {
-      return invalid(
-        `Set either actors[${index}].roster or actors[${index}].count, not both: \`roster\` declares groups of distinct participants, and \`count\` declares identical ones.`,
-      );
-    }
-    if (entry.roster !== undefined && entry.laneFocus !== undefined) {
-      return invalid(
-        `actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive: a roster group's instruction is each participant's steer.`,
-      );
-    }
-    const rosterResult =
-      entry.roster !== undefined
-        ? parseRosterGroups(entry.roster, index)
-        : parseParticipantEntries(entry.lanes, lanePaths(index));
-    if (!rosterResult.ok) {
-      return rosterResult;
-    }
-    if (rosterResult.value) actor.lanes = rosterResult.value;
-    const fields = parseActorFields(entry, path);
-    if (!fields.ok) return fields;
-    Object.assign(actor, fields.value);
-    const focus = parseFocus(entry.laneFocus);
-    if (focus) actor.laneFocus = focus;
-    actors.push(actor);
-  }
-  return { ok: true, value: actors };
 }
 
 /** An actor's `type`, which a study route must run. `path` names the actor in messages. */
@@ -134,12 +58,12 @@ export function parseActorType(
   return { ok: true, value: type };
 }
 
-/** An actor's keys other than `type` and the keys that declare its participants. */
-type ActorFields = Omit<StudyV3["actor"], "type">;
+/** An actor's keys other than `type`. */
+type ActorFields = Omit<StudyActor, "type">;
 
 /**
- * Every actor key other than `type` and the participant keys. The v2 parser reads them after the
- * participant entries, so a file with errors in both reports the entry first.
+ * Every actor key other than `type`. The parser reads them after the participant entries, so a file
+ * with errors in both reports the entry first.
  */
 export function parseActorFields(
   entry: Record<string, unknown>,
@@ -186,136 +110,21 @@ export function parseActorFields(
   return { ok: true, value: actor };
 }
 
-/** The participants a v2 actor declares, which a v3 study declares outside its actor. */
-interface ActorParticipants {
-  readonly count?: number | undefined;
-  readonly entries?: StudyParticipantEntry[] | undefined;
-  readonly instruction?: string | undefined;
-}
-
-/** A v3 study's actor in the v2 spelling: the actor holds its participants. */
-export function withParticipants(
-  actor: StudyV3["actor"],
-  { count, entries, instruction }: ActorParticipants,
-): StudyActor {
-  const { type, ...fields } = actor;
-  return {
-    type,
-    ...(count === undefined ? {} : { count }),
-    ...(entries === undefined ? {} : { lanes: entries }),
-    ...fields,
-    ...(instruction === undefined ? {} : { laneFocus: { instruction } }),
-  };
-}
-
-/** A v2 actor without the keys that declare its participants: the actor of a v3 study. */
-export function withoutParticipants(actor: StudyActor): StudyV3["actor"] {
-  const fields: StudyActor = { ...actor };
-  delete fields.count;
-  delete fields.lanes;
-  delete fields.laneFocus;
-  return fields;
-}
-
-function parseFocus(raw: unknown): StudyParticipantFocus | undefined {
-  if (!isRecord(raw)) {
-    return undefined;
-  }
-  const focus: StudyParticipantFocus = {};
-  const id = str(raw.id);
-  if (id) focus.id = id;
-  const label = str(raw.label);
-  if (label) focus.label = label;
-  const instruction = str(raw.instruction);
-  if (instruction) focus.instruction = instruction;
-  return Object.keys(focus).length > 0 ? focus : undefined;
-}
-
-/**
- * Parse `actors[index].roster` compact groups into concrete `lanes[]` entries. This is authoring sugar for
- * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
- */
-function parseRosterGroups(
-  raw: unknown,
-  actorIndex: number,
-): { ok: true; value: StudyParticipantEntry[] | undefined } | StudyParseFailure {
-  if (raw === undefined) {
-    return { ok: true, value: undefined };
-  }
-  if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid(
-      `actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
-    );
-  }
-
-  const expanded: StudyParticipantEntry[] = [];
-  const seenGroupIds = new Set<string>();
-  for (const [groupIndex, entry] of raw.entries()) {
-    if (!isRecord(entry)) {
-      return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
-      );
-    }
-    const groupId = str(entry.id);
-    if (groupId === undefined) {
-      return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${PARTICIPANT_ID_PATTERN}.`,
-      );
-    }
-    if (!PARTICIPANT_ID_PATTERN.test(groupId) || groupId.length > PARTICIPANT_ID_MAX_CHARS - 3) {
-      return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id must match ${PARTICIPANT_ID_PATTERN} and be at most ${PARTICIPANT_ID_MAX_CHARS - 3} characters, because each generated participant id adds a suffix like "-01"; "${groupId}" is not.`,
-      );
-    }
-    if (seenGroupIds.has(groupId)) {
-      return invalid(
-        `actors[${actorIndex}].roster group ids must be unique (duplicate "${groupId}").`,
-      );
-    }
-    seenGroupIds.add(groupId);
-    const count = posInt(entry.count);
-    if (count === undefined) {
-      return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].count is required and must be a positive integer.`,
-      );
-    }
-    const groupEntryInput: Record<string, unknown> = { ...entry };
-    delete groupEntryInput.id;
-    delete groupEntryInput.count;
-    for (let i = 1; i <= count; i += 1) {
-      expanded.push({
-        ...groupEntryInput,
-        id: `${groupId}-${String(i).padStart(2, "0")}`,
-      });
-    }
-  }
-
-  return parseParticipantEntries(expanded, lanePaths(actorIndex));
-}
-
 /** How a participant list's messages name the list and each entry in it. */
 export interface ParticipantPaths {
   readonly list: string;
   readonly entry: (index: number) => string;
 }
 
-// The v2 spelling, `actors[0].lanes[3]`. A roster group's participants are named the same way.
-function lanePaths(actorIndex: number): ParticipantPaths {
-  return {
-    list: `actors[${actorIndex}].lanes`,
-    entry: (index) => `actors[${actorIndex}].lanes[${index}]`,
-  };
-}
-
 /**
- * Parse a participant list into a fan-out roster (computer-use E2B route): `actors[index].lanes` in
- * a v2 file, `participants` in a v3 one, each named in messages by `paths`. Structural only:
- * each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?,
- * entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
+ * Parse a participant list into a fan-out roster (computer-use E2B route): `participants` in a
+ * study, `actors[0].lanes` in the v2 file migrate reads, each named in messages by `paths`.
+ * Structural only: each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
+ * instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
- * route-scoped cross-validation (`lanes` XOR `count`/`laneFocus`, device XOR raw resolution, cap 16)
- * runs in parseStudy where the route is known.
+ * route-scoped cross-validation (device XOR raw resolution, targets, cap 16) runs in parseStudy
+ * where the route is known.
  */
 export function parseParticipantEntries(
   raw: unknown,
@@ -507,7 +316,7 @@ function parseDwell(
       ...(whenResult.value === undefined ? {} : { when: whenResult.value }),
       ms,
       everyMs,
-      // oxlint-disable-next-line unicorn/no-thenable -- `then` is the documented dwell field of humanish.lab.v2
+      // oxlint-disable-next-line unicorn/no-thenable -- `then` is the documented dwell field of a study
       then,
     },
   };

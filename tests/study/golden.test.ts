@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -8,9 +8,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runStudyWith } from "../../src/run-study.js";
 import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 
-// Rung 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
+// Rung 2 (faithfulness): the study config + one-engine path must reproduce the pre-refactor run
 // bundles captured by scripts/capture-lab-goldens.mjs. We pin the same run-id as the golden so
 // only timestamps vary; normalizeTimestamps removes those. The bundle already redacts cwd to a
 // stable placeholder, so the comparison is environment-independent.
@@ -33,13 +33,12 @@ let project: string;
 beforeEach(async () => {
   project = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-golden-"));
   await cp(path.join(ROOT, "humanish"), path.join(project, "humanish"), { recursive: true });
-  // The golden is a v2 run: the pre-refactor first-run file at its pre-0.108 path, with its v3
-  // twin removed. Discovery refuses a v2 file, so the test parses it the way migrate does and
-  // gives the engine the provenance the CLI records for a committed study file.
-  await rm(path.join(project, "humanish", "studies", "first-run.yaml"));
+  // The golden is a v2 run: the pre-refactor first-run file at its pre-0.108 path. The committed
+  // v3 study, which migrate wrote from that file, moves there, and the test gives the engine the
+  // provenance the CLI recorded for it.
   await mkdir(path.join(project, "humanish", "labs"), { recursive: true });
-  await cp(
-    path.join(ROOT, "tests", "fixtures", "labs-v2", "first-run.yaml"),
+  await rename(
+    path.join(project, "humanish", "studies", "first-run.yaml"),
     path.join(project, "humanish", "labs", "first-run.yaml"),
   );
   await cp(path.join(ROOT, "package.json"), path.join(project, "package.json"));
@@ -85,9 +84,9 @@ const GOLDENS = [{ id: "first-run", runId: "golden-first-run" }] as const;
 
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
   for (const golden of GOLDENS) {
-    it(`${golden.id} v2 config reproduces the pre-refactor golden bundle`, async () => {
+    it(`${golden.id} reproduces the pre-refactor golden bundle`, async () => {
       const file = path.join("humanish", "labs", `${golden.id}.yaml`);
-      const resolved = parseStudyDocument(parse(await readFile(path.join(project, file), "utf8")));
+      const resolved = parseStudy(parse(await readFile(path.join(project, file), "utf8")));
       expect(resolved.ok).toBe(true);
       if (!resolved.ok) return;
 

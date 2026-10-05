@@ -284,7 +284,7 @@ function computerUseExecutionFailures(
 }
 
 /**
- * execution.caps.maxUsd is enforced inside each participant's loop independently, so an
+ * caps.maxUsd is enforced inside each participant's loop independently, so an
  * N-participant fan-out can spend up to N × maxUsd before any participant aborts, while the run cost summary reports the larger
  * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
  */

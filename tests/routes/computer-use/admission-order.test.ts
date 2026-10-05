@@ -29,7 +29,7 @@ interface Rule {
 }
 
 const record = (config: Raw, key: string): Raw => (config[key] ??= {}) as Raw;
-const actor = (config: Raw): Raw => (config.actors as Raw[])[0]!;
+const actor = (config: Raw): Raw => config.actor as Raw;
 const cloneSubject = libraryLab("cuClone").subject as Raw;
 const asClone = (config: Raw): void => {
   if (record(config, "subject").source !== "clone") config.subject = structuredClone(cloneSubject);
@@ -39,13 +39,6 @@ const inProcess = { executor: true, provider: true } as const;
 
 const rules = new Map<string, Rule>([
   ["invalid analysis", { mutate: (c) => (c.review = { analysis: "yes" }) }],
-  [
-    "tasks on a second actor",
-    {
-      mutate: (c) =>
-        (c.actors as Raw[]).push({ type: "openai-computer-use", tasks: [{ id: "t", goal: "g" }] }),
-    },
-  ],
   ["unregistered actor", { mutate: (c) => (actor(c).type = "not-an-actor") }],
   [
     "media with firefox",
@@ -58,7 +51,6 @@ const rules = new Map<string, Rule>([
     },
   ],
   ["invalid output limit", { mutate: (c) => (actor(c).maxOutputTokens = 0) }],
-  ["scenario dollar cap", { mutate: (c) => (record(c, "scenario").caps = { maxUsd: 1 }) }],
   [
     "output limit with a caller provider",
     { mutate: (c) => (actor(c).maxOutputTokens = 1000), provider: true },
@@ -129,17 +121,8 @@ const rules = new Map<string, Rule>([
   ],
   // Admission checks this after every planner rule, so its pairs name it as the later rule.
   ["local browser without a runtime", { mutate: (c) => (record(c, "execution").target = "local") }],
-  [
-    "lanes and count",
-    {
-      mutate: (c) => {
-        actor(c).count = 2;
-        actor(c).lanes = [{ id: "one" }, { id: "two" }];
-      },
-    },
-  ],
   ["sandbox deadline", { mutate: (c) => (record(c, "execution").timeoutMs = 3_300_000) }],
-  ["shared-world topology", { mutate: (c) => (record(c, "subject").topology = "shared-world") }],
+  ["shared-world topology", { mutate: (c) => (c.route = "shared-world") }],
   ["in-process clone subject", { mutate: asClone, ...inProcess }],
   [
     "in-process desktop-cli without a product",
@@ -147,19 +130,17 @@ const rules = new Map<string, Rule>([
   ],
   ["desktop-cli without a product", { mutate: (c) => (c.subject = { source: "desktop-cli" }) }],
   ["count override above the cap", { mutate: () => undefined, countOverride: 17 }],
-  ["in-process fan-out", { mutate: (c) => (actor(c).count = 2), ...inProcess }],
-  ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
+  ["in-process fan-out", { mutate: (c) => (c.participants = 2), ...inProcess }],
+  ["live without keys", { mutate: (c) => (c.mode = "live") }],
 ]);
 
 // Each rule paired with a later one that can hold at the same time. Rules on exclusive subjects
 // (a clone and a local-tree, a local-app and an app-url) skip to the next rule that can.
 const pairs: [string, string][] = [
-  ["invalid analysis", "tasks on a second actor"],
-  ["tasks on a second actor", "unregistered actor"],
+  ["invalid analysis", "unregistered actor"],
   ["unregistered actor", "media with firefox"],
   ["media with firefox", "invalid output limit"],
-  ["invalid output limit", "scenario dollar cap"],
-  ["scenario dollar cap", "output limit with a caller provider"],
+  ["invalid output limit", "output limit with a caller provider"],
   ["output limit with a caller provider", "in-process real receiving"],
   ["real receiving with local-agent", "in-process real receiving"],
   ["in-process real receiving", "in-process media"],
@@ -171,15 +152,13 @@ const pairs: [string, string][] = [
   ["state on app-url", "public app url"],
   ["public app url", "executor without provider"],
   ["executor without provider", "local-app without executor"],
-  ["local-app without executor", "lanes and count"],
+  ["local-app without executor", "sandbox deadline"],
   // A planner rule refuses before admission finds no local desktop.
-  ["lanes and count", "local browser without a runtime"],
   ["shared-world topology", "local browser without a runtime"],
   ["count override above the cap", "local browser without a runtime"],
   ["in-process fan-out", "local browser without a runtime"],
   // Admission checks for the local desktop before it checks keys.
   ["local browser without a runtime", "live without keys"],
-  ["lanes and count", "sandbox deadline"],
   ["sandbox deadline", "count override above the cap"],
   ["sandbox deadline", "shared-world topology"],
   ["shared-world topology", "count override above the cap"],

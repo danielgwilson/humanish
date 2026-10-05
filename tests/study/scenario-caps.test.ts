@@ -1,15 +1,16 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+// A study's `caps` block holds the dollar caps a route enforces. A humanish.lab.v2 computer-use file
+// that put a dollar cap in `scenario.caps` ran uncapped, so migrate refuses to convert it.
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
-import { runStudyWith } from "../../src/run-study.js";
+import { parseStudy } from "../../src/study/config.js";
+import { convertStudyText } from "../../src/study/migrate/convert.js";
+import { V2_SCHEMA } from "../../src/study/migrate/v2.js";
 import { actorOf, capsOf } from "../../src/study/study-fields.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -41,68 +42,38 @@ function terminalLab(caps: Record<string, number>): Record<string, unknown> {
   };
 }
 
-describe("scenario.caps dollar fields on a computer-use lab", () => {
+describe("dollar caps", () => {
   it.each(["maxUsd", "maxTotalUsd"])(
-    "refuses a positive %s at parse and names the execution.caps field",
+    "migrate refuses a v2 computer-use file with a positive scenario.caps.%s, naming execution.caps",
     (key) => {
-      const result = parseStudyDocument(computerUseLab({ [key]: 3, maxJobs: 0, maxMinutes: 12 }));
+      const result = convertStudyText(
+        stringify(computerUseLab({ [key]: 3, maxJobs: 0, maxMinutes: 12 })),
+        repoRoot,
+      );
       expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
-      expect(result.error.message).toContain(`execution.caps.${key}`);
+      if (!result.ok) expect(result.reason).toContain(`execution.caps.${key}`);
     },
   );
 
-  it("parses zeros with the inert-field warning", () => {
-    const result = parseStudyDocument(computerUseLab({ maxUsd: 0, maxTotalUsd: 0 }));
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.warnings.join(" ")).toContain(
-      "scenario.caps (needs subject.source: terminal-product",
+  it("migrate drops a v2 computer-use file's zero scenario.caps", () => {
+    const result = convertStudyText(
+      stringify(computerUseLab({ maxUsd: 0, maxTotalUsd: 0 })),
+      repoRoot,
     );
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(result.conversion.dropped.map((key) => key.path)).toEqual(["scenario.caps"]);
   });
 
-  it("leaves a terminal lab's positive scenario.caps.maxUsd alone", () => {
+  it("leaves a terminal study's positive caps.maxUsd alone", () => {
     const result = parseStudy(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(capsOf(result.config, "terminal")?.maxUsd).toBe(1.5);
+    expect(capsOf(result.config)?.maxUsd).toBe(1.5);
   });
 
-  it.each(["maxUsd", "maxTotalUsd"])(
-    "refuses an unparsed lab with a positive %s at the computer-use route before any desktop",
-    async (key) => {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scenario-caps-"));
-      let loads = 0;
-      const loadDesktopModule = async (): Promise<E2BDesktopModule> => {
-        loads += 1;
-        throw new Error("the refused lab must not load the E2B desktop module");
-      };
-      try {
-        const outcome = await runStudyWith(
-          computerUseLab({ [key]: 3 }) as unknown as StudyConfig,
-          {
-            cwd,
-            dryRun: false,
-            env: { OPENAI_API_KEY: "test-openai", E2B_API_KEY: "test-e2b" },
-          },
-          {
-            desktopModule: loadDesktopModule,
-          },
-        );
-        expect(outcome.route).toBe("computer-use");
-        expect(outcome.result.ok).toBe(false);
-        expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
-        expect(outcome.result.error?.message).toContain(`execution.caps.${key}`);
-        expect(loads).toBe(0);
-      } finally {
-        await rm(cwd, { recursive: true, force: true });
-      }
-    },
-  );
-
   it.each(["detect-taskly-clean", "detect-taskly-planted", "detect-todomvc"])(
-    "caps the committed %s lab through execution.caps.maxUsd with bounded output",
+    "caps the committed %s study through caps.maxUsd with bounded output",
     async (id) => {
       const raw: unknown = parse(
         await readFile(path.join(repoRoot, "humanish", "studies", `${id}.yaml`), "utf8"),
@@ -110,17 +81,17 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
       const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
       if (!result.ok) return;
-      expect(capsOf(result.config, "computer-use")?.maxUsd).toBe(3);
+      expect(capsOf(result.config)?.maxUsd).toBe(3);
       expect(actorOf(result.config)?.maxOutputTokens).toBe(8192);
     },
   );
 
-  it("finds no committed computer-use lab with a positive scenario.caps dollar field", async () => {
+  it("parses every committed study", async () => {
     const dir = path.join(repoRoot, "humanish", "studies");
     const refused: string[] = [];
     for (const file of (await readdir(dir)).filter((name) => name.endsWith(".yaml"))) {
       const result = parseStudy(parse(await readFile(path.join(dir, file), "utf8")));
-      if (!result.ok && result.error.message.includes("scenario.caps.")) refused.push(file);
+      if (!result.ok) refused.push(file);
     }
     expect(refused).toEqual([]);
   });

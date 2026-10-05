@@ -6420,7 +6420,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     async (caps) => {
       const { module } = makeFakeModule(makeFakeSandbox());
       const config = localAppConfig();
-      config.execution = { caps };
+      config.caps = caps;
 
       const outcome = await runStudyWith(
         config,

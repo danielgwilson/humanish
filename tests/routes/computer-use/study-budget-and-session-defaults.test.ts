@@ -193,10 +193,10 @@ describe("caps parsing and session defaults", () => {
     execution: { target: "e2b-desktop" },
   };
 
-  it("parses execution.caps.maxTotalUsd and refuses a negative one", () => {
+  it("parses caps.maxTotalUsd and refuses a negative one", () => {
     const good = parseStudy({ ...baseLab, caps: { maxTotalUsd: 25 } });
     expect(good.ok).toBe(true);
-    if (good.ok) expect(capsOf(good.config, "computer-use")?.maxTotalUsd).toBe(25);
+    if (good.ok) expect(capsOf(good.config)?.maxTotalUsd).toBe(25);
 
     const bad = parseStudy({ ...baseLab, caps: { maxTotalUsd: -1 } });
     expect(bad.ok).toBe(false);

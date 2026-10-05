@@ -207,7 +207,7 @@ export async function finishLiveTerminalSession(
 
   // The run cost summary, as the computer-use route records it: the sandbox's compute time from
   // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
-  // of the cap ledger above, whose lines sum against scenario.caps.maxUsd.
+  // of the cap ledger above, whose lines sum against caps.maxUsd.
   const desktops = session.runCostDesktops();
   const runCost = buildRunCostSummary({
     participants: [{ trace }],

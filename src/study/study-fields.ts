@@ -1,73 +1,59 @@
-// The study's fields, read in one place. StudyConfig still has the humanish.lab.v2 shape
-// (`actors[0]`, `execution.caps`, `scenario.mode`), while a humanish.study.v3 file names the same
-// values `actor`, `participants`, `surfaces`, `caps`, `mode`, `scenario` and `route`. Code outside
-// the parser reads them through these functions, and tests/surface/study-config-reads.test.ts
-// refuses a direct read, so the config can take the v3 shape by changing this file.
+// The study's fields, read in one place. Participants are the one read that is not a field: a v3
+// study declares them as a count, as `{ count, instruction }` or as a list, and the accessors below
+// read each form. tests/surface/study-config-reads.test.ts refuses a direct read of a humanish.lab.v2
+// field anywhere outside migrate.
 
-import type { StudyRoute } from "./routing.js";
-import type {
-  StudyActor,
-  StudyConfig,
-  StudyParticipantEntry,
-  StudyScenario,
-  StudyScenarioCaps,
-} from "./types.js";
+import type { StudyActor, StudyCaps, StudyConfig, StudyParticipantEntry } from "./types.js";
 
-/** The actor that runs. A v3 file declares it as `actor`. */
+/** The actor that runs. */
 export function actorOf(config: StudyConfig): StudyActor | undefined {
-  return config.actors[0];
+  return config.actor;
 }
 
-/**
- * Every declared actor. parseStudy accepts exactly one; a library config may declare more, and the
- * checks that refuse a second actor's settings read them all.
- */
-export function actorsOf(config: StudyConfig): readonly StudyActor[] {
-  return config.actors;
-}
-
-/** The participants listed one by one: a v3 `participants` list. Undefined when none is listed. */
+/** The participants listed one by one: a `participants` list. Undefined when none is listed. */
 export function participantList(config: StudyConfig): readonly StudyParticipantEntry[] | undefined {
-  return config.actors[0]?.lanes;
+  return Array.isArray(config.participants) ? config.participants : undefined;
 }
 
-/** The declared number of identical participants: v3 `participants: <n>` or `participants.count`. */
+/** The declared number of identical participants: `participants: <n>` or `participants.count`. */
 export function declaredParticipantCount(config: StudyConfig): number | undefined {
-  return config.actors[0]?.count;
+  const { participants } = config;
+  if (typeof participants === "number") return participants;
+  return isGroup(participants) ? participants.count : undefined;
 }
 
-/** The steer each of a counted group of participants gets: v3 `participants.instruction`. */
+/** The steer each of a counted group of participants gets: `participants.instruction`. */
 export function participantInstruction(config: StudyConfig): string | undefined {
-  return config.actors[0]?.laneFocus?.instruction;
+  return isGroup(config.participants) ? config.participants.instruction : undefined;
 }
 
-/** How many scripted surfaces run, 1 for desktop and 2 with mobile. A v3 file lists `surfaces`. */
+/** How many scripted surfaces run, 1 for desktop and 2 with mobile. */
 export function surfaceCount(config: StudyConfig): number | undefined {
-  return config.actors[0]?.count;
+  return config.surfaces?.length;
 }
 
-/** The declared run mode. A v3 file declares it as `mode`. */
-export function modeOf(config: StudyConfig): StudyScenario["mode"] {
-  return config.scenario?.mode;
+/** The declared run mode. */
+export function modeOf(config: StudyConfig): StudyConfig["mode"] {
+  return config.mode;
 }
 
-/** The scripted route's scenario id or path. A v3 file declares it as `scenario`. */
+/** The scripted route's scenario id or path. */
 export function scenarioRefOf(config: StudyConfig): string | undefined {
-  return config.scenario?.ref;
+  return config.scenario;
 }
 
-/**
- * The spend caps a route enforces. A v3 file declares them as `caps`. The v2 shape keeps them in
- * `execution.caps` on computer use and shared world, and in `scenario.caps` on terminal.
- */
-export function capsOf(
-  config: StudyConfig,
-  route: Extract<StudyRoute, "computer-use" | "shared-world" | "terminal">,
-): StudyScenarioCaps | undefined {
-  return route === "terminal" ? config.scenario?.caps : config.execution?.caps;
+/** The spend caps the route enforces. parseStudy refuses a key the route does not read. */
+export function capsOf(config: StudyConfig): StudyCaps | undefined {
+  return config.caps;
 }
 
-/** True when the participants share one app. A v3 file declares `route: shared-world`. */
+/** True when the participants share one app: `route: shared-world`. */
 export function declaresSharedWorld(config: StudyConfig): boolean {
-  return config.subject.topology === "shared-world";
+  return config.route === "shared-world";
+}
+
+function isGroup(
+  participants: StudyConfig["participants"],
+): participants is Exclude<StudyConfig["participants"], number | readonly unknown[] | undefined> {
+  return typeof participants === "object" && participants !== null && !Array.isArray(participants);
 }

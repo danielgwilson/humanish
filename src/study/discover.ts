@@ -8,7 +8,8 @@ import path from "node:path";
 import { parse } from "yaml";
 
 import { parseStudy } from "./config.js";
-import { V2_SCHEMA, type StudyConfig } from "./types.js";
+import { V2_SCHEMA } from "./migrate/v2.js";
+import type { StudyConfig } from "./types.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,

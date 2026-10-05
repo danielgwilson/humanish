@@ -2,13 +2,13 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { actorOf } from "../../src/study/study-fields.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import type { StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import * as synthetic from "../../src/run/dry-run.js";
-import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
+import { runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -110,26 +110,4 @@ describe("declared task protocol admission", () => {
       expect(await readdir(cwd)).toEqual([]);
     },
   );
-
-  it("rejects ignored later-actor tasks at parse and direct CUA admission", async () => {
-    const config = validConfig(fixtures.find((row) => row.supported)!.config);
-    config.actors.push({ type: "openai-computer-use", tasks });
-    // A second actor is a v2 shape: the v2 parser refuses it, and a library caller can pass it.
-    const parsed = parseStudyDocument({ ...config, schema: V2_SCHEMA });
-    expect(parsed.ok).toBe(false);
-    if (!parsed.ok) expect(parsed.error.message).toContain("Multiple actors are not supported");
-    const result = await runComputerUse({
-      cwd: path.join(cwd, "must-not-exist"),
-      config,
-      dryRun: false,
-    });
-    expect(result.error).toMatchObject({
-      code: "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-      message: expect.stringContaining("actors[1].tasks"),
-    });
-    await expect(access(path.join(cwd, "must-not-exist"))).rejects.toMatchObject({
-      code: "ENOENT",
-    });
-    expect(await readdir(cwd)).toEqual([]);
-  });
 });
