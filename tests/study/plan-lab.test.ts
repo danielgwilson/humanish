@@ -1,26 +1,41 @@
 // planStudy builds the plan a lab would run under, without running anything. These tests pin the
 // plan of every committed lab, compare the plan's derived numbers with what the routes compute
 // today, and check that each combination the plan types cannot hold is refused with its route's
-// own code. `lab doctor` reads its keys from this plan (tests/study/doctor.test.ts).
+// own code. `lab doctor` reads its keys from this plan (tests/study/doctor.test.ts). The init
+// starters get their own golden, starters.json, because committed.json holds no local-agent brain
+// and no local VM desktop. Rerun with `pnpm vitest run tests/study/plan-lab.test.ts -u` to rewrite
+// both.
 
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import { planStudy, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyPlan, PlanResult } from "../../src/study/plan-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 import { participantPlanOf } from "../helpers/participant-run.js";
+import { STARTER_VARIANTS, starterStudies } from "../helpers/study-corpus.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 function planOf(result: PlanResult): StudyPlan {
   if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
   return result.planned.plan;
+}
+
+/** The dry plan and the live requirements, or the refusal of each. */
+function dryAndLive(config: StudyConfig): unknown {
+  const dry = planStudy(config, { cwd: ROOT, dryRun: true });
+  const live = planStudy(config, { cwd: ROOT, dryRun: false });
+  return {
+    dry: dry.ok ? dry.planned.plan : { refusal: dry.refusal },
+    live: live.ok ? { requirements: live.planned.plan.requirements } : { refusal: live.refusal },
+  };
 }
 
 function parsed(raw: Record<string, unknown>): StudyConfig {
@@ -44,18 +59,25 @@ const scriptedApp = {
 describe("planLab", () => {
   it("pins the dry and live plan of every committed lab", async () => {
     const plans: Record<string, unknown> = {};
-    for (const [id, config] of await committedLabs(ROOT)) {
-      const dry = planStudy(config, { cwd: ROOT, dryRun: true });
-      const live = planStudy(config, { cwd: ROOT, dryRun: false });
-      plans[id] = {
-        dry: dry.ok ? dry.planned.plan : { refusal: dry.refusal },
-        live: live.ok
-          ? { requirements: live.planned.plan.requirements }
-          : { refusal: live.refusal },
-      };
-    }
+    for (const [id, config] of await committedLabs(ROOT)) plans[id] = dryAndLive(config);
     await expect(`${JSON.stringify(plans, null, 2)}\n`).toMatchFileSnapshot(
       "../golden/plans/committed.json",
+    );
+  });
+
+  it("pins the dry and live plan of every study each init starter set writes", async () => {
+    const plans: Record<string, Record<string, unknown>> = {};
+    for (const variant of STARTER_VARIANTS) {
+      const studies: Record<string, unknown> = {};
+      for (const file of starterStudies(variant.files)) {
+        const result = parseStudy(parse(file.contents));
+        if (!result.ok) throw new Error(`${variant.name} ${file.path}: ${result.error.message}`);
+        studies[result.config.id] = dryAndLive(result.config);
+      }
+      plans[variant.name] = studies;
+    }
+    await expect(`${JSON.stringify(plans, null, 2)}\n`).toMatchFileSnapshot(
+      "../golden/plans/starters.json",
     );
   });
 
