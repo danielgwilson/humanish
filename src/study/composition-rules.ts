@@ -89,13 +89,13 @@ function localAppValidationReason(config: StudyConfig): string | null {
       return "A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`.";
     }
     if (!actorResolvesToComputerUse(type)) {
-      return `actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
+      return `actor.type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
     }
     if (computerUseParticipantCount(config) > 1) {
-      return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
+      return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
     }
     if (participantList(config) !== undefined) {
-      return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
+      return "`participants` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
     }
     if (config.policies?.allowPublicTargets === true) {
       return "`policies.allowPublicTargets` does not apply to a local-app subject: it is always a loopback dev server, so there is no public target to allow. Remove the setting.";
@@ -117,10 +117,10 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return "A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject.";
       }
       if (!scenarioRefOf(config)) {
-        return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
+        return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
       }
       if ((surfaceCount(config) ?? 1) > 2) {
-        return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
+        return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
       }
       if (config.policies?.redactScreenshots === true) {
         return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
@@ -136,7 +136,7 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.";
       }
       if (!actorResolvesToComputerUse(type)) {
-        return `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
+        return `actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
       // Multi-participant fan-out is consumed on this route (`per-lane-worlds`; the shared cua
       // cross-validation below enforces `lanes`/`count` XOR rules, the 16 cap, and the
@@ -148,7 +148,7 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         (target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target),
       );
       if (unsafeTarget !== undefined) {
-        return "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`.";
+        return "`subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`.";
       }
     }
   }
@@ -184,13 +184,13 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
       return "A clone scripted-browser study does not support `subject.clone.fanout` or `subject.clone.keep` yet: its subject is always one sandbox, removed after the run.";
     }
     if (!scenarioRefOf(config)) {
-      return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
+      return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
     }
     if ((surfaceCount(config) ?? 1) > 2) {
-      return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
+      return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
     }
     if (participantList(config) !== undefined) {
-      return "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces.";
+      return "`participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces.";
     }
     if (config.policies?.redactScreenshots === true) {
       return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
@@ -252,7 +252,7 @@ function localTreeValidationReason(config: StudyConfig): string | null {
       return "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject.";
     }
     if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
-      return `actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${actorOf(config)?.type ?? ""}".`;
+      return `actor.type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${actorOf(config)?.type ?? ""}".`;
     }
   }
   return null;
@@ -303,10 +303,10 @@ function terminalValidationReason(config: StudyConfig): string | null {
       return "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported.";
     }
     if (!actorResolvesToTerminal(type)) {
-      return `actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
+      return `actor.type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
     }
     if ((declaredParticipantCount(config) ?? 1) > 1) {
-      return "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1.";
+      return "Terminal fan-out to more than one participant is not supported yet; set participants to 1.";
     }
   } else if (config.execution?.target === "e2b-terminal") {
     // e2b-terminal is the terminal-product substrate only. Any other source declaring it is a

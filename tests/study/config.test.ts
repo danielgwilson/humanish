@@ -1669,7 +1669,7 @@ describe("parseStudyDocument (humanish.lab.v2)", () => {
       [
         "lane roster",
         { actors: [{ type: "scripted-browser", lanes: [{ id: "provider" }] }] },
-        "actors[0].lanes",
+        "`participants` is not supported on the scripted-browser route",
       ],
     ])("fails closed on unsafe provisioned scripted config: %s", (_label, patch, expected) => {
       const base = {
@@ -2525,7 +2525,7 @@ describe("shared-world topology routing + cross-validation", () => {
       }),
     );
     expect(oneRole.ok).toBe(false);
-    if (!oneRole.ok) expect(oneRole.error.message).toContain("roster of at least 2");
+    if (!oneRole.ok) expect(oneRole.error.message).toContain("list of at least 2");
     const noCheckpoint = parseStudyDocument(
       validSharedWorld({
         subject: { state: { seed: [{ name: "migrate", command: "pnpm db:migrate" }] } },
@@ -3002,7 +3002,7 @@ describe("parseStudyDocument (local-tree subject)", () => {
       expect(sharedWorldOnBareLocalTree.error.message).not.toContain(
         "requires `subject.source: clone` or `subject.source: local-tree`",
       );
-      expect(sharedWorldOnBareLocalTree.error.message).toContain("roster of at least 2");
+      expect(sharedWorldOnBareLocalTree.error.message).toContain("list of at least 2");
     }
 
     const badExclude = parseStudyDocument({
@@ -3051,7 +3051,7 @@ describe("parseStudyDocument (local-tree subject)", () => {
 // planes before the concurrency rule can, so no single-participant exception to that rule is
 // reachable.
 describe("shared-world one-participant rosters and the concurrency rule", () => {
-  const PROVISIONED_FLOOR = "needs an `actors[0].lanes` roster of at least 2 participants";
+  const PROVISIONED_FLOOR = "needs a `participants` list of at least 2 participants";
   const EXTERNAL_FLOOR = "a single-participant shared world proves no shared session";
   const CONCURRENCY_RULE = "need `execution.concurrency` of at least 2";
 

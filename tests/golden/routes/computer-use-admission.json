@@ -91,7 +91,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+      "message": "actor.maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -697,7 +697,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+      "message": "actor.maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

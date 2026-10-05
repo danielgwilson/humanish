@@ -48,24 +48,23 @@ const PATH = new RegExp(
 const FILE_NAME = /\.(?:json|jsonl|md|ya?ml|ts|mjs|js|txt|html)$/;
 
 // parseStudy reads a v3 file through the v2 parser and rewrites these files' messages with
-// studySpelling, so they may use the v2 spelling it rewrites. The routes repeat some of the same
-// checks for a config built without parseStudy, which has the v2 shape.
+// studySpelling, so they may use the v2 spelling it rewrites. The semantic checks the routes
+// repeat for a config built without parseStudy (composition-rules.ts, validation.ts,
+// parse/execution.ts, parse/subject.ts) already spell v3 keys, so they are checked as written.
 const SPELLED = new Set([
   "src/study/config.ts",
   "src/study/keys.ts",
-  "src/study/validation.ts",
-  "src/study/composition-rules.ts",
   "src/study/warnings.ts",
   "src/study/parse/actors.ts",
   "src/study/parse/comms.ts",
-  "src/study/parse/execution.ts",
-  "src/study/parse/subject.ts",
   "src/study/parse/subject-state.ts",
   "src/study/parse/values.ts",
 ]);
 
 const MIGRATE = "migrate names the v2 keys of the file it converts";
 const V2_ONLY = "a v3 file cannot set this key, so only migrate's v2 parse reaches the message";
+const V2_SHAPE =
+  "a v2 shape a v3 file cannot express, reached by migrate's v2 parse and a v2-shaped library config; PR 8 deletes it";
 const PREFLIGHT = "a preflight target's kind or label, typed values in the preflight JSON";
 const NOT_STUDY = "not a study key";
 
@@ -135,6 +134,12 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
   },
   { file: "src/study/parse/subject.ts", path: "subject.topology", reason: V2_ONLY },
   { file: "src/study/composition-rules.ts", path: "subject.topology", reason: V2_ONLY },
+  { file: "src/study/validation.ts", path: "actors[0].count", reason: V2_SHAPE },
+  { file: "src/study/validation.ts", path: "actors[0].lanes", reason: V2_SHAPE },
+  { file: "src/study/validation.ts", path: "actors[0].laneFocus", reason: V2_SHAPE },
+  { file: "src/study/validation.ts", path: "actors[0]", reason: V2_SHAPE },
+  { file: "src/study/validation.ts", path: "scenario.caps", reason: V2_SHAPE },
+  { file: "src/study/validation.ts", path: "execution.caps", reason: V2_SHAPE },
   {
     file: "src/study/warnings.ts",
     path: "subject.topology",
