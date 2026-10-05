@@ -344,6 +344,22 @@ describe("the zero-data-retention rejections", () => {
     });
   });
 
+  it("reads the zero-data-retention wording in any case", async () => {
+    const { provider } = await rejectedOnce(
+      2,
+      400,
+      JSON.stringify({
+        error: {
+          message: "Zero data retention organizations cannot use this parameter.",
+          type: "invalid_request_error",
+          param: null,
+          code: null,
+        },
+      }),
+    );
+    expect(provider.conversation).toMatchObject({ rejection: "zero_data_retention" });
+  });
+
   it("switches on a 400 for the previous response and records it", async () => {
     const { provider, turns } = await rejectedOnce(
       2,
@@ -360,11 +376,13 @@ describe("the zero-data-retention rejections", () => {
 
   it("leaves a 404 for a missing model as an error and stays threaded", async () => {
     // The message echoes the model name, so a name that reads like a retention answer must not count.
-    const echoed = storeLessFixture("model-not-found.json").replace(
-      "gpt-5.6-nonexistent",
-      "previous_response_id zero data retention",
-    );
-    for (const body of [storeLessFixture("model-not-found.json"), echoed]) {
+    const echoed = (text: string): string =>
+      storeLessFixture("model-not-found.json").replace("gpt-5.6-nonexistent", text);
+    for (const body of [
+      storeLessFixture("model-not-found.json"),
+      echoed("previous_response_id zero data retention"),
+      echoed("Item with id 'rs_fixture' not found"),
+    ]) {
       const { bodies, provider, turns } = await rejectedOnce(2, 404, body);
       expect(turns[1]).toMatchObject({
         status: "rejected",

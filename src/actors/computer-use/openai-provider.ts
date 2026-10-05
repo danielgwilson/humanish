@@ -306,14 +306,14 @@ const OTHER_FAILURE_CODES: ReadonlySet<string> = new Set([
   "image_content_policy_violation",
 ]);
 
-// A 400 whose body says the organization cannot use server-side response state, so the provider
-// must carry the conversation itself (explicit-context mode). Captured bodies are in
-// tests/fixtures/openai-store-less/.
-function zdrRejection(bodyText: string): ZdrRejection | undefined {
+// A 400 or 404 whose body says the organization cannot use server-side response state, so the
+// provider must carry the conversation itself (explicit-context mode). A 404 counts only with the
+// stored-item message. Captured bodies are in tests/fixtures/openai-store-less/.
+function zdrRejection(status: 400 | 404, bodyText: string): ZdrRejection | undefined {
   const code = namedProviderErrorCode(bodyText);
   if (code !== undefined && OTHER_FAILURE_CODES.has(code)) return undefined;
-  if (bodyText.includes("Zero Data Retention") || bodyText.includes("zero data retention"))
-    return "zero_data_retention";
+  if (status === 404) return STORED_ITEM_NOT_FOUND.test(bodyText) ? "stored_item" : undefined;
+  if (/zero[ -]data[ -]retention/i.test(bodyText)) return "zero_data_retention";
   if (bodyText.includes("previous_response_id")) return "previous_response";
   if (STORED_ITEM_NOT_FOUND.test(bodyText)) return "stored_item";
   return undefined;
@@ -470,16 +470,16 @@ async function postResponse(
     }
     lastStatus = res.status;
     if (res.status === 404) {
-      // A store-less organization answers a reference to an item it never kept with 404. Only that
-      // message counts: other 404 bodies, such as model_not_found, echo request text.
+      // A store-less organization answers a reference to an item it never kept with 404.
       const bodyText = await res.text().catch(() => "");
-      if (STORED_ITEM_NOT_FOUND.test(bodyText)) throw new ZdrError("stored_item");
+      const rejection = zdrRejection(404, bodyText);
+      if (rejection !== undefined) throw new ZdrError(rejection);
       const code = namedProviderErrorCode(bodyText);
       throw new Error(`OpenAI Responses 404${code === undefined ? "" : ` ${code}`}`);
     }
     if (res.status === 400) {
       const bodyText = await res.text();
-      const rejection = zdrRejection(bodyText);
+      const rejection = zdrRejection(400, bodyText);
       if (rejection !== undefined) throw new ZdrError(rejection);
       if (isSummaryRejection(bodyText)) {
         throw new SummaryRejectionError();
