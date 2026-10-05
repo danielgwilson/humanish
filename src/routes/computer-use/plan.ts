@@ -394,7 +394,7 @@ export function planComputerUseStudy(
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld.",
+      "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. The shared-world route takes subject.source clone or local-tree, or app-url with policies.allowPublicTargets: true, on execution.target e2b-desktop.",
       actor,
     );
   // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would

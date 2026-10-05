@@ -3902,7 +3902,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. Run the study with runStudy or runConcurrentSharedWorld."
+          "message": "route: shared-world studies run every participant against one shared app on the shared-world route; this route runs independent participants. The shared-world route takes subject.source clone or local-tree, or app-url with policies.allowPublicTargets: true, on execution.target e2b-desktop."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

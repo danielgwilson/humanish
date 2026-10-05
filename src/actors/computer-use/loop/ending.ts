@@ -136,7 +136,7 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
 export const nonFiniteEstimate: Stop = {
   completionReason: "harness_error",
   reason:
-    "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+    "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one object with the running token totals. Failing closed instead of running uncapped.",
 };
 
 /** A study-level stop is a recruiting decision hitting its limit, not this participant's runaway. */

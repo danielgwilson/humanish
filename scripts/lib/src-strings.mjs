@@ -1,6 +1,7 @@
 // The string literals and template text in a parsed program: what a person reads in an error, a
 // warning or command output. scripts/check-code-prose.mjs counts prose in them, and
-// tests/surface/removed-export-names.test.ts checks them for the library names 0.109.0 removed.
+// tests/surface/removed-export-names.test.ts checks them for the library names 0.106.0, 0.107.0 and
+// 0.109.0 removed.
 
 const quasiText = (quasi) => quasi.value.cooked ?? quasi.value.raw;
 
