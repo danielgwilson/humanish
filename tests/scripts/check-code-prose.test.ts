@@ -543,7 +543,7 @@ describe("prose:check reads the title and description of each lab", () => {
   it("counts each kind in a lab's title and description, with the field it came from", async () => {
     const { status, lines } = await labHits(
       [
-        "schema: humanish.lab.v2",
+        "schema: humanish.study.v3",
         "id: demo",
         "title: The ONE study (#164)",
         "description: >-",
@@ -566,7 +566,7 @@ describe("prose:check reads the title and description of each lab", () => {
   it("passes a lab whose title and description hold none of them", async () => {
     const { status, lines } = await labHits(
       [
-        "schema: humanish.lab.v2",
+        "schema: humanish.study.v3",
         "id: demo",
         'title: "A demo study: one participant on a loopback app"',
         "description: Runs one participant against a loopback app as a dry run.",

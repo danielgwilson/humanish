@@ -2,28 +2,26 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { stringify } from "yaml";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { readStudySummary } from "../../src/study/summary.js";
-import { studyFileText } from "../helpers/study-file.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
 
 const base = {
-  schema: V2_SCHEMA,
+  schema: STUDY_SCHEMA,
   id: "key-check",
+  route: "computer-use",
+  mode: "live",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use", mission: "Use the app." }],
+  actor: { type: "openai-computer-use", mission: "Use the app." },
   execution: { target: "e2b-desktop" },
-  scenario: { mode: "live" },
 };
 
 async function summary(config: unknown, env: NodeJS.ProcessEnv) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keys-"));
   try {
     await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
-    await writeFile(
-      path.join(cwd, "humanish/studies/key-check.yaml"),
-      studyFileText(config as Record<string, unknown>, cwd),
-    );
+    await writeFile(path.join(cwd, "humanish/studies/key-check.yaml"), stringify(config));
     const result = await readStudySummary(cwd, "key-check", {
       checkKeys: true,
       env: { HUMANISH_STRICT_KEYS: "1", ...env },
@@ -38,7 +36,7 @@ async function summary(config: unknown, env: NodeJS.ProcessEnv) {
 
 describe("TUI key summary follows the configured route", () => {
   it("allows a keyless dry-run", async () => {
-    expect(await summary({ ...base, scenario: { mode: "dry-run" } }, {})).toMatchObject({
+    expect(await summary({ ...base, mode: "dry-run" }, {})).toMatchObject({
       keysReady: true,
     });
   });
@@ -58,7 +56,7 @@ describe("TUI key summary follows the configured route", () => {
 
   it("does not block local-agent participants on the optional analysis key", async () => {
     const result = await summary(
-      { ...base, actors: [{ type: "local-agent", localAgent: "codex", mission: "Use the app." }] },
+      { ...base, actor: { type: "local-agent", localAgent: "codex", mission: "Use the app." } },
       { E2B_API_KEY: "synthetic-credential-desktop" },
     );
     expect(result.keysReady).toBe(true);
@@ -68,18 +66,19 @@ describe("TUI key summary follows the configured route", () => {
   it("accepts terminal CODEX_API_KEY without requiring a second model key", async () => {
     const config = {
       ...base,
+      route: "terminal",
       subject: {
         source: "terminal-product",
         product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
       },
-      actors: [{ type: "codex-exec", mission: "Use the CLI." }],
+      actor: { type: "codex-exec", mission: "Use the CLI." },
+      // A live terminal run without a cap does not plan.
+      caps: { maxUsd: 0, maxMinutes: 5 },
       execution: {
         target: "e2b-terminal",
         runtimeAuth: "openai-env",
         terminal: { transport: "exec-stream", stdin: "disabled" },
       },
-      // A live terminal run without a cap does not plan.
-      scenario: { mode: "live", caps: { maxUsd: 0, maxMinutes: 5 } },
     };
     expect(
       await summary(config, {
@@ -128,9 +127,10 @@ describe("TUI key summary follows the configured route", () => {
       await summary(
         {
           ...base,
-          actors: [{ type: "scripted-browser" }],
+          route: "scripted",
+          actor: { type: "scripted-browser" },
           execution: { target: "local" },
-          scenario: { mode: "live", ref: "humanish/scenarios/entry.yaml" },
+          scenario: "humanish/scenarios/entry.yaml",
         },
         {},
       ),
@@ -140,10 +140,7 @@ describe("TUI key summary follows the configured route", () => {
 
 describe("TUI caps summary", () => {
   it("shows a computer-use lab's execution.caps", async () => {
-    const capped = {
-      ...base,
-      execution: { ...base.execution, caps: { maxUsd: 2, maxTotalUsd: 5 } },
-    };
+    const capped = { ...base, caps: { maxUsd: 2, maxTotalUsd: 5 } };
     expect((await summary(capped, {})).caps).toEqual({ laneUsd: 2, studyUsd: 5 });
   });
 
@@ -155,17 +152,11 @@ describe("TUI caps summary", () => {
 describe("lab summary participants", () => {
   const roster = (personas: (string | undefined)[]) => ({
     ...base,
-    scenario: { mode: "dry-run" },
-    actors: [
-      {
-        type: "openai-computer-use",
-        mission: "Use the app.",
-        lanes: personas.map((persona, index) => ({
-          id: `entry-0${index + 1}`,
-          ...(persona === undefined ? {} : { persona }),
-        })),
-      },
-    ],
+    mode: "dry-run",
+    participants: personas.map((persona, index) => ({
+      id: `entry-0${index + 1}`,
+      ...(persona === undefined ? {} : { persona }),
+    })),
   });
 
   it("names a roster's personas and counts every roster entry", async () => {
@@ -180,7 +171,7 @@ describe("lab summary participants", () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keydeps-"));
     try {
       await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
-      await writeFile(path.join(cwd, "humanish/studies/key-check.yaml"), studyFileText(base, cwd));
+      await writeFile(path.join(cwd, "humanish/studies/key-check.yaml"), stringify(base));
       const withLogin = path.join(cwd, "home-with-e2b");
       await mkdir(path.join(withLogin, ".e2b"), { recursive: true });
       await writeFile(

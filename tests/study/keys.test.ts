@@ -3,19 +3,20 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 
 const base = {
-  schema: V2_SCHEMA,
+  schema: STUDY_SCHEMA,
   id: "keys",
+  route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use", mission: "Explore the app." }],
+  actor: { type: "openai-computer-use", mission: "Explore the app." },
   execution: { target: "e2b-desktop" },
 };
 
 function message(config: Record<string, unknown>): string {
-  const result = parseStudyDocument(config);
+  const result = parseStudy(config);
   if (result.ok) throw new Error("expected the lab to be rejected");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
@@ -31,15 +32,11 @@ describe("unknown lab fields", () => {
   it("names the path inside arrays", () => {
     const text = message({
       ...base,
-      actors: [
-        {
-          type: "openai-computer-use",
-          lanes: [{ id: "a" }, { id: "b", stopWhen: { any: [{ urlInclude: "/done" }] } }],
-        },
-      ],
+      actor: { type: "openai-computer-use" },
+      participants: [{ id: "a" }, { id: "b", stopWhen: { any: [{ urlInclude: "/done" }] } }],
     });
     expect(text).toContain(
-      "in `actors[0].lanes[1].stopWhen.any[0]`: urlInclude (did you mean `urlIncludes`?)",
+      "in `participants[1].stopWhen.any[0]`: urlInclude (did you mean `urlIncludes`?)",
     );
   });
 

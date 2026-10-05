@@ -13,7 +13,6 @@ import { runStudyWith } from "../../src/run-study.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 // What a hosted Codex participant's operator handshake reports when it passes.
@@ -27,18 +26,18 @@ const hostedReady = {
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
 const lab = (actor = "openai-computer-use", mode = "live") =>
   [
-    "schema: humanish.lab.v2",
+    "schema: humanish.study.v3",
     "id: preview",
+    "route: computer-use",
+    `mode: ${mode}`,
     "subject:",
     "  source: app-url",
     "  appUrl: https://preview.example.test/",
-    "actors:",
-    `  - type: ${actor}`,
-    ...(actor === "local-agent" ? ["    localAgent: codex"] : []),
+    "actor:",
+    `  type: ${actor}`,
+    ...(actor === "local-agent" ? ["  localAgent: codex"] : []),
     "execution:",
     "  target: e2b-desktop",
-    "scenario:",
-    `  mode: ${mode}`,
     "policies:",
     "  allowPublicTargets: true",
   ].join("\n");
@@ -49,7 +48,7 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
     await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(path.join(cwd, "package.json"), "{}");
     await writeFile(path.join(cwd, ".gitignore"), ".humanish/\n");
-    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), studyFileText(manifest, cwd));
+    await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), manifest);
     return await run(cwd);
   } finally {
     await rm(cwd, { recursive: true, force: true });

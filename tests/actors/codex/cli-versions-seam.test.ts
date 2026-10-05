@@ -5,7 +5,7 @@ import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
 import type { RunStudyOptions } from "../../../src/run-study.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 
 // `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
@@ -128,21 +128,22 @@ describe("the cliVersions qualification bypass", () => {
 
   it("cannot be declared in a lab manifest", () => {
     const base = {
-      schema: "humanish.lab.v2",
+      schema: "humanish.study.v3",
       id: "seam",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "local-agent", mission: "Save a note." }],
+      actor: { type: "local-agent", mission: "Save a note." },
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-      scenario: { mode: "live" },
     };
     const smuggled = { cliVersions: ["0.158.0"] };
     for (const raw of [
       { ...base, ...smuggled },
-      { ...base, actors: [{ ...base.actors[0], ...smuggled }] },
+      { ...base, actor: { ...base.actor, ...smuggled } },
       { ...base, execution: { ...base.execution, ...smuggled } },
       { ...base, review: { analysis: { provider: "codex", ...smuggled } } },
     ])
-      expect(parseStudyDocument(raw).ok).toBe(false);
+      expect(parseStudy(raw).ok).toBe(false);
   });
 
   it("has no CLI flag and no RunStudyOptions or StudyDeps field", () => {

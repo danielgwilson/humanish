@@ -12,12 +12,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { routeOf } from "../../src/study/plan.js";
 import { planStudy, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyPlan, PlanResult } from "../../src/study/plan-types.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import { participantPlanOf } from "../helpers/participant-run.js";
 import { STARTER_VARIANTS, starterStudies } from "../helpers/study-corpus.js";
 
@@ -39,21 +40,23 @@ function dryAndLive(config: StudyConfig): unknown {
 }
 
 function parsed(raw: Record<string, unknown>): StudyConfig {
-  const result = parseStudyDocument({ schema: V2_SCHEMA, id: "plan-lab", ...raw });
+  const result = parseStudy({ schema: STUDY_SCHEMA, id: "plan-lab", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
 
 const cuApp = {
+  route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use" }],
+  actor: { type: "openai-computer-use" },
   execution: { target: "e2b-desktop", timeoutMs: 60_000 },
 };
 
 const scriptedApp = {
+  route: "scripted",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
-  actors: [{ type: "scripted-browser" }],
-  scenario: { ref: "scripted-first-run" },
+  actor: { type: "scripted-browser" },
+  scenario: "scripted-first-run",
 };
 
 describe("planLab", () => {
@@ -90,16 +93,12 @@ describe("planLab", () => {
         "declared concurrency",
         parsed({
           ...cuApp,
-          actors: [{ type: "openai-computer-use", count: 4 }],
+          participants: 4,
           execution: { ...cuApp.execution, concurrency: 2 },
         }),
         undefined,
       ],
-      [
-        "count override",
-        parsed({ ...cuApp, actors: [{ type: "openai-computer-use", count: 2 }] }),
-        5,
-      ],
+      ["count override", parsed({ ...cuApp, participants: 2 }), 5],
     ];
     for (const [name, config, count] of configs) {
       const plan = planOf(
@@ -175,18 +174,27 @@ describe("planLab", () => {
     );
     // A preview plan holds only a dry run.
     expect(
-      gap(parsed({ subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] }), {
-        cwd: ROOT,
-        dryRun: false,
-      }),
+      gap(
+        parsed({
+          route: "preview",
+          subject: { source: "this-repo" },
+          actor: { type: "synthetic-persona" },
+        }),
+        {
+          cwd: ROOT,
+          dryRun: false,
+        },
+      ),
     ).toBe("preview HUMANISH_LIVE_RUN_UNIMPLEMENTED");
-    const terminal = parsed({
+    const terminalStudy = {
+      route: "terminal",
       subject: {
         source: "terminal-product",
         product: { name: "w", publicSurfaces: ["https://example.com/"] },
       },
-      actors: [{ type: "codex-exec" }],
-    });
+      actor: { type: "codex-exec" },
+    };
+    const terminal = parsed(terminalStudy);
     expect(gap(terminal, { cwd: ROOT, dryRun: false })).toBe(
       "terminal HUMANISH_TERMINAL_CAPS_MISSING",
     );
@@ -201,7 +209,7 @@ describe("planLab", () => {
       "terminal HUMANISH_TERMINAL_SUBJECT_INVALID",
     );
     // A positive maxUsd can trip only when the caller's costProbe measures spend.
-    const pricedTerminal = { ...terminal, scenario: { caps: { maxUsd: 1, maxMinutes: 5 } } };
+    const pricedTerminal = parsed({ ...terminalStudy, caps: { maxUsd: 1, maxMinutes: 5 } });
     expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false })).toBe(
       "terminal HUMANISH_TERMINAL_UNPRICED_CAP",
     );
@@ -213,7 +221,13 @@ describe("planLab", () => {
       subject: { source: "app-url", appUrl: "https://example.com/" },
     } as StudyConfig;
     expect(gap(publicScripted, { cwd: ROOT })).toBe("scripted HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
-    const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as StudyConfig;
+    // parseStudy refuses an unregistered actor, so this is a library caller's config.
+    const unknownActor = libraryConfig({
+      schema: STUDY_SCHEMA,
+      id: "plan-lab",
+      ...cuApp,
+      actor: { type: "not-an-actor" },
+    });
     expect(gap(unknownActor, { cwd: ROOT })).toBe(
       "computer-use HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
     );
@@ -223,6 +237,7 @@ describe("planLab", () => {
 
   it("asks a live scripted run for a host browser unless the caller injects one", () => {
     const clone = parsed({
+      route: "scripted",
       subject: {
         source: "clone",
         exposure: "synthetic",
@@ -231,8 +246,8 @@ describe("planLab", () => {
         serve: { install: "pnpm i", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
         state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
       },
-      actors: [{ type: "scripted-browser" }],
-      scenario: { ref: "scripted-first-run" },
+      actor: { type: "scripted-browser" },
+      scenario: "scripted-first-run",
       execution: { target: "e2b-desktop" },
     });
     const requirements = (config: StudyConfig, deps: Parameters<typeof planStudy>[2]) =>
@@ -270,8 +285,9 @@ describe("planLab", () => {
 
 describe("planLab on the preview route", () => {
   const thisRepo = parsed({
+    route: "preview",
     subject: { source: "this-repo" },
-    actors: [{ type: "synthetic-persona" }],
+    actor: { type: "synthetic-persona" },
   });
 
   it("plans a dry run with the checked count", () => {

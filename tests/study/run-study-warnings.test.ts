@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import type { RunScorerProvenance } from "../../src/run/bundle.js";
 import { prepareStudy } from "../../src/run-study.js";
@@ -33,7 +33,7 @@ const scorerProvenance: RunScorerProvenance = {
 };
 
 function config(base: "cuAppUrl" | "scriptedAppUrl" = "cuAppUrl"): StudyConfig {
-  const parsed = parseStudyDocument(lab(base));
+  const parsed = parseStudy(lab(base));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

@@ -3,9 +3,10 @@
 // query strings still parse. Credential values are built at run time.
 import { describe, expect, it } from "vitest";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import { ALNUM, synthetic } from "../helpers/secret-formats.js";
 
 type Raw = Record<string, unknown>;
@@ -26,7 +27,7 @@ const publicStudy = (appUrl: string, extra: Raw = {}): Raw => ({
 });
 
 function refusal(raw: Raw): string {
-  const result = parseStudyDocument(raw);
+  const result = parseStudy(raw);
   if (result.ok) throw new Error("parsed");
   expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   expect(result.error.message).not.toContain(TOKEN);
@@ -102,14 +103,14 @@ describe("study URLs with credentials", () => {
     "https://preview.example.com/?token=%5BREDACTED_SECRET%5D",
     `https://preview.example.com/${"home"}/settings/profile`,
   ])("parses an ordinary query string: %s", (appUrl) => {
-    const result = parseStudyDocument(publicStudy(appUrl));
+    const result = parseStudy(publicStudy(appUrl));
     expect(result.ok).toBe(true);
   });
 });
 
 describe("study URLs with credentials in a library caller's config, which skips the parser", () => {
   it("refuses the same URL on computer-use", () => {
-    const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
+    const parsed = parseStudy(publicStudy("https://preview.example.com/"));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const config: StudyConfig = {
       ...parsed.config,
@@ -135,24 +136,27 @@ describe("study URLs with credentials in a library caller's config, which skips 
     ],
     [
       "terminal",
-      (config: StudyConfig): StudyConfig => ({
-        ...config,
-        subject: {
-          source: "terminal-product",
-          product: {
-            name: "sample-cli",
-            publicSurfaces: [`https://user:${TOKEN}@docs.example.com/`],
-          },
-        },
-        actors: [{ ...config.actors[0]!, type: "codex-exec" }],
-        execution: { target: "e2b-terminal" },
-        policies: {},
-      }),
+      (): StudyConfig =>
+        libraryConfig(
+          publicStudy("https://preview.example.com/", {
+            route: "terminal",
+            subject: {
+              source: "terminal-product",
+              product: {
+                name: "sample-cli",
+                publicSurfaces: [`https://user:${TOKEN}@docs.example.com/`],
+              },
+            },
+            actor: { type: "codex-exec" },
+            execution: { target: "e2b-terminal" },
+            policies: {},
+          }),
+        ),
     ],
   ])(
     "refuses a %s public surface with a credential in a library caller's config",
     (_route, change) => {
-      const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
+      const parsed = parseStudy(publicStudy("https://preview.example.com/"));
       if (!parsed.ok) throw new Error(parsed.error.message);
       const planned = planStudy(change(parsed.config), { cwd: process.cwd(), dryRun: true });
       expect(planned.ok).toBe(false);
@@ -163,7 +167,7 @@ describe("study URLs with credentials in a library caller's config, which skips 
   );
 
   it("refuses it on an external-public shared world in a library caller's config", () => {
-    const parsed = parseStudyDocument({
+    const shared = {
       schema: STUDY_SCHEMA,
       id: "url-credentials-shared",
       route: "shared-world",
@@ -176,7 +180,8 @@ describe("study URLs with credentials in a library caller's config, which skips 
       participants: [{ id: "host", host: true }, { id: "guest" }],
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       policies: { allowPublicTargets: true },
-    });
+    };
+    const parsed = parseStudy(shared);
     if (!parsed.ok) throw new Error(parsed.error.message);
     const config: StudyConfig = {
       ...parsed.config,
@@ -188,18 +193,15 @@ describe("study URLs with credentials in a library caller's config, which skips 
     expect(planned.refusal.message).toMatch(/^`subject\.appUrl` has a user name or password/);
     expect(planned.refusal.message).not.toContain(TOKEN);
 
-    const actor = parsed.config.actors[0]!;
-    const withEntry: StudyConfig = {
-      ...parsed.config,
-      actors: [
-        {
-          ...actor,
-          lanes: (actor.lanes ?? []).map((lane, index) =>
-            index === 1 ? { ...lane, entry: `/lobby?token=${TOKEN}` } : lane,
-          ),
-        },
+    // The parsed config with a credential in one entry; the parser fills the concurrency.
+    const withEntry = libraryConfig({
+      ...shared,
+      participants: [
+        { id: "host", host: true },
+        { id: "guest", entry: `/lobby?token=${TOKEN}` },
       ],
-    };
+      execution: { ...shared.execution, concurrency: 2 },
+    });
     const entryPlanned = planStudy(withEntry, { cwd: process.cwd(), dryRun: true });
     expect(entryPlanned.ok).toBe(false);
     if (entryPlanned.ok) return;
@@ -207,18 +209,18 @@ describe("study URLs with credentials in a library caller's config, which skips 
   });
 
   it("refuses a terminal runtimeAuth it does not know in a library caller's config", () => {
-    const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
-    if (!parsed.ok) throw new Error(parsed.error.message);
-    const config = {
-      ...parsed.config,
-      subject: {
-        source: "terminal-product",
-        product: { name: "sample-cli", publicSurfaces: ["https://docs.example.com/"] },
-      },
-      actors: [{ ...parsed.config.actors[0]!, type: "codex-exec" }],
-      execution: { target: "e2b-terminal", runtimeAuth: "openai-egres" },
-      policies: {},
-    } as unknown as StudyConfig;
+    const config = libraryConfig(
+      publicStudy("https://preview.example.com/", {
+        route: "terminal",
+        subject: {
+          source: "terminal-product",
+          product: { name: "sample-cli", publicSurfaces: ["https://docs.example.com/"] },
+        },
+        actor: { type: "codex-exec" },
+        execution: { target: "e2b-terminal", runtimeAuth: "openai-egres" },
+        policies: {},
+      }),
+    );
     const planned = planStudy(config, { cwd: process.cwd(), dryRun: true });
     expect(planned.ok).toBe(false);
     if (planned.ok) return;

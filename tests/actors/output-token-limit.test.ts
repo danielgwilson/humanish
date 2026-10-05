@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
+import { actorOf } from "../../src/study/study-fields.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,
@@ -19,11 +20,13 @@ const request = {
   observation: { screenshot, stateSignature: "fixture" },
 };
 const signal = new AbortController().signal;
-const lab = (actor: Record<string, unknown> = {}) => ({
-  schema: "humanish.lab.v2",
+const lab = (actor: Record<string, unknown> = {}, participants?: unknown) => ({
+  schema: "humanish.study.v3",
   id: "output-limit",
+  route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use", maxOutputTokens: 16, ...actor }],
+  actor: { type: "openai-computer-use", maxOutputTokens: 16, ...actor },
+  ...(participants === undefined ? {} : { participants }),
   execution: { target: "e2b-desktop" },
 });
 const ok = (value: unknown) => ({
@@ -35,14 +38,14 @@ const ok = (value: unknown) => ({
 
 describe("declared per-response output limit", () => {
   it.each([16, 1024, 128000])("parses positive integer %s", (maxOutputTokens) => {
-    const parsed = parseStudyDocument(lab({ maxOutputTokens }));
+    const parsed = parseStudy(lab({ maxOutputTokens }));
     expect(parsed.ok).toBe(true);
-    if (parsed.ok) expect(parsed.config.actors[0]?.maxOutputTokens).toBe(maxOutputTokens);
+    if (parsed.ok) expect(actorOf(parsed.config)?.maxOutputTokens).toBe(maxOutputTokens);
   });
   it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, null, "16"])(
     "rejects invalid value %s before a provider can be built",
     (maxOutputTokens) => {
-      const parsed = parseStudyDocument(lab({ maxOutputTokens }));
+      const parsed = parseStudy(lab({ maxOutputTokens }));
       expect(parsed.ok).toBe(false);
       if (!parsed.ok) expect(parsed.error.message).toContain("maxOutputTokens");
       expect(() =>
@@ -56,7 +59,7 @@ describe("declared per-response output limit", () => {
   it.each(["local-agent", "scripted-browser", "codex-exec", "synthetic-persona"])(
     "refuses unsupported actor %s",
     (type) => {
-      const result = parseStudyDocument(lab({ type }));
+      const result = parseStudy(lab({ type }));
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.message).toContain("maxOutputTokens");
     },
@@ -64,10 +67,10 @@ describe("declared per-response output limit", () => {
   it("rejects custom in-process and per-participant/roster declarations instead of ignoring them", () => {
     for (const raw of [
       { ...lab(), subject: { source: "local-app" } },
-      lab({ lanes: [{ id: "one", maxOutputTokens: 32 }] }),
-      lab({ roster: [{ id: "one", count: 2, maxOutputTokens: 32 }] }),
+      lab({}, [{ id: "one", maxOutputTokens: 32 }]),
+      lab({}, [{ id: "one", count: 2, maxOutputTokens: 32 }]),
     ])
-      expect(parseStudyDocument(raw).ok).toBe(false);
+      expect(parseStudy(raw).ok).toBe(false);
   });
   it("keeps the field on initial, continuation, policy fallback and HTTP retry requests", async () => {
     const bodies: Record<string, unknown>[] = [];

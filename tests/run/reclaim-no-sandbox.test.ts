@@ -14,8 +14,8 @@ import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/rec
 import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
 import { appendSandboxOwner } from "../../src/run/sandbox-receipts.js";
 import { runStudyWith } from "../../src/run-study.js";
-import { parseStudyDocument } from "../../src/study/config.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const RUN = "reclaim-scripted";
@@ -33,13 +33,14 @@ async function scriptedRun() {
     path.resolve("humanish", "scenarios", "scripted-first-run.yaml"),
     path.join(cwd, "humanish", "scenarios", "scripted-first-run.yaml"),
   );
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "reclaim-scripted",
     title: "Reclaim on a scripted run",
+    route: "scripted",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:9/" },
-    actors: [{ type: "scripted-browser", persona: "synthetic-new-user" }],
-    scenario: { ref: "scripted-first-run" },
+    actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+    scenario: "scripted-first-run",
     review: { analysis: false },
     execution: { target: "local" },
   });

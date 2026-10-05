@@ -16,8 +16,9 @@ import {
   renderTaskPrompt,
   type StudyTask,
 } from "../../src/study/tasks.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { actorOf } from "../../src/study/study-fields.js";
 
 const PROTOCOL: StudyTask[] = [
   {
@@ -129,20 +130,21 @@ describe("formatTaskFunnel", () => {
 
 describe("tasks config parsing", () => {
   const lab = (actor: Record<string, unknown>) =>
-    parseStudyDocument({
-      schema: V2_SCHEMA,
+    parseStudy({
+      schema: STUDY_SCHEMA,
       id: "task-lab",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", ...actor }],
+      actor: { type: "openai-computer-use", ...actor },
       execution: { target: "e2b-desktop" },
-      scenario: { mode: "live" },
     });
 
   it("a prose mission on its own is still a complete lab", () => {
     // Tasks are additive. Requiring a protocol would break every lab that exists.
     const parsed = lab({ mission: "Explore the app and stop." });
     expect(parsed.ok).toBe(true);
-    if (parsed.ok) expect(parsed.config.actors[0]?.tasks).toBeUndefined();
+    if (parsed.ok) expect(actorOf(parsed.config)?.tasks).toBeUndefined();
   });
 
   it("accepts a protocol alongside the mission", () => {
@@ -159,7 +161,7 @@ describe("tasks config parsing", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const tasks = parsed.config.actors[0]?.tasks ?? [];
+    const tasks = actorOf(parsed.config)?.tasks ?? [];
     expect(tasks).toHaveLength(2);
     expect(tasks[0]).toMatchObject({ id: "sign-up", goal: "Create an account." });
     // A task with no criterion is legal: not everything you ask for is observable.

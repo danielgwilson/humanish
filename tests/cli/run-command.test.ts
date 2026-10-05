@@ -6,10 +6,10 @@ import path from "node:path";
 
 import { CommanderError, type Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab } from "../admission/fixtures.js";
-import { studyFileText } from "../helpers/study-file.js";
 
 const RUN_FLAGS = ["--scorer", "--rerun-failed-from", "--participants"];
 
@@ -132,7 +132,7 @@ describe("run takes the rerun and scorer flags", () => {
     const raw = lab("cuAppUrl", { participants: [{ id: "lane-01" }, { id: "lane-02" }] });
     await writeFile(
       path.join(cwd, "humanish", "studies", "fanout.yaml"),
-      studyFileText({ ...raw, id: "fanout" }, cwd),
+      stringify({ ...raw, id: "fanout" }),
     );
   });
   afterEach(async () => {
