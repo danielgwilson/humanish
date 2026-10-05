@@ -4,6 +4,7 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../../contract.js";
 import type { StopConditionMatch } from "../../stop-conditions.js";
+import { describeExecutorDiagnostic } from "../executor-diagnostic.js";
 import { isComputerUseExecutorError } from "../executor-error.js";
 import { isComputerUsePromptRefusedError, isComputerUseProviderError } from "../provider-error.js";
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
@@ -358,18 +359,26 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
     };
   }
   if (isComputerUseExecutorError(error)) {
+    // The cause of a failure the driver did not declare, such as a closed browser target.
+    const cause =
+      error.diagnostic === undefined
+        ? undefined
+        : `cause: ${describeExecutorDiagnostic(error.diagnostic)}`;
     const detail = (): string =>
       [
         `phase: ${redact(session.phase)}`,
         `code: ${error.code}`,
         `disposition: ${error.disposition}`,
+        cause,
         lastAction(),
       ]
         .filter(Boolean)
         .join("; ");
     return {
       completionReason: "harness_error",
-      reason: `desktop executor error: ${error.code}; disposition: ${error.disposition}`,
+      reason: [`desktop executor error: ${error.code}`, `disposition: ${error.disposition}`, cause]
+        .filter(Boolean)
+        .join("; "),
       evidence: {
         kind: "notice",
         body: () => ({ ...notice("error", "desktop executor error", detail()), ...screenshot }),

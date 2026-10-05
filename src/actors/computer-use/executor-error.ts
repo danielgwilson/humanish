@@ -1,3 +1,5 @@
+import { isCuaExecutorDiagnostic, type CuaExecutorDiagnostic } from "./executor-diagnostic.js";
+
 const messages = Object.freeze({
   executor_closed: "Desktop session is closed.",
   executor_not_ready: "Desktop executor is not ready.",
@@ -36,8 +38,9 @@ const executorErrors = new WeakSet<object>();
 
 /**
  * An executor's bounded failure declaration. No backend message, cause, action payload or
- * transport details belong here. `not_dispatched` requires evidence that dispatch never
- * began; a lost acknowledgement or partial action is `outcome_uncertain`, never a retry.
+ * transport details belong here; `diagnostic` names a failed step and a category in fixed words.
+ * `not_dispatched` requires evidence that dispatch never began; a lost acknowledgement or partial
+ * action is `outcome_uncertain`, never a retry.
  * `reason` is allowed only on an `action_rejected` / `not_dispatched` refusal.
  * Import from the same installation as the loop: names and lookalike objects do not qualify.
  */
@@ -45,20 +48,25 @@ export class ComputerUseExecutorError extends Error {
   readonly code: CuaExecutorErrorCode;
   readonly disposition: CuaExecutorDisposition;
   readonly reason?: CuaRejectionReason;
+  readonly diagnostic?: CuaExecutorDiagnostic;
 
   constructor(
     code: CuaExecutorErrorCode,
     disposition: CuaExecutorDisposition,
-    details: { reason?: CuaRejectionReason | undefined } = {},
+    details: {
+      reason?: CuaRejectionReason | undefined;
+      diagnostic?: CuaExecutorDiagnostic | undefined;
+    } = {},
   ) {
-    const { reason } = details;
+    const { reason, diagnostic } = details;
     if (
       !isCuaExecutorErrorCode(code) ||
       (disposition !== "not_dispatched" && disposition !== "outcome_uncertain") ||
       (reason !== undefined &&
         (!isCuaRejectionReason(reason) ||
           code !== "action_rejected" ||
-          disposition !== "not_dispatched"))
+          disposition !== "not_dispatched")) ||
+      (diagnostic !== undefined && !isCuaExecutorDiagnostic(diagnostic))
     ) {
       throw new TypeError("Invalid desktop executor error declaration.");
     }
@@ -67,11 +75,14 @@ export class ComputerUseExecutorError extends Error {
     this.code = code;
     this.disposition = disposition;
     if (reason !== undefined) this.reason = reason;
+    if (diagnostic !== undefined)
+      this.diagnostic = Object.freeze({ step: diagnostic.step, category: diagnostic.category });
     // Keep the values used in durable diagnostics finite even for JavaScript callers.
     Object.defineProperties(this, {
       code: { writable: false, configurable: false },
       disposition: { writable: false, configurable: false },
       reason: { writable: false, configurable: false },
+      diagnostic: { writable: false, configurable: false },
     });
     executorErrors.add(this);
   }

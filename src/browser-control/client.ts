@@ -4,6 +4,7 @@ import {
   ComputerUseExecutorError,
   type CuaExecutorErrorCode,
 } from "../actors/computer-use/executor-error.js";
+import type { CuaExecutorDiagnostic } from "../actors/computer-use/executor-diagnostic.js";
 import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
@@ -91,7 +92,7 @@ export function createBrowserControlClient(
     transport: new BrowserControlTransport(
       options.transport,
       (value) => acceptReply(session, value),
-      (code) => closeClient(state, code),
+      (code, diagnostic) => closeClient(state, code, diagnostic),
     ),
   });
   const executor: CuaExecutor & { readonly stallRecovery: "fail_closed" } = {
@@ -112,7 +113,11 @@ export function createBrowserControlClient(
   };
 }
 
-function closeClient(state: ClientState, code: CuaExecutorErrorCode): void {
+function closeClient(
+  state: ClientState,
+  code: CuaExecutorErrorCode,
+  diagnostic: CuaExecutorDiagnostic | undefined,
+): void {
   state.closed = true;
   const operation = state.pending;
   state.pending = undefined;
@@ -122,6 +127,7 @@ function closeClient(state: ClientState, code: CuaExecutorErrorCode): void {
       new ComputerUseExecutorError(
         code,
         operation.written ? "outcome_uncertain" : "not_dispatched",
+        { diagnostic },
       ),
     );
   }
@@ -137,14 +143,14 @@ function finishExchange(session: ClientSession): void {
     void operation.raw.then(() => operation.resolve(operation.reply!), operation.reject);
   } else if (operation.reply!.ok) operation.resolve(operation.reply!);
   else {
-    const { code, disposition, reason } = operation.reply!.error;
+    const { code, disposition, reason, diagnostic } = operation.reply!.error;
     if (
       operation.request.operation !== "EXECUTE" ||
       code !== "action_rejected" ||
       disposition !== "not_dispatched"
     )
       session.transport.close(code);
-    operation.reject(new ComputerUseExecutorError(code, disposition, { reason }));
+    operation.reject(new ComputerUseExecutorError(code, disposition, { reason, diagnostic }));
   }
 }
 

@@ -257,10 +257,11 @@ export function failureError(
   signal: Pick<AbortSignal, "aborted">,
 ): ComputerUseExecutorError {
   if (dispatched)
-    return new ComputerUseExecutorError(
-      isComputerUseExecutorError(error) ? error.code : "execution_failed",
-      "outcome_uncertain",
-    );
+    return isComputerUseExecutorError(error)
+      ? new ComputerUseExecutorError(error.code, "outcome_uncertain", {
+          diagnostic: error.diagnostic,
+        })
+      : new ComputerUseExecutorError("execution_failed", "outcome_uncertain");
   if (signal.aborted) return new ComputerUseExecutorError("session_revoked", "not_dispatched");
   return isComputerUseExecutorError(error)
     ? error

@@ -5,6 +5,10 @@ import {
   ComputerUseExecutorError,
   type CuaExecutorErrorCode,
 } from "../actors/computer-use/executor-error.js";
+import {
+  classifyExecutorFailure,
+  type CuaExecutorDiagnostic,
+} from "../actors/computer-use/executor-diagnostic.js";
 
 /** Owned byte channel only. This module never discovers endpoints or reconnects. */
 export class BrowserControlTransport {
@@ -21,7 +25,10 @@ export class BrowserControlTransport {
   constructor(
     private readonly stream: Duplex,
     private readonly onFrame: (value: unknown) => void,
-    private readonly onClose: (code: CuaExecutorErrorCode) => void,
+    private readonly onClose: (
+      code: CuaExecutorErrorCode,
+      diagnostic: CuaExecutorDiagnostic | undefined,
+    ) => void,
   ) {
     // destroy(error) queues its error event; even a rejected stream needs a listener
     // before inspecting its state. Never let the native error escape to the process.
@@ -108,11 +115,15 @@ export class BrowserControlTransport {
     this.stream.off("error", this.error);
     return this.stream;
   }
-  private error = (): void => {
-    this.close("transport_failed");
+  private error = (error: unknown): void => {
+    this.close("transport_failed", classifyExecutorFailure("channel", error));
   };
   private end = (): void => {
-    this.close(this.payload || this.headerUsed ? "invalid_response" : "transport_failed");
+    const partial = this.payload !== undefined || this.headerUsed > 0;
+    this.close(partial ? "invalid_response" : "transport_failed", {
+      step: "channel",
+      category: "channel_closed",
+    });
   };
   send(value: unknown, beforeWrite: () => void = () => {}): Promise<void> {
     if (this.ended || this.handedOff)
@@ -149,7 +160,7 @@ export class BrowserControlTransport {
         }
         this.stream.write(frame, (error) => {
           if (error) {
-            this.close("transport_failed");
+            this.close("transport_failed", classifyExecutorFailure("channel_write", error));
             return;
           }
           done();
@@ -159,7 +170,7 @@ export class BrowserControlTransport {
       }
     });
   }
-  close(code: CuaExecutorErrorCode = "executor_closed"): void {
+  close(code: CuaExecutorErrorCode = "executor_closed", diagnostic?: CuaExecutorDiagnostic): void {
     if (this.ended || this.handedOff) return;
     this.ended = true;
     this.payload = undefined;
@@ -176,11 +187,11 @@ export class BrowserControlTransport {
       this.stream.off("close", releaseListeners);
     };
     this.stream.once("close", releaseListeners);
-    this.pendingWrite?.(new ComputerUseExecutorError(code, "outcome_uncertain"));
+    this.pendingWrite?.(new ComputerUseExecutorError(code, "outcome_uncertain", { diagnostic }));
     this.stream.destroy();
     // A stream whose close event already happened will not emit it again. `closed`
     // can also precede queued error/close events, so defer removal past native ticks.
     if (this.stream.closed) setImmediate(releaseListeners);
-    this.onClose(code);
+    this.onClose(code, diagnostic);
   }
 }

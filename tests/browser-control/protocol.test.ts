@@ -110,6 +110,22 @@ describe("browser control closed v1 protocol", () => {
       ok: false,
       error: { code: "action_rejected", disposition: "outcome_uncertain", reason: "extra_tab" },
     }),
+    reply(1, "HELLO", {
+      ok: false,
+      error: {
+        code: "transport_failed",
+        disposition: "not_dispatched",
+        diagnostic: { step: "insert_text", category: "target_closed", message: "Target closed." },
+      },
+    }),
+    reply(1, "HELLO", {
+      ok: false,
+      error: {
+        code: "transport_failed",
+        disposition: "not_dispatched",
+        diagnostic: { step: "Input.insertText", category: "target_closed" },
+      },
+    }),
   ])("rejects inconsistent replies", (value) =>
     expect(() => parseBrowserControlReply(value)).toThrow(ComputerUseExecutorError),
   );
@@ -236,6 +252,14 @@ describe("browser control closed v1 protocol", () => {
       code: "action_rejected",
       disposition: "not_dispatched",
       reason: "extra_tab",
+    });
+    const declared = new ComputerUseExecutorError("transport_failed", "outcome_uncertain", {
+      diagnostic: { step: "insert_text", category: "target_closed" },
+    });
+    expect(safeBrowserControlFailure(declared, true)).toEqual({
+      code: "transport_failed",
+      disposition: "outcome_uncertain",
+      diagnostic: { step: "insert_text", category: "target_closed" },
     });
   });
 });

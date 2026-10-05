@@ -7,6 +7,7 @@ import {
   type CuaExecutorDisposition,
   type CuaRejectionReason,
 } from "../../../src/actors/computer-use/executor-error.js";
+import type { CuaExecutorDiagnostic } from "../../../src/actors/computer-use/executor-diagnostic.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -103,6 +104,28 @@ describe("bounded executor error declarations", () => {
       () =>
         new ComputerUseExecutorError("transport_failed", "not_dispatched", { reason: "extra_tab" }),
     ).toThrow("Invalid desktop executor error declaration.");
+  });
+
+  it("admits a diagnostic of two fixed words and keeps a frozen copy of only those", () => {
+    const diagnostic = { step: "insert_text", category: "target_closed" } as const;
+    const error = new ComputerUseExecutorError("transport_failed", "outcome_uncertain", {
+      diagnostic,
+    });
+    expect(error.diagnostic).toEqual(diagnostic);
+    expect(Object.isFrozen(error.diagnostic)).toBe(true);
+    expect(() => Object.assign(error, { diagnostic: { step: "channel" } })).toThrow(TypeError);
+    for (const forged of [
+      { step: "insert_text", category: "target_closed", message: "session_cookie=private" },
+      { step: "Input.insertText", category: "target_closed" },
+      { step: "insert_text", category: "closed at /mnt/records" },
+      { phase: "insert_text", message: "Target closed." },
+    ])
+      expect(
+        () =>
+          new ComputerUseExecutorError("transport_failed", "outcome_uncertain", {
+            diagnostic: forged as unknown as CuaExecutorDiagnostic,
+          }),
+      ).toThrow("Invalid desktop executor error declaration.");
   });
 
   it("rejects lookalikes and a forged prototype", () => {
