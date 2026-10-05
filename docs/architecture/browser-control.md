@@ -62,7 +62,9 @@ runtime-management method. Initial target navigation remains an adapter-owned
 operation.
 
 Replies acknowledge completion or contain a finite `ComputerUseExecutorError` code and
-`not_dispatched` / `outcome_uncertain` disposition. They never include raw
+`not_dispatched` / `outcome_uncertain` disposition. An `action_rejected` /
+`not_dispatched` refusal may add a `reason` from a fixed list (`extra_tab`), which
+the study loop turns into a hint the participant can act on. They never include raw
 exception prose, typed text, page URLs, or browser errors in their error fields.
 A generic driver exception after invocation is uncertain; only a genuine typed
 driver declaration can attest that input was never dispatched.
