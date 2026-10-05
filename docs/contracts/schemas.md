@@ -985,8 +985,9 @@ Core-owned fields:
   64,000 input tokens it is cut down to 32,000 in one step: the opening
   screenshot is dropped first, then the oldest exchanges become lines of a note,
   sent as an assistant message, that keeps their reasoning summaries, messages
-  and actions as text. Past 16,000 characters the note keeps its first four
-  lines and its newest ones, and names the turns between them as not listed.
+  and actions as text, with any text that came back with their screenshots.
+  Past 32,000 characters the note keeps its first four lines and its newest
+  ones, and names the turns between them as not listed.
   The two newest exchanges are always carried whole, even when they alone pass
   the budget. Between cuts each request starts with the whole previous request,
   so the provider's prompt cache serves all of it; the request after a cut is

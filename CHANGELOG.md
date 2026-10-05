@@ -16,9 +16,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   $23 of input where a stable prefix costs about $2.70. Past the budget the conversation is now
   cut to half of it in one step, and each request until the next cut starts with the whole
   previous request: the same 109 turns cost about $3.30. The progress note that replaces the
-  oldest turns also keeps its first four lines when it reaches its 16,000-character cap. It
-  dropped its oldest lines first before, so a fact from turn 1 left the participant's requests
-  in a long session: from turn 70 on in a 120-turn test.
+  oldest turns keeps its first four lines when it reaches its cap, and its cap is 32,000
+  characters, up from 16,000. It dropped its oldest lines first before, so a fact from turn 1
+  left the participant's requests in a long session: from turn 70 on in a 120-turn test. A note
+  line also keeps the text that came back with its turn's screenshot, such as a note that an
+  action was not run.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

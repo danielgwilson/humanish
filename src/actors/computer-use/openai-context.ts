@@ -11,7 +11,8 @@ import type { CuaAction } from "./loop.js";
 // exchange boundaries: one reply's output items together with the items that answered them.
 // When the estimate passes the budget, the conversation is cut down to half the budget in one
 // step: the opening screenshot goes first, then the oldest exchanges become lines of a progress
-// note that keeps their reasoning summaries, messages and actions as text. The note is an
+// note that keeps their reasoning summaries, messages and actions, and the text that answered
+// them, such as a note that an action was not run. The note is an
 // assistant message, so text the model wrote (which can quote a web page) keeps the trust it had
 // when the model wrote it. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed, so a
 // request passes the budget when they alone exceed it; the trace's per-request estimate shows when
@@ -33,10 +34,11 @@ const CUT_TARGET_SHARE = 0.5;
 /** Exchanges always carried whole, so the model sees its latest actions with their screens. */
 const MIN_KEPT_EXCHANGES = 2;
 /**
- * The progress note's length cap. Past it, the oldest lines after the first NOTE_HEAD_LINES are
- * counted instead of shown.
+ * The progress note's length cap, about 8,000 tokens. Past it, the oldest lines after the first
+ * NOTE_HEAD_LINES are counted instead of shown. The note sits in the cached prefix between cuts,
+ * so its size costs little after the request that writes it.
  */
-const NOTE_CHAR_LIMIT = 16_000;
+const NOTE_CHAR_LIMIT = 32_000;
 /**
  * Note lines kept whatever the note's length. A session's first turns are where it usually learns
  * what it must carry to the end, such as an account, an address or a code, and the newest lines
@@ -44,7 +46,7 @@ const NOTE_CHAR_LIMIT = 16_000;
  */
 const NOTE_HEAD_LINES = 4;
 /** One note line's cap, so a reply with many actions cannot push the note past its own cap. */
-const LINE_CHAR_LIMIT = 1_200;
+const LINE_CHAR_LIMIT = 1_500;
 /**
  * Image input tokens per 32-pixel patch. The gpt-5.x and gpt-6 models bill 1.2 per patch, and at
  * the default (auto) detail gpt-5.6 and gpt-6 keep the screenshot's own size. Models that resize
@@ -162,18 +164,30 @@ export class CarriedConversation {
     if (this.notes.length === 0) return undefined;
     const lead =
       `My notes on my earlier turns in this session, oldest first. Their screenshots are no ` +
-      `longer shown; this is what I thought, said and did.`;
+      `longer shown; this is what I thought, said and did, and what I was told after.`;
     return inputMessage("assistant", [
       { type: "output_text", text: `${lead}\n${this.noteText()}` },
     ]);
   }
 }
 
-/** One exchange as a progress-note line: its reasoning summary, message and actions. */
+/**
+ * One exchange as a progress-note line: its reasoning summary, message and actions, and the text
+ * that came back with their screenshot, such as a note that an action was not run.
+ */
 function describeExchange(exchange: CarriedExchange): string {
   const thought: string[] = [];
   const said: string[] = [];
   const did: string[] = [];
+  const told: string[] = [];
+  for (const raw of exchange.answers) {
+    const item = asRecord(raw);
+    if (item.role !== "user") continue;
+    for (const entry of asArray(item.content)) {
+      const text = asRecord(entry).text;
+      if (typeof text === "string" && text.length > 0) told.push(text);
+    }
+  }
   for (const raw of exchange.output) {
     const item = asRecord(raw);
     if (item.type === "reasoning")
@@ -197,7 +211,8 @@ function describeExchange(exchange: CarriedExchange): string {
   const parts = [
     thought.length > 0 ? `thought: ${clip(thought.join(" "), 400)}` : undefined,
     said.length > 0 ? `said: ${clip(said.join(" "), 300)}` : undefined,
-    did.length > 0 ? `did: ${did.join(", ")}` : undefined,
+    did.length > 0 ? `did: ${clip(did.join(", "), 400)}` : undefined,
+    told.length > 0 ? `was told: ${clip(told.join(" "), 300)}` : undefined,
   ].filter((part) => part !== undefined);
   const line = `Turn ${exchange.turn}: ${parts.length > 0 ? parts.join("; ") : "no recorded output"}`;
   return `${clip(line, LINE_CHAR_LIMIT - 1)}.`;

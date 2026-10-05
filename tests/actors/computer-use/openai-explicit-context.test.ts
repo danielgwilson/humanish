@@ -149,6 +149,43 @@ describe("an explicit-context conversation", () => {
     expect(text(last)).not.toContain('"call_id":"call_1"');
   });
 
+  it("caps each note line, so a reply with many actions cannot overrun the note", async () => {
+    const busy = (n: number): Record<string, unknown> => {
+      const value = reply(n);
+      const output = value.output as Array<Record<string, unknown>>;
+      output[2] = {
+        ...output[2],
+        actions: Array.from({ length: 1_000 }, (_, i) => ({ type: "click", x: i, y: n })),
+      };
+      return value;
+    };
+    const { bodies, provider } = await runTurns(60, { zeroDataRetention: true }, busy);
+    expect(provider.conversation!.summarizedTurns).toBeGreaterThan(20);
+    const note = bodies[59]!.input[1] as { content: Array<{ text: string }> };
+    const noteText = note.content[0]!.text;
+    const lines = noteText.split("\n").slice(1);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(1_500);
+    expect(noteText.length).toBeLessThan(33_000);
+  });
+
+  it("reports no summarized turns for a threaded conversation", async () => {
+    const { bodies, provider } = await runTurns(80);
+    expect(bodies[79]!.previous_response_id).toBe("resp_79");
+    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
+  });
+
+  it("leaves a threaded conversation's requests as they were", async () => {
+    const { bodies, provider } = await runTurns(3);
+    expect(bodies[2]!.previous_response_id).toBe("resp_2");
+    expect(bodies[2]!.store).toBeUndefined();
+    expect(bodies[2]!.include).toBeUndefined();
+    expect(bodies[2]!.input.map((item) => item.type)).toEqual(["computer_call_output"]);
+    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
+  });
+});
+
+describe("cutting past the budget", () => {
   it("cuts in one step past the budget, so each request between cuts starts with the previous one", async () => {
     const { bodies, provider } = await runTurns(200, { zeroDataRetention: true });
     const record = provider.conversation!;
@@ -199,42 +236,37 @@ describe("an explicit-context conversation", () => {
     // The note dropped some summarized turns to stay under its cap, and kept turn 1.
     expect(turnLines.length).toBeLessThan(summarized);
     expect(turnLines[0]).toMatch(/^Turn 1: .*4417/);
-    expect(note.content[0]!.text.length).toBeLessThan(17_000);
+    expect(note.content[0]!.text.length).toBeLessThan(33_000);
   });
 
-  it("caps each note line, so a reply with many actions cannot overrun the note", async () => {
-    const busy = (n: number): Record<string, unknown> => {
-      const value = reply(n);
-      const output = value.output as Array<Record<string, unknown>>;
-      output[2] = {
-        ...output[2],
-        actions: Array.from({ length: 1_000 }, (_, i) => ({ type: "click", x: i, y: n })),
+  it("keeps the text that came back with a summarized turn's screenshot", async () => {
+    const bodies: SentBody[] = [];
+    const fetchFn: FetchLike = async (_url, init) => {
+      bodies.push(JSON.parse(init.body) as SentBody);
+      const value = reply(bodies.length);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(value),
+        json: async () => value,
       };
-      return value;
     };
-    const { bodies, provider } = await runTurns(60, { zeroDataRetention: true }, busy);
-    expect(provider.conversation!.summarizedTurns).toBeGreaterThan(20);
-    const note = bodies[59]!.input[1] as { content: Array<{ text: string }> };
-    const noteText = note.content[0]!.text;
-    const lines = noteText.split("\n").slice(1);
-    expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) expect(line.length).toBeLessThanOrEqual(1_200);
-    expect(noteText.length).toBeLessThan(17_000);
-  });
-
-  it("reports no summarized turns for a threaded conversation", async () => {
-    const { bodies, provider } = await runTurns(80);
-    expect(bodies[79]!.previous_response_id).toBe("resp_79");
-    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
-  });
-
-  it("leaves a threaded conversation's requests as they were", async () => {
-    const { bodies, provider } = await runTurns(3);
-    expect(bodies[2]!.previous_response_id).toBe("resp_2");
-    expect(bodies[2]!.store).toBeUndefined();
-    expect(bodies[2]!.include).toBeUndefined();
-    expect(bodies[2]!.input.map((item) => item.type)).toEqual(["computer_call_output"]);
-    expect(provider.conversation).toMatchObject({ mode: "threaded", summarizedTurns: 0 });
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      delayFn: async () => undefined,
+      zeroDataRetention: true,
+    });
+    for (let turn = 1; turn <= 80; turn += 1)
+      await provider.nextTurn(
+        turn === 4 ? { ...request(), contextHint: "Your click on turn 3 was not run." } : request(),
+        new AbortController().signal,
+      );
+    // Turn 3's exchange holds the hint that answered it, so its note line keeps the hint.
+    const note = JSON.stringify(bodies[79]!.input[1]);
+    expect(note).toMatch(
+      /Turn 3: [^\n]*did: click \(3, 3\); was told: Your click on turn 3 was not run\./,
+    );
   });
 });
 
