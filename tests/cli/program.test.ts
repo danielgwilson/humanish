@@ -223,6 +223,54 @@ describe("humanish CLI scaffold", () => {
     expect(stdout.join("")).toContain("watch stopped");
   });
 
+  it("handles a Ctrl-C sent the moment the watch prompt appears", async () => {
+    let exitCode = 0;
+    const stdout: string[] = [];
+    const signalTarget = new EventEmitter();
+    let closed = 0;
+
+    const stopped = followObserver(
+      {
+        writeOut: (text) => {
+          stdout.push(text);
+          // The person reacts to the prompt before anything else runs.
+          if (text.includes("press Ctrl-C to stop")) signalTarget.emit("SIGINT");
+        },
+        writeErr: () => {},
+        setExitCode: (code) => {
+          exitCode = code;
+        },
+      },
+      {
+        schema: "humanish.observer-result.v1",
+        ok: true,
+        cwd: "/tmp/humanish",
+        observerPath: ".humanish/runs/run/observer/index.html",
+        run: "run",
+        warnings: [],
+      },
+      {
+        opened: false,
+        port: 1234,
+        url: "http://127.0.0.1:1234/observer/index.html",
+        addPublicOrigin: () => {},
+        close: async () => {
+          closed += 1;
+        },
+      },
+      { signalTarget, signals: ["SIGINT"] },
+    );
+    const outcome = await Promise.race([
+      stopped.then(() => "stopped"),
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 2_000)),
+    ]);
+
+    expect(outcome).toBe("stopped");
+    expect(exitCode).toBe(130);
+    expect(closed).toBe(1);
+    expect(stdout.join("")).toContain("watch stopped");
+  });
+
   it("prints useful Commander help", async () => {
     const result = await runCli(["--help"]);
 

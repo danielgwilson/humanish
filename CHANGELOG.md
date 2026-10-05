@@ -28,8 +28,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish cleanup`, an alias of `reclaim --check` since 0.110.1, is still removed in 0.112.0,
   which ships on or after 2026-11-03.
 
-### Fixes
+### Fixed
 
+- `watch` and `observe` install their Ctrl-C handler before they print "press Ctrl-C to stop".
+  A Ctrl-C between the two skipped the shutdown: no tunnel close and no `watch stopped` line.
 - `humanish verify` read `http://192.0.2.1\nE2B_SANDBOX=...` in JSON text as one E2B URL, so a run
   whose agent printed its environment was blocked. The E2B URL pattern's host part now stops at a
   backslash, a quote or an angle bracket.
