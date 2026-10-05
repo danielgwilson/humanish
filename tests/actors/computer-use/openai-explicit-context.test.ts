@@ -417,7 +417,7 @@ describe("the zero-data-retention rejections", () => {
     );
     expect(turns[1]).toMatchObject({
       status: "rejected",
-      reason: { message: expect.stringMatching(/^OpenAI Responses 404: .*does not keep/) },
+      reason: { message: expect.stringMatching(/^OpenAI Responses could not find an item/) },
     });
     // Already carrying the conversation, the provider has nothing to switch to and sends no retry.
     expect(bodies).toHaveLength(2);

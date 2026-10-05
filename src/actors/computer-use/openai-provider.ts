@@ -277,7 +277,7 @@ class ZdrError extends Error {
   constructor(readonly rejection: ZdrRejection) {
     super(
       rejection === "stored_item"
-        ? "OpenAI Responses 404: the request referenced an item the server does not keep (zero data retention)"
+        ? "OpenAI Responses could not find an item the request referenced: the server keeps none for this organization (zero data retention)"
         : "OpenAI Responses rejected server-side state (zero data retention)",
     );
     this.name = "ZdrError";
