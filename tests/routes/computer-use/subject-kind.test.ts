@@ -5,8 +5,9 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudyDocument } from "../../../src/study/config.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { runComputerUse } from "../../helpers/route-run.js";
 
 let cwd: string;
@@ -18,22 +19,29 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
-function cloneLab(extra: Record<string, unknown>): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+function cloneStudy(extra: Record<string, unknown>): Record<string, unknown> {
+  return {
+    schema: STUDY_SCHEMA,
     id: "subject-kind-clone",
+    route: "computer-use",
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
       serve: { install: "pnpm install", start: "pnpm start", url: "http://127.0.0.1:3000/" },
     },
-    actors: [
-      { type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore and stop." },
-    ],
+    actor: {
+      type: "openai-computer-use",
+      persona: "first-time-visitor",
+      mission: "Explore and stop.",
+    },
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
     review: { analysis: false },
     ...extra,
-  });
+  };
+}
+
+function cloneLab(extra: Record<string, unknown>): StudyConfig {
+  const parsed = parseStudy(cloneStudy(extra));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -47,10 +55,14 @@ describe("computer-use route reads of the planned subject", () => {
     });
     const result = await runComputerUse({
       cwd,
-      config: cloneLab({
-        scenario: { mode: "live" },
-        comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
-      }),
+      // parseStudy refuses an external catch on a clone subject, which the route never reads; a
+      // library caller can still pass one.
+      config: libraryConfig(
+        cloneStudy({
+          mode: "live",
+          comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
+        }),
+      ),
       dryRun: false,
       env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
       deps: {
@@ -66,16 +78,7 @@ describe("computer-use route reads of the planned subject", () => {
   it("records each fan-out participant's clone provenance", async () => {
     const result = await runComputerUse({
       cwd,
-      config: cloneLab({
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "first-time-visitor",
-            mission: "Explore and stop.",
-            lanes: [{ id: "a" }, { id: "b" }],
-          },
-        ],
-      }),
+      config: cloneLab({ participants: [{ id: "a" }, { id: "b" }] }),
       dryRun: true,
     });
     expect(result.ok).toBe(true);

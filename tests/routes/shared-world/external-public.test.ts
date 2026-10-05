@@ -33,12 +33,13 @@ import { admitSharedWorldPlan } from "../../../src/routes/shared-world/route.js"
 import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { actorOf, participantList } from "../../../src/study/study-fields.js";
 import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
 } from "../../../src/study/validation.js";
-import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -295,7 +296,8 @@ function externalPublicConfig(overrides?: {
   concurrency?: number;
   omitPublicTarget?: boolean;
   hostLast?: boolean;
-}): unknown {
+  caps?: { maxUsd?: number; maxTotalUsd?: number };
+}): Record<string, unknown> {
   const lanes: Array<Record<string, unknown>> = overrides?.hostLast
     ? [
         // Host is the last roster entry (blockers 1 & 4): with concurrency < laneCount it must
@@ -344,36 +346,35 @@ function externalPublicConfig(overrides?: {
   if (overrides?.hostCount === 0) delete lanes[0]!.host;
   if (overrides?.hostCount === 2) lanes[1]!.host = true;
   return {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "lobby-trivia-3player-test",
     title: "the example multiplayer app 3-player external-public",
+    route: "shared-world",
+    mode: "live",
     subject: {
       source: "app-url",
-      topology: "shared-world",
       appUrl: overrides?.appUrl ?? "https://lobby-trivia.example.test/",
       ...(overrides?.omitPublicTarget
         ? {}
         : { publicTarget: { owner: "example-operator/lobby-trivia", authorized: true } }),
     },
     policies: { allowPublicTargets: true },
-    actors: [
-      {
-        type: "openai-computer-use",
-        mission: "Play the example multiplayer app with your friends.",
-        lanes,
-      },
-    ],
+    actor: {
+      type: "openai-computer-use",
+      mission: "Play the example multiplayer app with your friends.",
+    },
+    participants: lanes,
+    ...(overrides?.caps === undefined ? {} : { caps: overrides.caps }),
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
       concurrency: overrides?.concurrency ?? 3,
     },
-    scenario: { mode: "live" },
   };
 }
 
 function parseExternal(overrides?: Parameters<typeof externalPublicConfig>[0]): StudyConfig {
-  const parsed = parseStudyDocument(externalPublicConfig(overrides));
+  const parsed = parseStudy(externalPublicConfig(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -529,14 +530,14 @@ describe("external-public config validation + routing", () => {
   });
 
   it("rejects a missing publicTarget.authorized", () => {
-    const parsed = parseStudyDocument(externalPublicConfig({ omitPublicTarget: true }));
+    const parsed = parseStudy(externalPublicConfig({ omitPublicTarget: true }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("subject.publicTarget");
   });
 
   it("rejects a loopback appUrl (not a public plane)", () => {
-    const parsed = parseStudyDocument(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
+    const parsed = parseStudy(externalPublicConfig({ appUrl: "http://127.0.0.1:3000/" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("not a loopback URL");
@@ -550,29 +551,28 @@ describe("external-public config validation + routing", () => {
       ["clone", { clone: { depth: 1 } }, "subject.clone"],
       ["repos", { repos: ["x/y"] }, "subject.repos"],
     ] as const) {
-      const base = externalPublicConfig() as Record<string, unknown>;
+      const base = externalPublicConfig();
       const subject = { ...(base.subject as Record<string, unknown>), ...subjectPatch };
-      const parsed = parseStudyDocument({ ...base, subject });
+      const parsed = parseStudy({ ...base, subject });
       expect(parsed.ok, `${field} must be rejected`).toBe(false);
       if (!parsed.ok) expect(parsed.error.message).toContain(needle);
     }
   });
 
   it("rejects zero hosts or more than one", () => {
-    const zero = parseStudyDocument(externalPublicConfig({ hostCount: 0 }));
+    const zero = parseStudy(externalPublicConfig({ hostCount: 0 }));
     expect(zero.ok).toBe(false);
     if (!zero.ok) expect(zero.error.message).toContain("exactly one `host: true` participant");
-    const two = parseStudyDocument(externalPublicConfig({ hostCount: 2 }));
+    const two = parseStudy(externalPublicConfig({ hostCount: 2 }));
     expect(two.ok).toBe(false);
     if (!two.ok) expect(two.error.message).toContain("exactly one `host: true` participant");
   });
 
   it("rejects N=1 (a single-participant shared world proves nothing)", () => {
     // One host, concurrency 1 -> a shared world needs >=2 participants and concurrency > 1.
-    const base = externalPublicConfig({ concurrency: 1 }) as Record<string, unknown>;
-    const actor = (base.actors as Array<Record<string, unknown>>)[0]!;
-    actor.lanes = [(actor.lanes as unknown[])[0]];
-    const parsed = parseStudyDocument(base);
+    const base = externalPublicConfig({ concurrency: 1 });
+    base.participants = [(base.participants as unknown[])[0]];
+    const parsed = parseStudy(base);
     expect(parsed.ok).toBe(false);
   });
 });
@@ -683,9 +683,10 @@ describe("host-first handoff barrier + convergence", () => {
     );
     expect(runText).not.toContain("AB2CD9");
     const assigned = (JSON.parse(runText) as RunBundle).streams.map((stream) => stream.assignment);
-    const actor = parseExternal().actors[0]!;
+    const config = parseExternal();
+    const actor = actorOf(config)!;
     expect(assigned).toEqual(
-      actor.lanes!.map((lane) => ({
+      participantList(config)!.map((lane) => ({
         mission: actor.mission,
         ...(lane.instruction === undefined ? {} : { focus: lane.instruction }),
       })),
@@ -1013,9 +1014,8 @@ describe("review.summary is external-public plane-aware", () => {
 describe("handoff timeout fail-closed", () => {
   it("shares the actor study budget across host and follower sessions", async () => {
     const seen: CuaActorSessionOptions[] = [];
-    const config = parseExternal();
-    config.actors[0]!.model = "gpt-5.5";
-    config.execution!.caps = { maxUsd: 1, maxTotalUsd: 0.04 };
+    const config = parseExternal({ caps: { maxUsd: 1, maxTotalUsd: 0.04 } });
+    actorOf(config)!.model = "gpt-5.5";
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
     await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(seen).toHaveLength(3);
@@ -1027,9 +1027,8 @@ describe("handoff timeout fail-closed", () => {
   });
 
   it("refuses an unpriceable spend cap before opening the host", async () => {
-    const config = parseExternal();
-    config.actors[0]!.model = "unknown-priced-model";
-    config.execution!.caps = { maxTotalUsd: 1 };
+    const config = parseExternal({ caps: { maxTotalUsd: 1 } });
+    actorOf(config)!.model = "unknown-priced-model";
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.error?.message).toContain("humanish has no rate for model");
@@ -1294,9 +1293,9 @@ describe("lobby-trivia-3player committed lab", () => {
 it("routes actor output limits and per-participant reasoning to concurrent provider requests", async () => {
   const config = parseExternal();
   // Below the first request's own 1024 cap, so the first request carries the declared value.
-  config.actors[0]!.maxOutputTokens = 512;
-  config.actors[0]!.reasoningEffort = "low";
-  config.actors[0]!.lanes![1]!.reasoningEffort = "high";
+  actorOf(config)!.maxOutputTokens = 512;
+  actorOf(config)!.reasoningEffort = "low";
+  participantList(config)![1]!.reasoningEffort = "high";
   const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
   delete deps.runSession;
   const prepareDesktop = async (desktop: E2BDesktopSandbox): Promise<void> => {
@@ -1585,8 +1584,8 @@ describe("external-public participant wiring", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     try {
       const { port } = server.address() as AddressInfo;
-      const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudyDocument({
+      const input = externalPublicConfig();
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
       });
@@ -1622,8 +1621,8 @@ describe("external-public comms catch token", () => {
       return new Response("", { status: 503 });
     });
     try {
-      const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudyDocument({
+      const input = externalPublicConfig();
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });
@@ -1668,8 +1667,8 @@ describe("external-public comms catch token", () => {
       throw new Error(`catch proxy refused ${openaiKey} with bearer ${token}`);
     });
     try {
-      const input = externalPublicConfig() as Record<string, unknown>;
-      const parsed = parseStudyDocument({
+      const input = externalPublicConfig();
+      const parsed = parseStudy({
         ...input,
         comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
       });
