@@ -16,7 +16,7 @@ describe("humanish format stack", () => {
   });
 });
 
-describe("the README init writes", () => {
+describe("the humanish/README.md init writes", () => {
   it.each(["npx humanish", "npx humanish@1.2.3", "humanish"])(
     "starts every command with the install's invocation (%s)",
     (command) => {

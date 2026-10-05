@@ -58,8 +58,8 @@ defaults:
 }
 
 /**
- * The README for the committed humanish/ directory. Its commands start with `command`, the
- * invocation init chose for this install (src/cli/invocation.ts), as init's AGENTS.md section does.
+ * The `humanish/README.md` init writes. Its commands start with `command`, the invocation init
+ * chose for this install (src/cli/invocation.ts), as in the section init writes to `AGENTS.md`.
  */
 function readmeFile(command: string): StarterFile {
   return {
