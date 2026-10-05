@@ -321,10 +321,13 @@ The states without findings:
 
 - `running`: the automatic analysis is queued or running. `next` is `review` again.
 - `skipped`: the automatic analysis was skipped or refused, for example without
-  `OPENAI_API_KEY`. `next` is `analyze --max-cost 3`.
+  `OPENAI_API_KEY`, or the run's study file sets `review.analysis: false`
+  (`AUTOMATIC_ANALYSIS_DISABLED`, read from the file when the view is built). `next` is
+  `analyze --max-cost 3`, which runs an analysis anyway.
 - `failed`: the latest attempt failed or was cancelled and no usable version exists. `next`
   reruns it with the same analyst, `--provider codex` for the Codex account analyst.
-- `none`: no analysis ran for this live run, for example with `review.analysis: false`.
+- `none`: no analysis ran for this live run and nothing records why, for example a run that
+  started from a library call, or one whose study file has moved or changed id.
 - `dry_run`: a dry run has no participant evidence to analyze.
 - `unavailable`: the run or its analysis records could not be read or checked, or the analysis
   text matched a sensitive-text pattern (`ANALYSIS_SENSITIVE_TEXT_QUARANTINED`), which the

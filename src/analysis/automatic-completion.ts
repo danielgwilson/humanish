@@ -67,6 +67,14 @@ export async function completeAutomaticAnalysis<
       automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" },
     };
   }
+  // A signal is stopping this process: the run is recorded interrupted, and the process exits
+  // once its sandboxes are reclaimed, so no analysis starts.
+  if (finished.interrupted)
+    return {
+      ...result,
+      ...origin,
+      automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED" },
+    };
   const prepared = finished.paths;
   const seams = input?.deps?.analysis;
   const signal = input?.analysisSignal;

@@ -171,7 +171,7 @@ function defaultProvider(
 ): CuaProvider {
   if (!openai) {
     throw new Error(
-      "runCuaActorSession requires either `provider` (injected) or `openai` provider options.",
+      "A computer-use session requires either `provider` (injected) or `openai` provider options.",
     );
   }
   return createOpenAiResponsesProvider({
@@ -186,7 +186,7 @@ function defaultExecutor(
 ): CuaExecutor {
   if (!desktop) {
     throw new Error(
-      "runCuaActorSession requires either `executor` (injected) or `desktop` to build one.",
+      "A computer-use session requires either `executor` (injected) or `desktop` to build one.",
     );
   }
   return createE2BDesktopExecutor(desktop, executorOptions ?? {});

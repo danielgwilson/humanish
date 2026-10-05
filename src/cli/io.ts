@@ -33,12 +33,13 @@ export const CWD_OPTION_DESCRIPTION = "Project directory.";
 export const RUN_OPTION_DESCRIPTION = "Run id, or latest.";
 export const DOTENV_OPTION_DESCRIPTION =
   "Load unset variables from this dotenv file. Values are never printed or saved.";
-const ENV_FILE_RENAMED = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.111.0.";
+const ENV_FILE_RENAMED = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.112.0.";
 
 /**
  * The hidden `--env-file <path>` that `--dotenv` replaced. Node scans the whole argv for
  * `--env-file` before a script runs, and stops only at `--` (src/node_dotenv.cc), so a missing file
- * exits 9 through Node and never reaches humanish. `--dotenv` does not collide. Removed in 0.111.0.
+ * exits 9 through Node and never reaches humanish. `--dotenv` does not collide.
+ * Removed in 0.112.0: deprecated in 0.110.0 on 2026-10-03, it stays 30 days and one minor release.
  */
 export function envFileAliasOption(): Option {
   return new Option("--env-file <path>").hideHelp().conflicts("dotenv");

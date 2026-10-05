@@ -141,9 +141,75 @@ describe("the E2B URL pattern", () => {
       "https://3000-synthetic-sandbox.e2b.app/verify?t=1",
       "https://6080-synthetic-sandbox.e2b.dev/vnc.html?password=synthetic-stream-key",
       "https://api.e2b.app/sandboxes",
-      "https://docs.e2b.dev/api-key",
+      "https://e2b.dev/pricing",
     ]) {
       expect(redactText(`at ${url} now`), url).toBe("at [REDACTED_SECRET] now");
+    }
+  });
+
+  // The E2B API's 401 body for a malformed key, as the SDK's AuthenticationError wraps it.
+  const UNAUTHORIZED =
+    "Unauthorized, please check your credentials. - Invalid API key, please visit https://docs.e2b.dev/api-key for more information.\nInvalid API key format";
+
+  it("passes the docs page E2B's 401 links to, and redacts a sandbox URL beside it", () => {
+    expect(redactText(UNAUTHORIZED)).toBe(UNAUTHORIZED);
+    expect(containsSensitive(UNAUTHORIZED)).toBe(false);
+    const withSandbox = `${UNAUTHORIZED} at https://3000-synthetic-sandbox.e2b.app/verify`;
+    expect(redactText(withSandbox)).toBe(`${UNAUTHORIZED} at [REDACTED_SECRET]`);
+    for (const text of [
+      "https://docs.e2b.dev",
+      "see https://docs.e2b.dev/sandbox/persistence.",
+      "(https://e2b.dev/docs/quickstart)",
+      JSON.stringify({ message: UNAUTHORIZED }),
+    ]) {
+      expect(redactText(text), text).toBe(text);
+      expect(containsSensitive(text), text).toBe(false);
+    }
+  });
+
+  it("still redacts a docs URL with a query, a fragment, user info or a digit in its path", () => {
+    for (const url of [
+      "https://docs.e2b.dev/api-key?token=synthetic-docs-token",
+      "https://docs.e2b.dev/api-key#access_token=synthetic-docs-token",
+      ["https://operator:synthetic-password", "docs.e2b.dev/api-key"].join("@"),
+      "https://docs.e2b.dev/sandbox/synthetic1sandbox2id",
+      "http://docs.e2b.dev/api-key",
+    ]) {
+      expect(redactText(`visit ${url} now`), url).toBe("visit [REDACTED_SECRET] now");
+      expect(containsSensitive(url), url).toBe(true);
+    }
+  });
+
+  it("does not read a URL and an E2B variable after an escaped line break as one E2B URL", () => {
+    // An agent's environment dump, as a terminal event stores it inside JSON.
+    const text = JSON.stringify({ output: "HOST=http://192.0.2.1\nE2B_SANDBOX=true\n" });
+    expect(text).toContain(String.raw`http://192.0.2.1\nE2B_SANDBOX`);
+    expect(containsSensitive(text)).toBe(false);
+    expect(redactText(text)).toBe(text);
+    for (const quoted of [
+      `"http://192.0.2.1","name":"e2b-sandbox"`,
+      `'http://192.0.2.1' E2B_SANDBOX`,
+    ]) {
+      expect(containsSensitive(quoted), quoted).toBe(false);
+    }
+    const sandbox = JSON.stringify({ output: "URL=https://3000-synthetic-sandbox.e2b.app\n" });
+    expect(containsSensitive(sandbox)).toBe(true);
+    // User info is joined at run time, since `name@host` in source reads as an email address to
+    // the public-surface scan. A quote in user info is valid, and the host after the `@` is still
+    // the sandbox.
+    const at = (...parts: string[]) => parts.join("@");
+    for (const url of [
+      at("https://o'hare", "6080-synthetic-sandbox.e2b.app/"),
+      at("https://o'hare", "6080-synthetic-sandbox.e2b.dev/vnc.html?authKey=synthetic-stream-key"),
+      at(`https://a"b`, "6080-synthetic-sandbox.e2b.app/"),
+      // A URL parser takes the last `@`, and a public page before `)@` is user info.
+      at("https://first", "second", "6080-synthetic-sandbox.e2b.app/"),
+      at("https://docs.e2b.dev)", "6080-synthetic-sandbox.e2b.app/?authKey=synthetic-stream-key"),
+      // Some JSON writers escape slashes.
+      String.raw`https:\/\/6080-synthetic-sandbox.e2b.app\/vnc.html`,
+    ]) {
+      expect(containsSensitive(url), url).toBe(true);
+      expect(redactText(`see ${url}`), url).toBe("see [REDACTED_SECRET]");
     }
   });
 });

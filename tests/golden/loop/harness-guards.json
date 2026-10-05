@@ -595,7 +595,7 @@
     "result": {
       "status": "failed",
       "completionReason": "harness_error",
-      "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+      "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one object with the running token totals. Failing closed instead of running uncapped.",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -619,7 +619,7 @@
         "durationMs": 5000,
         "status": "failed",
         "completionReason": "harness_error",
-        "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+        "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one object with the running token totals. Failing closed instead of running uncapped.",
         "ids": {
           "model": "golden-1"
         },
