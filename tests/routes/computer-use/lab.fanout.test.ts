@@ -26,7 +26,6 @@ import {
   MIN_DESKTOP_RENDER_WIDTH,
   resolveParticipantDevice,
 } from "../../../src/study/device-presets.js";
-import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { admitComputerUsePlan } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
@@ -59,7 +58,7 @@ import {
 import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { participantRun } from "../../helpers/participant-run.js";
+import { participantRun, participantPlanOf } from "../../helpers/participant-run.js";
 import type { ProviderContext } from "../../../src/study/run-study-homes.js";
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
@@ -488,14 +487,14 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("resolveCuaParticipantPlan is pure: concurrency defaults to all participants, env override only lowers (and is recorded)", () => {
+  it("the participant plan is pure: concurrency defaults to all participants, env override only lowers (and is recorded)", () => {
     const config = fanoutConfig({
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
     // No declared concurrency on a 5-participant roster → every participant runs at once: 5
     // participants, 1 wave.
-    const planDefault = resolveCuaParticipantPlan({
+    const planDefault = participantPlanOf({
       ...config,
       execution: { target: "e2b-desktop" },
     });
@@ -503,14 +502,14 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     expect(planDefault.waves).toBe(1);
     expect(planDefault.envLoweredConcurrencyFrom).toBeUndefined();
     // Env override lowers to 2, and the lowering is recorded, never silent.
-    const planLowered = resolveCuaParticipantPlan(
+    const planLowered = participantPlanOf(
       { ...config, execution: { target: "e2b-desktop" } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
     );
     expect(planLowered.concurrency).toBe(2);
     expect(planLowered.envLoweredConcurrencyFrom).toBe(5);
     // Env override may not raise above the declared cap (clamped to laneCount + the base).
-    const planRaiseAttempt = resolveCuaParticipantPlan(
+    const planRaiseAttempt = participantPlanOf(
       { ...config, execution: { target: "e2b-desktop", concurrency: 2 } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } },
     );
@@ -535,7 +534,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
         },
       ],
     });
-    const participantPlan = resolveCuaParticipantPlan(config);
+    const participantPlan = participantPlanOf(config);
     const specs: DesktopParticipantRun[] = [
       participantRun({
         id: "role-a",
@@ -679,7 +678,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
           note: "test fixture",
         },
       },
-      participantPlan: resolveCuaParticipantPlan(config),
+      participantPlan: participantPlanOf(config),
     });
   }
 

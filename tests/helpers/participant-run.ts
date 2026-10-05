@@ -1,7 +1,30 @@
 import type { ActorPersonaRef } from "../../src/actors/contract.js";
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
 import type { ComputerUseParticipant } from "../../src/study/plan-participants.js";
-import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
+import type { StudyConfig } from "../../src/study/types.js";
+import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
+import { participantRunsAndPlan } from "../../src/routes/computer-use/participant-runs.js";
+import type {
+  CuaParticipantPlan,
+  DesktopParticipantRun,
+} from "../../src/routes/computer-use/types.js";
+
+/**
+ * The participant table a computer-use config plans to, the one the route prints before a run.
+ * A live plan unless `dryRun` is set; `env` may lower the planned concurrency.
+ */
+export function participantPlanOf(
+  config: StudyConfig,
+  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean } = {},
+): CuaParticipantPlan {
+  const planned = planComputerUseStudy(config, {
+    dryRun: opts.dryRun === true,
+    ...(opts.countOverride === undefined ? {} : { countOverride: opts.countOverride }),
+  });
+  if (!planned.ok) throw new Error(planned.refusal.message);
+  return participantRunsAndPlan(planned.plan, opts.env === undefined ? {} : { env: opts.env })
+    .participantPlan;
+}
 
 /**
  * A synthetic participant run on the default desktop preset, for tests that drive a participant

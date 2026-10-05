@@ -13,8 +13,8 @@ import { routeOf } from "../../src/study/plan.js";
 import { planStudy, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyPlan, PlanResult } from "../../src/study/plan-types.js";
 import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/participant-runs.js";
 import { committedLabs } from "../helpers/committed-labs.js";
+import { participantPlanOf } from "../helpers/participant-run.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -84,7 +84,7 @@ describe("planLab", () => {
         planStudy(config, { cwd: ROOT, dryRun: true, ...(count === undefined ? {} : { count }) }),
       );
       if (plan.route !== "computer-use") throw new Error(`${name} planned ${plan.route}`);
-      const lanes = resolveCuaParticipantPlan(config, {
+      const lanes = participantPlanOf(config, {
         env: {},
         ...(count === undefined ? {} : { countOverride: count }),
       });
