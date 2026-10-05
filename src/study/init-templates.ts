@@ -57,6 +57,45 @@ defaults:
   };
 }
 
+/**
+ * The README for the committed humanish/ directory. Its commands start with `command`, the
+ * invocation init chose for this install (src/cli/invocation.ts), as init's AGENTS.md section does.
+ */
+function readmeFile(command: string): StarterFile {
+  return {
+    path: "humanish/README.md",
+    plane: "source",
+    contents: `# humanish
+
+This directory holds the committed definitions of this app's humanish studies: study files,
+personas and scenarios.
+
+Keep this directory public-safe:
+
+- synthetic personas only;
+- synthetic fixtures only;
+- env var names only, never values;
+- no PII, PHI, secrets, raw private transcripts, private screenshots, customer data, or patient data.
+
+Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.humanish/\`.
+
+Studies:
+
+- committed reusable studies live in humanish/studies/*.yaml;
+- private or machine-local studies live in ignored .humanish/studies/*.yaml or
+  .humanish/local/studies/*.yaml;
+- run a study with \`${command} run <study>\`, or \`${command} watch <study>\` to stay attached;
+- files under humanish/labs/ move there with \`${command} migrate\`.
+
+Format standard:
+
+- human-authored humanish source uses .yaml;
+- generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
+- .yml is reserved for outside ecosystem files such as GitHub Actions, not humanish source.
+`,
+  };
+}
+
 type StarterActor = "openai-computer-use" | "local-agent";
 
 /**
@@ -139,38 +178,7 @@ defaults:
 }
 
 export const starterFiles: StarterFile[] = [
-  {
-    path: "humanish/README.md",
-    plane: "source",
-    contents: `# humanish
-
-This directory holds the committed definitions of this app's humanish studies: study files,
-personas and scenarios.
-
-Keep this directory public-safe:
-
-- synthetic personas only;
-- synthetic fixtures only;
-- env var names only, never values;
-- no PII, PHI, secrets, raw private transcripts, private screenshots, customer data, or patient data.
-
-Generated run bundles, screenshots, traces, logs, and local overrides belong in ignored \`.humanish/\`.
-
-Studies:
-
-- committed reusable studies live in humanish/studies/*.yaml;
-- private or machine-local studies live in ignored .humanish/studies/*.yaml or
-  .humanish/local/studies/*.yaml;
-- run a study with \`humanish run <study>\`, or \`humanish watch <study>\` to stay attached;
-- files under humanish/labs/ move there with \`humanish migrate\`.
-
-Format standard:
-
-- human-authored humanish source uses .yaml;
-- generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
-- .yml is reserved for outside ecosystem files such as GitHub Actions, not humanish source.
-`,
-  },
+  readmeFile("humanish"),
   {
     path: "humanish/personas/synthetic-new-user.yaml",
     plane: "source",
@@ -350,12 +358,15 @@ export function starterFilesFor(
   actor: StarterActor,
   localBrowser: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER,
   localAgent?: LocalAgentId,
+  command = "humanish",
 ): StarterFile[] {
   return starterFiles.map((file) =>
     file.path === "humanish/studies/local-browser.yaml"
       ? localBrowserStudy(localBrowser)
       : file.path === "humanish/studies/try-live.yaml"
         ? tryLiveStudy(actor, localAgent)
-        : file,
+        : file.path === "humanish/README.md"
+          ? readmeFile(command)
+          : file,
   );
 }
