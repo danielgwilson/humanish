@@ -71,16 +71,18 @@ export function decodeEscapes(text: string): string {
 
 // Sixteen characters hold twelve bytes, enough for the start of a key. Shorter runs are mostly
 // words and identifiers.
-const BASE64_RUN = /[A-Za-z0-9+/]{16,}={0,2}/g;
+// Each open-ended repeat is written `[...]{n}[...]*`: V8 runs `{n,}` with a backtrack entry per
+// character and overflows its stack on a run of several megabytes.
+const BASE64_RUN = /[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}/g;
 // The URL-safe alphabet swaps `+/` for `-_`. Only runs that use `-` or `_` need this pass.
-const BASE64URL_RUN = /[A-Za-z0-9_-]{16,}={0,2}/g;
+const BASE64URL_RUN = /[A-Za-z0-9_-]{16}[A-Za-z0-9_-]*={0,2}/g;
 // MIME and PEM wrap base64 at 64 or 76 characters a line. The lookbehind starts a match only at the
 // start of a run, and each lookahead-backreference pair takes a line whole, so a long unwrapped run
 // cannot backtrack.
 const WRAPPED_BASE64 =
-  /(?<![A-Za-z0-9+/])(?=([A-Za-z0-9+/]{16,}))\1(?:[ \t]*\r?\n[ \t]*(?=([A-Za-z0-9+/]{4,}))\2)+={0,2}/g;
+  /(?<![A-Za-z0-9+/])(?=([A-Za-z0-9+/]{16}[A-Za-z0-9+/]*))\1(?:[ \t]*\r?\n[ \t]*(?=([A-Za-z0-9+/]{4}[A-Za-z0-9+/]*))\2)+={0,2}/g;
 // Hex-encoded text, at least sixteen bytes of it.
-const HEX_RUN = /(?:[0-9a-f]{2}){16,}/gi;
+const HEX_RUN = /[0-9a-f]{32}[0-9a-f]*/gi;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
 // this length. Across 173 real run folders surveyed on 2026-10-01, the longest such run outside
 // observer/index.html was a 69-character URL path in a terminal log; base64 of a 94-byte payload,
@@ -99,6 +101,11 @@ const ARCHIVE_MAGIC: readonly (readonly number[])[] = [
   [0x28, 0xb5, 0x2f, 0xfd],
 ];
 const CONTROL_CHARACTERS = /[\x00-\x08\x0b\x0c\x0e-\x1f]/;
+// A run such as `com/x/<base64>` from a URL path starts with segments that shift the alignment of
+// the base64 after them. A run up to this long is also decoded from just after each slash in its
+// first SLASH_START_SPAN characters. Longer runs are images, fonts and archives, not URLs.
+const MAX_SLASH_START_RUN = 4096;
+const SLASH_START_SPAN = 64;
 // Base64 inside base64 is read this many levels deep.
 const MAX_DEPTH = 2;
 
@@ -219,10 +226,19 @@ export function scanEncodedText(
   )
     return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
+  // A run decoded from a slash only adds findings; its bytes are not judged opaque.
+  const slashStarts: Buffer[] = [];
   for (const [match] of expanded.matchAll(BASE64_RUN)) {
     // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
     if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
     runs.push({ run: match, bytes: Buffer.from(match, "base64") });
+    if (match.length > MAX_SLASH_START_RUN) continue;
+    for (
+      let slash = match.indexOf("/");
+      slash !== -1 && slash < SLASH_START_SPAN && match.length - slash > 16;
+      slash = match.indexOf("/", slash + 1)
+    )
+      slashStarts.push(Buffer.from(match.slice(slash + 1), "base64"));
   }
   for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
     if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
@@ -237,6 +253,9 @@ export function scanEncodedText(
     if (result.sensitive) return result;
     opaque ||= result.opaque;
   }
+  for (const bytes of slashStarts)
+    if (inspectDecoded(bytes, "", { ...options, allowOpaqueBase64: true }, depth).sensitive)
+      return SENSITIVE;
   for (const [match] of expanded.matchAll(HEX_RUN)) {
     const plain = readPlainText(Buffer.from(match, "hex"));
     if (plain.ok && depth < MAX_DEPTH && scanEncodedText(plain.text, options, depth + 1).sensitive)

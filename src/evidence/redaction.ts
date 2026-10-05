@@ -10,13 +10,31 @@ import { isRecord } from "../run/type-guards.js";
 // both use these, so the denylist cannot drift between them. See docs/contracts/policy.md for
 // the enforcement-scope policy.
 
-// A value that stands in for a secret rather than being one: a redaction marker, a shell or
-// template variable, or a placeholder in angle brackets, as written or percent-encoded. The
-// context patterns below skip these.
-const NOT_A_PLACEHOLDER = String.raw`(?!\[REDACTED|\$|\{|<|\*|%5[Bb]REDACTED|%24|%7[Bb]|%3[Cc]|%2[Aa])`;
+// A whole value that stands in for a secret rather than being one, as written or percent-encoded:
+// a redaction marker, a shell or template variable, a placeholder in angle brackets, or a mask of
+// asterisks. The context patterns skip a value only when one of these is all of it, up to the
+// next delimiter, so a password that merely starts with `*` or `$` still counts.
+const PLACEHOLDER = [
+  String.raw`\[REDACTED_[A-Z0-9_]{1,40}\]`,
+  String.raw`%5[Bb]REDACTED_[A-Z0-9_]{1,40}%5[Dd]`,
+  String.raw`\$\{[A-Za-z_][A-Za-z0-9_]{0,63}\}`,
+  String.raw`%24%7[Bb][A-Za-z_][A-Za-z0-9_]{0,63}%7[Dd]`,
+  String.raw`\$[A-Za-z_][A-Za-z0-9_]{0,63}`,
+  String.raw`%24[A-Za-z_][A-Za-z0-9_]{0,63}`,
+  String.raw`\{\{[A-Za-z0-9_. -]{1,64}\}\}`,
+  String.raw`<[A-Za-z0-9_. -]{1,64}>`,
+  String.raw`%3[Cc][A-Za-z0-9_.-]{1,64}%3[Ee]`,
+  String.raw`\*{3,64}`,
+  String.raw`(?:%2[Aa]){3,64}`,
+].join("|");
+const NOT_A_PLACEHOLDER = String.raw`(?!(?:${PLACEHOLDER})(?:[\s&#"'<>\\@;,)\]}]|$))`;
 
-// An optional quote around a name or a value, also as JSON writes it inside another string (\").
-const QUOTE = String.raw`(?:\\{0,3}["'])?`;
+// An optional quote around a name or a value, also as JSON writes it inside other JSON strings,
+// four levels deep (\", \\\", ...).
+const QUOTE = String.raw`(?:\\{0,15}["'])?`;
+
+// A JSON number, which a credential-named key can hold and redaction must not turn into a string.
+const NOT_A_NUMBER = String.raw`(?!-?[0-9]{1,64}(?:\.[0-9]{0,64})?(?:[eE][+-]?[0-9]{1,4})?(?:[\s,}\]]|$))`;
 
 // Query and fragment parameters that carry a credential. `page_token` and other cursors match too;
 // their values are long and opaque, so a reader cannot tell them from a credential either.
@@ -68,7 +86,8 @@ const SECRET_PATTERNS: RegExp[] = [
   /\bxox[abeoprs]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
   /\bxapp-[0-9]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
   /\bhooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9_/-]{20}[A-Za-z0-9_/-]*/g,
-  /\beyJ[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{10}[A-Za-z0-9_-]*\b/g,
+  // A JWT starts only where a token run starts, so a run of `eyJ-` repeated is read once.
+  /eyJ(?<![A-Za-z0-9_-]eyJ)[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{10}[A-Za-z0-9_-]*\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
   /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20}[A-Za-z0-9._~+/=-]*/g,
@@ -95,12 +114,12 @@ const SECRET_PATTERNS: RegExp[] = [
     String.raw`(?<keep>\b(?:aws_?)?secret_?access_?key${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])`,
     "gi",
   ),
-  // A credential-named variable set to a value of 16 characters or more with a digit and a letter
-  // in its first 256. Words, placeholders such as humanish-egress-auth-placeholder, and JSON
-  // numbers have one or the other. The lookaheads are bounded, so a long run of `TOKEN=` costs
-  // linear time.
+  // A credential-named variable set to a value of 16 characters or more, up to the next space,
+  // quote or separator, with a digit and a letter in its first 256 characters. Words, placeholders
+  // such as humanish-egress-auth-placeholder and JSON numbers do not count. The lookaheads are
+  // bounded, so a long run of `TOKEN=` costs linear time.
   new RegExp(
-    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_PLACEHOLDER}(?=[A-Za-z0-9._~+/=-]{0,255}[0-9])(?=[A-Za-z0-9._~+/=-]{0,255}[A-Za-z])[A-Za-z0-9._~+/=-]{16}[A-Za-z0-9._~+/=-]*`,
+    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_PLACEHOLDER}${NOT_A_NUMBER}(?=[^\s"'\\,;&]{0,255}[0-9])(?=[^\s"'\\,;&]{0,255}[A-Za-z])[^\s"'\\,;&]{16}[^\s"'\\,;&]*`,
     "g",
   ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth

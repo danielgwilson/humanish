@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scanEncodedText } from "../../src/evidence/encoded-text.js";
 import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
-import { ORDINARY_VALUES, SECRET_FORMATS } from "../helpers/secret-formats.js";
+import { ALNUM, ORDINARY_VALUES, SECRET_FORMATS, synthetic } from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 
 const ENCODINGS: Record<string, (text: string) => string> = {
@@ -51,7 +51,14 @@ describe("secret formats", () => {
     );
   });
 
+  it("redacts a whole quoted value with punctuation, leaving no suffix", () => {
+    const tail = synthetic(ALNUM, 12, 50);
+    const text = `PASSWORD="CorrectHorse17Battery!${tail}"`;
+    expect(redactText(text)).toBe('PASSWORD="[REDACTED_SECRET]"');
+  });
+
   it.each([
+    "eyJ-",
     "TOKEN=",
     "?token=",
     "https://:",
@@ -66,12 +73,13 @@ describe("secret formats", () => {
     expect(performance.now() - started).toBeLessThan(5_000);
   });
 
-  it.each(["sk-", "eyJ", "Bearer ", "_authToken=", "?token=", "TOKEN=1"])(
+  it.each(["sk-", "eyJ", "Bearer ", "_authToken=", "?token=", "TOKEN=1", "", "0f"])(
     "redacts an 8 MB run after %j without overflowing the stack",
     (prefix) => {
       const text = `${prefix}${"a".repeat(8 << 20)}`;
       expect(() => containsSensitive(text)).not.toThrow();
       expect(() => redactText(text)).not.toThrow();
+      expect(() => scanEncodedText(text)).not.toThrow();
     },
   );
 

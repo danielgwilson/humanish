@@ -120,6 +120,25 @@ export const SECRET_FORMATS: readonly SecretFormat[] = [
     text: `https://example.com/?password=Correct${"Horse!Battery"}Staple${synthetic(DIGITS, 2, 38)}`,
   },
   {
+    name: "password parameter starting with an encoded asterisk",
+    text: `https://example.com/?password=%2ACorrectHorse%21Battery${synthetic(DIGITS, 2, 39)}`,
+  },
+  {
+    name: "quoted variable with punctuation",
+    text: `PASSWORD="CorrectHorse!Battery${synthetic(DIGITS, 2, 40)}"`,
+  },
+  {
+    name: "variable quoted three JSON strings deep",
+    text: [1, 2, 3].reduce(
+      (text) => JSON.stringify({ line: text }),
+      `TOKEN="${synthetic(ALNUM, 32, 41)}"`,
+    ),
+  },
+  {
+    name: "base64 key in a URL path segment",
+    text: `https://example.com/x/${Buffer.from(`${"sk-" + "proj-"}${synthetic(ALNUM, 48, 42)}`).toString("base64")}`,
+  },
+  {
     name: "token query parameter",
     text: `https://app.example.com/invite?token=${synthetic(BASE64URL, 32, 27)}`,
   },
@@ -185,6 +204,11 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
     text: `https://app.example.com/?token=%5BREDACTED_SECRET%5D&access_token=%24%7BINVITE_TOKEN%7D`,
   },
   { name: "JSON number at a credential name", text: `{"TOKEN":1234567890123456,"next":"kept"}` },
+  {
+    name: "JSON exponent at a credential name",
+    text: `{"TOKEN":1.234567890123456e+25,"next":"kept"}`,
+  },
+  { name: "masked token", text: "https://app.example.com/invite?token=****************" },
   { name: "token usage", text: `{"inputTokens":1234,"outputTokens":567,"cachedTokens":0}` },
   { name: "prose", text: "Bearer tokens expire after an hour. Enter the password from the email." },
   { name: "run id", text: "cua-20261005-123456-ab12cd" },
