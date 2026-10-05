@@ -8,48 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.110.3: Ctrl-C at the watch prompt, review says analysis is off, E2B docs links kept (2026-10-05)
 
-- `humanish review` on a live run whose study file sets `review.analysis: false` reports the
-  findings view as `skipped` with reason `AUTOMATIC_ANALYSIS_DISABLED`, names the study file, and
-  offers `analyze --run <id> --max-cost 3` as the way to analyze the run anyway. It said "No
-  analysis has run for this run." with state `none`. The setting is read from the study file when
-  `review` runs, since the run records none.
-- Redaction and `humanish verify` pass E2B's public docs pages, such as
-  `https://docs.e2b.dev/api-key`, which E2B's 401 for a malformed key links to, when the path holds
-  only letters and hyphens and there is no query, fragment or user info. Redacted output printed
-  it as `[REDACTED_SECRET]`. Sandbox hosts, stream URLs and any other E2B URL are still redacted.
+humanish 0.110.3 runs the `watch` and `observe` shutdown, and prints `watch stopped` or `observe
+stopped`, when a Ctrl-C lands right at their prompt. It starts no automatic analysis for a run a
+signal interrupted. `humanish review` says when a study's `review.analysis: false` is why a live
+run has no findings. `humanish verify` no longer blocks a run whose text holds a URL followed by an
+escaped line break and an `E2B_` variable, and redacted output keeps the E2B docs link that E2B's
+401 names. The `--env-file` alias is now removed in 0.112.0. Inside, the computer-use, scripted,
+terminal and shared-world routes run through one shell, `admitRoute` in `src/run/route-shell.ts`;
+the live smoke ran each route on it.
 
-### Deprecated
-
-- `--env-file`, the hidden alias of `--dotenv` since 0.110.0, is removed in 0.112.0, where its
-  warning and the 0.110.0 notes said 0.111.0. The compatibility policy keeps a deprecated name for
-  30 days and one minor release, so 0.111.0 could ship before the alias is due to go.
-- `humanish cleanup`, an alias of `reclaim --check` since 0.110.1, is still removed in 0.112.0,
-  which ships on or after 2026-11-03.
-
-### Fixed
-
-- `watch` and `observe` install their Ctrl-C handler before they print "press Ctrl-C to stop".
-  A Ctrl-C between the two skipped the shutdown: no tunnel close and no `watch stopped` line.
-- `humanish verify` read `http://192.0.2.1\nE2B_SANDBOX=...` in JSON text as one E2B URL, so a run
-  whose agent printed its environment was blocked. The E2B URL pattern's host part now stops at a
-  backslash, a quote or an angle bracket.
-- After a Ctrl-C, stderr printed "Participants finished; preparing analysis…", and an automatic
-  analysis could begin before the process exited. A run a signal interrupted now records its
-  analysis as skipped (`AUTOMATIC_ANALYSIS_ACTOR_CANCELLED`) and starts none.
-- Under a real terminal with Claude Code's or Codex's environment variables set, `watch` and
-  `observe` said "No interactive terminal" when they exited without serving. The warning now says
-  an agent environment was detected, names the variable, and points to `--serve`.
-- The `humanish/README.md` that `init` writes named commands as bare `humanish`, which a project
-  install does not put on `PATH`. It now uses the same invocation as init's `AGENTS.md` section.
-- Messages named library exports that 0.106.0 and 0.107.0 removed: the computer-use refusal of a
-  shared-world config said to run it with `runConcurrentSharedWorld`, two session errors named
-  `runCuaActorSession`, and the spend cap guard named `ActorTokenUsage`. The shared-world refusal
-  now names the subject and target the shared-world route takes.
-- Committed study descriptions in the humanish repository said to make a live copy in
-  `.humanish/labs/`, which humanish no longer reads. They now say `.humanish/studies/`, run by
-  path.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.110.3)
 
 ## 0.110.2: Credential URLs refused, terminal key proxied, watch exits for agents (2026-10-05)
 
