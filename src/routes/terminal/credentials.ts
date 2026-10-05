@@ -72,7 +72,15 @@ export function buildRuntimeAuth(args: {
   // GITHUB_TOKEN/GH_TOKEN, no payment/deploy/db/media key, excluded by construction. When the
   // source was OPENAI_API_KEY, the same value is also injected as CODEX_API_KEY so codex exec's
   // documented single-invocation auth channel is populated either way (see the comment above).
-  const mode = args.runtimeAuth ?? DEFAULT_RUNTIME_AUTH;
+  const mode: unknown = args.runtimeAuth ?? DEFAULT_RUNTIME_AUTH;
+  // Only the exact openai-env value places the raw key in the command, so a misspelled mode from a
+  // config that skipped the planner is refused, never read as openai-env.
+  if (mode !== "openai-egress" && mode !== "openai-env")
+    return {
+      ok: false,
+      code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
+      message: "Runtime auth must be openai-egress or openai-env; no key was placed.",
+    };
   const envs: Record<string, string> =
     mode === "openai-egress"
       ? // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA

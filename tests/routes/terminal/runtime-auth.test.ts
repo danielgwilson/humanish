@@ -1,9 +1,11 @@
 import type { Sandbox } from "@e2b/desktop";
 import { describe, expect, it } from "vitest";
+import { buildRuntimeAuth } from "../../../src/routes/terminal/credentials.js";
 import {
   buildOpenAiEgressNetwork,
   OPENAI_EGRESS_PLACEHOLDER,
 } from "../../../src/routes/terminal/runtime-auth.js";
+import type { StudyRuntimeAuth } from "../../../src/study/types.js";
 
 // The network request contract is checked against the installed Desktop SDK's real create
 // overload, not a hand-authored provider response fixture. No sandbox or provider call occurs.
@@ -52,4 +54,24 @@ describe("OpenAI egress runtime auth request", () => {
       );
     },
   );
+});
+
+describe("runtime auth mode", () => {
+  const env = { OPENAI_API_KEY: "synthetic-runtime-value" };
+
+  it("uses openai-egress when the study declares none", () => {
+    const resolved = buildRuntimeAuth({ runtimeAuth: undefined, env });
+    expect(resolved.ok && resolved.mode).toBe("openai-egress");
+    expect(resolved.ok && resolved.envs.CODEX_API_KEY).toBe(OPENAI_EGRESS_PLACEHOLDER);
+    expect(JSON.stringify(resolved.ok && resolved.envs)).not.toContain("synthetic-runtime-value");
+  });
+
+  it("refuses a mode it does not know instead of placing the key", () => {
+    const resolved = buildRuntimeAuth({
+      runtimeAuth: "openai-egres" as unknown as StudyRuntimeAuth,
+      env,
+    });
+    expect(resolved).toMatchObject({ ok: false, code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED" });
+    expect(JSON.stringify(resolved)).not.toContain("synthetic-runtime-value");
+  });
 });
