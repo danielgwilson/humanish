@@ -41,8 +41,14 @@ function holdsUserInfo(text: string): boolean {
   });
 }
 
-/** A credential verify flags, or a URL with user info, in text as written or in any decoding. */
-const holdsCredential = (text: string): boolean => containsCredential(text) || holdsUserInfo(text);
+/**
+ * A credential verify flags, or a URL with user info, in text as written or in any decoding, and
+ * with tabs and line breaks dropped, as the URL parser drops them from a URL.
+ */
+function holdsCredential(text: string): boolean {
+  const joined = text.replace(/[\t\n\r]/g, "");
+  return containsCredential(text) || containsCredential(joined) || holdsUserInfo(joined);
+}
 
 /**
  * Why the URL declared at `field` cannot be used: it has userinfo, or its path, query or fragment
