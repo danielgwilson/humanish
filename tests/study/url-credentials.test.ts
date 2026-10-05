@@ -212,6 +212,26 @@ const NESTED_CREDENTIALS: readonly (readonly [string, string, string])[] = [
     TOKEN,
   ],
   [
+    "a stream URL whose password parameter name holds an encoded tab",
+    `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?pass\tword=${STREAM_KEY}`)}`,
+    STREAM_KEY,
+  ],
+  [
+    "a URL with an ampersand in its user name, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an ampersand in its user name, hex-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("hex")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a quote in its password, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://user:pa"ss${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
     "a URL with an apostrophe in its user info",
     `https://app.example.com/?next=${encodeURIComponent(`https://o'hare:${TOKEN}${"@"}${APP_HOST}/`)}`,
     TOKEN,

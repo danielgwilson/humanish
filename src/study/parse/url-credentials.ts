@@ -121,19 +121,27 @@ function decoded(text: string): string {
   }
 }
 
-// A base64 or base64url value long enough to hold a URL, such as an OAuth `state`.
+// A hex, base64 or base64url value long enough to hold a URL, such as an OAuth `state`.
+const HEX_VALUE = /^(?:[0-9a-f]{2}){16}(?:[0-9a-f]{2})*$/i;
 const BASE64_VALUE = /^[A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*={0,2}$/;
 
-/** The text a base64 or base64url value decodes to, when it is text. */
-function base64Text(value: string): string[] {
-  if (!BASE64_VALUE.test(value)) return [];
-  const plain = readPlainText(Buffer.from(value, /[-_]/.test(value) ? "base64url" : "base64"));
-  return plain.ok ? [plain.text] : [];
+/** The text a hex, base64 or base64url value decodes to, when it is text. */
+function encodedText(value: string): string[] {
+  const bytes = [
+    ...(HEX_VALUE.test(value) ? [Buffer.from(value, "hex")] : []),
+    ...(BASE64_VALUE.test(value)
+      ? [Buffer.from(value, /[-_]/.test(value) ? "base64url" : "base64")]
+      : []),
+  ];
+  return bytes.flatMap((decoded) => {
+    const plain = readPlainText(decoded);
+    return plain.ok ? [plain.text] : [];
+  });
 }
 
 /**
  * The absolute URLs in `url`'s decoded parameter names and values, its fragment's and its path
- * segments, each read as decoded once and twice and from base64, so an encoded URL inside an
+ * segments, each read as decoded once and twice and from hex or base64, so an encoded URL inside an
  * encoded value is found. The fragment and the path are also read as written: a URL written there
  * whole keeps its `://`, which splitting would cut. The fragment is cut at each `&`, so a value is
  * not read into the next parameter.
@@ -151,8 +159,10 @@ function nestedUrls(url: URL): { text: string; url: URL }[] {
   ];
   const twice = once.map(decoded);
   const values = [...new Set([...once, ...twice])];
+  // The URL parser drops tabs and line breaks anywhere in a URL, so they are dropped before a URL is
+  // looked for: `pass<tab>word=` is read as the parser reads it.
   const parsed = (pattern: RegExp) => (text: string) =>
-    [...text.matchAll(pattern)].flatMap(([candidate]) => {
+    [...text.replace(/[\t\n\r]/g, "").matchAll(pattern)].flatMap(([candidate]) => {
       try {
         return [{ text: candidate, url: new URL(candidate) }];
       } catch {
@@ -160,12 +170,15 @@ function nestedUrls(url: URL): { text: string; url: URL }[] {
       }
     });
   // A JSON value, such as an OAuth `state`, is read string by string, so a URL in one string does
-  // not run into the next. Other text decoded from base64 may be a query, so its URLs end at `&`.
-  const read = (pattern: RegExp) => (text: string) =>
-    jsonStrings(text)?.flatMap(parsed(NESTED_URL)) ?? parsed(pattern)(text);
+  // not run into the next. Other text decoded from hex or base64 is one URL when it starts with a
+  // scheme, and may be a query otherwise, so its URLs end at `&`.
+  const read = (pattern: (text: string) => RegExp) => (text: string) =>
+    jsonStrings(text)?.flatMap(parsed(NESTED_URL)) ?? parsed(pattern(text))(text);
+  const oneUrl = (text: string): RegExp =>
+    /^\s*[a-z][a-z0-9+.-]{0,31}:\/\//i.test(text) ? NESTED_URL : URL_IN_TEXT;
   return [
-    ...values.flatMap(read(NESTED_URL)),
-    ...values.flatMap(base64Text).flatMap(read(URL_IN_TEXT)),
+    ...values.flatMap(read(() => NESTED_URL)),
+    ...values.flatMap(encodedText).flatMap(read(oneUrl)),
   ];
 }
 
