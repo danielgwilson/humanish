@@ -10,6 +10,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- `humanish doctor` run inside a terminal study's sandbox reported the `CODEX_API_KEY` placeholder
+  as `supplied by process env`, so a participant read it as a key it could use. doctor now says
+  the value is the sandbox placeholder and that no usable key is available, and key discovery no
+  longer counts the placeholder as a key.
 - On local browser studies, a `type` action refused because a second tab is open now says so.
   The trace's rejection notice records `reason: extra_tab`, and the participant is told to
   switch to the other tab, close it and type again. Before, the participant got a generic
