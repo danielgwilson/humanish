@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { unattendedObserverWarning } from "../../src/cli/observer-follow.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 
 // In an agent's shell or a pipe nobody sends Ctrl-C, so `watch` and `observe` print the Observer
@@ -115,6 +116,9 @@ describe("watch and observe without an interactive terminal", () => {
       expect(agent.signal, agent.stdout).toBeNull();
       expect(agent.status, agent.stdout).toBe(0);
       expect(agent.stdout).not.toMatch(attached);
+      // The terminal is real, so the warning names the agent marker as the reason.
+      expect(agent.stdout).toMatch(/agent environment was detected \(CODEX_THREAD_ID/);
+      expect(agent.stdout).not.toMatch(/No interactive terminal/);
 
       const person = spawn(PTY_WRAPPER, ["-qec", command, "/dev/null"], {
         env: cleanEnv(),
@@ -148,4 +152,15 @@ describe("watch and observe without an interactive terminal", () => {
     },
     90_000,
   );
+});
+
+describe("the warning when watch or observe does not serve", () => {
+  it("names the agent marker when one is set, and the missing terminal otherwise", () => {
+    const agent = unattendedObserverWarning("watch", { CLAUDECODE: "1" });
+    expect(agent).toMatch(/^An agent environment was detected \(CLAUDECODE is set/);
+    expect(agent).toContain("--serve");
+    const pipe = unattendedObserverWarning("observe", {});
+    expect(pipe).toMatch(/^No interactive terminal, so observe /);
+    expect(pipe).toContain("--serve");
+  });
 });

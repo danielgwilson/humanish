@@ -51,9 +51,21 @@ export function followDecision(args: {
   return { follow: attended, unattended: !attended };
 }
 
-/** The warning a command adds when it printed the Observer and exited because nobody was attached. */
-export function unattendedObserverWarning(command: "watch" | "observe"): string {
-  return `No interactive terminal, so ${command} printed the Observer path and exited instead of serving it until Ctrl-C. Open the file, or pass --serve to keep serving.`;
+/**
+ * The warning a command adds when it printed the Observer and exited because nobody was attached.
+ * It names the reason personAtTerminal found: an agent runner's marker, which can sit beside a real
+ * terminal, or no terminal at all.
+ */
+export function unattendedObserverWarning(
+  command: "watch" | "observe",
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const agent = detectAgentSession(env);
+  const reason =
+    agent === undefined
+      ? "No interactive terminal"
+      : `An agent environment was detected (${agent.marker} is set, which ${agent.runner} sets)`;
+  return `${reason}, so ${command} printed the Observer path and exited instead of serving it until Ctrl-C. Pass --serve to keep serving, or open the file.`;
 }
 
 /**
