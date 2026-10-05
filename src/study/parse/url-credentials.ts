@@ -20,6 +20,24 @@ const MAX_NESTED_DEPTH = 4;
 // A URL inside one decoded value. It runs to the next space, as the value is one parameter's.
 const NESTED_URL = /[a-z][a-z0-9+.-]{0,31}:\/\/\S+/gi;
 
+// A URL in text the scan decoded, which may join several values: it runs to the next space or `&`.
+const URL_IN_TEXT = /[a-z][a-z0-9+.-]{0,31}:\/\/[^\s&]+/gi;
+
+/** Whether a URL in the text, parsed, has a user name or password. */
+function holdsUserInfo(text: string): boolean {
+  return [...text.matchAll(URL_IN_TEXT)].some(([candidate]) => {
+    try {
+      const url = new URL(candidate);
+      return url.username !== "" || url.password !== "";
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** A credential verify flags, or a URL with user info, in text as written or in any decoding. */
+const holdsCredential = (text: string): boolean => containsCredential(text) || holdsUserInfo(text);
+
 /**
  * Why the URL declared at `field` cannot be used: it has userinfo, or its path, query or fragment
  * holds a credential verify flags, as written or encoded. Undefined for a URL with neither, and for
@@ -53,25 +71,28 @@ export function entryCredentialReason(field: string, entry: string): string | un
 }
 
 /**
- * Whether the URL's path, query or fragment holds a credential: read whole, as the parser normalized
- * it and as written (`..` segments can drop a segment from the normalized path), and one segment,
- * value or fragment piece at a time, so the text around an encoded key cannot shift its decoding.
- * A URL nested in it is read the same way, and may have no user info either.
+ * Whether the URL's path, query or fragment holds a credential: as the parser normalized it and as
+ * written (`..` segments can drop a segment from the normalized path). Each is matched whole as it
+ * stands, then decoded up to each raw `&`, which ends a parameter value, so a decoded value is not
+ * read into the next parameter; then one segment, value or fragment piece at a time, so the text
+ * around an encoded key cannot shift its decoding. A URL nested in it is read the same way.
  */
 function urlPartsHoldCredential(value: string, url: URL, depth = 0): boolean {
   const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
   const normalized = `${url.pathname}${url.search}${url.hash}`;
   const pieces = [
-    written,
-    normalized,
+    ...written.split(/(?=&)/),
+    ...normalized.split(/(?=&)/),
     ...written.split(/[/?#&=;]/),
     ...normalized.split(/[/?#&=;]/),
   ];
   if (
+    holdsCredential(written) ||
+    holdsCredential(normalized) ||
     pieces.some(
       (piece) =>
         piece.length > 0 &&
-        scanEncodedText(piece, { matches: containsCredential, allowOpaqueBase64: true }).sensitive,
+        scanEncodedText(piece, { matches: holdsCredential, allowOpaqueBase64: true }).sensitive,
     )
   )
     return true;

@@ -192,6 +192,16 @@ const NESTED_CREDENTIALS: readonly (readonly [string, string, string])[] = [
     TOKEN,
   ],
   [
+    "a URL with a user name alone, hex-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://${TOKEN}${"@"}${APP_HOST}/`).toString("hex")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone, base64-encoded twice in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://${TOKEN}${"@"}${APP_HOST}/`).toString("base64")).toString("base64")}`,
+    TOKEN,
+  ],
+  [
     "a URL with an apostrophe in its user info",
     `https://app.example.com/?next=${encodeURIComponent(`https://o'hare:${TOKEN}${"@"}${APP_HOST}/`)}`,
     TOKEN,
@@ -236,6 +246,18 @@ describe("study URLs that name an E2B sandbox", () => {
     [
       "an E2B URL, then a parameter that holds an address",
       `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
+      "an E2B URL, then a time and an address",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&time=${encodeURIComponent("12:34")}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
+      "an E2B URL with a port, then an address as written",
+      `https://app.example.com/?origin=${encodeURIComponent(`https://${APP_HOST}:3000`)}&email=${["reader", "example.com"].join("@")}`,
+    ],
+    [
+      "an E2B URL, then a mailto link",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&contact=${encodeURIComponent(`mailto:${["reader", "example.com"].join("@")}`)}`,
     ],
     [
       "the E2B docs page, then another parameter",
