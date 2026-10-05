@@ -169,6 +169,7 @@ mission, and read every unresolved and invented line before tagging.
 | Date       | humanish                     | Mission   | Brain                 | Runs per arm | Report recall | Analysis recall | Invented, clean arm | Estimated spend | Summary                                                                 |
 | ---------- | ---------------------------- | --------- | --------------------- | ------------ | ------------- | --------------- | ------------------- | --------------- | ----------------------------------------------------------------------- |
 | 2026-10-04 | 0.110.0, src/ as of 8be10e9b | `neutral` | `openai-computer-use` | 2            | 8/10          | 8/10            | 0 and 0             | $3.49           | [summary](2026-10-04-0.110.0-neutral-openai-computer-use.md) |
+| 2026-10-05 | 0.111.0, src/ as of 0c4a6d70 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $5.10           | [summary](2026-10-05-0.111.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -176,6 +177,13 @@ that button does nothing, the benchmark's one false assurance, and its analysis 
 All four participants and all four analyses reported that a page reload empties the list, which
 both builds do; none of the 28 walked-mission reports in the test fixtures mentions it. Three of four reports mentioned a terminal,
 from the persona's `clear_terminal_output` trait.
+
+The 0.111.0 run's misses: two of three planted participants never typed more than 30 characters,
+so they never met D2, and the third did not report it. The rubric matched no analysis line for D5,
+but two planted analyses name the Save defect in lines left unresolved for a person ("The plumber
+edit was not retained after repeated Save attempts", "Save left editing open; Enter finished the
+edit"), and one names D1 the same way; the analysis recall counts none of them. One planted
+report says Enter did not save an edit either, which the rubric counts as invented (B1).
 
 ## What these numbers are not
 
