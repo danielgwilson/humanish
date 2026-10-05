@@ -35,6 +35,7 @@ import path from "node:path";
 
 import { loadEnvFile } from "./env-file.js";
 import { cli } from "../cli/invocation.js";
+import { OPENAI_EGRESS_PLACEHOLDER } from "../routes/terminal/runtime-auth.js";
 
 /** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
@@ -294,6 +295,9 @@ export interface KeySourceProbe {
   source: string | null;
   /** The command/path that would fill it when missing. */
   hint: string;
+  /** Set when the env holds the inert value a terminal study's sandbox gets in place of a key, and
+   *  no other source supplies one. `source` is then null. */
+  placeholder?: true;
 }
 
 /** The nearest fill instruction for a missing key. Doctor rows use it, and it is appended to
@@ -339,7 +343,13 @@ export async function probeKeySources(
     dotenv?: DotenvLoad;
   },
 ): Promise<KeySourceProbe[]> {
+  // A terminal study's sandbox sets CODEX_API_KEY to an inert placeholder so Codex starts; the key
+  // itself stays in the host-side egress proxy. The placeholder is no key, so it counts as unset and
+  // discovery may still find a real one.
+  const placeholder = (name: string): boolean =>
+    args.env[name]?.trim() === OPENAI_EGRESS_PLACEHOLDER;
   const scratch: NodeJS.ProcessEnv = { ...args.env };
+  for (const name of names) if (placeholder(name)) delete scratch[name];
   const fills = await discoverProviderKeys({
     cwd: args.cwd,
     env: scratch,
@@ -348,7 +358,8 @@ export async function probeKeySources(
   });
   const bySource = new Map(fills.map((fill) => [fill.name, fill.source]));
   return names.map((name) => {
-    const inEnv = args.env[name] !== undefined && args.env[name]?.trim() !== "";
+    const inEnv =
+      args.env[name] !== undefined && args.env[name]?.trim() !== "" && !placeholder(name);
     // GH_TOKEN and GITHUB_TOKEN are one credential with two spellings; a doctor row that says
     // "missing" while GITHUB_TOKEN sits in the env would be wrong.
     const aliasInEnv =
@@ -362,7 +373,12 @@ export async function probeKeySources(
       : aliasInEnv
         ? "process env (GITHUB_TOKEN)"
         : (bySource.get(name) ?? null);
-    return { name, source, hint: missingKeyHint(name) };
+    return {
+      name,
+      source,
+      hint: missingKeyHint(name),
+      ...(source === null && placeholder(name) ? { placeholder: true as const } : {}),
+    };
   });
 }
 

@@ -104,8 +104,9 @@ execution:
 Codex command receives the nonsecret value `humanish-egress-auth-placeholder`
 under `CODEX_API_KEY`, plus `CODEX_CA_CERTIFICATE` pointing at E2B's existing
 system CA bundle (`/etc/ssl/certs/ca-certificates.crt`) so TLS verification trusts
-the platform's proxy CA. humanish does not disable TLS verification or download
-an unauthenticated CA. The sandbox receives no raw runtime key in command env, sandbox env,
+the platform's proxy CA. `humanish doctor` run inside the sandbox reports that
+`CODEX_API_KEY` holds this placeholder and that no usable key is available.
+humanish does not disable TLS verification or download an unauthenticated CA. The sandbox receives no raw runtime key in command env, sandbox env,
 files, metadata, or captured evidence. The host still scrubs the actual key from
 output and errors, including errors during sandbox creation.
 

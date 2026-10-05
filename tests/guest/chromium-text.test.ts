@@ -72,16 +72,32 @@ describe("owned Chromium text port", () => {
     },
   );
 
-  it("refuses a context with another page without choosing or activating one", async () => {
+  it("refuses a context with another page without choosing or activating one, naming the extra tab", async () => {
     const f = fixture();
     f.pages.push({} as Page);
     await expect(f.port.assertReady(f.abort.signal)).rejects.toMatchObject({
       code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
     });
     await expect(f.port.prepareText("x", f.abort.signal)).rejects.toMatchObject({
       code: "action_rejected",
+      reason: "extra_tab",
     });
     expect(f.newCDPSession).not.toHaveBeenCalled();
+  });
+
+  it("names the extra tab when it opens during preparation", async () => {
+    const f = fixture();
+    f.assertFocusedWindow.mockImplementationOnce(async () => {
+      f.pages.push({} as Page);
+    });
+    await expect(f.port.prepareText("x", f.abort.signal)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
+    });
+    expect(inserts(f)).toHaveLength(0);
   });
 
   it("rejects a mismatched owner context", async () => {
@@ -459,10 +475,9 @@ describe("owned Chromium text port", () => {
   it("refuses a context whose only page is another page", async () => {
     const f = fixture();
     f.pages.splice(0, 1, {} as Page);
-    await expect(f.port.assertReady(f.abort.signal)).rejects.toMatchObject({
-      code: "action_rejected",
-      disposition: "not_dispatched",
-    });
+    const error = await f.port.assertReady(f.abort.signal).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    expect(error).toHaveProperty("reason", undefined);
     expect(f.assertFocusedWindow).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,10 @@
 import { classifyCuaAction } from "../../affordance.js";
 import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
-import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
+import {
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
+  type CuaRejectionReason,
+} from "../executor-error.js";
 import {
   CuaAbortError,
   CuaDeadlineError,
@@ -11,7 +15,7 @@ import {
 } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
-import type { CuaAction, CuaTurnRequest } from "./types.js";
+import type { CuaAction, CuaTurnRequest, ShortenedWait } from "./types.js";
 
 // The participant's actions: their public labels, what counts as a material action, and how one
 // turn's batch is dispatched to the desktop.
@@ -128,12 +132,38 @@ function isMaterialAttempt(action: CuaAction, status: ExecutionStatus | undefine
 export interface ActionBatch {
   /** Host input acknowledgements for the provider's next request. */
   readonly execution: NonNullable<CuaTurnRequest["previousExecution"]>;
-  /** Guidance for the next request, set when a pre-dispatch rejection stopped the batch. */
+  /**
+   * Guidance for the next request, set when the provider shortened a wait or a pre-dispatch
+   * rejection stopped the batch.
+   */
   readonly hint: string | undefined;
 }
 
-function rejectedActionHint(title: string): string {
-  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
+/** What the participant can do about a rejection whose reason the executor named. */
+const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.freeze({
+  extra_tab:
+    "It was rejected because more than one browser tab is open: typing works only while the study's original tab is the only tab. Switch to the other tab and close it, keep the study's original tab open, then type again.",
+});
+
+function rejectedActionHint(title: string, reason: CuaRejectionReason | undefined): string {
+  const remedy = reason === undefined ? "" : ` ${REJECTION_REMEDIES[reason]}`;
+  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
+}
+
+function shortenedWaitHint(wait: ShortenedWait): string {
+  return `Your wait of ${wait.requestedMs}ms was shortened to ${wait.ms}ms, the longest one wait action lasts. To keep waiting, send another wait.`;
+}
+
+/** Record a wait the provider shortened, and return the participant's note about it. */
+function recordShortenedWait(session: LoopSession, title: string, wait: ShortenedWait): string {
+  session.trace.record("notice", () =>
+    notice(
+      "warn",
+      "wait shortened",
+      `action: ${title}; requested: ${wait.requestedMs}ms; waited: ${wait.ms}ms, the longest one wait action lasts; the session continued`,
+    ),
+  );
+  return shortenedWaitHint(wait);
 }
 
 /**
@@ -144,12 +174,17 @@ function rejectedActionHint(title: string): string {
 export async function runActionBatch(
   session: LoopSession,
   actions: readonly CuaAction[],
+  shortenedWaits: readonly ShortenedWait[] = [],
 ): Promise<ActionBatch> {
   const execution: ActionBatch["execution"] = { actions: [] };
   const { actionHistory, trace } = session;
+  const notes: string[] = [];
+  const hint = (): string | undefined => (notes.length === 0 ? undefined : notes.join(" "));
   for (const [index, action] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
     const title = describeCuaAction(action);
+    const shortened = shortenedWaits.find((wait) => wait.index === index);
+    if (shortened !== undefined) notes.push(recordShortenedWait(session, title, shortened));
     actionHistory.lastActionTitle = title;
     actionHistory.recentActionTitles.push(title);
     if (actionHistory.recentActionTitles.length > RECENT_ACTION_TITLES)
@@ -181,16 +216,18 @@ export async function runActionBatch(
         for (let later = index + 1; later < actions.length; later++) {
           execution.actions.push({ index: later, status: "not_dispatched" });
         }
+        const { reason } = error;
         trace.record("notice", () =>
           notice(
             "warn",
             "action rejected before dispatch",
             session.redactNarration(
-              `action: ${title}; code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: ${actions.length - index - 1}`,
+              `action: ${title}; code: action_rejected; disposition: not_dispatched;${reason === undefined ? "" : ` reason: ${reason};`} remaining batch actions not dispatched: ${actions.length - index - 1}`,
             ),
           ),
         );
-        return { execution, hint: rejectedActionHint(title) };
+        notes.push(rejectedActionHint(title, reason));
+        return { execution, hint: hint() };
       }
       if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;
       // A skipped action changes nothing on screen, so a persistently-failing run makes no
@@ -212,7 +249,7 @@ export async function runActionBatch(
         : {}),
     }));
   }
-  return { execution, hint: undefined };
+  return { execution, hint: hint() };
 }
 
 function countAttempt(

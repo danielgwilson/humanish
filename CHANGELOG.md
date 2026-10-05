@@ -10,6 +10,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- `humanish doctor` run inside a terminal study's sandbox reported the `CODEX_API_KEY` placeholder
+  as `supplied by process env`, so a participant read it as a key it could use. doctor now says
+  the value is the sandbox placeholder and that no usable key is available, and key discovery no
+  longer counts the placeholder as a key.
+- A Codex participant that asks for a wait longer than 30 seconds now waits 30 seconds and keeps
+  its session; before, the whole session ended with `protocol_error`. The trace records each
+  shortened wait as a `wait shortened` notice with the requested and applied durations, the
+  participant is told on its next request, and the `humanish_ui` tool description states the cap.
+- On local browser studies, a `type` action refused because a second tab is open now says so.
+  The trace's rejection notice records `reason: extra_tab`, and the participant is told to
+  switch to the other tab, close it and type again. Before, the participant got a generic
+  rejection and kept retrying until its time ran out. The local browser docs state the one-tab
+  rule.
 - A terminal session that printed more than 512 KiB was recorded `blocked` when its verdict
   marker came after the cap, and its trace and token usage stopped at the cap. Output past the cap
   is still not stored, but the verdict marker, token usage and the trace's agent messages are read
