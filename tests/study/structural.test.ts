@@ -5,8 +5,9 @@ import path from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
-import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { actorOf, scenarioRefOf, surfaceCount } from "../../src/study/study-fields.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { resolveStudyManifest } from "../../src/study/discover.js";
@@ -61,10 +62,11 @@ describe("lab refactor structural necessity (rung 1)", () => {
 // engine would pass an expressiveness test that never executes).
 describe("lab config expressiveness (rung 3)", () => {
   it("a clone+e2b composition with a free-form actor label is refused at parse", () => {
-    const result = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const result = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "migration-rehearsal",
       title: "bespoke-sim to humanish migration",
+      route: "computer-use",
       subject: {
         source: "clone",
         repos: ["example-org/private-app"],
@@ -72,12 +74,10 @@ describe("lab config expressiveness (rung 3)", () => {
       },
       // No route runs a free-form actor label on a clone study; parsing it would defer the failure
       // to run start, so the parser refuses it and names the actors that can run a clone study.
-      actors: [
-        {
-          type: "codex-migrator",
-          mission: "Remove the bespoke UI sim package and adopt humanish.",
-        },
-      ],
+      actor: {
+        type: "codex-migrator",
+        mission: "Remove the bespoke UI sim package and adopt humanish.",
+      },
       execution: { target: "e2b-desktop" },
       policies: { redactRepos: true },
     });
@@ -92,9 +92,9 @@ describe("lab config expressiveness (rung 3)", () => {
     if (!resolved.ok) return;
     // Every field in the committed example is consumed on this route: zero warnings.
     expect(resolved.warnings).toEqual([]);
-    expect(resolved.config.actors[0]?.type).toBe("scripted-browser");
-    expect(resolved.config.actors[0]?.count).toBe(2);
-    expect(resolved.config.scenario?.ref).toBe("scripted-first-run");
+    expect(actorOf(resolved.config)?.type).toBe("scripted-browser");
+    expect(surfaceCount(resolved.config)).toBe(2);
+    expect(scenarioRefOf(resolved.config)).toBe("scripted-first-run");
     expect(routeOf(resolved.config)).toBe("scripted");
 
     // The referenced committed scenario is genuinely executable (4 browser steps).

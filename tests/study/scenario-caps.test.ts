@@ -7,6 +7,7 @@ import { parse } from "yaml";
 
 import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
+import { actorOf, capsOf } from "../../src/study/study-fields.js";
 import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -65,7 +66,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
     const result = parseStudy(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.config.scenario?.caps?.maxUsd).toBe(1.5);
+    expect(capsOf(result.config, "terminal")?.maxUsd).toBe(1.5);
   });
 
   it.each(["maxUsd", "maxTotalUsd"])(
@@ -109,9 +110,8 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
       const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
       if (!result.ok) return;
-      expect(result.config.execution?.caps?.maxUsd).toBe(3);
-      expect(result.config.scenario?.caps).toBeUndefined();
-      expect(result.config.actors[0]?.maxOutputTokens).toBe(8192);
+      expect(capsOf(result.config, "computer-use")?.maxUsd).toBe(3);
+      expect(actorOf(result.config)?.maxOutputTokens).toBe(8192);
     },
   );
 

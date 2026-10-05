@@ -23,6 +23,7 @@ import {
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { parseResolvedPersona, personaToDirectives } from "../../src/study/persona.js";
 import { STUDY_SCHEMA, type StudyActor, type StudyConfig } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 
 const DEVICE = { name: "desktop", preset: DEVICE_PRESETS.desktop } as const;
 
@@ -88,24 +89,30 @@ describe("composeParticipantInstructions applies committed personas", () => {
 
 describe("committed persona resolution", () => {
   it("resolves ids the study config actually declares, per participant and per actor", () => {
-    const study = (actor: Omit<StudyActor, "type">): StudyConfig => ({
-      schema: STUDY_SCHEMA,
-      id: "persona-ids",
-      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", ...actor }],
-    });
+    const study = (
+      actor: Omit<StudyActor, "type">,
+      participants?: Record<string, unknown>[],
+    ): StudyConfig =>
+      libraryConfig({
+        schema: STUDY_SCHEMA,
+        id: "persona-ids",
+        route: "computer-use",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        actor: { type: "openai-computer-use", ...actor },
+        ...(participants === undefined ? {} : { participants }),
+      });
     expect(studyPersonaIds(study({ persona: "synthetic-new-user" }))).toEqual([
       "synthetic-new-user",
     ]);
     expect(
       studyPersonaIds(
-        study({
-          persona: "synthetic-new-user",
-          lanes: [{ persona: "skeptical-power-user" }, { persona: "synthetic-new-user" }],
-        }),
+        study({ persona: "synthetic-new-user" }, [
+          { persona: "skeptical-power-user" },
+          { persona: "synthetic-new-user" },
+        ]),
       ),
     ).toEqual(["synthetic-new-user", "skeptical-power-user"]);
-    expect(studyPersonaIds(study({ lanes: [{}] }))).toEqual([]);
+    expect(studyPersonaIds(study({}, [{}]))).toEqual([]);
   });
 
   it("reads committed persona files from the project root", async () => {

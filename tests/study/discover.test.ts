@@ -9,6 +9,7 @@ import {
   listStudyManifests,
   resolveStudyManifest,
 } from "../../src/study/discover.js";
+import { declaredParticipantCount } from "../../src/study/study-fields.js";
 
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
@@ -62,7 +63,7 @@ describe("lab manifest resolution", () => {
     const list = await listStudyManifests(cwd);
 
     expect(committed.ok && committed.origin).toBe("committed");
-    expect(committed.ok && committed.config.actors[0]?.count).toBe(3);
+    expect(committed.ok && declaredParticipantCount(committed.config)).toBe(3);
     expect(ignored.ok && ignored.origin).toBe("ignored");
     expect(ignored.ok && ignored.config.subject.repos).toEqual(["example/app"]);
     expect(explicit.ok && explicit.origin).toBe("explicit");

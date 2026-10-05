@@ -8,7 +8,8 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { runStudyWith } from "../../src/run-study.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -16,19 +17,20 @@ afterAll(async () => {
 });
 
 function preview(extra: Record<string, unknown>): StudyConfig {
-  return {
-    schema: V2_SCHEMA,
+  return libraryConfig({
+    schema: STUDY_SCHEMA,
     id: "preview-admission",
+    route: "preview",
     subject: { source: "this-repo" },
-    actors: [{ type: "synthetic-persona" }],
+    actor: { type: "synthetic-persona" },
     ...extra,
-  } as unknown as StudyConfig;
+  });
 }
 
 const receiving = { comms: { email: { kind: "real", connection: "team-inbox" } } };
 const badAnalysis = { review: { analysis: "yes" } };
 const analysis = { review: { analysis: { maxCostUsd: 1 } } };
-const tasks = { actors: [{ type: "synthetic-persona", tasks: [{ id: "t", goal: "g" }] }] };
+const tasks = { actor: { type: "synthetic-persona", tasks: [{ id: "t", goal: "g" }] } };
 
 describe("preview admission", () => {
   it.each([
