@@ -5,6 +5,7 @@ import {
   isCuaExecutorErrorCode,
   type CuaExecutorErrorCode,
   type CuaExecutorDisposition,
+  type CuaRejectionReason,
 } from "../../../src/actors/computer-use/executor-error.js";
 import {
   runComputerUseLoop,
@@ -74,6 +75,30 @@ describe("bounded executor error declarations", () => {
     expect(() => Object.assign(error, { code: "raw backend text" })).toThrow();
     expect(() => Object.assign(error, { disposition: "completed" })).toThrow();
     expect(() => Object.defineProperty(error, "code", { get: () => "raw backend text" })).toThrow();
+  });
+
+  it("admits a fixed rejection reason only on a refusal before dispatch", () => {
+    const error = new ComputerUseExecutorError("action_rejected", "not_dispatched", "extra_tab");
+    expect(error).toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
+    });
+    expect(() => Object.assign(error, { reason: "raw backend text" })).toThrow();
+    expect(
+      () =>
+        new ComputerUseExecutorError(
+          "action_rejected",
+          "not_dispatched",
+          "raw backend text" as CuaRejectionReason,
+        ),
+    ).toThrow("Invalid desktop executor error declaration.");
+    expect(
+      () => new ComputerUseExecutorError("action_rejected", "outcome_uncertain", "extra_tab"),
+    ).toThrow("Invalid desktop executor error declaration.");
+    expect(
+      () => new ComputerUseExecutorError("transport_failed", "not_dispatched", "extra_tab"),
+    ).toThrow("Invalid desktop executor error declaration.");
   });
 
   it("rejects lookalikes and a forged prototype", () => {
