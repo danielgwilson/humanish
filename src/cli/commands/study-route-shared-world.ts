@@ -15,6 +15,7 @@ import {
   writeResult,
 } from "../io.js";
 import {
+  followDecision,
   followObserver,
   showObserver,
   staticObserverOpen,
@@ -50,7 +51,9 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
     wantsMachine,
   });
   const wantsFollow =
-    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+    args.mode === "watch" &&
+    dryRun !== true &&
+    followDecision({ wantsMachine, detach: args.options.detach, serve: args.options.serve }).follow;
   const port = parseObserverPort(args.options.port ?? "0");
   const failConcurrent = (message: string, runId?: string): void => {
     const result: ConcurrentSharedWorldStudyResult = {

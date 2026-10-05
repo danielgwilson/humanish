@@ -56,6 +56,7 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
           io: args.io,
           port: args.options.port ?? "0",
           ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+          ...(args.options.serve === undefined ? {} : { serve: args.options.serve }),
           ...(openOverride === undefined ? {} : { open: openOverride }),
         })
       : undefined;

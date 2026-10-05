@@ -18,7 +18,13 @@ import {
   wantsJson,
   writeResult,
 } from "../io.js";
-import { followObserver, formatObserverHuman, watchExposeRequested } from "../observer-follow.js";
+import {
+  followDecision,
+  followObserver,
+  formatObserverHuman,
+  unattendedObserverWarning,
+  watchExposeRequested,
+} from "../observer-follow.js";
 
 export function registerWatchCommand(parent: Command, io: CliIo): void {
   // A run's flags come from addRunOptions, the helper `run` uses, so the two cannot drift.
@@ -63,6 +69,12 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       "--public-url <origin>",
       "Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose.",
     )
+    .addOption(
+      new Option(
+        "--serve",
+        "Serve the Observer and stay attached until Ctrl-C even without an interactive terminal; by default an agent's shell or a pipe gets the result and an exit.",
+      ).conflicts(["detach", "json"]),
+    )
     // Hidden: watch rejects --safe with a pointer to the library filter and to edge auth, which
     // a bare "unknown option" would lose.
     .addOption(new Option("--safe").hideHelp())
@@ -79,7 +91,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         "Watch a live computer-use run from your phone through an authenticated tunnel:",
         "  humanish watch my-browser-study --expose --tunnel ngrok --oauth google --allow-email you@example.com",
         "",
-        "Agent/CI path:",
+        "Agent/CI path (without an interactive terminal, watch prints the result and exits):",
         "  humanish watch --json --no-open",
         "",
         "Saved runs:",
@@ -181,7 +193,12 @@ async function handleWatch(
       : options.open === true
         ? true
         : !wantsMachine && process.stdout.isTTY === true;
-  const wantsFollow = !wantsMachine && options.detach !== true;
+  const decision = followDecision({
+    wantsMachine,
+    detach: options.detach,
+    serve: options.serve,
+  });
+  const wantsFollow = decision.follow;
   const staticOpen = wantsFollow ? false : shouldOpen;
 
   const rendered = await renderWatchEvidence(
@@ -196,6 +213,7 @@ async function handleWatch(
     follow: wantsFollow,
     open: shouldOpen,
     port: target.port,
+    unattended: decision.unattended,
   });
 }
 
@@ -274,10 +292,12 @@ async function reportWatch(
   io: CliIo,
   command: Command,
   rendered: ObserverResult,
-  serve: { follow: boolean; open: boolean; port: number },
+  serve: { follow: boolean; open: boolean; port: number; unattended: boolean },
 ): Promise<void> {
   let server: ObserverServer | null = null;
   let result = rendered;
+  if (rendered.ok && serve.unattended)
+    result = { ...rendered, warnings: [...rendered.warnings, unattendedObserverWarning("watch")] };
   if (rendered.ok && serve.follow) {
     server = await serveObserver(rendered, { open: serve.open, port: serve.port });
     result = {

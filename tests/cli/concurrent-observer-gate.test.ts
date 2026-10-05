@@ -106,7 +106,8 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
       io: args.io,
       config,
       mode: "watch",
-      options: { cwd, port: String(args.port) },
+      // The live Observer serves only for a person at a terminal, or with --serve.
+      options: { cwd, port: String(args.port), serve: true },
     });
     if (run === undefined) throw new Error("expected the watch setup to proceed");
     await runRoute(config, run);

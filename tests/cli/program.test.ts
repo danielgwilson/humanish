@@ -1537,12 +1537,14 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   it("refuses a live watch --expose --tunnel ngrok with no edge auth (edge auth is required)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       // No --json: --json would trip the live-follow refusal first; here we isolate the edge-auth gate.
+      // --serve stands in for a person at a terminal, which the test runner is not.
       const result = await runCli([
         "watch",
         "cua-live",
         "--cwd",
         cwd,
         "--no-open",
+        "--serve",
         "--expose",
         "--tunnel",
         "ngrok",
@@ -1563,6 +1565,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "--cwd",
         cwd,
         "--no-open",
+        "--serve",
         "--expose",
         "--safe",
       ]);
@@ -1593,9 +1596,9 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     });
   });
 
-  it("refuses watch --expose --dry-run and --detach (no live desktop / no attached follow)", async () => {
+  it("refuses watch --expose with --dry-run, --detach, or no terminal and no --serve", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
-      for (const extra of [["--dry-run"], ["--detach"]]) {
+      for (const extra of [["--dry-run"], ["--detach"], []]) {
         const result = await runCli([
           "watch",
           "cua-live",

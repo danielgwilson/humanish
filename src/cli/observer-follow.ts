@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { serveObserver } from "../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../observer/render.js";
 import type { ExposureRequest } from "../observer/exposure.js";
+import { detectAgentSession } from "../actors/agent-session.js";
 import type { RunResult } from "../run/results.js";
 import {
   type CliIo,
@@ -20,6 +21,39 @@ export interface ObserverPlan {
   /** Open the page: the served URL when following, the static file otherwise. */
   shouldOpen: boolean;
   wantsFollow: boolean;
+  /** Set when the command would have followed, but nobody is at a terminal to stop it. */
+  unattended?: boolean;
+}
+
+/**
+ * Whether a person can stop a served Observer: stdin and stdout are terminals, and no agent runner
+ * claims the session. An agent's shell or a pipe has nobody to press Ctrl-C, so a server there
+ * waits forever. A TTY alone is not enough, since Codex gives the commands it runs a terminal.
+ */
+export function personAtTerminal(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (
+    process.stdin.isTTY === true &&
+    process.stdout.isTTY === true &&
+    detectAgentSession(env) === undefined
+  );
+}
+
+/** Whether `watch` or `observe` serves the Observer and stays attached. */
+export function followDecision(args: {
+  wantsMachine: boolean;
+  detach?: boolean | undefined;
+  serve?: boolean | undefined;
+}): { follow: boolean; unattended: boolean } {
+  if (args.detach === true) return { follow: false, unattended: false };
+  if (args.serve === true) return { follow: true, unattended: false };
+  if (args.wantsMachine) return { follow: false, unattended: false };
+  const attended = personAtTerminal();
+  return { follow: attended, unattended: !attended };
+}
+
+/** The warning a command adds when it printed the Observer and exited because nobody was attached. */
+export function unattendedObserverWarning(command: "watch" | "observe"): string {
+  return `No interactive terminal, so ${command} printed the Observer path and exited instead of serving it until Ctrl-C. Open the file, or pass --serve to keep serving.`;
 }
 
 /**
@@ -33,6 +67,7 @@ export function planObserver(args: {
   io: CliIo;
   open?: boolean | undefined;
   port: string;
+  serve?: boolean | undefined;
 }): ObserverPlan | null {
   const port = parseObserverPort(args.port);
   if (port === null) {
@@ -57,7 +92,13 @@ export function planObserver(args: {
       : args.open === true
         ? true
         : !wantsMachine && process.stdout.isTTY === true;
-  return { port, shouldOpen, wantsFollow: !wantsMachine && args.detach !== true };
+  const decision = followDecision({ wantsMachine, detach: args.detach, serve: args.serve });
+  return {
+    port,
+    shouldOpen,
+    wantsFollow: decision.follow,
+    ...(decision.unattended ? { unattended: true } : {}),
+  };
 }
 
 /** The `open` a run's static Observer render takes: a followed Observer opens its served URL. */
@@ -78,6 +119,8 @@ export async function showObserver(args: {
   if (rendered.ok && plan.wantsFollow) {
     server = await serveObserver(rendered, { open: plan.shouldOpen, port: plan.port });
     result = withObserverServer(rendered, server);
+  } else if (rendered.ok && plan.unattended === true) {
+    result = { ...rendered, warnings: [...rendered.warnings, unattendedObserverWarning("watch")] };
   }
   writeResult(args.command, args.io, result, formatObserverHuman);
   args.io.setExitCode(result.ok ? 0 : 2);

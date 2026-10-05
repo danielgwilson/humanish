@@ -74,6 +74,8 @@ export interface StudyCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** watch only: serve and follow the Observer even without an interactive terminal. */
+  serve?: boolean | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
   scorer?: string | undefined;
   // watch --expose surface (tunnel-edge auth). Only the computer-use route live-serves a run; other
