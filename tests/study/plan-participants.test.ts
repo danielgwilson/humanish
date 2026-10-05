@@ -22,9 +22,9 @@ import { FALLBACK_PERSONA_ID } from "../../src/routes/computer-use/participant-p
 import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { committedLabs } from "../helpers/committed-labs.js";
+import { runSharedWorld } from "../helpers/route-run.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const cleanup: string[] = [];
@@ -237,7 +237,7 @@ describe("sharedWorldParticipants", () => {
     ];
     for (const [name, config] of configs) {
       const cwd = await tempProject();
-      const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
+      const result = await runSharedWorld({ cwd, config, dryRun: true });
       if (!result.ok) throw new Error(`${name}: ${result.error?.message}`);
       const run = JSON.parse(
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),

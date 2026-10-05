@@ -11,16 +11,13 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseStudyDocument } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
-import type { RunCuaActorStudyOptions } from "../../src/routes/computer-use/types.js";
+import type { ComputerUseRunInput } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
-import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";
+import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const subprocess = vi.hoisted(() => ({ calls: 0 }));
 
@@ -87,7 +84,7 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
           },
         }
       : {}),
-  } as Pick<RunCuaActorStudyOptions, "inProcess" | "createProvider">;
+  } as Pick<ComputerUseRunInput, "inProcess" | "createProvider">;
   return {
     driving,
     // The shared-world, terminal and scripted routes read env and their seams directly.
@@ -129,7 +126,7 @@ async function runEntry(
       );
       result = outcome.result;
     } else if (route === "computer-use") {
-      result = await runCuaActorStudy({
+      result = await runComputerUse({
         cwd,
         config,
         dryRun,
@@ -139,11 +136,11 @@ async function runEntry(
         ...rerun,
       });
     } else if (route === "scripted") {
-      result = await runScriptedBrowserStudy({ cwd, config, dryRun, ...typed });
+      result = await runScripted({ cwd, config, dryRun, ...typed });
     } else if (route === "terminal") {
-      result = await runTerminalProductStudy({ cwd, config, dryRun, ...typed });
+      result = await runTerminal({ cwd, config, dryRun, ...typed });
     } else if (route === "shared-world") {
-      result = await runConcurrentSharedWorld({ cwd, config, dryRun, ...typed });
+      result = await runSharedWorld({ cwd, config, dryRun, ...typed });
     } else {
       // The preview runner (runDryRun) takes no config, so there is nothing to pin.
       return { runner: route };

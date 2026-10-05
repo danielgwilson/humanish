@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { type RunScope } from "../../run/run.js";
+import type { RefusedStudy } from "../../run/route-shell.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
@@ -44,7 +45,6 @@ import {
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
   type ComputerUseRunInput,
-  type RunCuaActorStudyOptions,
   participantSubjectEnv,
 } from "./types.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
@@ -64,7 +64,7 @@ async function bindProject(cwd: string) {
  * in-process fan-out refusals come after the committed personas are read, so a persona-file error still wins.
  */
 export async function refuseCuaStudy(
-  options: RunCuaActorStudyOptions,
+  options: ComputerUseRunInput & RefusedStudy,
   refusal: ComputerUseRefusal,
 ): Promise<CuaActorStudyResult> {
   const { config, dryRun } = options;

@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import { lab } from "../../admission/fixtures.js";
+import { runSharedWorld } from "../../helpers/route-run.js";
 
 // Email receiving is prepared after the run starts and before any sandbox. A failure there is a
 // refusal after the run started, driven here through the real route.
@@ -35,7 +35,7 @@ describe("shared-world email receiving setup failure", () => {
 
   it("names the run it leaves behind and creates no sandbox", async () => {
     let desktops = 0;
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: realEmailSharedWorldConfig(),
       dryRun: false,

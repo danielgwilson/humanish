@@ -9,9 +9,9 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { StudyConfig } from "../../../src/study/types.js";
-import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import { lab } from "../../admission/fixtures.js";
+import { runSharedWorld } from "../../helpers/route-run.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -159,7 +159,7 @@ describe("shared-world admission order", () => {
       dirs.push(cwd);
       const { config, env, deps } = caseOf(names);
       const dryRun = config.scenario?.mode !== "live";
-      const result = await runConcurrentSharedWorld({ cwd, config, dryRun, env, deps });
+      const result = await runSharedWorld({ cwd, config, dryRun, env, deps });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);
       for (const dir of [await realpath(cwd), cwd]) text = text.split(dir).join("[cwd]");

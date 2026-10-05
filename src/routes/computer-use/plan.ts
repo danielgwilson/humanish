@@ -47,7 +47,7 @@ import {
   resolveParticipantSandboxMs,
 } from "./participant-runs.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
-import { type CuaActorStudyErrorCode, type RunCuaActorStudyOptions } from "./types.js";
+import { type ComputerUseRunInput, type CuaActorStudyErrorCode } from "./types.js";
 
 /** The error a computer-use study returns before a run starts. */
 export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorStudyErrorCode> {
@@ -343,7 +343,7 @@ export function planComputerUseStudy(
     /** Which of the caller's driving homes are set; neither when absent. */
     readonly driving?: CallerDriving;
     readonly countOverride?: number;
-    readonly rerun?: RunCuaActorStudyOptions["rerun"];
+    readonly rerun?: ComputerUseRunInput["rerun"];
   },
 ): ComputerUsePlanResult {
   const hasRunSession = input.hasRunSession === true;

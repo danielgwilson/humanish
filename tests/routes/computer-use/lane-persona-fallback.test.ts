@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { V2_SCHEMA } from "../../../src/study/types.js";
 import { parseStudyDocument } from "../../../src/study/config.js";
-import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
+import { participantPlanOf } from "../../helpers/participant-run.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
 // fan-out participant of every study that declared `actors[0].persona` therefore ran with no
@@ -23,7 +23,7 @@ function planFor(actor: Record<string, unknown>) {
     scenario: { mode: "dry-run" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  return resolveCuaParticipantPlan(parsed.config, { dryRun: true });
+  return participantPlanOf(parsed.config, { dryRun: true });
 }
 
 describe("participant persona resolution", () => {

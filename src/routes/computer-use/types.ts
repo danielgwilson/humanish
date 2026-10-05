@@ -39,7 +39,7 @@ import type {
   ComputerUseRunner,
   ResidualConfig,
 } from "../../study/plan-types.js";
-import { type StudyCommsEmail, type StudyConfig } from "../../study/types.js";
+import { type StudyCommsEmail } from "../../study/types.js";
 import { type ObserverResult } from "../../observer/render.js";
 import {
   type BundleRun,
@@ -91,12 +91,6 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // screen the browser can't shrink to does not overflow + clip (see resolveParticipantDevice).
 
 /**
- * What a computer-use run takes besides its plan and config. The count override and rerun go to
- * participant building with the config.
- */
-export type ComputerUseRunInput = Omit<RunCuaActorStudyOptions, "config" | "dryRun">;
-
-/**
  * What runStudyWith's local VM study gives a computer-use run: the desktop each participant runs on, the
  * reason automatic analysis must not run (the study's cleanup is unconfirmed), and the signal its
  * sessions abort on.
@@ -108,13 +102,14 @@ export interface LocalVmInput {
   readonly signal?: AbortSignal;
 }
 
-export interface RunCuaActorStudyOptions {
+/**
+ * What a computer-use run takes besides its plan and config. The count override and rerun go to
+ * participant building with the config.
+ */
+export interface ComputerUseRunInput {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   cwd: string;
-  config: StudyConfig;
-  /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
-  dryRun: boolean;
   open?: boolean;
   runId?: string;
   /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `lanes`

@@ -119,7 +119,7 @@ export async function runStudyCommand(args: {
   // checks (keys, runtime auth, subject env, the local agent, caps) refuse this machine, all before
   // the scorer loads, so none imports the scorer's host code. The scripted route's checks and the
   // run-id claim still come after it; the scripted route takes no scorer.
-  const routeRun = routeRunFor(route, { ...args, config });
+  const routeRun = ROUTE_RUNS[route]({ ...args, config });
   if (routeRun === undefined) return;
   // Every route's runStudyWith options carry the study's provenance, from here only.
   const run = { ...routeRun, options: { ...routeRun.options, study } };
@@ -189,34 +189,26 @@ function announcedKeyNames(
   return planned.ok ? keyNamesOf(planned.planned.plan) : undefined;
 }
 
-/** The route's CLI setup. Undefined when the setup has already written its own result. */
-function routeRunFor(
-  route: StudyRoute,
-  args: {
-    command: Command;
-    io: CliIo;
-    study: string;
-    config: StudyConfig;
-    mode: "run" | "watch";
-    options: StudyCommandOptions;
-  },
-): RouteRun | undefined {
-  switch (route) {
-    case "preview":
-      return previewRouteRun(args);
-    case "computer-use":
-      return computerUseRouteRun(args);
-    case "scripted":
-      return scriptedRouteRun(args);
-    case "terminal":
-      return terminalRouteRun(args);
-    case "shared-world":
-      return sharedWorldRouteRun(args);
-    default:
-      // Compile-time exhaustiveness: a future route must be handled here, not silently no-op.
-      throw new Error(`Unhandled study route: ${String(route satisfies never)}`);
-  }
-}
+/** Each route's CLI setup. It returns undefined when it has already written its own result. */
+const ROUTE_RUNS: Readonly<
+  Record<
+    StudyRoute,
+    (args: {
+      command: Command;
+      io: CliIo;
+      study: string;
+      config: StudyConfig;
+      mode: "run" | "watch";
+      options: StudyCommandOptions;
+    }) => RouteRun | undefined
+  >
+> = {
+  preview: previewRouteRun,
+  "computer-use": computerUseRouteRun,
+  scripted: scriptedRouteRun,
+  terminal: terminalRouteRun,
+  "shared-world": sharedWorldRouteRun,
+};
 
 function studyRerunFlagsRequested(options: StudyCommandOptions): boolean {
   return options.rerunFailedFrom !== undefined || options.participants !== undefined;

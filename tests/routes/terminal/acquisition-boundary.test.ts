@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudyDocument } from "../../../src/study/config.js";
-import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import {
   parseSandboxOwners,
@@ -17,6 +16,7 @@ import {
 } from "../../../src/run/sandbox-receipts.js";
 import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
+import { runTerminal } from "../../helpers/route-run.js";
 
 // The acquisition boundary of the shared sandbox module, exercised through the terminal route:
 // B1 the receipt write fails, B2 the process dies after the receipt lands, B3 the provider
@@ -109,7 +109,7 @@ async function killRouteAfterReceipt(
 ): Promise<NodeJS.Signals | number | null> {
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const script = `
-    const { runTerminalProductStudy } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/route.ts"))});
+    const { runTerminal } = await import(${JSON.stringify(path.join(root, "tests/helpers/route-run.ts"))});
     const { parseStudyDocument } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
     const parsed = parseStudyDocument(JSON.parse(process.env.BOUNDARY_LAB));
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -127,7 +127,7 @@ async function killRouteAfterReceipt(
         async kill() { return true; },
       },
     };
-    await runTerminalProductStudy({
+    await runTerminal({
       cwd: process.env.BOUNDARY_CWD,
       config: parsed.config,
       dryRun: false,
@@ -201,7 +201,7 @@ describe("terminal sandbox acquisition boundary", () => {
       },
     });
 
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: labConfig(),
       dryRun: false,
@@ -226,7 +226,7 @@ describe("terminal sandbox acquisition boundary", () => {
   it("tears down the id captured at create, not whatever the handle says later", async () => {
     const provider = fakeProvider({ rewriteHandleId: true });
 
-    await runTerminalProductStudy({
+    await runTerminal({
       cwd,
       config: labConfig(),
       dryRun: false,
@@ -268,7 +268,7 @@ describe("terminal sandbox acquisition boundary", () => {
   it("an allocation whose id never reaches the run has no receipt, carries its tags and keeps its TTL", async () => {
     const provider = fakeProvider({ rejectAfterAllocate: true });
 
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: labConfig(),
       dryRun: false,

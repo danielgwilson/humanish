@@ -8,10 +8,7 @@ import {
 } from "../../src/study/validation.js";
 import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
-import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
+import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const base: StudyConfig = {
   schema: "humanish.lab.v2",
@@ -139,8 +136,8 @@ describe("declared camera capabilities must reach an implemented route", () => {
       const terminal = structuredClone(base);
       terminal.subject.source = "terminal-product";
       const outcomes = await Promise.all([
-        runCuaActorStudy({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
-        runCuaActorStudy({
+        runComputerUse({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
+        runComputerUse({
           cwd,
           config: base,
           dryRun: false,
@@ -152,21 +149,21 @@ describe("declared camera capabilities must reach an implemented route", () => {
             },
           },
         }),
-        runConcurrentSharedWorld({
+        runSharedWorld({
           cwd,
           config: shared,
           dryRun: false,
           env: {},
           deps: { desktopModule: loadDesktopModule, runSession },
         }),
-        runScriptedBrowserStudy({
+        runScripted({
           cwd,
           config: scripted,
           dryRun: false,
           env: {},
           deps: { desktopModule: loadDesktopModule },
         }),
-        runTerminalProductStudy({
+        runTerminal({
           cwd,
           config: terminal,
           dryRun: false,
@@ -213,7 +210,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
       expect(config.subject.topology).toBeUndefined();
       expect(desktopMediaValidationReason(config)).toBeUndefined();
       expect(concurrentSharedWorldValidationReason(config)).toBeNull();
-      const result = await runConcurrentSharedWorld({
+      const result = await runSharedWorld({
         cwd,
         config,
         dryRun: false,

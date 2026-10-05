@@ -17,7 +17,7 @@ import type { ComputerUsePlan } from "../../../src/study/plan-types.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
-import { runComputerUsePlan } from "../../../src/routes/computer-use/route.js";
+import { admitComputerUsePlan } from "../../../src/routes/computer-use/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { provisionParticipantSubject } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
@@ -28,6 +28,7 @@ import {
 import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
+import { runAdmitted } from "../../helpers/route-run.js";
 
 let cwd: string;
 beforeEach(async () => {
@@ -87,7 +88,9 @@ const optionsOf = (args: unknown[]) =>
   args[args.length - 1] as { metadata?: Record<string, string>; envs?: Record<string, string> };
 
 async function runAndCapture(plan: ComputerUsePlan, config: StudyConfig, deps: StudyDeps) {
-  await runComputerUsePlan(plan, { cwd, env: KEYS, deps }, config).catch(() => undefined);
+  await runAdmitted(admitComputerUsePlan(plan, { cwd, env: KEYS, deps }, config)).catch(
+    () => undefined,
+  );
 }
 
 describe("computer-use run reads the plan's residual fields", () => {
@@ -174,7 +177,7 @@ describe("computer-use run reads the plan's residual fields", () => {
     const planned = planComputerUseStudy(parsed.config, { dryRun: true });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan = { ...planned.plan, caps: { maxUsd: 4 } };
-    const result = await runComputerUsePlan(plan, { cwd }, parsed.config);
+    const result = await runAdmitted(admitComputerUsePlan(plan, { cwd }, parsed.config));
     expect(result.warnings.join("\n")).toContain("caps.maxUsd ($4) caps each participant");
   });
 
@@ -205,7 +208,9 @@ describe("computer-use run reads the plan's residual fields", () => {
     };
     const plan = { ...planOf(config, deps), caps: { maxUsd: 3 } };
     const localVm = { desktop: () => fakeDesktop(), analysisRefusal: () => undefined };
-    const result = await runComputerUsePlan(plan, { cwd, env: KEYS, deps, localVm }, config);
+    const result = await runAdmitted(
+      admitComputerUsePlan(plan, { cwd, env: KEYS, deps, localVm }, config),
+    );
     expect(result.ok).toBe(true);
     expect(sessions[0]?.maxUsd).toBe(3);
   });

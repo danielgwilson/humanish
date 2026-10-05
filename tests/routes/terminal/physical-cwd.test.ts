@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveCommittedPersona } from "../../../src/study/persona-resolve.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
+import { runTerminal } from "../../helpers/route-run.js";
 
 // The dry run takes no hook between resolving the project and starting the run, so the alias is
 // retargeted from inside the persona lookup, the last step before the run starts.
@@ -67,7 +67,7 @@ describe("terminal dry-run project binding", () => {
       return actual.resolveCommittedPersona(...args);
     });
 
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd: cwdAlias,
       config: dryConfig(),
       dryRun: true,

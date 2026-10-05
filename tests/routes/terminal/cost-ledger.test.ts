@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudyDocument } from "../../../src/study/config.js";
-import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
+import { runTerminal } from "../../helpers/route-run.js";
 
 // Slice 3 deterministic proof ($0, no live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof derived from the ledger + full caps enforcement (fail-closed).
@@ -155,7 +155,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
       },
     };
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -209,7 +209,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         desktopModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage }),
       },
     };
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -277,7 +277,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         }),
       },
     };
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -342,7 +342,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         }),
       },
     };
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 1, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -386,7 +386,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
         desktopModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
       },
     };
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -417,7 +417,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
   it("(e) a positive maxUsd without a costProbe is refused before any sandbox or key use", async () => {
     let moduleLoads = 0;
     const killed: string[] = [];
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -444,7 +444,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
   it("(f) a positive maxUsd with a costProbe runs, and the cap is checked against its lines", async () => {
     const killed: string[] = [];
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
@@ -492,7 +492,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
   async function run(size?: { cpuCount: number; memoryMB: number }, killThrows = false) {
     const killed: string[] = [];
     let clock = 1_000_000;
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
