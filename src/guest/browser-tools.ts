@@ -72,10 +72,11 @@ export function createGuestBrowserTools(
             await native.typeAscii(text, signal);
           } catch (error) {
             // Ctrl+L itself is input. No content fallback after that dispatch.
-            throw new ComputerUseExecutorError(
-              isComputerUseExecutorError(error) ? error.code : "execution_failed",
-              "outcome_uncertain",
-            );
+            throw isComputerUseExecutorError(error)
+              ? new ComputerUseExecutorError(error.code, "outcome_uncertain", {
+                  diagnostic: error.diagnostic,
+                })
+              : new ComputerUseExecutorError("execution_failed", "outcome_uncertain");
           }
         },
         async close() {

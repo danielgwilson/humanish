@@ -79,7 +79,10 @@ describe("browser control byte framing", () => {
       pipes.left.write(bytes);
       pipes.left.destroy();
       await tick();
-      expect(closed).toHaveBeenCalledWith("invalid_response");
+      expect(closed).toHaveBeenCalledWith("invalid_response", {
+        step: "channel",
+        category: "channel_closed",
+      });
       expect(frames).not.toHaveBeenCalled();
     },
   );
@@ -93,7 +96,7 @@ describe("browser control byte framing", () => {
       header.writeUInt32BE(body.length);
       pipes.left.write(Buffer.concat([header, body]));
       await tick();
-      expect(closed).toHaveBeenCalledWith("invalid_response");
+      expect(closed).toHaveBeenCalledWith("invalid_response", undefined);
     },
   );
   it("rejects a second pending write and settles a backpressured write on close", async () => {
@@ -130,7 +133,7 @@ describe("browser control byte framing", () => {
       await vi.advanceTimersByTimeAsync(30_000);
       pipes.left.write(Buffer.from([0]));
       await vi.advanceTimersByTimeAsync(5_000);
-      expect(closed).toHaveBeenCalledWith("deadline_exceeded");
+      expect(closed).toHaveBeenCalledWith("deadline_exceeded", undefined);
     } finally {
       transport.close();
       vi.useRealTimers();

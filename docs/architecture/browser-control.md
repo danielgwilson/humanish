@@ -66,6 +66,11 @@ Replies acknowledge completion or contain a finite `ComputerUseExecutorError` co
 `not_dispatched` refusal may add a `reason` from a fixed list (`extra_tab`), which
 the study loop turns into a hint the participant can act on. They never include raw
 exception prose, typed text, page URLs, or browser errors in their error fields.
+A failure the driver did not declare may add a `diagnostic` of two fixed words: the
+step that failed (such as `insert_text`) and a category (`target_closed`,
+`detached`, `navigation`, `timeout`, `protocol_error`, `channel_closed` or
+`unknown`). The guest picks the category from the error's class and known message
+shapes and then drops the message; the host prints a fixed sentence for each word.
 A generic driver exception after invocation is uncertain; only a genuine typed
 driver declaration can attest that input was never dispatched.
 

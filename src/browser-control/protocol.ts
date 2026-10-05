@@ -9,6 +9,11 @@ import {
   type CuaExecutorErrorCode,
   type CuaRejectionReason,
 } from "../actors/computer-use/executor-error.js";
+import {
+  CUA_DIAGNOSTIC_CATEGORIES,
+  CUA_DIAGNOSTIC_STEPS,
+  type CuaExecutorDiagnostic,
+} from "../actors/computer-use/executor-diagnostic.js";
 import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
 
 export const BROWSER_CONTROL_VERSION = 1;
@@ -213,6 +218,11 @@ const errorCode = z.enum([
   "action_rejected",
   "execution_failed",
 ]);
+// Two fixed words; a reply never carries browser error text.
+const diagnosticSchema = z.strictObject({
+  step: z.enum(CUA_DIAGNOSTIC_STEPS),
+  category: z.enum(CUA_DIAGNOSTIC_CATEGORIES),
+});
 const replyBase = {
   ...common,
   type: z.literal("reply"),
@@ -233,6 +243,7 @@ const replySchema = z.discriminatedUnion("ok", [
       code: errorCode,
       disposition: z.enum(["not_dispatched", "outcome_uncertain"]),
       reason: z.enum(CUA_REJECTION_REASONS).optional(),
+      diagnostic: diagnosticSchema.optional(),
     }),
   }),
 ]);
@@ -389,12 +400,15 @@ export function safeBrowserControlFailure(
   code: CuaExecutorErrorCode;
   disposition: "not_dispatched" | "outcome_uncertain";
   reason?: CuaRejectionReason;
+  diagnostic?: CuaExecutorDiagnostic;
 } {
+  // Only a declared error's fixed diagnostic crosses; an arbitrary exception's text never does.
   if (isComputerUseExecutorError(error))
     return {
       code: error.code,
       disposition: error.disposition,
       ...(error.reason === undefined ? {} : { reason: error.reason }),
+      ...(error.diagnostic === undefined ? {} : { diagnostic: { ...error.diagnostic } }),
     };
   return {
     code: "action_rejected",

@@ -72,6 +72,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `model_not_found`, no longer counts as such an answer when its message echoes
   `previous_response_id`: a usage-policy refusal stops the participant instead of switching and
   retrying.
+- A local browser participant that ends with `transport_failed` now says which step failed
+  and what kind of failure it was. The trace's `desktop executor error` notice and the
+  participant's stop reason, which the run's harness failure record repeats, add a `cause:` of
+  two fixed words, such as `insert_text, target_closed`, and a fixed sentence for them. No
+  browser error text crosses from the guest.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

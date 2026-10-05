@@ -389,8 +389,47 @@ describe("owned Chromium text port", () => {
     await expect(handle.close()).rejects.toMatchObject({
       code: "transport_failed",
       disposition: "outcome_uncertain",
+      diagnostic: { step: "cdp_detach", category: "unknown" },
     });
     expect(inserts(f)).toHaveLength(1);
+  });
+
+  it.each([
+    ["newCDPSession", "cdp_session"],
+    ["Page.getFrameTree", "frame_tree"],
+    ["Page.createIsolatedWorld", "isolated_world"],
+    ["Runtime.evaluate", "focus_probe"],
+  ])("names the step when %s throws an undeclared error", async (method, step) => {
+    const f = fixture();
+    const answer = f.send.getMockImplementation()!;
+    const failure = new Error("Target closed.");
+    if (method === "newCDPSession") f.newCDPSession.mockRejectedValueOnce(failure);
+    else
+      f.send.mockImplementation(async (sent, params) => {
+        if (sent === method) throw failure;
+        return answer(sent, params);
+      });
+    const error = await f.port.prepareText("x", f.abort.signal).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ code: "transport_failed", disposition: "not_dispatched" });
+    expect((error as { diagnostic?: unknown }).diagnostic).toEqual({
+      step,
+      category: "target_closed",
+    });
+  });
+
+  it("keeps the diagnostic of a failed insertion as an uncertain outcome", async () => {
+    const f = fixture(),
+      handle = await prepared(f);
+    const answer = f.send.getMockImplementation()!;
+    f.send.mockImplementation(async (method, params) => {
+      if (method === "Input.insertText") throw new Error("Session closed.");
+      return answer(method, params);
+    });
+    await expect(handle.paste()).rejects.toMatchObject({
+      code: "transport_failed",
+      disposition: "outcome_uncertain",
+      diagnostic: { step: "insert_text", category: "target_closed" },
+    });
   });
 
   it("owner cleanup preserves the active handle's post-send uncertainty", async () => {
