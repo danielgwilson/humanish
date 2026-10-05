@@ -473,6 +473,22 @@ describe("browser control client and dispatcher", () => {
     expect(execute).toHaveBeenCalledTimes(2);
     f.close();
   });
+  it("carries a rejection reason to the host and keeps the channel usable", async () => {
+    const execute = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ComputerUseExecutorError("action_rejected", "not_dispatched", { reason: "extra_tab" }),
+      )
+      .mockResolvedValue(undefined);
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(f.client.executor.execute(click)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+      reason: "extra_tab",
+    });
+    await expect(f.client.executor.execute(click)).resolves.toBeUndefined();
+    f.close();
+  });
   it("still closes the channel when an observation is rejected before dispatch", async () => {
     const f = setup({
       executor: {

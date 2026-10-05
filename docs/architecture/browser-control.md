@@ -62,7 +62,9 @@ runtime-management method. Initial target navigation remains an adapter-owned
 operation.
 
 Replies acknowledge completion or contain a finite `ComputerUseExecutorError` code and
-`not_dispatched` / `outcome_uncertain` disposition. They never include raw
+`not_dispatched` / `outcome_uncertain` disposition. An `action_rejected` /
+`not_dispatched` refusal may add a `reason` from a fixed list (`extra_tab`), which
+the study loop turns into a hint the participant can act on. They never include raw
 exception prose, typed text, page URLs, or browser errors in their error fields.
 A generic driver exception after invocation is uncertain; only a genuine typed
 driver declaration can attest that input was never dispatched.
@@ -96,7 +98,10 @@ Observation requires a PNG and state signature. It may include bounded URL,
 title, text, fractional scroll position and heard speech; those remain
 runtime-only under the existing loop contract. Arbitrary `appState` is refused
 because v1 has no closed schema for it. The protocol does not truncate strings,
-round coordinates, or silently drop unsupported state.
+round coordinates, or silently drop unsupported state. A Codex participant's
+`humanish_ui` call is checked before it reaches the protocol: a wait longer than 30 seconds is
+shortened to 30 seconds there, and the trace records a `wait shortened` notice with both
+durations.
 
 Click, double-click, move, scroll and drag may carry `heldKeys`, which the
 OpenAI provider maps from its computer tool's `keys`. The Codex participant's

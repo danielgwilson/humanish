@@ -21,7 +21,11 @@ import {
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
-import { participantFeedbackCandidates, providerResourcesForOutcome } from "./bundle-parts.js";
+import {
+  participantFeedbackCandidates,
+  providerResourcesForOutcome,
+  publicSafeAppUrlLabel,
+} from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
@@ -103,11 +107,13 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
       verdict,
       ...(participants === undefined ? {} : { participants }),
       ...(runTasks === undefined ? {} : { tasks: runTasks }),
+      // The app URL is named as the participant records name it: one on an E2B host names a
+      // sandbox, so the summary carries its digest, which verify accepts in a shared run.
       summary:
         args.inProgress === true
           ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
           : args.dryRun
-            ? `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
+            ? `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out: ${specs.length} participants composed for ${args.descriptor.id} against ${publicSafeAppUrlLabel(args.appUrl)}, one world each; no desktops launched, $0 spend.`
             : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${plural(specs.length, "participant")} reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
