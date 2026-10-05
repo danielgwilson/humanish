@@ -2,7 +2,12 @@ import type { ActorCapabilities } from "../actors/contract.js";
 import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import type { StudyConfig } from "./types.js";
-import { actorOf, declaresSharedWorld } from "./study-fields.js";
+import {
+  actorOf,
+  participantList,
+  declaredParticipantCount,
+  declaresSharedWorld,
+} from "./study-fields.js";
 
 // Hard cap on computer-use participants. No setting raises it: each participant is a paid desktop,
 // and they all run at once.
@@ -70,11 +75,7 @@ export function registeredTerminalActors(): string[] {
  * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
 export function computerUseParticipantCount(config: StudyConfig): number {
-  const actor = config.actors[0];
-  if (actor?.lanes !== undefined) {
-    return actor.lanes.length;
-  }
-  return actor?.count ?? 1;
+  return participantList(config)?.length ?? declaredParticipantCount(config) ?? 1;
 }
 
 /**

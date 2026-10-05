@@ -22,6 +22,7 @@ import {
 } from "../../src/study/persona-resolve.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { parseResolvedPersona, personaToDirectives } from "../../src/study/persona.js";
+import { STUDY_SCHEMA, type StudyActor, type StudyConfig } from "../../src/study/types.js";
 
 const DEVICE = { name: "desktop", preset: DEVICE_PRESETS.desktop } as const;
 
@@ -87,20 +88,24 @@ describe("composeParticipantInstructions applies committed personas", () => {
 
 describe("committed persona resolution", () => {
   it("resolves ids the study config actually declares, per participant and per actor", () => {
-    expect(studyPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })).toEqual([
+    const study = (actor: Omit<StudyActor, "type">): StudyConfig => ({
+      schema: STUDY_SCHEMA,
+      id: "persona-ids",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", ...actor }],
+    });
+    expect(studyPersonaIds(study({ persona: "synthetic-new-user" }))).toEqual([
       "synthetic-new-user",
     ]);
     expect(
-      studyPersonaIds({
-        actors: [
-          {
-            persona: "synthetic-new-user",
-            lanes: [{ persona: "skeptical-power-user" }, { persona: "synthetic-new-user" }],
-          },
-        ],
-      }),
+      studyPersonaIds(
+        study({
+          persona: "synthetic-new-user",
+          lanes: [{ persona: "skeptical-power-user" }, { persona: "synthetic-new-user" }],
+        }),
+      ),
     ).toEqual(["synthetic-new-user", "skeptical-power-user"]);
-    expect(studyPersonaIds({ actors: [{ lanes: [{}] }] })).toEqual([]);
+    expect(studyPersonaIds(study({ lanes: [{}] }))).toEqual([]);
   });
 
   it("reads committed persona files from the project root", async () => {
