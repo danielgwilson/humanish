@@ -9,7 +9,7 @@ import type {
 import { isReasoningEffort, reasoningEffortNames } from "../../actors/reasoning-effort.js";
 import { isMaxOutputTokens } from "../../actors/output-token-limit.js";
 import { isHttpUrl } from "./subject.js";
-import { urlCredentialReason } from "./url-credentials.js";
+import { entryCredentialReason, urlCredentialReason } from "./url-credentials.js";
 import {
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
@@ -341,10 +341,9 @@ function parseParticipantEntries(
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const entryPath = str(entry.entry);
     if (entryPath !== undefined) {
-      const credential = urlCredentialReason(
+      const credential = entryCredentialReason(
         `actors[${actorIndex}].lanes[${entryIndex}].entry`,
         entryPath,
-        "http://127.0.0.1/",
       );
       if (credential) return invalid(credential);
       parsedEntry.entry = entryPath;

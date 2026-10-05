@@ -10,7 +10,7 @@ import {
   type CuaActorDescriptor,
 } from "../../actors/registry.js";
 import { isHttpUrl, isLoopbackUrl } from "../../study/parse/subject.js";
-import { urlCredentialReason } from "../../study/parse/url-credentials.js";
+import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import { subjectStateInvalidReason } from "../../study/parse/subject-state.js";
 import {
   brainOf,
@@ -253,23 +253,12 @@ function subjectStructureReason(
  */
 function entryTargetReason(config: StudyConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
   const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = subjectRoute;
+  // A library caller's config skips the parser, which refuses these first.
+  const credential = studyUrlCredentialReason(config);
+  if (credential) return { code: "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE", message: credential };
   if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
   const entryTargets = [appUrl, ...declaredTargets(config)];
-  // A library caller's config skips the parser, which refuses these first.
-  const credential = entryTargets
-    .map((target, index) =>
-      urlCredentialReason(
-        index > 0
-          ? "participants[].target"
-          : provisionedRoute
-            ? "subject.serve.url"
-            : "subject.appUrl",
-        target,
-      ),
-    )
-    .find((reason) => reason !== undefined);
-  if (credential) return { code: "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE", message: credential };
   const entryTargetSafe = entryTargets.every((target) =>
     provisionedRoute || localAppSubject
       ? isLoopbackUrl(target)

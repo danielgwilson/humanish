@@ -41,6 +41,12 @@ describe("study URLs with credentials", () => {
     ["a share parameter", `https://preview.example.com/dashboard?${SHARE}`],
     ["a percent-encoded parameter name", `https://preview.example.com/?%74oken=${TOKEN}`],
     ["a token in the fragment", `https://preview.example.com/#/callback?access_token=${TOKEN}`],
+    ["a password alone", `https://:${TOKEN}@preview.example.com/`],
+    ["a password with punctuation", `https://preview.example.com/?password=${TOKEN}!-${TOKEN}`],
+    [
+      "a base64-encoded key",
+      `https://preview.example.com/?payload=${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64url")}`,
+    ],
   ])("refuses subject.appUrl with %s", (_label, appUrl) => {
     expect(refusal(publicStudy(appUrl))).toMatch(/^`subject\.appUrl` /);
   });
@@ -74,12 +80,16 @@ describe("study URLs with credentials", () => {
     "https://preview.example.com/todos?filter=active&page=2",
     "https://www.example.com/?utm_source=newsletter&utm_campaign=launch-week",
     "https://preview.example.com/settings?tab=profile#billing",
+    "https://preview.example.com/?token=%5BREDACTED_SECRET%5D",
+    `https://preview.example.com/${"home"}/settings/profile`,
   ])("parses an ordinary query string: %s", (appUrl) => {
     const result = parseStudyDocument(publicStudy(appUrl));
     expect(result.ok).toBe(true);
   });
+});
 
-  it("refuses the same URL in a library caller's config, which skips the parser", () => {
+describe("study URLs with credentials in a library caller's config, which skips the parser", () => {
+  it("refuses the same URL on computer-use", () => {
     const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const config: StudyConfig = {
@@ -92,6 +102,46 @@ describe("study URLs with credentials", () => {
     expect(planned.refusal.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE");
     expect(planned.refusal.message).not.toContain(TOKEN);
   });
+
+  it.each([
+    [
+      "desktop-cli",
+      (config: StudyConfig): StudyConfig => ({
+        ...config,
+        subject: {
+          source: "desktop-cli",
+          product: { name: "sample-cli", publicSurfaces: [`https://docs.example.com/?${SHARE}`] },
+        },
+      }),
+    ],
+    [
+      "terminal",
+      (config: StudyConfig): StudyConfig => ({
+        ...config,
+        subject: {
+          source: "terminal-product",
+          product: {
+            name: "sample-cli",
+            publicSurfaces: [`https://user:${TOKEN}@docs.example.com/`],
+          },
+        },
+        actors: [{ ...config.actors[0]!, type: "codex-exec" }],
+        execution: { target: "e2b-terminal" },
+        policies: {},
+      }),
+    ],
+  ])(
+    "refuses a %s public surface with a credential in a library caller's config",
+    (_route, change) => {
+      const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const planned = planStudy(change(parsed.config), { cwd: process.cwd(), dryRun: true });
+      expect(planned.ok).toBe(false);
+      if (planned.ok) return;
+      expect(planned.refusal.message).toMatch(/^`subject\.product\.publicSurfaces` /);
+      expect(planned.refusal.message).not.toContain(TOKEN);
+    },
+  );
 
   it("refuses it on an external-public shared world in a library caller's config", () => {
     const parsed = parseStudyDocument({
@@ -118,5 +168,41 @@ describe("study URLs with credentials", () => {
     if (planned.ok) return;
     expect(planned.refusal.message).toMatch(/^`subject\.appUrl` has a user name or password/);
     expect(planned.refusal.message).not.toContain(TOKEN);
+
+    const actor = parsed.config.actors[0]!;
+    const withEntry: StudyConfig = {
+      ...parsed.config,
+      actors: [
+        {
+          ...actor,
+          lanes: (actor.lanes ?? []).map((lane, index) =>
+            index === 1 ? { ...lane, entry: `/lobby?token=${TOKEN}` } : lane,
+          ),
+        },
+      ],
+    };
+    const entryPlanned = planStudy(withEntry, { cwd: process.cwd(), dryRun: true });
+    expect(entryPlanned.ok).toBe(false);
+    if (entryPlanned.ok) return;
+    expect(entryPlanned.refusal.message).toMatch(/^`participants\[1\]\.entry` /);
+  });
+
+  it("refuses a terminal runtimeAuth it does not know in a library caller's config", () => {
+    const parsed = parseStudyDocument(publicStudy("https://preview.example.com/"));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const config = {
+      ...parsed.config,
+      subject: {
+        source: "terminal-product",
+        product: { name: "sample-cli", publicSurfaces: ["https://docs.example.com/"] },
+      },
+      actors: [{ ...parsed.config.actors[0]!, type: "codex-exec" }],
+      execution: { target: "e2b-terminal", runtimeAuth: "openai-egres" },
+      policies: {},
+    } as unknown as StudyConfig;
+    const planned = planStudy(config, { cwd: process.cwd(), dryRun: true });
+    expect(planned.ok).toBe(false);
+    if (planned.ok) return;
+    expect(planned.refusal.code).toBe("HUMANISH_TERMINAL_CREDENTIAL_DENIED");
   });
 });
