@@ -16,8 +16,8 @@ import type {
   CuaTurn,
   CuaExecutor,
 } from "../../../src/actors/computer-use/loop.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -142,19 +142,18 @@ describe.skipIf(!LIVE)("cua-actor-lab state-driven executor (live rung, no E2B, 
     { timeout: 60_000 },
     async () => {
       const app = makeLocalApp();
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "downstream-local-app-state",
         title: "State-driven local app (live rung)",
+        route: "computer-use",
+        mode: "live",
         subject: { source: "local-app", appUrl },
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "pixel-pat",
-            mission: "Greet the app, then stop when getState() reports greeted.",
-          },
-        ],
-        scenario: { mode: "live" },
+        actor: {
+          type: "openai-computer-use",
+          persona: "pixel-pat",
+          mission: "Greet the app, then stop when getState() reports greeted.",
+        },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 

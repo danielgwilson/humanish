@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { participantPlanOf } from "../../helpers/participant-run.js";
 
 // With a `lanes` roster present, participant persona resolution once read only `lane.persona`. Every
@@ -12,15 +12,17 @@ import { participantPlanOf } from "../../helpers/participant-run.js";
 // personas drive the app. A fan-out result produced without one is not the study that was
 // declared, so this is a fidelity bug, not a cosmetic one.
 
-function planFor(actor: Record<string, unknown>) {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+function planFor(actor: Record<string, unknown>, participants?: Record<string, unknown>[]) {
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "lane-persona-fallback",
     title: "Lane persona fallback",
+    route: "computer-use",
+    mode: "dry-run",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/" },
-    actors: [actor],
+    actor,
+    ...(participants === undefined ? {} : { participants }),
     execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
-    scenario: { mode: "dry-run" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return participantPlanOf(parsed.config, { dryRun: true });
@@ -28,15 +30,13 @@ function planFor(actor: Record<string, unknown>) {
 
 describe("participant persona resolution", () => {
   it("falls back to actors[0].persona when a participant does not name one", () => {
-    const plan = planFor({
-      type: "openai-computer-use",
-      persona: "synthetic-new-user",
-      mission: "Look at the page.",
-      lanes: [
+    const plan = planFor(
+      { type: "openai-computer-use", persona: "synthetic-new-user", mission: "Look at the page." },
+      [
         { id: "mobile", device: "mobile" },
         { id: "desktop", device: "desktop" },
       ],
-    });
+    );
     expect(plan.lanes).toHaveLength(2);
     for (const lane of plan.lanes) {
       expect(lane.persona).toBe("synthetic-new-user");
@@ -44,12 +44,10 @@ describe("participant persona resolution", () => {
   });
 
   it("lets a participant override the actor's persona", () => {
-    const plan = planFor({
-      type: "openai-computer-use",
-      persona: "synthetic-new-user",
-      mission: "Look at the page.",
-      lanes: [{ id: "a", persona: "power-user" }, { id: "b" }],
-    });
+    const plan = planFor(
+      { type: "openai-computer-use", persona: "synthetic-new-user", mission: "Look at the page." },
+      [{ id: "a", persona: "power-user" }, { id: "b" }],
+    );
     expect(plan.lanes[0]?.persona).toBe("power-user");
     // The un-overridden participant still inherits, so one override does not strip the rest.
     expect(plan.lanes[1]?.persona).toBe("synthetic-new-user");
@@ -58,11 +56,9 @@ describe("participant persona resolution", () => {
   it("uses the documented default when neither the participant nor the actor names one", () => {
     // src/routes/computer-use/participant-prompt.ts falls back to `cua-operator`. Asserted so the fallback chain is
     // pinned end to end: participant, then actor, then the built-in default.
-    const plan = planFor({
-      type: "openai-computer-use",
-      mission: "Look at the page.",
-      lanes: [{ id: "a" }],
-    });
+    const plan = planFor({ type: "openai-computer-use", mission: "Look at the page." }, [
+      { id: "a" },
+    ]);
     expect(plan.lanes[0]?.persona).toBe("cua-operator");
   });
 
