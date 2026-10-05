@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- An open Observer page whose server stopped says so once, with the run id and both ways back:
+  `humanish observe --run <id>`, or the run's `observer/index.html` opened from disk. Its tiles no
+  longer report every capture as "Frame unavailable"; a missing frame on a running server still
+  does.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library
