@@ -394,7 +394,7 @@ export interface ActorRuntimeProvenance {
  * How a provider carried the conversation between its requests. `threaded`: the provider's server
  * kept it (OpenAI previous_response_id). `explicit_context`: the server kept none (a
  * zero-data-retention org, or zeroDataRetention set), so each request carried it from the client
- * within a token budget, with the oldest turns summarized as text once it passed the budget.
+ * within a token budget, with the oldest turns summarized as text at each cut past the budget.
  */
 export interface ActorConversation {
   /** The mode of the session's last request. */

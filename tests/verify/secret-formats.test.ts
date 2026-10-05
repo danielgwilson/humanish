@@ -7,15 +7,20 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { scanEncodedText } from "../../src/evidence/encoded-text.js";
-import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
+import { containsCredential, containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { ALNUM, ORDINARY_VALUES, SECRET_FORMATS, synthetic } from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
+
+// An E2B app host, `<port>-<sandbox id>.e2b.app`, with an id built at run time.
+const E2B_APP_HOST = `3000-${synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, 60)}.${"e2b"}.app`;
 
 const ENCODINGS: Record<string, (text: string) => string> = {
   "as written": (text) => text,
   "percent-encoded": (text) => encodeURIComponent(text),
   base64: (text) => Buffer.from(text).toString("base64"),
+  // A quoted-printable `=XX` reading of the first hex pair must not hide the rest.
+  "hex-encoded in a parameter": (text) => `state=${Buffer.from(text).toString("hex")}`,
 };
 
 describe("secret formats", () => {
@@ -31,6 +36,25 @@ describe("secret formats", () => {
       },
     );
   }
+
+  // The study URL check reads credentials only. It drops local paths and E2B app URLs, and nothing
+  // else the share scan finds.
+  for (const [encoding, encode] of Object.entries(ENCODINGS)) {
+    it.each(
+      SECRET_FORMATS.filter((format) => !format.name.endsWith(" path")).map(
+        (format) => [format.name, format.text] as const,
+      ),
+    )(`finds %s ${encoding} as a credential`, (_name, text) => {
+      expect(scanEncodedText(encode(text), { matches: containsCredential }).sensitive).toBe(true);
+    });
+  }
+
+  it("finds an E2B app URL as sensitive and not as a credential", () => {
+    const url = `https://${E2B_APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${E2B_APP_HOST}`)}`;
+    expect(scanEncodedText(url).sensitive).toBe(true);
+    expect(scanEncodedText(url, { matches: containsCredential }).sensitive).toBe(false);
+    expect(redactText(url)).not.toContain(E2B_APP_HOST);
+  });
 
   it.each(ORDINARY_VALUES.map((value) => [value.name, value.text] as const))(
     "leaves %s alone",
@@ -119,6 +143,23 @@ describe("verify against secret formats", () => {
     await writeFile(file, `${ORDINARY_VALUES.map((value) => value.text).join("\n")}\n`);
     try {
       expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
+    } finally {
+      await rm(file);
+    }
+  });
+
+  it("grades the run blocked for an E2B app URL that a study URL may carry", async () => {
+    const file = path.join(runDir, "notes.txt");
+    await writeFile(
+      file,
+      `opened https://${E2B_APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${E2B_APP_HOST}`)}\n`,
+    );
+    try {
+      const verified = await verifyRun(cwd, runId);
+      expect(verified.shareSafety.status).toBe("blocked");
+      expect(verified.shareSafety.reasons.map((reason) => reason.code)).toContain(
+        "PUBLIC_SAFETY_FINDINGS",
+      );
     } finally {
       await rm(file);
     }
