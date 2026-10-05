@@ -123,7 +123,7 @@
    from the requested recording moment. Keep this outside capture geometry. */
 .card .capture-loading {
   position: absolute;
-  inset: auto 0 calc(var(--card-control) + 16px);
+  inset: auto 0 44px;
   z-index: 3;
   pointer-events: none;
   padding: var(--space-4) var(--space-6);

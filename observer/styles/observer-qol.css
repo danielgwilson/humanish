@@ -178,16 +178,33 @@ button:disabled {
   opacity: 1;
   filter: none;
 }
-/* One caption for every card, whatever the capture's aspect: the name shares the first
-   row with the pin and details controls, and the status has the whole second row. Cards
-   in a grid row therefore end at the same height. */
+/* One 44px caption for every card, whatever the capture's aspect, so cards in a grid row
+   end at the same height. The name shares the first row with the pin and details
+   controls and the status sits under it. 28px pointer controls leave the status the
+   whole second row; 44px touch controls span both rows. */
 .card {
   --card-control: 28px;
+  container: participant-card / inline-size;
+}
+/* A card too narrow for a readable name beside both controls keeps the details control.
+   Its popover holds the pin action, and a pinned card keeps its accent border. The
+   widths are the left padding, two controls and a 48px name. */
+@container participant-card (max-width: 111px) {
+  .card-caption .card-icon.card-pin-toggle {
+    display: none;
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  @container participant-card (max-width: 143px) {
+    .card-caption .card-icon.card-pin-toggle {
+      display: none;
+    }
+  }
 }
 .card-caption {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-rows: var(--card-control) 14px;
+  grid-template-rows: 28px 14px;
   align-items: center;
   padding: 0 0 var(--space-2) var(--space-8);
   flex: none;
@@ -683,9 +700,15 @@ summary {
   .card {
     --card-control: 44px;
   }
-  /* Keep the name next to its status line under the taller touch controls. */
-  .card-name {
-    align-self: end;
+  .card-caption {
+    grid-template-rows: 30px 14px;
+    padding-bottom: 0;
+  }
+  .card-caption :is(.card-pin-toggle, .card-details-trigger) {
+    grid-row: 1 / -1;
+  }
+  .card-caption :is(.card-outcome, .card-capture-time) {
+    grid-column: 1;
   }
   .card-details-trigger {
     border: 0;
