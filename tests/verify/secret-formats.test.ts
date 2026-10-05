@@ -19,6 +19,8 @@ const ENCODINGS: Record<string, (text: string) => string> = {
   "as written": (text) => text,
   "percent-encoded": (text) => encodeURIComponent(text),
   base64: (text) => Buffer.from(text).toString("base64"),
+  // A quoted-printable `=XX` reading of the first hex pair must not hide the rest.
+  "hex-encoded in a parameter": (text) => `state=${Buffer.from(text).toString("hex")}`,
 };
 
 describe("secret formats", () => {

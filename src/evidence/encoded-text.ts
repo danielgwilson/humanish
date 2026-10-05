@@ -299,7 +299,13 @@ export function scanEncodedText(
   for (const bytes of slashStarts)
     if (inspectDecoded(bytes, "", { ...options, allowOpaqueBase64: true }, depth).sensitive)
       return SENSITIVE;
-  for (const [match] of expanded.matchAll(HEX_RUN)) {
+  // Hex is read before transfer escapes too: the quoted-printable pass reads `=68` in `state=6874...`
+  // as one byte, which shifts every hex pair after it.
+  const hexRuns = new Set([
+    ...[...expanded.matchAll(HEX_RUN)].map(([match]) => match),
+    ...(expanded === decoded ? [] : [...decoded.matchAll(HEX_RUN)].map(([match]) => match)),
+  ]);
+  for (const match of hexRuns) {
     const plain = readPlainText(Buffer.from(match, "hex"));
     if (plain.ok && depth < MAX_DEPTH && scanEncodedText(plain.text, options, depth + 1).sensitive)
       return SENSITIVE;
@@ -310,7 +316,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 2;
+const ENCODED_SCAN_VERSION = 3;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();

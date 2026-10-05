@@ -5,6 +5,7 @@
 // credential. verify keeps sandbox URLs out of a shared run.
 
 import { scanEncodedText } from "../../evidence/encoded-text.js";
+import { readPlainText } from "../../evidence/plain-text.js";
 import { containsCredential } from "../../evidence/redaction.js";
 
 // A relative participant entry is resolved against this before it is read.
@@ -93,9 +94,22 @@ function decoded(text: string): string {
   }
 }
 
+// A base64 or base64url value long enough to hold a URL, such as an OAuth `state`.
+const BASE64_VALUE = /^[A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*={0,2}$/;
+
+/** The text a base64 or base64url value decodes to, when it is text. */
+function base64Text(value: string): string[] {
+  if (!BASE64_VALUE.test(value)) return [];
+  const plain = readPlainText(Buffer.from(value, /[-_]/.test(value) ? "base64url" : "base64"));
+  return plain.ok ? [plain.text] : [];
+}
+
 /**
  * The absolute URLs in `url`'s decoded parameter names and values, its fragment's and its path
- * segments, each read as decoded once and twice, so an encoded URL inside an encoded value is found.
+ * segments, each read as decoded once and twice and from base64, so an encoded URL inside an
+ * encoded value is found. The fragment and the path are also read as written: a URL written there
+ * whole keeps its `://`, which splitting would cut. The fragment is cut at each `&`, so a value is
+ * not read into the next parameter.
  */
 function nestedUrls(url: URL): { text: string; url: URL }[] {
   const fragment = url.hash.slice(1);
@@ -105,8 +119,11 @@ function nestedUrls(url: URL): { text: string; url: URL }[] {
   const once = [
     ...[...url.searchParams, ...fragmentQuery].flat(),
     ...url.pathname.split("/").map(decoded),
+    ...fragment.split("&"),
+    url.pathname,
   ];
-  const values = [...new Set([...once, ...once.map(decoded)])];
+  const twice = once.map(decoded);
+  const values = [...new Set([...once, ...twice, ...[...once, ...twice].flatMap(base64Text)])];
   return values.flatMap((text) =>
     [...text.matchAll(NESTED_URL)].flatMap(([candidate]) => {
       try {
