@@ -180,9 +180,10 @@ function describeExchange(exchange: CarriedExchange): string {
   const said: string[] = [];
   const did: string[] = [];
   const told: string[] = [];
+  // The answers are the call outputs, whose content is a screenshot, and hint messages.
   for (const raw of exchange.answers) {
     const item = asRecord(raw);
-    if (item.role !== "user") continue;
+    if (item.type === "computer_call_output") continue;
     for (const entry of asArray(item.content)) {
       const text = asRecord(entry).text;
       if (typeof text === "string" && text.length > 0) told.push(text);
