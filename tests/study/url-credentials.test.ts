@@ -129,6 +129,10 @@ describe("study URLs that name an E2B sandbox", () => {
       `https://app.example.com/sign-in?return=${encodeURIComponent(`https://${APP_HOST}/home`)}`,
     ],
     [
+      "an E2B URL, then an address, in the fragment",
+      `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}`)}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
       "an E2B URL in the fragment",
       `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
     ],
@@ -198,6 +202,16 @@ describe("study URLs that name an E2B sandbox", () => {
     [
       "a URL with a user name alone in a fragment route's query",
       `https://app.example.com/#/callback?next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "a URL with a user name alone, encoded twice",
+      `https://app.example.com/?next=${encodeURIComponent(encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`))}`,
+      TOKEN,
+    ],
+    [
+      "a URL with a user name alone in a fragment parameter",
+      `https://app.example.com/#next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
       TOKEN,
     ],
     [

@@ -93,16 +93,20 @@ function decoded(text: string): string {
   }
 }
 
-/** The absolute URLs in `url`'s decoded parameter names and values, fragment and path segments. */
+/**
+ * The absolute URLs in `url`'s decoded parameter names and values, its fragment's and its path
+ * segments, each read as decoded once and twice, so an encoded URL inside an encoded value is found.
+ */
 function nestedUrls(url: URL): { text: string; url: URL }[] {
   const fragment = url.hash.slice(1);
-  // A fragment may be a route with its own query (`#/callback?next=...`) or a query itself.
+  // A fragment may be a route with its own query (`#/callback?next=...`) or a query itself. A
+  // fragment with neither `=` nor `&` reads as one parameter name.
   const fragmentQuery = new URLSearchParams(fragment.slice(fragment.indexOf("?") + 1));
-  const values = [
+  const once = [
     ...[...url.searchParams, ...fragmentQuery].flat(),
-    decoded(fragment),
     ...url.pathname.split("/").map(decoded),
   ];
+  const values = [...new Set([...once, ...once.map(decoded)])];
   return values.flatMap((text) =>
     [...text.matchAll(NESTED_URL)].flatMap(([candidate]) => {
       try {
