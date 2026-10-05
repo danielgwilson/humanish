@@ -61,7 +61,8 @@ export const TEXT_ITEMS_BYTES = 128 * 1024;
 export const PENDING_LINE_CHARS = 1024 * 1024;
 
 // Hard cap on the retained event-stream + transcript size, so a runaway agent cannot balloon the
-// bundle. Redaction runs pre-truncation so a cut can never split a secret past the scrubber.
+// bundle. Redaction runs pre-truncation so a cut can never split a secret past the scrubber. Output
+// past the cap is still read for the verdict marker, token usage and the trace's agent text.
 export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 
 /**
@@ -83,7 +84,8 @@ export interface TerminalProductScoringContext {
   /**
    * The full normalized transcript of the in-sandbox agent session, scrubbed (literal known
    * values) then redacted (shape patterns) at the source, capped at MAX_TRANSCRIPT_BYTES, and
-   * byte-identical to the persisted terminal-transcript.txt artifact. The trace's transcriptTail
+   * byte-identical to the persisted terminal-transcript.txt artifact. A capped transcript ends
+   * with a `[humanish]` line giving the byte count that was not stored. The trace's transcriptTail
    * is a ~2KB projection of this; a scorer needs the whole session so a rubric can find
    * command-tier evidence anywhere in it.
    */

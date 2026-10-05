@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ActorTrace } from "../../../src/actors/contract.js";
+import { createLocalActorVerdictScanner } from "../../../src/run/terminal-contract.js";
+import { createTerminalRecorder } from "../../../src/routes/terminal/recorder.js";
 import { MAX_TRANSCRIPT_BYTES } from "../../../src/routes/terminal/types.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { streamingRun, terminalConfig } from "../../helpers/terminal-live-fake.js";
@@ -121,5 +123,59 @@ describe("terminal output past the transcript cap", () => {
     ) as ActorTrace;
     expect(result.session?.status).toBe("passed");
     expect(trace.items.some((item) => item.title === "terminal output truncated")).toBe(false);
+  });
+});
+
+describe("the verdict scan over output that is not stored", () => {
+  const nonce = "synthetic-nonce";
+  const scan = (pieces: string[]) => {
+    const scanner = createLocalActorVerdictScanner(nonce);
+    for (const piece of pieces) scanner.push(piece);
+    return scanner.verdict();
+  };
+
+  it("finds a marker split across pieces and whitespace, and keeps the first one", () => {
+    expect(scan(["HUMANISH_ACTOR_VER", "DICT=passed \n HUMANISH_ACTOR", `_NONCE=${nonce}`])).toBe(
+      "passed",
+    );
+    expect(
+      scan([
+        `HUMANISH_ACTOR_VERDICT=blocked HUMANISH_ACTOR_NONCE=${nonce}`,
+        `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}`,
+      ]),
+    ).toBe("blocked");
+  });
+
+  it("ignores a marker with no nonce or another nonce", () => {
+    expect(scan(["HUMANISH_ACTOR_VERDICT=passed", "HUMANISH_ACTOR_NONCE=other-nonce"])).toBeNull();
+  });
+
+  it("finds a marker the cap splits between the stored and the unstored output", () => {
+    const recorder = createTerminalRecorder({
+      nowIso: () => "2026-10-05T00:00:00.000Z",
+      sanitize: (text) => text,
+      knownSecretValues: [],
+      verdictNonce: nonce,
+    });
+    recorder.recordStreamedTerminalChunk(
+      "stdout",
+      `${"x".repeat(MAX_TRANSCRIPT_BYTES)}\nHUMANISH_ACTOR_VERDICT=pas`,
+    );
+    recorder.recordStreamedTerminalChunk("stdout", `sed HUMANISH_ACTOR_NONCE=${nonce}\n`);
+    expect(recorder.transcriptCut()?.verdict).toBe("passed");
+  });
+
+  it("does not count a usage record the cap cut through", () => {
+    const recorder = createTerminalRecorder({
+      nowIso: () => "2026-10-05T00:00:00.000Z",
+      sanitize: (text) => text,
+      knownSecretValues: [],
+      verdictNonce: nonce,
+    });
+    const [head, rest] = [usage.slice(0, 20), usage.slice(20)];
+    recorder.recordStreamedTerminalChunk("stdout", `${"x".repeat(MAX_TRANSCRIPT_BYTES)}\n${head}`);
+    recorder.recordStreamedTerminalChunk("stdout", rest);
+    recorder.recordStreamedTerminalChunk("stdout", usage);
+    expect(recorder.transcriptCut()?.usage).toHaveLength(1);
   });
 });

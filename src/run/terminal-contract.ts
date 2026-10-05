@@ -38,6 +38,14 @@ export function normalizeLocalActorTranscript(transcript: string): string {
 
 type ActorVerdict = "passed" | "blocked" | "failed";
 
+// The nonce is mandatory: a bare HUMANISH_ACTOR_VERDICT=<status> marker echoed by an actor (or
+// replayed from untrusted text) must never satisfy verdict extraction.
+const verdictPattern = (verdictNonce: string): RegExp =>
+  new RegExp(
+    `HUMANISH_ACTOR_VERDICT=(passed|blocked|failed)HUMANISH_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
+    "i",
+  );
+
 /**
  * Extract the per-run verdict from a normalized transcript: the agent must print exactly
  * `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
@@ -49,17 +57,31 @@ export function extractLocalActorVerdict(
   transcript: string,
   verdictNonce: string,
 ): ActorVerdict | null {
-  const compactTranscript = transcript.replace(/\s+/g, "");
-  // The per-run nonce is mandatory: a bare HUMANISH_ACTOR_VERDICT=<status>
-  // marker echoed by an actor (or replayed from untrusted text) must never
-  // satisfy verdict extraction.
-  const match = new RegExp(
-    `HUMANISH_ACTOR_VERDICT=(passed|blocked|failed)HUMANISH_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
-    "i",
-  ).exec(compactTranscript);
-  if (!match) {
-    return null;
-  }
+  const match = verdictPattern(verdictNonce).exec(transcript.replace(/\s+/g, ""));
+  return (match?.[1]?.toLowerCase() as ActorVerdict | undefined) ?? null;
+}
 
-  return match[1]?.toLowerCase() as ActorVerdict;
+/**
+ * The same search over text that arrives in pieces and is not kept: the terminal route reads
+ * output past its transcript cap through this. Each piece is normalized and loses its whitespace
+ * as the whole transcript does above, and the end of the previous piece is carried so a marker
+ * split between pieces is found. The first marker wins, as above.
+ */
+export function createLocalActorVerdictScanner(verdictNonce: string): {
+  push(text: string): void;
+  verdict(): ActorVerdict | null;
+} {
+  const pattern = verdictPattern(verdictNonce);
+  const carried = `HUMANISH_ACTOR_VERDICT=blockedHUMANISH_ACTOR_NONCE=${verdictNonce}`.length - 1;
+  let tail = "";
+  let found: ActorVerdict | null = null;
+  return {
+    push(text) {
+      if (found) return;
+      const window = tail + normalizeLocalActorTranscript(text).replace(/\s+/g, "");
+      found = (pattern.exec(window)?.[1]?.toLowerCase() as ActorVerdict | undefined) ?? null;
+      tail = window.slice(-carried);
+    },
+    verdict: () => found,
+  };
 }
