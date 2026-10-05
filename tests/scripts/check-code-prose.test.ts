@@ -147,7 +147,7 @@ describe("prose:check counts `lane` in comment prose", () => {
   it("does not count the contract spellings, code spans, identifiers or code", async () => {
     const hits = await laneHits(
       [
-        "// Declared in actors[0].lanes as lanes[] entries, rerun with --lanes lane-02,lane-04.",
+        "// Declared as lanes[] entries, rerun with --lanes lane-02,lane-04.",
         "// Ids default to lane-01..lane-NN; the topology is per-lane-worlds.",
         "// Code spans: `lanes`, `the lane`, `laneFocus`.",
         "// Identifiers: laneId, laneCount, multilane, lanesCount.",
@@ -158,6 +158,14 @@ describe("prose:check counts `lane` in comment prose", () => {
 
     expect(hits.words).toEqual([]);
     expect(hits.count).toBe(0);
+  });
+
+  it("counts the v2 path `actors[0].lanes` in prose outside src/study/migrate/ only", async () => {
+    const source = "// A v2 file declares actors[0].lanes.\n";
+    expect((await hitsOf("lane-comments", source)).words).toEqual(["lanes"]);
+    expect((await hitsOf("lane-comments", source, "src/study/migrate/fixture.ts")).words).toEqual(
+      [],
+    );
   });
 
   it("fails both above and below its `lane-comments` cap", async () => {

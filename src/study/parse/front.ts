@@ -4,6 +4,7 @@
 
 import { isRecord } from "../../run/type-guards.js";
 import { findUnknownStudyKey } from "../keys.js";
+import { movedV2KeyReason } from "../migrate/v2.js";
 import type { StudyRoute } from "../routing.js";
 import type { StudyParseFailure, StudySurfaces } from "../types.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./actors.js";
@@ -70,7 +71,7 @@ export function readStudyFront(
   raw: Record<string, unknown>,
   anySharedWorldParticipants = false,
 ): Parsed<StudyFront> {
-  const moved = movedKeyReason(raw);
+  const moved = movedV2KeyReason(raw);
   if (moved) return invalid(moved);
   const unknownKey = findUnknownStudyKey(raw);
   if (unknownKey) return invalid(unknownKey);
@@ -104,27 +105,6 @@ export function readStudyFront(
     ok: true,
     value: { route, actor: raw.actor, participants: participants.value, surfaces: surfaces.value },
   };
-}
-
-// The v2 keys a hand-converted file is most likely to keep, each with where it went.
-function movedKeyReason(raw: Record<string, unknown>): string | undefined {
-  if (raw.actors !== undefined) {
-    return "A study has one `actor:` object, and its participants go in `participants:`. `actors:` is the humanish.lab.v2 spelling.";
-  }
-  if (isRecord(raw.actor)) {
-    for (const key of ["count", "lanes", "roster", "laneFocus"]) {
-      if (raw.actor[key] !== undefined) {
-        return `\`actor.${key}\` moved to \`participants:\`: a count, \`{ count, instruction }\`, or a list of participants.`;
-      }
-    }
-  }
-  if (isRecord(raw.subject) && raw.subject.topology !== undefined) {
-    return "`subject.topology` moved to `route:`. A shared world is `route: shared-world`.";
-  }
-  if (isRecord(raw.execution) && raw.execution.caps !== undefined) {
-    return "`execution.caps` moved to a top-level `caps:` block.";
-  }
-  return undefined;
 }
 
 function participantsOf(route: StudyRoute, raw: unknown): Parsed<Participants> {

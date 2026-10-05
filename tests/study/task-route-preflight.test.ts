@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf } from "../../src/study/study-fields.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -50,7 +49,7 @@ describe("declared task protocol admission", () => {
       (declared.actor as Record<string, unknown>).tasks = tasks;
       const result = parseStudy(declared);
       expect(result.ok, JSON.stringify(result)).toBe(supported);
-      if (result.ok) expect(actorOf(result.config)!.tasks).toEqual(tasks);
+      if (result.ok) expect(result.config.actor.tasks).toEqual(tasks);
       else {
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
         expect(result.error.message).toContain("actor.tasks is unsupported");
@@ -63,7 +62,7 @@ describe("declared task protocol admission", () => {
     "refuses live runStudy $name before any runner side effect",
     async ({ config }) => {
       const parsed = validConfig(config);
-      actorOf(parsed)!.tasks = tasks; // Direct library caller bypasses parse.
+      parsed.actor.tasks = tasks; // Direct library caller bypasses parse.
       const forbidden = vi.fn(async () => {
         throw new Error("provider/user hook forbidden");
       });
@@ -101,7 +100,7 @@ describe("declared task protocol admission", () => {
     "direct %s entry refuses tasks even when given a CUA-shaped config",
     async (_route, runner) => {
       const config = validConfig(fixtures.find((row) => row.supported)!.config);
-      actorOf(config)!.tasks = tasks;
+      config.actor.tasks = tasks;
       const result = await runner({ cwd: path.join(cwd, "must-not-exist"), config, dryRun: false });
       expect(result.error?.code).toBe("HUMANISH_STUDY_TASKS_UNSUPPORTED");
       await expect(access(path.join(cwd, "must-not-exist"))).rejects.toMatchObject({

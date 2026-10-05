@@ -64,7 +64,6 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { actorOf } from "../../../src/study/study-fields.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
@@ -973,7 +972,7 @@ describe("runCuaActorLab", () => {
 
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
-    actorOf(config)!.maxOutputTokens = 16;
+    config.actor.maxOutputTokens = 16;
     delete config.review; // Omitted config uses the separate default analysis budget.
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
@@ -1040,7 +1039,7 @@ describe("runCuaActorLab", () => {
 
   it("refuses an invalid typed-library output limit before sandbox allocation", async () => {
     const config = cuaConfig();
-    actorOf(config)!.maxOutputTokens = 0;
+    config.actor.maxOutputTokens = 0;
     let allocations = 0;
     const result = await runComputerUse({
       cwd,
@@ -1060,7 +1059,7 @@ describe("runCuaActorLab", () => {
 
   it("rejects custom session hooks that could bypass a declared output limit", async () => {
     const config = cuaConfig();
-    actorOf(config)!.maxOutputTokens = 16;
+    config.actor.maxOutputTokens = 16;
     let called = 0;
     const result = await runComputerUse({
       cwd,
@@ -3102,7 +3101,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.streams[0].assignment).toEqual({ mission: actorOf(config)!.mission });
+    expect(bundle.streams[0].assignment).toEqual({ mission: config.actor.mission });
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
@@ -6825,8 +6824,8 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them", async () => {
     const secret = "synthetic-live-assignment-secret";
     const config = cuaConfig();
-    actorOf(config)!.mission = `Explore with ${secret}.`;
-    actorOf(config)!.tasks = [
+    config.actor.mission = `Explore with ${secret}.`;
+    config.actor.tasks = [
       {
         id: "settings",
         goal: `Save with ${secret}.`,

@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { modeOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import { libraryLab } from "../../admission/fixtures.js";
@@ -157,7 +156,7 @@ describe("shared-world admission order", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-admission-"));
       dirs.push(cwd);
       const { config, env, deps } = caseOf(names);
-      const dryRun = modeOf(config) !== "live";
+      const dryRun = config.mode !== "live";
       const result = await runSharedWorld({ cwd, config, dryRun, env, deps });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);

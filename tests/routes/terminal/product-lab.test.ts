@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { actorOf, capsOf } from "../../../src/study/study-fields.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { parseStudy } from "../../../src/study/config.js";
 import {
@@ -157,7 +156,7 @@ describe("terminal-product parse matrix", () => {
       transport: "exec-stream",
       stdin: "disabled",
     });
-    expect(capsOf(parsed.config)).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
+    expect(parsed.config.caps).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
     expect(isTerminalProductComposition(parsed.config)).toBe(true);
     expect(routeOf(parsed.config)).toBe("terminal");
   });
@@ -435,7 +434,7 @@ describe("runTerminalProductLab (dry-run)", () => {
           mission: "Discover the product using [REDACTED_SECRET].",
         });
       }
-      expect(actorOf(config)!.mission).toContain(secret);
+      expect(config.actor.mission).toContain(secret);
       expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     },
   );

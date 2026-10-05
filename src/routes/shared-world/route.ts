@@ -66,7 +66,7 @@ import {
   type PlaneResults,
   type PlaneSelection,
 } from "./types.js";
-import { actorOf, participantList } from "../../study/study-fields.js";
+import { participantList } from "../../study/study-fields.js";
 
 /** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
 const LOCAL_AGENT_REFUSAL_CODES = {
@@ -86,7 +86,7 @@ export function sharedWorldStudyRefusal(
   const fail = concurrentStudyFailure({
     cwd: path.resolve(options.cwd),
     studyId: config.id,
-    actor: actorOf(config)?.type ?? "",
+    actor: config.actor?.type ?? "",
     participantCount: declared.length,
     // The parser fills concurrency for multi-participant studies, so this fallback serves only
     // library callers: every declared participant runs at once unless the author declared a cap.

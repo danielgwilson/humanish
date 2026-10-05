@@ -23,13 +23,7 @@ import { isComputerUseComposition } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
-import {
-  actorOf,
-  participantList,
-  declaredParticipantCount,
-  capsOf,
-  surfaceCount,
-} from "./study-fields.js";
+import { participantList, declaredParticipantCount } from "./study-fields.js";
 
 export const STUDY_SUMMARY_SCHEMA = "humanish.study-summary.v1";
 
@@ -89,7 +83,7 @@ export interface StudySummary {
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
 function reasoningEffortOf(config: StudyConfig): string {
-  const fallback = actorOf(config)?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
+  const fallback = config.actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const roster = participantList(config) ?? [];
   const resolved = new Set(roster.map((entry) => entry.reasoningEffort ?? fallback));
   if (resolved.size > 1) return "per-lane";
@@ -110,7 +104,7 @@ function subjectOf(config: Record<string, unknown>): string | undefined {
 
 /** How many participants, and who; collapsed when they are all the same persona. */
 function participantsOf(config: StudyConfig): string | undefined {
-  const actor = actorOf(config);
+  const actor = config.actor;
   if (actor === undefined) return undefined;
   const rosterPersonas = (participantList(config) ?? [])
     .map((entry) => entry.persona)
@@ -120,7 +114,7 @@ function participantsOf(config: StudyConfig): string | undefined {
   // A scripted study's participants are its surfaces, one replay on each.
   const count =
     declaredParticipantCount(config) ??
-    surfaceCount(config) ??
+    config.surfaces?.length ??
     participantList(config)?.length ??
     personas.length ??
     1;
@@ -134,7 +128,7 @@ function participantsOf(config: StudyConfig): string | undefined {
 /** The computer-use caps. Other routes draw none. */
 function summaryCapsOf(config: StudyConfig): StudyCaps {
   if (!isComputerUseComposition(config)) return {};
-  const caps = capsOf(config);
+  const caps = config.caps;
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
     ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {}),
@@ -221,7 +215,7 @@ export async function readStudySummary(
   const participantReadiness =
     options.checkKeys === true &&
     isLocalBrowserStudy(inspected.config) &&
-    actorOf(inspected.config)?.type === "local-agent"
+    inspected.config.actor?.type === "local-agent"
       ? await localCodexParticipantCheck({ env: options.env ?? process.env })
       : undefined;
 
@@ -249,7 +243,7 @@ export async function readStudySummary(
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),
     ...(participants === undefined ? {} : { participants }),
-    model: actorOf(inspected.config)?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    model: inspected.config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL,
     reasoningEffort: reasoningEffortOf(inspected.config),
     caps: summaryCapsOf(inspected.config),
     ...(keysReady === undefined ? {} : { keysReady }),

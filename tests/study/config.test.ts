@@ -11,15 +11,7 @@ import {
   isProvisionedScriptedBrowserComposition,
   isScriptedBrowserComposition,
 } from "../../src/study/routing.js";
-import {
-  actorOf,
-  declaredParticipantCount,
-  declaresSharedWorld,
-  modeOf,
-  participantList,
-  scenarioRefOf,
-  surfaceCount,
-} from "../../src/study/study-fields.js";
+import { declaredParticipantCount, participantList } from "../../src/study/study-fields.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { declaredParticipantIds } from "../../src/study/plan-participants.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -109,9 +101,9 @@ describe("parseStudy (humanish.study.v3)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.source).toBe("this-repo");
-    expect(actorOf(result.config)?.type).toBe("synthetic-persona");
+    expect(result.config.actor?.type).toBe("synthetic-persona");
     expect(declaredParticipantCount(result.config)).toBe(4);
-    expect(modeOf(result.config)).toBe("dry-run");
+    expect(result.config.mode).toBe("dry-run");
     expect(result.warnings).toEqual([]);
   });
 
@@ -432,7 +424,7 @@ describe("parseStudy (humanish.study.v3)", () => {
         source: "app-url",
         appUrl: "http://127.0.0.1:3000/",
       });
-      expect(actorOf(result.config)?.type).toBe("openai-computer-use");
+      expect(result.config.actor?.type).toBe("openai-computer-use");
       expect(result.warnings).toEqual([]);
     });
 
@@ -528,7 +520,7 @@ describe("parseStudy (humanish.study.v3)", () => {
       );
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(actorOf(result.config)?.stopWhen?.any[0]?.textIncludes).toBe("Saved");
+      expect(result.config.actor?.stopWhen?.any[0]?.textIncludes).toBe("Saved");
       expect(participantList(result.config)?.[1]?.stopWhen?.any[0]?.urlPathEquals).toBe("/done");
       expect(result.warnings).toEqual([]);
     });
@@ -574,7 +566,7 @@ describe("parseStudy (humanish.study.v3)", () => {
       );
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(actorOf(result.config)?.dwell).toEqual({
+      expect(result.config.actor?.dwell).toEqual({
         when: { any: [{ id: "in-room", urlIncludes: "/room/" }] },
         ms: 120_000,
         everyMs: 10_000,
@@ -1210,8 +1202,8 @@ describe("parseStudy (humanish.study.v3)", () => {
       const result = parseStudy(validScripted);
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(actorOf(result.config)?.type).toBe("scripted-browser");
-      expect(scenarioRefOf(result.config)).toBe("scripted-first-run");
+      expect(result.config.actor?.type).toBe("scripted-browser");
+      expect(result.config.scenario).toBe("scripted-first-run");
       expect(result.warnings).toEqual([]);
     });
 
@@ -1230,7 +1222,7 @@ describe("parseStudy (humanish.study.v3)", () => {
           surfaces,
         });
         expect(result.ok, surfaces.join(", ")).toBe(true);
-        if (result.ok) expect(surfaceCount(result.config)).toBe(surfaces.length);
+        if (result.ok) expect(result.config.surfaces?.length).toBe(surfaces.length);
       }
     });
 
@@ -1971,7 +1963,7 @@ describe("shared-world topology routing + cross-validation", () => {
     const result = parseStudy(validSharedWorld());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(declaresSharedWorld(result.config)).toBe(true);
+    expect(result.config.route).toBe("shared-world");
     expect(isSharedWorldComposition(result.config)).toBe(true);
     expect(routeOf(result.config)).toBe("shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();
@@ -2001,7 +1993,7 @@ describe("shared-world topology routing + cross-validation", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.config.subject.source).toBe("local-tree");
-    expect(declaresSharedWorld(result.config)).toBe(true);
+    expect(result.config.route).toBe("shared-world");
     expect(isSharedWorldComposition(result.config)).toBe(true);
     expect(routeOf(result.config)).toBe("shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();

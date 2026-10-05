@@ -13,7 +13,7 @@
 //   (scripts/lib/prose-rules.mjs).
 // - `lane-comments`: the retired word `lane`, which `CONTEXT.md` replaces with participant. The
 //   contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`, `--lanes`)
-//   are not counted.
+//   are not counted, nor, under src/study/migrate/, the v2 path `actors[0].lanes`.
 // - `em-dashes`: `—`, or ` -- ` between words. A colon, a comma or two sentences says the same.
 // - `invariant-refs`: `invariant 6`. The numbers live in docs/principles/invariants-and-defaults.md
 //   and drift; name the rule instead.
@@ -65,6 +65,7 @@ import {
   ISSUE_REF,
   LANE_WORD,
   LINT_DIRECTIVE,
+  laneWordFor,
   WORD_KINDS,
   blankCodeSpans,
   isCapsEmphasis,
@@ -155,7 +156,7 @@ const hits = new Map([
 ]);
 
 /** Counts each kind in one piece of prose. `at` turns a match into its `file:line word` entry. */
-function scan(text, root, at, { testName }) {
+function scan(text, root, at, { testName, laneWord = LANE_WORD }) {
   const add = (kind, match) => hits.get(`prose.${root}.${kind}`).push(at(match));
   // Code spans hold names and examples, so no kind counts inside them.
   const prose = blankCodeSpans(text);
@@ -165,7 +166,7 @@ function scan(text, root, at, { testName }) {
   for (const match of prose.matchAll(ISSUE_REF)) add(refKind, match);
   for (const match of prose.matchAll(FIX_TAG)) add("fix-tags", match);
   for (const match of prose.matchAll(CAPS_RUN)) if (isCapsEmphasis(match[0])) add("caps", match);
-  for (const match of prose.matchAll(LANE_WORD)) add("lane-comments", match);
+  for (const match of prose.matchAll(laneWord)) add("lane-comments", match);
   const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");
   for (const match of dashProse.matchAll(EM_DASH)) add("em-dashes", match);
   for (const [kind, pattern] of Object.entries(WORD_KINDS)) {
@@ -272,7 +273,7 @@ for (const root of ROOTS) {
     for (const comment of parsed.comments) {
       // comment.value starts after the opening `//` or `/*`.
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
-      scan(comment.value, root, at, { testName: false });
+      scan(comment.value, root, at, { testName: false, laneWord: laneWordFor(file) });
     }
     if (root === "src") {
       for (const comment of parsed.comments) {
@@ -297,7 +298,7 @@ for (const root of ROOTS) {
     if (!TEST_CALL_TEXT.test(text)) continue;
     forEachTestName(parsed.program, (name, offset) => {
       const at = (match) => `${file}:${lineOf(offset)} ${match[0].trim()}`;
-      scan(name, root, at, { testName: true });
+      scan(name, root, at, { testName: true, laneWord: laneWordFor(file) });
     });
   }
 }

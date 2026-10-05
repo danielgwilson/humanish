@@ -34,7 +34,7 @@ import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { actorOf, participantList } from "../../../src/study/study-fields.js";
+import { participantList } from "../../../src/study/study-fields.js";
 import {
   externalPublicSharedWorldValidationReason,
   concurrentSharedWorldValidationReason,
@@ -684,7 +684,7 @@ describe("host-first handoff barrier + convergence", () => {
     expect(runText).not.toContain("AB2CD9");
     const assigned = (JSON.parse(runText) as RunBundle).streams.map((stream) => stream.assignment);
     const config = parseExternal();
-    const actor = actorOf(config)!;
+    const actor = config.actor;
     expect(assigned).toEqual(
       participantList(config)!.map((lane) => ({
         mission: actor.mission,
@@ -1015,7 +1015,7 @@ describe("handoff timeout fail-closed", () => {
   it("shares the actor study budget across host and follower sessions", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const config = parseExternal({ caps: { maxUsd: 1, maxTotalUsd: 0.04 } });
-    actorOf(config)!.model = "gpt-5.5";
+    config.actor.model = "gpt-5.5";
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
     await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(seen).toHaveLength(3);
@@ -1028,7 +1028,7 @@ describe("handoff timeout fail-closed", () => {
 
   it("refuses an unpriceable spend cap before opening the host", async () => {
     const config = parseExternal({ caps: { maxTotalUsd: 1 } });
-    actorOf(config)!.model = "unknown-priced-model";
+    config.actor.model = "unknown-priced-model";
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.error?.message).toContain("humanish has no rate for model");
@@ -1293,8 +1293,8 @@ describe("lobby-trivia-3player committed lab", () => {
 it("routes actor output limits and per-participant reasoning to concurrent provider requests", async () => {
   const config = parseExternal();
   // Below the first request's own 1024 cap, so the first request carries the declared value.
-  actorOf(config)!.maxOutputTokens = 512;
-  actorOf(config)!.reasoningEffort = "low";
+  config.actor.maxOutputTokens = 512;
+  config.actor.reasoningEffort = "low";
   participantList(config)![1]!.reasoningEffort = "high";
   const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
   delete deps.runSession;

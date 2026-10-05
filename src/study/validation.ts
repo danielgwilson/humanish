@@ -14,7 +14,7 @@ import {
   isTerminalProductComposition,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
-import { actorOf, participantList, declaresSharedWorld } from "./study-fields.js";
+import { participantList } from "./study-fields.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -68,7 +68,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
     participantCount > 1 &&
     config.policies?.allowPublicTargets === true &&
     declaredTargets(config).length === 0 &&
-    !declaresSharedWorld(config)
+    config.route !== "shared-world"
   ) {
     return "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `route: shared-world` to run them together there, give each `participants[]` entry its own `target`, or run one participant.";
   }
@@ -140,7 +140,7 @@ function provisionedSharedWorldStructureReason(config: StudyConfig): string | nu
   if (config.execution?.target !== "e2b-desktop") {
     return "`route: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
   }
-  if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
+  if (!actorResolvesToComputerUse(config.actor?.type)) {
     return `\`route: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const serve = config.subject.serve;
@@ -164,7 +164,7 @@ function provisionedSharedWorldStructureReason(config: StudyConfig): string | nu
 
 /** SMTP capture runs only where each participant has its own world, so a shared world refuses it. */
 export function smtpValidationReason(config: StudyConfig): string | undefined {
-  return config.comms?.email?.smtp && declaresSharedWorld(config)
+  return config.comms?.email?.smtp && config.route === "shared-world"
     ? "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies."
     : undefined;
 }
@@ -180,7 +180,7 @@ export function desktopMediaValidationReason(
 ): string | undefined {
   if (
     config.execution?.desktop?.recording !== undefined &&
-    (!supportsMedia || declaresSharedWorld(config) || config.subject.source === "local-app")
+    (!supportsMedia || config.route === "shared-world" || config.subject.source === "local-app")
   ) {
     return "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route.";
   }
@@ -189,7 +189,7 @@ export function desktopMediaValidationReason(
   if (media.microphone !== undefined && media.microphone.source !== "speech") {
     return "execution.desktop.media.microphone.source must be speech. Microphone source-file injection is unsupported.";
   }
-  if (declaresSharedWorld(config)) {
+  if (config.route === "shared-world") {
     return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser participants or remove the declaration.";
   }
   if (
@@ -203,7 +203,7 @@ export function desktopMediaValidationReason(
     return "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium.";
   }
   if (media.microphone !== undefined) {
-    const actor = actorOf(config);
+    const actor = config.actor;
     if (
       actor !== undefined &&
       (actor.type !== "local-agent" ||
@@ -227,7 +227,7 @@ export function receivingEmailValidationReason(config: StudyConfig): string | un
   ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
-  if (actorOf(config)?.type === "local-agent") {
+  if (config.actor?.type === "local-agent") {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
   return undefined;
@@ -239,7 +239,7 @@ export function taskProtocolValidationReason(
   config: StudyConfig,
   supportsTasks = isComputerUseComposition(config) && !isSharedWorldComposition(config),
 ): string | null {
-  if (actorOf(config)?.tasks !== undefined && !supportsTasks) {
+  if (config.actor?.tasks !== undefined && !supportsTasks) {
     return "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
   }
   return null;
@@ -261,7 +261,7 @@ export function cloneTargetValidationReason(config: StudyConfig): string | null 
 
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */
 export function outputTokenLimitValidationReason(config: StudyConfig): string | null {
-  const actor = actorOf(config);
+  const actor = config.actor;
   if (actor?.maxOutputTokens === undefined) return null;
   if (!isMaxOutputTokens(actor.maxOutputTokens))
     return "actor.maxOutputTokens must be a positive safe integer.";
@@ -343,7 +343,7 @@ export function externalPublicSharedWorldValidationReason(config: StudyConfig): 
   if (config.execution?.target !== "e2b-desktop") {
     return "the external-public shared-world route requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against the one public deployment.";
   }
-  if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
+  if (!actorResolvesToComputerUse(config.actor?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const roster = participantList(config);

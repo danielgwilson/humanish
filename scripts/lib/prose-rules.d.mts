@@ -2,6 +2,7 @@ export const ACRONYMS: ReadonlySet<string>;
 export const ISSUE_REF: RegExp;
 export const FIX_TAG: RegExp;
 export const LANE_WORD: RegExp;
+export function laneWordFor(file: string): RegExp;
 export const CAPS_RUN: RegExp;
 export function isCapsEmphasis(run: string): boolean;
 export const EM_DASH: RegExp;

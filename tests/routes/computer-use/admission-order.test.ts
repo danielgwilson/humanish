@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { modeOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types.js";
@@ -210,7 +209,7 @@ describe("computer-use admission order", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
       dirs.push(cwd);
       const { config, deps, driving, countOverride } = caseOf(names);
-      const dryRun = modeOf(config) !== "live";
+      const dryRun = config.mode !== "live";
       const result = await runComputerUse({
         cwd,
         config,

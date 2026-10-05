@@ -1,5 +1,5 @@
 import type { StudyConfig } from "../../study/types.js";
-import { actorOf, capsOf, participantList } from "../../study/study-fields.js";
+import { participantList } from "../../study/study-fields.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
@@ -9,13 +9,13 @@ export function isLocalBrowserStudy(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
-    ["local-agent", "openai-computer-use"].includes(actorOf(config)?.type ?? "")
+    ["local-agent", "openai-computer-use"].includes(config.actor?.type ?? "")
   );
 }
 
 /** Defaults for the explicitly selected local substrate; hosted configurations are untouched. */
 export function localBrowserDefaults(config: StudyConfig): StudyConfig {
-  const actor = actorOf(config);
+  const actor = config.actor;
   if (!isLocalBrowserStudy(config) || actor === undefined) return config;
   return {
     ...config,
@@ -39,7 +39,7 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
 }
 
 export function localBrowserUnsupportedReason(config: StudyConfig): string | undefined {
-  const actor = actorOf(config);
+  const actor = config.actor;
   const desktop = config.execution?.desktop;
   if ((config.execution?.timeoutMs ?? MAX_SESSION_MS) > MAX_SESSION_MS) {
     return "Local browser sessions currently support at most 20 minutes, within the runtime's 30-minute lifetime.";
@@ -78,8 +78,8 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
         (entry) => entry.reasoningEffort !== undefined && entry.reasoningEffort !== "low",
       ) ||
       actor.maxOutputTokens !== undefined ||
-      capsOf(config)?.maxUsd !== undefined ||
-      capsOf(config)?.maxTotalUsd !== undefined)
+      config.caps?.maxUsd !== undefined ||
+      config.caps?.maxTotalUsd !== undefined)
   ) {
     return "Local Codex participants currently use gpt-6-astra at low effort. Account dollar/output-token caps are unavailable; use API participants for those controls.";
   }
