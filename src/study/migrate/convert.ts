@@ -17,19 +17,19 @@ import {
   YAMLSeq,
   type Document,
 } from "yaml";
-import { parseStudyDocument } from "./config.js";
-import { focusOf } from "./parse/actors.js";
-import { posInt } from "./parse/values.js";
-import { planStudy } from "./plan.js";
-import { routeOf, type StudyRoute } from "./routing.js";
-import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "./types.js";
-import { inertFieldPaths } from "./warnings.js";
+import { parseStudyDocument } from "../config.js";
+import { focusOf } from "../parse/actors.js";
+import { posInt } from "../parse/values.js";
+import { planStudy } from "../plan.js";
+import { routeOf, type StudyRoute } from "../routing.js";
+import { V2_SCHEMA, STUDY_SCHEMA, type StudyConfig } from "../types.js";
+import { inertFieldPaths } from "../warnings.js";
 import {
   deleteNodeFieldPath,
   deletePlainFieldPath,
   pairIndex,
   readFieldPath,
-} from "./field-paths.js";
+} from "../field-paths.js";
 
 /** A key the conversion moved, by its v2 path and its v3 path. */
 export interface MovedKey {

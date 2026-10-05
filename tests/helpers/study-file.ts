@@ -7,7 +7,7 @@
 import { parse, stringify } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
-import { convertStudyText } from "../../src/study/convert.js";
+import { convertStudyText } from "../../src/study/migrate/convert.js";
 import type { StudyConfig } from "../../src/study/types.js";
 
 /**

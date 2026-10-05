@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { migrateStudies } from "../../src/study/migrate.js";
+import { migrateStudies } from "../../src/study/migrate/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 let cwd: string;

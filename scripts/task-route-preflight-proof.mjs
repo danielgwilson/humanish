@@ -13,7 +13,9 @@ import { parse, stringify } from "yaml";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
 const preload = join(root, "tests/fixtures/task-route-preflight/deny-side-effects.mjs");
-const { convertStudyText } = await import(pathToFileURL(join(root, "dist/study/convert.js")).href);
+const { convertStudyText } = await import(
+  pathToFileURL(join(root, "dist/study/migrate/convert.js")).href
+);
 const fixtures = JSON.parse(
   await readFile(join(root, "tests/fixtures/task-route-preflight/labs.json"), "utf8"),
 );

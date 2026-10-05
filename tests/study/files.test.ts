@@ -13,7 +13,7 @@ import { saveCommsConnection } from "../../src/comms/connections.js";
 import { configureCommsStudy } from "../../src/comms/setup.js";
 import { listStudyManifests, resolveStudyManifest } from "../../src/study/discover.js";
 import { runInit } from "../../src/study/init.js";
-import { migrateStudies } from "../../src/study/migrate.js";
+import { migrateStudies } from "../../src/study/migrate/migrate.js";
 import { otherStudyFiles, studyFileCandidates } from "../../src/study/files.js";
 
 let cwd: string;

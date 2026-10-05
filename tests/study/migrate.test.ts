@@ -27,7 +27,7 @@ import { parse, stringify } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
-import { migrateStudies } from "../../src/study/migrate.js";
+import { migrateStudies } from "../../src/study/migrate/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
