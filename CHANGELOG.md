@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A study URL with an E2B app URL in a query parameter or fragment, such as a sign-in return
+  address, parses. 0.110.2 refused it as a credential. The check still refuses user info, a
+  credential-named parameter such as `token`, `password` or a signature, and known token formats,
+  in the URL and in a URL nested inside it, so a stream URL's auth key is still refused. verify
+  still grades a run that records a raw E2B URL `blocked`.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library

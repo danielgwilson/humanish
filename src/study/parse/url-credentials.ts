@@ -1,6 +1,8 @@
 // A URL a study declares is recorded in the run, shown in the participant's address bar and so in
 // every screenshot and model request. It may not carry a credential. Ordinary query parameters,
-// such as a filter or a page number, stay as they are.
+// such as a filter or a page number, stay as they are. So does an E2B app URL in a parameter, such
+// as a sign-in return address: its host names a sandbox, as the target's own host may, and holds no
+// credential. verify keeps sandbox URLs out of a shared run.
 
 import { scanEncodedText } from "../../evidence/encoded-text.js";
 
@@ -9,9 +11,9 @@ const ENTRY_BASE = "http://127.0.0.1/";
 
 /**
  * Why the URL declared at `field` cannot be used: it has userinfo, or its path, query or fragment
- * holds a value verify flags as a secret, as written or encoded. Undefined for a URL with neither,
- * and for text that is not a URL, which the field's own shape check refuses. `base` resolves a
- * relative entry path.
+ * holds a credential verify flags, as written or encoded. Undefined for a URL with neither, and for
+ * text that is not a URL, which the field's own shape check refuses. `base` resolves a relative
+ * entry path.
  */
 export function urlCredentialReason(
   field: string,
@@ -29,7 +31,7 @@ export function urlCredentialReason(
     return `\`${field}\` has a tab, line break or other control character in it, which the URL parser drops. Write the URL without it.`;
   if (url.username !== "" || url.password !== "")
     return `\`${field}\` has a user name or password in it. humanish records the URL in the run, and the participant's browser shows it in every screenshot, so the credential would reach the bundle and the model. Remove it from the URL and give the participant a test account to sign in with.`;
-  if (urlPartsHoldSecret(value, url))
+  if (urlPartsHoldCredential(value, url))
     return `\`${field}\` carries a credential in its path, query or fragment, such as a token, a signature or a preview bypass parameter. humanish records the URL in the run, and the participant's browser shows it in every screenshot. Remove it from the URL. For a protected preview, make the deployment reachable without a token for the study, or build the app in the desktop with a clone subject.`;
   return undefined;
 }
@@ -40,11 +42,11 @@ export function entryCredentialReason(field: string, entry: string): string | un
 }
 
 /**
- * Whether the URL's path, query or fragment holds a secret: read whole, as the parser normalized
+ * Whether the URL's path, query or fragment holds a credential: read whole, as the parser normalized
  * it and as written (`..` segments can drop a segment from the normalized path), and one segment,
  * value or fragment piece at a time, so the text around an encoded key cannot shift its decoding.
  */
-function urlPartsHoldSecret(value: string, url: URL): boolean {
+function urlPartsHoldCredential(value: string, url: URL): boolean {
   const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
   const normalized = `${url.pathname}${url.search}${url.hash}`;
   const pieces = [
@@ -56,6 +58,6 @@ function urlPartsHoldSecret(value: string, url: URL): boolean {
   return pieces.some(
     (piece) =>
       piece.length > 0 &&
-      scanEncodedText(piece, { secretsOnly: true, allowOpaqueBase64: true }).sensitive,
+      scanEncodedText(piece, { credentialsOnly: true, allowOpaqueBase64: true }).sensitive,
   );
 }

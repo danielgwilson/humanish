@@ -14,6 +14,12 @@ type Raw = Record<string, unknown>;
 const TOKEN = synthetic(ALNUM, 32, 7);
 const BYPASS = `${"x-vercel-protection" + "-bypass"}=${TOKEN}`;
 const SHARE = `${"_vercel" + "_share"}=${TOKEN}`;
+// An E2B app host, `<port>-<sandbox id>.e2b.app`, with an id built at run time.
+const sandboxHost = (port: number, seed: number): string =>
+  `${port}-${synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, seed)}.${"e2b"}.app`;
+const APP_HOST = sandboxHost(3000, 11);
+const OTHER_HOST = sandboxHost(8025, 12);
+const STREAM_KEY = synthetic(ALNUM, 16, 13);
 
 const publicStudy = (appUrl: string, extra: Raw = {}): Raw => ({
   schema: STUDY_SCHEMA,
@@ -105,6 +111,85 @@ describe("study URLs with credentials", () => {
   ])("parses an ordinary query string: %s", (appUrl) => {
     const result = parseStudy(publicStudy(appUrl));
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("study URLs that name an E2B sandbox", () => {
+  it.each([
+    [
+      "its own URL, percent-encoded, as a sign-in return address",
+      `https://${APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${APP_HOST}`)}`,
+    ],
+    [
+      "another sandbox's URL as written in a parameter",
+      `https://${APP_HOST}/sign-in?inbox=https://${OTHER_HOST}/messages`,
+    ],
+    [
+      "an E2B URL in a parameter of a host off E2B",
+      `https://app.example.com/sign-in?return=${encodeURIComponent(`https://${APP_HOST}/home`)}`,
+    ],
+    [
+      "an E2B URL in the fragment",
+      `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
+    ],
+    [
+      "an E2B URL inside a base64 state parameter",
+      `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ returnTo: `https://${APP_HOST}/home` })).toString("base64url")}`,
+    ],
+  ])("parses subject.appUrl with %s", (_label, appUrl) => {
+    const result = parseStudy(publicStudy(appUrl));
+    expect(result.ok ? "parsed" : result.error.message).toBe("parsed");
+  });
+
+  it.each([
+    [
+      "a stream URL whose auth key rides its password parameter",
+      `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?autoconnect=true&resize=scale&password=${STREAM_KEY}`)}`,
+      STREAM_KEY,
+    ],
+    [
+      "an E2B URL with a password in its user info",
+      `https://app.example.com/?next=${encodeURIComponent(`https://user:${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "an E2B URL with a token parameter",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}/invite?token=${TOKEN}`)}`,
+      TOKEN,
+    ],
+    ["an E2B API key", `https://${APP_HOST}/?key=${"e2b" + "_"}${TOKEN}`, TOKEN],
+    ["a token parameter on an E2B host", `https://${APP_HOST}/?token=${TOKEN}`, TOKEN],
+    [
+      "a signed URL signature",
+      `https://bucket.example.com/a.png?X-Amz-Signature=${synthetic("0123456789abcdef", 64, 14)}`,
+      "",
+    ],
+    ["a preview bypass parameter on an E2B host", `https://${APP_HOST}/?${BYPASS}`, TOKEN],
+  ])("refuses subject.appUrl with %s in it as a credential", (_label, appUrl, secret) => {
+    const message = refusal(publicStudy(appUrl));
+    expect(message).toMatch(
+      /^`subject\.appUrl` carries a credential in its path, query or fragment/,
+    );
+    if (secret !== "") expect(message).not.toContain(secret);
+  });
+
+  it("refuses user info on an E2B host as a user name or password", () => {
+    const message = refusal(publicStudy(`https://user:${TOKEN}${"@"}${APP_HOST}/`));
+    expect(message).toMatch(/^`subject\.appUrl` has a user name or password in it/);
+  });
+
+  it("parses a participant target that names an E2B sandbox", () => {
+    const result = parseStudy(
+      publicStudy(`https://${APP_HOST}/`, {
+        participants: [
+          {
+            id: "a",
+            target: `https://${OTHER_HOST}/sign-in?origin=${encodeURIComponent(`https://${OTHER_HOST}`)}`,
+          },
+        ],
+      }),
+    );
+    expect(result.ok ? "parsed" : result.error.message).toBe("parsed");
   });
 });
 
