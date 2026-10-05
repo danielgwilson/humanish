@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- An OpenAI computer-use participant switches to carrying its conversation itself
+  (`explicit_context`) when the API answers 404 "Item with id '...' not found", the answer for an
+  item the server never stored, as on a zero-data-retention organization. The provider read
+  zero-data-retention rejections only from 400 responses, so this one stopped the participant
+  with "OpenAI Responses 404". The actor trace's `conversation.rejection` and the run warning now
+  say which answer made the switch.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library

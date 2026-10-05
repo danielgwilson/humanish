@@ -978,7 +978,11 @@ Core-owned fields:
   kept it through `previous_response_id`) or `explicit_context` (the server kept
   none). `explicitReason` says why: `configured` (`zeroDataRetention`) or
   `zdr_rejection` (the organization rejected server-side state; `switchedAt` and
-  `switchedAtRequest` say when). In `explicit_context` each request carries the
+  `switchedAtRequest` say when). With `zdr_rejection`, `rejection` names the
+  answer that made the switch: `zero_data_retention` (the error named it),
+  `previous_response` (a 400 that refused or could not find the
+  `previous_response_id`) or `stored_item` (a 404 for an item the server never
+  kept, "Item with id '...' not found"). In `explicit_context` each request carries the
   conversation from the client, with `store: false` and the reasoning returned
   in encrypted form. It carries the opening message, every exchange of a reply
   with the outputs that answered it, and the latest reply. Past an estimated

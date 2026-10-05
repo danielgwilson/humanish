@@ -267,24 +267,35 @@ export interface OpenAiResponsesProviderOptions {
   env?: Record<string, string | undefined>;
 }
 
+/** Which answer told the provider that the organization keeps no server-side conversation. */
+type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
+
 // A typed error so nextTurn can distinguish a ZDR-policy rejection (recoverable
 // by switching to explicit-context mode) from any other non-ok status. It never
 // carries the apiKey or the response body.
 class ZdrError extends Error {
-  constructor() {
-    super("OpenAI Responses rejected server-side state (zero data retention)");
+  constructor(readonly rejection: ZdrRejection) {
+    super(
+      rejection === "stored_item"
+        ? "OpenAI Responses 404: the request referenced an item the server does not keep (zero data retention)"
+        : "OpenAI Responses rejected server-side state (zero data retention)",
+    );
     this.name = "ZdrError";
   }
 }
 
-// A 400 whose body mentions any of these means the account/org cannot use
-// server-side response state, so we must fall back to explicit-context mode.
-function isZdrRejection(bodyText: string): boolean {
-  return (
-    bodyText.includes("Zero Data Retention") ||
-    bodyText.includes("zero data retention") ||
-    bodyText.includes("previous_response_id")
-  );
+/** The message of a 404 for an item the server never kept, as the wire sends it. */
+const STORED_ITEM_NOT_FOUND = /Item with id '?[A-Za-z0-9_-]+'? not found/;
+
+// A 400 or 404 whose body says the organization cannot use server-side response state, so the
+// provider must carry the conversation itself (explicit-context mode). Captured bodies are in
+// tests/fixtures/openai-store-less/.
+function zdrRejection(bodyText: string): ZdrRejection | undefined {
+  if (bodyText.includes("Zero Data Retention") || bodyText.includes("zero data retention"))
+    return "zero_data_retention";
+  if (bodyText.includes("previous_response_id")) return "previous_response";
+  if (STORED_ITEM_NOT_FOUND.test(bodyText)) return "stored_item";
+  return undefined;
 }
 
 // A typed error so nextTurn can latch reasoning summaries off and retry the turn
@@ -437,11 +448,18 @@ async function postResponse(
       return parsed;
     }
     lastStatus = res.status;
+    if (res.status === 404) {
+      // A store-less organization answers a reference to an item it never kept with 404.
+      const bodyText = await res.text().catch(() => "");
+      const rejection = zdrRejection(bodyText);
+      if (rejection !== undefined) throw new ZdrError(rejection);
+      const code = namedProviderErrorCode(bodyText);
+      throw new Error(`OpenAI Responses 404${code === undefined ? "" : ` ${code}`}`);
+    }
     if (res.status === 400) {
       const bodyText = await res.text();
-      if (isZdrRejection(bodyText)) {
-        throw new ZdrError();
-      }
+      const rejection = zdrRejection(bodyText);
+      if (rejection !== undefined) throw new ZdrError(rejection);
       if (isSummaryRejection(bodyText)) {
         throw new SummaryRejectionError();
       }
@@ -578,7 +596,7 @@ export function createOpenAiResponsesProvider(
           continue;
         }
         if (error instanceof ZdrError && state.mode !== "explicit_context") {
-          record.switched();
+          record.switched(error.rejection);
           state.mode = "explicit_context";
           continue;
         }

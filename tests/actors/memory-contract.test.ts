@@ -5,6 +5,7 @@
 // where its brain keeps the conversation (the server-side response chain, one CLI process, one
 // native Codex task) and records what the model holds when it answers each turn.
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
 import type { spawn } from "node:child_process";
 import { PassThrough, Writable } from "node:stream";
 import { PNG } from "pngjs";
@@ -130,6 +131,57 @@ async function openAiViews(zeroDataRetention: boolean): Promise<string[]> {
   return views;
 }
 
+/**
+ * A Responses API that keeps nothing, like one on a zero-data-retention org: a request that names a
+ * previous response is refused with the stored-item 404 captured from the live API
+ * (tests/fixtures/openai-store-less/). The provider has to switch to carrying the conversation.
+ */
+async function storeLessOpenAiViews(): Promise<string[]> {
+  const refusal = readFileSync(
+    new URL("../fixtures/openai-store-less/stored-item-not-found.json", import.meta.url),
+    "utf8",
+  );
+  const views: string[] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { input?: unknown[]; previous_response_id?: string };
+    if (body.previous_response_id !== undefined)
+      return {
+        ok: false,
+        status: 404,
+        text: async () => refusal,
+        json: async () => JSON.parse(refusal) as unknown,
+      };
+    views.push(JSON.stringify(body.input ?? []));
+    const turn = views.length;
+    const value = {
+      id: `resp_${turn}`,
+      status: "completed",
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: turn === 1 ? TURN_ONE : "Next." }],
+        },
+        {
+          type: "computer_call",
+          call_id: `call_${turn}`,
+          actions: [{ type: "click", x: 1, y: 1 }],
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 1 },
+    };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  await drive(
+    createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: async () => undefined }),
+  );
+  return views;
+}
+
 /** One `claude` process is one session; its transcript is what the model holds. */
 async function claudeSessionViews(): Promise<string[]> {
   const views: string[] = [];
@@ -218,6 +270,7 @@ const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   "openai-computer-use": {
     "threaded (previous_response_id)": { views: () => openAiViews(false) },
     explicit_context: { views: () => openAiViews(true) },
+    "explicit_context after a stored-item 404": { views: storeLessOpenAiViews },
   },
   "local-agent": {
     ...LOCAL_AGENT_BRAINS,
