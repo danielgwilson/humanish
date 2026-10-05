@@ -666,7 +666,7 @@ SendGrid, Hugging Face), JWTs, bearer and basic `Authorization` values, private
 key headers, database URLs with a password, the password in any URL's user info,
 credential query and fragment parameters with a value of 16 characters or more,
 credential-named upper-case variables set to a value of 16 characters or more
-with a digit, an AWS secret access key next to its name, E2B URLs, and Linux,
+with a digit and a letter, an AWS secret access key next to its name, E2B URLs, and Linux,
 macOS and Windows local paths. `tests/verify/secret-formats.test.ts` lists the
 formats and the ordinary values that must not match.
 
