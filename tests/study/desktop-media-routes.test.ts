@@ -6,46 +6,67 @@ import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
 } from "../../src/study/validation.js";
-import { parseStudyDocument } from "../../src/study/config.js";
-import { type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { declaresSharedWorld } from "../../src/study/study-fields.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
-const base: StudyConfig = {
-  schema: "humanish.lab.v2",
+type Manifest = {
+  schema: string;
+  id: string;
+  route: string;
+  mode: string;
+  subject: Record<string, unknown>;
+  actor: { type: string };
+  participants?: unknown;
+  scenario?: string;
+  execution: {
+    target: string;
+    concurrency?: number;
+    desktop: { browser?: string; media?: unknown };
+  };
+  review: { analysis: boolean };
+};
+
+const base: Manifest = {
+  schema: STUDY_SCHEMA,
   id: "camera-route",
+  route: "computer-use",
+  mode: "live",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actors: [{ type: "openai-computer-use" }],
+  actor: { type: "openai-computer-use" },
   execution: {
     target: "e2b-desktop",
     desktop: { browser: "chrome", media: { camera: { source: "synthetic" } } },
   },
-  scenario: { mode: "live" },
   review: { analysis: false },
 };
-const cases: Array<[string, (config: StudyConfig) => void, string]> = [
+// The routes that do not read execution.desktop.browser refuse it, so their cases remove it.
+const cases: Array<[string, (study: Manifest) => void, string]> = [
   [
     "shared world",
     (c) => {
+      c.route = "shared-world";
       c.subject = {
         source: "clone",
-        topology: "shared-world",
         repos: ["example-org/collab-app"],
         exposure: "synthetic",
         serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
         state: { checkpoint: [{ name: "count", command: "echo 0" }] },
       };
-      c.actors[0]!.lanes = [
+      c.participants = [
         { id: "author", instruction: "Create a note." },
         { id: "reader", instruction: "Read a note." },
       ];
-      c.execution!.concurrency = 2;
+      c.execution.concurrency = 2;
     },
     "shared-world routes",
   ],
   [
     "Firefox",
     (c) => {
-      c.execution!.desktop!.browser = "firefox";
+      c.execution.desktop.browser = "firefox";
     },
     "requires Chrome or Chromium",
   ],
@@ -63,58 +84,64 @@ const cases: Array<[string, (config: StudyConfig) => void, string]> = [
     "in-process app",
     (c) => {
       c.subject.source = "local-app";
-      c.execution!.target = "local";
+      c.execution.target = "local";
+      delete c.execution.desktop.browser;
     },
     "computer-use browser participants",
   ],
   [
     "scripted browser",
     (c) => {
-      c.actors[0]!.type = "scripted-browser";
-      c.execution!.target = "local";
-      c.scenario!.ref = "scripted-first-run";
+      c.route = "scripted";
+      c.actor.type = "scripted-browser";
+      c.execution.target = "local";
+      delete c.execution.desktop.browser;
+      c.scenario = "scripted-first-run";
     },
     "computer-use browser participants",
   ],
   [
     "terminal",
     (c) => {
+      c.route = "terminal";
       c.subject = {
         source: "terminal-product",
         product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] },
       };
-      c.actors[0]!.type = "codex-exec";
-      c.execution!.target = "e2b-terminal";
+      c.actor.type = "codex-exec";
+      c.execution.target = "e2b-terminal";
+      delete c.execution.desktop.browser;
     },
     "computer-use browser participants",
   ],
 ];
 
+function changed(change: (study: Manifest) => void, media = true): Manifest {
+  const study = structuredClone(base);
+  change(study);
+  if (!media) delete study.execution.desktop.media;
+  return study;
+}
+
 describe("declared camera capabilities must reach an implemented route", () => {
   it.each(cases)("rejects %s during manifest parsing", (_label, change, reason) => {
-    const config = structuredClone(base);
-    change(config);
-    const withoutMedia = structuredClone(config);
-    delete withoutMedia.execution!.desktop!.media;
-    const baseline = parseStudyDocument(withoutMedia);
+    const study = changed(change);
+    const baseline = parseStudy(changed(change, false));
     expect(baseline.ok, baseline.ok ? undefined : baseline.error.message).toBe(true);
-    expect(desktopMediaValidationReason(config)).toContain(reason);
-    const parsed = parseStudyDocument(config);
+    expect(desktopMediaValidationReason(libraryConfig(study))).toContain(reason);
+    const parsed = parseStudy(study);
     expect(parsed.ok).toBe(false);
     expect(parsed.ok ? undefined : parsed.error.message).toContain(reason);
   });
 
   it("keeps supported Chrome/Chromium and camera-free routes unchanged", () => {
-    expect(desktopMediaValidationReason(base)).toBeUndefined();
+    expect(desktopMediaValidationReason(libraryConfig(base))).toBeUndefined();
     for (const [, change] of cases) {
-      const config = structuredClone(base);
-      change(config);
-      delete config.execution!.desktop!.media;
-      expect(desktopMediaValidationReason(config)).toBeUndefined();
+      expect(desktopMediaValidationReason(libraryConfig(changed(change, false)))).toBeUndefined();
     }
-    const config = structuredClone(base);
-    config.execution!.desktop!.browser = "chromium";
-    expect(parseStudyDocument(config).ok).toBe(true);
+    const study = structuredClone(base);
+    study.execution.desktop.browser = "chromium";
+    expect(parseStudy(study).ok).toBe(true);
   });
 
   it("rechecks direct backend calls before desktop creation or participant dispatch", async () => {
@@ -127,19 +154,28 @@ describe("declared camera capabilities must reach an implemented route", () => {
     });
     const seams = { desktopModule: loadDesktopModule, runSession };
     try {
-      const firefox = structuredClone(base);
-      firefox.execution!.desktop!.browser = "firefox";
-      const shared = structuredClone(base);
+      const firefox = libraryConfig(changed((c) => (c.execution.desktop.browser = "firefox")));
+      // A shared world with no participants list has no v3 manifest; the library caller sets the
+      // topology on the config it passes.
+      const shared = libraryConfig(structuredClone(base));
       shared.subject.topology = "shared-world";
-      const scripted = structuredClone(base);
-      scripted.actors[0]!.type = "scripted-browser";
-      const terminal = structuredClone(base);
-      terminal.subject.source = "terminal-product";
+      const scripted = libraryConfig(
+        changed((c) => {
+          c.route = "scripted";
+          c.actor.type = "scripted-browser";
+        }),
+      );
+      const terminal = libraryConfig(
+        changed((c) => {
+          c.route = "terminal";
+          c.subject.source = "terminal-product";
+        }),
+      );
       const outcomes = await Promise.all([
         runComputerUse({ cwd, config: firefox, dryRun: false, env: {}, deps: seams }),
         runComputerUse({
           cwd,
-          config: base,
+          config: libraryConfig(base),
           dryRun: false,
           env: {},
           deps: seams,
@@ -185,19 +221,22 @@ describe("declared camera capabilities must reach an implemented route", () => {
 
   it("rejects camera declarations in the direct shared backend without a topology declaration", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-media-direct-shared-"));
-    const config = structuredClone(base);
-    config.subject = {
-      source: "clone",
-      repos: ["example-org/collab-app"],
-      exposure: "synthetic",
-      serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
-      state: { checkpoint: [{ name: "count", command: "echo 0" }] },
-    };
-    config.actors[0]!.lanes = [
-      { id: "author", instruction: "Create a note." },
-      { id: "reader", instruction: "Read a note." },
-    ];
-    config.execution!.concurrency = 2;
+    const config = libraryConfig(
+      changed((c) => {
+        c.subject = {
+          source: "clone",
+          repos: ["example-org/collab-app"],
+          exposure: "synthetic",
+          serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
+          state: { checkpoint: [{ name: "count", command: "echo 0" }] },
+        };
+        c.participants = [
+          { id: "author", instruction: "Create a note." },
+          { id: "reader", instruction: "Read a note." },
+        ];
+        c.execution.concurrency = 2;
+      }),
+    );
     const loadDesktopModule = vi.fn(async () => {
       throw new Error("must not create a desktop");
     });
@@ -207,7 +246,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
     try {
       // The config is valid for a hosted computer-use participant, and all shared-backend
       // structural checks pass. Rejection must come from the actual backend's media support.
-      expect(config.subject.topology).toBeUndefined();
+      expect(declaresSharedWorld(config)).toBe(false);
       expect(desktopMediaValidationReason(config)).toBeUndefined();
       expect(concurrentSharedWorldValidationReason(config)).toBeNull();
       const result = await runSharedWorld({

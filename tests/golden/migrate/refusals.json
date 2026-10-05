@@ -1,0 +1,1394 @@
+[
+  {
+    "name": "refuses a clone lab whose actor can neither drive nor script the served app",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > refuses a clone lab whose actor can neither drive nor script the served app",
+    "v2": {"schema":"humanish.lab.v2","id":"codex-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"codex-app-server","count":1}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+  },
+  {
+    "name": "refuses a clone lab whose actor can neither drive nor script the served app (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > refuses a clone lab whose actor can neither drive nor script the served app",
+    "v2": {"schema":"humanish.lab.v2","id":"codex-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"humanish-setup","count":1}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"humanish-setup\"."
+  },
+  {
+    "name": "refuses a clone lab whose actor can neither drive nor script the served app (3)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > refuses a clone lab whose actor can neither drive nor script the served app",
+    "v2": {"schema":"humanish.lab.v2","id":"terminal-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"codex-exec"}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route."
+  },
+  {
+    "name": "rejects the unregistered actor type pi-agent-core on a route that ignores actors[0].type",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects the unregistered actor type pi-agent-core on a route that ignores actors[0].type",
+    "v2": {"schema":"humanish.lab.v2","id":"first-run","subject":{"source":"this-repo"},"actors":[{"type":"pi-agent-core"}],"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].type \"pi-agent-core\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
+  },
+  {
+    "name": "rejects the unregistered actor type claude-agent-sdk on a route that ignores actors[0].type",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects the unregistered actor type claude-agent-sdk on a route that ignores actors[0].type",
+    "v2": {"schema":"humanish.lab.v2","id":"first-run","subject":{"source":"this-repo"},"actors":[{"type":"claude-agent-sdk"}],"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].type \"claude-agent-sdk\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
+  },
+  {
+    "name": "comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage",
+    "v2": {"schema":"humanish.lab.v2","id":"comms-multi","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","mission":"Sign up.","lanes":[{"id":"signup-01","instruction":"Sign up."},{"id":"signup-02","instruction":"Sign up."},{"id":"signup-03","instruction":"Sign up."}]}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"injectEnv":"RESEND_API_URL","recipients":[{"lane":"lane-01","address":"<email>"}]}}},
+    "refused": "it does not parse: comms.email.recipients name 1 participant that does not exist: \"lane-01\". This study's participant ids are: signup-01, signup-02, signup-03. A recipient's `lane` must match one of them exactly: the inbox instruction is injected per participant, and a mismatch disables the email funnel for that participant."
+  },
+  {
+    "name": "comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage",
+    "v2": {"schema":"humanish.lab.v2","id":"comms-multi","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","mission":"Sign up.","lanes":[{"id":"signup-01","instruction":"Sign up."},{"id":"signup-02","instruction":"Sign up."},{"id":"signup-03","instruction":"Sign up."}]}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"injectEnv":"RESEND_API_URL","recipients":[{"lane":"signup-01"}]}}},
+    "refused": "it does not parse: comms.email.recipients cover no participant with an address, so no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every participant then gets a deterministic address automatically)."
+  },
+  {
+    "name": "defaults comms:email kind to fake and requires a valid injectEnv name",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > defaults comms:email kind to fake and requires a valid injectEnv name",
+    "v2": {"schema":"humanish.lab.v2","id":"c","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","count":1}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"kind":"fake"}}},
+    "refused": "it does not parse: `comms.email` needs a transport: `injectEnv` (the subject-env var set to the catch's HTTP base URL, e.g. RESEND_BASE_URL), or `smtp` (host/port env vars, for an app that sends over SMTP), or `external` on an adopter-hosted plane where you run the catch yourself."
+  },
+  {
+    "name": "defaults comms:email kind to fake and requires a valid injectEnv name (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > defaults comms:email kind to fake and requires a valid injectEnv name",
+    "v2": {"schema":"humanish.lab.v2","id":"c","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","count":1}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"injectEnv":"not a var"}}},
+    "refused": "it does not parse: `comms.email.injectEnv` must be a valid env var name (got \"not a var\")."
+  },
+  {
+    "name": "defaults comms:email kind to fake and requires a valid injectEnv name (3)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > defaults comms:email kind to fake and requires a valid injectEnv name",
+    "v2": {"schema":"humanish.lab.v2","id":"c","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","count":1}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"kind":"real","injectEnv":"RESEND_API_URL"}}},
+    "refused": "it does not parse: Real inboxes require `comms.email.connection` naming a saved connection; omit kind."
+  },
+  {
+    "name": "defaults comms:email kind to fake and requires a valid injectEnv name (4)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > defaults comms:email kind to fake and requires a valid injectEnv name",
+    "v2": {"schema":"humanish.lab.v2","id":"c","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","count":1}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"injectEnv":"RESEND_API_URL","linkOrigin":"not a url"}}},
+    "refused": "it does not parse: `comms.email.linkOrigin` must be an absolute URL origin (got \"not a url\")."
+  },
+  {
+    "name": "defaults comms:email kind to fake and requires a valid injectEnv name (5)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > defaults comms:email kind to fake and requires a valid injectEnv name",
+    "v2": {"schema":"humanish.lab.v2","id":"c","subject":{"source":"clone","repos":["e/a"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","count":1}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"live"},"comms":{"email":{"injectEnv":"RESEND_API_URL","port":65535}}},
+    "refused": "it does not parse: `comms.email.port` must be ≤ 65534 (the catch reserves port+1 for the inbox listener)."
+  },
+  {
+    "name": "rejects multiple actors (fan-out not wired: fail closed, not silent)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects multiple actors (fan-out not wired: fail closed, not silent)",
+    "v2": {"schema":"humanish.lab.v2","id":"multi","subject":{"source":"this-repo"},"actors":[{"type":"a"},{"type":"b"}]},
+    "refused": "it does not parse: Multiple actors are not supported yet (only the first actor runs); declare a single actor."
+  },
+  {
+    "name": "rejects invalid config: missing id",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: missing id",
+    "v2": {"schema":"humanish.lab.v2","subject":{"source":"this-repo"},"actors":[{"type":"a"}]},
+    "refused": "it does not parse: The study id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
+  },
+  {
+    "name": "rejects invalid config: id with space",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: id with space",
+    "v2": {"schema":"humanish.lab.v2","id":"has space","subject":{"source":"this-repo"},"actors":[{"type":"a"}]},
+    "refused": "it does not parse: The study id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
+  },
+  {
+    "name": "rejects invalid config: id not starting alphanumeric",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: id not starting alphanumeric",
+    "v2": {"schema":"humanish.lab.v2","id":".hidden","subject":{"source":"this-repo"},"actors":[{"type":"a"}]},
+    "refused": "it does not parse: The study id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
+  },
+  {
+    "name": "rejects invalid config: no subject",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: no subject",
+    "v2": {"schema":"humanish.lab.v2","id":"x","actors":[{"type":"a"}]},
+    "refused": "it does not parse: `subject` is required and must be an object."
+  },
+  {
+    "name": "rejects invalid config: bad subject source",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: bad subject source",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"vm"},"actors":[{"type":"a"}]},
+    "refused": "it does not parse: `subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree."
+  },
+  {
+    "name": "rejects invalid config: clone without repos",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: clone without repos",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"clone"},"actors":[{"type":"a"}]},
+    "refused": "it does not parse: `subject.repos` must list at least one owner/repo slug when source is clone."
+  },
+  {
+    "name": "rejects invalid config: empty actors",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: empty actors",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[]},
+    "refused": "it does not parse: `actors` must be a non-empty array."
+  },
+  {
+    "name": "rejects invalid config: actor without type",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: actor without type",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"count":1}]},
+    "refused": "it does not parse: actors[0].type is required."
+  },
+  {
+    "name": "rejects invalid config: bad execution target",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: bad execution target",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"execution":{"target":"vm"}},
+    "refused": "it does not parse: `execution.target` must be local, e2b-desktop, or e2b-terminal."
+  },
+  {
+    "name": "rejects invalid config: non-positive resolution",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: non-positive resolution",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"execution":{"desktop":{"resolution":[0,-1]}}},
+    "refused": "it does not parse: `execution.desktop.resolution` must be two positive integers [width, height]."
+  },
+  {
+    "name": "rejects invalid config: this-repo with execution.target",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: this-repo with execution.target",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `execution.target` applies only to clone/app-url/local-app subjects; this-repo studies run locally."
+  },
+  {
+    "name": "rejects invalid config: this-repo with live scenario",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: this-repo with live scenario",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: this-repo studies are dry-run only; use a clone or app-url subject for a live run."
+  },
+  {
+    "name": "rejects invalid stopWhen: empty any",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: empty any",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any must be a non-empty array of stop condition rules."
+  },
+  {
+    "name": "rejects invalid stopWhen: bad rule id",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: bad rule id",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[{"id":"bad id","textIncludes":"Saved"}]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any[0].id must be a public-safe token matching /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ and at most 80 chars; got \"bad id\"."
+  },
+  {
+    "name": "rejects invalid stopWhen: rule without condition",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: rule without condition",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[{"id":"done"}]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any[0] must declare at least one condition: urlIncludes, urlPathEquals, textIncludes, or appStatePathEquals."
+  },
+  {
+    "name": "rejects invalid stopWhen: bad urlPathEquals",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: bad urlPathEquals",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[{"urlPathEquals":"tasks"}]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any[0].urlPathEquals must be an absolute URL path starting with one slash."
+  },
+  {
+    "name": "rejects invalid stopWhen: bad appState path",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: bad appState path",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[{"appStatePathEquals":{"path":"bad/path","equals":"done"}}]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any[0].appStatePathEquals.path must contain only letters, digits, underscore, dash, and dot."
+  },
+  {
+    "name": "rejects invalid stopWhen: non-primitive equals",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects invalid stopWhen: non-primitive equals",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","stopWhen":{"any":[{"appStatePathEquals":{"path":"status","equals":{"value":"done"}}}]}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].stopWhen.any[0].appStatePathEquals.equals must be a string, number, boolean, or null."
+  },
+  {
+    "name": "rejects an invalid dwell window: not an object",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: not an object",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":5000}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell must be an object with ms (and optional when, everyMs, then)."
+  },
+  {
+    "name": "rejects an invalid dwell window: ms missing",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: ms missing",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"everyMs":1000}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.ms must be an integer between 1000 and 3600000 milliseconds."
+  },
+  {
+    "name": "rejects an invalid dwell window: ms below a second",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: ms below a second",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"ms":500}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.ms must be an integer between 1000 and 3600000 milliseconds."
+  },
+  {
+    "name": "rejects an invalid dwell window: ms above an hour",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: ms above an hour",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"ms":3600001}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.ms must be an integer between 1000 and 3600000 milliseconds."
+  },
+  {
+    "name": "rejects an invalid dwell window: everyMs above ms",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: everyMs above ms",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"ms":5000,"everyMs":6000}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.everyMs must be an integer between 1000 and actors[0].dwell.ms."
+  },
+  {
+    "name": "rejects an invalid dwell window: then unknown",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: then unknown",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"ms":5000,"then":"pause"}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.everyMs must be an integer between 1000 and actors[0].dwell.ms."
+  },
+  {
+    "name": "rejects an invalid dwell window: when invalid",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an invalid dwell window: when invalid",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","dwell":{"ms":5000,"when":{"any":[]}}}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].dwell.everyMs must be an integer between 1000 and actors[0].dwell.ms."
+  },
+  {
+    "name": "rejects camera source with the wrong extension before any spend",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects camera source with the wrong extension before any spend",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"media":{"camera":{"source":"./cam.mp4"}}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.media.camera.source` must be `synthetic` or a path to a `.y4m` file (Chrome's fake video capture reads Y4M)."
+  },
+  {
+    "name": "rejects camera without a source before any spend",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects camera without a source before any spend",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"media":{"camera":{}}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.media.camera.source` must be `synthetic` or a path to a `.y4m` file (Chrome's fake video capture reads Y4M)."
+  },
+  {
+    "name": "rejects media with neither device before any spend",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects media with neither device before any spend",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"media":{}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.media` declares neither `camera` nor `microphone`."
+  },
+  {
+    "name": "rejects a microphone on the stock image before any spend",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects a microphone on the stock image before any spend",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"media":{"microphone":{"source":"./room.wav"}}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.media.microphone.source` must be `speech`. Microphone source-file injection is unsupported."
+  },
+  {
+    "name": "rejects unimplemented microphone file injection even with a custom desktop template",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects unimplemented microphone file injection even with a custom desktop template",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"template":"adopter-desktop-with-audio","media":{"microphone":{"source":"./room.wav"}}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.media.microphone.source` must be `speech`. Microphone source-file injection is unsupported."
+  },
+  {
+    "name": "rejects an unknown mediaPermission",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an unknown mediaPermission",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"},"policies":{"mediaPermission":"auto"}},
+    "refused": "it does not parse: `policies.mediaPermission` must be `prompt` (the participant answers the browser's own dialog) or `granted`."
+  },
+  {
+    "name": "fails closed on cua mis-config: missing appUrl",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: missing appUrl",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` is required when source is app-url."
+  },
+  {
+    "name": "fails closed on cua mis-config: public URL",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: public URL",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"https://example.com/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
+  },
+  {
+    "name": "fails closed on cua mis-config: non-http scheme",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: non-http scheme",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"file:///tmp/index.html"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` must be an http(s) URL."
+  },
+  {
+    "name": "fails closed on cua mis-config: not a URL",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: not a URL",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"localhost:3000"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` must be an http(s) URL."
+  },
+  {
+    "name": "fails closed on cua mis-config: missing e2b-desktop target",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: missing e2b-desktop target",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"timeoutMs":1000},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: app-url computer-use subjects require `execution.target: local` or `e2b-desktop`."
+  },
+  {
+    "name": "fails closed on cua mis-config: unregistered actor type",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: unregistered actor type",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"not-a-real-actor"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-a-real-actor\"."
+  },
+  {
+    "name": "fails closed on cua mis-config: registered but not computer-use",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: registered but not computer-use",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+  },
+  {
+    "name": "rejects an unknown participant field misson before it can disappear",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > rejects an unknown participant field misson before it can disappear",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"reader","misson":"different"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Unknown study field in `actors[0].lanes[0]`: misson. Known fields: id, actorType, surface, caseGroup, persona, device, instruction, target, entry, host, reasoningEffort, stopWhen, dwell."
+  },
+  {
+    "name": "rejects an unknown participant field runtme before it can disappear",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > rejects an unknown participant field runtme before it can disappear",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"reader","runtme":"different"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Unknown study field in `actors[0].lanes[0]`: runtme. Known fields: id, actorType, surface, caseGroup, persona, device, instruction, target, entry, host, reasoningEffort, stopWhen, dwell."
+  },
+  {
+    "name": "rejects an unknown participant field count before it can disappear",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > rejects an unknown participant field count before it can disappear",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"reader","count":"different"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Unknown study field in `actors[0].lanes[0]`: count. Known fields: id, actorType, surface, caseGroup, persona, device, instruction, target, entry, host, reasoningEffort, stopWhen, dwell."
+  },
+  {
+    "name": "rejects an unknown participant field constructor before it can disappear",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > rejects an unknown participant field constructor before it can disappear",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"reader","constructor":"different"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Unknown study field in `actors[0].lanes[0]`: constructor. Known fields: id, actorType, surface, caseGroup, persona, device, instruction, target, entry, host, reasoningEffort, stopWhen, dwell."
+  },
+  {
+    "name": "names all unknown roster fields at the declared group index before expansion",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > names all unknown roster fields at the declared group index before expansion",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"reader","count":2},{"id":"reviewer","count":2,"misson":"Review","runtme":null}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Unknown study fields in `actors[0].roster[1]`: misson, runtme. Known fields: id, actorType, surface, caseGroup, persona, device, instruction, target, entry, host, reasoningEffort, stopWhen, dwell, count."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: lanes XOR count",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: lanes XOR count",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","count":2,"lanes":[{"id":"a"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: roster XOR count",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: roster XOR count",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","count":2,"roster":[{"id":"a","count":2}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Set either actors[0].roster or actors[0].count, not both: `roster` declares groups of distinct participants, and `count` declares identical ones."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: roster XOR lanes",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: roster XOR lanes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"a","count":2}],"lanes":[{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: Set either actors[0].lanes or actors[0].roster, not both: list participants one by one in `lanes`, or in groups in `roster`."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: lanes XOR laneFocus",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: lanes XOR laneFocus",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","laneFocus":{"instruction":"x"},"lanes":[{"id":"a"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: roster XOR laneFocus",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: roster XOR laneFocus",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","laneFocus":{"instruction":"x"},"roster":[{"id":"a","count":2}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].roster and actors[0].laneFocus are mutually exclusive: a roster group's instruction is each participant's steer."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: lanes[].device XOR raw resolution",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: lanes[].device XOR raw resolution",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","device":"mobile"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","desktop":{"resolution":[1280,800]}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: participants[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: over the 16-lane cap (count)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (count)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","count":17}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: over the 16-lane cap (lanes)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (lanes)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"lane-0"},{"id":"lane-1"},{"id":"lane-2"},{"id":"lane-3"},{"id":"lane-4"},{"id":"lane-5"},{"id":"lane-6"},{"id":"lane-7"},{"id":"lane-8"},{"id":"lane-9"},{"id":"lane-10"},{"id":"lane-11"},{"id":"lane-12"},{"id":"lane-13"},{"id":"lane-14"},{"id":"lane-15"},{"id":"lane-16"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: over the 16-lane cap (roster)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (roster)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"viewer","count":17}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: duplicate lane ids",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: duplicate lane ids",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"dup"},{"id":"dup"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].lanes ids must be unique (duplicate \"dup\")."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: duplicate roster group ids",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: duplicate roster group ids",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"dup","count":1},{"id":"dup","count":1}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].roster group ids must be unique (duplicate \"dup\")."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: bad lane id shape",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: bad lane id shape",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"Bad Id!"},{"id":"ok"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].lanes[0].id must be a public-safe token matching /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ and at most 40 chars (it names the participant's evidence paths); got \"Bad Id!\"."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: bad roster id shape",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: bad roster id shape",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"Bad Id!","count":1}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].roster[0].id must match /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ and be at most 37 characters, because each generated participant id adds a suffix like \"-01\"; \"Bad Id!\" is not."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: missing roster count",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: missing roster count",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"viewer"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].roster[0].count is required and must be a positive integer."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: unknown lane device",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: unknown lane device",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","device":"phablet"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].lanes[0].device must be one of: mobile, small-mobile, narrow-mobile, tablet, desktop, wide."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: unknown roster device",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: unknown roster device",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"viewer","count":1,"device":"phablet"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].lanes[0].device must be one of: mobile, small-mobile, narrow-mobile, tablet, desktop, wide."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: bad lane target URL",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: bad lane target URL",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","target":"not-a-url"},{"id":"b","target":"http://127.0.0.1:3001/"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: actors[0].lanes[0].target must be an absolute http(s) URL."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: mixed target/no-target roster",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: mixed target/no-target roster",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","target":"http://127.0.0.1:3001/"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: When any participants[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: target mixed with shared-world entry",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: target mixed with shared-world entry",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","target":"http://127.0.0.1:3001/","entry":"/a"},{"id":"b","target":"http://127.0.0.1:3002/"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: participants[].target and participants[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: public lane target without allowPublicTargets",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: public lane target without allowPublicTargets",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"a","target":"https://role-a.preview.example.test/"},{"id":"b","target":"https://role-b.preview.example.test/"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
+  },
+  {
+    "name": "fails closed on fan-out mis-config: allowPublicTargets + N>1",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: allowPublicTargets + N>1",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"https://preview.example.com/"},"actors":[{"type":"openai-computer-use","count":2}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: `policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `route: shared-world` to run them together there, give each `participants[]` entry its own `target`, or run one participant."
+  },
+  {
+    "name": "policies.allowPublicTargets demotes the loopback wall: a public appUrl parses with it, fails without it",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > policies.allowPublicTargets demotes the loopback wall: a public appUrl parses with it, fails without it",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"https://preview-123.vercel.app/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
+  },
+  {
+    "name": "policies.allowPublicTargets demotes the loopback wall: a public appUrl parses with it, fails without it (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > policies.allowPublicTargets demotes the loopback wall: a public appUrl parses with it, fails without it",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"not a url"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: `subject.appUrl` must be an http(s) URL."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"touch":true}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent)."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"mobileEmulation":"yes"}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent)."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes (3)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"mobileEmulation":true,"deviceScaleFactor":0}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity.deviceScaleFactor` must be a number greater than 0 and at most 4."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes (4)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"mobileEmulation":true,"deviceScaleFactor":9}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity.deviceScaleFactor` must be a number greater than 0 and at most 4."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes (5)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"mobileEmulation":true,"touch":"on"}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity.touch` must be true or false."
+  },
+  {
+    "name": "execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes (6)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > execution.desktop.fidelity parses on the computer-use route with zero warnings, and rejects bad shapes",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"fidelity":{"mobileEmulation":true,"userAgent":"   "}}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.fidelity.userAgent` must be a non-empty string when set."
+  },
+  {
+    "name": "rejects an unknown desktop browser",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an unknown desktop browser",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"browser":"safari"}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.browser` must be default, chrome, chromium, or firefox."
+  },
+  {
+    "name": "rejects an unknown device preset",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects an unknown device preset",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"device":"foldable"}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.device` must be one of: mobile, small-mobile, narrow-mobile, tablet, desktop, wide."
+  },
+  {
+    "name": "rejects a blank/whitespace execution.desktop.template (set-but-empty is a mistake, not a template)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > rejects a blank/whitespace execution.desktop.template (set-but-empty is a mistake, not a template)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"template":"   "}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: `execution.desktop.template` must be a non-empty E2B desktop template name or ID when it is set. Any name is accepted."
+  },
+  {
+    "name": "fails closed on scripted mis-config: scripted actor on e2b-desktop",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: scripted actor on e2b-desktop",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject."
+  },
+  {
+    "name": "fails closed on scripted mis-config: scripted actor on this-repo",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: scripted actor on this-repo",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"this-repo"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"}},
+    "refused": "it does not parse: scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject)."
+  },
+  {
+    "name": "fails closed on scripted mis-config: count > 2 (fan-out is a later layer)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: count > 2 (fan-out is a later layer)",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","count":3}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
+  },
+  {
+    "name": "fails closed on scripted mis-config: missing scenario.ref (the steps ARE the actor)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: missing scenario.ref (the steps ARE the actor)",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
+  },
+  {
+    "name": "fails closed on scripted mis-config: scenario.mode without ref",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: scenario.mode without ref",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"mode":"live"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
+  },
+  {
+    "name": "fails closed on scripted mis-config: policies.redactScreenshots: true (blur unimplemented here; no silent raw)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: policies.redactScreenshots: true (blur unimplemented here; no silent raw)",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000},"policies":{"redactScreenshots":true}},
+    "refused": "it does not parse: `policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them."
+  },
+  {
+    "name": "fails closed on scripted mis-config: policies.allowPublicTargets: true (driver enforces loopback per step)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: policies.allowPublicTargets: true (driver enforces loopback per step)",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: `policies.allowPublicTargets` is not supported on the scripted-browser route: the step driver allows only loopback URLs at every navigation. Remove the setting, or drive the public URL with a computer-use actor."
+  },
+  {
+    "name": "fails closed on scripted mis-config: public appUrl",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: public appUrl",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"https://example.com/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: `subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route."
+  },
+  {
+    "name": "fails closed on scripted mis-config: two-actor scripted+LLM composition",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on scripted mis-config: two-actor scripted+LLM composition",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"scripted-browser"},{"type":"openai-computer-use"}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: Multiple actors are not supported yet (only the first actor runs); declare a single actor."
+  },
+  {
+    "name": "rejects subject.state on the scripted route (a clone-only field on an app-url subject)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > rejects subject.state on the scripted route (a clone-only field on an app-url subject)",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/","state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":2}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: `subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
+  },
+  {
+    "name": "names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error",
+    "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+  },
+  {
+    "name": "fails closed on unsafe provisioned scripted config: missing synthetic exposure",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on unsafe provisioned scripted config: missing synthetic exposure",
+    "v2": {"schema":"humanish.lab.v2","id":"provisioned-scripted-invalid","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser"}],"scenario":{"ref":"workflow-review-proof"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A clone scripted-browser study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic."
+  },
+  {
+    "name": "fails closed on unsafe provisioned scripted config: missing seed",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on unsafe provisioned scripted config: missing seed",
+    "v2": {"schema":"humanish.lab.v2","id":"provisioned-scripted-invalid","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"scripted-browser"}],"scenario":{"ref":"workflow-review-proof"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A clone scripted-browser study needs `subject.state.seed` and cannot use `subject.state.external`: a subject at a public sandbox URL may hold only seeded synthetic data."
+  },
+  {
+    "name": "fails closed on unsafe provisioned scripted config: external state",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on unsafe provisioned scripted config: external state",
+    "v2": {"schema":"humanish.lab.v2","id":"provisioned-scripted-invalid","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}],"external":["DATABASE_URL"]},"env":["DATABASE_URL"]},"actors":[{"type":"scripted-browser"}],"scenario":{"ref":"workflow-review-proof"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A clone scripted-browser study needs `subject.state.seed` and cannot use `subject.state.external`: a subject at a public sandbox URL may hold only seeded synthetic data."
+  },
+  {
+    "name": "fails closed on unsafe provisioned scripted config: loopback-only start",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on unsafe provisioned scripted config: loopback-only start",
+    "v2": {"schema":"humanish.lab.v2","id":"provisioned-scripted-invalid","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser"}],"scenario":{"ref":"workflow-review-proof"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A clone scripted-browser study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0. The readiness probe still uses loopback."
+  },
+  {
+    "name": "fails closed on unsafe provisioned scripted config: lane roster",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > fails closed on unsafe provisioned scripted config: lane roster",
+    "v2": {"schema":"humanish.lab.v2","id":"provisioned-scripted-invalid","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser","lanes":[{"id":"provider"}]}],"scenario":{"ref":"workflow-review-proof"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces."
+  },
+  {
+    "name": "serve.url stays loopback-only even with allowPublicTargets (the lab serves the clone in-sandbox)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > serve.url stays loopback-only even with allowPublicTargets (the lab serves the clone in-sandbox)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"https://preview.vercel.app/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: `subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox."
+  },
+  {
+    "name": "rejects clone.fanout on the computer-use route (declared behavior change) but accepts clone.keep/depth",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > rejects clone.fanout on the computer-use route (declared behavior change) but accepts clone.keep/depth",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":1,"keep":true,"fanout":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)"
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: serve on app-url",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: serve on app-url",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/","serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.serve` applies only to clone subjects or local-tree subjects (humanish serves the cloned or packed app in the sandbox)."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: serve on this-repo",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: serve on this-repo",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"this-repo","serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000}},"actors":[{"type":"openai-computer-use","mission":"Explore."}]},
+    "refused": "it does not parse: `subject.serve` applies only to clone subjects or local-tree subjects (humanish serves the cloned or packed app in the sandbox)."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: env on app-url",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: env on app-url",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/","env":["X_Y"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel)."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: serve without start",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: serve without start",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.serve.start` is required when serve is set (the long-lived command that serves the app)."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: serve without url",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: serve without url",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"start":"pnpm start"},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: serve with public url",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: serve with public url",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"start":"pnpm start","url":"https://example.com/"},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: bad env name",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: bad env name",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["lowercase-bad"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.env entries must be environment variable names like DATABASE_URL, and \"lowercase-bad\" is not one. Their values come from your environment and are never stored."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: empty env list",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: empty env list",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":[]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.env` must be a non-empty list of environment variable names when it is set."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: cua-clone without serve",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: cua-clone without serve",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: two repos on cua-clone",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: two repos on cua-clone",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["a/b","c/d"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: computer-use clone studies serve one repo; declare exactly one repo in subject.repos."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: bad repo slug",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: bad repo slug",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["not a slug; rm -rf"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.repos[0] must be an owner/repo slug (got \"not a slug; rm -rf\")."
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: clone.fanout (declared behavior change: rejected on cua)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: clone.fanout (declared behavior change: rejected on cua)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"fanout":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)"
+  },
+  {
+    "name": "fails closed on clone+serve mis-config: over the 16-lane cap",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: over the 16-lane cap",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","count":17}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+  },
+  {
+    "name": "fails closed on state mis-config: state on app-url",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: state on app-url",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/","state":{"seed":[{"name":"a","command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
+  },
+  {
+    "name": "fails closed on state mis-config: state on this-repo",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: state on this-repo",
+    "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo","state":{"seed":[{"name":"a","command":"true"}]}},"actors":[{"type":"synthetic-persona"}]},
+    "refused": "it does not parse: `subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
+  },
+  {
+    "name": "fails closed on state mis-config: empty state object (would be inert)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: empty state object (would be inert)",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state` must declare seed steps, external env names, and/or checkpoints (an empty state block would be inert)."
+  },
+  {
+    "name": "fails closed on state mis-config: state not an object",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: state not an object",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":"seed it"},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state` must be an object ({ seed?, external? })."
+  },
+  {
+    "name": "fails closed on state mis-config: seed not an array",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: seed not an array",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":{"name":"a","command":"true"}}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state.seed` must be an array of step objects ({ name, command, when?, timeoutMs? })."
+  },
+  {
+    "name": "fails closed on state mis-config: seed empty array",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: seed empty array",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state` must declare seed steps, external env names, and/or checkpoints (an empty state block would be inert)."
+  },
+  {
+    "name": "fails closed on state mis-config: step missing name",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step missing name",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].name must match /^[a-z0-9][a-z0-9-]*$/ and be at most 40 chars (it names in-sandbox file paths); got \"\"."
+  },
+  {
+    "name": "fails closed on state mis-config: step missing command",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step missing command",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"a"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].command is required (the in-sandbox shell command that seeds the state)."
+  },
+  {
+    "name": "fails closed on state mis-config: step name uppercase",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step name uppercase",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"Db-Up","command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].name must match /^[a-z0-9][a-z0-9-]*$/ and be at most 40 chars (it names in-sandbox file paths); got \"Db-Up\"."
+  },
+  {
+    "name": "fails closed on state mis-config: step name with underscore",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step name with underscore",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"db_up","command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].name must match /^[a-z0-9][a-z0-9-]*$/ and be at most 40 chars (it names in-sandbox file paths); got \"db_up\"."
+  },
+  {
+    "name": "fails closed on state mis-config: step name leading dash",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step name leading dash",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"-up","command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].name must match /^[a-z0-9][a-z0-9-]*$/ and be at most 40 chars (it names in-sandbox file paths); got \"-up\"."
+  },
+  {
+    "name": "fails closed on state mis-config: step name over 40 chars",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: step name over 40 chars",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","command":"true"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].name must match /^[a-z0-9][a-z0-9-]*$/ and be at most 40 chars (it names in-sandbox file paths); got \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"."
+  },
+  {
+    "name": "fails closed on state mis-config: duplicate step names",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: duplicate step names",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"a","command":"true"},{"name":"a","command":"false"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed step names must be unique (duplicate \"a\")."
+  },
+  {
+    "name": "fails closed on state mis-config: bad when",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: bad when",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"a","command":"true","when":"after-start"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].when must be one of: before-build, before-start, after-ready."
+  },
+  {
+    "name": "fails closed on state mis-config: zero timeoutMs",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: zero timeoutMs",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"a","command":"true","timeoutMs":0}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].timeoutMs must be a positive integer."
+  },
+  {
+    "name": "fails closed on state mis-config: non-numeric timeoutMs",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: non-numeric timeoutMs",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"seed":[{"name":"a","command":"true","timeoutMs":"soon"}]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.seed[0].timeoutMs must be a positive integer."
+  },
+  {
+    "name": "fails closed on state mis-config: external empty list",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: external empty list",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"external":[]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state.external` must be a non-empty list of environment variable names when it is set."
+  },
+  {
+    "name": "fails closed on state mis-config: external value-shaped entry",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: external value-shaped entry",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"external":["lowercase-not-a-name"]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.external entries must be environment variable names like DATABASE_URL. Their values come from your environment and are never stored."
+  },
+  {
+    "name": "fails closed on state mis-config: external name not in subject.env",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: external name not in subject.env",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"env":["DATABASE_URL"],"state":{"external":["REDIS_URL"]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.external names must also be declared in subject.env (the declaration must name a provisioned channel)."
+  },
+  {
+    "name": "fails closed on state mis-config: external without subject.env at all",
+    "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > subject.state (seed/migrate/fixtures, computer-use clone route) > fails closed on state mis-config: external without subject.env at all",
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone-state","subject":{"source":"clone","repos":["example-org/example-app"],"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/"},"state":{"external":["DATABASE_URL"]}},"actors":[{"type":"openai-computer-use","mission":"Explore."}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: subject.state.external names must also be declared in subject.env (the declaration must name a provisioned channel)."
+  },
+  {
+    "name": "fails closed on local-app mis-config: missing appUrl",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: missing appUrl",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.appUrl` is required when source is local-app."
+  },
+  {
+    "name": "fails closed on local-app mis-config: public URL (always loopback on this route)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: public URL (always loopback on this route)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"https://example.com/"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.appUrl` must be a loopback URL (127.0.0.1 or localhost) on a local-app subject: humanish drives your running dev server from this process, so it cannot reach a public URL."
+  },
+  {
+    "name": "fails closed on local-app mis-config: non-http scheme",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: non-http scheme",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"file:///tmp/x.html"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.appUrl` must be a loopback URL (127.0.0.1 or localhost) on a local-app subject: humanish drives your running dev server from this process, so it cannot reach a public URL."
+  },
+  {
+    "name": "fails closed on local-app mis-config: e2b-desktop target (the whole point is to skip the desktop)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: e2b-desktop target (the whole point is to skip the desktop)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`."
+  },
+  {
+    "name": "fails closed on local-app mis-config: non-cua actor (codex-app-server)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: non-cua actor (codex-app-server)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"codex-app-server"}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"codex-app-server\"."
+  },
+  {
+    "name": "fails closed on local-app mis-config: scripted-browser actor",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: scripted-browser actor",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"scripted-browser"}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
+  },
+  {
+    "name": "fails closed on local-app mis-config: unregistered actor type",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: unregistered actor type",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"not-a-real-actor"}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"not-a-real-actor\"."
+  },
+  {
+    "name": "fails closed on local-app mis-config: fan-out count",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: fan-out count",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"openai-computer-use","count":2}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
+  },
+  {
+    "name": "fails closed on local-app mis-config: allowPublicTargets (no public target on this route)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: allowPublicTargets (no public target on this route)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: `policies.allowPublicTargets` does not apply to a local-app subject: it is always a loopback dev server, so there is no public target to allow. Remove the setting."
+  },
+  {
+    "name": "fails closed on local-app mis-config: clone-only field serve",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: clone-only field serve",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/","serve":{"start":"pnpm dev","url":"http://localhost:5173/"}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.serve` applies only to clone subjects or local-tree subjects (humanish serves the cloned or packed app in the sandbox)."
+  },
+  {
+    "name": "fails closed on local-app mis-config: clone-only field env",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: clone-only field env",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/","env":["DATABASE_URL"]},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel)."
+  },
+  {
+    "name": "fails closed on local-app mis-config: clone-only field state",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: clone-only field state",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/","state":{"seed":[{"name":"s","command":"x"}]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.state` applies only to clone subjects or local-tree subjects (humanish seeds the state it serves)."
+  },
+  {
+    "name": "fails closed on local-app mis-config: clone-only field repos",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: clone-only field repos",
+    "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/","repos":["a/b"]},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Drive the app via its state contract."}],"scenario":{"mode":"live"}},
+    "refused": "it does not parse: `subject.repos` applies only to clone subjects (the owner/repo slugs to clone)."
+  },
+  {
+    "name": "local-tree shared-world still rejects subject.repos/subject.clone (local-tree never carries git slugs)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > local-tree shared-world still rejects subject.repos/subject.clone (local-tree never carries git slugs)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-local-tree-proof","subject":{"source":"local-tree","topology":"shared-world","env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]},"repos":["a/b"]},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `subject.repos` does not apply to local-tree subjects. The local-tree route packs the study's working directory itself; there is no owner/repo slug to clone."
+  },
+  {
+    "name": "local-tree shared-world still rejects subject.repos/subject.clone (local-tree never carries git slugs) (2)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > local-tree shared-world still rejects subject.repos/subject.clone (local-tree never carries git slugs)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-local-tree-proof","subject":{"source":"local-tree","topology":"shared-world","env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]},"clone":{"depth":1}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `subject.clone` does not apply to local-tree subjects. Declare `subject.localTree` instead (keep/exclude/maxArchiveBytes)."
+  },
+  {
+    "name": "rejects malformed participant grouping metadata instead of persisting arbitrary labels",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > rejects malformed participant grouping metadata instead of persisting arbitrary labels",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"role-a","actorType":"person with spaces","entry":"/compose"},{"id":"role-b","actorType":"reviewer","entry":"/inbox"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: actors[0].lanes[0].actorType must be a public-safe token matching /^[A-Za-z0-9][A-Za-z0-9_.-]*$/ and at most 80 chars; got \"person with spaces\"."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: missing serve",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: missing serve",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: roster < 2 roles",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: roster < 2 roles",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"only-role","entry":"/x"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: wrong source (this-repo)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: wrong source (this-repo)",
+    "v2": {"schema":"humanish.lab.v2","id":"sw-src","subject":{"source":"this-repo","topology":"shared-world"},"actors":[{"type":"synthetic-persona"}]},
+    "refused": "it does not parse: `route: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: wrong source (app-url)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: wrong source (app-url)",
+    "v2": {"schema":"humanish.lab.v2","id":"sw-src-app-url","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/","topology":"shared-world"},"actors":[{"type":"openai-computer-use","mission":"x"}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: wrong source (local-app)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: wrong source (local-app)",
+    "v2": {"schema":"humanish.lab.v2","id":"sw-src-local-app","subject":{"source":"local-app","appUrl":"http://127.0.0.1:3000/","topology":"shared-world"},"actors":[{"type":"openai-computer-use","mission":"x"}]},
+    "refused": "it does not parse: `route: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: wrong source (terminal-product)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: wrong source (terminal-product)",
+    "v2": {"schema":"humanish.lab.v2","id":"sw-src-terminal","subject":{"source":"terminal-product","topology":"shared-world","product":{"name":"widgetsmith","publicSurfaces":["https://example.com/x"]}},"actors":[{"type":"codex-exec"}]},
+    "refused": "it does not parse: `route: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: wrong target (no e2b-desktop)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: wrong target (no e2b-desktop)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"timeoutMs":60000}},
+    "refused": "it does not parse: clone subjects require `execution.target: e2b-desktop` (it is absent): humanish clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: missing checkpoint",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: missing checkpoint",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `route: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
+  },
+  {
+    "name": "fails closed on shared-world mis-config: entry not same-origin with serve.url",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > fails closed on shared-world mis-config: entry not same-origin with serve.url",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"role-a","entry":"http://evil.example.com/x"},{"id":"role-b","entry":"/inbox"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: participants role \"role-a\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"http://evil.example.com/x\"."
+  },
+  {
+    "name": "each fail-closed reason names its requirement precisely",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > each fail-closed reason names its requirement precisely",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"only","entry":"/x"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"checkpoint":[{"name":"c1"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: subject.state.checkpoint[0].command is required (the read-only digest probe command)."
+  },
+  {
+    "name": "rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact) (2)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"checkpoint":[{"name":"c1","command":"echo a"},{"name":"c1","command":"echo b"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: subject.state.checkpoint names must be unique (duplicate \"c1\")."
+  },
+  {
+    "name": "rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact) (3)",
+    "from": "tests/study/config.test.ts > shared-world topology routing + cross-validation > rejects a malformed checkpoint (missing command / duplicate name / value-shaped redact)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"checkpoint":[{"name":"c1","command":"echo a","redact":"not-a-list"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: subject.state.checkpoint[0].redact must be a list of non-empty literal strings when set."
+  },
+  {
+    "name": "refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all participants",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all participants",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"synthetic","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":1}},
+    "refused": "it does not parse: shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+  },
+  {
+    "name": "fails closed on concurrent mis-config: missing synthetic-subject attestation",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > fails closed on concurrent mis-config: missing synthetic-subject attestation",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: A shared-world study needs `subject.exposure: synthetic`. The subject is reachable from the internet at a public sandbox URL during the run, so the study must declare that its data is synthetic and seeded."
+  },
+  {
+    "name": "fails closed on concurrent mis-config: serve.start does not bind 0.0.0.0",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > fails closed on concurrent mis-config: serve.start does not bind 0.0.0.0",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"synthetic","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: A shared-world study needs `subject.serve.start` to listen on all interfaces (for example `-H 0.0.0.0`, `--host 0.0.0.0` or `HOST=0.0.0.0`): the public sandbox URL reaches only a port bound to 0.0.0.0, and a loopback-only server answers 502. The readiness probe still uses loopback."
+  },
+  {
+    "name": "fails closed on concurrent mis-config: subject.clone.keep on the concurrent route",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > fails closed on concurrent mis-config: subject.clone.keep on the concurrent route",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"synthetic","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]},"clone":{"keep":true}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: `subject.clone.keep` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id."
+  },
+  {
+    "name": "fails closed on concurrent mis-config: roster < 2 personas",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > fails closed on concurrent mis-config: roster < 2 personas",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"synthetic","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"only","entry":"/x"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "fails closed on concurrent mis-config: missing checkpoint",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > fails closed on concurrent mis-config: missing checkpoint",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"synthetic","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: `route: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
+  },
+  {
+    "name": "exposure: synthetic is enum-validated and inert (warned) off the concurrent route",
+    "from": "tests/study/config.test.ts > concurrent shared-world routing + cross-validation > exposure: synthetic is enum-validated and inert (warned) off the concurrent route",
+    "v2": {"schema":"humanish.lab.v2","id":"concurrent-shared-world-proof","subject":{"source":"clone","topology":"shared-world","exposure":"real","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"persona-a","persona":"author","entry":"/compose"},{"id":"persona-b","persona":"reviewer","entry":"/inbox"},{"id":"persona-c","persona":"skimmer","entry":"/feed"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":3}},
+    "refused": "it does not parse: `subject.exposure` must be `synthetic`: your statement that the subject served on a public sandbox URL holds only synthetic seeded data."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: repos on local-tree",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: repos on local-tree",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"repos":["a/b"]},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.repos` does not apply to local-tree subjects. The local-tree route packs the study's working directory itself; there is no owner/repo slug to clone."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: clone block on local-tree",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: clone block on local-tree",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"clone":{"depth":1}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.clone` does not apply to local-tree subjects. Declare `subject.localTree` instead (keep/exclude/maxArchiveBytes)."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: missing serve",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: missing serve",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: missing execution.target e2b-desktop",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: missing execution.target e2b-desktop",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}]},
+    "refused": "it does not parse: local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: local execution.target (the whole point is a hosted desktop)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: local execution.target (the whole point is a hosted desktop)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"local"}},
+    "refused": "it does not parse: local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: non-computer-use actor (codex-app-server)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: non-computer-use actor (codex-app-server)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-app-server\"."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree block on a clone subject",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree block on a clone subject",
+    "v2": {"schema":"humanish.lab.v2","id":"clone-with-localtree","subject":{"source":"clone","repos":["example-org/example-app"],"localTree":{"keep":true}},"actors":[{"type":"codex-app-server"}]},
+    "refused": "it does not parse: `subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree)."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.exclude with an empty string entry",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.exclude with an empty string entry",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"exclude":["ok",""]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.exclude` must be a list of non-empty strings (extra archive excludes on top of the always-on denylist)."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.exclude with an absolute path",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.exclude with an absolute path",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"exclude":["/etc/secrets"]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.exclude`: localTree.exclude entry \"/etc/secrets\" is an absolute path; entries must be repo-relative path prefixes or basenames (e.g. \"big-media\" or \"fixtures/huge\")."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.exclude with glob syntax",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.exclude with glob syntax",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"exclude":["**/secrets"]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.exclude`: localTree.exclude entry \"**/secrets\" uses glob syntax, which is not supported; entries match as a repo-relative path prefix or an exact basename."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.keep as a quoted YAML string",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.keep as a quoted YAML string",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"keep":"true"}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.keep` must be a boolean (YAML true/false, not a quoted string)."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.maxArchiveBytes zero",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.maxArchiveBytes zero",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"maxArchiveBytes":0}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.maxArchiveBytes` must be a positive integer number of bytes when set."
+  },
+  {
+    "name": "fails closed on local-tree mis-config: localTree.maxArchiveBytes negative",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: localTree.maxArchiveBytes negative",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"maxArchiveBytes":-1}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.maxArchiveBytes` must be a positive integer number of bytes when set."
+  },
+  {
+    "name": "each local-tree fail-closed reason names its requirement precisely",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > each local-tree fail-closed reason names its requirement precisely",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"topology":"shared-world"},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "each local-tree fail-closed reason names its requirement precisely (2)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > each local-tree fail-closed reason names its requirement precisely",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"localTree":{"exclude":[""]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.localTree.exclude` must be a list of non-empty strings (extra archive excludes on top of the always-on denylist)."
+  },
+  {
+    "name": "still fails closed on a malformed state block (semantic validation is shared with clone)",
+    "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > still fails closed on a malformed state block (semantic validation is shared with clone)",
+    "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"},"state":{"external":["REDIS_URL"]}},"actors":[{"type":"openai-computer-use","persona":"pixel-pat","mission":"Explore the packed working tree."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: subject.state.external names must also be declared in subject.env (the declaration must name a provisioned channel)."
+  },
+  {
+    "name": "refuses a one-participant provisioned roster by the roster floor (concurrency omitted)",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > refuses a one-participant provisioned roster by the roster floor (concurrency omitted)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "refuses a one-participant provisioned roster by the roster floor (concurrency 1)",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > refuses a one-participant provisioned roster by the roster floor (concurrency 1)",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":1}},
+    "refused": "it does not parse: `route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
+  },
+  {
+    "name": "refuses a one-seat roster on the external-public plane by the roster floor",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > refuses a one-seat roster on the external-public plane by the roster floor",
+    "v2": {"schema":"humanish.lab.v2","id":"external-one-seat","subject":{"source":"app-url","topology":"shared-world","appUrl":"https://play.example.com/","publicTarget":{"owner":"example-org","authorized":true}},"actors":[{"type":"openai-computer-use","mission":"Join the shared game.","lanes":[{"id":"host","host":true}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
+  },
+  {
+    "name": "refuses a count of 1 with no roster on the external-public plane by the roster floor",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > refuses a count of 1 with no roster on the external-public plane by the roster floor",
+    "v2": {"schema":"humanish.lab.v2","id":"external-one-seat","subject":{"source":"app-url","topology":"shared-world","appUrl":"https://play.example.com/","publicTarget":{"owner":"example-org","authorized":true}},"actors":[{"type":"openai-computer-use","mission":"Join the shared game.","count":1}],"execution":{"target":"e2b-desktop","timeoutMs":60000},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
+  },
+  {
+    "name": "keeps the migration refusal for two or more participants at concurrency 1",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > keeps the migration refusal for two or more participants at concurrency 1",
+    "v2": {"schema":"humanish.lab.v2","id":"shared-world-proof","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"env":["DATABASE_URL"],"exposure":"synthetic","serve":{"start":"pnpm start -H 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"migrate","command":"pnpm db:migrate"}],"checkpoint":[{"name":"notes-count","command":"echo count"}]}},"actors":[{"type":"openai-computer-use","mission":"Use the shared app.","lanes":[{"id":"role-author","actorType":"author","surface":"studio","caseGroup":"case-001","persona":"author","entry":"/compose","instruction":"Create a note."},{"id":"role-reviewer","actorType":"reviewer","surface":"queue","caseGroup":"case-001","persona":"reviewer","entry":"/inbox","instruction":"Review the note."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":1}},
+    "refused": "it does not parse: shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+  },
+  {
+    "name": "keeps the migration refusal for two or more participants at concurrency 1 (2)",
+    "from": "tests/study/config.test.ts > shared-world one-participant rosters and the concurrency rule > keeps the migration refusal for two or more participants at concurrency 1",
+    "v2": {"schema":"humanish.lab.v2","id":"external-one-seat","subject":{"source":"app-url","topology":"shared-world","appUrl":"https://play.example.com/","publicTarget":{"owner":"example-org","authorized":true}},"actors":[{"type":"openai-computer-use","mission":"Join the shared game.","lanes":[{"id":"host","host":true},{"id":"guest"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000,"concurrency":1},"policies":{"allowPublicTargets":true}},
+    "refused": "it does not parse: shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+  },
+  {
+    "name": "rejects shared world during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects shared world during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"clone","topology":"shared-world","repos":["example-org/collab-app"],"exposure":"synthetic","serve":{"start":"npm start -- --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"checkpoint":[{"name":"count","command":"echo 0"}]}},"actors":[{"type":"openai-computer-use","lanes":[{"id":"author","instruction":"Create a note."},{"id":"reader","instruction":"Read a note."}]}],"execution":{"target":"e2b-desktop","desktop":{"browser":"chrome","media":{"camera":{"source":"synthetic"}}},"concurrency":2},"scenario":{"mode":"live"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser participants or remove the declaration."
+  },
+  {
+    "name": "rejects Firefox during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects Firefox during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use"}],"execution":{"target":"e2b-desktop","desktop":{"browser":"firefox","media":{"camera":{"source":"synthetic"}}}},"scenario":{"mode":"live"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
+  },
+  {
+    "name": "rejects desktop CLI during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects desktop CLI during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"desktop-cli","product":{"name":"sample-cli","publicSurfaces":["https://example.com/docs"]}},"actors":[{"type":"openai-computer-use"}],"execution":{"target":"e2b-desktop","desktop":{"browser":"chrome","media":{"camera":{"source":"synthetic"}}}},"scenario":{"mode":"live"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+  },
+  {
+    "name": "rejects in-process app during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects in-process app during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"local-app","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use"}],"execution":{"target":"local","desktop":{"browser":"chrome","media":{"camera":{"source":"synthetic"}}}},"scenario":{"mode":"live"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+  },
+  {
+    "name": "rejects scripted browser during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects scripted browser during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser"}],"execution":{"target":"local","desktop":{"browser":"chrome","media":{"camera":{"source":"synthetic"}}}},"scenario":{"mode":"live","ref":"scripted-first-run"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+  },
+  {
+    "name": "rejects terminal during manifest parsing",
+    "from": "tests/study/desktop-media-routes.test.ts > declared camera capabilities must reach an implemented route > rejects terminal during manifest parsing",
+    "v2": {"schema":"humanish.lab.v2","id":"camera-route","subject":{"source":"terminal-product","product":{"name":"sample-cli","publicSurfaces":["https://example.com/docs"]}},"actors":[{"type":"codex-exec"}],"execution":{"target":"e2b-terminal","desktop":{"browser":"chrome","media":{"camera":{"source":"synthetic"}}}},"scenario":{"mode":"live"},"review":{"analysis":false}},
+    "refused": "it does not parse: execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+  },
+  {
+    "name": "admission: scripted app-url count 3",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-scriptedappurl","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":3}],"scenario":{"ref":"adm-journey"},"execution":{"target":"local","timeoutMs":30000}},
+    "refused": "it does not parse: A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
+  },
+  {
+    "name": "admission: scripted clone topology",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-scriptedclone","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"install":"pnpm install","start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]},"topology":"shared-world"},"actors":[{"type":"scripted-browser","persona":"synthetic-provider","count":1}],"scenario":{"ref":"adm-journey"},"execution":{"target":"e2b-desktop","timeoutMs":30000}},
+    "refused": "it does not parse: A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`."
+  },
+  {
+    "name": "admission: scripted clone count 3",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-scriptedclone","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"install":"pnpm install","start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser","persona":"synthetic-provider","count":3}],"scenario":{"ref":"adm-journey"},"execution":{"target":"e2b-desktop","timeoutMs":30000}},
+    "refused": "it does not parse: A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
+  },
+  {
+    "name": "admission: scripted clone lanes",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-scriptedclone","subject":{"source":"clone","exposure":"synthetic","repos":["example-org/example-app"],"serve":{"install":"pnpm install","start":"pnpm start --host 0.0.0.0","url":"http://127.0.0.1:3000/"},"state":{"seed":[{"name":"seed","command":"pnpm db:seed"}]}},"actors":[{"type":"scripted-browser","persona":"synthetic-provider","lanes":[{"id":"a"}]}],"scenario":{"ref":"adm-journey"},"execution":{"target":"e2b-desktop","timeoutMs":30000}},
+    "refused": "it does not parse: `participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces."
+  },
+  {
+    "name": "admission: lanes and count",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-cuappurl","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Try it.","count":2,"lanes":[{"id":"a"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
+  },
+  {
+    "name": "admission: laneFocus and lanes",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-cuappurl","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Try it.","laneFocus":{"instruction":"Focus."},"lanes":[{"id":"a"},{"id":"b"}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
+  },
+  {
+    "name": "admission: terminal count 2",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-terminal","subject":{"source":"terminal-product","product":{"name":"widgetsmith-cli","publicSurfaces":["https://example.com/widgetsmith"]}},"actors":[{"type":"codex-exec","persona":"autonomous-creative-agent","mission":"Explore.","count":2}],"execution":{"target":"e2b-terminal","runtimeAuth":"openai-env","timeoutMs":600000,"terminal":{"transport":"exec-stream","stdin":"disabled"}},"scenario":{"caps":{"maxUsd":0,"maxMinutes":5}}},
+    "refused": "it does not parse: Terminal fan-out to more than one participant is not supported yet; set participants to 1."
+  },
+  {
+    "name": "admission: tasks on second actor",
+    "from": "tests/admission/parser-cases.ts and route-cases.ts",
+    "v2": {"schema":"humanish.lab.v2","id":"adm-cuappurl","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Try it."},{"type":"openai-computer-use","mission":"Try it.","tasks":[{"id":"sign-up","goal":"Create an account."}]}],"execution":{"target":"e2b-desktop","timeoutMs":60000}},
+    "refused": "it does not parse: Multiple actors are not supported yet (only the first actor runs); declare a single actor."
+  },
+  {
+    "name": "unknown top-level key: route in a v2 file",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"},"route":"computer-use"},
+    "refused": "it does not parse: Unknown study field: route. Known fields: schema, id, title, description, subject, actors, execution, personas, scenario, policies, review, defaults, comms."
+  },
+  {
+    "name": "unknown actor key: participants in a v2 actor",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app.","participants":2}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: Unknown study field in `actors[0]`: participants. Known fields: type, count, lanes, roster, persona, mission, model, maxOutputTokens, localAgent, reasoningEffort, stopWhen, dwell, tasks, laneFocus."
+  },
+  {
+    "name": "unknown laneFocus key",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app.","count":2,"laneFocus":{"instruction":"Sign up.","steer":"x"}}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: Unknown study field in `actors[0].laneFocus`: steer. Known fields: id, label, instruction."
+  },
+  {
+    "name": "unknown scenario key",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"dry-run","steps":[]}},
+    "refused": "it does not parse: Unknown study field in `scenario`: steps. Known fields: ref, mode, inline, caps."
+  },
+  {
+    "name": "unknown execution.caps key",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop","caps":{"maxSpend":3}}},
+    "refused": "it does not parse: Unknown study field in `execution.caps`: maxSpend. Known fields: maxUsd, maxTotalUsd, maxJobs, maxMinutes."
+  },
+  {
+    "name": "actors is an object, not a list",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":{"type":"openai-computer-use"},"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `actors` must be a non-empty array."
+  },
+  {
+    "name": "an actor that is not an object",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":["openai-computer-use"],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: actors[0] must be an object."
+  },
+  {
+    "name": "roster group count 0",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app.","roster":[{"id":"reader","count":0}]}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: actors[0].roster[0].count is required and must be a positive integer."
+  },
+  {
+    "name": "roster group without an id",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app.","roster":[{"count":2}]}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: actors[0].roster[0].id is required and must be a public-safe token matching /^[A-Za-z0-9][A-Za-z0-9_.-]*$/."
+  },
+  {
+    "name": "scenario.caps budget on computer use",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"},"scenario":{"caps":{"maxUsd":7}}},
+    "refused": "it does not parse: scenario.caps.maxUsd (7) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
+  },
+  {
+    "name": "scenario.caps maxUsd -1 on computer use",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"},"scenario":{"caps":{"maxUsd":-1}}},
+    "refused": "it does not parse: `caps.maxUsd` must be a non-negative number."
+  },
+  {
+    "name": "execution.caps maxUsd -1 on computer use",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop","caps":{"maxUsd":-1}}},
+    "refused": "it does not parse: `caps.maxUsd` must be a non-negative number."
+  },
+  {
+    "name": "scenario.caps maxMinutes -1 on terminal",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-terminal","subject":{"source":"terminal-product","product":{"name":"widget-cli","publicSurfaces":["https://example.com/widget"]}},"actors":[{"type":"codex-exec","mission":"Discover widget-cli."}],"scenario":{"caps":{"maxUsd":0,"maxJobs":0,"maxMinutes":-1}},"execution":{"target":"e2b-terminal","runtimeAuth":"openai-env","terminal":{"transport":"exec-stream","stdin":"disabled"}}},
+    "refused": "it does not parse: `caps.maxMinutes` must be a non-negative number."
+  },
+  {
+    "name": "scenario.mode not dry-run or live, which v2 reads as unset",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"},"scenario":{"mode":"sometimes"}},
+    "refused": "its v3 form does not parse: `mode` must be `dry-run` or `live`. Leave it out for a dry run."
+  },
+  {
+    "name": "scenario.ref not a string, which v2 reads as unset",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-scripted","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user"}],"scenario":{"ref":5},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
+  },
+  {
+    "name": "scenario as a string",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-scripted","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user"}],"scenario":"scripted-first-run","execution":{"target":"local","timeoutMs":60000}},
+    "refused": "it does not parse: A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
+  },
+  {
+    "name": "subject.topology value not shared-world or per-lane-worlds",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/","topology":"mesh"},"actors":[{"type":"openai-computer-use","mission":"Explore the app."}],"execution":{"target":"e2b-desktop"}},
+    "refused": "it does not parse: `subject.topology` must be per-lane-worlds (the default) or shared-world."
+  },
+  {
+    "name": "scripted count 0",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-scripted","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":0}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "its v3 form parses to a different study."
+  },
+  {
+    "name": "scripted count 1.5",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-scripted","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"scripted-browser","persona":"synthetic-new-user","count":1.5}],"scenario":{"ref":"scripted-first-run"},"execution":{"target":"local","timeoutMs":60000}},
+    "refused": "its v3 form parses to a different study."
+  },
+  {
+    "name": "terminal count 1",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-terminal","subject":{"source":"terminal-product","product":{"name":"widget-cli","publicSurfaces":["https://example.com/widget"]}},"actors":[{"type":"codex-exec","mission":"Discover widget-cli.","count":1}],"scenario":{"mode":"dry-run","caps":{"maxUsd":0,"maxJobs":0,"maxMinutes":10}},"execution":{"target":"e2b-terminal","runtimeAuth":"openai-env","terminal":{"transport":"exec-stream","stdin":"disabled"}}},
+    "refused": "actors[0].count does nothing on the terminal route, and a v3 terminal study has no participants. Remove it, then migrate."
+  },
+  {
+    "name": "terminal laneFocus",
+    "from": "a v2-only rule",
+    "v2": {"schema":"humanish.lab.v2","id":"refusal-terminal","subject":{"source":"terminal-product","product":{"name":"widget-cli","publicSurfaces":["https://example.com/widget"]}},"actors":[{"type":"codex-exec","mission":"Discover widget-cli.","laneFocus":{"instruction":"Try the export."}}],"scenario":{"mode":"dry-run","caps":{"maxUsd":0,"maxJobs":0,"maxMinutes":10}},"execution":{"target":"e2b-terminal","runtimeAuth":"openai-env","terminal":{"transport":"exec-stream","stdin":"disabled"}}},
+    "refused": "actors[0].laneFocus does nothing on the terminal route, and a v3 terminal study has no participants. Remove it, then migrate."
+  }
+]
