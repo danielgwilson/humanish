@@ -38,6 +38,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - verify finds a hex-encoded secret or E2B URL in a parameter value, such as `state=6874...`. Its
   quoted-printable pass read the `=` and the first hex pair as one byte, so the rest decoded to
   nothing it could match.
+- A dry run of a computer-use study with more than one participant and an app URL on an E2B
+  host verifies `share_ready`. Its review summary wrote the raw URL, which names a sandbox, so
+  verify failed the bundle the dry run had just written. The summary now names the URL by its
+  digest, `[target-url:<digest>]`, as the participant records in the same bundle already did. A
+  dry-run bundle written by 0.111.0 or earlier still fails verify; run the dry run again.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
