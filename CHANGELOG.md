@@ -28,6 +28,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   is still not stored, but the verdict marker, token usage and the trace's agent messages are read
   from all of it. The transcript ends with a line giving the byte count that was not stored, and
   the trace and the run events carry the same notice.
+- A study URL with an E2B app URL in a query parameter or fragment, such as a sign-in return
+  address, parses. 0.110.2 refused it as a credential. The check still refuses user info, a
+  credential-named parameter such as `token`, `password` or a signature, and known token formats,
+  in the URL and in each URL nested inside it, so a stream URL's auth key is still refused. A
+  nested URL is parsed, and one with a user name alone is refused too, as the study URL itself is.
+  A computer-use run names such a target by its digest, so a dry run against it verifies
+  `share_ready`.
+- verify finds a hex-encoded secret or E2B URL in a parameter value, such as `state=6874...`. Its
+  quoted-printable pass read the `=` and the first hex pair as one byte, so the rest decoded to
+  nothing it could match.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
