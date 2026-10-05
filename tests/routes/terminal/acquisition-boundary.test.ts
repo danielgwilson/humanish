@@ -6,8 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import {
   parseSandboxOwners,
@@ -25,20 +25,21 @@ import { runTerminal } from "../../helpers/route-run.js";
 const RUN_ID = "run-acquisition-boundary";
 
 const labInput = {
-  schema: V2_SCHEMA,
+  schema: STUDY_SCHEMA,
   id: "terminal-acquisition-boundary",
+  route: "terminal",
+  mode: "live",
   subject: {
     source: "terminal-product",
     product: { name: "example-cli", publicSurfaces: ["https://example.test/cli"] },
   },
-  actors: [{ type: "codex-exec", mission: "Discover example-cli from its public surface." }],
+  actor: { type: "codex-exec", mission: "Discover example-cli from its public surface." },
+  caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
   execution: {
     target: "e2b-terminal",
     runtimeAuth: "openai-env",
-    timeoutMs: 600_000,
     terminal: { transport: "exec-stream", stdin: "disabled" },
   },
-  scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
   policies: {
     allowPrivateRepoAccess: false,
     allowProviderCredentials: false,
@@ -48,7 +49,7 @@ const labInput = {
 };
 
 function labConfig(): StudyConfig {
-  const parsed = parseStudyDocument(labInput);
+  const parsed = parseStudy(labInput);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -110,8 +111,8 @@ async function killRouteAfterReceipt(
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const script = `
     const { runTerminal } = await import(${JSON.stringify(path.join(root, "tests/helpers/route-run.ts"))});
-    const { parseStudyDocument } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
-    const parsed = parseStudyDocument(JSON.parse(process.env.BOUNDARY_LAB));
+    const { parseStudy } = await import(${JSON.stringify(path.join(root, "src/study/config.ts"))});
+    const parsed = parseStudy(JSON.parse(process.env.BOUNDARY_LAB));
     if (!parsed.ok) throw new Error(parsed.error.message);
     const module = {
       Sandbox: {

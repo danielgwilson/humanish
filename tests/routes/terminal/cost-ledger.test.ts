@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
@@ -93,27 +93,26 @@ function nonceFrom(command: string): string {
 
 function liveConfig(caps: Record<string, number>): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "terminal-cost-proof",
     title: "Terminal cost-ledger proof",
+    route: "terminal",
+    mode: "live",
     subject: {
       source: "terminal-product",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [
-      {
-        type: "codex-exec",
-        persona: "autonomous-creative-agent",
-        mission: "Discover widgetsmith-cli from public surfaces.",
-      },
-    ],
+    actor: {
+      type: "codex-exec",
+      persona: "autonomous-creative-agent",
+      mission: "Discover widgetsmith-cli from public surfaces.",
+    },
+    caps,
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: "live", caps },
     policies: {
       allowPrivateRepoAccess: false,
       allowProviderCredentials: false,
@@ -121,7 +120,7 @@ function liveConfig(caps: Record<string, number>): StudyConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudyDocument(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

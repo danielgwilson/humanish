@@ -30,8 +30,8 @@ type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 // Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseStudy +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
@@ -184,27 +184,26 @@ function nonceFrom(command: string): string {
 
 function liveConfig(): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "terminal-adapter-seam-proof",
     title: "Terminal adapter-seam proof",
+    route: "terminal",
+    mode: "live",
     subject: {
       source: "terminal-product",
       product: { name: "pixelforge-cli", publicSurfaces: ["https://example.com/pixelforge"] },
     },
-    actors: [
-      {
-        type: "codex-exec",
-        persona: "autonomous-creative-agent",
-        mission: "Discover pixelforge-cli from public surfaces.",
-      },
-    ],
+    actor: {
+      type: "codex-exec",
+      persona: "autonomous-creative-agent",
+      mission: "Discover pixelforge-cli from public surfaces.",
+    },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
     policies: {
       allowPrivateRepoAccess: false,
       allowProviderCredentials: false,
@@ -212,7 +211,7 @@ function liveConfig(): StudyConfig {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudyDocument(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }

@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
 import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { actorOf, capsOf } from "../../../src/study/study-fields.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
 import {
   isComputerUseComposition,
@@ -32,11 +34,13 @@ function terminalConfig(overrides?: {
   publicSurfaces?: string[];
   caps?: Record<string, number>;
   runtimeAuth?: string;
-}): unknown {
+}): Record<string, unknown> {
   return {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "terminal-routing-proof",
     title: "Terminal routing proof",
+    route: "terminal",
+    mode: overrides?.mode ?? "dry-run",
     subject: {
       source: "terminal-product",
       product: {
@@ -47,15 +51,14 @@ function terminalConfig(overrides?: {
         ],
       },
     },
-    actors: [
-      {
-        type: overrides?.actorType ?? "codex-exec",
-        persona: "autonomous-creative-agent",
-        mission:
-          overrides?.mission ??
-          "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
-      },
-    ],
+    actor: {
+      type: overrides?.actorType ?? "codex-exec",
+      persona: "autonomous-creative-agent",
+      mission:
+        overrides?.mission ??
+        "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
+    },
+    caps: overrides?.caps ?? { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
     execution: {
       ...(overrides && "target" in overrides
         ? overrides.target
@@ -63,12 +66,7 @@ function terminalConfig(overrides?: {
           : {}
         : { target: "e2b-terminal" }),
       runtimeAuth: overrides?.runtimeAuth ?? "openai-env",
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
-    },
-    scenario: {
-      mode: overrides?.mode ?? "dry-run",
-      caps: overrides?.caps ?? { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
     },
     policies: {
       allowPrivateRepoAccess: false,
@@ -80,7 +78,7 @@ function terminalConfig(overrides?: {
 }
 
 function parsedTerminalConfig(overrides?: Parameters<typeof terminalConfig>[0]): StudyConfig {
-  const parsed = parseStudyDocument(terminalConfig(overrides));
+  const parsed = parseStudy(terminalConfig(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -120,11 +118,9 @@ describe("terminal-product parse matrix", () => {
       {},
       "0.153.3",
     ]) {
-      expect(parseStudyDocument({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(
-        false,
-      );
+      expect(parseStudy({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(false);
     }
-    const result = parseStudyDocument({
+    const result = parseStudy({
       ...base,
       execution: { ...base.execution, runtime: { version: "0.153.3" } },
     });
@@ -135,16 +131,16 @@ describe("terminal-product parse matrix", () => {
     }
   });
   it("accepts opt-in openai-egress and rejects unknown runtime auth modes", () => {
-    const parsed = parseStudyDocument(terminalConfig({ runtimeAuth: "openai-egress" }));
+    const parsed = parseStudy(terminalConfig({ runtimeAuth: "openai-egress" }));
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.execution?.runtimeAuth).toBe("openai-egress");
-    const invalid = parseStudyDocument(terminalConfig({ runtimeAuth: "custom-proxy" }));
+    const invalid = parseStudy(terminalConfig({ runtimeAuth: "custom-proxy" }));
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) expect(invalid.error.message).toContain("openai-env or openai-egress");
   });
 
   it("terminal-product + terminal actor parses, consumes product/caps/mission/runtimeAuth (no inert warnings), routes to terminal", () => {
-    const parsed = parseStudyDocument(terminalConfig());
+    const parsed = parseStudy(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // The terminal route consumes product/caps/mission/persona/runtimeAuth: none flagged inert.
@@ -161,7 +157,7 @@ describe("terminal-product parse matrix", () => {
       transport: "exec-stream",
       stdin: "disabled",
     });
-    expect(parsed.config.scenario?.caps).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
+    expect(capsOf(parsed.config, "terminal")).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
     expect(isTerminalProductComposition(parsed.config)).toBe(true);
     expect(routeOf(parsed.config)).toBe("terminal");
   });
@@ -174,12 +170,12 @@ describe("terminal-product parse matrix", () => {
 
   it("rejects terminal-product + a non-terminal actor", () => {
     // A computer-use actor on a terminal-product subject hits the terminal-product block's guard.
-    const cua = parseStudyDocument(terminalConfig({ actorType: "openai-computer-use" }));
+    const cua = parseStudy(terminalConfig({ actorType: "openai-computer-use" }));
     expect(cua.ok).toBe(false);
     if (cua.ok) return;
     expect(cua.error.message).toContain("must be a registered terminal actor");
     // A free-form (non-registered) label also fails closed on the terminal-product route.
-    expect(parseStudyDocument(terminalConfig({ actorType: "not-a-real-actor" })).ok).toBe(false);
+    expect(parseStudy(terminalConfig({ actorType: "not-a-real-actor" })).ok).toBe(false);
   });
 
   it("rejects clone-only fields (serve/clone/state/repos) on a terminal-product subject", () => {
@@ -191,27 +187,29 @@ describe("terminal-product parse matrix", () => {
     ]) {
       const raw = terminalConfig() as { subject: Record<string, unknown> };
       Object.assign(raw.subject, field);
-      const parsed = parseStudyDocument(raw);
+      const parsed = parseStudy(raw);
       expect(parsed.ok, JSON.stringify(field)).toBe(false);
     }
   });
 
   it("rejects e2b-terminal target with a non-terminal-product subject (the substrate is terminal-only)", () => {
     // app-url block rejects it first (e2b-terminal != e2b-desktop): still fail-closed.
-    const viaAppUrl = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const viaAppUrl = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "wrong-substrate-appurl",
+      route: "computer-use",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use" }],
+      actor: { type: "openai-computer-use" },
       execution: { target: "e2b-terminal" },
     });
     expect(viaAppUrl.ok).toBe(false);
     // A clone subject is refused by the clone target guard, which names the target it needs.
-    const viaClone = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const viaClone = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "wrong-substrate-clone",
+      route: "computer-use",
       subject: { source: "clone", repos: ["owner/repo"] },
-      actors: [{ type: "humanish-setup" }],
+      actor: { type: "humanish-setup" },
       execution: { target: "e2b-terminal" },
     });
     expect(viaClone.ok).toBe(false);
@@ -222,11 +220,12 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("rejects a terminal actor on a non-terminal-product subject", () => {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "wrong-subject",
+      route: "preview",
       subject: { source: "this-repo" },
-      actors: [{ type: "codex-exec" }],
+      actor: { type: "codex-exec" },
     });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
@@ -236,7 +235,7 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("rejects a non-e2b-terminal target on a terminal-product subject", () => {
-    const parsed = parseStudyDocument(
+    const parsed = parseStudy(
       terminalConfig({ target: "e2b-desktop" as unknown as "e2b-terminal" }),
     );
     expect(parsed.ok).toBe(false);
@@ -245,7 +244,7 @@ describe("terminal-product parse matrix", () => {
   it("rejects subject.appUrl on a terminal-product subject (it drives public surfaces, not one app)", () => {
     const raw = terminalConfig() as { subject: Record<string, unknown> };
     raw.subject.appUrl = "http://127.0.0.1:3000/";
-    const parsed = parseStudyDocument(raw);
+    const parsed = parseStudy(raw);
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain(
@@ -254,14 +253,14 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("validates publicSurfaces are http(s) URLs and product.name is a public-safe token", () => {
-    expect(parseStudyDocument(terminalConfig({ publicSurfaces: ["not-a-url"] })).ok).toBe(false);
+    expect(parseStudy(terminalConfig({ publicSurfaces: ["not-a-url"] })).ok).toBe(false);
     const badName = terminalConfig() as { subject: { product: { name: string } } };
     badName.subject.product.name = "-bad name";
-    expect(parseStudyDocument(badName).ok).toBe(false);
+    expect(parseStudy(badName).ok).toBe(false);
   });
 
   it("validates caps are non-negative numbers; rejects a negative cap", () => {
-    const parsed = parseStudyDocument(terminalConfig({ caps: { maxUsd: -1 } }));
+    const parsed = parseStudy(terminalConfig({ caps: { maxUsd: -1 } }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.error.message).toContain("non-negative number");
@@ -270,10 +269,10 @@ describe("terminal-product parse matrix", () => {
   it("rejects an interactive PTY transport label and assisted stdin (protocol-label + safety contract)", () => {
     const ptyRaw = terminalConfig() as { execution: { terminal: { transport: string } } };
     ptyRaw.execution.terminal.transport = "pty";
-    expect(parseStudyDocument(ptyRaw).ok).toBe(false);
+    expect(parseStudy(ptyRaw).ok).toBe(false);
     const stdinRaw = terminalConfig() as { execution: { terminal: { stdin: string } } };
     stdinRaw.execution.terminal.stdin = "sent";
-    expect(parseStudyDocument(stdinRaw).ok).toBe(false);
+    expect(parseStudy(stdinRaw).ok).toBe(false);
   });
 
   it("forward-declared: caps/product/runtimeAuth set on a non-terminal route fire inert warnings", () => {
@@ -297,14 +296,14 @@ describe("terminal-product parse matrix", () => {
   });
 
   it("forward-declared: on the terminal route, product/caps/runtimeAuth/mission are not falsely flagged inert", () => {
-    const parsed = parseStudyDocument(terminalConfig());
+    const parsed = parseStudy(terminalConfig());
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const warned = parsed.warnings.join(" ");
     expect(warned).not.toContain("subject.product");
-    expect(warned).not.toContain("scenario.caps");
+    expect(warned).not.toContain("caps");
     expect(warned).not.toContain("execution.runtimeAuth");
-    expect(warned).not.toContain("actors[0].mission");
+    expect(warned).not.toContain("actor.mission");
   });
 });
 
@@ -433,7 +432,7 @@ describe("runTerminalProductLab (dry-run)", () => {
           mission: "Discover the product using [REDACTED_SECRET].",
         });
       }
-      expect(config.actors[0]!.mission).toContain(secret);
+      expect(actorOf(config)!.mission).toContain(secret);
       expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     },
   );
@@ -542,10 +541,10 @@ describe("runTerminalProductLab (dry-run)", () => {
   });
 
   it("rejects a non-terminal actor at the engine even if a config bypasses the parser", async () => {
-    const tampered = {
-      ...parsedTerminalConfig(),
-      actors: [{ type: "codex-app-server" }],
-    } as StudyConfig;
+    const tampered = libraryConfig({
+      ...terminalConfig(),
+      actor: { type: "codex-app-server" },
+    });
     const result = await runTerminal({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_ACTOR_UNSUPPORTED");
