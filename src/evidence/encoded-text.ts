@@ -237,7 +237,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 1;
+const ENCODED_SCAN_VERSION = 2;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();
