@@ -9,7 +9,6 @@ import { parse, stringify } from "yaml";
 import { parseStudy } from "../../src/study/config.js";
 import { convertStudyText } from "../../src/study/migrate/convert.js";
 import { V2_SCHEMA } from "../../src/study/migrate/v2.js";
-import { actorOf, capsOf } from "../../src/study/study-fields.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
@@ -69,7 +68,7 @@ describe("dollar caps", () => {
     const result = parseStudy(terminalLab({ maxUsd: 1.5, maxJobs: 0, maxMinutes: 10 }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(capsOf(result.config)?.maxUsd).toBe(1.5);
+    expect(result.config.caps?.maxUsd).toBe(1.5);
   });
 
   it.each(["detect-taskly-clean", "detect-taskly-planted", "detect-todomvc"])(
@@ -81,8 +80,8 @@ describe("dollar caps", () => {
       const result = parseStudy(raw);
       expect(result.ok ? "ok" : result.error.message).toBe("ok");
       if (!result.ok) return;
-      expect(capsOf(result.config)?.maxUsd).toBe(3);
-      expect(actorOf(result.config)?.maxOutputTokens).toBe(8192);
+      expect(result.config.caps?.maxUsd).toBe(3);
+      expect(result.config.actor?.maxOutputTokens).toBe(8192);
     },
   );
 

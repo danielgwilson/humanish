@@ -8,7 +8,7 @@ import type { ActorCapabilities } from "../../src/actors/contract.js";
 import type { CuaExecutor, CuaProvider, CuaTurn } from "../../src/actors/computer-use/loop.js";
 import { runComputerUseLoop } from "../../src/actors/computer-use/loop.js";
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf, participantList } from "../../src/study/study-fields.js";
+import { participantList } from "../../src/study/study-fields.js";
 import { readStudySummary } from "../../src/study/summary.js";
 import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
@@ -42,7 +42,7 @@ describe("reasoning effort is a declarable study variable", () => {
     for (const effort of REASONING_EFFORTS) {
       const parsed = parseStudy(lab({ reasoningEffort: effort }));
       expect(parsed.ok, `${effort} should parse`).toBe(true);
-      if (parsed.ok) expect(actorOf(parsed.config)?.reasoningEffort).toBe(effort);
+      if (parsed.ok) expect(parsed.config.actor?.reasoningEffort).toBe(effort);
     }
   });
 

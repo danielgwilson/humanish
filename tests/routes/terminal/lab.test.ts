@@ -11,7 +11,6 @@ import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
 import { STUDY_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { actorOf } from "../../../src/study/study-fields.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
 import {
@@ -641,7 +640,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("records dry-run runtime declarations without resolving or allocating", async () => {
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
-    actorOf(config)!.model = "gpt-5.6-sol";
+    config.actor.model = "gpt-5.6-sol";
     const result = await runTerminal({
       cwd,
       config,
@@ -699,8 +698,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [];
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
-    actorOf(config)!.model = "gpt-5.6-sol";
-    actorOf(config)!.reasoningEffort = "low";
+    config.actor.model = "gpt-5.6-sol";
+    config.actor.reasoningEffort = "low";
     const result = await runTerminal({
       cwd,
       config,
@@ -1900,7 +1899,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     };
 
     const config = liveConfig();
-    actorOf(config)!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
+    config.actor.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
     const result = await runTerminal({
       cwd,
       config,
@@ -1925,7 +1924,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     // The codex command run carried the key in its own envs (command-scoped), and only the runtime key.
     const codexRun = runs.find((r) => r.command.includes(" exec "));
-    expect(codexRun?.command).toContain(actorOf(config)!.mission);
+    expect(codexRun?.command).toContain(config.actor.mission);
     // Pinned via npx, never an ambient/preinstalled `codex` binary.
     expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
     // The lab declares no model, so the route passes the participant default rather than leaving

@@ -39,7 +39,7 @@ import { formatCuaStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
 import { studyResultIdentity } from "../../run/study-result.js";
-import { actorOf, declaredParticipantCount } from "../../study/study-fields.js";
+import { declaredParticipantCount } from "../../study/study-fields.js";
 
 interface ComputerUseRouteArgs {
   command: Command;
@@ -121,7 +121,7 @@ function refuseCua(
     ...studyResultIdentity("computer-use", args.config.id),
     ok: false,
     cwd: args.options.cwd,
-    actor: actorOf(args.config)?.type ?? "",
+    actor: args.config.actor?.type ?? "",
     appUrl: "",
     dryRun,
     runId: args.options.runId ?? "not-created",

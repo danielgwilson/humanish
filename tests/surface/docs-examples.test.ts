@@ -7,7 +7,7 @@ import { type Command, CommanderError } from "commander";
 import { parse } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { parseStudy } from "../../src/study/config.js";
-import { capsOf, declaredParticipantCount, modeOf } from "../../src/study/study-fields.js";
+import { declaredParticipantCount } from "../../src/study/study-fields.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 
 const root = resolve(import.meta.dirname, "..", "..");
@@ -131,8 +131,8 @@ describe("website documentation examples", () => {
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     expect(declaredParticipantCount(result.config)).toBe(1);
-    expect(modeOf(result.config)).toBe("live");
-    expect(capsOf(result.config)?.maxTotalUsd).toBe(4);
+    expect(result.config.mode).toBe("live");
+    expect(result.config.caps?.maxTotalUsd).toBe(4);
     expect(result.config.policies?.allowPublicTargets).toBe(true);
     const blocks = [...page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)];
     const isolated = parse(yaml);

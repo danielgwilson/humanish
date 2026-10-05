@@ -20,7 +20,6 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { capsOf } from "../../../src/study/study-fields.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { participantPlanOf } from "../../helpers/participant-run.js";
 
@@ -196,7 +195,7 @@ describe("caps parsing and session defaults", () => {
   it("parses caps.maxTotalUsd and refuses a negative one", () => {
     const good = parseStudy({ ...baseLab, caps: { maxTotalUsd: 25 } });
     expect(good.ok).toBe(true);
-    if (good.ok) expect(capsOf(good.config)?.maxTotalUsd).toBe(25);
+    if (good.ok) expect(good.config.caps?.maxTotalUsd).toBe(25);
 
     const bad = parseStudy({ ...baseLab, caps: { maxTotalUsd: -1 } });
     expect(bad.ok).toBe(false);

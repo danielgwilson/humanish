@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf } from "../../src/study/study-fields.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,
@@ -40,7 +39,7 @@ describe("declared per-response output limit", () => {
   it.each([16, 1024, 128000])("parses positive integer %s", (maxOutputTokens) => {
     const parsed = parseStudy(lab({ maxOutputTokens }));
     expect(parsed.ok).toBe(true);
-    if (parsed.ok) expect(actorOf(parsed.config)?.maxOutputTokens).toBe(maxOutputTokens);
+    if (parsed.ok) expect(parsed.config.actor?.maxOutputTokens).toBe(maxOutputTokens);
   });
   it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, null, "16"])(
     "rejects invalid value %s before a provider can be built",

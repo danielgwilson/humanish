@@ -16,7 +16,7 @@ import type { StudyPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./p
 import { routeOf, type StudyRoute } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
-import { declaredParticipantCount, modeOf } from "./study-fields.js";
+import { declaredParticipantCount } from "./study-fields.js";
 
 export { routeOf, type StudyRoute } from "./routing.js";
 
@@ -29,10 +29,10 @@ export function resolveStudyDryRun(
   if (override !== undefined) {
     return override;
   }
-  if (modeOf(config) === "live") {
+  if (config.mode === "live") {
     return false;
   }
-  if (modeOf(config) === "dry-run") {
+  if (config.mode === "dry-run") {
     return true;
   }
   return fallback;
