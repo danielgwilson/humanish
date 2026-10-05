@@ -103,6 +103,30 @@ export function v2FieldMoves(config: unknown): string[] {
   return V2_FIELDS.filter((field) => field.present(config)).map((field) => field.move);
 }
 
+/**
+ * The v2 key a hand-converted humanish.study.v3 file is most likely to keep, with where it went;
+ * undefined when the file keeps none. parse/front.ts refuses the file with it.
+ */
+export function movedV2KeyReason(raw: Raw): string | undefined {
+  if (raw.actors !== undefined) {
+    return "A study has one `actor:` object, and its participants go in `participants:`. `actors:` is the humanish.lab.v2 spelling.";
+  }
+  if (isRecord(raw.actor)) {
+    for (const key of ["count", "lanes", "roster", "laneFocus"]) {
+      if (raw.actor[key] !== undefined) {
+        return `\`actor.${key}\` moved to \`participants:\`: a count, \`{ count, instruction }\`, or a list of participants.`;
+      }
+    }
+  }
+  if (isRecord(raw.subject) && raw.subject.topology !== undefined) {
+    return "`subject.topology` moved to `route:`. A shared world is `route: shared-world`.";
+  }
+  if (isRecord(raw.execution) && raw.execution.caps !== undefined) {
+    return "`execution.caps` moved to a top-level `caps:` block.";
+  }
+  return undefined;
+}
+
 type Read<T> = { ok: true; value: T } | { ok: false; message: string };
 
 /** `laneFocus`: the steer each of a counted group of participants gets. */

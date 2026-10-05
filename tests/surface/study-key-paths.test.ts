@@ -103,16 +103,6 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
   { file: "src/study/migrate/convert.ts", path: "scenario.mode", reason: MIGRATE },
   { file: "src/study/migrate/convert.ts", path: "subject.topology", reason: MIGRATE },
   {
-    file: "src/study/parse/front.ts",
-    path: "subject.topology",
-    reason: "the message for a file that still sets the moved key",
-  },
-  {
-    file: "src/study/parse/front.ts",
-    path: "execution.caps",
-    reason: "the message for a file that still sets the moved key",
-  },
-  {
     file: "src/study/composition-rules.ts",
     path: "subject.topology",
     reason:
