@@ -9,8 +9,9 @@ import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
-import { V2_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig, type StudyRuntimeAuth } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { actorOf } from "../../../src/study/study-fields.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import { type TerminalCostProbe } from "../../../src/routes/terminal/types.js";
 import {
@@ -271,36 +272,32 @@ function liveConfig(overrides?: {
   egressAllow?: string[];
 }): StudyConfig {
   const raw: Record<string, unknown> = {
-    schema: V2_SCHEMA,
+    schema: STUDY_SCHEMA,
     id: "terminal-live-proof",
     title: "Terminal live proof",
+    route: "terminal",
+    mode: "live",
     subject: {
       source: "terminal-product",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [
-      {
-        type: "codex-exec",
-        persona: "autonomous-creative-agent",
-        mission: "Discover widgetsmith-cli from public surfaces.",
-      },
-    ],
+    actor: {
+      type: "codex-exec",
+      persona: "autonomous-creative-agent",
+      mission: "Discover widgetsmith-cli from public surfaces.",
+    },
+    ...(overrides && "caps" in overrides
+      ? overrides.caps
+        ? { caps: overrides.caps }
+        : {}
+      : { caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } }),
     execution: {
       target: "e2b-terminal",
       ...(overrides?.runtimeAuth === null
         ? {}
         : { runtimeAuth: overrides?.runtimeAuth ?? "openai-env" }),
       ...(overrides?.egressAllow ? { egressAllow: overrides.egressAllow } : {}),
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
-    },
-    scenario: {
-      mode: "live",
-      ...(overrides && "caps" in overrides
-        ? overrides.caps
-          ? { caps: overrides.caps }
-          : {}
-        : { caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } }),
     },
     policies: {
       allowPrivateRepoAccess: false,
@@ -309,7 +306,7 @@ function liveConfig(overrides?: {
       allowGitHubMutation: false,
     },
   };
-  const parsed = parseStudyDocument(raw);
+  const parsed = parseStudy(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -644,7 +641,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   it("records dry-run runtime declarations without resolving or allocating", async () => {
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
-    config.actors[0]!.model = "gpt-5.6-sol";
+    actorOf(config)!.model = "gpt-5.6-sol";
     const result = await runTerminal({
       cwd,
       config,
@@ -702,8 +699,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [];
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
-    config.actors[0]!.model = "gpt-5.6-sol";
-    config.actors[0]!.reasoningEffort = "low";
+    actorOf(config)!.model = "gpt-5.6-sol";
+    actorOf(config)!.reasoningEffort = "low";
     const result = await runTerminal({
       cwd,
       config,
@@ -1903,7 +1900,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     };
 
     const config = liveConfig();
-    config.actors[0]!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
+    actorOf(config)!.mission = `Discover widgetsmith-cli using ${FAKE_RUNTIME_KEY}.`;
     const result = await runTerminal({
       cwd,
       config,
@@ -1928,7 +1925,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
     // The codex command run carried the key in its own envs (command-scoped), and only the runtime key.
     const codexRun = runs.find((r) => r.command.includes(" exec "));
-    expect(codexRun?.command).toContain(config.actors[0]!.mission);
+    expect(codexRun?.command).toContain(actorOf(config)!.mission);
     // Pinned via npx, never an ambient/preinstalled `codex` binary.
     expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
     // The lab declares no model, so the route passes the participant default rather than leaving

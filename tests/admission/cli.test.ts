@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { CommanderError } from "commander";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
@@ -20,11 +19,11 @@ vi.mock("node:child_process", async (importOriginal) =>
   (await import("./subprocess-spy.js")).countedChildProcess(await importOriginal(), subprocess),
 );
 
-const live = { scenario: { mode: "live" } };
-const unpricedCap = { ...live, execution: { caps: { maxUsd: 1 } } };
+const live = { mode: "live" };
+const unpricedCap = { ...live, caps: { maxUsd: 1 } };
 
 const labs: Record<string, RawLab> = {
-  "adm-terminal-live-no-caps": lab("terminal", { scenario: { mode: "live", caps: undefined } }),
+  "adm-terminal-live-no-caps": lab("terminal", { mode: "live", caps: undefined }),
   "adm-scripted": lab("scriptedAppUrl"),
   "adm-cu": lab("cuAppUrl"),
   "adm-preview": lab("preview"),
@@ -107,31 +106,9 @@ async function projectDir(): Promise<string> {
   return dir;
 }
 
-/**
- * Each fixture as a v3 file. The two the parser refuses cannot convert, so they are the valid
- * clone study with the one change that makes it refuse. The terminal fixtures' execution.timeoutMs
- * is a key that route never reads.
- */
+/** Each fixture as a v3 file under its own id. */
 function studyText(id: string, raw: RawLab, dir: string): string {
-  const refused: Record<string, (study: Record<string, Record<string, unknown>>) => void> = {
-    "adm-clone-codex-app-server": (study) => {
-      study.actor!.type = "codex-app-server";
-    },
-    "adm-clone-no-serve": (study) => {
-      delete study.subject!.serve;
-    },
-  };
-  const change = refused[id];
-  if (change === undefined) {
-    const terminal = (raw.actors as { type?: string }[])[0]?.type === "codex-exec";
-    return studyFileText({ ...raw, id }, dir, terminal ? ["execution.timeoutMs"] : []);
-  }
-  const study = parse(studyFileText({ ...lab("cuClone"), id }, dir)) as Record<
-    string,
-    Record<string, unknown>
-  >;
-  change(study);
-  return stringify(study);
+  return studyFileText({ ...raw, id }, dir);
 }
 
 /** Runs the CLI. `log` also receives its stderr, so a test can order it among other writes. */

@@ -600,11 +600,7 @@ describe("a shared-world lab with a local-agent actor in doctor", () => {
     agents: DetectedLocalAgent[],
     actor: Record<string, unknown> = { type: "local-agent", localAgent: "codex" },
   ) {
-    const raw = admissionLab(
-      base,
-      { scenario: { mode: "live" }, review: { analysis: false } },
-      actor,
-    );
+    const raw = admissionLab(base, { mode: "live", review: { analysis: false } }, actor);
     return project(stringify(raw), (cwd) =>
       studySetupChecks({
         cwd,
@@ -665,7 +661,7 @@ describe("doctor reads a live run's needs from the lab's plan", () => {
 
   it("reports each subject env name the plan requires, present or missing", async () => {
     const raw = admissionLab("cuClone", {
-      scenario: { mode: "live" },
+      mode: "live",
       review: { analysis: false },
       subject: { env: ["SYNTHETIC_SUBJECT_TOKEN"] },
     });
@@ -685,7 +681,7 @@ describe("doctor reads a live run's needs from the lab's plan", () => {
     // A 55-minute session derives a sandbox deadline past the 60-minute limit. The parser admits
     // it; the planner, and so `humanish lab run`, refuses it.
     const raw = admissionLab("cuAppUrl", {
-      scenario: { mode: "live" },
+      mode: "live",
       execution: { timeoutMs: 3_300_000 },
     });
     const result = await check(raw);

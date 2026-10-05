@@ -6,8 +6,8 @@ import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -44,20 +44,21 @@ type Route = "cua-clone" | "cua-local-tree" | "concurrent-provisioned" | "concur
 function configuration(route: Route): StudyConfig {
   const concurrent = route.startsWith("concurrent-");
   const external = route === "concurrent-external";
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: `receiving-${route}`,
     title: "Receiving orchestration proof",
+    route: concurrent ? "shared-world" : "computer-use",
+    mode: "live",
     subject: external
       ? {
           source: "app-url",
-          topology: "shared-world",
           appUrl: "https://collaboration.example.test/",
           publicTarget: { owner: "example-operator", authorized: true },
         }
       : {
           source: route === "cua-local-tree" ? "local-tree" : "clone",
-          ...(concurrent ? { topology: "shared-world", exposure: "synthetic" } : {}),
+          ...(concurrent ? { exposure: "synthetic" } : {}),
           ...(route === "cua-local-tree" ? {} : { repos: ["example-org/example-app"] }),
           serve: {
             install: "pnpm install",
@@ -74,28 +75,22 @@ function configuration(route: Route): StudyConfig {
             : {}),
         },
     ...(external ? { policies: { allowPublicTargets: true } } : {}),
-    actors: [
+    actor: { type: "openai-computer-use", mission: "Use your own email to join the app." },
+    participants: [
       {
-        type: "openai-computer-use",
-        mission: "Use your own email to join the app.",
-        lanes: [
-          {
-            id: "participant-a",
-            persona: "first-time-visitor",
-            ...(external ? { host: true } : {}),
-            ...(concurrent && !external ? { entry: "/seat-a" } : {}),
-          },
-          {
-            id: "participant-b",
-            persona: "returning-user",
-            ...(concurrent && !external ? { entry: "/seat-b" } : {}),
-          },
-        ],
+        id: "participant-a",
+        persona: "first-time-visitor",
+        ...(external ? { host: true } : {}),
+        ...(concurrent && !external ? { entry: "/seat-a" } : {}),
+      },
+      {
+        id: "participant-b",
+        persona: "returning-user",
+        ...(concurrent && !external ? { entry: "/seat-b" } : {}),
       },
     ],
     comms: { email: { connection: "mail" } },
     execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
-    scenario: { mode: "live" },
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);

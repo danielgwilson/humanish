@@ -7,10 +7,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { modeOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types.js";
-import { lab } from "../../admission/fixtures.js";
+import { libraryLab } from "../../admission/fixtures.js";
 import { runComputerUse } from "../../helpers/route-run.js";
 
 const dirs: string[] = [];
@@ -29,7 +30,7 @@ interface Rule {
 
 const record = (config: Raw, key: string): Raw => (config[key] ??= {}) as Raw;
 const actor = (config: Raw): Raw => (config.actors as Raw[])[0]!;
-const cloneSubject = lab("cuClone").subject as Raw;
+const cloneSubject = libraryLab("cuClone").subject as Raw;
 const asClone = (config: Raw): void => {
   if (record(config, "subject").source !== "clone") config.subject = structuredClone(cloneSubject);
 };
@@ -195,7 +196,7 @@ function caseOf(names: readonly string[]): {
   driving: Pick<ComputerUseRunInput, "inProcess" | "createProvider">;
   countOverride?: number;
 } {
-  const config = lab("cuAppUrl");
+  const config = libraryLab("cuAppUrl");
   // The later rule first, so the earlier rule's change is the one that stands where they overlap.
   const selected = names.map((name) => rules.get(name)!);
   for (const rule of [...selected].reverse()) rule.mutate(config);
@@ -230,7 +231,7 @@ describe("computer-use admission order", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
       dirs.push(cwd);
       const { config, deps, driving, countOverride } = caseOf(names);
-      const dryRun = config.scenario?.mode !== "live";
+      const dryRun = modeOf(config) !== "live";
       const result = await runComputerUse({
         cwd,
         config,

@@ -8,7 +8,8 @@ import type { CuaAction, CuaExecutor } from "../../../src/actors/computer-use/lo
 import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runStudyWith } from "../../../src/run-study.js";
-import type { StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import type { LocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
@@ -99,14 +100,15 @@ const TWO_TURN_SESSION = [
 ];
 
 function localVmConfig(): StudyConfig {
-  return {
-    schema: "humanish.lab.v2",
+  return libraryConfig({
+    schema: STUDY_SCHEMA,
     id: "local-vm-golden",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:4173/" },
-    actors: [{ type: "openai-computer-use", mission: "Save a synthetic note." }],
+    actor: { type: "openai-computer-use", mission: "Save a synthetic note." },
     execution: { target: "local", timeoutMs: 60_000 },
-    scenario: { mode: "live" },
-  };
+  });
 }
 
 // Characterization: the complete run directory of a live local VM study on a fake VM, pinned so a

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/study/adapter-scorer-loader.js";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
 import { phaseEvent, planEvent, type StudyEvent } from "../../src/study/run-study-events.js";
@@ -18,7 +18,7 @@ import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
 function config(base: BaseName, patch?: Patch): StudyConfig {
-  const parsed = parseStudyDocument(lab(base, patch));
+  const parsed = parseStudy(lab(base, patch));
   if (!parsed.ok) throw new Error(`${base}: ${parsed.error.message}`);
   return parsed.config;
 }
@@ -80,7 +80,11 @@ describe("an option the route cannot honor is refused before anything runs", () 
       ],
       [
         "computer use inProcess on two participants (the planner refuses it)",
-        () => config("cuAppUrl", { actors: [{ type: "openai-computer-use", count: 2 }] }),
+        () =>
+          config("cuAppUrl", {
+            actor: { persona: undefined, mission: undefined },
+            participants: 2,
+          }),
         { inProcess, createProvider },
         undefined,
       ],

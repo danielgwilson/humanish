@@ -10,14 +10,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
+import { actorOf } from "../../src/study/study-fields.js";
 import { routeOf } from "../../src/study/plan.js";
 import {
   computerUseParticipants,
   sharedWorldParticipants,
   type ComputerUseParticipant,
 } from "../../src/study/plan-participants.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { FALLBACK_PERSONA_ID } from "../../src/routes/computer-use/participant-prompt.js";
 import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
@@ -39,7 +40,7 @@ async function tempProject(): Promise<string> {
 }
 
 function parsed(raw: Record<string, unknown>): StudyConfig {
-  const result = parseStudyDocument({ schema: V2_SCHEMA, id: "plan-participants", ...raw });
+  const result = parseStudy({ schema: STUDY_SCHEMA, id: "plan-participants", ...raw });
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }
@@ -50,6 +51,7 @@ async function committedLabsOn(route: string): Promise<[string, StudyConfig][]> 
 
 const stop = { any: [{ textIncludes: "Done" }] };
 const cuApp = {
+  route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
   execution: { target: "e2b-desktop", timeoutMs: 60_000 },
 };
@@ -59,19 +61,16 @@ const cuVariants: [string, StudyConfig, number | undefined][] = [
     "homogeneous count with actor-level fields",
     parsed({
       ...cuApp,
-      actors: [
-        {
-          type: "openai-computer-use",
-          count: 3,
-          persona: "first-time-visitor",
-          mission: "Sign up.",
-          laneFocus: { instruction: "Use the keyboard." },
-          stopWhen: stop,
-          reasoningEffort: "high",
-          maxOutputTokens: 2000,
-          tasks: [{ id: "sign-up", goal: "Create an account." }],
-        },
-      ],
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Sign up.",
+        stopWhen: stop,
+        reasoningEffort: "high",
+        maxOutputTokens: 2000,
+        tasks: [{ id: "sign-up", goal: "Create an account." }],
+      },
+      participants: { count: 3, instruction: "Use the keyboard." },
     }),
     undefined,
   ],
@@ -79,18 +78,16 @@ const cuVariants: [string, StudyConfig, number | undefined][] = [
     "roster with overrides and fallbacks",
     parsed({
       ...cuApp,
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "fallback-persona",
-          stopWhen: stop,
-          reasoningEffort: "low",
-          lanes: [
-            { id: "host", persona: "own-persona", device: "small-mobile", instruction: "Host." },
-            { actorType: "viewer", surface: "feed", caseGroup: "case-1", reasoningEffort: "high" },
-            { dwell: { ms: 2000, everyMs: 1000, then: "continue" } },
-          ],
-        },
+      actor: {
+        type: "openai-computer-use",
+        persona: "fallback-persona",
+        stopWhen: stop,
+        reasoningEffort: "low",
+      },
+      participants: [
+        { id: "host", persona: "own-persona", device: "small-mobile", instruction: "Host." },
+        { actorType: "viewer", surface: "feed", caseGroup: "case-1", reasoningEffort: "high" },
+        { dwell: { ms: 2000, everyMs: 1000, then: "continue" } },
       ],
     }),
     undefined,
@@ -99,12 +96,8 @@ const cuVariants: [string, StudyConfig, number | undefined][] = [
     "per-lane targets",
     parsed({
       ...cuApp,
-      actors: [
-        {
-          type: "openai-computer-use",
-          lanes: [{ target: "http://127.0.0.1:3001/" }, { target: "http://127.0.0.1:3002/" }],
-        },
-      ],
+      actor: { type: "openai-computer-use" },
+      participants: [{ target: "http://127.0.0.1:3001/" }, { target: "http://127.0.0.1:3002/" }],
     }),
     undefined,
   ],
@@ -113,11 +106,15 @@ const cuVariants: [string, StudyConfig, number | undefined][] = [
     parsed({
       ...cuApp,
       execution: { ...cuApp.execution, desktop: { resolution: [1280, 800] } },
-      actors: [{ type: "openai-computer-use" }],
+      actor: { type: "openai-computer-use" },
     }),
     undefined,
   ],
-  ["count override", parsed({ ...cuApp, actors: [{ type: "openai-computer-use", count: 2 }] }), 4],
+  [
+    "count override",
+    parsed({ ...cuApp, actor: { type: "openai-computer-use" }, participants: 2 }),
+    4,
+  ],
 ];
 
 /** The declarative fields of a participant spec, in the participant's shape. */
@@ -193,7 +190,7 @@ describe("computerUseParticipants", () => {
         plain(lanes.participantRuns.map(fromSpec)),
       );
       for (const [index, participant] of participants.entries()) {
-        const declared = config.actors[0]?.mission;
+        const declared = actorOf(config)?.mission;
         expect(participant.assignment.mission, name).toBe(declared);
         if (declared !== undefined)
           expect(lanes.participantRuns[index]?.evidenceAssignment?.mission, name).toBe(declared);
@@ -204,9 +201,9 @@ describe("computerUseParticipants", () => {
 
 describe("sharedWorldParticipants", () => {
   const unnamedSeats = parsed({
+    route: "shared-world",
     subject: {
       source: "clone",
-      topology: "shared-world",
       exposure: "synthetic",
       repos: ["example-org/collab-app"],
       serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
@@ -215,17 +212,15 @@ describe("sharedWorldParticipants", () => {
         checkpoint: [{ name: "notes", command: "echo 1" }],
       },
     },
-    actors: [
-      {
-        type: "openai-computer-use",
-        persona: "fallback-persona",
-        mission: "Share the app.",
-        stopWhen: stop,
-        lanes: [
-          { id: "author", persona: "author", entry: "/compose", device: "small-mobile" },
-          { instruction: "Review.", reasoningEffort: "high" },
-        ],
-      },
+    actor: {
+      type: "openai-computer-use",
+      persona: "fallback-persona",
+      mission: "Share the app.",
+      stopWhen: stop,
+    },
+    participants: [
+      { id: "author", persona: "author", entry: "/compose", device: "small-mobile" },
+      { instruction: "Review.", reasoningEffort: "high" },
     ],
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   });
@@ -284,13 +279,14 @@ describe("sharedWorldParticipants", () => {
 
     const external = sharedWorldParticipants(
       parsed({
+        route: "shared-world",
         subject: {
           source: "app-url",
           appUrl: "https://app.example.com/",
-          topology: "shared-world",
           publicTarget: { owner: "example-org", authorized: true },
         },
-        actors: [{ type: "openai-computer-use", lanes: [{ id: "h", host: true }, { id: "g" }] }],
+        actor: { type: "openai-computer-use" },
+        participants: [{ id: "h", host: true }, { id: "g" }],
         execution: { target: "e2b-desktop", timeoutMs: 60_000 },
         policies: { allowPublicTargets: true },
       }),

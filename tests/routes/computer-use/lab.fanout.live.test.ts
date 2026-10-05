@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -51,25 +51,23 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (live, spend-gated)", () => {
     "fans out two per-participant worlds (mobile + desktop) to two distinct desktops, both reclaimed by id",
     { timeout: 600_000 },
     async () => {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "cua-fanout-live-proof",
         title: "CUA fan-out live proof",
+        route: "computer-use",
+        mode: "live",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/proof.html" },
-        actors: [
-          {
-            type: "openai-computer-use",
-            mission:
-              "Look at the page on screen, scroll down once, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else.",
-            lanes: [
-              { id: "mobile", persona: "synthetic-new-user", device: "mobile" },
-              { id: "desktop", persona: "synthetic-new-user", device: "desktop" },
-            ],
-          },
+        actor: {
+          type: "openai-computer-use",
+          mission:
+            "Look at the page on screen, scroll down once, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else.",
+        },
+        participants: [
+          { id: "mobile", persona: "synthetic-new-user", device: "mobile" },
+          { id: "desktop", persona: "synthetic-new-user", device: "desktop" },
         ],
-        // concurrency 2 = at most two concurrent paid desktops (the spend bound).
         execution: { target: "e2b-desktop", timeoutMs: 120_000, concurrency: 2 },
-        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 

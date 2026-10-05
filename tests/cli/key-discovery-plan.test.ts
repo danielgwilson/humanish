@@ -136,7 +136,7 @@ async function writeOverlay(cwd: string, line: string): Promise<void> {
   await writeFile(path.join(cwd, ".humanish", "local", "provider.env"), `${line}\n`);
 }
 
-const live = { scenario: { mode: "live" }, execution: { caps: { maxUsd: 1 } } };
+const live = { mode: "live", caps: { maxUsd: 1 } };
 
 describe("a live lab run prints key lines for the keys its plan reads", () => {
   it("init's local-browser starter prints no key line", async () => {
@@ -170,9 +170,7 @@ describe("a live lab run prints key lines for the keys its plan reads", () => {
   it("prints every fill, as before, for a live lab its plan refuses", async () => {
     // The lab parses, but its session budget derives a sandbox deadline past the provider's
     // maximum, so the computer-use plan refuses it.
-    const cwd = await project(
-      lab("cuAppUrl", { ...live, execution: { caps: { maxUsd: 1 }, timeoutMs: 360_000_000 } }),
-    );
+    const cwd = await project(lab("cuAppUrl", { ...live, execution: { timeoutMs: 360_000_000 } }));
 
     const run = await liveRun(cwd, "hosted");
 
@@ -188,7 +186,7 @@ describe("a live lab run fills every key discovery finds", () => {
     const cwd = await project(
       lab(
         "cuAppUrl",
-        { scenario: { mode: "live" }, review: { analysis: false } },
+        { mode: "live", review: { analysis: false } },
         { type: "local-agent", localAgent: "claude", mission: "Sign up." },
       ),
     );

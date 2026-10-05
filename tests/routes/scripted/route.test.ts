@@ -15,8 +15,9 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
@@ -271,29 +272,28 @@ async function writeCommittedScenario(cwd: string): Promise<string> {
   return text;
 }
 
-function scriptedConfig(overrides?: {
+interface ScriptedOverrides {
   appUrl?: string;
-  count?: number;
+  /** 1 runs the desktop surface, 2 adds mobile. */
+  count?: 1 | 2;
   mode?: "dry-run" | "live";
   target?: "local" | undefined;
   ref?: string;
-}): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+}
+
+function scriptedStudy(overrides?: ScriptedOverrides): Record<string, unknown> {
+  return {
+    schema: STUDY_SCHEMA,
     id: "scripted-routing-proof",
     title: "Scripted routing proof",
+    route: "scripted",
+    ...(overrides?.mode === undefined ? {} : { mode: overrides.mode }),
     subject: { source: "app-url", appUrl: overrides?.appUrl ?? "http://127.0.0.1:5173/" },
-    actors: [
-      {
-        type: "scripted-browser",
-        persona: "synthetic-new-user",
-        ...(overrides?.count === undefined ? {} : { count: overrides.count }),
-      },
-    ],
-    scenario: {
-      ref: overrides?.ref ?? "scripted-first-run",
-      ...(overrides?.mode === undefined ? {} : { mode: overrides.mode }),
-    },
+    actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+    ...(overrides?.count === undefined
+      ? {}
+      : { surfaces: overrides.count === 2 ? ["desktop", "mobile"] : ["desktop"] }),
+    scenario: overrides?.ref ?? "scripted-first-run",
     execution: {
       ...(overrides && "target" in overrides
         ? overrides.target
@@ -302,7 +302,11 @@ function scriptedConfig(overrides?: {
         : { target: "local" }),
       timeoutMs: 30_000,
     },
-  });
+  };
+}
+
+function scriptedConfig(overrides?: ScriptedOverrides): StudyConfig {
+  const parsed = parseStudy(scriptedStudy(overrides));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -366,25 +370,26 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
     // skips the parser still reaches the computer-use route's fail-closed actor check.
     const cloneWithCodeActor = {
-      schema: V2_SCHEMA,
+      schema: STUDY_SCHEMA,
       id: "m",
+      route: "computer-use",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "codex-app-server" }],
+      actor: { type: "codex-app-server" },
       execution: { target: "e2b-desktop" },
-    } as const;
+    };
     if (!cua.ok || !synthetic.ok) throw new Error("fixture configs must parse");
-    expect(parseStudyDocument(cloneWithCodeActor).ok).toBe(false);
+    expect(parseStudy(cloneWithCodeActor).ok).toBe(false);
     expect(routeOf(cua.config)).toBe("computer-use");
     expect(routeOf(synthetic.config)).toBe("preview");
-    expect(routeOf(cloneWithCodeActor as unknown as StudyConfig)).toBe("computer-use");
+    expect(routeOf(libraryConfig(cloneWithCodeActor))).toBe("computer-use");
   });
 
   it("library-API fallback: app-url with an unregistered actor type still routes to cua's fail-closed gate", async () => {
     // Such a config cannot parse; build it by hand (the library-API path).
-    const tampered = {
-      ...scriptedConfig(),
-      actors: [{ type: "not-a-registered-actor" }],
-    } as StudyConfig;
+    const tampered = libraryConfig({
+      ...scriptedStudy(),
+      actor: { type: "not-a-registered-actor" },
+    });
     expect(routeOf(tampered)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
     try {
@@ -1407,7 +1412,7 @@ describe("runScriptedBrowserLab", () => {
 
   it("rejects a non-scripted actor at the engine even if a config bypasses the parser", async () => {
     await writeCommittedScenario(cwd);
-    const tampered = { ...scriptedConfig(), actors: [{ type: "codex-app-server" }] } as StudyConfig;
+    const tampered = libraryConfig({ ...scriptedStudy(), actor: { type: "codex-app-server" } });
     const result = await runScripted({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED");

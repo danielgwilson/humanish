@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -13,11 +13,11 @@ const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{
   name: string;
-  config: StudyConfig;
+  config: Record<string, unknown>;
   route: string;
 }>;
-function baseline(raw: StudyConfig): StudyConfig {
-  const result = parseStudyDocument(raw);
+function baseline(raw: Record<string, unknown>): StudyConfig {
+  const result = parseStudy(raw);
   if (!result.ok) throw new Error(result.error.message);
   return result.config;
 }

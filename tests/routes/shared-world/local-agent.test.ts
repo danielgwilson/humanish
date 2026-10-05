@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { planStudy } from "../../../src/study/plan.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { participantRunDeps } from "../../../src/routes/shared-world/participant-specs.js";
@@ -17,7 +17,7 @@ import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 
-const live = { scenario: { mode: "live" } };
+const live = { mode: "live" };
 const localAgent = { type: "local-agent", localAgent: "codex" };
 const cleanup: string[] = [];
 
@@ -35,7 +35,7 @@ async function projectDir(): Promise<string> {
 }
 
 function config(base: "sharedProvisioned" | "sharedExternal", actor?: Record<string, unknown>) {
-  const parsed = parseStudyDocument(lab(base, live, actor));
+  const parsed = parseStudy(lab(base, live, actor));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -130,9 +130,8 @@ describe("shared world with a local-agent brain", () => {
     const cwd = await projectDir();
     let loads = 0;
     const base = lab("sharedProvisioned", live, localAgent);
-    const raw =
-      caps === undefined ? base : { ...base, execution: { ...(base.execution as object), caps } };
-    const parsed = parseStudyDocument(raw);
+    const raw = caps === undefined ? base : { ...base, caps };
+    const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runStudyWith(
       parsed.config,

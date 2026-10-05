@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { participantRun } from "../../helpers/participant-run.js";
@@ -31,14 +32,15 @@ const appUrl = "http://127.0.0.1:4173/";
 const assets = { image: "synthetic-image", runtimeRevision: "synthetic-revision" };
 
 function localLab(type: "openai-computer-use" | "local-agent"): StudyConfig {
-  return {
-    schema: "humanish.lab.v2",
+  return libraryConfig({
+    schema: STUDY_SCHEMA,
     id: "local-hooks",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl },
-    actors: [{ type, mission: "Save a synthetic note." }],
+    actor: { type, mission: "Save a synthetic note." },
     execution: { target: "local" },
-    scenario: { mode: "live" },
-  };
+  });
 }
 
 const laneRun = () =>

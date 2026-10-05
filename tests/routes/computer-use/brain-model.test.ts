@@ -22,7 +22,8 @@ import { createRestrictedCodexParticipant } from "../../../src/actors/codex/rest
 import { startClaudeSession } from "../../../src/actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../../src/actors/local-agent/cli.js";
 import type { Brain, ComputerUsePlan } from "../../../src/study/plan-types.js";
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
@@ -141,26 +142,22 @@ function labConfig(args: {
   model: string | undefined;
   maxUsd?: number;
 }): StudyConfig {
-  return {
-    schema: V2_SCHEMA,
+  return libraryConfig({
+    schema: STUDY_SCHEMA,
     id: "brain-model",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
-      {
-        persona: "first-time-visitor",
-        mission: "Save a note.",
-        ...args.actor,
-        ...(args.model === undefined ? {} : { model: args.model }),
-      },
-    ],
-    execution: {
-      target: "e2b-desktop",
-      timeoutMs: 60_000,
-      ...(args.maxUsd === undefined ? {} : { caps: { maxUsd: args.maxUsd } }),
+    actor: {
+      persona: "first-time-visitor",
+      mission: "Save a note.",
+      ...args.actor,
+      ...(args.model === undefined ? {} : { model: args.model }),
     },
-    scenario: { mode: "live" },
+    ...(args.maxUsd === undefined ? {} : { caps: { maxUsd: args.maxUsd } }),
+    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
     review: { analysis: false },
-  } as StudyConfig;
+  });
 }
 
 const OPENAI_ACTOR = { type: "openai-computer-use" };

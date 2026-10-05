@@ -42,8 +42,9 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { actorOf } from "../../../src/study/study-fields.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -281,44 +282,44 @@ function fanoutConfig(overrides?: {
   template?: string;
   reasoningEffort?: string;
 }): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "fanout-proof",
     title: "Fan-out proof",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
+    actor: {
+      type: "openai-computer-use",
+      mission: "Explore the app and stop.",
+      ...(overrides?.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: overrides.reasoningEffort }),
+    },
+    participants: overrides?.lanes ?? [
       {
-        type: "openai-computer-use",
-        mission: "Explore the app and stop.",
-        ...(overrides?.reasoningEffort === undefined
-          ? {}
-          : { reasoningEffort: overrides.reasoningEffort }),
-        lanes: overrides?.lanes ?? [
-          {
-            id: "mobile-newcomer",
-            persona: "first-time-visitor",
-            device: "mobile",
-            instruction: "Sign up from a phone.",
-          },
-          {
-            id: "small-skimmer",
-            persona: "impatient-skimmer",
-            device: "small-mobile",
-            instruction: "Skim and bounce.",
-          },
-          {
-            id: "desktop-power",
-            persona: "power-user",
-            device: "desktop",
-            instruction: "Open advanced settings.",
-          },
-          {
-            id: "wide-researcher",
-            persona: "comparison-shopper",
-            device: "wide",
-            instruction: "Compare the plans.",
-          },
-        ],
+        id: "mobile-newcomer",
+        persona: "first-time-visitor",
+        device: "mobile",
+        instruction: "Sign up from a phone.",
+      },
+      {
+        id: "small-skimmer",
+        persona: "impatient-skimmer",
+        device: "small-mobile",
+        instruction: "Skim and bounce.",
+      },
+      {
+        id: "desktop-power",
+        persona: "power-user",
+        device: "desktop",
+        instruction: "Open advanced settings.",
+      },
+      {
+        id: "wide-researcher",
+        persona: "comparison-shopper",
+        device: "wide",
+        instruction: "Compare the plans.",
       },
     ],
     execution: {
@@ -327,7 +328,6 @@ function fanoutConfig(overrides?: {
       concurrency: overrides?.concurrency ?? 2,
       ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } }),
     },
-    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -855,7 +855,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
       ],
     });
-    config.actors[0]!.mission = "Explore with test-openai-key.";
+    actorOf(config)!.mission = "Explore with test-openai-key.";
     const runId = "cua-fanout-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;

@@ -33,6 +33,8 @@ import {
 } from "../../../src/study/validation.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
+import { actorOf, participantList } from "../../../src/study/study-fields.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
@@ -417,8 +419,14 @@ function concurrentStudy(roleCount = 3, concurrency = 3, template?: string) {
   };
 }
 
-function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): StudyConfig {
-  const parsed = parseStudy(concurrentStudy(roleCount, concurrency, template));
+function concurrentConfig(
+  roleCount = 3,
+  concurrency = 3,
+  template?: string,
+  caps?: { maxUsd?: number; maxTotalUsd?: number },
+): StudyConfig {
+  const study = concurrentStudy(roleCount, concurrency, template);
+  const parsed = parseStudy(caps === undefined ? study : { ...study, caps });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -491,10 +499,10 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     const config = concurrentConfig();
     delete config.review; // Omitted config uses the separate default analysis budget.
     const analyze = automaticAnalysisBoundary();
-    config.actors[0]!.lanes!.forEach((lane, i) => {
+    participantList(config)!.forEach((lane, i) => {
       lane.instruction = `Review section ${i + 1}.`;
     });
-    config.actors[0]!.mission = "Use the shared app with test-openai-key.";
+    actorOf(config)!.mission = "Use the shared app with test-openai-key.";
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const result = await runSharedWorld({
       cwd,
@@ -527,9 +535,8 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
   });
 
   it("shares one actor budget on the provisioned plane", async () => {
-    const config = concurrentConfig();
-    config.actors[0]!.model = "gpt-5.5";
-    config.execution!.caps = { maxUsd: 1, maxTotalUsd: 0.04 };
+    const config = concurrentConfig(3, 3, undefined, { maxUsd: 1, maxTotalUsd: 0.04 });
+    actorOf(config)!.model = "gpt-5.5";
     const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const session = deps.runSession!;
     const seen: CuaActorSessionOptions[] = [];
@@ -546,9 +553,8 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
   });
 
   it("refuses an unpriceable cap before provisioning the shared plane", async () => {
-    const config = concurrentConfig();
-    config.actors[0]!.model = "unknown-priced-model";
-    config.execution!.caps = { maxTotalUsd: 1 };
+    const config = concurrentConfig(3, 3, undefined, { maxTotalUsd: 1 });
+    actorOf(config)!.model = "unknown-priced-model";
     const { env, created, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.error?.message).toContain("humanish has no rate for model");
@@ -557,7 +563,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
 
   it("refuses a custom session before allocating the concurrent shared plane with an output limit", async () => {
     const config = concurrentConfig();
-    config.actors[0]!.maxOutputTokens = 16;
+    actorOf(config)!.maxOutputTokens = 16;
     const { env, created, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
     const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.error?.message).toContain("custom runSession");
@@ -1214,7 +1220,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     const state = { worldVersion: 0 };
     const { env, sandboxes, deps } = baseSeams(state, async () => {});
     const config = concurrentConfig(3, 3);
-    config.actors[0]!.mission = "Use the shared app with test-openai-key.";
+    actorOf(config)!.mission = "Use the shared app with test-openai-key.";
     const runId = "concurrent-shared-world-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
@@ -1356,8 +1362,8 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     const config = concurrentConfig(3, 3);
     const actorDefault = { any: [{ id: "actor-done", textIncludes: "Saved" }] };
     const laneOverride = { any: [{ id: "second-done", urlIncludes: "/done" }] };
-    config.actors[0]!.stopWhen = actorDefault;
-    config.actors[0]!.lanes![1]!.stopWhen = laneOverride;
+    actorOf(config)!.stopWhen = actorDefault;
+    participantList(config)![1]!.stopWhen = laneOverride;
 
     // Keyed by participant persona, not call order: concurrent completion order is not a contract.
     const seen = new Map<string, CuaActorSessionOptions["stopWhen"]>();
@@ -1387,8 +1393,8 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
       then: "continue" as const,
     };
     const laneOverride = { ms: 5_000, everyMs: 1_000, then: "stop" as const };
-    config.actors[0]!.dwell = actorDefault;
-    config.actors[0]!.lanes![1]!.dwell = laneOverride;
+    actorOf(config)!.dwell = actorDefault;
+    participantList(config)![1]!.dwell = laneOverride;
 
     const seen = new Map<string, CuaActorSessionOptions["dwell"]>();
     const runSession = deps.runSession!;
@@ -1740,8 +1746,8 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     const baseRun = makeRunSession(state, makeRendezvous(3));
     const { env, deps } = baseSeams(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
-    config.actors[0]!.persona = "careful-reviewer";
-    delete config.actors[0]!.lanes![1]!.persona;
+    actorOf(config)!.persona = "careful-reviewer";
+    delete participantList(config)![1]!.persona;
     const result = await runSharedWorld({
       cwd,
       config,
@@ -2079,12 +2085,13 @@ describe("the shared-world route (local-tree route: subject.source: local-tree)"
   });
 
   it("engine re-enforcement rejects path-shaped role ids before loading a desktop", async () => {
-    const valid = concurrentConfig(3, 3);
-    const actor = valid.actors[0]!;
-    const lanes = actor.lanes!.map((lane, index) =>
-      index === 0 ? { ...lane, id: "..\\escape" } : lane,
-    );
-    const broken: StudyConfig = { ...valid, actors: [{ ...actor, lanes }] };
+    const study = concurrentStudy(3, 3);
+    const broken = libraryConfig({
+      ...study,
+      participants: study.participants.map((lane, index) =>
+        index === 0 ? { ...lane, id: "..\\escape" } : lane,
+      ),
+    });
     let desktopLoads = 0;
     const result = await runSharedWorld({
       cwd,
@@ -2432,9 +2439,9 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(config.subject.repos).toEqual(["danielgwilson/humanish"]);
     expect((config.subject.state?.seed ?? []).length).toBeGreaterThan(0);
     expect((config.subject.state?.checkpoint ?? []).length).toBeGreaterThan(0);
-    expect(config.actors[0]?.lanes).toHaveLength(3);
+    expect(participantList(config)).toHaveLength(3);
     expect(
-      config.actors[0]?.lanes?.map((lane) => [lane.actorType, lane.surface, lane.caseGroup]),
+      participantList(config)?.map((lane) => [lane.actorType, lane.surface, lane.caseGroup]),
     ).toEqual([
       ["planner", "task-board", "board-001"],
       ["coordinator", "task-board", "board-001"],
@@ -2620,9 +2627,9 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
 it("routes actor output limits and per-participant reasoning to concurrent provider requests", async () => {
   const config = concurrentConfig();
   // Below the first request's own 1024 cap, so the first request carries the declared value.
-  config.actors[0]!.maxOutputTokens = 512;
-  config.actors[0]!.reasoningEffort = "low";
-  config.actors[0]!.lanes![1]!.reasoningEffort = "high";
+  actorOf(config)!.maxOutputTokens = 512;
+  actorOf(config)!.reasoningEffort = "low";
+  participantList(config)![1]!.reasoningEffort = "high";
   const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
   delete deps.runSession;
   const prepareDesktop = async (desktop: E2BDesktopSandbox): Promise<void> => {

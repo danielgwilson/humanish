@@ -26,7 +26,7 @@ describe("the terminal sandbox's lifetime", () => {
   ])("with product setup %s, plans maxMinutes %i and refuses one more", (install, largest) => {
     const planWith = (maxMinutes: number) => {
       const config = terminalConfig({
-        scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes } },
+        caps: { maxUsd: 0, maxJobs: 0, maxMinutes },
       });
       if (install) config.subject.product!.install = "synthetic-product-install --yes";
       return planTerminalStudy(config, { dryRun: false });

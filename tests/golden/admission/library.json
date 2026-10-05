@@ -648,23 +648,6 @@
       "sameAsRunStudy": true
     }
   },
-  "scripted app-url count 3": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
-    },
-    "runStudy": {
-      "runs": true,
-      "result": {
-        "route": "scripted",
-        "ok": true
-      }
-    },
-    "runner": {
-      "runner": "scripted",
-      "sameAsRunStudy": true
-    }
-  },
   "scripted app-url redacted screenshots": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
@@ -1028,23 +1011,6 @@
       "sameAsRunStudy": true
     }
   },
-  "scripted clone topology": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`."
-    },
-    "runStudy": {
-      "runs": true,
-      "result": {
-        "route": "scripted",
-        "ok": true
-      }
-    },
-    "runner": {
-      "runner": "scripted",
-      "sameAsRunStudy": true
-    }
-  },
   "scripted clone keep": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
@@ -1096,40 +1062,6 @@
           "state": "skipped",
           "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
         }
-      }
-    },
-    "runner": {
-      "runner": "scripted",
-      "sameAsRunStudy": true
-    }
-  },
-  "scripted clone count 3": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
-    },
-    "runStudy": {
-      "runs": true,
-      "result": {
-        "route": "scripted",
-        "ok": true
-      }
-    },
-    "runner": {
-      "runner": "scripted",
-      "sameAsRunStudy": true
-    }
-  },
-  "scripted clone lanes": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "`participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces."
-    },
-    "runStudy": {
-      "runs": true,
-      "result": {
-        "route": "scripted",
-        "ok": true
       }
     },
     "runner": {
@@ -1493,88 +1425,6 @@
       "sameAsRunStudy": true
     }
   },
-  "lanes and count": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
-    },
-    "runStudy": {
-      "runs": false,
-      "calls": {
-        "desktop": 0,
-        "executor": 0,
-        "provider": 0,
-        "subprocess": 0
-      },
-      "result": {
-        "schema": "humanish.study-result.v1",
-        "route": "computer-use",
-        "studyId": "adm-cuappurl",
-        "ok": false,
-        "cwd": "[cwd]",
-        "actor": "openai-computer-use",
-        "appUrl": "http://127.0.0.1:3000/",
-        "dryRun": true,
-        "runId": "not-created",
-        "lanes": [],
-        "warnings": [],
-        "error": {
-          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both."
-        },
-        "automaticAnalysisTrigger": "default",
-        "automaticAnalysis": {
-          "state": "skipped",
-          "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-        }
-      }
-    },
-    "runner": {
-      "runner": "computer-use",
-      "sameAsRunStudy": true
-    }
-  },
-  "laneFocus and lanes": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
-    },
-    "runStudy": {
-      "runs": false,
-      "calls": {
-        "desktop": 0,
-        "executor": 0,
-        "provider": 0,
-        "subprocess": 0
-      },
-      "result": {
-        "schema": "humanish.study-result.v1",
-        "route": "computer-use",
-        "studyId": "adm-cuappurl",
-        "ok": false,
-        "cwd": "[cwd]",
-        "actor": "openai-computer-use",
-        "appUrl": "http://127.0.0.1:3000/",
-        "dryRun": true,
-        "runId": "not-created",
-        "lanes": [],
-        "warnings": [],
-        "error": {
-          "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant."
-        },
-        "automaticAnalysisTrigger": "default",
-        "automaticAnalysis": {
-          "state": "skipped",
-          "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-        }
-      }
-    },
-    "runner": {
-      "runner": "computer-use",
-      "sameAsRunStudy": true
-    }
-  },
   "lane device and raw resolution": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
@@ -1865,7 +1715,7 @@
   "duplicate lane ids": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].lanes ids must be unique (duplicate \"a\")."
+      "message": "participants ids must be unique (duplicate \"a\")."
     },
     "runStudy": {
       "runs": false,
@@ -2790,23 +2640,6 @@
       "sameAsRunStudy": true
     }
   },
-  "terminal count 2": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "Terminal fan-out to more than one participant is not supported yet; set participants to 1."
-    },
-    "runStudy": {
-      "runs": true,
-      "result": {
-        "route": "terminal",
-        "ok": true
-      }
-    },
-    "runner": {
-      "runner": "terminal",
-      "sameAsRunStudy": true
-    }
-  },
   "tasks on scripted": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
@@ -2840,42 +2673,6 @@
     },
     "runner": {
       "runner": "scripted",
-      "sameAsRunStudy": true
-    }
-  },
-  "tasks on second actor": {
-    "parser": {
-      "code": "HUMANISH_STUDY_INVALID",
-      "message": "Multiple actors are not supported yet (only the first actor runs); declare a single actor."
-    },
-    "runStudy": {
-      "runs": false,
-      "calls": {
-        "desktop": 0,
-        "executor": 0,
-        "provider": 0,
-        "subprocess": 0
-      },
-      "result": {
-        "schema": "humanish.study-result.v1",
-        "route": "computer-use",
-        "studyId": "adm-cuappurl",
-        "ok": false,
-        "cwd": "[cwd]",
-        "actor": "openai-computer-use",
-        "dryRun": true,
-        "runId": "not-created",
-        "appUrl": "http://127.0.0.1:3000/",
-        "lanes": [],
-        "warnings": [],
-        "error": {
-          "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-          "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol."
-        }
-      }
-    },
-    "runner": {
-      "runner": "computer-use",
       "sameAsRunStudy": true
     }
   },

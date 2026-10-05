@@ -1,7 +1,8 @@
-// Valid raw manifests, one per route shape. Admission cases mutate a deep copy of one of these, so
-// every case differs from a runnable lab by the one rule it exercises.
+// Valid humanish.study.v3 manifests, one per route shape. Admission cases mutate a deep copy of one
+// of these, so every case differs from a runnable study by the one rule it exercises.
 
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { libraryConfig } from "../helpers/library-config.js";
 
 export type RawLab = Record<string, unknown>;
 
@@ -10,44 +11,52 @@ const cuActor = { type: "openai-computer-use", persona: "first-time-visitor", mi
 
 const bases = {
   preview: {
+    route: "preview",
     subject: { source: "this-repo" },
-    actors: [{ type: "synthetic-persona" }],
+    actor: { type: "synthetic-persona" },
   },
   cuAppUrl: {
+    route: "computer-use",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [cuActor],
+    actor: cuActor,
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   },
   cuClone: {
+    route: "computer-use",
     subject: { source: "clone", repos: ["example-org/example-app"], serve },
-    actors: [cuActor],
+    actor: cuActor,
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   },
   cuLocalTree: {
+    route: "computer-use",
     subject: { source: "local-tree", serve },
-    actors: [cuActor],
+    actor: cuActor,
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   },
   cuDesktopCli: {
+    route: "computer-use",
     subject: {
       source: "desktop-cli",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [cuActor],
+    actor: cuActor,
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   },
   cuLocalApp: {
+    route: "computer-use",
     subject: { source: "local-app", appUrl: "http://127.0.0.1:3000/" },
-    actors: [cuActor],
+    actor: cuActor,
     execution: { target: "local", timeoutMs: 60_000 },
   },
   scriptedAppUrl: {
+    route: "scripted",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [{ type: "scripted-browser", persona: "synthetic-new-user" }],
-    scenario: { ref: "adm-journey" },
+    actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+    scenario: "adm-journey",
     execution: { target: "local", timeoutMs: 30_000 },
   },
   scriptedClone: {
+    route: "scripted",
     subject: {
       source: "clone",
       exposure: "synthetic",
@@ -55,28 +64,29 @@ const bases = {
       serve: { ...serve, start: "pnpm start --host 0.0.0.0" },
       state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
     },
-    actors: [{ type: "scripted-browser", persona: "synthetic-provider", count: 1 }],
-    scenario: { ref: "adm-journey" },
+    actor: { type: "scripted-browser", persona: "synthetic-provider" },
+    surfaces: ["desktop"],
+    scenario: "adm-journey",
     execution: { target: "e2b-desktop", timeoutMs: 30_000 },
   },
   terminal: {
+    route: "terminal",
     subject: {
       source: "terminal-product",
       product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [{ type: "codex-exec", persona: "autonomous-creative-agent", mission: "Explore." }],
+    actor: { type: "codex-exec", persona: "autonomous-creative-agent", mission: "Explore." },
+    caps: { maxUsd: 0, maxMinutes: 5 },
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { caps: { maxUsd: 0, maxMinutes: 5 } },
   },
   sharedProvisioned: {
+    route: "shared-world",
     subject: {
       source: "clone",
-      topology: "shared-world",
       exposure: "synthetic",
       repos: ["example-org/collab-app"],
       env: ["DATABASE_URL"],
@@ -86,25 +96,22 @@ const bases = {
         checkpoint: [{ name: "notes-count", command: "psql query notes" }],
       },
     },
-    actors: [
-      {
-        ...cuActor,
-        lanes: [
-          { id: "author", persona: "persona-1", entry: "/seat-1" },
-          { id: "reviewer", persona: "persona-2", entry: "/seat-2" },
-        ],
-      },
+    actor: cuActor,
+    participants: [
+      { id: "author", persona: "persona-1", entry: "/seat-1" },
+      { id: "reviewer", persona: "persona-2", entry: "/seat-2" },
     ],
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   },
   sharedExternal: {
+    route: "shared-world",
     subject: {
       source: "app-url",
       appUrl: "https://app.example.com/",
-      topology: "shared-world",
       publicTarget: { owner: "example-org", authorized: true },
     },
-    actors: [{ ...cuActor, lanes: [{ id: "host", host: true }, { id: "guest" }] }],
+    actor: cuActor,
+    participants: [{ id: "host", host: true }, { id: "guest" }],
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
     policies: { allowPublicTargets: true },
   },
@@ -130,19 +137,24 @@ function merge(target: unknown, patch: unknown): unknown {
 }
 
 /**
- * A deep copy of a base manifest with `patch` merged in, and `actorPatch` merged into
- * `actors[0]`. Cases use it to write shapes the types forbid.
+ * A deep copy of a base manifest with `patch` merged in, and `actorPatch` merged into `actor`.
+ * Cases use it to write shapes the types forbid.
  */
 export function lab(base: BaseName, patch: Patch = {}, actorPatch?: Patch): RawLab {
   const raw = merge(
-    { schema: V2_SCHEMA, id: `adm-${base.toLowerCase()}`, ...structuredClone(bases[base]) },
+    { schema: STUDY_SCHEMA, id: `adm-${base.toLowerCase()}`, ...structuredClone(bases[base]) },
     patch,
   ) as RawLab;
-  if (actorPatch !== undefined) {
-    const actors = raw.actors as unknown[];
-    raw.actors = [merge(actors[0], actorPatch), ...actors.slice(1)];
-  }
+  if (actorPatch !== undefined) raw.actor = merge(raw.actor, actorPatch);
   return raw;
+}
+
+/**
+ * libraryConfig of a base manifest as a mutable record. The route admission-order tests edit it in
+ * the v2 shape a library caller can still pass, including shapes a v3 file cannot hold.
+ */
+export function libraryLab(base: BaseName): RawLab {
+  return libraryConfig(lab(base)) as unknown as RawLab;
 }
 
 export const SCENARIO_YAML = `schema: humanish.scenario.v1

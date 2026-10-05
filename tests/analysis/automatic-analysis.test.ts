@@ -5,8 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
-import { type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
@@ -33,12 +32,13 @@ import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import { studyFileText } from "../helpers/study-file.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
-) as Array<{ name: string; config: StudyConfig; route: string }>;
+) as Array<{ name: string; config: Record<string, unknown>; route: string }>;
 const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
 if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
   throw new Error("invalid synthetic test config");
@@ -91,12 +91,12 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
   });
   it.each(fixtures)("preserves explicit opt-out on every route: $name", ({ config: base }) => {
-    const parsed = parseStudyDocument({ ...base, review: { analysis: false } });
+    const parsed = parseStudy({ ...base, review: { analysis: false } });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
   });
   it.each(fixtures)("only describes defaults for routes with participants: $name", ({ config }) => {
-    const route = routeOf(config);
+    const route = routeOf(libraryConfig(config));
     expect(automaticAnalysisBudget(undefined, route)).toEqual(
       route === "preview" ? undefined : { model: "gpt-6-astra", maxCostUsd: 3, trigger: "default" },
     );
@@ -278,15 +278,15 @@ describe("automatic analysis admission and producer boundary", () => {
     },
   );
   it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base }) => {
-    const parsed = parseStudyDocument({ ...base, review: { analysis: { maxCostUsd: 5 } } });
-    expect(parsed.ok, JSON.stringify(parsed)).toBe(routeOf(base) !== "preview");
+    const parsed = parseStudy({ ...base, review: { analysis: { maxCostUsd: 5 } } });
+    expect(parsed.ok, JSON.stringify(parsed)).toBe(routeOf(libraryConfig(base)) !== "preview");
     if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
   });
-  it.each(fixtures.filter((row) => routeOf(row.config) === "preview"))(
+  it.each(fixtures.filter((row) => routeOf(libraryConfig(row.config)) === "preview"))(
     "fails direct unsupported $name before filesystem effects",
     async ({ config: base }) => {
       const outcome = await runStudyWith(
-        { ...base, review: { analysis: { maxCostUsd: 5 } } },
+        libraryConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } }),
         { cwd: path.join(cwd, "absent"), dryRun: false },
       );
       expect(outcome.result.error?.code).toBe("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED");
@@ -302,7 +302,7 @@ describe("automatic analysis admission and producer boundary", () => {
       });
       const result = await runner({
         cwd: path.join(cwd, "absent"),
-        config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
+        config: libraryConfig({ ...base, review: { analysis: { maxCostUsd: 0 } } }),
         dryRun: false,
         env: {},
         deps: {
@@ -321,7 +321,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it.each(["computer-use", "scripted", "terminal", "shared-world"])(
     "runStudy %s dry-run skips post-run spend exactly once",
     async (route) => {
-      const base = fixtures.find((row) => row.route === route)!.config;
+      const base = libraryConfig(fixtures.find((row) => row.route === route)!.config);
       const run = vi.fn();
       const onEvent = vi.fn();
       const output = await runStudyWith(
@@ -471,7 +471,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
     const prior = await runComputerUse({
       cwd,
-      config: base,
+      config: libraryConfig(base),
       dryRun: true,
       runId: "prior-recording",
       open: false,
@@ -484,11 +484,11 @@ describe("automatic analysis admission and producer boundary", () => {
     const emit = vi.fn();
     const refused = await runComputerUse({
       cwd,
-      config: {
+      config: libraryConfig({
         ...base,
-        actors: [{ type: "unsupported" }],
+        actor: { type: "unsupported" },
         review: { analysis: { maxCostUsd: 5 } },
-      },
+      }),
       dryRun: false,
       runId: "prior-recording",
       deps: { analysis: { run } },
@@ -756,7 +756,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
     const prior = await runComputerUse({
       cwd,
-      config: base,
+      config: libraryConfig(base),
       dryRun: true,
       runId: "finished-source",
       open: false,
@@ -777,7 +777,7 @@ describe("automatic analysis admission and producer boundary", () => {
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
       await runComputerUse({
         cwd,
-        config: base,
+        config: libraryConfig(base),
         dryRun: true,
         runId: "changed-status",
         open: false,
@@ -830,7 +830,7 @@ describe("automatic analysis admission and producer boundary", () => {
       const script = `
       import { runStudyWith } from ${JSON.stringify(new URL("../../src/run-study.ts", import.meta.url).href)};
       import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/analysis-signals.ts", import.meta.url).href)};
-      const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
+      const config = ${JSON.stringify(libraryConfig(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config))};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);
       const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });

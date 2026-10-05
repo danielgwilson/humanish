@@ -27,15 +27,14 @@ async function project(): Promise<string> {
   await writeFile(path.join(dir, "package.json"), '{ "name": "key-discovery-fixture" }\n');
   await mkdir(path.join(dir, "humanish", "studies"), { recursive: true });
   const labs = {
-    "kd-live": lab("cuAppUrl", { scenario: { mode: "live" }, execution: { caps: { maxUsd: 1 } } }),
+    "kd-live": lab("cuAppUrl", { mode: "live", caps: { maxUsd: 1 } }),
     "kd-dry": lab("cuAppUrl"),
-    "kd-terminal-live": lab("terminal", { scenario: { mode: "live" } }),
+    "kd-terminal-live": lab("terminal", { mode: "live" }),
   };
   for (const [id, raw] of Object.entries(labs))
     await writeFile(
       path.join(dir, "humanish", "studies", `${id}.yaml`),
-      // The terminal fixture's execution.timeoutMs is a key that route never reads.
-      studyFileText({ ...raw, id }, dir, id === "kd-terminal-live" ? ["execution.timeoutMs"] : []),
+      studyFileText({ ...raw, id }, dir),
     );
   return dir;
 }

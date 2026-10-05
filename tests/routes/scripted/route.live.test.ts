@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
@@ -72,13 +72,16 @@ describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mecha
     "replays the committed scenario with real playwright on both surfaces and persists a verified bundle",
     { timeout: 180_000 },
     async () => {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "scripted-live-proof",
         title: "Scripted lab live proof",
+        route: "scripted",
+        mode: "live",
         subject: { source: "app-url", appUrl },
-        actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
-        scenario: { ref: "scripted-first-run", mode: "live" },
+        actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+        surfaces: ["desktop", "mobile"],
+        scenario: "scripted-first-run",
         review: { analysis: false }, // This actuation gate promises zero model requests.
         execution: { target: "local", timeoutMs: 60_000 },
       });
@@ -148,13 +151,16 @@ describe.skipIf(!LIVE)("scripted-browser-lab (live, actuation-gated; $0 by mecha
       const saved = process.env.TMPDIR;
       process.env.TMPDIR = long;
       try {
-        const parsed = parseStudyDocument({
-          schema: V2_SCHEMA,
+        const parsed = parseStudy({
+          schema: STUDY_SCHEMA,
           id: "scripted-long-tmpdir",
           title: "Scripted launch under a long TMPDIR",
+          route: "scripted",
+          mode: "live",
           subject: { source: "app-url", appUrl },
-          actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 1 }],
-          scenario: { ref: "scripted-first-run", mode: "live" },
+          actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+          surfaces: ["desktop"],
+          scenario: "scripted-first-run",
           review: { analysis: false },
           execution: { target: "local", timeoutMs: 60_000 },
         });

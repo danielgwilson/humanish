@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { type StudyConfig, STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
@@ -31,33 +31,31 @@ const LIVE =
   Boolean(process.env.E2B_API_KEY);
 
 function liveConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "terminal-product-live-proof",
     title: "Terminal-product live proof",
+    route: "terminal",
+    mode: "live",
     subject: {
       source: "terminal-product",
       product: {
         name: "example-cli",
-        // A neutral, stable public surface. The agent studies it from public materials only.
         publicSurfaces: ["https://example.com/", "https://example.com/index.html"],
       },
     },
-    actors: [
-      {
-        type: "codex-exec",
-        persona: "autonomous-creative-agent",
-        mission:
-          "Look at the public surfaces listed. In your final report, state in one sentence whether they describe a usable CLI product, then stop. Do not attempt any spend.",
-      },
-    ],
+    actor: {
+      type: "codex-exec",
+      persona: "autonomous-creative-agent",
+      mission:
+        "Look at the public surfaces listed. In your final report, state in one sentence whether they describe a usable CLI product, then stop. Do not attempt any spend.",
+    },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 8 },
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
-      timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: "live", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 8 } },
     policies: {
       allowPrivateRepoAccess: false,
       allowProviderCredentials: false,

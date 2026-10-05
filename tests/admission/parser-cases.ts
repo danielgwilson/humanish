@@ -37,7 +37,6 @@ const task = [{ id: "sign-up", goal: "Create an account." }];
 const camera = { camera: { source: "synthetic" } };
 // The parser turns `connection` into this typed shape.
 export const realEmail = { kind: "real", connection: "team-inbox" };
-const secondActor = { type: "openai-computer-use", mission: "Try it.", tasks: task };
 
 export const parserCases: readonly AdmissionCase[] = [
   // Before the route blocks.
@@ -113,7 +112,7 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "this-repo live",
-    raw: lab("preview", { scenario: { mode: "live" } }),
+    raw: lab("preview", { mode: "live" }),
     parser: "dry-run only",
   },
   {
@@ -136,12 +135,12 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "local-app count 2",
-    raw: lab("cuLocalApp", {}, { count: 2 }),
+    raw: lab("cuLocalApp", { participants: 2 }),
     parser: "Fan-out to more than one participant is not supported on the in-process/local-app",
   },
   {
     name: "local-app lanes",
-    raw: lab("cuLocalApp", {}, { lanes: [{ id: "a" }] }),
+    raw: lab("cuLocalApp", { participants: [{ id: "a" }] }),
     parser: "is not supported on the in-process/local-app",
   },
   {
@@ -160,11 +159,6 @@ export const parserCases: readonly AdmissionCase[] = [
     name: "scripted app-url without ref",
     raw: lab("scriptedAppUrl", { scenario: undefined }),
     parser: "needs `scenario`:",
-  },
-  {
-    name: "scripted app-url count 3",
-    raw: lab("scriptedAppUrl", {}, { count: 3 }),
-    parser: "takes `surfaces` 1 (desktop) or 2",
   },
   {
     name: "scripted app-url redacted screenshots",
@@ -226,11 +220,6 @@ export const parserCases: readonly AdmissionCase[] = [
     parser: "exactly one repo",
   },
   {
-    name: "scripted clone topology",
-    raw: lab("scriptedClone", { subject: { topology: "shared-world" } }),
-    parser: "does not support `subject.topology`",
-  },
-  {
     name: "scripted clone keep",
     raw: lab("scriptedClone", { subject: { clone: { keep: true } } }),
     parser: "`subject.clone.keep` yet",
@@ -239,16 +228,6 @@ export const parserCases: readonly AdmissionCase[] = [
     name: "scripted clone without ref",
     raw: lab("scriptedClone", { scenario: undefined }),
     parser: "needs `scenario`:",
-  },
-  {
-    name: "scripted clone count 3",
-    raw: lab("scriptedClone", {}, { count: 3 }),
-    parser: "takes `surfaces` 1 (desktop) or 2",
-  },
-  {
-    name: "scripted clone lanes",
-    raw: lab("scriptedClone", {}, { count: undefined, lanes: [{ id: "a" }] }),
-    parser: "is not supported on the scripted-browser route yet",
   },
   {
     name: "scripted clone redacted screenshots",
@@ -316,77 +295,52 @@ export const parserCases: readonly AdmissionCase[] = [
 
   // Computer-use fan-out
   {
-    name: "lanes and count",
-    raw: lab("cuAppUrl", {}, { count: 2, lanes: [{ id: "a" }, { id: "b" }] }),
-    parser: "Set either `actors[0].count`",
-  },
-  {
-    name: "laneFocus and lanes",
-    raw: lab(
-      "cuAppUrl",
-      {},
-      { laneFocus: { instruction: "Focus." }, lanes: [{ id: "a" }, { id: "b" }] },
-    ),
-    parser: "are mutually exclusive",
-  },
-  {
     name: "lane device and raw resolution",
-    raw: lab(
-      "cuAppUrl",
-      { execution: { desktop: { resolution: [1280, 800] } } },
-      { lanes: [{ id: "a", device: "small-mobile" }, { id: "b" }] },
-    ),
+    raw: lab("cuAppUrl", {
+      execution: { desktop: { resolution: [1280, 800] } },
+      participants: [{ id: "a", device: "small-mobile" }, { id: "b" }],
+    }),
     parser: "a per-participant device preset",
   },
   {
     name: "lane target on clone",
-    raw: lab(
-      "cuClone",
-      {},
-      {
-        lanes: [
-          { id: "a", target: "http://127.0.0.1:3001/" },
-          { id: "b", target: "http://127.0.0.1:3002/" },
-        ],
-      },
-    ),
+    raw: lab("cuClone", {
+      participants: [
+        { id: "a", target: "http://127.0.0.1:3001/" },
+        { id: "b", target: "http://127.0.0.1:3002/" },
+      ],
+    }),
     parser: "works only on app-url computer-use studies",
   },
   {
     name: "lane target and entry",
-    raw: lab(
-      "cuAppUrl",
-      {},
-      {
-        lanes: [
-          { id: "a", target: "http://127.0.0.1:3001/", entry: "/x" },
-          { id: "b", target: "http://127.0.0.1:3002/" },
-        ],
-      },
-    ),
+    raw: lab("cuAppUrl", {
+      participants: [
+        { id: "a", target: "http://127.0.0.1:3001/", entry: "/x" },
+        { id: "b", target: "http://127.0.0.1:3002/" },
+      ],
+    }),
     parser: "are mutually exclusive",
   },
   {
     name: "partial lane targets",
-    raw: lab(
-      "cuAppUrl",
-      {},
-      { lanes: [{ id: "a", target: "http://127.0.0.1:3001/" }, { id: "b" }] },
-    ),
+    raw: lab("cuAppUrl", {
+      participants: [{ id: "a", target: "http://127.0.0.1:3001/" }, { id: "b" }],
+    }),
     parser: "every participant in the roster must declare target",
   },
   {
     name: "seventeen lanes",
-    raw: lab("cuAppUrl", {}, { count: 17 }),
+    raw: lab("cuAppUrl", { participants: 17 }),
     parser: "runs at most 16 participants",
   },
   {
     name: "public target fan-out",
-    raw: lab(
-      "cuAppUrl",
-      { subject: { appUrl: "https://example.com/" }, policies: { allowPublicTargets: true } },
-      { count: 2 },
-    ),
+    raw: lab("cuAppUrl", {
+      subject: { appUrl: "https://example.com/" },
+      policies: { allowPublicTargets: true },
+      participants: 2,
+    }),
     parser: "with more than one participant sends them all to one public app",
   },
   {
@@ -396,7 +350,7 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "duplicate lane ids",
-    raw: lab("cuAppUrl", {}, { lanes: [{ id: "a" }, { id: "a" }] }),
+    raw: lab("cuAppUrl", { participants: [{ id: "a" }, { id: "a" }] }),
     parser: "unique",
   },
 
@@ -413,7 +367,7 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "shared world one seat",
-    raw: lab("sharedProvisioned", {}, { lanes: [{ id: "author", entry: "/seat-1" }] }),
+    raw: lab("sharedProvisioned", { participants: [{ id: "author", entry: "/seat-1" }] }),
     parser: "list of at least 2",
   },
   {
@@ -423,11 +377,9 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "shared world cross-origin entry",
-    raw: lab(
-      "sharedProvisioned",
-      {},
-      { lanes: [{ id: "author", entry: "https://elsewhere.example/" }, { id: "reviewer" }] },
-    ),
+    raw: lab("sharedProvisioned", {
+      participants: [{ id: "author", entry: "https://elsewhere.example/" }, { id: "reviewer" }],
+    }),
     parser: "must resolve same-origin",
   },
   {
@@ -474,25 +426,22 @@ export const parserCases: readonly AdmissionCase[] = [
   },
   {
     name: "external seat entry",
-    raw: lab(
-      "sharedExternal",
-      {},
-      { lanes: [{ id: "host", host: true, entry: "/x" }, { id: "guest" }] },
-    ),
+    raw: lab("sharedExternal", {
+      participants: [{ id: "host", host: true, entry: "/x" }, { id: "guest" }],
+    }),
     parser: "is forbidden on the external-public",
   },
   {
     name: "external without host",
-    raw: lab("sharedExternal", {}, { lanes: [{ id: "a" }, { id: "b" }] }),
+    raw: lab("sharedExternal", { participants: [{ id: "a" }, { id: "b" }] }),
     parser: "exactly one `host: true` participant",
   },
   {
     name: "external one seat",
-    raw: lab(
-      "sharedExternal",
-      { execution: { concurrency: 2 } },
-      { lanes: [{ id: "host", host: true }] },
-    ),
+    raw: lab("sharedExternal", {
+      execution: { concurrency: 2 },
+      participants: [{ id: "host", host: true }],
+    }),
     parser: "list of at least 2",
   },
 
@@ -529,11 +478,6 @@ export const parserCases: readonly AdmissionCase[] = [
     raw: lab("terminal", {}, { type: "openai-computer-use" }),
     parser: "must be a registered terminal actor",
   },
-  {
-    name: "terminal count 2",
-    raw: lab("terminal", {}, { count: 2 }),
-    parser: "Terminal fan-out to more than one participant",
-  },
 
   // Tasks, analysis, local browser
   {
@@ -542,13 +486,6 @@ export const parserCases: readonly AdmissionCase[] = [
     parser: "tasks is unsupported on this execution path",
   },
   // The parser refuses a second actor outright; the task rule for it is reachable only by library callers.
-  {
-    name: "tasks on second actor",
-    raw: lab("cuAppUrl", {
-      actors: [{ type: "openai-computer-use", mission: "Try it." }, secondActor],
-    }),
-    parser: "Multiple actors are not supported",
-  },
   {
     name: "analysis on preview",
     raw: lab("preview", { review: { analysis: { maxCostUsd: 1 } } }),

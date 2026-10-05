@@ -45,7 +45,7 @@ afterEach(async () => {
 
 function config(persona: string | undefined): StudyConfig {
   return terminalConfig({
-    actors: [{ type: "codex-exec", mission: MISSION, ...(persona ? { persona } : {}) }],
+    actor: { type: "codex-exec", mission: MISSION, ...(persona ? { persona } : {}) },
     review: { analysis: false },
   });
 }

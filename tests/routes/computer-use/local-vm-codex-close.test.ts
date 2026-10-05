@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 
 const participant = vi.hoisted(() => ({
   provider: { id: "restricted-codex-participant" },
@@ -17,14 +18,15 @@ vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOrig
 import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 import { closeParticipantModel } from "../../../src/routes/computer-use/participant-model.js";
 
-const config: StudyConfig = {
-  schema: "humanish.lab.v2",
+const config = libraryConfig({
+  schema: STUDY_SCHEMA,
   id: "local-codex-close",
+  route: "computer-use",
+  mode: "live",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:4173/" },
-  actors: [{ type: "local-agent", mission: "Save a synthetic note." }],
+  actor: { type: "local-agent", mission: "Save a synthetic note." },
   execution: { target: "local" },
-  scenario: { mode: "live" },
-};
+});
 
 describe("local study Codex participant close", () => {
   let cwd: string;

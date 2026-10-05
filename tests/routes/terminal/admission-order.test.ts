@@ -6,8 +6,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { StudyConfig } from "../../../src/study/types.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
+import { modeOf } from "../../../src/study/study-fields.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
 const dirs: string[] = [];
@@ -15,17 +16,19 @@ afterAll(async () => {
   await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-const valid = {
-  schema: V2_SCHEMA,
+// The rules below edit the v2 shape a library caller passes until StudyConfig takes the v3 one.
+const valid = libraryConfig({
+  schema: STUDY_SCHEMA,
   id: "terminal-admission",
+  route: "terminal",
   subject: {
     source: "terminal-product",
     product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
   },
-  actors: [{ type: "codex-exec" }],
+  actor: { type: "codex-exec" },
+  caps: { maxUsd: 0, maxMinutes: 5 },
   execution: { target: "e2b-terminal", runtimeAuth: "openai-env" },
-  scenario: { caps: { maxUsd: 0, maxMinutes: 5 } },
-};
+});
 
 type Patch = (config: Record<string, unknown>) => void;
 const rules: [string, Patch][] = [
@@ -53,7 +56,7 @@ const rules: [string, Patch][] = [
 ];
 
 function configWith(patches: Patch[]): StudyConfig {
-  const config = structuredClone(valid) as Record<string, unknown>;
+  const config = structuredClone(valid) as unknown as Record<string, unknown>;
   for (const patch of patches) patch(config);
   return config as unknown as StudyConfig;
 }
@@ -82,7 +85,7 @@ describe("terminal admission order", () => {
     for (const [name, config] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-admission-"));
       dirs.push(cwd);
-      const dryRun = config.scenario?.mode !== "live";
+      const dryRun = modeOf(config) !== "live";
       const result = await runTerminal({ cwd, config, dryRun, env: {} });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);

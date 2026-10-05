@@ -8,9 +8,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { modeOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
-import { lab } from "../../admission/fixtures.js";
+import { libraryLab } from "../../admission/fixtures.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
 
 const dirs: string[] = [];
@@ -29,7 +30,7 @@ interface Rule {
 
 const record = (config: Raw, key: string): Raw => (config[key] ??= {}) as Raw;
 const actor = (config: Raw): Raw => (config.actors as Raw[])[0]!;
-const external = lab("sharedExternal");
+const external = libraryLab("sharedExternal");
 
 const rules = new Map<string, Rule>([
   [
@@ -127,7 +128,7 @@ function caseOf(names: readonly string[]): {
   env: Record<string, string>;
   deps: StudyDeps;
 } {
-  const config = lab("sharedProvisioned");
+  const config = libraryLab("sharedProvisioned");
   // The later rule first, so the earlier rule's change is the one that stands where they overlap.
   const selected = names.map((name) => rules.get(name)!);
   for (const rule of [...selected].reverse()) rule.mutate(config);
@@ -158,7 +159,7 @@ describe("shared-world admission order", () => {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-admission-"));
       dirs.push(cwd);
       const { config, env, deps } = caseOf(names);
-      const dryRun = config.scenario?.mode !== "live";
+      const dryRun = modeOf(config) !== "live";
       const result = await runSharedWorld({ cwd, config, dryRun, env, deps });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);
