@@ -41,7 +41,7 @@ export async function runPublicPreviewPreflight(
     ]);
   }
 
-  const rosterTargets = ctx.targets.filter((target) => target.kind === "actors[0].lanes[].target");
+  const rosterTargets = ctx.targets.filter((target) => target.kind === "participants[].target");
   const publicTargets =
     rosterTargets.length > 0
       ? rosterTargets
@@ -369,7 +369,7 @@ function targetUrlFor(config: StudyConfig, target: StudyPreflightTarget): string
   if (target.kind === "subject.appUrl" && config.subject.appUrl) {
     return config.subject.appUrl;
   }
-  if (target.kind === "actors[0].lanes[].target") {
+  if (target.kind === "participants[].target") {
     const rosterTarget = participantList(config)?.find(
       (entry) => entry.target && digest(entry.target) === target.targetDigest,
     )?.target;

@@ -162,11 +162,14 @@ describe("lab preflight", () => {
         expect(result.targets.find((target) => target.kind === "subject.appUrl")?.checked).toBe(
           false,
         );
-        expect(
-          result.targets
-            .filter((target) => target.kind === "actors[0].lanes[].target")
-            .every((target) => target.checked),
-        ).toBe(true);
+        const participantTargets = result.targets.filter(
+          (target) => target.kind === "participants[].target",
+        );
+        expect(participantTargets.map((target) => target.label)).toEqual([
+          "participants[0].target",
+          "participants[1].target",
+        ]);
+        expect(participantTargets.every((target) => target.checked)).toBe(true);
       },
     );
   });
