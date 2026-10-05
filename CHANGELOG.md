@@ -23,6 +23,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   switch to the other tab, close it and type again. Before, the participant got a generic
   rejection and kept retrying until its time ran out. The local browser docs state the one-tab
   rule.
+- A terminal session that printed more than 512 KiB was recorded `blocked` when its verdict
+  marker came after the cap, and its trace and token usage stopped at the cap. Output past the cap
+  is still not stored, but the verdict marker, token usage and the trace's agent messages are read
+  from all of it. The transcript ends with a line giving the byte count that was not stored, and
+  the trace and the run events carry the same notice.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
