@@ -113,6 +113,7 @@ describe("retired vocabulary count", () => {
       ].filter(isCounted),
     ).toEqual([
       "src/routes/computer-use/lanes.ts",
+      "src/study/parse/actors.ts",
       "src/study/keys.ts.backup.ts",
       "src/study/types.ts.generated.ts",
     ]);

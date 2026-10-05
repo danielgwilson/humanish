@@ -22,9 +22,17 @@ export const ISSUE_REF = /(?<!TODO\()#\d{1,5}\b/g;
 /** A review tag such as `FIX-5`. */
 export const FIX_TAG = /\bFIX-\d+\b/g;
 
-// `lane` or `lanes` as a word, except in a property path (`actors[0].lanes`), an array
-// (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
-export const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
+// `lane` or `lanes` as a word, except in an array (`lanes[]`), a flag (`--lanes`), an id
+// (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
+export const LANE_WORD = /(?<!\w|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
+// Under src/study/migrate/, which reads humanish.lab.v2 files, a comment may also name the v2
+// property path `actors[0].lanes`.
+const MIGRATE_LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
+
+/** The `lane` pattern for the comments and test names of a file, by its repo-relative path. */
+export function laneWordFor(file) {
+  return file.startsWith("src/study/migrate/") ? MIGRATE_LANE_WORD : LANE_WORD;
+}
 
 // A word with two or more capitals and no lowercase letter, alone or as one part of a hyphenated
 // compound: `NOT`, `LOAD-BEARING` and `operator-DECLARED` each count once. A compound whose caps
