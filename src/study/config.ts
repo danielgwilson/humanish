@@ -87,6 +87,7 @@ import {
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   scenarioCapsValidationReason,
+  smtpValidationReason,
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels } from "./warnings.js";
@@ -236,11 +237,8 @@ function parseV2(raw: Record<string, unknown>): StudyParseResult {
  * study.
  */
 export function checkStudyConfig(config: StudyConfig): StudyParseResult {
-  if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
-    return invalid(
-      "SMTP capture is not supported yet for shared-world studies. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.",
-    );
-  }
+  const smtpReason = smtpValidationReason(config);
+  if (smtpReason) return invalid(smtpReason);
 
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return invalid(mediaReason);

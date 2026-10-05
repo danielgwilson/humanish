@@ -32,9 +32,15 @@ import {
   type StudyRoute,
 } from "../routing.js";
 import {
+  desktopMediaValidationReason,
+  outputTokenLimitValidationReason,
+  smtpValidationReason,
+} from "../validation.js";
+import {
   ID_PATTERN,
   STUDY_SCHEMA,
   V2_SCHEMA,
+  type StudyActor,
   type StudyConfig,
   type StudyParticipantEntry,
   type StudyScenarioCaps,
@@ -62,7 +68,10 @@ interface V2Scenario {
 /** A v2 file that checkV2 accepted, as the v2 parser reads it. */
 export interface V2Study {
   readonly route: StudyRoute;
-  /** The subject, actor type, target and policies, which decide the route. */
+  /**
+   * The sections that decide the route and that the v2 parser's first cross-section checks read:
+   * subject, the actor without its participant keys, execution, policies and comms.
+   */
   readonly composition: StudyConfig;
   readonly count: number | undefined;
   /** `actors[0].lanes`, or the participants `actors[0].roster` expands into. */
@@ -131,9 +140,10 @@ export function checkV2(raw: Raw): Read<V2Study> {
     schema: V2_SCHEMA,
     id,
     subject: subject.value,
-    actors: [{ type: actor.value.type }],
+    actors: [{ type: actor.value.type, ...actor.value.fields }],
     ...(execution.value === undefined ? {} : { execution: execution.value }),
     ...(policies.value === undefined ? {} : { policies: policies.value }),
+    ...(comms.value === undefined ? {} : { comms: comms.value }),
   };
   const route = v2RouteOf(composition);
   const study: V2Study = {
@@ -149,7 +159,15 @@ export function checkV2(raw: Raw): Read<V2Study> {
       route === "terminal" && isRecord(raw.execution) && raw.execution.timeoutMs !== undefined,
   };
   const budget = scenarioBudgetReason(study);
-  return budget ? refused(budget) : { ok: true, value: study };
+  if (!budget) return { ok: true, value: study };
+  // The checks the v2 parser runs before the budget rule, which are the first it runs across
+  // sections, so a file that breaks one of them and the budget rule gets the same refusal.
+  return refused(
+    smtpValidationReason(composition) ??
+      desktopMediaValidationReason(composition) ??
+      outputTokenLimitValidationReason(composition) ??
+      budget,
+  );
 }
 
 /**
@@ -163,6 +181,7 @@ function v2RouteOf(composition: StudyConfig): StudyRoute {
 
 interface V2Actor {
   type: string;
+  fields: Omit<StudyActor, "type" | "count" | "lanes" | "laneFocus">;
   count: number | undefined;
   entries: StudyParticipantEntry[] | undefined;
   focus: V2Focus | undefined;
@@ -210,7 +229,13 @@ function readActor(raw: unknown): Read<V2Actor> {
   if (!fields.ok) return refused(fields.error.message);
   return {
     ok: true,
-    value: { type: type.value, count, entries: entries.value, focus: readFocus(entry.laneFocus) },
+    value: {
+      type: type.value,
+      fields: fields.value,
+      count,
+      entries: entries.value,
+      focus: readFocus(entry.laneFocus),
+    },
   };
 }
 
@@ -290,8 +315,8 @@ function readScenario(raw: unknown): Read<V2Scenario | undefined> {
   return { ok: true, value: Object.keys(scenario).length > 0 ? scenario : undefined };
 }
 
-// validation.ts scenarioCapsValidationReason. The v2 parser applies it before the composition
-// checks, so it runs before the checks the formats share.
+// validation.ts scenarioCapsValidationReason. The v2 parser applies it after the SMTP, media and
+// output-limit checks and before the composition checks, so checkV2 runs it with the first three.
 function scenarioBudgetReason(study: V2Study): string | undefined {
   if (!isComputerUseComposition(study.composition)) return undefined;
   for (const key of ["maxUsd", "maxTotalUsd"] as const) {
