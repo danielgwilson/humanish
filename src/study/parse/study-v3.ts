@@ -37,17 +37,78 @@ export interface StudyDocument {
   readonly participantSource: readonly number[];
 }
 
-interface Participants {
+/** A document's `participants`, read before the participant entries parse. */
+export interface Participants {
   count?: number;
   instruction?: unknown;
+  /** The list entries, with each entry that has a count expanded into its participants. */
   entries?: unknown[];
+  /** For each expanded entry, the index of the `participants` entry it came from. */
   source: number[];
+}
+
+/** What a v3 document declares before its sections parse. */
+export interface StudyFront {
+  readonly route: StudyRoute;
+  readonly actor: Record<string, unknown>;
+  readonly participants: Participants;
+  /** The scripted surfaces as a count: 1 is desktop, 2 adds mobile. */
+  readonly surfaces: number | undefined;
 }
 
 type Parsed<T> = { ok: true; value: T } | StudyParseFailure;
 
 /** Rewrite a humanish.study.v3 document into humanish.lab.v2, or refuse it. */
 export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
+  const front = readStudyFront(raw);
+  if (!front.ok) return front;
+  const { route } = front.value;
+  const { count, instruction, entries, source } = front.value.participants;
+  // The v2 actor keys that hold participants.
+  const v2Participants: [string, unknown][] = [
+    ["count", count ?? front.value.surfaces],
+    ["laneFocus", instruction === undefined ? undefined : { instruction }],
+    ["lanes", entries],
+  ];
+  const actor: Record<string, unknown> = { ...front.value.actor };
+  for (const [key, value] of v2Participants) if (value !== undefined) actor[key] = value;
+
+  const caps = raw.caps;
+  const scenario: Record<string, unknown> = {};
+  if (raw.scenario !== undefined) scenario.ref = raw.scenario;
+  if (raw.mode !== undefined) scenario.mode = raw.mode;
+  if (caps !== undefined && route === "terminal") scenario.caps = caps;
+  const execution =
+    caps !== undefined && route !== "terminal"
+      ? withKey(raw.execution, "caps", caps)
+      : raw.execution;
+  const subject =
+    route === "shared-world" ? withKey(raw.subject, "topology", "shared-world") : raw.subject;
+
+  const v2: Record<string, unknown> = { schema: V2_SCHEMA };
+  const fields: [string, unknown][] = [
+    ["id", raw.id],
+    ["title", raw.title],
+    ["description", raw.description],
+    ["subject", subject],
+    ["actors", [actor]],
+    ["execution", execution],
+    ["scenario", Object.keys(scenario).length > 0 ? scenario : undefined],
+    ["policies", raw.policies],
+    ["review", raw.review],
+    ["defaults", raw.defaults],
+    ["comms", raw.comms],
+  ];
+  for (const [key, value] of fields) if (value !== undefined) v2[key] = value;
+  return { ok: true, value: { route, v2, participantSource: source } };
+}
+
+/**
+ * The checks a v3 document passes before its sections parse: no v2 key and no unknown key, a
+ * route, a mode, an `actor` object, a scenario string, and the `participants`, `surfaces` and
+ * `caps` keys its route takes.
+ */
+export function readStudyFront(raw: Record<string, unknown>): Parsed<StudyFront> {
   const moved = movedKeyReason(raw);
   if (moved) return invalid(moved);
   const unknownKey = findUnknownStudyKey(raw);
@@ -79,45 +140,10 @@ export function studyToV2(raw: Record<string, unknown>): Parsed<StudyDocument> {
       "route: terminal does not read `execution.timeoutMs`: `caps.maxMinutes` is the command deadline. Remove it.",
     );
   }
-
-  const { count, instruction, entries, source } = participants.value;
-  // The v2 actor keys that hold participants.
-  const v2Participants: [string, unknown][] = [
-    ["count", count ?? surfaces.value],
-    ["laneFocus", instruction === undefined ? undefined : { instruction }],
-    ["lanes", entries],
-  ];
-  const actor: Record<string, unknown> = { ...raw.actor };
-  for (const [key, value] of v2Participants) if (value !== undefined) actor[key] = value;
-
-  const caps = raw.caps;
-  const scenario: Record<string, unknown> = {};
-  if (raw.scenario !== undefined) scenario.ref = raw.scenario;
-  if (raw.mode !== undefined) scenario.mode = raw.mode;
-  if (caps !== undefined && route === "terminal") scenario.caps = caps;
-  const execution =
-    caps !== undefined && route !== "terminal"
-      ? withKey(raw.execution, "caps", caps)
-      : raw.execution;
-  const subject =
-    route === "shared-world" ? withKey(raw.subject, "topology", "shared-world") : raw.subject;
-
-  const v2: Record<string, unknown> = { schema: V2_SCHEMA };
-  const fields: [string, unknown][] = [
-    ["id", raw.id],
-    ["title", raw.title],
-    ["description", raw.description],
-    ["subject", subject],
-    ["actors", [actor]],
-    ["execution", execution],
-    ["scenario", Object.keys(scenario).length > 0 ? scenario : undefined],
-    ["policies", raw.policies],
-    ["review", raw.review],
-    ["defaults", raw.defaults],
-    ["comms", raw.comms],
-  ];
-  for (const [key, value] of fields) if (value !== undefined) v2[key] = value;
-  return { ok: true, value: { route, v2, participantSource: source } };
+  return {
+    ok: true,
+    value: { route, actor: raw.actor, participants: participants.value, surfaces: surfaces.value },
+  };
 }
 
 /**
