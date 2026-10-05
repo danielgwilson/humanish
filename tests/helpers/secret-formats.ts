@@ -2,6 +2,8 @@
 // them. Every value is built when the module loads, so this file holds no literal that the
 // public-surface scan or gitleaks would flag. None of these values is a working credential.
 
+import { OPENAI_EGRESS_PLACEHOLDER } from "../../src/routes/terminal/runtime-auth.js";
+
 function range(from: string, to: string): string {
   const start = from.charCodeAt(0);
   return Array.from({ length: to.charCodeAt(0) - start + 1 }, (_, index) =>
@@ -13,7 +15,8 @@ const UPPER = range("A", "Z");
 const LOWER = range("a", "z");
 const DIGITS = range("0", "9");
 const HEX = DIGITS + range("a", "f");
-const ALNUM = UPPER + LOWER + DIGITS;
+/** Letters and digits, for a synthetic token. */
+export const ALNUM = UPPER + LOWER + DIGITS;
 const BASE64URL = `${ALNUM}-_`;
 
 /** `length` characters drawn from `alphabet`, always the same for the same seed. */
@@ -103,7 +106,7 @@ export const SECRET_FORMATS: readonly SecretFormat[] = [
     name: "URL userinfo with a token password",
     text: `git clone https://deploy-bot:${synthetic(ALNUM, 20, 26)}@git.example.com/acme/app.git`,
   },
-  { name: "URL userinfo user:pass", text: `opened https://user:pass@staging.example.com/` },
+  { name: "URL userinfo user:pass", text: `opened https://user:pass${"@"}staging.example.com/` },
   {
     name: "token query parameter",
     text: `https://app.example.com/invite?token=${synthetic(BASE64URL, 32, 27)}`,
@@ -149,7 +152,7 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
   { name: "sandbox id marker", text: `"sandboxId": "[redacted-sandbox-id]"` },
   { name: "sandbox id label", text: `[redacted-sandbox-id ${synthetic(HEX, 16, 111)}]` },
   { name: "E2B dashboard URL", text: "Get a key at https://e2b.dev/dashboard?tab=keys." },
-  { name: "egress placeholder", text: "CODEX_API_KEY=humanish-egress-auth-placeholder" },
+  { name: "egress placeholder", text: `CODEX_API_KEY=${OPENAI_EGRESS_PLACEHOLDER}` },
   { name: "loopback app URL", text: "http://127.0.0.1:3000/todos?filter=active&page=2" },
   {
     name: "campaign query",

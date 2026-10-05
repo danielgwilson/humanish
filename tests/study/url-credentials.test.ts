@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest";
 import { parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
-import { synthetic } from "../helpers/secret-formats.js";
+import { ALNUM, synthetic } from "../helpers/secret-formats.js";
 
 type Raw = Record<string, unknown>;
 
-const TOKEN = synthetic("abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", 32, 7);
+const TOKEN = synthetic(ALNUM, 32, 7);
 const BYPASS = `${"x-vercel-protection" + "-bypass"}=${TOKEN}`;
 const SHARE = `${"_vercel" + "_share"}=${TOKEN}`;
 

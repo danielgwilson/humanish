@@ -27,11 +27,11 @@ const CREDENTIAL_PARAMETER = [
   "signature",
   String.raw`session[_-]?id`,
   "jwt",
-  "auth",
   "x-vercel-protection-bypass",
   "_vercel_share",
   String.raw`x-amz-(?:signature|security-token|credential)`,
   String.raw`x-goog-(?:signature|credential)`,
+  "auth",
 ].join("|");
 
 // Upper-case variable names that hold a credential, as an env file, a shell or a JSON dump writes
