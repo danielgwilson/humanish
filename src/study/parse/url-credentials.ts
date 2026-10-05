@@ -10,15 +10,14 @@ import { containsCredential } from "../../evidence/redaction.js";
 // A relative participant entry is resolved against this before it is read.
 const ENTRY_BASE = "http://127.0.0.1/";
 
-// User info in a URL nested in a part of this one, of any length and a user name alone included,
-// as the study URL's own may not have any. The share gate's user info pattern needs a password,
-// since run text holds URLs such as `ssh://git@github.com`. A `&` counts as user info, as a URL
-// parser reads it there, so `https://host:3000&email=a@b` in decoded text is refused too: it reads
-// the same as user info whose password holds a `&`.
-const NESTED_USER_INFO = /\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s@/?#"<>\\]+@/i;
+// A URL in a decoded parameter value, the fragment or a path segment, such as a sign-in return
+// address, is read as the study URL is, this many levels deep. It is parsed, so its user info and
+// its own parameters keep their boundaries; a scan of the decoded text alone would read the next
+// parameter of the outer URL as part of it.
+const MAX_NESTED_DEPTH = 4;
 
-const holdsCredential = (text: string): boolean =>
-  containsCredential(text) || NESTED_USER_INFO.test(text);
+// A URL inside one decoded value. It runs to the next space, as the value is one parameter's.
+const NESTED_URL = /[a-z][a-z0-9+.-]{0,31}:\/\/\S+/gi;
 
 /**
  * Why the URL declared at `field` cannot be used: it has userinfo, or its path, query or fragment
@@ -56,8 +55,9 @@ export function entryCredentialReason(field: string, entry: string): string | un
  * Whether the URL's path, query or fragment holds a credential: read whole, as the parser normalized
  * it and as written (`..` segments can drop a segment from the normalized path), and one segment,
  * value or fragment piece at a time, so the text around an encoded key cannot shift its decoding.
+ * A URL nested in it is read the same way, and may have no user info either.
  */
-function urlPartsHoldCredential(value: string, url: URL): boolean {
+function urlPartsHoldCredential(value: string, url: URL, depth = 0): boolean {
   const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
   const normalized = `${url.pathname}${url.search}${url.hash}`;
   const pieces = [
@@ -66,9 +66,50 @@ function urlPartsHoldCredential(value: string, url: URL): boolean {
     ...written.split(/[/?#&=;]/),
     ...normalized.split(/[/?#&=;]/),
   ];
-  return pieces.some(
-    (piece) =>
-      piece.length > 0 &&
-      scanEncodedText(piece, { matches: holdsCredential, allowOpaqueBase64: true }).sensitive,
+  if (
+    pieces.some(
+      (piece) =>
+        piece.length > 0 &&
+        scanEncodedText(piece, { matches: containsCredential, allowOpaqueBase64: true }).sensitive,
+    )
+  )
+    return true;
+  return (
+    depth < MAX_NESTED_DEPTH &&
+    nestedUrls(url).some(
+      (nested) =>
+        nested.url.username !== "" ||
+        nested.url.password !== "" ||
+        urlPartsHoldCredential(nested.text, nested.url, depth + 1),
+    )
+  );
+}
+
+function decoded(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+/** The absolute URLs in `url`'s decoded parameter names and values, fragment and path segments. */
+function nestedUrls(url: URL): { text: string; url: URL }[] {
+  const fragment = url.hash.slice(1);
+  // A fragment may be a route with its own query (`#/callback?next=...`) or a query itself.
+  const fragmentQuery = new URLSearchParams(fragment.slice(fragment.indexOf("?") + 1));
+  const values = [
+    ...[...url.searchParams, ...fragmentQuery].flat(),
+    decoded(fragment),
+    ...url.pathname.split("/").map(decoded),
+  ];
+  return values.flatMap((text) =>
+    [...text.matchAll(NESTED_URL)].flatMap(([candidate]) => {
+      try {
+        return [{ text: candidate, url: new URL(candidate) }];
+      } catch {
+        return [];
+      }
+    }),
   );
 }

@@ -133,6 +133,10 @@ describe("study URLs that name an E2B sandbox", () => {
       `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
     ],
     [
+      "an E2B URL, then a parameter that holds an address",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
       "the E2B docs page, then another parameter",
       `https://app.example.com/?next=${encodeURIComponent("https://docs.e2b.dev/api-key")}&view=compact`,
     ],
@@ -174,6 +178,26 @@ describe("study URLs that name an E2B sandbox", () => {
     [
       "an E2B URL with a user name longer than 256 characters",
       `https://app.example.com/?next=${encodeURIComponent(`https://${TOKEN.repeat(9)}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "a stream URL with an encoded password parameter name",
+      `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?%70assword=${STREAM_KEY}`)}`,
+      STREAM_KEY,
+    ],
+    [
+      "a URL with a quote in its user info",
+      `https://app.example.com/?next=${encodeURIComponent(`https://user:pass"${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "a URL with a user name alone in a path segment",
+      `https://app.example.com/redirect/${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "a URL with a user name alone in a fragment route's query",
+      `https://app.example.com/#/callback?next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
       TOKEN,
     ],
     [
