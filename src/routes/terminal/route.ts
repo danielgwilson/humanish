@@ -45,10 +45,14 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 //      Enforced in sandbox.ts.
 
-import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import path from "node:path";
-import { runScope, type FinishedRun, type RunScope } from "../../run/run.js";
+import { type RunScope } from "../../run/run.js";
+import {
+  admitRoute,
+  completeRefusalAnalysis,
+  type RefusedStudy,
+  type RouteAdmission,
+} from "../../run/route-shell.js";
 import { planTerminalStudy, type TerminalRefusal } from "./plan.js";
 import { runDryTerminalStudy } from "./dry-run.js";
 import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
@@ -84,7 +88,7 @@ export async function runTerminalProductStudy(
 
 /** A refused terminal study's result: the route's envelope, and the analysis record a refusal gets. */
 export function terminalStudyRefusal(
-  options: RunTerminalProductStudyOptions,
+  options: TerminalRunInput & RefusedStudy,
   refusal: TerminalRefusal,
 ): Promise<TerminalProductStudyResult> {
   const { config, dryRun } = options;
@@ -99,15 +103,7 @@ export function terminalStudyRefusal(
     warnings: [],
     error: { code: refusal.code, message: refusal.message },
   };
-  // A refusal starts no run, so a declared or default analysis is recorded as skipped.
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  return completeAutomaticAnalysis(
-    refused,
-    undefined,
-    analysis.ok ? analysis.config : undefined,
-    options,
-    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
-  );
+  return completeRefusalAnalysis(refused, config, options);
 }
 
 /** A terminal plan past its local checks, with the warnings those checks wrote. */
@@ -121,17 +117,13 @@ type AdmittedTerminalRun =
 
 type DryTerminalPlan = Extract<TerminalPlan, { readonly dryRun: true }>;
 
-/**
- * Run a terminal plan. The run scope gives a direct library caller the same run lifetime the CLI
- * gets: whichever of its fail-closed exits the run takes, the run it started is closed, and only a
- * run that published its final bundle reaches automatic analysis.
- */
+/** Run a terminal plan: its local checks, then the run. */
 export async function runTerminalPlan(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<TerminalProductStudyResult> {
-  const admission = await admitTerminalRun(plan, input);
-  return admission.ok ? runAdmittedTerminalRun(admission.admitted, input) : admission.result;
+  const admitted = await admitTerminalPlan(plan, input);
+  return (admitted.ok ? await admitted.run() : admitted.outcome).result;
 }
 
 /**
@@ -139,68 +131,33 @@ export async function runTerminalPlan(
  * before any run scope opens, so the CLI can present their refusal before it loads a declared
  * scorer, and returns the run that continues from them with that scorer.
  */
-export async function admitTerminalPlan(
+export function admitTerminalPlan(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<AdmittedPlan<"terminal">> {
-  const admission = await admitTerminalRun(plan, input);
-  if (!admission.ok) return { ok: false, outcome: terminalOutcome(admission.result) };
-  return {
-    ok: true,
-    run: async (scorer) =>
-      terminalOutcome(
-        await runAdmittedTerminalRun(
-          admission.admitted,
-          withLateScorer(input, scorer, terminalRouteScorer),
-        ),
-      ),
-  };
+  return admitRoute({
+    route: "terminal",
+    analysis: plan.analysis,
+    input,
+    admit: () => admitTerminalRun(plan, input),
+    withScorer: (admitted, scorer) => withLateScorer(admitted, scorer, terminalRouteScorer),
+    runInScope: runTerminalPlanInScope,
+  });
 }
 
-function terminalOutcome(result: TerminalProductStudyResult) {
-  return { route: "terminal", result } as const;
-}
-
-/**
- * A live plan's local checks, made outside any run scope. A refusal is the result runTerminalPlan
- * returns for it, with the analysis record of a run that never started.
- */
-async function admitTerminalRun(
+/** A live plan's local checks, made outside any run scope. */
+function admitTerminalRun(
   plan: TerminalPlan,
   input: TerminalRunInput,
-): Promise<
-  | { readonly ok: false; readonly result: TerminalProductStudyResult }
-  | { readonly ok: true; readonly admitted: AdmittedTerminalRun }
-> {
+): RouteAdmission<"terminal", AdmittedTerminalRun> {
   const warnings: string[] = [];
   if (plan.dryRun) return { ok: true, admitted: { plan, warnings } };
   const checked = checkLiveTerminalMachine(plan, input, warnings);
   if (checked.ok) return { ok: true, admitted: { plan, warnings, runtimeEnv: checked.runtimeEnv } };
-  const refused = terminalFailure(plan, input, warnings)(checked.code, checked.message);
-  return { ok: false, result: await completeTerminalAnalysis(plan, input, refused, undefined) };
-}
-
-/** Runs an admitted plan in its own run scope, then its automatic analysis. */
-async function runAdmittedTerminalRun(
-  admitted: AdmittedTerminalRun,
-  input: TerminalRunInput,
-): Promise<TerminalProductStudyResult> {
-  const { result, finished } = await runScope((scope) =>
-    runTerminalPlanInScope(admitted, input, scope),
-  );
-  return completeTerminalAnalysis(admitted.plan, input, result, finished);
-}
-
-function completeTerminalAnalysis(
-  plan: TerminalPlan,
-  input: TerminalRunInput,
-  result: TerminalProductStudyResult,
-  finished: FinishedRun | undefined,
-): Promise<TerminalProductStudyResult> {
-  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
-    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
-  });
+  return {
+    ok: false,
+    result: terminalFailure(plan, input, warnings)(checked.code, checked.message),
+  };
 }
 
 /** The route's envelope for a run that stops before its bundle. */
