@@ -310,16 +310,14 @@ function parseCaps(
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid(
-      "`scenario.caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).",
-    );
+    return invalid("`caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");
   }
   const caps: StudyScenarioCaps = {};
   for (const key of ["maxUsd", "maxTotalUsd", "maxJobs", "maxMinutes"] as const) {
     if (raw[key] === undefined) continue;
     const value = nonNegNumber(raw[key]);
     if (value === undefined) {
-      return invalid(`\`scenario.caps.${key}\` must be a non-negative number.`);
+      return invalid(`\`caps.${key}\` must be a non-negative number.`);
     }
     caps[key] = value;
   }

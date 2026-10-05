@@ -145,7 +145,7 @@
   "maxOutputTokens on local-agent": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
+      "message": "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
     },
     "runStudy": {
       "runs": false,
@@ -169,7 +169,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
+          "message": "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -429,7 +429,7 @@
   "local-app with scripted actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
+      "message": "actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
     },
     "runStudy": {
       "runs": false,
@@ -470,7 +470,7 @@
   "local-app count 2": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
+      "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
     },
     "runStudy": {
       "runs": false,
@@ -511,7 +511,7 @@
   "local-app lanes": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop."
+      "message": "`participants` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop."
     },
     "runStudy": {
       "runs": false,
@@ -610,7 +610,7 @@
   "scripted app-url without ref": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+      "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
     },
     "runStudy": {
       "runs": false,
@@ -651,7 +651,7 @@
   "scripted app-url count 3": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
+      "message": "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
     "runStudy": {
       "runs": true,
@@ -768,7 +768,7 @@
   "cu app-url unknown actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
+      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
     },
     "runStudy": {
       "runs": false,
@@ -809,7 +809,7 @@
   "cu app-url codex-app-server": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
     },
     "runStudy": {
       "runs": false,
@@ -850,7 +850,7 @@
   "cu app-url public url without policy": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
+      "message": "`subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
     "runStudy": {
       "runs": false,
@@ -1065,7 +1065,7 @@
   "scripted clone without ref": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
+      "message": "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file."
     },
     "runStudy": {
       "runs": false,
@@ -1106,7 +1106,7 @@
   "scripted clone count 3": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
+      "message": "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet."
     },
     "runStudy": {
       "runs": true,
@@ -1123,7 +1123,7 @@
   "scripted clone lanes": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces."
+      "message": "`participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces."
     },
     "runStudy": {
       "runs": true,
@@ -1373,7 +1373,7 @@
   "cu local-tree terminal actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
+      "message": "actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
     },
     "runStudy": {
       "runs": false,
@@ -1578,7 +1578,7 @@
   "lane device and raw resolution": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
+      "message": "participants[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
     },
     "runStudy": {
       "runs": false,
@@ -1602,7 +1602,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
+          "message": "participants[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1619,7 +1619,7 @@
   "lane target on clone": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
+      "message": "`participants[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
     },
     "runStudy": {
       "runs": false,
@@ -1643,7 +1643,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
+          "message": "`participants[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1660,7 +1660,7 @@
   "lane target and entry": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
+      "message": "participants[].target and participants[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
     },
     "runStudy": {
       "runs": false,
@@ -1684,7 +1684,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
+          "message": "participants[].target and participants[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1701,7 +1701,7 @@
   "partial lane targets": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
+      "message": "When any participants[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
     },
     "runStudy": {
       "runs": false,
@@ -1725,7 +1725,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
+          "message": "When any participants[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1783,7 +1783,7 @@
   "public target fan-out": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant."
+      "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `route: shared-world` to run them together there, give each `participants[]` entry its own `target`, or run one participant."
     },
     "runStudy": {
       "runs": false,
@@ -1807,7 +1807,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant."
+          "message": "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `route: shared-world` to run them together there, give each `participants[]` entry its own `target`, or run one participant."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1824,7 +1824,7 @@
   "clone fanout on computer use": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)"
+      "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)"
     },
     "runStudy": {
       "runs": false,
@@ -1848,7 +1848,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)"
+          "message": "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)"
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1889,7 +1889,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-          "message": "actors[0].lanes ids must be unique (duplicate \"a\")."
+          "message": "participants ids must be unique (duplicate \"a\")."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1974,7 +1974,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it."
+          "message": "`route: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1991,7 +1991,7 @@
   "shared world one seat": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
+      "message": "`route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
     },
     "runStudy": {
       "runs": false,
@@ -2018,7 +2018,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
+          "message": "`route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2035,7 +2035,7 @@
   "shared world without checkpoint": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
+      "message": "`route: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
     },
     "runStudy": {
       "runs": false,
@@ -2062,7 +2062,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
+          "message": "`route: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2079,7 +2079,7 @@
   "shared world cross-origin entry": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].lanes role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
+      "message": "participants role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
     },
     "runStudy": {
       "runs": false,
@@ -2106,7 +2106,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "actors[0].lanes role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
+          "message": "participants role \"author\".entry must resolve same-origin (loopback) with subject.serve.url (http://127.0.0.1:3000/); got \"https://elsewhere.example/\"."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2299,7 +2299,7 @@
   "external without public-target policy": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
+      "message": "`subject.appUrl` and `participants[].target` must be loopback URLs (127.0.0.1 or localhost). To drive a deployed or preview URL you own, set `policies.allowPublicTargets: true`."
     },
     "runStudy": {
       "runs": false,
@@ -2472,7 +2472,7 @@
   "external seat entry": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
+      "message": "`participants[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
     },
     "runStudy": {
       "runs": false,
@@ -2499,7 +2499,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
+          "message": "`participants[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2560,7 +2560,7 @@
   "external one seat": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
+      "message": "the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
     },
     "runStudy": {
       "runs": false,
@@ -2587,7 +2587,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
+          "message": "the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2753,7 +2753,7 @@
   "terminal computer-use actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].type must be a registered terminal actor for terminal-product subjects (one of: codex-exec). Got \"openai-computer-use\"."
+      "message": "actor.type must be a registered terminal actor for terminal-product subjects (one of: codex-exec). Got \"openai-computer-use\"."
     },
     "runStudy": {
       "runs": false,
@@ -2793,7 +2793,7 @@
   "terminal count 2": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1."
+      "message": "Terminal fan-out to more than one participant is not supported yet; set participants to 1."
     },
     "runStudy": {
       "runs": true,
@@ -2810,7 +2810,7 @@
   "tasks on scripted": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+      "message": "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "runStudy": {
       "runs": false,
@@ -2834,7 +2834,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+          "message": "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         }
       }
     },
@@ -3942,7 +3942,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SHARED_WORLD_INVALID",
-          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
+          "message": "the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -4197,7 +4197,7 @@
   "overlap shared world: tasks and one seat": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with."
+      "message": "`route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with."
     },
     "runStudy": {
       "runs": false,
@@ -4224,7 +4224,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+          "message": "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

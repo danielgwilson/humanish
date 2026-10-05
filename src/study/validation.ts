@@ -39,7 +39,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
   // inert-warned). Fan-out is declared via `actors[0].count` or `actors[0].lanes`;
   // subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
-    return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
+    return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)";
   }
   if (roster !== undefined) {
     if (declaredParticipantCount(config) !== undefined) {
@@ -52,18 +52,18 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
       config.execution?.desktop?.resolution !== undefined &&
       roster.some((entry) => entry.device !== undefined)
     ) {
-      return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry.";
+      return "participants[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry.";
     }
     const targeted = roster.filter((entry) => entry.target !== undefined);
     if (targeted.length > 0) {
       if (config.subject.source !== "app-url") {
-        return "`actors[0].lanes[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`.";
+        return "`participants[].target` works only on app-url computer-use studies. Clone, shared-world and local-app studies set each participant's entry URL themselves; remove `target`.";
       }
       if (roster.some((entry) => entry.entry !== undefined)) {
-        return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path.";
+        return "participants[].target and participants[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path.";
       }
       if (targeted.length !== roster.length) {
-        return "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
+        return "When any participants[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
       }
     }
   }
@@ -83,7 +83,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
     declaredTargets(config).length === 0 &&
     !declaresSharedWorld(config)
   ) {
-    return "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant.";
+    return "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `route: shared-world` to run them together there, give each `participants[]` entry its own `target`, or run one participant.";
   }
   return null;
 }
@@ -97,11 +97,11 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
   const seenIds = new Set<string>();
   if (roster !== undefined) {
     if (!Array.isArray(roster) || roster.length === 0) {
-      return "actors[0].lanes must be a non-empty array when set.";
+      return "participants must be a non-empty array when set.";
     }
     for (const [index, entry] of roster.entries()) {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-        return `actors[0].lanes[${index}] must be an object.`;
+        return `participants[${index}] must be an object.`;
       }
       const id = entry.id;
       if (id === undefined) {
@@ -112,10 +112,10 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
         !PARTICIPANT_ID_PATTERN.test(id) ||
         id.length > PARTICIPANT_ID_MAX_CHARS
       ) {
-        return `actors[0].lanes[${index}].id must be a public-safe path token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars.`;
+        return `participants[${index}].id must be a public-safe path token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars.`;
       }
       if (seenIds.has(id)) {
-        return `actors[0].lanes ids must be unique (duplicate "${id}").`;
+        return `participants ids must be unique (duplicate "${id}").`;
       }
       seenIds.add(id);
     }
@@ -148,28 +148,28 @@ function provisionedSharedWorldStructureReason(config: StudyConfig): string | nu
     return structuralReason;
   }
   if (config.subject.source !== "clone" && config.subject.source !== "local-tree") {
-    return "`subject.topology: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own.";
+    return "`route: shared-world` needs `subject.source: clone` or `local-tree`, which humanish serves as one seeded app every participant uses, or `app-url` for a public deployment you own.";
   }
   if (config.execution?.target !== "e2b-desktop") {
-    return "`subject.topology: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
+    return "`route: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
   }
   if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
-    return `\`subject.topology: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
+    return `\`route: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const serve = config.subject.serve;
   if (!serve) {
-    return "`subject.topology: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it.";
+    return "`route: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it.";
   }
   const roster = participantList(config);
   if (!roster || roster.length < 2) {
-    return "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with.";
+    return "`route: shared-world` needs a `participants` list of at least 2 participants: with one participant there is nobody to interact with.";
   }
   if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
-    return "`subject.topology: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app.";
+    return "`route: shared-world` needs at least one read-only `subject.state.checkpoint` probe: the checkpoints are how the run shows that participants changed the shared app.";
   }
   for (const entry of roster) {
     if (entry.entry !== undefined && resolveEntryUrl(serve.url, entry.entry) === null) {
-      return `actors[0].lanes role "${entry.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${entry.entry}".`;
+      return `participants role "${entry.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${entry.entry}".`;
     }
   }
   return null;
@@ -252,7 +252,7 @@ export function taskProtocolValidationReason(
       return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol.`;
     }
     if (!supportsTasks) {
-      return "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
+      return "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
     }
   }
   return null;
@@ -294,13 +294,13 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
   const actor = actorOf(config);
   if (actor?.maxOutputTokens === undefined) return null;
   if (!isMaxOutputTokens(actor.maxOutputTokens))
-    return "actors[0].maxOutputTokens must be a positive safe integer.";
+    return "actor.maxOutputTokens must be a positive safe integer.";
   if (
     actor.type !== "openai-computer-use" ||
     !isComputerUseComposition(config) ||
     config.subject.source === "local-app"
   ) {
-    return "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
+    return "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
   }
   return null;
 }
@@ -378,7 +378,7 @@ export function externalPublicSharedWorldValidationReason(config: StudyConfig): 
   }
   const roster = participantList(config);
   if (!roster || roster.length < 2) {
-    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session).";
+    return "the external-public shared-world route requires a `participants` list of at least 2 roles (a single-participant shared world proves no shared session).";
   }
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
   if (sharedWorldConcurrency) return sharedWorldConcurrency;
@@ -414,7 +414,7 @@ export function externalPublicSharedWorldValidationReason(config: StudyConfig): 
     return "`subject.clone` and `subject.repos` do not apply to an external-public shared-world study: the participants use the public deployment, so nothing is cloned. Remove them.";
   }
   if (roster.some((entry) => entry.entry !== undefined)) {
-    return "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI.";
+    return "`participants[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI.";
   }
   const hostEntries = roster.filter((entry) => entry.host === true);
   if (hostEntries.length !== 1) {

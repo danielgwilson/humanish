@@ -52,7 +52,7 @@ describe("declared task protocol admission", () => {
       if (result.ok) expect(result.config.actors[0]!.tasks).toEqual(tasks);
       else {
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
-        expect(result.error.message).toContain("actors[0].tasks is unsupported");
+        expect(result.error.message).toContain("actor.tasks is unsupported");
         expect(result.error.message).not.toMatch(/TASK_ONLY_SENTINEL|HIDDEN_SUCCESS_SENTINEL/);
       }
     },

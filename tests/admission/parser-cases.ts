@@ -159,12 +159,12 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted app-url without ref",
     raw: lab("scriptedAppUrl", { scenario: undefined }),
-    parser: "needs `scenario.ref`",
+    parser: "needs `scenario`:",
   },
   {
     name: "scripted app-url count 3",
     raw: lab("scriptedAppUrl", {}, { count: 3 }),
-    parser: "takes `actors[0].count` 1 (desktop) or 2",
+    parser: "takes `surfaces` 1 (desktop) or 2",
   },
   {
     name: "scripted app-url redacted screenshots",
@@ -238,12 +238,12 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "scripted clone without ref",
     raw: lab("scriptedClone", { scenario: undefined }),
-    parser: "needs `scenario.ref`",
+    parser: "needs `scenario`:",
   },
   {
     name: "scripted clone count 3",
     raw: lab("scriptedClone", {}, { count: 3 }),
-    parser: "takes `actors[0].count` 1 (desktop) or 2",
+    parser: "takes `surfaces` 1 (desktop) or 2",
   },
   {
     name: "scripted clone lanes",
@@ -414,7 +414,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "shared world one seat",
     raw: lab("sharedProvisioned", {}, { lanes: [{ id: "author", entry: "/seat-1" }] }),
-    parser: "roster of at least 2",
+    parser: "list of at least 2",
   },
   {
     name: "shared world without checkpoint",
@@ -493,7 +493,7 @@ export const parserCases: readonly AdmissionCase[] = [
       { execution: { concurrency: 2 } },
       { lanes: [{ id: "host", host: true }] },
     ),
-    parser: "roster of at least 2",
+    parser: "list of at least 2",
   },
 
   // desktop-cli

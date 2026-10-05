@@ -47,7 +47,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+      "message": "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     }
   },
   "media": {
@@ -252,7 +252,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
-      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+      "message": "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     }
   },
   "media and clone on the local target": {
