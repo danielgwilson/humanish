@@ -2,22 +2,25 @@
 // safe-mode run library to check what serve hands out.
 import path from "node:path";
 
-import { parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { runStudyWith } from "../../src/run-study.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 
 export function shareSafetyDryRunConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "unscanned-artifact",
     title: "Unscanned adapter artifact",
+    route: "computer-use",
+    mode: "dry-run",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
-      { type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore and stop." },
-    ],
+    actor: {
+      type: "openai-computer-use",
+      persona: "first-time-visitor",
+      mission: "Explore and stop.",
+    },
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "dry-run" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
