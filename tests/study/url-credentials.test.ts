@@ -260,6 +260,14 @@ describe("study URLs that name an E2B sandbox", () => {
       `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&contact=${encodeURIComponent(`mailto:${["reader", "example.com"].join("@")}`)}`,
     ],
     [
+      "a base64 JSON state with an E2B URL and an address",
+      `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ next: `https://${APP_HOST}`, email: ["reader", "example.com"].join("@") })).toString("base64url")}`,
+    ],
+    [
+      "a percent-encoded JSON state with an E2B URL and an address",
+      `https://app.example.com/callback?state=${encodeURIComponent(JSON.stringify({ next: `https://${APP_HOST}`, email: ["reader", "example.com"].join("@") }))}`,
+    ],
+    [
       "the E2B docs page, then another parameter",
       `https://app.example.com/?next=${encodeURIComponent("https://docs.e2b.dev/api-key")}&view=compact`,
     ],

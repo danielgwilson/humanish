@@ -20,8 +20,9 @@ const MAX_NESTED_DEPTH = 4;
 // A URL inside one decoded value. It runs to the next space, as the value is one parameter's.
 const NESTED_URL = /[a-z][a-z0-9+.-]{0,31}:\/\/\S+/gi;
 
-// A URL in text the scan decoded, which may join several values: it runs to the next space or `&`.
-const URL_IN_TEXT = /[a-z][a-z0-9+.-]{0,31}:\/\/[^\s&]+/gi;
+// A URL in text decoded from a whole query or from base64, which may join several values or be
+// JSON: it runs to the next space, `&`, quote, angle bracket or backslash.
+const URL_IN_TEXT = /[a-z][a-z0-9+.-]{0,31}:\/\/[^\s&"'<>\\`]+/gi;
 
 /** Whether a URL in the text, parsed, has a user name or password. */
 function holdsUserInfo(text: string): boolean {
@@ -144,14 +145,44 @@ function nestedUrls(url: URL): { text: string; url: URL }[] {
     url.pathname,
   ];
   const twice = once.map(decoded);
-  const values = [...new Set([...once, ...twice, ...[...once, ...twice].flatMap(base64Text)])];
-  return values.flatMap((text) =>
-    [...text.matchAll(NESTED_URL)].flatMap(([candidate]) => {
+  const values = [...new Set([...once, ...twice])];
+  const parsed = (pattern: RegExp) => (text: string) =>
+    [...text.matchAll(pattern)].flatMap(([candidate]) => {
       try {
         return [{ text: candidate, url: new URL(candidate) }];
       } catch {
         return [];
       }
-    }),
-  );
+    });
+  // A JSON value, such as an OAuth `state`, is read string by string, so a URL in one string does
+  // not run into the next. Other text decoded from base64 may be a query, so its URLs end at `&`.
+  const read = (pattern: RegExp) => (text: string) =>
+    jsonStrings(text)?.flatMap(parsed(NESTED_URL)) ?? parsed(pattern)(text);
+  return [
+    ...values.flatMap(read(NESTED_URL)),
+    ...values.flatMap(base64Text).flatMap(read(URL_IN_TEXT)),
+  ];
+}
+
+/** The strings in a JSON object or array, keys included, or undefined for text that is not one. */
+function jsonStrings(text: string): string[] | undefined {
+  if (!/^\s*[[{]/.test(text)) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  const strings: string[] = [];
+  const visit = (node: unknown): void => {
+    if (typeof node === "string") strings.push(node);
+    else if (Array.isArray(node)) node.forEach(visit);
+    else if (node !== null && typeof node === "object")
+      for (const [key, child] of Object.entries(node)) {
+        strings.push(key);
+        visit(child);
+      }
+  };
+  visit(value);
+  return strings;
 }
