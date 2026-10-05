@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 
 import { readPlainText } from "./plain-text.js";
-import { containsSensitive } from "./redaction.js";
+import { containsSecret, containsSensitive } from "./redaction.js";
 
 // HTML5 named references that stand for printable ASCII. Letters and digits have only numeric
 // references, which decodeEscapes handles.
@@ -149,6 +149,17 @@ function decodeTransferEscapes(text: string): string {
     .replace(/=([0-9A-F]{2})/g, (match, hex: string) => codePoint(Number.parseInt(hex, 16), match));
 }
 
+/** How scanEncodedText reads text. */
+export interface EncodedTextScanOptions {
+  /** Do not count an encoded binary run as opaque. */
+  readonly allowOpaqueBase64?: boolean;
+  /** Match secret shapes only, leaving local paths out, as a URL's path may look like one. */
+  readonly secretsOnly?: boolean;
+}
+
+const matcherOf = (options: EncodedTextScanOptions): ((text: string) => boolean) =>
+  options.secretsOnly === true ? containsSecret : containsSensitive;
+
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
   readonly sensitive: boolean;
@@ -162,9 +173,10 @@ const SENSITIVE: EncodedTextScan = Object.freeze({ sensitive: true, opaque: fals
 function inspectDecoded(
   bytes: Buffer,
   run: string,
-  options: { allowOpaqueBase64?: boolean },
+  options: EncodedTextScanOptions,
   depth: number,
 ): EncodedTextScan {
+  const matches = matcherOf(options);
   if (startsWithArchive(bytes))
     return { sensitive: false, opaque: options.allowOpaqueBase64 !== true };
   const plain = readPlainText(bytes);
@@ -172,12 +184,10 @@ function inspectDecoded(
   if (inner !== undefined) {
     if (depth < MAX_DEPTH) return scanEncodedText(inner, options, depth + 1);
     const innerDecoded = decodeEscapes(inner);
-    return containsSensitive(inner) || (innerDecoded !== inner && containsSensitive(innerDecoded))
-      ? SENSITIVE
-      : CLEAN;
+    return matches(inner) || (innerDecoded !== inner && matches(innerDecoded)) ? SENSITIVE : CLEAN;
   }
   // A key next to a few binary bytes is still a printable stretch.
-  if (containsSensitive(printableStretches(bytes))) return SENSITIVE;
+  if (matches(printableStretches(bytes))) return SENSITIVE;
   return {
     sensitive: false,
     opaque:
@@ -195,16 +205,17 @@ function inspectDecoded(
  */
 export function scanEncodedText(
   text: string,
-  options: { allowOpaqueBase64?: boolean } = {},
+  options: EncodedTextScanOptions = {},
   depth = 0,
 ): EncodedTextScan {
+  const matches = matcherOf(options);
   const decoded = decodeEscapes(text);
   const expanded = decodeTransferEscapes(decoded);
   // A decoding that returns the same string would match the same way, so it is not matched again.
   if (
-    containsSensitive(text) ||
-    (decoded !== text && containsSensitive(decoded)) ||
-    (expanded !== decoded && containsSensitive(expanded))
+    matches(text) ||
+    (decoded !== text && matches(decoded)) ||
+    (expanded !== decoded && matches(expanded))
   )
     return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
@@ -251,11 +262,12 @@ const scanCache = new Map<string, EncodedTextScan>();
  */
 export function scanEncodedTextCached(
   text: string,
-  options: { allowOpaqueBase64?: boolean } = {},
+  options: EncodedTextScanOptions = {},
 ): EncodedTextScan {
   const key = [
     ENCODED_SCAN_VERSION,
     options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
+    options.secretsOnly === true ? "secrets-only" : "secrets-and-paths",
     createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
   ].join(":");
   const cached = scanCache.get(key);

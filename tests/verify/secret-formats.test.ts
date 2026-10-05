@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { scanEncodedText } from "../../src/evidence/encoded-text.js";
-import { redactText } from "../../src/evidence/redaction.js";
+import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { ORDINARY_VALUES, SECRET_FORMATS } from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
@@ -50,6 +50,30 @@ describe("secret formats", () => {
       "opened https://user:[REDACTED_SECRET]@staging.example.com/",
     );
   });
+
+  it.each([
+    "TOKEN=",
+    "?token=",
+    "https://:",
+    "Authorization: Basic ",
+    "aws_secret_access_key=",
+    " ",
+  ])("scans a megabyte of %j in linear time", (unit) => {
+    const text = unit.repeat(Math.ceil((1 << 20) / unit.length));
+    const started = performance.now();
+    scanEncodedText(text);
+    redactText(text);
+    expect(performance.now() - started).toBeLessThan(5_000);
+  });
+
+  it.each(["sk-", "eyJ", "Bearer ", "_authToken=", "?token=", "TOKEN=1"])(
+    "redacts an 8 MB run after %j without overflowing the stack",
+    (prefix) => {
+      const text = `${prefix}${"a".repeat(8 << 20)}`;
+      expect(() => containsSensitive(text)).not.toThrow();
+      expect(() => redactText(text)).not.toThrow();
+    },
+  );
 
   it("keeps JSON parseable when it redacts a value inside a JSON string", () => {
     for (const format of SECRET_FORMATS) {

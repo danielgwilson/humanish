@@ -108,6 +108,18 @@ export const SECRET_FORMATS: readonly SecretFormat[] = [
   },
   { name: "URL userinfo user:pass", text: `opened https://user:pass${"@"}staging.example.com/` },
   {
+    name: "URL userinfo with an empty user name",
+    text: `https://:${synthetic(ALNUM, 20, 36)}${"@"}example.com/`,
+  },
+  {
+    name: "variable quoted inside a JSON string",
+    text: JSON.stringify({ line: `VERCEL_TOKEN="${synthetic(ALNUM, 24, 37)}"` }),
+  },
+  {
+    name: "password parameter with punctuation",
+    text: `https://example.com/?password=Correct${"Horse!Battery"}Staple${synthetic(DIGITS, 2, 38)}`,
+  },
+  {
     name: "token query parameter",
     text: `https://app.example.com/invite?token=${synthetic(BASE64URL, 32, 27)}`,
   },
@@ -168,6 +180,11 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
     text: `https://x-access-token:${"$"}{GH_TOKEN}@github.com/acme/app.git?token=${"$"}{INVITE_TOKEN}`,
   },
   { name: "placeholder token", text: "https://app.example.com/invite?token=<your-invite-token>" },
+  {
+    name: "percent-encoded marker and placeholder",
+    text: `https://app.example.com/?token=%5BREDACTED_SECRET%5D&access_token=%24%7BINVITE_TOKEN%7D`,
+  },
+  { name: "JSON number at a credential name", text: `{"TOKEN":1234567890123456,"next":"kept"}` },
   { name: "token usage", text: `{"inputTokens":1234,"outputTokens":567,"cachedTokens":0}` },
   { name: "prose", text: "Bearer tokens expire after an hour. Enter the password from the email." },
   { name: "run id", text: "cua-20261005-123456-ab12cd" },

@@ -11,8 +11,12 @@ import { isRecord } from "../run/type-guards.js";
 // the enforcement-scope policy.
 
 // A value that stands in for a secret rather than being one: a redaction marker, a shell or
-// template variable, or a placeholder in angle brackets. The context patterns below skip these.
-const NOT_A_PLACEHOLDER = String.raw`(?!\[REDACTED|\$|\{|<|\*)`;
+// template variable, or a placeholder in angle brackets, as written or percent-encoded. The
+// context patterns below skip these.
+const NOT_A_PLACEHOLDER = String.raw`(?!\[REDACTED|\$|\{|<|\*|%5[Bb]REDACTED|%24|%7[Bb]|%3[Cc]|%2[Aa])`;
+
+// An optional quote around a name or a value, also as JSON writes it inside another string (\").
+const QUOTE = String.raw`(?:\\{0,3}["'])?`;
 
 // Query and fragment parameters that carry a credential. `page_token` and other cursors match too;
 // their values are long and opaque, so a reader cannot tell them from a credential either.
@@ -41,50 +45,62 @@ const CREDENTIAL_VARIABLE = String.raw`\b(?:[A-Z][A-Z0-9_]{0,48}_)?(?:TOKEN|SECR
 // A pattern that matches a credential by its context puts the context in a `keep` group, which
 // redaction leaves in place: `?token=[REDACTED_SECRET]`. Context goes in a group and not in a
 // lookbehind, because a pattern that starts with a lookbehind is tried at every position of the
-// text and scans many times slower.
+// text and scans many times slower. An open-ended repeat is written `[...]{n}[...]*`: V8 runs
+// `{n,}` with a backtrack entry per character and overflows its stack on a run of several
+// megabytes, and a star loop does not.
 const SECRET_PATTERNS: RegExp[] = [
-  /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/g,
-  /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g,
-  /\be2b_[A-Za-z0-9]{16,}\b/g,
-  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
-  /\bglpat-[A-Za-z0-9_-]{20,}/g,
+  /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\b/g,
+  /\bsk-ant-[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\b/g,
+  /\be2b_[A-Za-z0-9]{16}[A-Za-z0-9]*\b/g,
+  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20}[A-Za-z0-9_]*\b/g,
+  /\bgithub_pat_[A-Za-z0-9_]{20}[A-Za-z0-9_]*\b/g,
+  /\bglpat-[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*/g,
   /\bnpm_[A-Za-z0-9]{36}\b/g,
   // Vercel personal, integration, app access, app refresh and API key tokens.
-  /\bvc[pciark]_[A-Za-z0-9]{24,}\b/g,
+  /\bvc[pciark]_[A-Za-z0-9]{24}[A-Za-z0-9]*\b/g,
   /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g,
-  /\bAIza[0-9A-Za-z_-]{20,}\b/g,
-  /\bya29\.[0-9A-Za-z_-]{20,}/g,
-  /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g,
-  /\bwhsec_[A-Za-z0-9]{24,}\b/g,
+  /\bAIza[0-9A-Za-z_-]{20}[0-9A-Za-z_-]*\b/g,
+  /\bya29\.[0-9A-Za-z_-]{20}[0-9A-Za-z_-]*/g,
+  /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16}[A-Za-z0-9]*\b/g,
+  /\bwhsec_[A-Za-z0-9]{24}[A-Za-z0-9]*\b/g,
   /\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b/g,
-  /\bhf_[A-Za-z0-9]{30,}\b/g,
-  /\bxox[abeoprs]-[A-Za-z0-9-]{20,}\b/g,
-  /\bxapp-[0-9]-[A-Za-z0-9-]{20,}\b/g,
-  /\bhooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9_/-]{20,}/g,
-  /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g,
+  /\bhf_[A-Za-z0-9]{30}[A-Za-z0-9]*\b/g,
+  /\bxox[abeoprs]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
+  /\bxapp-[0-9]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
+  /\bhooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9_/-]{20}[A-Za-z0-9_/-]*/g,
+  /\beyJ[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{10}[A-Za-z0-9_-]*\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
-  /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g,
-  /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g,
-  /(?<keep>\bAuthorization["']?[ \t]{0,4}[:=][ \t]{0,4}["']?Basic[ \t]{1,4})[A-Za-z0-9+/]{16,}={0,2}/gi,
-  // The password in a URL's userinfo, any scheme: https://user:password@host.
+  /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20}[A-Za-z0-9._~+/=-]*/g,
+  /\bBearer\s+[A-Za-z0-9._~+/-]{24}[A-Za-z0-9._~+/-]*\b/g,
   new RegExp(
-    String.raw`(?<keep>\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/?#"'<>\\[\]]{1,256}:)${NOT_A_PLACEHOLDER}[^\s@/?#"'<>\\]{1,256}(?=@)`,
+    String.raw`(?<keep>\bAuthorization${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE}Basic[ \t]{1,4})[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}`,
     "gi",
   ),
-  // A credential-named query or fragment parameter's value; `;` also follows an HTML `&amp;`.
+  // The password in a URL's userinfo, any scheme, with or without a user name:
+  // https://user:password@host, https://:password@host.
   new RegExp(
-    String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${NOT_A_PLACEHOLDER}[A-Za-z0-9._~+/=%-]{16,}`,
+    String.raw`(?<keep>\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/?#"'<>\\[\]]{0,256}:)${NOT_A_PLACEHOLDER}[^\s@/?#"'<>\\]{1,256}(?=@)`,
+    "gi",
+  ),
+  // A credential-named query or fragment parameter's value, up to the next delimiter, so a
+  // password with punctuation in it counts whole. `;` also follows an HTML `&amp;`.
+  new RegExp(
+    String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${NOT_A_PLACEHOLDER}[^\s&#"'<>\\]{16}[^\s&#"'<>\\]*`,
     "gi",
   ),
   // An Amazon Web Services secret access key next to its name, as a credentials file, an env
   // line or a temporary-credentials JSON response writes it. The key is 40 characters, no prefix.
-  /(?<keep>\b(?:aws_?)?secret_?access_?key["']?[ \t]{0,4}[:=][ \t]{0,4}["']?)[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])/gi,
-  // A credential-named variable set to a long value with a digit in it. Words and placeholders
-  // such as humanish-egress-auth-placeholder have none.
   new RegExp(
-    String.raw`(?<keep>${CREDENTIAL_VARIABLE}["']?[ \t]{0,4}[:=][ \t]{0,4}["']?)${NOT_A_PLACEHOLDER}(?=[A-Za-z0-9._~+/=-]*[0-9])[A-Za-z0-9._~+/=-]{16,}`,
+    String.raw`(?<keep>\b(?:aws_?)?secret_?access_?key${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])`,
+    "gi",
+  ),
+  // A credential-named variable set to a value of 16 characters or more with a digit and a letter
+  // in its first 256. Words, placeholders such as humanish-egress-auth-placeholder, and JSON
+  // numbers have one or the other. The lookaheads are bounded, so a long run of `TOKEN=` costs
+  // linear time.
+  new RegExp(
+    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_PLACEHOLDER}(?=[A-Za-z0-9._~+/=-]{0,255}[0-9])(?=[A-Za-z0-9._~+/=-]{0,255}[A-Za-z])[A-Za-z0-9._~+/=-]{16}[A-Za-z0-9._~+/=-]*`,
     "g",
   ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
