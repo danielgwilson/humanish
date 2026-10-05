@@ -4,6 +4,7 @@
 // and email receiving setup.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
+import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import {
   actorRegistry,
   isCuaActorDescriptor,
@@ -103,6 +104,8 @@ export function planSharedWorldStudy(
   // neither provisioned nor exposed is neither.
   const externalPublic = config.subject.source === "app-url";
   const invalidReason =
+    // A library caller's config skips the parser, which refuses these first.
+    studyUrlCredentialReason(config) ??
     outputTokenLimitValidationReason(config) ??
     scenarioCapsValidationReason(config) ??
     (externalPublic

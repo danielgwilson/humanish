@@ -11,10 +11,11 @@
 // The safety contract (`docs/history/goals/terminal-product-lane/goal.md`) is enforced by construction in
 // the files each item names, and checked by the verifier (verify/actor.ts
 // validateTerminalProductEvidence):
-//   1. Explicit key placement. openai-env (default) injects the raw runtime key command-scoped,
-//      never through Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
-//      header transform and passes an inert command placeholder. The proxy is spendable by every
-//      sandbox process from creation; this protects the raw key, not provider spending.
+//   1. Explicit key placement. openai-egress (default) sends the raw runtime key only in the
+//      host-side E2B header transform and passes an inert command placeholder. The proxy is
+//      spendable by every sandbox process from creation; this protects the raw key, not provider
+//      spending. Opt-in openai-env injects the raw key command-scoped, never through
+//      Sandbox.create({envs}).
 //      Enforced in credentials.ts and runtime-auth.ts.
 //   2. Fail-closed cap. The live key is never exercised without scenario.caps in force: maxUsd
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).

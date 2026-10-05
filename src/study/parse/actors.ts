@@ -9,6 +9,7 @@ import type {
 import { isReasoningEffort, reasoningEffortNames } from "../../actors/reasoning-effort.js";
 import { isMaxOutputTokens } from "../../actors/output-token-limit.js";
 import { isHttpUrl } from "./subject.js";
+import { entryCredentialReason, urlCredentialReason } from "./url-credentials.js";
 import {
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
@@ -329,12 +330,24 @@ function parseParticipantEntries(
           `actors[${actorIndex}].lanes[${entryIndex}].target must be an absolute http(s) URL.`,
         );
       }
+      const credential = urlCredentialReason(
+        `actors[${actorIndex}].lanes[${entryIndex}].target`,
+        target,
+      );
+      if (credential) return invalid(credential);
       parsedEntry.target = target;
     }
     // `entry` is shape-captured here; the same-origin-with-serve.url check needs serve context, so
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const entryPath = str(entry.entry);
-    if (entryPath !== undefined) parsedEntry.entry = entryPath;
+    if (entryPath !== undefined) {
+      const credential = entryCredentialReason(
+        `actors[${actorIndex}].lanes[${entryIndex}].entry`,
+        entryPath,
+      );
+      if (credential) return invalid(credential);
+      parsedEntry.entry = entryPath;
+    }
     // `host` marks the designated host on the external-public shared-world route; the
     // exactly-one-host check runs in externalPublicSharedWorldValidationReason (route context).
     if (entry.host !== undefined) {

@@ -4,27 +4,132 @@ import path from "node:path";
 import { PNG } from "pngjs";
 
 import { SCREENSHOT_MAX_WIDTH_CAP, pngDecodeRefusal } from "./image.js";
+import { isRecord } from "../run/type-guards.js";
 
 // Single source of truth for public-safety redaction patterns. Producers and the verify gate
 // both use these, so the denylist cannot drift between them. See docs/contracts/policy.md for
 // the enforcement-scope policy.
 
+// A whole value that stands in for a secret rather than being one, as written or percent-encoded:
+// a redaction marker, a shell or template variable, a placeholder in angle brackets, or a mask of
+// asterisks. A context pattern skips a value only when one of these is all of it, up to a
+// character that ends that pattern's value, so a password that merely starts with `*` or `$`
+// still counts.
+const PLACEHOLDER = [
+  String.raw`\[REDACTED_[A-Z0-9_]{1,40}\]`,
+  String.raw`%5[Bb]REDACTED_[A-Z0-9_]{1,40}%5[Dd]`,
+  String.raw`\$\{[A-Za-z_][A-Za-z0-9_]{0,63}\}`,
+  String.raw`%24%7[Bb][A-Za-z_][A-Za-z0-9_]{0,63}%7[Dd]`,
+  String.raw`\$[A-Za-z_][A-Za-z0-9_]{0,63}`,
+  String.raw`%24[A-Za-z_][A-Za-z0-9_]{0,63}`,
+  String.raw`\{\{[A-Za-z0-9_. -]{1,64}\}\}`,
+  String.raw`<[A-Za-z0-9_. -]{1,64}>`,
+  String.raw`%3[Cc][A-Za-z0-9_.-]{1,64}%3[Ee]`,
+  String.raw`\*{3,64}`,
+  String.raw`(?:%2[Aa]){3,64}`,
+].join("|");
+const notAPlaceholder = (valueEnd: string): string =>
+  String.raw`(?!(?:${PLACEHOLDER})(?:${valueEnd}|$))`;
+
+// An optional quote around a name or a value, also as JSON writes it inside other JSON strings,
+// four levels deep (\", \\\", ...).
+const QUOTE = String.raw`(?:\\{0,15}["'])?`;
+
+// A JSON number, which a credential-named key can hold and redaction must not turn into a string.
+// The bounds are far past any number a run writes and keep the lookahead linear.
+const NOT_A_NUMBER = String.raw`(?!-?[0-9]{1,512}(?:\.[0-9]{0,512})?(?:[eE][+-]?[0-9]{1,64})?(?:[\s,}\]]|$))`;
+
+// The characters that end each context pattern's value.
+const USERINFO_END = String.raw`[\s@/?#"'<>\\]`;
+const PARAMETER_END = String.raw`[\s&#"'<>\\]`;
+const VARIABLE_END = String.raw`[\s"'\\,;&]`;
+
+// Query and fragment parameters that carry a credential. `page_token` and other cursors match too;
+// their values are long and opaque, so a reader cannot tell them from a credential either.
+const CREDENTIAL_PARAMETER = [
+  String.raw`(?:[a-z0-9]{1,24}[_-]){0,2}token`,
+  String.raw`api[_-]?key`,
+  String.raw`(?:client[_-])?secret`,
+  "password",
+  "passwd",
+  "pwd",
+  "sig",
+  "signature",
+  String.raw`session[_-]?id`,
+  "jwt",
+  "x-vercel-protection-bypass",
+  "_vercel_share",
+  String.raw`x-amz-(?:signature|security-token|credential)`,
+  String.raw`x-goog-(?:signature|credential)`,
+  "auth",
+].join("|");
+
+// Upper-case variable names that hold a credential, as an env file, a shell or a JSON dump writes
+// them: GITHUB_TOKEN, VERCEL_TOKEN, AWS_SECRET_ACCESS_KEY, DATABASE_PASSWORD.
+const CREDENTIAL_VARIABLE = String.raw`\b(?:[A-Z][A-Z0-9_]{0,48}_)?(?:TOKEN|SECRET|SECRET_KEY|PASSWORD|PASSWD|API_KEY|APIKEY|ACCESS_KEY|PRIVATE_KEY)`;
+
+// A pattern that matches a credential by its context puts the context in a `keep` group, which
+// redaction leaves in place: `?token=[REDACTED_SECRET]`. Context goes in a group and not in a
+// lookbehind, because a pattern that starts with a lookbehind is tried at every position of the
+// text and scans many times slower. An open-ended repeat is written `[...]{n}[...]*`: V8 runs
+// `{n,}` with a backtrack entry per character and overflows its stack on a run of several
+// megabytes, and a star loop does not.
 const SECRET_PATTERNS: RegExp[] = [
-  /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/g,
-  /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g,
-  /\be2b_[A-Za-z0-9]{16,}\b/g,
-  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
-  /\bAKIA[0-9A-Z]{16}\b/g,
-  /\bAIza[0-9A-Za-z_-]{20,}\b/g,
-  /\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b/g,
-  /\bhf_[A-Za-z0-9]{30,}\b/g,
-  /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g,
-  /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g,
+  /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\b/g,
+  /\bsk-ant-[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\b/g,
+  /\be2b_[A-Za-z0-9]{16}[A-Za-z0-9]*\b/g,
+  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20}[A-Za-z0-9_]*\b/g,
+  /\bgithub_pat_[A-Za-z0-9_]{20}[A-Za-z0-9_]*\b/g,
+  /\bglpat-[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*/g,
+  /\bnpm_[A-Za-z0-9]{36}\b/g,
+  // Vercel personal, integration, app access, app refresh and API key tokens.
+  /\bvc[pciark]_[A-Za-z0-9]{24}[A-Za-z0-9]*\b/g,
+  /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g,
+  /\bAIza[0-9A-Za-z_-]{20}[0-9A-Za-z_-]*\b/g,
+  /\bya29\.[0-9A-Za-z_-]{20}[0-9A-Za-z_-]*/g,
+  /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16}[A-Za-z0-9]*\b/g,
+  /\bwhsec_[A-Za-z0-9]{24}[A-Za-z0-9]*\b/g,
+  /\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b/g,
+  /\bhf_[A-Za-z0-9]{30}[A-Za-z0-9]*\b/g,
+  /\bxox[abeoprs]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
+  /\bxapp-[0-9]-[A-Za-z0-9-]{20}[A-Za-z0-9-]*\b/g,
+  /\bhooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9_/-]{20}[A-Za-z0-9_/-]*/g,
+  // A JWT starts only where a token run starts, so a run of `eyJ-` repeated is read once.
+  /eyJ(?<![A-Za-z0-9_-]eyJ)[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{10}[A-Za-z0-9_-]*\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
-  /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
-  /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g,
-  /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g,
+  /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s"'<>\\]+:[^@/\s"'<>\\]+@[^\s"'<>\\]+/g,
+  /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20}[A-Za-z0-9._~+/=-]*/g,
+  /\bBearer\s+[A-Za-z0-9._~+/-]{24}[A-Za-z0-9._~+/-]*\b/g,
+  new RegExp(
+    String.raw`(?<keep>\bAuthorization${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE}Basic[ \t]{1,4})[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}`,
+    "gi",
+  ),
+  // The password in a URL's userinfo, any scheme, with or without a user name:
+  // https://user:password@host, https://:password@host.
+  new RegExp(
+    String.raw`(?<keep>\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/?#"'<>\\[\]]{0,256}:)${notAPlaceholder(USERINFO_END)}[^\s@/?#"'<>\\]{1,256}(?=@)`,
+    "gi",
+  ),
+  // A credential-named query or fragment parameter's value, up to the next delimiter, so a
+  // password with punctuation in it counts whole. `;` also follows an HTML `&amp;`.
+  new RegExp(
+    String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${notAPlaceholder(PARAMETER_END)}[^\s&#"'<>\\]{16}[^\s&#"'<>\\]*`,
+    "gi",
+  ),
+  // An Amazon Web Services secret access key next to its name, as a credentials file, an env
+  // line or a temporary-credentials JSON response writes it. The key is 40 characters, no prefix.
+  new RegExp(
+    String.raw`(?<keep>\b(?:aws_?)?secret_?access_?key${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_NUMBER}[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])`,
+    "gi",
+  ),
+  // A credential-named variable set to a value of 16 characters or more, up to the next space,
+  // quote or separator, with a digit and a letter in its first 256 characters. Words, placeholders
+  // such as humanish-egress-auth-placeholder and JSON numbers do not count. The lookaheads are
+  // bounded, so a long run of `TOKEN=` costs linear time.
+  new RegExp(
+    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${notAPlaceholder(VARIABLE_END)}${NOT_A_NUMBER}(?=[^\s"'\\,;&]{0,255}[0-9])(?=[^\s"'\\,;&]{0,255}[A-Za-z])[^\s"'\\,;&]{16}[^\s"'\\,;&]*`,
+    "g",
+  ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
   // key. One URL is exempt: E2B's dashboard, as the SDK's missing-key error names it
   // (https://e2b.dev/dashboard?tab=keys), with no userinfo, no path below /dashboard, no query but
@@ -40,6 +145,12 @@ const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_LOCAL_PATH]"],
   [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"],
+  // A Windows profile path, with `\`, `\\` (JSON-escaped) or `/` between segments. A match never
+  // ends in a backslash, so it cannot swallow the escape of a closing quote.
+  [
+    /\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:\\\\|\\|\/)[^\\/\s"'`<>)]+[^\s"'`<>)]*/g,
+    "[REDACTED_LOCAL_PATH]",
+  ],
 ];
 
 /** Every pattern containsSensitive tests. A test pins each to ASCII, which scanEncodedText relies on. */
@@ -54,11 +165,15 @@ function matchesPattern(pattern: RegExp, text: string): boolean {
   return pattern.test(text);
 }
 
+/** True if the text contains a secret-shaped token. Local paths do not count. */
+export function containsSecret(text: string): boolean {
+  return SECRET_PATTERNS.some((pattern) => matchesPattern(pattern, text));
+}
+
 /** True if the text contains any secret-shaped token or known local path. */
 export function containsSensitive(text: string): boolean {
   return (
-    SECRET_PATTERNS.some((pattern) => matchesPattern(pattern, text)) ||
-    LOCAL_PATH_PATTERNS.some(([pattern]) => matchesPattern(pattern, text))
+    containsSecret(text) || LOCAL_PATH_PATTERNS.some(([pattern]) => matchesPattern(pattern, text))
   );
 }
 
@@ -177,22 +292,27 @@ export function redactSandboxIds(value: unknown): unknown {
   return changed ? Object.fromEntries(entries) : value;
 }
 
-/** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
-export function redactText(text: string): string {
-  const withoutSecrets = SECRET_PATTERNS.reduce(
-    (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
+/** Each secret replaced by [REDACTED_SECRET], with the context a pattern keeps left in place. */
+function redactSecrets(text: string): string {
+  return SECRET_PATTERNS.reduce(
+    (current, pattern) =>
+      current.replace(pattern, (...args: unknown[]) => {
+        const groups = args.at(-1);
+        const keep = isRecord(groups) && typeof groups.keep === "string" ? groups.keep : "";
+        return `${keep}[REDACTED_SECRET]`;
+      }),
     text,
   );
-  return redactLocalPaths(withoutSecrets);
+}
+
+/** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
+export function redactText(text: string): string {
+  return redactLocalPaths(redactSecrets(text));
 }
 
 /** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */
 export function redactToSecretLabel(text: string): string {
-  const withoutSecrets = SECRET_PATTERNS.reduce(
-    (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
-    text,
-  );
-  return redactLocalPaths(withoutSecrets, "[REDACTED_SECRET]");
+  return redactLocalPaths(redactSecrets(text), "[REDACTED_SECRET]");
 }
 
 function canonicalizePath(value: string): string {

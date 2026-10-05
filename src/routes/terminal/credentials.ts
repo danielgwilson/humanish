@@ -1,15 +1,19 @@
-import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./runtime-auth.js";
+import {
+  DEFAULT_RUNTIME_AUTH,
+  E2B_SYSTEM_CA_BUNDLE,
+  OPENAI_EGRESS_PLACEHOLDER,
+} from "./runtime-auth.js";
 import type { StudyRuntimeAuth } from "../../study/types.js";
 import { TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA } from "./types.js";
 
 /**
- * Resolve the runtime key on the host. Legacy openai-env passes it command-scoped; openai-egress
- * returns an inert command env while retaining the actual value for the external transform and
- * literal redaction. Only CODEX_API_KEY/OPENAI_API_KEY are accepted as sources. No other operator
- * credential is forwarded. The real value must never be logged or persisted in either mode.
+ * Resolve the runtime key on the host. openai-egress, the default, returns an inert command env
+ * while retaining the actual value for the external transform and literal redaction; openai-env
+ * passes it command-scoped. Only CODEX_API_KEY/OPENAI_API_KEY are accepted as sources. No other
+ * operator credential is forwarded. The real value must never be logged or persisted in either mode.
  */
 export function buildRuntimeAuth(args: {
-  /** Undefined retains the historical openai-env default. */
+  /** Undefined selects openai-egress, so the raw key stays out of the sandbox unless a study opts in. */
   runtimeAuth: StudyRuntimeAuth | undefined;
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
@@ -68,7 +72,15 @@ export function buildRuntimeAuth(args: {
   // GITHUB_TOKEN/GH_TOKEN, no payment/deploy/db/media key, excluded by construction. When the
   // source was OPENAI_API_KEY, the same value is also injected as CODEX_API_KEY so codex exec's
   // documented single-invocation auth channel is populated either way (see the comment above).
-  const mode = args.runtimeAuth ?? "openai-env";
+  const mode: unknown = args.runtimeAuth ?? DEFAULT_RUNTIME_AUTH;
+  // Only the exact openai-env value places the raw key in the command, so a misspelled mode from a
+  // config that skipped the planner is refused, never read as openai-env.
+  if (mode !== "openai-egress" && mode !== "openai-env")
+    return {
+      ok: false,
+      code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
+      message: "Runtime auth must be openai-egress or openai-env; no key was placed.",
+    };
   const envs: Record<string, string> =
     mode === "openai-egress"
       ? // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA

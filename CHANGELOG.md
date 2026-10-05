@@ -35,11 +35,52 @@ The Unreleased section holds the full notes for the next version until it is tag
   then `verify`, `review` and `observe` on the printed run id. `watch` and the dry-run
   `feedback issue`, which refuses dry runs, are gone from it; the live run and feedback draft are
   marked live only.
+- A study URL that carries a credential is refused when the study is parsed, with
+  `HUMANISH_STUDY_INVALID`: a user name or password in `subject.appUrl`, `subject.serve.url`,
+  `subject.product.publicSurfaces` or a participant's `target` or `entry`, or a path, query or
+  fragment that `verify` flags, such as `x-vercel-protection-bypass=`, `_vercel_share=`, `token=`
+  or `access_token=` with a value of 16 characters or more, or a tab, line break or other control
+  character, which the URL parser drops. A run recorded such a URL as given,
+  and the participant's address bar showed it in every screenshot and model request. Remove the
+  credential from the URL; for a protected preview, open the deployment to the study or build the
+  app in the desktop with a clone subject. Ordinary parameters such as `?page=2` still parse. In a
+  library caller's config, which skips the parser, the computer-use, shared-world and terminal
+  planners refuse the same URLs (`HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE`,
+  `HUMANISH_SHARED_WORLD_INVALID`, `HUMANISH_TERMINAL_SUBJECT_INVALID`); the scripted route already
+  dropped a loopback URL's user info, query and fragment before recording it.
+- A terminal study that declares no `execution.runtimeAuth` now runs with `openai-egress`: the raw
+  OpenAI key stays in E2B's host-side proxy rule and Codex gets a placeholder. Under the old
+  default, `openai-env`, the key was in the Codex command's environment, where the agent and
+  everything it ran could read it. Declare `runtimeAuth: openai-env` to keep that placement, for
+  example for a custom OpenAI endpoint, which `openai-egress` does not support. Every sandbox
+  process can still spend through the proxy until teardown. A library caller's `runtimeAuth` other
+  than those two values is refused with `HUMANISH_TERMINAL_CREDENTIAL_DENIED`; it used to place the
+  raw key as `openai-env` does.
 
 ### Fixes
 
 - init sent M1 and M2 Macs to the local browser study, which needs an M3 or newer Mac and which
   doctor refuses on them. init now reads the chip name and leaves the local step out there.
+- `humanish verify` caught 13 of the 41 secret formats `tests/verify/secret-formats.test.ts` lists.
+  It now catches all 41, as written, percent-encoded or base64-encoded, including base64 in a URL
+  path segment. The additions: Vercel tokens and preview bypass and share parameters, the password
+  in a URL's user info, credential query and fragment parameters such as `token=`,
+  `access_token=` and `X-Amz-Signature=` up to the next delimiter, AWS secret access keys next to
+  their name, Google OAuth access tokens, Stripe test and webhook keys, Slack webhook URLs and app
+  tokens, basic `Authorization` values, npm, GitLab and SendGrid tokens, upper-case `*_TOKEN`,
+  `*_SECRET`, `*_PASSWORD` and `*_API_KEY` variables set to a long value with a digit and a letter,
+  quoted or not and also inside JSON strings, and Windows profile paths. A value that is only a
+  placeholder, such as `[REDACTED_SECRET]`, `${TOKEN}` or `<your-token>`, does not count; a value
+  that merely starts with `*` or `$` does. Redaction keeps the parameter or user name and replaces
+  the value: `?token=[REDACTED_SECRET]`.
+- A run file holding a token-shaped run of several megabytes, such as `sk-` or `Bearer ` followed
+  by 8 MB of letters, made `verify` and redaction throw `Maximum call stack size exceeded`, and so
+  did 8 MB of base64 or hex in verify's decoding stage. The patterns and the decoder now read such a
+  run in linear time.
+- `humanish observe --all --safe` served a `share_ready` run's `sandbox-receipts.ndjson`, which
+  holds the raw sandbox ids, and its `status.json`, which holds the recording process id, to
+  anyone the library admits, on a tunnel without edge auth too. No Observer server serves either
+  file now, in any mode; both answer as a missing file does.
 - A run interrupted during desktop startup no longer keeps the sandbox's raw id in its files. The
   signal killed the sandbox before its create returned, startup failed with an E2B error that
   quotes the id, and `run.json`, `events.ndjson`, `review.json`, `review.md` and

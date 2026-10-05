@@ -8,6 +8,7 @@ import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
 import { isNonEmpty, planBase } from "../../study/plan-base.js";
 import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../study/plan-types.js";
+import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import type { StudyConfig } from "../../study/types.js";
 import {
   desktopMediaValidationReason,
@@ -61,6 +62,15 @@ export function planTerminalStudy(
     );
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return refuse("HUMANISH_TERMINAL_SUBJECT_INVALID", mediaReason);
+  // A library caller's config skips the parser, which refuses these first.
+  const credential = studyUrlCredentialReason(config);
+  if (credential) return refuse("HUMANISH_TERMINAL_SUBJECT_INVALID", credential);
+  const runtimeAuth: unknown = config.execution?.runtimeAuth;
+  if (runtimeAuth !== undefined && runtimeAuth !== "openai-egress" && runtimeAuth !== "openai-env")
+    return refuse(
+      "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
+      "`execution.runtimeAuth` must be openai-egress or openai-env. Leave it out for openai-egress, which keeps the OpenAI key outside the sandbox.",
+    );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);

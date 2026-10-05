@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 
 import { readPlainText } from "./plain-text.js";
-import { containsSensitive } from "./redaction.js";
+import { containsSecret, containsSensitive } from "./redaction.js";
 
 // HTML5 named references that stand for printable ASCII. Letters and digits have only numeric
 // references, which decodeEscapes handles.
@@ -71,16 +71,13 @@ export function decodeEscapes(text: string): string {
 
 // Sixteen characters hold twelve bytes, enough for the start of a key. Shorter runs are mostly
 // words and identifiers.
-const BASE64_RUN = /[A-Za-z0-9+/]{16,}={0,2}/g;
+// Each open-ended repeat is written `[...]{n}[...]*`: V8 runs `{n,}` with a backtrack entry per
+// character and overflows its stack on a run of several megabytes.
+const BASE64_RUN = /[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}/g;
 // The URL-safe alphabet swaps `+/` for `-_`. Only runs that use `-` or `_` need this pass.
-const BASE64URL_RUN = /[A-Za-z0-9_-]{16,}={0,2}/g;
-// MIME and PEM wrap base64 at 64 or 76 characters a line. The lookbehind starts a match only at the
-// start of a run, and each lookahead-backreference pair takes a line whole, so a long unwrapped run
-// cannot backtrack.
-const WRAPPED_BASE64 =
-  /(?<![A-Za-z0-9+/])(?=([A-Za-z0-9+/]{16,}))\1(?:[ \t]*\r?\n[ \t]*(?=([A-Za-z0-9+/]{4,}))\2)+={0,2}/g;
+const BASE64URL_RUN = /[A-Za-z0-9_-]{16}[A-Za-z0-9_-]*={0,2}/g;
 // Hex-encoded text, at least sixteen bytes of it.
-const HEX_RUN = /(?:[0-9a-f]{2}){16,}/gi;
+const HEX_RUN = /[0-9a-f]{32}[0-9a-f]*/gi;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
 // this length. Across 173 real run folders surveyed on 2026-10-01, the longest such run outside
 // observer/index.html was a 69-character URL path in a terminal log; base64 of a 94-byte payload,
@@ -99,6 +96,58 @@ const ARCHIVE_MAGIC: readonly (readonly number[])[] = [
   [0x28, 0xb5, 0x2f, 0xfd],
 ];
 const CONTROL_CHARACTERS = /[\x00-\x08\x0b\x0c\x0e-\x1f]/;
+// A run such as `com/x/<base64>` from a URL path starts with segments that shift the alignment of
+// the base64 after them. A run up to this long is also decoded one slash-separated piece at a time,
+// and from just after each slash in its first SLASH_START_SPAN characters, for base64 that holds a
+// slash itself. Longer runs are images, fonts and archives, not URLs.
+const MAX_SLASH_START_RUN = 4096;
+const SLASH_START_SPAN = 64;
+
+function isBase64Code(code: number): boolean {
+  return (
+    (code >= 0x30 && code <= 0x39) ||
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x61 && code <= 0x7a) ||
+    code === 0x2b ||
+    code === 0x2f
+  );
+}
+
+/**
+ * Base64 that MIME and PEM wrap at 64 or 76 characters a line: a run of 16 or more characters that
+ * ends its line, then the leading run of 4 or more on each following line, for as long as a line
+ * holds nothing else. Read line by line, so a long wrapped block costs linear time and no regex
+ * stack.
+ */
+function wrappedBase64Runs(text: string): string[] {
+  const runs: string[] = [];
+  let current: string[] = [];
+  const flush = (): void => {
+    if (current.length > 1) runs.push(current.join(""));
+    current = [];
+  };
+  for (const raw of text.split("\n")) {
+    const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    let end = line.length;
+    while (end > 0 && (line[end - 1] === " " || line[end - 1] === "\t")) end -= 1;
+    let start = 0;
+    while (start < end && (line[start] === " " || line[start] === "\t")) start += 1;
+    if (current.length > 0) {
+      let lead = start;
+      while (lead < end && isBase64Code(line.charCodeAt(lead))) lead += 1;
+      if (lead - start >= 4) {
+        current.push(line.slice(start, lead));
+        if (lead === end) continue;
+      }
+      flush();
+    }
+    let tail = end;
+    while (tail > 0 && isBase64Code(line.charCodeAt(tail - 1))) tail -= 1;
+    if (end - tail >= 16) current = [line.slice(tail, end)];
+  }
+  flush();
+  return runs;
+}
 // Base64 inside base64 is read this many levels deep.
 const MAX_DEPTH = 2;
 
@@ -149,6 +198,17 @@ function decodeTransferEscapes(text: string): string {
     .replace(/=([0-9A-F]{2})/g, (match, hex: string) => codePoint(Number.parseInt(hex, 16), match));
 }
 
+/** How scanEncodedText reads text. */
+export interface EncodedTextScanOptions {
+  /** Do not count an encoded binary run as opaque. */
+  readonly allowOpaqueBase64?: boolean;
+  /** Match secret shapes only, leaving local paths out, as a URL's path may look like one. */
+  readonly secretsOnly?: boolean;
+}
+
+const matcherOf = (options: EncodedTextScanOptions): ((text: string) => boolean) =>
+  options.secretsOnly === true ? containsSecret : containsSensitive;
+
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
   readonly sensitive: boolean;
@@ -162,9 +222,10 @@ const SENSITIVE: EncodedTextScan = Object.freeze({ sensitive: true, opaque: fals
 function inspectDecoded(
   bytes: Buffer,
   run: string,
-  options: { allowOpaqueBase64?: boolean },
+  options: EncodedTextScanOptions,
   depth: number,
 ): EncodedTextScan {
+  const matches = matcherOf(options);
   if (startsWithArchive(bytes))
     return { sensitive: false, opaque: options.allowOpaqueBase64 !== true };
   const plain = readPlainText(bytes);
@@ -172,12 +233,10 @@ function inspectDecoded(
   if (inner !== undefined) {
     if (depth < MAX_DEPTH) return scanEncodedText(inner, options, depth + 1);
     const innerDecoded = decodeEscapes(inner);
-    return containsSensitive(inner) || (innerDecoded !== inner && containsSensitive(innerDecoded))
-      ? SENSITIVE
-      : CLEAN;
+    return matches(inner) || (innerDecoded !== inner && matches(innerDecoded)) ? SENSITIVE : CLEAN;
   }
   // A key next to a few binary bytes is still a printable stretch.
-  if (containsSensitive(printableStretches(bytes))) return SENSITIVE;
+  if (matches(printableStretches(bytes))) return SENSITIVE;
   return {
     sensitive: false,
     opaque:
@@ -195,37 +254,51 @@ function inspectDecoded(
  */
 export function scanEncodedText(
   text: string,
-  options: { allowOpaqueBase64?: boolean } = {},
+  options: EncodedTextScanOptions = {},
   depth = 0,
 ): EncodedTextScan {
+  const matches = matcherOf(options);
   const decoded = decodeEscapes(text);
   const expanded = decodeTransferEscapes(decoded);
   // A decoding that returns the same string would match the same way, so it is not matched again.
   if (
-    containsSensitive(text) ||
-    (decoded !== text && containsSensitive(decoded)) ||
-    (expanded !== decoded && containsSensitive(expanded))
+    matches(text) ||
+    (decoded !== text && matches(decoded)) ||
+    (expanded !== decoded && matches(expanded))
   )
     return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
+  // A piece or a run decoded from a slash only adds findings; its bytes are not judged opaque.
+  const slashStarts: Buffer[] = [];
   for (const [match] of expanded.matchAll(BASE64_RUN)) {
     // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
     if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
     runs.push({ run: match, bytes: Buffer.from(match, "base64") });
+    if (match.length > MAX_SLASH_START_RUN) continue;
+    for (const piece of match.split("/"))
+      if (piece.length >= 16 && piece.length < match.length)
+        slashStarts.push(Buffer.from(piece, "base64"));
+    for (
+      let slash = match.indexOf("/");
+      slash !== -1 && slash < SLASH_START_SPAN && match.length - slash > 16;
+      slash = match.indexOf("/", slash + 1)
+    )
+      slashStarts.push(Buffer.from(match.slice(slash + 1), "base64"));
   }
   for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
     if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
   }
-  for (const [match] of expanded.matchAll(WRAPPED_BASE64)) {
-    const run = match.replace(/\s+/g, "");
+  for (const run of wrappedBase64Runs(expanded))
     runs.push({ run, bytes: Buffer.from(run, "base64") });
-  }
   let opaque = false;
   for (const { run, bytes } of runs) {
     const result = inspectDecoded(bytes, run, options, depth);
     if (result.sensitive) return result;
     opaque ||= result.opaque;
   }
+  for (const bytes of slashStarts)
+    if (inspectDecoded(bytes, "", { ...options, allowOpaqueBase64: true }, depth).sensitive)
+      return SENSITIVE;
   for (const [match] of expanded.matchAll(HEX_RUN)) {
     const plain = readPlainText(Buffer.from(match, "hex"));
     if (plain.ok && depth < MAX_DEPTH && scanEncodedText(plain.text, options, depth + 1).sensitive)
@@ -237,7 +310,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 1;
+const ENCODED_SCAN_VERSION = 2;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();
@@ -251,11 +324,12 @@ const scanCache = new Map<string, EncodedTextScan>();
  */
 export function scanEncodedTextCached(
   text: string,
-  options: { allowOpaqueBase64?: boolean } = {},
+  options: EncodedTextScanOptions = {},
 ): EncodedTextScan {
   const key = [
     ENCODED_SCAN_VERSION,
     options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
+    options.secretsOnly === true ? "secrets-only" : "secrets-and-paths",
     createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
   ].join(":");
   const cached = scanCache.get(key);
