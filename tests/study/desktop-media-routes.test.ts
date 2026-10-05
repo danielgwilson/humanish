@@ -7,7 +7,6 @@ import {
   desktopMediaValidationReason,
 } from "../../src/study/validation.js";
 import { parseStudy } from "../../src/study/config.js";
-import { declaresSharedWorld } from "../../src/study/study-fields.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { libraryConfig } from "../helpers/library-config.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
@@ -245,7 +244,7 @@ describe("declared camera capabilities must reach an implemented route", () => {
     try {
       // The config is valid for a hosted computer-use participant, and all shared-backend
       // structural checks pass. Rejection must come from the actual backend's media support.
-      expect(declaresSharedWorld(config)).toBe(false);
+      expect(config.route).not.toBe("shared-world");
       expect(desktopMediaValidationReason(config)).toBeUndefined();
       expect(concurrentSharedWorldValidationReason(config)).toBeNull();
       const result = await runSharedWorld({

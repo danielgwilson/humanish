@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { modeOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import { libraryLab, SCENARIO_YAML } from "../../admission/fixtures.js";
 import { runScripted } from "../../helpers/route-run.js";
@@ -89,7 +88,7 @@ describe("scripted admission order", () => {
       dirs.push(cwd);
       await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
       await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
-      const dryRun = modeOf(config) !== "live";
+      const dryRun = config.mode !== "live";
       const loadDesktopModule = async (): Promise<never> => {
         throw new Error("admission cases must not load a desktop module");
       };

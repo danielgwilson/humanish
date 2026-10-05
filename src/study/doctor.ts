@@ -27,7 +27,6 @@ import {
 } from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 import { cli } from "../cli/invocation.js";
-import { actorOf } from "./study-fields.js";
 
 type Check = DoctorCheckDraft;
 /**
@@ -252,7 +251,7 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
     {
       name: "study route",
       ok: true,
-      message: `${config.id}: ${actorOf(config)?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
+      message: `${config.id}: ${config.actor?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
   ];
   if (dryRun) return { desktop: false, keys: [], reads: new Set(), checks };
@@ -370,16 +369,16 @@ async function participantChecks(
   }
   if (
     (route !== "computer-use" && route !== "shared-world") ||
-    actorOf(config)?.type !== "local-agent"
+    config.actor?.type !== "local-agent"
   )
     return [];
-  const choice = actorOf(config)?.localAgent ?? "codex";
+  const choice = config.actor?.localAgent ?? "codex";
   const agent = args.agents.find((entry) => entry.id === choice);
   if (local) return [await localCodexParticipantCheck({ env: args.env, readiness: checkAccount })];
   // A signed-in hosted Codex gets the operator handshake; its sign-in status alone does not show
   // that the operator's config, release and model admit a launch.
   if (choice === "codex" && agent?.authStatus === "authenticated")
-    return [await hostedCodexParticipantCheck(args, actorOf(config))];
+    return [await hostedCodexParticipantCheck(args, config.actor)];
   const outdated = agent === undefined ? undefined : localAgentVersionRefusal(agent);
   return [
     {

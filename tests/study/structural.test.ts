@@ -6,7 +6,6 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf, scenarioRefOf, surfaceCount } from "../../src/study/study-fields.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
@@ -92,9 +91,9 @@ describe("lab config expressiveness (rung 3)", () => {
     if (!resolved.ok) return;
     // Every field in the committed example is consumed on this route: zero warnings.
     expect(resolved.warnings).toEqual([]);
-    expect(actorOf(resolved.config)?.type).toBe("scripted-browser");
-    expect(surfaceCount(resolved.config)).toBe(2);
-    expect(scenarioRefOf(resolved.config)).toBe("scripted-first-run");
+    expect(resolved.config.actor?.type).toBe("scripted-browser");
+    expect(resolved.config.surfaces?.length).toBe(2);
+    expect(resolved.config.scenario).toBe("scripted-first-run");
     expect(routeOf(resolved.config)).toBe("scripted");
 
     // The referenced committed scenario is genuinely executable (4 browser steps).

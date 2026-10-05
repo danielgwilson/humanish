@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { parseStudy } from "../../../src/study/config.js";
 import { planCliRun } from "../../../src/study/doctor.js";
 import { requiredKeys } from "../../../src/study/requirements.js";
-import { actorOf } from "../../../src/study/study-fields.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 
 const base = {
@@ -28,7 +27,7 @@ describe("local browser lab configuration", () => {
     const parsed = parseStudy(base);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(actorOf(parsed.config)).toMatchObject({ model: "gpt-6-astra", reasoningEffort: "low" });
+    expect(parsed.config.actor).toMatchObject({ model: "gpt-6-astra", reasoningEffort: "low" });
     expect(parsed.config).toMatchObject({
       review: { analysis: { provider: "codex" } },
       execution: { desktop: { resolution: [960, 720] } },

@@ -11,7 +11,6 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf } from "../../src/study/study-fields.js";
 import { routeOf } from "../../src/study/plan.js";
 import {
   computerUseParticipants,
@@ -190,7 +189,7 @@ describe("computerUseParticipants", () => {
         plain(lanes.participantRuns.map(fromSpec)),
       );
       for (const [index, participant] of participants.entries()) {
-        const declared = actorOf(config)?.mission;
+        const declared = config.actor?.mission;
         expect(participant.assignment.mission, name).toBe(declared);
         if (declared !== undefined)
           expect(lanes.participantRuns[index]?.evidenceAssignment?.mission, name).toBe(declared);

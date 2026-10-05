@@ -7,12 +7,7 @@ import {
 import type { StudyConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
-import {
-  actorOf,
-  participantList,
-  declaredParticipantCount,
-  scenarioRefOf,
-} from "./study-fields.js";
+import { participantList, declaredParticipantCount } from "./study-fields.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -69,25 +64,25 @@ const ACTOR_ROWS: readonly InertRow[] = [
   {
     field: "actor.mission",
     reason: "the scripted-browser actor runs no model",
-    applies: (config, routes) => scriptedRoute(routes) && Boolean(actorOf(config)?.mission),
+    applies: (config, routes) => scriptedRoute(routes) && Boolean(config.actor?.mission),
   },
   {
     field: "actor.model",
     reason: "the scripted-browser actor runs no model",
-    applies: (config, routes) => scriptedRoute(routes) && Boolean(actorOf(config)?.model),
+    applies: (config, routes) => scriptedRoute(routes) && Boolean(config.actor?.model),
   },
   // On every other route the prompt fields and persona are inert.
   {
     field: "actor.mission",
-    applies: (config, routes) => otherRoute(routes) && Boolean(actorOf(config)?.mission),
+    applies: (config, routes) => otherRoute(routes) && Boolean(config.actor?.mission),
   },
   {
     field: "actor.persona",
-    applies: (config, routes) => otherRoute(routes) && Boolean(actorOf(config)?.persona),
+    applies: (config, routes) => otherRoute(routes) && Boolean(config.actor?.persona),
   },
   {
     field: "actor.model",
-    applies: (config, routes) => otherRoute(routes) && Boolean(actorOf(config)?.model),
+    applies: (config, routes) => otherRoute(routes) && Boolean(config.actor?.model),
   },
 ];
 
@@ -264,7 +259,7 @@ const CONFIG_ROWS: readonly InertRow[] = [
   // everywhere else.
   {
     field: "scenario",
-    applies: (config, routes) => Boolean(scenarioRefOf(config)) && !routes.scripted,
+    applies: (config, routes) => Boolean(config.scenario) && !routes.scripted,
   },
   // review.{scoring,milestones,vocabulary} stay forward-declared on every route.
   // review.scorer is consumed (loaded + wired, or fail-closed at load) on every scorer-capable
