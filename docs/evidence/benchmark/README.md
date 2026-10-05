@@ -182,8 +182,11 @@ The 0.111.0 run's misses: two of three planted participants never typed more tha
 so they never met D2, and the third did not report it. The rubric matched no analysis line for D5,
 but two planted analyses name the Save defect in lines left unresolved for a person ("The plumber
 edit was not retained after repeated Save attempts", "Save left editing open; Enter finished the
-edit"), and one names D1 the same way; the analysis recall counts none of them. One planted
-report says Enter did not save an edit either, which the rubric counts as invented (B1).
+edit"), and one names D1 the same way; the analysis recall counts none of them. Read by hand
+before tagging, those three lines are D5, D5 and D1, which puts analysis recall at 11/15. The two
+clean-arm analyses that say the list was empty after a refresh are true: both builds hold tasks in
+memory. One planted report says Enter did not save an edit either, which the rubric counts as
+invented (B1); the same report's Save claim is D5.
 
 ## What these numbers are not
 
