@@ -8,7 +8,7 @@ import path from "node:path";
 import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import { loadAnalysis } from "../analysis/load.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
-import { isLocalOnlyRunFile } from "../run/local-only-files.js";
+import { isLocalOnlyRunFile, isLocalOnlyRunFileIdentity } from "../run/local-only-files.js";
 import { listRuns } from "../run/stored-runs.js";
 import { readAnalysisAccounting } from "../run/costs.js";
 import {
@@ -178,6 +178,10 @@ export async function serveRunPath(
     return;
   }
 
+  if (await isLocalOnlyRunFileIdentity(root, filePath)) {
+    writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+    return;
+  }
   try {
     const body = await readContainedFile(runRoot, filePath);
     if (!body) {

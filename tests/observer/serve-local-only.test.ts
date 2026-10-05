@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { serveObserverLibrary, type ServeLibraryOptions } from "../../src/observer/serve.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { isLocalOnlyRunFileIdentity } from "../../src/run/local-only-files.js";
 import { verifyRun } from "../../src/verify/verify.js";
 
 const RUN = "local-only-run";
@@ -76,5 +77,20 @@ describe.each(modes)("%s on a share_ready run", (_label, overrides) => {
       expect(response, file).toEqual(missing);
       expect(response.body.includes(RAW_ID), file).toBe(false);
     }
+  });
+});
+
+describe("isLocalOnlyRunFileIdentity", () => {
+  it("knows a local-only file by its inode, whatever the request spells", async () => {
+    const cwd = await shareReadyRunWithReceipts();
+    const runRoot = path.join(cwd, ".humanish", "runs", RUN);
+    expect(
+      await isLocalOnlyRunFileIdentity(runRoot, path.join(runRoot, "sandbox-receipts.ndjson")),
+    ).toBe(true);
+    expect(await isLocalOnlyRunFileIdentity(runRoot, path.join(runRoot, "status.json"))).toBe(true);
+    expect(await isLocalOnlyRunFileIdentity(runRoot, path.join(runRoot, "run.json"))).toBe(false);
+    expect(await isLocalOnlyRunFileIdentity(runRoot, path.join(runRoot, "missing.json"))).toBe(
+      false,
+    );
   });
 });
