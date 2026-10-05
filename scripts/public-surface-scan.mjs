@@ -24,11 +24,22 @@ const secretPatterns = [
   ["e2b_api_key", /\be2b_[A-Za-z0-9]{16,}\b/g],
   ["github_token", /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g],
   ["github_pat", /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g],
-  ["aws_access_key", /\bAKIA[0-9A-Z]{16}\b/g],
+  ["gitlab_token", /\bglpat-[A-Za-z0-9_-]{20,}/g],
+  ["npm_token", /\bnpm_[A-Za-z0-9]{36}\b/g],
+  ["vercel_token", /\bvc[pciark]_[A-Za-z0-9]{24,}\b/g],
+  ["aws_access_key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   ["google_api_key", /\bAIza[0-9A-Za-z_-]{20,}\b/g],
-  ["stripe_secret_key", /\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b/g],
+  ["google_oauth_token", /\bya29\.[0-9A-Za-z_-]{20,}/g],
+  ["stripe_secret_key", /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g],
+  ["stripe_webhook_secret", /\bwhsec_[A-Za-z0-9]{24,}\b/g],
+  ["sendgrid_api_key", /\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b/g],
   ["huggingface_token", /\bhf_[A-Za-z0-9]{30,}\b/g],
-  ["slack_token", /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g],
+  ["slack_token", /\bxox[abeoprs]-[A-Za-z0-9-]{20,}\b/g],
+  ["slack_app_token", /\bxapp-[0-9]-[A-Za-z0-9-]{20,}\b/g],
+  [
+    "slack_webhook_url",
+    /\bhooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9_/-]{20,}/g,
+  ],
   ["jwt_like_token", /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g],
   ["private_key_block", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
   [
@@ -37,6 +48,7 @@ const secretPatterns = [
   ],
   ["npm_auth_token", /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g],
   ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g],
+  ["basic_auth_header", /\bAuthorization["']?\s*[:=]\s*["']?Basic\s+[A-Za-z0-9+/]{16,}={0,2}/gi],
   // ngrok authtokens are two base62 chunks joined by "_"; require the literal
   // "authtoken" nearby so ordinary underscore-joined identifiers do not match.
   ["ngrok_authtoken", /\bauthtoken['":=\s]+[0-9A-Za-z]{20,}_[0-9A-Za-z]{18,}\b/gi],
