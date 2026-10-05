@@ -227,6 +227,16 @@ const NESTED_CREDENTIALS: readonly (readonly [string, string, string])[] = [
     TOKEN,
   ],
   [
+    "a URL with an ampersand in its user name, base64-encoded twice",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a stream URL with a tab in its password parameter name, base64-encoded twice",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://6080-${APP_HOST.slice(5)}/vnc.html?pass\tword=${STREAM_KEY}`).toString("base64url")).toString("base64url")}`,
+    STREAM_KEY,
+  ],
+  [
     "a URL with a quote in its password, base64-encoded in a parameter",
     `https://app.example.com/callback?state=${Buffer.from(`https://user:pa"ss${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
     TOKEN,

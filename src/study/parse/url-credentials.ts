@@ -125,18 +125,24 @@ function decoded(text: string): string {
 const HEX_VALUE = /^(?:[0-9a-f]{2}){16}(?:[0-9a-f]{2})*$/i;
 const BASE64_VALUE = /^[A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*={0,2}$/;
 
-/** The text a hex, base64 or base64url value decodes to, when it is text. */
-function encodedText(value: string): string[] {
+// Hex or base64 inside hex or base64 is read this many levels deep, as verify's scan reads it.
+const MAX_ENCODED_DEPTH = 2;
+
+/** The text a hex, base64 or base64url value decodes to, when it is text, and what that decodes to. */
+function encodedText(value: string, depth = 1): string[] {
   const bytes = [
     ...(HEX_VALUE.test(value) ? [Buffer.from(value, "hex")] : []),
     ...(BASE64_VALUE.test(value)
       ? [Buffer.from(value, /[-_]/.test(value) ? "base64url" : "base64")]
       : []),
   ];
-  return bytes.flatMap((decoded) => {
+  const texts = bytes.flatMap((decoded) => {
     const plain = readPlainText(decoded);
     return plain.ok ? [plain.text] : [];
   });
+  return depth < MAX_ENCODED_DEPTH
+    ? [...texts, ...texts.flatMap((text) => encodedText(text.trim(), depth + 1))]
+    : texts;
 }
 
 /**
