@@ -191,7 +191,9 @@ function checkScope(settings: TextPortSettings, state: TextPortState, expected: 
   // tab too and cannot say which tab is in front. The participant learns why, and can close the
   // other tab.
   if (pages.length !== 1)
-    throw new ComputerUseExecutorError("action_rejected", "not_dispatched", "extra_tab");
+    throw new ComputerUseExecutorError("action_rejected", "not_dispatched", {
+      reason: "extra_tab",
+    });
 }
 
 /**
@@ -256,11 +258,9 @@ async function runOperation<T>(
       !dispatched && stopped === undefined && isComputerUseExecutorError(error)
         ? error.reason
         : undefined;
-    throw new ComputerUseExecutorError(
-      code,
-      dispatched ? "outcome_uncertain" : "not_dispatched",
+    throw new ComputerUseExecutorError(code, dispatched ? "outcome_uncertain" : "not_dispatched", {
       reason,
-    );
+    });
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", abort);

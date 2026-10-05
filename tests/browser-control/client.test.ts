@@ -477,7 +477,7 @@ describe("browser control client and dispatcher", () => {
     const execute = vi
       .fn()
       .mockRejectedValueOnce(
-        new ComputerUseExecutorError("action_rejected", "not_dispatched", "extra_tab"),
+        new ComputerUseExecutorError("action_rejected", "not_dispatched", { reason: "extra_tab" }),
       )
       .mockResolvedValue(undefined);
     const f = setup({ executor: { observe: async () => observation(), execute } });

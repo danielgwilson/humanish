@@ -229,7 +229,9 @@ describe("browser control closed v1 protocol", () => {
       code: "action_rejected",
       disposition: "outcome_uncertain",
     });
-    const named = new ComputerUseExecutorError("action_rejected", "not_dispatched", "extra_tab");
+    const named = new ComputerUseExecutorError("action_rejected", "not_dispatched", {
+      reason: "extra_tab",
+    });
     expect(safeBrowserControlFailure(named, false)).toEqual({
       code: "action_rejected",
       disposition: "not_dispatched",

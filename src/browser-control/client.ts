@@ -144,7 +144,7 @@ function finishExchange(session: ClientSession): void {
       disposition !== "not_dispatched"
     )
       session.transport.close(code);
-    operation.reject(new ComputerUseExecutorError(code, disposition, reason));
+    operation.reject(new ComputerUseExecutorError(code, disposition, { reason }));
   }
 }
 

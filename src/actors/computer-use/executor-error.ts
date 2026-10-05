@@ -49,8 +49,9 @@ export class ComputerUseExecutorError extends Error {
   constructor(
     code: CuaExecutorErrorCode,
     disposition: CuaExecutorDisposition,
-    reason?: CuaRejectionReason,
+    details: { reason?: CuaRejectionReason | undefined } = {},
   ) {
+    const { reason } = details;
     if (
       !isCuaExecutorErrorCode(code) ||
       (disposition !== "not_dispatched" && disposition !== "outcome_uncertain") ||
