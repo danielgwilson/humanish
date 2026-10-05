@@ -131,6 +131,12 @@ export class FinishedRun {
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
   readonly paths: PreparedRunArtifactPaths;
+  /**
+   * A participant ran: a stream of the published bundle carries its actor trace. Every route
+   * writes one once a participant's session returns, so a run that failed before any session
+   * started (a refused E2B key) has none.
+   */
+  readonly participantsRan: boolean;
 
   constructor(
     key: typeof issueKey,
@@ -140,10 +146,12 @@ export class FinishedRun {
     outcome: RecordedOutcome,
     recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>,
     interrupted: () => boolean,
+    participantsRan: boolean,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
     this.paths = paths;
+    this.participantsRan = participantsRan;
     this.#observer = observer;
     this.#outcome = outcome;
     this.#recordFailure = recordFailure;
@@ -340,6 +348,7 @@ function runPublisher(args: {
       current,
       recordFailure,
       () => runStatus.interrupted,
+      bundle.streams.some((stream) => stream.actor !== undefined),
     );
   };
 

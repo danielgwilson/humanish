@@ -21,6 +21,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   When `runDisplay` reads a run as interrupted and a participant was still running, review now
   says the run was interrupted, by which signal, and how many participants have no verdict, in
   both its text and `--json` output. review.json on disk is unchanged.
+- A live run that failed before any participant started, such as one whose E2B key was refused,
+  printed "Participants finished; preparing analysis…". The line, and the `analysis-started` and
+  `analysis-finished` events behind it, now come only when a participant ran: a stream in the
+  published `run.json` carries an actor trace. The analysis outcome, such as `skipped because no
+participant left evidence`, is recorded and printed as before.
 
 ## 0.110.3: Ctrl-C at the watch prompt, review says analysis is off, E2B docs links kept (2026-10-05)
 

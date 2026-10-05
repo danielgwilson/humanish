@@ -11,7 +11,8 @@ export interface AnalysisInput {
   readonly deps?: Pick<StudyDeps, "analysis">;
   /** Cancels the analysis only. */
   readonly analysisSignal?: AbortSignal;
-  /** Receives analysis-started and analysis-finished. */
+  /** Receives analysis-started and analysis-finished, around the analysis of a run where a
+   *  participant ran. */
   readonly emit?: (event: StudyEvent) => void;
 }
 
@@ -80,8 +81,13 @@ export async function completeAutomaticAnalysis<
   const signal = input?.analysisSignal;
   let started = false;
   try {
-    input?.emit?.({ type: "analysis-started" });
-    started = true;
+    // The CLI prints "Participants finished" on analysis-started. A run where no participant ran
+    // (it failed before any session, such as at E2B login) still records its analysis outcome,
+    // but without the two events.
+    if (finished.participantsRan) {
+      input?.emit?.({ type: "analysis-started" });
+      started = true;
+    }
     try {
       await validatePreparedRunRootIdentity(prepared);
     } catch {
