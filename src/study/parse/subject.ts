@@ -10,6 +10,7 @@ import type {
   StudySubjectServe,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
+import { urlCredentialReason } from "./url-credentials.js";
 
 export function parseSubject(raw: unknown): { ok: true; value: StudySubject } | StudyParseFailure {
   if (!isRecord(raw)) {
@@ -266,6 +267,8 @@ function parseAppSubject(
   } else if (!isHttpUrl(appUrl)) {
     return invalid("`subject.appUrl` must be an http(s) URL.");
   }
+  const credential = urlCredentialReason("subject.appUrl", appUrl);
+  if (credential) return invalid(credential);
   subject.appUrl = appUrl;
   // publicTarget (external-public shared-world ownership attestation) is app-url-only. Shape it
   // here; its required-on-that-route semantics live in externalPublicSharedWorldValidationReason.
@@ -372,6 +375,10 @@ function parseProduct(raw: unknown): { ok: true; value: StudySubjectProduct } | 
       `subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`,
     );
   }
+  const surfaceCredential = publicSurfaces
+    .map((surface) => urlCredentialReason("subject.product.publicSurfaces", surface))
+    .find((reason) => reason !== undefined);
+  if (surfaceCredential) return invalid(surfaceCredential);
   return {
     ok: true,
     value: {
@@ -435,6 +442,8 @@ function parseServe(
       "`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost), because the app runs inside the sandbox.",
     );
   }
+  const credential = urlCredentialReason("subject.serve.url", url);
+  if (credential) return invalid(credential);
   const serve: StudySubjectServe = { start, url };
   const install = str(raw.install);
   if (install) serve.install = install;

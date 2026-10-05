@@ -1092,7 +1092,9 @@ describe("runScriptedBrowserLab", () => {
       const polluted =
         appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") +
         "?access_token=secret-token#private-fragment";
-      const config = scriptedConfig({ appUrl: polluted, count: 1, mode: "live" });
+      // The parser refuses this URL, so set it the way a library caller's config can.
+      const config = scriptedConfig({ appUrl, count: 1, mode: "live" });
+      config.subject = { ...config.subject, appUrl: polluted };
       config.review = { analysis: false };
       const outcome = await runStudyWith(
         config,

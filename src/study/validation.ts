@@ -6,6 +6,7 @@ import {
   rosterOf,
 } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
+import { urlCredentialReason } from "./parse/url-credentials.js";
 import { declaredTargets } from "./plan-participants.js";
 import {
   actorResolvesToComputerUse,
@@ -389,6 +390,8 @@ export function externalPublicSharedWorldValidationReason(config: StudyConfig): 
   if (!isHttpUrl(appUrl) || isLoopbackUrl(appUrl)) {
     return "An external-public shared-world study needs a public http(s) `subject.appUrl`, not a loopback URL. For an app you run locally, use a clone or local-tree subject, which humanish serves itself.";
   }
+  const credential = urlCredentialReason("subject.appUrl", appUrl);
+  if (credential) return credential;
   // The operator-ownership attestation (the counterpart of exposure: synthetic; you cannot claim
   // synthetic on a real site, but you must attest you own/operate it). Author-trust; unverifiable.
   if (config.subject.publicTarget?.authorized !== true) {
