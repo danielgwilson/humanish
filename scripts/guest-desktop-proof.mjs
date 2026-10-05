@@ -38,6 +38,7 @@ const driverModules = [
   "browser-control/protocol",
   "evidence/desktop-recording-types",
   "actors/computer-use/executor-error",
+  "actors/computer-use/executor-diagnostic",
   "actors/computer-use/speech",
   "evidence/frame-signature",
 ];

@@ -14,6 +14,7 @@ on:
       - src/browser-control/**
       - src/evidence/frame-signature.ts
       - src/actors/computer-use/executor-error.ts
+      - src/actors/computer-use/executor-diagnostic.ts
       - src/actors/computer-use/speech.ts
       - src/evidence/desktop-recorder.ts
       - src/evidence/desktop-recording-types.ts
@@ -40,6 +41,7 @@ on:
       - src/browser-control/**
       - src/evidence/frame-signature.ts
       - src/actors/computer-use/executor-error.ts
+      - src/actors/computer-use/executor-diagnostic.ts
       - src/actors/computer-use/speech.ts
       - src/evidence/desktop-recorder.ts
       - src/evidence/desktop-recording-types.ts
