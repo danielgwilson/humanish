@@ -105,6 +105,38 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(automaticAnalysisBudget(false, route)).toBeUndefined();
   });
+  it("starts no analysis and prints no analysis line for a run a signal interrupted", async () => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    const finished = await publishRun(cwd, "interrupted", {
+      shape: asLiveRecording,
+      interruptedBy: "SIGINT",
+    });
+    expect(finished.interrupted).toBe(true);
+    const run = vi.fn();
+    const writeErr = vi.fn();
+    const { onEvent } = cliAnalysisOptions({ writeErr });
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "interrupted", dryRun: false, ok: false },
+      finished,
+      config,
+      { deps: { analysis: { run } }, emit: onEvent! },
+    );
+    expect(result.automaticAnalysis).toEqual({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED",
+    });
+    expect(run).not.toHaveBeenCalled();
+    expect(writeErr).not.toHaveBeenCalled();
+    const bundle = JSON.parse(
+      await readFile(path.join(finished.paths.physicalRunRoot, "run.json"), "utf8"),
+    ) as { outcome?: { state?: string } };
+    expect(bundle.outcome?.state).toBe("interrupted");
+  });
+  it("a run that finished before any signal is not marked interrupted", async () => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    const finished = await publishRun(cwd, "finished", { shape: asLiveRecording });
+    expect(finished.interrupted).toBe(false);
+  });
   it("false bypasses every lifecycle hook even for a finalized live result", async () => {
     const original = { cwd, runId: "opted-out", dryRun: false, ok: true };
     const finished = await publishRun(cwd, "opted-out");
