@@ -23,6 +23,8 @@ import {
 import {
   exitCodeForSignal,
   formatObserverHuman,
+  personAtTerminal,
+  unattendedObserverWarning,
   type WatchStopSignal,
 } from "../observer-follow.js";
 
@@ -40,6 +42,10 @@ export function registerObserveCommand(parent: Command, io: CliIo): void {
       .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
       .option("--open", "Open the Observer in the default browser.")
       .option("--no-open", "Serve without opening a browser.")
+      .option(
+        "--serve",
+        "Serve one run until Ctrl-C even without an interactive terminal; by default an agent's shell or a pipe gets the Observer path and an exit.",
+      )
       .option("--json", JSON_OPTION_DESCRIPTION),
   )
     .addHelpText(
@@ -59,6 +65,8 @@ export function registerObserveCommand(parent: Command, io: CliIo): void {
         "The server binds 127.0.0.1 only. One run exposes just that run's bundle directory; --all",
         "serves the run library. It stays attached until Ctrl-C; file:// security policy and live",
         "refresh are why loopback http is preferred over opening the index.html path directly.",
+        "Without an interactive terminal, as in an agent's shell or a pipe, observe for one run",
+        "prints the Observer path and exits; --serve keeps it serving.",
         "",
         "--safe, --expose, --tunnel, --tunnel-domain, --oauth, --allow-email, --allow-domain and",
         "--public-url need --all. Exposure only ever happens through an authenticated edge (ngrok",
@@ -115,6 +123,7 @@ function addLibraryOptions(command: Command): Command {
 interface ObserveOptions extends Omit<ServeOptions, "run"> {
   all?: boolean;
   run?: string;
+  serve?: boolean;
 }
 
 /** The library flags set on a one-run observe, as typed on the command line. */
@@ -163,7 +172,7 @@ async function handleObserve(io: CliIo, options: ObserveOptions, command: Comman
 /** One run's Observer over loopback, until a signal stops it. */
 async function observeRun(
   io: CliIo,
-  options: { cwd: string; open?: boolean; port: string; run: string },
+  options: { cwd: string; open?: boolean; port: string; run: string; serve?: boolean },
   command: Command,
 ): Promise<void> {
   const port = parseObserverPort(options.port);
@@ -190,9 +199,20 @@ async function observeRun(
     return;
   }
 
+  const wantsMachine = wantsJson(command);
+  if (options.serve !== true && !personAtTerminal()) {
+    // Nobody can press Ctrl-C here, so a server would wait forever: print the path and exit.
+    const result: ObserverResult = {
+      ...rendered,
+      warnings: [...rendered.warnings, unattendedObserverWarning("observe")],
+    };
+    writeResult(command, io, result, formatObserverHuman);
+    io.setExitCode(0);
+    return;
+  }
+
   // Reuse the contained current-data projection, scoped to this run. A raw static
   // server would miss runtime status and could replay stored iframe grants.
-  const wantsMachine = wantsJson(command);
   const shouldOpen =
     options.open === false
       ? false

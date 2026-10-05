@@ -18,6 +18,7 @@ import { listRuns } from "../run/stored-runs.js";
 import { plural } from "../run/text.js";
 import { supportsLocalBrowser } from "./first-run-path.js";
 import { PRODUCT_SENTENCE } from "./product-sentence.js";
+import { cli } from "./invocation.js";
 
 export const ORIENTATION_SCHEMA = "humanish.orientation.v1" as const;
 
@@ -109,7 +110,7 @@ function nextCommandsFor(args: {
       ? []
       : [
           {
-            command: "humanish migrate --dry-run",
+            command: cli("migrate --dry-run"),
             why: `${plural(v2, "study file")} ${v2 === 1 ? "uses" : "use"} humanish.lab.v2, which humanish no longer reads; this lists the conversion, and humanish migrate writes it`,
           },
         ]),
@@ -117,12 +118,12 @@ function nextCommandsFor(args: {
       ? []
       : [
           {
-            command: "humanish study list",
+            command: cli("study list"),
             why: `${plural(moved, "study file")} ${moved === 1 ? "is" : "are"} in a labs/ directory, which humanish no longer reads; this names each one and the studies/ directory to move it to`,
           },
         ]),
   ];
-  // A fix that is already `humanish study list` replaces the plain suggestion of the same command.
+  // A fix that is already `study list` replaces the plain suggestion of the same command.
   const named = new Set(fixes.map((fix) => fix.command));
   return [...fixes, ...nextCommandsForStudies(args).filter((next) => !named.has(next.command))];
 }
@@ -134,33 +135,34 @@ function nextCommandsForStudies(args: {
   host: { platform: NodeJS.Platform; arch: string };
 }): OrientationCommand[] {
   const dryRun = {
-    command: "humanish run first-run",
+    command: cli("run first-run"),
     why: "a dry run: no browser or model runs, no keys, no spend",
   };
   if (!args.initialized) {
     return [
       {
-        command: "humanish init --yes",
+        command: cli("init --yes"),
         why: "write starter studies, personas and an AGENTS.md (--dry-run lists every file first)",
       },
       dryRun,
     ];
   }
 
-  // The starter live study this host can run. The other starter studies are templates whose subject
-  // still names your-org/your-app, so they are never suggested.
+  // The starter live study this host can run: the hosted try-live study first, since it needs no
+  // local Docker or VM, then the local one where the host shape supports it. The other starter
+  // studies are templates whose subject still names your-org/your-app, so they are never suggested.
   const liveStudy = (
     supportsLocalBrowser(args.host.platform, args.host.arch)
-      ? ["local-browser", "try-live"]
+      ? ["try-live", "local-browser"]
       : ["try-live"]
   ).find((id) => args.studyIds.includes(id));
   if (!args.hasRun) {
     return [
       dryRun,
       liveStudy === undefined
-        ? { command: "humanish study list", why: "see the studies this project declares" }
+        ? { command: cli("study list"), why: "see the studies this project declares" }
         : {
-            command: `humanish doctor --study ${liveStudy}`,
+            command: cli(`doctor --study ${liveStudy}`),
             why: `check what the ${liveStudy} study still needs before a live run`,
           },
     ];
@@ -168,12 +170,12 @@ function nextCommandsForStudies(args: {
   return [
     ...(liveStudy === undefined
       ? []
-      : [{ command: `humanish run ${liveStudy}`, why: "run a real participant against an app" }]),
+      : [{ command: cli(`run ${liveStudy}`), why: "run a real participant against an app" }]),
     {
-      command: "humanish verify --run latest",
+      command: cli("verify --run latest"),
       why: "check the last run's evidence and public-safety gates",
     },
-    { command: "humanish observe --run latest", why: "reopen the last run's Observer" },
+    { command: cli("observe --run latest"), why: "reopen the last run's Observer" },
   ];
 }
 
@@ -205,6 +207,6 @@ export function formatOrientationHuman(state: OrientationState): string {
     lines.push(`      ${next.why}`);
   }
   lines.push("");
-  lines.push("`humanish --help` lists every command.");
+  lines.push(`\`${cli("--help")}\` lists every command.`);
   return `${lines.join("\n")}\n`;
 }

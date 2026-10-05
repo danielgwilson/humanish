@@ -35,6 +35,7 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
+import { cli } from "../invocation.js";
 
 export function registerInitCommand(parent: Command, io: CliIo): void {
   parent
@@ -368,7 +369,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
         names,
         message:
           names.length === 0
-            ? "The store is empty. Add a key with `humanish keys set <vendor>`."
+            ? `The store is empty. Add a key with \`${cli("keys set <vendor>")}\`.`
             : `${plural(names.length, "key name")} stored. Values are never printed.`,
       };
       writeResult(command, io, result, formatKeysHuman);
@@ -395,23 +396,28 @@ function formatInitHuman(result: InitResult): string {
   const title = result.ok ? `humanish init ${result.mode}` : `humanish init ${result.mode} blocked`;
   const lines = [title, `cwd: ${result.cwd}`];
   if (result.ok && result.mode === "applied") {
-    // A successful setup should leave its next action on the first terminal screen.
-    // Dry-runs and refusals retain their full plan; JSON always retains every change.
-    const counts = new Map<InitChange["action"], number>();
-    for (const change of result.changes) {
-      counts.set(change.action, (counts.get(change.action) ?? 0) + 1);
-    }
-    const labels: Record<InitChange["action"], string> = {
-      create: "created",
-      mkdir: "directories prepared",
-      update: "updated",
-      skip: "preserved",
-    };
-    lines.push(
-      "",
-      `changes: ${[...counts].map(([action, count]) => `${count} ${labels[action]}`).join(", ")}`,
-      "Use humanish init --dry-run --json to inspect all files.",
-    );
+    // Name each file init wrote, so the person or agent who ran it can review exactly those
+    // files; directories and preserved files are counts. JSON always carries every change.
+    const files = (action: InitChange["action"]) =>
+      result.changes.filter((change) => change.action === action && change.target !== "runtime");
+    const created = files("create");
+    const updated = files("update");
+    const preserved = result.changes.filter((change) => change.action === "skip").length;
+    const directories = result.changes.filter((change) => change.action === "mkdir").length;
+    lines.push("");
+    if (created.length > 0) lines.push("created:", ...created.map((change) => `  ${change.path}`));
+    if (updated.length > 0)
+      lines.push("updated:", ...updated.map((change) => `  ${change.path} (${change.reason})`));
+    if (created.length === 0 && updated.length === 0) lines.push("no files changed");
+    if (preserved > 0 || directories > 0)
+      lines.push(
+        [
+          ...(preserved > 0 ? [`${plural(preserved, "existing path")} unchanged`] : []),
+          ...(directories > 0
+            ? [`${plural(directories, "ignored directory", "ignored directories")} prepared`]
+            : []),
+        ].join(", "),
+      );
   } else {
     lines.push("", "changes:", ...result.changes.map(formatInitChange));
   }

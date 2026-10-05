@@ -34,6 +34,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 import { loadEnvFile } from "./env-file.js";
+import { cli } from "../cli/invocation.js";
 
 /** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
@@ -300,16 +301,16 @@ export interface KeySourceProbe {
 export function missingKeyHint(name: string): string {
   switch (name) {
     case "E2B_API_KEY":
-      return "run `e2b auth login`, or `humanish keys set e2b`";
+      return `run \`e2b auth login\`, or \`${cli("keys set e2b")}\``;
     case "GH_TOKEN":
     case "GITHUB_TOKEN":
-      return "run `gh auth login`, or `humanish keys set github`";
+      return `run \`gh auth login\`, or \`${cli("keys set github")}\``;
     case "OPENAI_API_KEY":
-      return "run `humanish keys set openai`";
+      return `run \`${cli("keys set openai")}\``;
     case "ANTHROPIC_API_KEY":
-      return "run `humanish keys set anthropic`";
+      return `run \`${cli("keys set anthropic")}\``;
     default:
-      return `run \`humanish keys set ${name}\``;
+      return `run \`${cli(`keys set ${name}`)}\``;
   }
 }
 

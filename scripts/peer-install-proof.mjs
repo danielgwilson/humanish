@@ -1,5 +1,6 @@
 // After build: the built CLI, installed in each place a user can install it, names the command that
-// adds the optional @e2b/desktop peer where Node will resolve it. Where humanish is installed is
+// adds the optional @e2b/desktop peer where Node will resolve it, and invokes humanish in its
+// suggested commands the way that install is reached. Where humanish is installed is
 // read from its own file's real path, so each case is a real copy of the package at that path,
 // with its dependencies linked in and no @e2b/desktop anywhere Node looks.
 import assert from "node:assert/strict";
@@ -55,10 +56,16 @@ function peerMessages(cwd, env) {
   const doctor = JSON.parse(humanish(cwd, env, "doctor").stdout);
   const sdk = doctor.checks.find((check) => check.name === "e2b desktop sdk");
   assert.match(sdk.message, /^optional peer @e2b\/desktop is not installed/, sdk.message);
+  // The missing-key row names the command that fills it, with this install's invocation.
+  const openai = doctor.checks.find((check) => check.name === "key OPENAI_API_KEY");
   // From the same directory, with the run found through --cwd: the advice follows the process's
   // own working directory.
   const reclaim = humanish(cwd, env, "reclaim", "--run", "proof-run", "--cwd", app);
-  return { doctor: sdk.message, reclaim: `${reclaim.stdout}\n${reclaim.stderr}` };
+  return {
+    doctor: sdk.message,
+    keyHint: openai.message,
+    reclaim: `${reclaim.stdout}\n${reclaim.stderr}`,
+  };
 }
 
 const both = "`npm i -D humanish @e2b/desktop` then `npx humanish run <study>`";
@@ -69,18 +76,22 @@ const cases = [
     packageDir: join(app, "node_modules", "humanish"),
     cwd: join(app, "packages", "site"),
     command: "`npm i -D --prefix ../.. @e2b/desktop`",
+    invocation: "npx humanish",
   },
   {
     name: "a pnpm workspace member that declares humanish when the root does not",
     packageDir: join(mono, "node_modules", ".pnpm", "humanish@0.0.0", "node_modules", "humanish"),
     cwd: join(mono, "packages", "web"),
     command: "`pnpm add -D @e2b/desktop`",
+    invocation: "npx humanish",
   },
   {
     name: "npm's npx cache",
     packageDir: join(base, "home", ".npm", "_npx", "4f1c2a", "node_modules", "humanish"),
     cwd: app,
     command: both,
+    // Pinned, so a stale global humanish on `PATH` does not answer the next command.
+    invocation: `npx humanish@${manifest.version}`,
   },
   {
     name: "npm's global root",
@@ -88,12 +99,14 @@ const cases = [
     cwd: app,
     env: { npm_config_prefix: join(base, "global") },
     command: "`npm i -g @e2b/desktop`",
+    invocation: "humanish",
   },
   {
     name: "another project",
     packageDir: join(base, "tools", "node_modules", "humanish"),
     cwd: app,
     command: both,
+    invocation: "npx humanish",
   },
   {
     // A global prefix set only in .npmrc, run from inside it: nothing declares what its
@@ -102,6 +115,7 @@ const cases = [
     packageDir: join(base, "opt", "lib", "node_modules", "humanish"),
     cwd: join(base, "opt", "lib"),
     command: `In your project's directory, run ${both}`,
+    invocation: "npx humanish",
   },
   {
     // npm installs into the nearest directory above that holds package.json or node_modules.
@@ -109,12 +123,14 @@ const cases = [
     packageDir: join(base, "opt", "lib", "node_modules", "humanish"),
     cwd: join(base, "opt", "lib", "studies"),
     command: `In your project's directory, run ${both}`,
+    invocation: "npx humanish",
   },
   {
     name: "a global prefix set in the user's .npmrc",
     packageDir: join(base, "npmrc-global", "lib", "node_modules", "humanish"),
     cwd: app,
     command: "`npm i -g @e2b/desktop`",
+    invocation: "humanish",
   },
 ];
 
@@ -141,10 +157,14 @@ try {
     join(app, ".humanish", "runs", "proof-run", "sandbox-receipts.ndjson"),
     `${JSON.stringify({ at: "t", laneId: "lane-01", provider: "e2b", ["sandbox" + "Id"]: "fake-proof" })}\n`,
   );
-  for (const { name, packageDir, cwd, env = {}, command } of cases) {
+  for (const { name, packageDir, cwd, env = {}, command, invocation } of cases) {
     await moveTo(packageDir);
     const messages = peerMessages(cwd, env);
     assert.ok(messages.doctor.includes(command), `${name}: doctor said ${messages.doctor}`);
+    assert.ok(
+      messages.keyHint.includes(`\`${invocation} keys set openai\``),
+      `${name}: doctor's key row said ${messages.keyHint}`,
+    );
     // Only this project or npm's own global root gets a command that installs into it.
     if (command.includes(both))
       assert.doesNotMatch(messages.doctor, /`npm i -D (?:--prefix [./]+ )?@e2b/);

@@ -10,6 +10,31 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- `humanish watch` and `humanish observe` (one run) print the result and the Observer path and
+  exit 0 when nobody is at a terminal: stdin or stdout is not a terminal, or an agent runner
+  (Claude Code or Codex) is named in the environment. At a person's terminal they still serve
+  until Ctrl-C. `--serve` keeps serving without a terminal; `observe --all` always serves.
+  `watch --expose` without a terminal needs `--serve`.
+- `humanish init` lists `run try-live` as its live next step when an E2B key and a provider key or
+  signed-in Codex or Claude Code allow it. `doctor --study local-browser` is listed only where a
+  quick host check passes (Linux x64 with `/dev/kvm`, `/dev/net/tun` and `docker` on `PATH`, or an
+  M3-or-newer Mac) and Codex is signed in.
+- Suggested commands use one invocation, chosen from where humanish is installed: `npx humanish`
+  in a project, `npx humanish@<version>` from an npx cache, and `humanish` for a global install.
+  init's next steps, its `AGENTS.md` section, doctor's rows and key hints, review and analysis
+  next lines, reclaim hints and the bare `humanish` screen use it.
+- init's `AGENTS.md` section ends with `<!-- /humanish:agents-guide -->`. A rerun of init replaces
+  the section between its markers and leaves the rest of the file byte for byte. A section from
+  0.59.0 to 0.110.1, which has no end marker, is replaced when it matches what that release wrote;
+  an edited one is left as it is, with a warning.
+- init no longer writes `humanish/coverage-map.md`, `humanish/coverage-matrix.md`,
+  `humanish/scenarios/onboarding-regression.yaml` or `humanish/studies/lobby-trivia-3player.yaml`.
+  Nothing read the first three. The lobby example stays in the humanish repository, and the public
+  lobby page links it. init's output names each file it created or updated.
+- The skill's First Proof Run block runs to completion for an agent: `doctor`, `run first-run`,
+  then `verify`, `review` and `observe` on the printed run id. `watch` and the dry-run
+  `feedback issue`, which refuses dry runs, are gone from it; the live run and feedback draft are
+  marked live only.
 - A study URL that carries a credential is refused when the study is parsed, with
   `HUMANISH_STUDY_INVALID`: a user name or password in `subject.appUrl`, `subject.serve.url`,
   `subject.product.publicSurfaces` or a participant's `target` or `entry`, or a path, query or
@@ -34,8 +59,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- `humanish verify` caught 12 of the 38 secret formats `tests/verify/secret-formats.test.ts` lists.
-  It now catches all 38, as written, percent-encoded or base64-encoded, including base64 in a URL
+- init sent M1 and M2 Macs to the local browser study, which needs an M3 or newer Mac and which
+  doctor refuses on them. init now reads the chip name and leaves the local step out there.
+- `humanish verify` caught 13 of the 41 secret formats `tests/verify/secret-formats.test.ts` lists.
+  It now catches all 41, as written, percent-encoded or base64-encoded, including base64 in a URL
   path segment. The additions: Vercel tokens and preview bypass and share parameters, the password
   in a URL's user info, credential query and fragment parameters such as `token=`,
   `access_token=` and `X-Amz-Signature=` up to the next delimiter, AWS secret access keys next to

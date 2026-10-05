@@ -17,6 +17,7 @@ import {
   usesLima,
   type RuntimeHostOptions,
 } from "./runtime-host.js";
+import { cli } from "../../cli/invocation.js";
 
 export interface LocalRuntimeRelease {
   url: string;
@@ -125,7 +126,7 @@ export async function localRuntimeStatus(
       installed: false,
       message: lima
         ? "Docker is unavailable inside the humanish Lima host. Check limactl shell humanish-runtime -- sudo systemctl status docker; Docker Desktop is not used."
-        : "Docker is unavailable. Install/start Docker Engine and give your account access, then run humanish runtime setup.",
+        : `Docker is unavailable. Install/start Docker Engine and give your account access, then run ${cli("runtime setup")}.`,
     };
   }
   const release = runtimeRelease(options);
@@ -152,8 +153,7 @@ export async function localRuntimeStatus(
       : {
           ok: true,
           installed: false,
-          message:
-            "Local runtime will download before the first live run. Run humanish runtime setup to prepare it now.",
+          message: `Local runtime will download before the first live run. Run ${cli("runtime setup")} to prepare it now.`,
         };
   }
   const image = images[0];
@@ -209,7 +209,7 @@ export async function prepareLocalRuntime(
     const response = await fetch(release.url, { signal });
     if (!response.ok || !response.body)
       throw new Error(
-        `Runtime download failed (HTTP ${response.status}). Run humanish runtime setup to retry.`,
+        `Runtime download failed (HTTP ${response.status}). Run ${cli("runtime setup")} to retry.`,
       );
     let bytes = 0;
     const hash = createHash("sha256");
@@ -236,7 +236,7 @@ export async function prepareLocalRuntime(
     const after = await localRuntimeStatus(options);
     if (!after.assets)
       throw new Error(
-        "Downloaded runtime did not provide the expected image. Run humanish runtime setup to retry.",
+        `Downloaded runtime did not provide the expected image. Run ${cli("runtime setup")} to retry.`,
       );
     return after.assets;
   } finally {

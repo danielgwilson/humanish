@@ -25,6 +25,7 @@ import { digest, fail, finalize } from "./preflight-result.js";
 import type { StudyConfig } from "./types.js";
 import { rosterOf } from "./parse/actors.js";
 import { plural } from "../run/text.js";
+import { cli } from "../cli/invocation.js";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 // Room on the probe's lease for desktop boot and teardown around the work it does.
@@ -333,7 +334,7 @@ async function settlePreflightJournal(
   if (!gone) {
     await abandonPreflightJournal(journal).catch(() => undefined);
     ctx.warnings.push(
-      `The preflight sandbox's receipt stays in .humanish/preflight/${journal.id}; run \`humanish reclaim --preflight\` to kill it by id.`,
+      `The preflight sandbox's receipt stays in .humanish/preflight/${journal.id}; run \`${cli("reclaim --preflight")}\` to kill it by id.`,
     );
     return;
   }

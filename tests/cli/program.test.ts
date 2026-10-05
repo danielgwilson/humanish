@@ -364,7 +364,7 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
-  it("keeps the next action visible after setup while JSON and dry-run retain the file inventory", async () => {
+  it("names each file setup wrote and keeps the next action on one screen", async () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }),
@@ -374,10 +374,20 @@ describe("humanish CLI scaffold", () => {
         expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
         const applied = await runCli(["init", "--yes", "--cwd", cwd]);
         expect(applied.exitCode).toBe(0);
-        const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
-        expect(firstScreen).toContain("humanish run first-run");
-        expect(firstScreen).toContain("a dry run: no browser or model runs");
-        expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
+        const lines = applied.stdout.trimEnd().split("\n");
+        expect(lines.length).toBeLessThanOrEqual(24);
+        const created = lines.slice(lines.indexOf("created:") + 1, lines.indexOf("updated:"));
+        expect(created).toEqual(
+          expect.arrayContaining([
+            "  AGENTS.md",
+            "  .gitignore",
+            "  humanish/personas/synthetic-new-user.yaml",
+            "  humanish/studies/try-live.yaml",
+          ]),
+        );
+        expect(lines.find((line) => line.startsWith("  package.json"))).toBeDefined();
+        const next = lines.slice(lines.indexOf("next:"));
+        expect(next[1]).toBe("  humanish run first-run");
         const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
         expect(JSON.parse(details.stdout).changes).toContainEqual(
           expect.objectContaining({
@@ -1527,12 +1537,14 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   it("refuses a live watch --expose --tunnel ngrok with no edge auth (edge auth is required)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       // No --json: --json would trip the live-follow refusal first; here we isolate the edge-auth gate.
+      // --serve stands in for a person at a terminal, which the test runner is not.
       const result = await runCli([
         "watch",
         "cua-live",
         "--cwd",
         cwd,
         "--no-open",
+        "--serve",
         "--expose",
         "--tunnel",
         "ngrok",
@@ -1553,6 +1565,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         "--cwd",
         cwd,
         "--no-open",
+        "--serve",
         "--expose",
         "--safe",
       ]);
@@ -1583,9 +1596,9 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     });
   });
 
-  it("refuses watch --expose --dry-run and --detach (no live desktop / no attached follow)", async () => {
+  it("refuses watch --expose with --dry-run, --detach, or no terminal and no --serve", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
-      for (const extra of [["--dry-run"], ["--detach"]]) {
+      for (const extra of [["--dry-run"], ["--detach"], []]) {
         const result = await runCli([
           "watch",
           "cua-live",

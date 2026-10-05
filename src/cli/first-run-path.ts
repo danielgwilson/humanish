@@ -42,10 +42,21 @@ export interface FirstRunEnvironment {
   hasProviderKey: boolean;
   /** The coding agents already signed in locally: Codex, Claude Code, or both. */
   localAgents: readonly SignedInAgent[];
-  /** Host shape only; `doctor --study local-browser` owns exact read-only readiness. */
+  /**
+   * init's quick read of this host for a local browser study: Linux x64 with `/dev/kvm`,
+   * `/dev/net/tun` and Docker,
+   * or an M3-or-newer Mac. Undefined when it was not read. `doctor --study local-browser` owns the
+   * full check.
+   */
+  localBrowserHost?: LocalBrowserHost;
+  /** Host shape only, for the prerequisites a local step names. */
   platform?: NodeJS.Platform;
-  arch?: string;
+  /** How a suggested command invokes humanish; `npx humanish` when unset. */
+  humanish?: string;
 }
+
+/** Whether this host passed init's quick checks for a local browser study, and why not. */
+export type LocalBrowserHost = { ok: true } | { ok: false; reason: string };
 
 export type FirstRunActor = "openai-computer-use" | "local-agent";
 
@@ -72,13 +83,7 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
   return starterActorFor(env) === "local-agent" ? preferredAgent(env)?.id : undefined;
 }
 
-/**
- * How each hint invokes the CLI. \`npx humanish\` works from a project install and from an npx cache;
- * a dev-dependency install puts no \`humanish\` on \`PATH\`, so a bare name can reach a stale global one.
- */
-const HUMANISH = "npx humanish";
-
-/** Hosts that run local browser studies: Linux x64 and Apple Silicon Macs. */
+/** Host shapes the local browser route is built for: Linux x64 and Apple Silicon Macs. */
 export function supportsLocalBrowser(
   platform: NodeJS.Platform | undefined,
   arch: string | undefined,
@@ -94,77 +99,95 @@ export interface FirstRunStep {
 }
 
 /**
- * The next one or two commands, in order. Deliberately short: a list of twelve options is the same
- * as no guidance, and the reader here has just been handed twenty files.
+ * The next two or three commands, in order: the dry run, the hosted try-live study when keys or a
+ * signed-in agent allow it, and the local browser study where this host passed its quick checks.
+ * Deliberately short: a list of twelve options is the same as no guidance, and the reader here has
+ * just been handed a directory of new files.
  */
 export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
+  const humanish = env.humanish ?? "npx humanish";
   const steps: FirstRunStep[] = [
     {
-      command: `${HUMANISH} run first-run`,
+      command: `${humanish} run first-run`,
       why: "a dry run: no browser or model runs, no keys, no spend",
     },
   ];
-
-  if (supportsLocalBrowser(env.platform, env.arch)) {
-    const prerequisites =
-      env.platform === "darwin"
-        ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
-        : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
-    steps.push({
-      command: `${HUMANISH} doctor --study local-browser`,
-      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`${HUMANISH} runtime setup\` to prepare it, then start your app and run \`${HUMANISH} run local-browser\`; no E2B or model API key`,
-    });
-    return steps;
+  const local = localBrowserStep(env, humanish);
+  const hostedRunnable = env.hasE2bKey && (env.hasProviderKey || env.localAgents.length > 0);
+  if (hostedRunnable) {
+    steps.push(hostedStep(env, humanish, ""));
+    if (local !== undefined) steps.push(local);
+  } else if (local !== undefined) {
+    steps.push(local);
+  } else {
+    steps.push(hostedStep(env, humanish, localUnavailableNote(env)));
   }
-  const localUnavailable =
-    env.platform === undefined
-      ? ""
-      : " Local browsers are unavailable on this host; they support Linux x64 or M3-or-newer Apple Silicon Macs.";
-
-  if (!env.hasE2bKey) {
-    steps.push({
-      command: `${HUMANISH} keys set e2b`,
-      why: `the hosted starter needs an E2B desktop.${localUnavailable}`,
-    });
-    return steps;
-  }
-
-  if (env.hasProviderKey || env.localAgents.length > 0) {
-    const brain = env.hasProviderKey
-      ? "your provider key"
-      : `${preferredAgent(env)?.label} (already signed in, so no API key is needed)`;
-    // Everything the step needs, in one line. Splitting it across two commands means the second
-    // one fails, which is the same dead end this guidance exists to remove.
-    if (!env.hasDesktopSdk && env.desktopPeerCommand === undefined) {
-      steps.push({
-        command: `${HUMANISH} doctor`,
-        why: "the hosted starter needs the desktop SDK, and installing it from here would remove what this directory's node_modules holds; doctor names the command to run from your project's directory",
-      });
-      return steps;
-    }
-    const command = env.hasDesktopSdk
-      ? `${HUMANISH} run try-live`
-      : `${env.desktopPeerCommand} && ${HUMANISH} run try-live`;
-    steps.push({
-      command,
-      why:
-        `a live study: one participant drives a real app in a hosted desktop, using ${brain}` +
-        (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)") +
-        (!env.hasProviderKey
-          ? "; automatic findings analysis is skipped without OPENAI_API_KEY"
-          : "") +
-        localUnavailable,
-    });
-    return steps;
-  }
-
-  steps.push({
-    command: `${HUMANISH} keys set openai`,
-    why:
-      "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the study to actor.type: local-agent" +
-      localUnavailable,
-  });
   return steps;
+}
+
+/** The local browser step, where the host passed init's checks and Codex is signed in. */
+function localBrowserStep(env: FirstRunEnvironment, humanish: string): FirstRunStep | undefined {
+  if (env.localBrowserHost?.ok !== true) return undefined;
+  if (!env.localAgents.some((agent) => agent.id === "codex")) return undefined;
+  const prerequisites =
+    env.platform === "darwin"
+      ? "native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
+      : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
+  return {
+    command: `${humanish} doctor --study local-browser`,
+    why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`${humanish} runtime setup\` to prepare it, then start your app and run \`${humanish} run local-browser\`; no E2B or model API key`,
+  };
+}
+
+/** Why the local route is not offered, appended to a key step so the reader knows it was considered. */
+function localUnavailableNote(env: FirstRunEnvironment): string {
+  const host = env.localBrowserHost;
+  if (host === undefined) return "";
+  if (!host.ok) return ` Local browser studies are unavailable on this host: ${host.reason}.`;
+  return " A local browser study also runs on this host once Codex is signed in (`codex login`).";
+}
+
+/** The hosted try-live step, or the key or setup step it still needs. */
+function hostedStep(env: FirstRunEnvironment, humanish: string, note: string): FirstRunStep {
+  if (!env.hasE2bKey) {
+    return {
+      command: `${humanish} keys set e2b`,
+      why: `the hosted starter needs an E2B desktop.${note}`,
+    };
+  }
+  if (!env.hasProviderKey && env.localAgents.length === 0) {
+    return {
+      command: `${humanish} keys set openai`,
+      why:
+        "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the study to actor.type: local-agent." +
+        note,
+    };
+  }
+  const brain = env.hasProviderKey
+    ? "your provider key"
+    : `${preferredAgent(env)?.label} (already signed in, so no API key is needed)`;
+  // Everything the step needs, in one line. Splitting it across two commands means the second
+  // one fails, which is the same dead end this guidance exists to remove.
+  if (!env.hasDesktopSdk && env.desktopPeerCommand === undefined) {
+    return {
+      command: `${humanish} doctor`,
+      why: "the hosted starter needs the desktop SDK, and installing it from here would remove what this directory's node_modules holds; doctor names the command to run from your project's directory",
+    };
+  }
+  // After the peer install, humanish is a dependency of this project, where `npx humanish` finds it.
+  const command = env.hasDesktopSdk
+    ? `${humanish} run try-live`
+    : `${env.desktopPeerCommand} && npx humanish run try-live`;
+  return {
+    command,
+    why:
+      `a live study: one participant drives a real app in a hosted desktop, using ${brain}` +
+      (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)") +
+      (!env.hasProviderKey
+        ? "; automatic findings analysis is skipped without OPENAI_API_KEY"
+        : "") +
+      note,
+  };
 }
 
 /** The block init prints after its changes. */
@@ -173,8 +196,11 @@ export function firstRunGuidance(env: FirstRunEnvironment): string[] {
   return ["", "next:", ...steps.flatMap((step) => [`  ${step.command}`, `      ${step.why}`])];
 }
 
-/** Lets init recognise its own section without rewriting a file someone else wrote. */
+/** Starts humanish's section of `AGENTS.md`, on its heading line. */
 export const AGENTS_SECTION_MARKER = "<!-- humanish:agents-guide -->";
+
+/** Ends humanish's section, so init can replace the section and nothing after it. */
+export const AGENTS_SECTION_END_MARKER = "<!-- /humanish:agents-guide -->";
 
 /**
  * What the next coding agent needs to know about humanish in this project.
@@ -183,8 +209,23 @@ export const AGENTS_SECTION_MARKER = "<!-- humanish:agents-guide -->";
  * read on arrival. Increasingly the thing that ran `humanish init` was itself an agent working for
  * someone, and the agent that shows up tomorrow finds a `humanish/` directory with no idea what it
  * is for. Deliberately short and command-first, because an agent acts on the commands it is given.
+ * Commands use `humanish`, the prefix init chose for where humanish is installed.
  */
-export function agentsSection(): string {
+export function agentsSection(humanish = "npx humanish"): string {
+  const commands: Array<[string, string]> = [
+    ["study list --json", "the studies in this project"],
+    ["run first-run --no-open", "dry run: no browser, model, keys, or spend"],
+    ["doctor --study try-live", "what the hosted starter study still needs"],
+    [
+      "run try-live --no-open",
+      "demo app study: E2B plus the selected participant's authentication",
+    ],
+    ["doctor --study local-browser", "local Docker/Firecracker + Codex-account readiness"],
+    ["run local-browser --no-open", "your loopback app; no E2B or model API key"],
+    ["verify --run <id> --json", "is the evidence share-safe"],
+    ["review --run <id>", "the run's outcome and its analysis findings"],
+  ];
+  const width = Math.max(...commands.map(([command]) => command.length));
   return [
     "",
     `## humanish ${AGENTS_SECTION_MARKER}`,
@@ -192,30 +233,28 @@ export function agentsSection(): string {
     "This project uses humanish: synthetic participants use the product and leave evidence.",
     "",
     "```bash",
-    "humanish doctor --study try-live  # requirements for the selected participant and analysis",
-    "humanish study list --json # the studies in this project",
-    "humanish run first-run     # dry run: no browser, model, keys, or spend",
-    "humanish doctor --study local-browser  # local Docker/Firecracker + Codex-account readiness",
-    "humanish run local-browser # your loopback app; no E2B or model API key",
-    "humanish run try-live      # demo app study: E2B plus the selected participant's authentication",
-    "humanish verify --run latest --json   # is the evidence share-safe",
-    "humanish review --run <id>  # the run's outcome and its analysis findings",
+    ...commands.map(([command, why]) => `${humanish} ${command.padEnd(width)}  # ${why}`),
     "```",
     "",
-    "- After a live run, run `humanish review --run <id>` (or `--json`) and report its findings to the",
-    "  person you are working for: each one's title, impact, confidence, recovery and cited captures.",
-    "  When it shows no findings, report its message and the command it names.",
+    `- After a live run, run \`${humanish} review --run <id>\` (or \`--json\`) and report its findings`,
+    "  to the person you are working for: each one's title, impact, confidence, recovery and cited",
+    "  captures. When it shows no findings, report its message and the command it names. Every run",
+    "  prints its id; `latest` moves with each run, dry runs included.",
     "- Studies are declared in `humanish/studies/*.yaml`. Edit `try-live.yaml`'s `subject` to point",
     "  at this project's own app once you have seen a run work.",
-    "- Configure the local study without editing YAML: `humanish init --yes --local-browser",
+    `- Configure the local study without editing YAML: \`${humanish} init --yes --local-browser`,
     '  http://127.0.0.1:3000 --local-mission "Complete the primary flow"` on first setup.',
     "- Evidence lands in gitignored `.humanish/runs/`. Never commit it, and never paste raw run",
-    "  bundles into an issue; `humanish feedback issue` writes a redacted, share-safe draft.",
-    "- `humanish tui` is for people and refuses to run in an agent session. Use the `--json`",
-    "  commands above instead, and tell the person you are working for that `humanish tui` exists.",
+    `  bundles into an issue; \`${humanish} feedback issue\` writes a redacted, share-safe draft.`,
+    `- \`${humanish} tui\` is for people and refuses to run in an agent session. Use the commands`,
+    "  above instead, and tell the person you are working for that the TUI exists.",
     "- A live run spends money. `caps.maxUsd` in each study caps estimated model spend: the run",
     "  stops before its next request once the estimate passes it, so the last request can go over, and",
     "  hosted desktop time is billed on top. Do not raise it without asking the person you are working for.",
+    `- \`${humanish} init --yes\` rewrites this section, between its two markers, to match the installed`,
+    "  humanish. Write your own notes outside it.",
+    "",
+    AGENTS_SECTION_END_MARKER,
     "",
   ].join("\n");
 }

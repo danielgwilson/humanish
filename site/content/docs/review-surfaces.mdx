@@ -66,7 +66,9 @@ never cropped to fill a wide tile.
 `humanish watch <study>` runs the study and keeps its viewer attached. The process
 that owns a hosted desktop can offer its live stream while it runs. `--no-open`
 keeps that attachment without launching a browser. `--json` is the machine-result
-path and does not keep an interactive stream server attached.
+path and does not keep an interactive stream server attached. Without an interactive
+terminal, as in a coding agent's shell or a pipe, `watch` and `observe` print the result
+and the Observer path and exit; `--serve` keeps the server attached there.
 
 `humanish observe --run <id>` opens an existing study without starting another. The
 TUI's **Open in Observer** action does the same through its session-owned loopback

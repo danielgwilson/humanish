@@ -120,13 +120,20 @@ describe("readOrientation", () => {
   const intelMac = { platform: "darwin" as const, arch: "x64" };
   const starterLabs = ["cua-browser", "first-run", "local-browser", "terminal-cli", "try-live"];
 
-  it("starts an initialized project with the preview, then the live starter lab this host runs", async () => {
+  it("starts an initialized project with the preview, then the hosted live starter study", async () => {
     dir = await projectWithLabs(starterLabs);
     const onLinux = (await readOrientation(dir, linux)).nextCommands.map((next) => next.command);
-    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --study local-browser"]);
-    // Local browsers run on Linux x64 and Apple Silicon only.
+    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --study try-live"]);
     const onIntelMac = (await readOrientation(dir, intelMac)).nextCommands.map((n) => n.command);
     expect(onIntelMac).toEqual(["humanish run first-run", "humanish doctor --study try-live"]);
+  });
+
+  it("falls back to the local starter study only on a host shape that runs it", async () => {
+    dir = await projectWithLabs(["first-run", "local-browser"]);
+    const onLinux = (await readOrientation(dir, linux)).nextCommands.map((next) => next.command);
+    expect(onLinux).toEqual(["humanish run first-run", "humanish doctor --study local-browser"]);
+    const onIntelMac = (await readOrientation(dir, intelMac)).nextCommands.map((n) => n.command);
+    expect(onIntelMac).toEqual(["humanish run first-run", "humanish study list"]);
   });
 
   it("never suggests a template lab whose subject is a placeholder", async () => {
@@ -142,7 +149,7 @@ describe("readOrientation", () => {
     const state = await readOrientation(dir, linux);
     expect(state.runCount).toBe(1);
     expect(state.nextCommands.map((next) => next.command)).toEqual([
-      "humanish run local-browser",
+      "humanish run try-live",
       "humanish verify --run latest",
       "humanish observe --run latest",
     ]);

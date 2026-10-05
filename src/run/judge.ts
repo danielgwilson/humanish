@@ -19,6 +19,7 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
 import type { ReviewSummary } from "./bundle.js";
+import { cli } from "../cli/invocation.js";
 
 export type Verdict = ReviewSummary["verdict"];
 
@@ -223,7 +224,7 @@ export function sandboxCleanupFailure(
 ): ExecutionFailure {
   return {
     kind: "sandbox-cleanup",
-    message: `${owner}: ${warning ?? "Sandbox release is unconfirmed."} ${recovery ?? `Reclaim it by recorded id with \`humanish reclaim --run ${runId}\`.`}`,
+    message: `${owner}: ${warning ?? "Sandbox release is unconfirmed."} ${recovery ?? `Reclaim it by recorded id with \`${cli(`reclaim --run ${runId}`)}\`.`}`,
   };
 }
 
