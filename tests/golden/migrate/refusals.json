@@ -879,7 +879,7 @@
     "name": "fails closed on local-app mis-config: fan-out count",
     "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: fan-out count",
     "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"openai-computer-use","count":2}],"scenario":{"mode":"live"}},
-    "refused": "it does not parse: Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
+    "refused": "it does not parse: Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Remove `participants`, or set `participants: 1`. For fan-out, use an app-url or clone subject on execution.target: e2b-desktop."
   },
   {
     "name": "fails closed on local-app mis-config: allowPublicTargets (no public target on this route)",

@@ -48,6 +48,16 @@ export interface StudyFront {
 
 type Parsed<T> = { ok: true; value: T } | StudyParseFailure;
 
+/** The refusal for a study with no `actor` object. */
+export const ACTOR_REQUIRED = "A study needs `actor:`, an object with at least `type`.";
+
+/** Why `route` is not a route a study can declare, or undefined when it is one. */
+export function routeNameReason(route: unknown): string | undefined {
+  return ROUTES.some((name) => name === route)
+    ? undefined
+    : `A study needs \`route:\`, one of ${ROUTES.join(", ")}.`;
+}
+
 /**
  * The checks a v3 document passes before its sections parse: no v2 key and no unknown key, a
  * route, a mode, an `actor` object, a scenario string, and the `participants`, `surfaces` and
@@ -66,15 +76,11 @@ export function readStudyFront(
   if (unknownKey) return invalid(unknownKey);
 
   const route = ROUTES.find((name) => name === raw.route);
-  if (route === undefined) {
-    return invalid(`A study needs \`route:\`, one of ${ROUTES.join(", ")}.`);
-  }
+  if (route === undefined) return invalid(routeNameReason(raw.route)!);
   if (raw.mode !== undefined && raw.mode !== "dry-run" && raw.mode !== "live") {
     return invalid("`mode` must be `dry-run` or `live`. Leave it out for a dry run.");
   }
-  if (!isRecord(raw.actor)) {
-    return invalid("A study needs `actor:`, an object with at least `type`.");
-  }
+  if (!isRecord(raw.actor)) return invalid(ACTOR_REQUIRED);
   if (raw.scenario !== undefined && typeof raw.scenario !== "string") {
     return invalid("`scenario` is a scenario id or a path to one, as a string.");
   }

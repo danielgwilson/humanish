@@ -470,7 +470,7 @@
   "local-app count 2": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out)."
+      "message": "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Remove `participants`, or set `participants: 1`. For fan-out, use an app-url or clone subject on execution.target: e2b-desktop."
     },
     "runStudy": {
       "runs": false,

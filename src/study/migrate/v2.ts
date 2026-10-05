@@ -62,6 +62,47 @@ export const V2_UNSUPPORTED_MESSAGE =
 
 type Raw = Record<string, unknown>;
 
+// The StudyConfig fields of humanish 0.110 and earlier, which a humanish.study.v3 config does not
+// have, each with where its value goes now. A library caller may still build a config with them.
+const V2_FIELDS: readonly { readonly present: (config: Raw) => boolean; readonly move: string }[] =
+  [
+    {
+      present: (config) => config.actors !== undefined,
+      move: "`actors[0]` is `actor`, and its `count`, `lanes`, `roster` and `laneFocus` are `participants` (`surfaces` on the scripted route)",
+    },
+    // A caller that moved `actors[0]` to `actor` as it was.
+    {
+      present: (config) =>
+        isRecord(config.actor) &&
+        ["count", "lanes", "roster", "laneFocus"].some(
+          (key) => (config.actor as Raw)[key] !== undefined,
+        ),
+      move: "`actor.count`, `actor.lanes`, `actor.roster` and `actor.laneFocus` are `participants` (`surfaces` on the scripted route)",
+    },
+    {
+      present: (config) => isRecord(config.scenario),
+      move: "`scenario.ref` is `scenario`, a string, `scenario.mode` is `mode` and `scenario.caps` is `caps`",
+    },
+    {
+      present: (config) => isRecord(config.execution) && config.execution.caps !== undefined,
+      move: "`execution.caps` is `caps`",
+    },
+    {
+      present: (config) => isRecord(config.subject) && config.subject.topology !== undefined,
+      move: "`subject.topology: shared-world` is `route: shared-world`",
+    },
+    {
+      present: (config) => config.personas !== undefined,
+      move: "`personas` has no field now; remove it",
+    },
+  ];
+
+/** Where each humanish 0.110 StudyConfig field a config still sets went; empty when it sets none. */
+export function v2FieldMoves(config: unknown): string[] {
+  if (!isRecord(config)) return [];
+  return V2_FIELDS.filter((field) => field.present(config)).map((field) => field.move);
+}
+
 type Read<T> = { ok: true; value: T } | { ok: false; message: string };
 
 /** `laneFocus`: the steer each of a counted group of participants gets. */

@@ -101,6 +101,21 @@ describe("participants", () => {
     expect(participantCount({ ...study, participants: [{}, {}] }, 5)).toBe(2);
   });
 
+  it("tells a local-app study with more than one participant what to change", () => {
+    const localApp = {
+      ...study,
+      subject: { source: "local-app", appUrl: "http://127.0.0.1:3000/" },
+      execution: { target: "local" },
+    };
+    const message =
+      "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Remove `participants`, or set `participants: 1`. For fan-out, use an app-url or clone subject on execution.target: e2b-desktop.";
+    expect(refusal({ ...localApp, participants: 2 })).toBe(message);
+    // A study that declares another route reaches the same check before the route comparison.
+    expect(
+      refusal({ ...localApp, route: "shared-world", participants: [{ id: "a" }, { id: "b" }] }),
+    ).toBe(message);
+  });
+
   it("refuses other keys on the object form", () => {
     expect(
       refusal({ ...study, participants: { count: 2, persona: "synthetic-new-user" } }),

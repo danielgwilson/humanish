@@ -187,7 +187,7 @@ function formatStudyShowHuman(result: StudyInspectResult): HumanOutput {
       `id: ${config.id}`,
       `subject: ${config.subject.source}`,
       ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
-      `actors: ${actorOf(config)?.type ?? ""}`,
+      `actor: ${actorOf(config)?.type ?? ""}`,
       ...(config.title ? [`title: ${config.title}`] : []),
       ...(config.description ? [`description: ${config.description}`] : []),
       ...(result.path ? [`path: ${result.path}`] : []),

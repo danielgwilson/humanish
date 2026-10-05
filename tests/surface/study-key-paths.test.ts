@@ -118,10 +118,7 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
     reason:
       "migrate's refusal of a v2 scripted clone with `subject.topology`, which `route: shared-world` also reaches",
   },
-  { file: "src/study/preflight.ts", path: "actors[0].lanes", reason: PREFLIGHT },
-  { file: "src/study/preflight.ts", path: "actors[0].lanes[].target", reason: PREFLIGHT },
   { file: "src/study/preflight.ts", path: "subject.product.publicSurface", reason: PREFLIGHT },
-  { file: "src/study/preflight-probes.ts", path: "actors[0].lanes[].target", reason: PREFLIGHT },
 ];
 
 function sourceFiles(dir: string): string[] {

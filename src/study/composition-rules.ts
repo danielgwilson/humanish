@@ -102,7 +102,7 @@ function localAppValidationReason(config: StudyConfig): string | null {
       return `actor.type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
     }
     if (computerUseParticipantCount(config) > 1) {
-      return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set participants to 1 and drop participants (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
+      return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Remove `participants`, or set `participants: 1`. For fan-out, use an app-url or clone subject on execution.target: e2b-desktop.";
     }
     if (participantList(config) !== undefined) {
       return "`participants` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";

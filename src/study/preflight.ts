@@ -27,7 +27,7 @@ export interface StudyPreflightTarget {
   label: string;
   kind:
     | "subject.appUrl"
-    | "actors[0].lanes[].target"
+    | "participants[].target"
     | "subject.serve.url"
     | "subject.product.publicSurface";
   targetDigest: string;
@@ -213,7 +213,7 @@ function collectTargets(config: StudyConfig): StudyPreflightTarget[] {
   for (const [index, entry] of (participantList(config) ?? []).entries()) {
     if (entry.target) {
       targets.push(
-        makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", entry.target),
+        makeTarget(`participants[${index}].target`, "participants[].target", entry.target),
       );
     }
   }
