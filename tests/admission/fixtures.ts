@@ -151,7 +151,7 @@ export function lab(base: BaseName, patch: Patch = {}, actorPatch?: Patch): RawL
 
 /**
  * libraryConfig of a base manifest as a mutable record. The route admission-order tests edit it in
- * the v2 shape a library caller can still pass until PR 8, including shapes a v3 file cannot hold.
+ * the v2 shape a library caller can still pass, including shapes a v3 file cannot hold.
  */
 export function libraryLab(base: BaseName): RawLab {
   return libraryConfig(lab(base)) as unknown as RawLab;
