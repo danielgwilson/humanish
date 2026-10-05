@@ -11,6 +11,8 @@ import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import type { AnalysisArtifact, LoadedAnalysis } from "../analysis/types.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { resolvePhysicalCwd, runIdOf } from "../run/paths.js";
+import { studyProvenanceOf, type RunStudyProvenance } from "../run/study-provenance.js";
+import { resolveStudyManifest } from "../study/discover.js";
 import { plural } from "../run/text.js";
 import { shellQuote } from "../substrates/shell.js";
 import { analysisOutcomeText, type CliIo, wantsJson } from "./io.js";
@@ -100,6 +102,11 @@ interface FindingsSource {
   loaded: LoadedAnalysis;
   /** ` --cwd <dir>` when the commands this view names need it, or "". */
   cwdFlag: string;
+  /**
+   * The project-relative path of the run's study file when that file sets `review.analysis:
+   * false`, read when the view is built. Undefined when it does not, or cannot be read.
+   */
+  analysisOffIn?: string;
 }
 
 /** ` --cwd <dir>`, or "" when `cwd` is the current directory. */
@@ -301,6 +308,14 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       "This run's analysis records could not be read or checked, so no findings are shown.",
       cli(`analyze list --run ${source.runId}${source.cwdFlag}`),
     );
+  if (source.analysisOffIn !== undefined)
+    return withoutFindings(
+      source,
+      "skipped",
+      "AUTOMATIC_ANALYSIS_DISABLED",
+      `Analysis is turned off in this run's study (review.analysis: false in ${source.analysisOffIn}), so none ran after the run. To analyze this run anyway, run the next command.`,
+      analyzeCommand(source, undefined),
+    );
   return withoutFindings(
     source,
     "none",
@@ -308,6 +323,21 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
     "No analysis has run for this run.",
     analyzeCommand(source, undefined),
   );
+}
+
+/**
+ * The run's study file, project-relative, when it still names the same study and sets
+ * `review.analysis: false`. A study that turns analysis off leaves no analysis record, so the file
+ * is the only place that says why a live run has none.
+ */
+async function studyAnalysisOff(
+  cwd: string,
+  study: RunStudyProvenance | undefined,
+): Promise<string | undefined> {
+  if (study?.path === undefined) return undefined;
+  const resolved = await resolveStudyManifest(cwd, study.path).catch(() => null);
+  if (!resolved?.ok || resolved.config.id !== study.id) return undefined;
+  return resolved.config.review?.analysis === false ? study.path : undefined;
 }
 
 /**
@@ -323,12 +353,17 @@ export async function readRunAnalysis(
   const prepared = await resolveRunPath(physical, run).catch(() => null);
   if (!prepared) return null;
   const bundle = await loadRunBundlePrepared(physical, prepared).catch(() => null);
+  const analysisOffIn =
+    bundle?.bundle.mode === "live"
+      ? await studyAnalysisOff(physical, studyProvenanceOf(bundle.bundle))
+      : undefined;
   return {
     runId: runIdOf(prepared),
     mode: bundle?.bundle.mode,
     runRoot: prepared.relativeRunRoot,
     loaded: await loadAnalysis(prepared, analysisId),
     cwdFlag: cwdFlag(cwd),
+    ...(analysisOffIn === undefined ? {} : { analysisOffIn }),
   };
 }
 

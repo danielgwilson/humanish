@@ -147,6 +147,51 @@ describe("humanish review on an analyzed live run", () => {
   });
 });
 
+describe("humanish review on a live run with no analysis record", () => {
+  /** A first-run bundle marked live, as a run whose study left no analysis record. */
+  async function liveRunWithoutAnalysis(analysisOff: boolean) {
+    const cwd = await makeTestTempDir("humanish-review-off-");
+    await runCli(["init", "--yes", "--cwd", cwd]);
+    const study = path.join(cwd, "humanish", "studies", "first-run.yaml");
+    if (analysisOff)
+      await writeFile(study, `${await readFile(study, "utf8")}review:\n  analysis: false\n`);
+    const run = JSON.parse((await runCli(["run", "first-run", "--cwd", cwd, "--json"])).output) as {
+      runId: string;
+    };
+    const runJson = path.join(cwd, ".humanish", "runs", run.runId, "run.json");
+    const bundle = JSON.parse(await readFile(runJson, "utf8")) as RunBundle;
+    expect(bundle.study?.path).toBe("humanish/studies/first-run.yaml");
+    await writeFile(runJson, JSON.stringify({ ...bundle, mode: "live" }, null, 2) + "\n");
+    return { cwd, runId: run.runId };
+  }
+
+  it("says the study turns analysis off, and offers analyze only as the way to run it anyway", async () => {
+    const { cwd, runId } = await liveRunWithoutAnalysis(true);
+    const json = JSON.parse(
+      (await runCli(["review", "--run", runId, "--cwd", cwd, "--json"])).output,
+    );
+    expect(json.analysis).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_DISABLED",
+      next: expect.stringMatching(new RegExp(`analyze --run ${runId} `)),
+      findings: [],
+    });
+    expect(json.analysis.message).toContain(
+      "review.analysis: false in humanish/studies/first-run.yaml",
+    );
+    const human = await runCli(["review", "--run", runId, "--cwd", cwd]);
+    expect(human.output).not.toContain("No analysis has run");
+  });
+
+  it("still says no analysis has run when the study leaves analysis on", async () => {
+    const { cwd, runId } = await liveRunWithoutAnalysis(false);
+    const json = JSON.parse(
+      (await runCli(["review", "--run", runId, "--cwd", cwd, "--json"])).output,
+    );
+    expect(json.analysis).toMatchObject({ state: "none", reason: null });
+  });
+});
+
 describe("humanish analyze show", () => {
   it("prints the findings as text by default and the raw analysis record only with --json", async () => {
     const { cwd, outcome } = await analyzedRun();
