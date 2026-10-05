@@ -14,6 +14,12 @@ type Raw = Record<string, unknown>;
 const TOKEN = synthetic(ALNUM, 32, 7);
 const BYPASS = `${"x-vercel-protection" + "-bypass"}=${TOKEN}`;
 const SHARE = `${"_vercel" + "_share"}=${TOKEN}`;
+// An E2B app host, `<port>-<sandbox id>.e2b.app`, with an id built at run time.
+const sandboxHost = (port: number, seed: number): string =>
+  `${port}-${synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, seed)}.${"e2b"}.app`;
+const APP_HOST = sandboxHost(3000, 11);
+const OTHER_HOST = sandboxHost(8025, 12);
+const STREAM_KEY = synthetic(ALNUM, 16, 13);
 
 const publicStudy = (appUrl: string, extra: Raw = {}): Raw => ({
   schema: STUDY_SCHEMA,
@@ -105,6 +111,253 @@ describe("study URLs with credentials", () => {
   ])("parses an ordinary query string: %s", (appUrl) => {
     const result = parseStudy(publicStudy(appUrl));
     expect(result.ok).toBe(true);
+  });
+});
+
+// A credential in or beside an E2B URL nested in a study URL: [label, URL, secret it must not echo].
+const NESTED_CREDENTIALS: readonly (readonly [string, string, string])[] = [
+  [
+    "a stream URL whose auth key rides its password parameter",
+    `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?autoconnect=true&resize=scale&password=${STREAM_KEY}`)}`,
+    STREAM_KEY,
+  ],
+  [
+    "an E2B URL with a password in its user info",
+    `https://app.example.com/?next=${encodeURIComponent(`https://user:${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "an E2B URL with a user name alone",
+    `https://app.example.com/?next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "an E2B URL as written with a user name alone",
+    `https://app.example.com/?next=https://${TOKEN}${"@"}${APP_HOST}/`,
+    TOKEN,
+  ],
+  [
+    "an E2B URL with a password that holds an ampersand",
+    `https://app.example.com/#next=https://user:pass&${TOKEN}${"@"}${APP_HOST}/`,
+    TOKEN,
+  ],
+  [
+    "an E2B URL with a user name longer than 256 characters",
+    `https://app.example.com/?next=${encodeURIComponent(`https://${TOKEN.repeat(9)}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "a stream URL with an encoded password parameter name",
+    `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?%70assword=${STREAM_KEY}`)}`,
+    STREAM_KEY,
+  ],
+  [
+    "a URL with a quote in its user info",
+    `https://app.example.com/?next=${encodeURIComponent(`https://user:pass"${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone in a path segment",
+    `https://app.example.com/redirect/${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone in a fragment route's query",
+    `https://app.example.com/#/callback?next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone, encoded twice",
+    `https://app.example.com/?next=${encodeURIComponent(encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`))}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone in a fragment parameter",
+    `https://app.example.com/#next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone written whole in the fragment",
+    `https://app.example.com/#https://${TOKEN}${"@"}${APP_HOST}/?view=compact`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone written whole in the path",
+    `https://app.example.com/redirect/https://${TOKEN}${"@"}${APP_HOST}/`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone in a base64 state parameter",
+    `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ returnTo: `https://${TOKEN}${"@"}${APP_HOST}/` })).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone, hex-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://${TOKEN}${"@"}${APP_HOST}/`).toString("hex")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with a user name alone, base64-encoded twice in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://${TOKEN}${"@"}${APP_HOST}/`).toString("base64")).toString("base64")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an apostrophe in its password, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://user:p4ss'${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a token parameter whose = is an HTML character reference",
+    `https://app.example.com/?token&#61;${TOKEN}`,
+    TOKEN,
+  ],
+  [
+    "a stream URL whose password parameter name holds an encoded tab",
+    `https://app.example.com/?next=${encodeURIComponent(`https://6080-${APP_HOST.slice(5)}/vnc.html?pass\tword=${STREAM_KEY}`)}`,
+    STREAM_KEY,
+  ],
+  [
+    "a URL with an ampersand in its user name, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an ampersand in its user name, hex-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("hex")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an ampersand in its user name, base64-encoded twice",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an ampersand in its user name, base64-encoded twice after other parameters",
+    `https://app.example.com/callback?code=1&scope=read&state=${Buffer.from(Buffer.from(`https://reader&${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a stream URL with a tab in its password parameter name, base64-encoded twice",
+    `https://app.example.com/callback?state=${Buffer.from(Buffer.from(`https://6080-${APP_HOST.slice(5)}/vnc.html?pass\tword=${STREAM_KEY}`).toString("base64url")).toString("base64url")}`,
+    STREAM_KEY,
+  ],
+  [
+    "a stream URL with a tab in its password parameter name, in base64-encoded text",
+    `https://app.example.com/callback?state=${Buffer.from(`open https://6080-${APP_HOST.slice(5)}/vnc.html?autoconnect=true&pass\tword=${STREAM_KEY}`).toString("base64url")}`,
+    STREAM_KEY,
+  ],
+  [
+    "a URL with a quote in its password, base64-encoded in a parameter",
+    `https://app.example.com/callback?state=${Buffer.from(`https://user:pa"ss${TOKEN}${"@"}${APP_HOST}/`).toString("base64url")}`,
+    TOKEN,
+  ],
+  [
+    "a URL with an apostrophe in its user info",
+    `https://app.example.com/?next=${encodeURIComponent(`https://o'hare:${TOKEN}${"@"}${APP_HOST}/`)}`,
+    TOKEN,
+  ],
+  [
+    "an E2B URL with a token parameter",
+    `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}/invite?token=${TOKEN}`)}`,
+    TOKEN,
+  ],
+  ["an E2B API key", `https://${APP_HOST}/?key=${"e2b" + "_"}${TOKEN}`, TOKEN],
+  ["a token parameter on an E2B host", `https://${APP_HOST}/?token=${TOKEN}`, TOKEN],
+  [
+    "a signed URL signature",
+    `https://bucket.example.com/a.png?X-Amz-Signature=${synthetic("0123456789abcdef", 64, 14)}`,
+    "",
+  ],
+  ["a preview bypass parameter on an E2B host", `https://${APP_HOST}/?${BYPASS}`, TOKEN],
+];
+
+describe("study URLs that name an E2B sandbox", () => {
+  it.each([
+    [
+      "its own URL, percent-encoded, as a sign-in return address",
+      `https://${APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${APP_HOST}`)}`,
+    ],
+    [
+      "another sandbox's URL as written in a parameter",
+      `https://${APP_HOST}/sign-in?inbox=https://${OTHER_HOST}/messages`,
+    ],
+    [
+      "an E2B URL in a parameter of a host off E2B",
+      `https://app.example.com/sign-in?return=${encodeURIComponent(`https://${APP_HOST}/home`)}`,
+    ],
+    [
+      "an E2B URL, then an address, in the fragment",
+      `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}`)}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
+      "an E2B URL in the fragment",
+      `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
+    ],
+    [
+      "an E2B URL, then a parameter that holds an address",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
+      "an E2B URL, then a time and an address",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&time=${encodeURIComponent("12:34")}&email=${encodeURIComponent(["reader", "example.com"].join("@"))}`,
+    ],
+    [
+      "an E2B URL with a port, then an address as written",
+      `https://app.example.com/?origin=${encodeURIComponent(`https://${APP_HOST}:3000`)}&email=${["reader", "example.com"].join("@")}`,
+    ],
+    [
+      "an E2B URL, then a mailto link",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${APP_HOST}`)}&contact=${encodeURIComponent(`mailto:${["reader", "example.com"].join("@")}`)}`,
+    ],
+    [
+      "a base64 JSON state with an E2B URL and an address",
+      `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ next: `https://${APP_HOST}`, email: ["reader", "example.com"].join("@") })).toString("base64url")}`,
+    ],
+    [
+      "a percent-encoded JSON state with an E2B URL and an address",
+      `https://app.example.com/callback?state=${encodeURIComponent(JSON.stringify({ next: `https://${APP_HOST}`, email: ["reader", "example.com"].join("@") }))}`,
+    ],
+    [
+      "the E2B docs page, then another parameter",
+      `https://app.example.com/?next=${encodeURIComponent("https://docs.e2b.dev/api-key")}&view=compact`,
+    ],
+    [
+      "an E2B URL inside a base64 state parameter",
+      `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ returnTo: `https://${APP_HOST}/home` })).toString("base64url")}`,
+    ],
+  ])("parses subject.appUrl with %s", (_label, appUrl) => {
+    const result = parseStudy(publicStudy(appUrl));
+    expect(result.ok ? "parsed" : result.error.message).toBe("parsed");
+  });
+
+  it.each(NESTED_CREDENTIALS)(
+    "refuses subject.appUrl with %s in it as a credential",
+    (_label, appUrl, secret) => {
+      const message = refusal(publicStudy(appUrl));
+      expect(message).toMatch(
+        /^`subject\.appUrl` carries a credential in its path, query or fragment/,
+      );
+      if (secret !== "") expect(message).not.toContain(secret);
+    },
+  );
+
+  it("refuses user info on an E2B host as a user name or password", () => {
+    const message = refusal(publicStudy(`https://user:${TOKEN}${"@"}${APP_HOST}/`));
+    expect(message).toMatch(/^`subject\.appUrl` has a user name or password in it/);
+  });
+
+  it("parses a participant target that names an E2B sandbox", () => {
+    const result = parseStudy(
+      publicStudy(`https://${APP_HOST}/`, {
+        participants: [
+          {
+            id: "a",
+            target: `https://${OTHER_HOST}/sign-in?origin=${encodeURIComponent(`https://${OTHER_HOST}`)}`,
+          },
+        ],
+      }),
+    );
+    expect(result.ok ? "parsed" : result.error.message).toBe("parsed");
   });
 });
 

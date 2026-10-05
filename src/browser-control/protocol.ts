@@ -4,8 +4,10 @@ import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
 import {
   ComputerUseExecutorError,
+  CUA_REJECTION_REASONS,
   isComputerUseExecutorError,
   type CuaExecutorErrorCode,
+  type CuaRejectionReason,
 } from "../actors/computer-use/executor-error.js";
 import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
 
@@ -230,6 +232,7 @@ const replySchema = z.discriminatedUnion("ok", [
     error: z.strictObject({
       code: errorCode,
       disposition: z.enum(["not_dispatched", "outcome_uncertain"]),
+      reason: z.enum(CUA_REJECTION_REASONS).optional(),
     }),
   }),
 ]);
@@ -267,6 +270,9 @@ export function parseBrowserControlReply(value: unknown): BrowserControlReply {
   const reply = parsed.data;
   if (
     (reply.operation === "EXECUTE") !== (reply.actionId !== undefined) ||
+    (!reply.ok &&
+      reply.error.reason !== undefined &&
+      (reply.error.code !== "action_rejected" || reply.error.disposition !== "not_dispatched")) ||
     (reply.ok &&
       ((reply.operation === "OBSERVE") !== (reply.observation !== undefined) ||
         (reply.operation === "FINISH_RECORDING") !== (reply.recording !== undefined)))
@@ -379,9 +385,17 @@ export function decodeBrowserControlObservation(value: unknown): CuaObservation 
 export function safeBrowserControlFailure(
   error: unknown,
   dispatched: boolean,
-): { code: CuaExecutorErrorCode; disposition: "not_dispatched" | "outcome_uncertain" } {
+): {
+  code: CuaExecutorErrorCode;
+  disposition: "not_dispatched" | "outcome_uncertain";
+  reason?: CuaRejectionReason;
+} {
   if (isComputerUseExecutorError(error))
-    return { code: error.code, disposition: error.disposition };
+    return {
+      code: error.code,
+      disposition: error.disposition,
+      ...(error.reason === undefined ? {} : { reason: error.reason }),
+    };
   return {
     code: "action_rejected",
     disposition: dispatched ? "outcome_uncertain" : "not_dispatched",

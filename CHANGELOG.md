@@ -23,6 +23,55 @@ The Unreleased section holds the full notes for the next version until it is tag
   as `supplied by process env`, so a participant read it as a key it could use. doctor now says
   the value is the sandbox placeholder and that no usable key is available, and key discovery no
   longer counts the placeholder as a key.
+- A Codex participant that asks for a wait longer than 30 seconds now waits 30 seconds and keeps
+  its session; before, the whole session ended with `protocol_error`. The trace records each
+  shortened wait as a `wait shortened` notice with the requested and applied durations, the
+  participant is told on its next request, and the `humanish_ui` tool description states the cap.
+- On local browser studies, a `type` action refused because a second tab is open now says so.
+  The trace's rejection notice records `reason: extra_tab`, and the participant is told to
+  switch to the other tab, close it and type again. Before, the participant got a generic
+  rejection and kept retrying until its time ran out. The local browser docs state the one-tab
+  rule.
+- A terminal session that printed more than 512 KiB was recorded `blocked` when its verdict
+  marker came after the cap, and its trace and token usage stopped at the cap. Output past the cap
+  is still not stored, but the verdict marker, token usage and the trace's agent messages are read
+  from all of it. The transcript ends with a line giving the byte count that was not stored, and
+  the trace and the run events carry the same notice.
+- A study URL with an E2B app URL in a query parameter or fragment, such as a sign-in return
+  address, parses. 0.110.2 refused it as a credential. The check still refuses user info, a
+  credential-named parameter such as `token`, `password` or a signature, and known token formats,
+  in the URL and in each URL nested inside it, so a stream URL's auth key is still refused. A
+  nested URL is parsed, and one with a user name alone is refused too, as the study URL itself is.
+  A computer-use run names such a target by its digest, so a dry run against it verifies
+  `share_ready`.
+- verify finds a hex-encoded secret or E2B URL in a parameter value, such as `state=6874...`. Its
+  quoted-printable pass read the `=` and the first hex pair as one byte, so the rest decoded to
+  nothing it could match.
+- A dry run of a computer-use study with more than one participant and an app URL on an E2B
+  host verifies `share_ready`. Its review summary wrote the raw URL, which names a sandbox, so
+  verify failed the bundle the dry run had just written. The summary now names the URL by its
+  digest, `[target-url:<digest>]`, as the participant records in the same bundle already did. A
+  dry-run bundle written by 0.111.0 or earlier still fails verify; run the dry run again.
+- A computer-use participant on a zero-data-retention OpenAI organization rewrote the start of
+  its prompt on every request once its carried conversation passed about 64,000 tokens, so the
+  provider's prompt cache stopped serving it. In a simulation, 109 turns at 1280x800 cost about
+  $23 of input where a stable prefix costs about $2.70. Past the budget the conversation is now
+  cut to half of it in one step, and each request until the next cut starts with the whole
+  previous request: the same 109 turns cost about $3.30. The progress note that replaces the
+  oldest turns keeps its first four lines when it reaches its cap, and its cap is 32,000
+  characters, up from 16,000. It dropped its oldest lines first before, so a fact from turn 1
+  left the participant's requests in a long session: from turn 70 on in a 120-turn test. A note
+  line also keeps the text that came back with its turn's screenshot, such as a note that an
+  action was not run.
+- An OpenAI computer-use participant switches to carrying its conversation itself
+  (`explicit_context`) when the API answers 404 "Item with id '...' not found", the answer for an
+  item the server never stored, as on a zero-data-retention organization. The provider read
+  zero-data-retention rejections only from 400 responses, so this one stopped the participant
+  with "OpenAI Responses 404". The actor trace's `conversation.rejection` and the run warning now
+  say which answer made the switch. An error with a code of its own, such as `invalid_prompt` or
+  `model_not_found`, no longer counts as such an answer when its message echoes
+  `previous_response_id`: a usage-policy refusal stops the participant instead of switching and
+  retrying.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

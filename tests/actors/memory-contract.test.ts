@@ -5,6 +5,7 @@
 // where its brain keeps the conversation (the server-side response chain, one CLI process, one
 // native Codex task) and records what the model holds when it answers each turn.
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
 import type { spawn } from "node:child_process";
 import { PassThrough, Writable } from "node:stream";
 import { PNG } from "pngjs";
@@ -130,6 +131,57 @@ async function openAiViews(zeroDataRetention: boolean): Promise<string[]> {
   return views;
 }
 
+/**
+ * A Responses API that keeps nothing, like one on a zero-data-retention org: a request that names a
+ * previous response is refused with the stored-item 404 captured from the live API
+ * (tests/fixtures/openai-store-less/). The provider has to switch to carrying the conversation.
+ */
+async function storeLessOpenAiViews(): Promise<string[]> {
+  const refusal = readFileSync(
+    new URL("../fixtures/openai-store-less/stored-item-not-found.json", import.meta.url),
+    "utf8",
+  );
+  const views: string[] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { input?: unknown[]; previous_response_id?: string };
+    if (body.previous_response_id !== undefined)
+      return {
+        ok: false,
+        status: 404,
+        text: async () => refusal,
+        json: async () => JSON.parse(refusal) as unknown,
+      };
+    views.push(JSON.stringify(body.input ?? []));
+    const turn = views.length;
+    const value = {
+      id: `resp_${turn}`,
+      status: "completed",
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: turn === 1 ? TURN_ONE : "Next." }],
+        },
+        {
+          type: "computer_call",
+          call_id: `call_${turn}`,
+          actions: [{ type: "click", x: 1, y: 1 }],
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 1 },
+    };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  await drive(
+    createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn, delayFn: async () => undefined }),
+  );
+  return views;
+}
+
 /** One `claude` process is one session; its transcript is what the model holds. */
 async function claudeSessionViews(): Promise<string[]> {
   const views: string[] = [];
@@ -218,6 +270,7 @@ const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   "openai-computer-use": {
     "threaded (previous_response_id)": { views: () => openAiViews(false) },
     explicit_context: { views: () => openAiViews(true) },
+    "explicit_context after a stored-item 404": { views: storeLessOpenAiViews },
   },
   "local-agent": {
     ...LOCAL_AGENT_BRAINS,
@@ -243,6 +296,83 @@ const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   },
 };
 
+/** An explicit-context session long enough to pass the carried budget and the note's cap. */
+const LONG_TURNS = 120;
+
+/** A 1280x800 screen: the size, which the carried estimate reads, is what matters here. */
+const SCREEN = (() => {
+  const image = new PNG({ width: 1280, height: 800 });
+  image.data.fill(220);
+  return PNG.sync.write(image);
+})();
+
+/**
+ * Drive a zero-data-retention participant for LONG_TURNS turns of 1280x800 screens with replies the
+ * size of live ones, and return each request's input: with no server-side state, the input is all
+ * the model holds.
+ */
+async function longExplicitContextInputs(): Promise<{ inputs: unknown[][]; summarized: number }> {
+  const inputs: unknown[][] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { input: unknown[]; previous_response_id?: string };
+    expect(body.previous_response_id).toBeUndefined();
+    inputs.push(body.input);
+    const turn = inputs.length;
+    const value = {
+      id: `resp_${turn}`,
+      status: "completed",
+      output: [
+        {
+          type: "reasoning",
+          id: `rs_${turn}`,
+          summary: [
+            {
+              type: "summary_text",
+              text: "I read the page and chose the next control. ".repeat(6),
+            },
+          ],
+          encrypted_content: "e".repeat(1_200),
+        },
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              text:
+                turn === 1 ? TURN_ONE : `Next. ${"Still working through onboarding. ".repeat(5)}`,
+            },
+          ],
+        },
+        {
+          type: "computer_call",
+          call_id: `call_${turn}`,
+          actions: [{ type: "click", x: 1, y: 1 }],
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 1 },
+    };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    zeroDataRetention: true,
+  });
+  const signal = new AbortController().signal;
+  for (let turn = 1; turn <= LONG_TURNS; turn += 1)
+    await provider.nextTurn(
+      { ...request(turn), observation: { screenshot: SCREEN, stateSignature: `s-${turn}` } },
+      signal,
+    );
+  return { inputs, summarized: provider.conversation!.summarizedTurns };
+}
+
 describe("participant memory across turns", () => {
   it("names every registered actor", () => {
     expect(Object.keys(BRAINS).sort()).toEqual(Object.keys(actorRegistry).sort());
@@ -260,3 +390,35 @@ describe("participant memory across turns", () => {
     }
   }
 });
+
+describe("an explicit-context participant past its carried budget", () => {
+  it(`still holds turn 1 on each of ${LONG_TURNS} turns, and keeps its prompt prefix between cuts`, async () => {
+    const { inputs, summarized } = await longExplicitContextInputs();
+    expect(inputs).toHaveLength(LONG_TURNS);
+    for (let turn = 2; turn <= LONG_TURNS; turn += 1)
+      expect(JSON.stringify(inputs[turn - 1]), `turn ${turn}`).toContain("4417");
+
+    // The session passed the budget and the note's cap: the last note lists fewer turns than it summarized.
+    const note = asNote(inputs[LONG_TURNS - 1]![1]);
+    expect(summarized).toBeGreaterThan(0);
+    expect(note.filter((line) => line.startsWith("Turn ")).length).toBeLessThan(summarized);
+
+    // Between cuts each request starts with the whole previous request, so the provider's prompt
+    // cache serves it. Cuts come at least ten turns apart.
+    const misses: number[] = [];
+    for (let turn = 2; turn <= LONG_TURNS; turn += 1) {
+      const previous = JSON.stringify(inputs[turn - 2]).slice(0, -1);
+      if (!JSON.stringify(inputs[turn - 1]).startsWith(previous)) misses.push(turn);
+    }
+    expect(misses.length).toBeGreaterThan(0);
+    expect(misses.length).toBeLessThanOrEqual(LONG_TURNS / 10);
+    for (let i = 1; i < misses.length; i += 1)
+      expect(misses[i]! - misses[i - 1]!).toBeGreaterThanOrEqual(10);
+  });
+});
+
+function asNote(item: unknown): string[] {
+  const { role, content } = item as { role?: string; content?: Array<{ text?: string }> };
+  expect(role).toBe("assistant");
+  return (content?.[0]?.text ?? "").split("\n");
+}
