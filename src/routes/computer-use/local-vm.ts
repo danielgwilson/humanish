@@ -27,6 +27,7 @@ import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media
 import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
+import { actorOf } from "../../study/study-fields.js";
 
 type LocalVmRunOptions = InternalRunStudyOptions & {
   config: StudyConfig;
@@ -236,7 +237,7 @@ export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
   const media = guestMedia(config);
   // A caller-supplied provider replaces the Codex account participant, so the account is
   // neither checked nor used.
-  const account = config.actors[0]?.type === "local-agent" && options.createProvider === undefined;
+  const account = actorOf(config)?.type === "local-agent" && options.createProvider === undefined;
   const state: LocalVmRunState = { sessions: [], participants: [], cleanupUnconfirmed: false };
   const context: LocalParticipantContext = {
     config,

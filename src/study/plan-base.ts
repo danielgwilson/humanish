@@ -12,6 +12,7 @@ import type {
   ResidualConfig,
 } from "./plan-types.js";
 import type { StudyConfig } from "./types.js";
+import { actorOf, capsOf } from "./study-fields.js";
 
 export type Base = Omit<
   ComputerUsePlan,
@@ -64,8 +65,11 @@ export function isNonEmpty<T>(values: readonly T[]): values is NonEmpty<T> {
   return values.length > 0;
 }
 
-export function capsOf(config: StudyConfig): ComputerUsePlan["caps"] {
-  const caps = config.execution?.caps;
+export function planCaps(
+  config: StudyConfig,
+  route: "computer-use" | "shared-world",
+): ComputerUsePlan["caps"] {
+  const caps = capsOf(config, route);
   return {
     ...(caps?.maxUsd === undefined ? {} : { maxUsd: caps.maxUsd }),
     ...(caps?.maxTotalUsd === undefined ? {} : { maxTotalUsd: caps.maxTotalUsd }),
@@ -107,7 +111,7 @@ export function desktopRequirements(
 }
 
 export function brainOf(config: StudyConfig, callerProvider: boolean): Brain {
-  const actor = config.actors[0];
+  const actor = actorOf(config);
   if (callerProvider) return callerBrainOf(config);
   const declared = declaredModelOf(config);
   if (actor?.type === "local-agent")
@@ -121,7 +125,7 @@ export function callerBrainOf(config: StudyConfig): Extract<Brain, { kind: "call
 }
 
 function declaredModelOf(config: StudyConfig): { declaredModel?: string } {
-  const model = config.actors[0]?.model;
+  const model = actorOf(config)?.model;
   return model === undefined ? {} : { declaredModel: model };
 }
 

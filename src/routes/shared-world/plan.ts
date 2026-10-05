@@ -13,7 +13,7 @@ import {
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import {
   brainOf,
-  capsOf,
+  planCaps,
   desktopRequirements,
   isNonEmpty,
   planBase,
@@ -39,6 +39,7 @@ import {
 } from "../../study/validation.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
+import { actorOf, capsOf } from "../../study/study-fields.js";
 
 /** The error a shared-world study returns before a run starts. */
 export interface SharedWorldRefusal extends RouteRefusal<
@@ -88,7 +89,7 @@ export function planSharedWorldStudy(
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
-  const actorType = config.actors[0]?.type ?? "";
+  const actorType = actorOf(config)?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
@@ -112,12 +113,12 @@ export function planSharedWorldStudy(
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));
   if (invalidReason) return refuse(invalid, invalidReason, actor);
-  if (config.actors[0]?.maxOutputTokens !== undefined && input.hasRunSession === true)
+  if (actorOf(config)?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
 
-  const caps = config.execution?.caps;
+  const caps = capsOf(config, "shared-world");
   if (!input.dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
-    const model = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
+    const model = (actorOf(config)?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
       return refuse("HUMANISH_SHARED_WORLD_UNPRICED_CAP", unpricedCapMessage(model), actor);
   }
@@ -168,7 +169,7 @@ export function planSharedWorldStudy(
         ? {}
         : { sessionTimeoutMs: config.execution.timeoutMs }),
       brain,
-      caps: capsOf(config),
+      caps: planCaps(config, "shared-world"),
       requirements: base.dryRun
         ? []
         : [

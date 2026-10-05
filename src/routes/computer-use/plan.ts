@@ -15,7 +15,7 @@ import { subjectStateInvalidReason } from "../../study/parse/subject-state.js";
 import {
   brainOf,
   callerBrainOf,
-  capsOf,
+  planCaps,
   desktopRequirements,
   planBase,
   provisionedSubject,
@@ -48,6 +48,7 @@ import {
 } from "./participant-runs.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import { type ComputerUseRunInput, type CuaActorStudyErrorCode } from "./types.js";
+import { actorOf, declaresSharedWorld } from "../../study/study-fields.js";
 
 /** The error a computer-use study returns before a run starts. */
 export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorStudyErrorCode> {
@@ -193,7 +194,7 @@ function unsupportedDeclarationReason(
     scenarioCapsValidationReason(config);
   if (reason) return invalid(reason);
   if (
-    config.actors[0]?.maxOutputTokens !== undefined &&
+    actorOf(config)?.maxOutputTokens !== undefined &&
     (hasRunSession || driving.createProvider || driving.inProcess)
   )
     return invalid(
@@ -371,7 +372,7 @@ export function planComputerUseStudy(
   if (tasksReason) return refuse("before-scope", "HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
   // The parser checks the actor too; a library caller skips the parser.
-  const actorType = config.actors[0]?.type ?? "";
+  const actorType = actorOf(config)?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
@@ -390,7 +391,7 @@ export function planComputerUseStudy(
   // A shared world runs every participant against one app; this route would run them as separate
   // participants. It comes after the rules above, so a shared-world config that breaks one of them,
   // which runStudyWith sends here, still gets that rule's message.
-  if (config.subject.topology === "shared-world")
+  if (declaresSharedWorld(config))
     return refuse(
       "in-scope",
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
@@ -475,7 +476,7 @@ export function planComputerUseStudy(
       concurrency: boundedConcurrency(declared, n),
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
-      caps: capsOf(config),
+      caps: planCaps(config, "computer-use"),
       ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:
         base.dryRun || runner.desktop === "in-process"

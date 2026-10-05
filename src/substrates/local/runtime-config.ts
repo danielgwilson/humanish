@@ -1,5 +1,5 @@
 import type { StudyConfig } from "../../study/types.js";
-import { rosterOf } from "../../study/parse/actors.js";
+import { actorOf, actorsOf, participantList } from "../../study/study-fields.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
@@ -9,7 +9,7 @@ export function isLocalBrowserStudy(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
-    ["local-agent", "openai-computer-use"].includes(config.actors[0]?.type ?? "")
+    ["local-agent", "openai-computer-use"].includes(actorOf(config)?.type ?? "")
   );
 }
 
@@ -18,7 +18,7 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
   if (!isLocalBrowserStudy(config)) return config;
   return {
     ...config,
-    actors: config.actors.map((actor) => ({
+    actors: actorsOf(config).map((actor) => ({
       ...actor,
       model: actor.model ?? "gpt-6-astra",
       reasoningEffort: actor.reasoningEffort ?? "low",
@@ -31,20 +31,20 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
         resolution: config.execution?.desktop?.resolution ?? [960, 720],
       },
     },
-    ...(config.review?.analysis === undefined && config.actors[0]?.type === "local-agent"
+    ...(config.review?.analysis === undefined && actorOf(config)?.type === "local-agent"
       ? { review: { ...config.review, analysis: { provider: "codex" as const } } }
       : {}),
   };
 }
 
 export function localBrowserUnsupportedReason(config: StudyConfig): string | undefined {
-  const actor = config.actors[0];
+  const actor = actorOf(config);
   const desktop = config.execution?.desktop;
   if ((config.execution?.timeoutMs ?? MAX_SESSION_MS) > MAX_SESSION_MS) {
     return "Local browser sessions currently support at most 20 minutes, within the runtime's 30-minute lifetime.";
   }
   if (
-    config.actors.length !== 1 ||
+    actorsOf(config).length !== 1 ||
     !actor ||
     (actor.type === "local-agent" && actor.localAgent !== undefined && actor.localAgent !== "codex")
   ) {
@@ -55,7 +55,7 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
     desktop.resolution[1] !== 720 ||
     desktop.device !== undefined ||
     (desktop.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
-    rosterOf(actor)?.some((entry) => entry.device !== undefined) ||
+    participantList(config)?.some((entry) => entry.device !== undefined) ||
     desktop.template !== undefined ||
     desktop.sandboxTimeoutMs !== undefined
   ) {
@@ -74,7 +74,7 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
     actor.type === "local-agent" &&
     (actor.model !== "gpt-6-astra" ||
       actor.reasoningEffort !== "low" ||
-      rosterOf(actor)?.some(
+      participantList(config)?.some(
         (entry) => entry.reasoningEffort !== undefined && entry.reasoningEffort !== "low",
       ) ||
       actor.maxOutputTokens !== undefined ||
@@ -87,7 +87,7 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
   }
   for (const target of [
     config.subject.appUrl,
-    ...(rosterOf(actor) ?? []).map((entry) => entry.target),
+    ...(participantList(config) ?? []).map((entry) => entry.target),
   ].filter(Boolean)) {
     let url;
     try {

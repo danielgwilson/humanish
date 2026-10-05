@@ -1,10 +1,5 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import {
-  PARTICIPANT_ID_MAX_CHARS,
-  PARTICIPANT_ID_PATTERN,
-  focusOf,
-  rosterOf,
-} from "./parse/actors.js";
+import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN, focusOf } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
 import {
@@ -19,6 +14,13 @@ import {
   isTerminalProductComposition,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
+import {
+  actorOf,
+  actorsOf,
+  participantList,
+  declaredParticipantCount,
+  declaresSharedWorld,
+} from "./study-fields.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -27,8 +29,8 @@ import type { StudyConfig } from "./types.js";
  * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
  */
 export function computerUseValidationReason(config: StudyConfig): string | null {
-  const actor = config.actors[0];
-  const roster = rosterOf(actor);
+  const actor = actorOf(config);
+  const roster = participantList(config);
   const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
@@ -40,7 +42,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
     return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
   }
   if (roster !== undefined) {
-    if (actor?.count !== undefined) {
+    if (declaredParticipantCount(config) !== undefined) {
       return "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both.";
     }
     if (focusOf(actor) !== undefined) {
@@ -79,7 +81,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
     participantCount > 1 &&
     config.policies?.allowPublicTargets === true &&
     declaredTargets(config).length === 0 &&
-    config.subject.topology !== "shared-world"
+    !declaresSharedWorld(config)
   ) {
     return "`policies.allowPublicTargets` with more than one participant sends them all to one public app, which is a shared world. Set `subject.topology: shared-world` to run them together there, give each `actors[0].lanes[]` entry its own `target`, or run one participant.";
   }
@@ -91,7 +93,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
  * public TypeScript/JavaScript API instead of parseStudy.
  */
 function rosterStructuralValidationReason(config: StudyConfig): string | null {
-  const roster = rosterOf(config.actors[0]);
+  const roster = participantList(config);
   const seenIds = new Set<string>();
   if (roster !== undefined) {
     if (!Array.isArray(roster) || roster.length === 0) {
@@ -151,14 +153,14 @@ function provisionedSharedWorldStructureReason(config: StudyConfig): string | nu
   if (config.execution?.target !== "e2b-desktop") {
     return "`subject.topology: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
   }
-  if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
+  if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
     return `\`subject.topology: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const serve = config.subject.serve;
   if (!serve) {
     return "`subject.topology: shared-world` needs `subject.serve` (start and url): humanish starts one copy of the app in the sandbox, and every participant uses it.";
   }
-  const roster = rosterOf(config.actors[0]);
+  const roster = participantList(config);
   if (!roster || roster.length < 2) {
     return "`subject.topology: shared-world` needs an `actors[0].lanes` roster of at least 2 participants: with one participant there is nobody to interact with.";
   }
@@ -184,9 +186,7 @@ export function desktopMediaValidationReason(
 ): string | undefined {
   if (
     config.execution?.desktop?.recording !== undefined &&
-    (!supportsMedia ||
-      config.subject.topology === "shared-world" ||
-      config.subject.source === "local-app")
+    (!supportsMedia || declaresSharedWorld(config) || config.subject.source === "local-app")
   ) {
     return "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route.";
   }
@@ -195,7 +195,7 @@ export function desktopMediaValidationReason(
   if (media.microphone !== undefined && media.microphone.source !== "speech") {
     return "execution.desktop.media.microphone.source must be speech. Microphone source-file injection is unsupported.";
   }
-  if (config.subject.topology === "shared-world") {
+  if (declaresSharedWorld(config)) {
     return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser participants or remove the declaration.";
   }
   if (
@@ -210,7 +210,7 @@ export function desktopMediaValidationReason(
   }
   if (media.microphone !== undefined) {
     if (
-      config.actors.some(
+      actorsOf(config).some(
         (actor) =>
           actor.type !== "local-agent" ||
           (actor.localAgent !== undefined && actor.localAgent !== "codex"),
@@ -234,7 +234,7 @@ export function receivingEmailValidationReason(config: StudyConfig): string | un
   ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
-  if (config.actors.some((actor) => actor.type === "local-agent")) {
+  if (actorsOf(config).some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
   return undefined;
@@ -246,7 +246,7 @@ export function taskProtocolValidationReason(
   config: StudyConfig,
   supportsTasks = isComputerUseComposition(config) && !isSharedWorldComposition(config),
 ): string | null {
-  for (const [index, actor] of config.actors.entries()) {
+  for (const [index, actor] of actorsOf(config).entries()) {
     if (actor.tasks === undefined) continue;
     if (index > 0) {
       return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol.`;
@@ -291,7 +291,7 @@ export function scenarioCapsValidationReason(config: StudyConfig): string | null
 
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */
 export function outputTokenLimitValidationReason(config: StudyConfig): string | null {
-  const actor = config.actors[0];
+  const actor = actorOf(config);
   if (actor?.maxOutputTokens === undefined) return null;
   if (!isMaxOutputTokens(actor.maxOutputTokens))
     return "actors[0].maxOutputTokens must be a positive safe integer.";
@@ -315,7 +315,7 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
 function sharedWorldConcurrencyReason(config: StudyConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
   // route does: to the participant count. A missing roster reads as 0 and is refused.
-  const participants = rosterOf(config.actors[0])?.length ?? 0;
+  const participants = participantList(config)?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;
   return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
@@ -373,10 +373,10 @@ export function externalPublicSharedWorldValidationReason(config: StudyConfig): 
   if (config.execution?.target !== "e2b-desktop") {
     return "the external-public shared-world route requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against the one public deployment.";
   }
-  if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
+  if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
-  const roster = rosterOf(config.actors[0]);
+  const roster = participantList(config);
   if (!roster || roster.length < 2) {
     return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session).";
   }

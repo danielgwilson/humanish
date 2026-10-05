@@ -25,7 +25,15 @@ import {
   computerUseValidationReason,
   sharedWorldValidationReason,
 } from "./validation.js";
-import { rosterOf } from "./parse/actors.js";
+import {
+  actorOf,
+  participantList,
+  declaredParticipantCount,
+  surfaceCount,
+  modeOf,
+  scenarioRefOf,
+  declaresSharedWorld,
+} from "./study-fields.js";
 
 /** The first composition rule a config breaks, in the parser's order, or null. */
 export function compositionReason(config: StudyConfig): string | null {
@@ -42,7 +50,7 @@ export function compositionReason(config: StudyConfig): string | null {
     (isComputerUseComposition(config) ? computerUseValidationReason(config) : null) ??
     // Whenever shared world is declared, not only when it routes, so a half-declared shared world
     // fails with a precise reason instead of running as independent participants.
-    (config.subject.topology === "shared-world" ? sharedWorldValidationReason(config) : null) ??
+    (declaresSharedWorld(config) ? sharedWorldValidationReason(config) : null) ??
     desktopCliValidationReason(config) ??
     terminalValidationReason(config) ??
     cloneActorValidationReason(config)
@@ -60,7 +68,7 @@ function thisRepoValidationReason(config: StudyConfig): string | null {
     if (config.execution?.target) {
       return "`execution.target` applies only to clone/app-url/local-app subjects; this-repo studies run locally.";
     }
-    if (config.scenario?.mode === "live") {
+    if (modeOf(config) === "live") {
       return THIS_REPO_DRY_RUN_ONLY;
     }
   }
@@ -76,7 +84,7 @@ function thisRepoValidationReason(config: StudyConfig): string | null {
 // planComputerUseStudy refuses it with HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR.
 function localAppValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "local-app") {
-    const type = config.actors[0]?.type ?? "";
+    const type = actorOf(config)?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "local") {
       return "A local-app subject drives a local dev server in this process, with no E2B desktop. Set `execution.target: local` or omit it. To run on a hosted desktop, use an app-url subject with `execution.target: e2b-desktop`.";
     }
@@ -86,7 +94,7 @@ function localAppValidationReason(config: StudyConfig): string | null {
     if (computerUseParticipantCount(config) > 1) {
       return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
     }
-    if (rosterOf(config.actors[0]) !== undefined) {
+    if (participantList(config) !== undefined) {
       return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
     }
     if (config.policies?.allowPublicTargets === true) {
@@ -101,17 +109,17 @@ function localAppValidationReason(config: StudyConfig): string | null {
 // app; a computer-use actor drives a hosted desktop browser. Fail closed on mis-configs.
 function appUrlValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "app-url") {
-    const type = config.actors[0]?.type ?? "";
+    const type = actorOf(config)?.type ?? "";
     if (actorResolvesToScriptedBrowser(type)) {
       // Scripted-browser route (all fail-closed, so claims match mechanism: a field that cannot act on
       // this route is rejected, never silently ignored).
       if (config.execution?.target !== undefined && config.execution.target !== "local") {
         return "A scripted-browser actor on an app-url subject runs on this machine. Set `execution.target: local` or omit it. To run scripted steps on a hosted desktop, use a clone subject.";
       }
-      if (!config.scenario?.ref) {
+      if (!scenarioRefOf(config)) {
         return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
       }
-      if ((config.actors[0]?.count ?? 1) > 2) {
+      if ((surfaceCount(config) ?? 1) > 2) {
         return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
       }
       if (config.policies?.redactScreenshots === true) {
@@ -151,7 +159,7 @@ function appUrlValidationReason(config: StudyConfig): string | null {
 function scriptedBrowserValidationReason(config: StudyConfig): string | null {
   if (
     config.subject.source !== "app-url" &&
-    actorResolvesToScriptedBrowser(config.actors[0]?.type)
+    actorResolvesToScriptedBrowser(actorOf(config)?.type)
   ) {
     if (config.subject.source !== "clone") {
       return "scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject).";
@@ -175,13 +183,13 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
     if (config.subject.clone?.fanout !== undefined || config.subject.clone?.keep === true) {
       return "A clone scripted-browser study does not support `subject.clone.fanout` or `subject.clone.keep` yet: its subject is always one sandbox, removed after the run.";
     }
-    if (!config.scenario?.ref) {
+    if (!scenarioRefOf(config)) {
       return "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file.";
     }
-    if ((config.actors[0]?.count ?? 1) > 2) {
+    if ((surfaceCount(config) ?? 1) > 2) {
       return "A scripted-browser study takes `actors[0].count` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
     }
-    if (rosterOf(config.actors[0]) !== undefined) {
+    if (participantList(config) !== undefined) {
       return "`actors[0].lanes` is not supported on the scripted-browser route yet. Use `actors[0].count` to choose the desktop and mobile surfaces.";
     }
     if (config.policies?.redactScreenshots === true) {
@@ -214,7 +222,7 @@ function cloneComputerUseValidationReason(config: StudyConfig): string | null {
   if (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
-    actorResolvesToComputerUse(config.actors[0]?.type)
+    actorResolvesToComputerUse(actorOf(config)?.type)
   ) {
     if (!config.subject.serve) {
       return "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it.";
@@ -243,8 +251,8 @@ function localTreeValidationReason(config: StudyConfig): string | null {
     if (config.execution?.target !== "e2b-desktop") {
       return "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject.";
     }
-    if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
-      return `actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${config.actors[0]?.type ?? ""}".`;
+    if (!actorResolvesToComputerUse(actorOf(config)?.type)) {
+      return `actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${actorOf(config)?.type ?? ""}".`;
     }
   }
   return null;
@@ -272,7 +280,7 @@ function desktopCliValidationReason(config: StudyConfig): string | null {
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-desktop") {
       return "A desktop-cli subject runs on a hosted desktop. Set `execution.target: e2b-desktop` or omit it.";
     }
-    if (!actorResolvesToComputerUse(config.actors[0]?.type ?? "")) {
+    if (!actorResolvesToComputerUse(actorOf(config)?.type ?? "")) {
       return "desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all.";
     }
     const install = config.subject.product.install;
@@ -290,21 +298,21 @@ function desktopCliValidationReason(config: StudyConfig): string | null {
 // fan-out lands.
 function terminalValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "terminal-product") {
-    const type = config.actors[0]?.type ?? "";
+    const type = actorOf(config)?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
       return "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported.";
     }
     if (!actorResolvesToTerminal(type)) {
       return `actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
     }
-    if ((config.actors[0]?.count ?? 1) > 1) {
+    if ((declaredParticipantCount(config) ?? 1) > 1) {
       return "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1.";
     }
   } else if (config.execution?.target === "e2b-terminal") {
     // e2b-terminal is the terminal-product substrate only. Any other source declaring it is a
     // mis-config: reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
     return "`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.";
-  } else if (actorResolvesToTerminal(config.actors[0]?.type)) {
+  } else if (actorResolvesToTerminal(actorOf(config)?.type)) {
     // A registered terminal actor on a non-terminal-product subject: rejected, never ignored (the
     // terminal agent only studies a declared terminal-product from public surfaces).
     return "terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route.";
@@ -317,7 +325,7 @@ function terminalValidationReason(config: StudyConfig): string | null {
 // Terminal actors were already refused above with their own message.
 function cloneActorValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "clone") {
-    const type = config.actors[0]?.type ?? "";
+    const type = actorOf(config)?.type ?? "";
     if (!actorResolvesToComputerUse(type) && !actorResolvesToScriptedBrowser(type)) {
       return `clone subjects need a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) or scripted-browser actor (one of: ${registeredScriptedBrowserActors().join(", ")}); humanish clones and serves the app for that participant to drive. Got "${type}".`;
     }

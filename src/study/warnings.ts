@@ -8,6 +8,12 @@ import type { StudyConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
 import { focusOf, rosterOf } from "./parse/actors.js";
+import {
+  actorsOf,
+  participantList,
+  declaredParticipantCount,
+  scenarioRefOf,
+} from "./study-fields.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -310,7 +316,7 @@ const CONFIG_ROWS: readonly InertRow<StudyConfig>[] = [
   // everywhere else.
   {
     field: "scenario.ref",
-    applies: (config, routes) => Boolean(config.scenario?.ref) && !routes.scripted,
+    applies: (config, routes) => Boolean(scenarioRefOf(config)) && !routes.scripted,
   },
   { field: "scenario.inline", applies: (config) => Boolean(config.scenario?.inline) },
   // review.{scoring,milestones,vocabulary} stay forward-declared on every route.
@@ -371,7 +377,7 @@ function rowLabel(row: InertRow<never>, prefix = ""): string {
 export function inertFieldLabels(config: StudyConfig): string[] {
   const routes = routesOf(config);
   const inert: string[] = [];
-  for (const [index, actor] of config.actors.entries()) {
+  for (const [index, actor] of actorsOf(config).entries()) {
     for (const row of ACTOR_ROWS)
       if (row.applies(actor, routes)) inert.push(rowLabel(row, `actors[${index}].`));
   }
@@ -386,7 +392,7 @@ export function inertFieldLabels(config: StudyConfig): string[] {
 export function inertFieldPaths(config: StudyConfig): string[] {
   const routes = routesOf(config);
   const paths: string[] = [];
-  for (const [index, actor] of config.actors.entries()) {
+  for (const [index, actor] of actorsOf(config).entries()) {
     for (const row of ACTOR_ROWS)
       if (row.applies(actor, routes)) paths.push(`actors[${index}].${row.field}`);
   }
@@ -409,7 +415,8 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
   // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
   // waves is otherwise indistinguishable from the all-live run the author meant.
   {
-    const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
+    const participantCount =
+      participantList(config)?.length ?? declaredParticipantCount(config) ?? 1;
     const cap = config.execution?.concurrency;
     if (routes.cua && cap !== undefined && participantCount > 1 && cap < participantCount) {
       warnings.push(

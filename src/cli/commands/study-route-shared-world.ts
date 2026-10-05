@@ -25,8 +25,8 @@ import { writeRunFindings } from "../findings.js";
 import { formatConcurrentSharedWorldStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
-import { rosterOf } from "../../study/parse/actors.js";
 import { studyResultIdentity } from "../../run/study-result.js";
+import { actorOf, participantList } from "../../study/study-fields.js";
 
 interface SharedWorldRouteArgs {
   command: Command;
@@ -60,10 +60,10 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       ...studyResultIdentity("shared-world", args.config.id),
       ok: false,
       cwd: args.options.cwd,
-      actor: args.config.actors[0]?.type ?? "",
+      actor: actorOf(args.config)?.type ?? "",
       topology: "shared-world",
       topologyMode: "concurrent",
-      roleCount: rosterOf(args.config.actors[0])?.length ?? 0,
+      roleCount: participantList(args.config)?.length ?? 0,
       concurrency: args.config.execution?.concurrency ?? 1,
       dryRun,
       runId: runId ?? args.options.runId ?? "not-created",
