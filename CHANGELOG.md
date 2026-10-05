@@ -8,65 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed (breaking)
+## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
-`StudyConfig`, the type `parseStudy` returns and `runStudy` takes, has the keys of a
-`humanish.study.v3` file. Through 0.110, `parseStudy` read a v3 file and returned the
-`humanish.lab.v2` shape under the v3 schema. Study files do not change, and a v3 file parses as
-before. A library caller that reads or builds a `StudyConfig`, including a `createProvider` or an
-`inProcess.executor` that reads `ctx.config`, changes these fields:
+humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library
+callers that read or build a `StudyConfig`, the type `parseStudy` returns and `runStudy` takes:
+the type now has the keys of a `humanish.study.v3` file, such as `actor`, `route`,
+`participants`, `caps` and `mode`, where it had `actors[0]`, `execution.caps` and
+`scenario.mode`. The release notes carry the migration table. `runStudy` refuses a config that
+still sets a 0.110 field with `HUMANISH_STUDY_V2_UNSUPPORTED`, so a budget left in
+`execution.caps` cannot run uncapped. Study files and CLI commands are unchanged, except two JSON
+outputs: `humanish study show --json` prints the v3 config, and `humanish study check --json`
+names a participant's target `participants[<i>].target`. The `--env-file` and `cleanup` aliases
+still work and are removed in 0.112.0, on or after 2026-11-03.
 
-| 0.110 field                                           | 0.111 field                                              | Change to make                                                     |
-| ----------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |
-| `schema`: `humanish.lab.v2` or `humanish.study.v3`    | `schema`: `humanish.study.v3`                            | Set `STUDY_SCHEMA`.                                                |
-| none: `routeOf(config)` derived it                    | `route`                                                  | Set the route the study takes. `routeOf(config)` still returns it. |
-| `actors[0]`                                           | `actor`                                                  | Read and set one `actor` object.                                   |
-| `actors[0].count`                                     | `participants: <n>`, or `surfaces` on the scripted route | Write the count, or `[desktop]` or `[desktop, mobile]`.            |
-| `actors[0].laneFocus.instruction`, with `count`       | `participants: { count, instruction }`                   | Move both into the object.                                         |
-| `actors[0].lanes`, `actors[0].roster`                 | `participants: [...]`                                    | List the entries. A parsed group is already expanded.              |
-| `actors[0].laneFocus.id`, `actors[0].laneFocus.label` | none                                                     | Remove them. No route read them.                                   |
-| `subject.topology: shared-world`                      | `route: shared-world`                                    | Declare the route. Remove `subject.topology`.                      |
-| `execution.caps` (computer use, shared world)         | `caps`                                                   | Move the block to the top level.                                   |
-| `scenario.caps` (terminal)                            | `caps`                                                   | Move the block to the top level.                                   |
-| `scenario.ref`                                        | `scenario`, a string                                     | Write the scenario id or path.                                     |
-| `scenario.mode`                                       | `mode`                                                   | Move it to the top level.                                          |
-| `scenario.inline`, `personas`                         | none                                                     | Remove them. No route read them.                                   |
-
-`runStudy` checks a config that skipped `parseStudy` and refuses three new cases in the route's
-result envelope, before anything runs:
-
-- A config that still sets a 0.110 field (`actors`, a `scenario` object, `execution.caps`,
-  `subject.topology`, `personas`, or `count`, `lanes`, `roster` or `laneFocus` on `actor`) is
-  refused with `HUMANISH_STUDY_V2_UNSUPPORTED`, and the message names each field's v3 key. The
-  planners read only the v3 fields, so a budget left in `execution.caps` would otherwise run
-  uncapped.
-- A config with no `actor` object is refused with `HUMANISH_STUDY_INVALID`. 0.110 ran it with an
-  empty actor type.
-- A config whose `route` is missing, or is not the route its subject and actor take, is refused
-  with `HUMANISH_STUDY_INVALID` and the message `parseStudy` gives for that file.
-
-`HUMANISH_STUDY_INVALID` joins the error codes a route's result can carry.
-
-The CLI follows the config:
-
-- `humanish study show --json` prints the v3 config: `config.route`, `config.mode`,
-  `config.actor` and `config.participants` where it printed `config.actors[]` and
-  `config.scenario.mode`. `parseStudy` reads that config back to the same config. Human output
-  prints `actor:` where it printed `actors:`.
-- `humanish study check --json` names a participant's target `participants[<i>].target`, with
-  `kind: participants[].target`, where it said `actors[0].lanes[<i>].target`.
-
-### Changed
-
-- The refusal for a local-app study with more than one participant says "Remove `participants`, or
-  set `participants: 1`", where 0.110.4 said "Set participants to 1 and drop participants".
-  `humanish migrate` quotes the same text when it refuses a v2 local-app file with a count above 1.
-
-### Fixed
-
-- A parsed study with a receiving email holds `kind: real` beside its `connection`, and
-  `parseStudy` refused that config, so `study show --json` of a receiving study did not read back.
-  `parseStudy` takes `kind: real` with a `connection`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.111.0)
 
 ## 0.110.4: Scripted runs reclaim clean, review says interrupted, Chrome under a long TMPDIR (2026-10-05)
 
