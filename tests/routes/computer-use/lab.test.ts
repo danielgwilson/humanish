@@ -62,8 +62,10 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { STUDY_SCHEMA, V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { actorOf } from "../../../src/study/study-fields.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
@@ -391,23 +393,26 @@ function browserFeedback(ctx: BrowserScoringContext): RunFeedbackCandidate[] {
   ];
 }
 
-function cuaConfig(appUrl = "http://127.0.0.1:3000/"): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+function cuaStudy(appUrl = "http://127.0.0.1:3000/"): Record<string, unknown> {
+  return {
+    schema: STUDY_SCHEMA,
     id: "cua-routing-proof",
     title: "CUA routing proof",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl },
-    actors: [
-      {
-        type: "openai-computer-use",
-        persona: "first-time-visitor",
-        mission: "Explore the app and stop.",
-        laneFocus: { instruction: "Focus on the landing page." },
-      },
-    ],
+    actor: {
+      type: "openai-computer-use",
+      persona: "first-time-visitor",
+      mission: "Explore the app and stop.",
+    },
+    participants: { instruction: "Focus on the landing page." },
     execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] } },
-    scenario: { mode: "live" },
-  });
+  };
+}
+
+function cuaConfig(appUrl = "http://127.0.0.1:3000/"): StudyConfig {
+  const parsed = parseStudy(cuaStudy(appUrl));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -478,14 +483,15 @@ describe("lab routing (app-url → cua)", () => {
     // skips the parser still routes to cua.
     for (const type of ["humanish-setup", "codex-app-server"]) {
       const clone = {
-        schema: V2_SCHEMA,
+        schema: STUDY_SCHEMA,
         id: "c",
+        route: "computer-use",
         subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type }],
+        actor: { type },
         execution: { target: "e2b-desktop" },
-      } as const;
-      expect(parseStudyDocument(clone).ok).toBe(false);
-      expect(routeOf(clone as unknown as StudyConfig)).toBe("computer-use");
+      };
+      expect(parseStudy(clone).ok).toBe(false);
+      expect(routeOf(libraryConfig(clone))).toBe("computer-use");
     }
   });
 
@@ -494,13 +500,14 @@ describe("lab routing (app-url → cua)", () => {
     // A non-computer-use actor also routes to cua, whose actor gate refuses it before any
     // sandbox or filesystem work.
     // The parser refuses this config now; runStudyWith is reached by a library caller that skips it.
-    const meta = {
-      schema: V2_SCHEMA,
+    const meta = libraryConfig({
+      schema: STUDY_SCHEMA,
       id: "m2",
+      route: "computer-use",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "codex-app-server" }],
+      actor: { type: "codex-app-server" },
       execution: { target: "e2b-desktop" },
-    } as unknown as StudyConfig;
+    });
     expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
     try {
@@ -514,11 +521,12 @@ describe("lab routing (app-url → cua)", () => {
     }
     // A computer-use clone lab without the desktop target no longer parses; it would still have
     // routed to cua and run on a hosted desktop.
-    const untargeted = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const untargeted = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "s2",
+      route: "computer-use",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "openai-computer-use" }],
+      actor: { type: "openai-computer-use" },
     });
     expect(untargeted.ok).toBe(false);
   });
@@ -534,8 +542,8 @@ describe("desktop-cli runtime prerequisites", () => {
   });
 
   function configFor(install?: string): StudyConfig {
-    const parsed = parseStudyDocument({
-      ...cuaConfig(),
+    const parsed = parseStudy({
+      ...cuaStudy(),
       subject: {
         source: "desktop-cli",
         product: {
@@ -965,7 +973,7 @@ describe("runCuaActorLab", () => {
 
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
-    config.actors[0]!.maxOutputTokens = 16;
+    actorOf(config)!.maxOutputTokens = 16;
     delete config.review; // Omitted config uses the separate default analysis budget.
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
@@ -1032,7 +1040,7 @@ describe("runCuaActorLab", () => {
 
   it("refuses an invalid typed-library output limit before sandbox allocation", async () => {
     const config = cuaConfig();
-    config.actors[0]!.maxOutputTokens = 0;
+    actorOf(config)!.maxOutputTokens = 0;
     let allocations = 0;
     const result = await runComputerUse({
       cwd,
@@ -1052,7 +1060,7 @@ describe("runCuaActorLab", () => {
 
   it("rejects custom session hooks that could bypass a declared output limit", async () => {
     const config = cuaConfig();
-    config.actors[0]!.maxOutputTokens = 16;
+    actorOf(config)!.maxOutputTokens = 16;
     let called = 0;
     const result = await runComputerUse({
       cwd,
@@ -3094,7 +3102,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.streams[0].assignment).toEqual({ mission: config.actors[0]!.mission });
+    expect(bundle.streams[0].assignment).toEqual({ mission: actorOf(config)!.mission });
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
@@ -3854,21 +3862,14 @@ describe("runCuaActorLab", () => {
   });
 
   it("rejects a non-computer-use actor at the engine even if a config bypasses the parser", async () => {
-    const config = cuaConfig();
-    const tampered = { ...config, actors: [{ type: "codex-app-server" }] };
+    const tampered = libraryConfig({ ...cuaStudy(), actor: { type: "codex-app-server" } });
     const result = await runComputerUse({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
   });
 
   it("rejects path-shaped runtime participant ids before provider or desktop hooks", async () => {
-    const config = cuaConfig();
-    const actor = config.actors[0]!;
-    const { laneFocus: _laneFocus, ...actorWithoutLaneFocus } = actor;
-    const tampered: StudyConfig = {
-      ...config,
-      actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }],
-    };
+    const tampered = libraryConfig({ ...cuaStudy(), participants: [{ id: "../escape" }] });
     let desktopLoads = 0;
     const result = await runComputerUse({
       cwd,
@@ -5554,10 +5555,12 @@ describe("buildSingleParticipantBundle", () => {
       caps?: { maxUsd?: number };
       localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
     }): StudyConfig {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "cua-local-tree-proof",
         title: "CUA local-tree proof",
+        route: "computer-use",
+        mode: "live",
         subject: {
           source: "local-tree",
           serve: {
@@ -5570,20 +5573,14 @@ describe("buildSingleParticipantBundle", () => {
           ...(extra?.state === undefined ? {} : { state: extra.state }),
           ...(extra?.localTree === undefined ? {} : { localTree: extra.localTree }),
         },
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "first-time-visitor",
-            mission: "Explore the app and stop.",
-            ...(extra?.count === undefined ? {} : { count: extra.count }),
-          },
-        ],
-        execution: {
-          target: "e2b-desktop",
-          timeoutMs: 60_000,
-          ...(extra?.caps ? { caps: extra.caps } : {}),
+        actor: {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
         },
-        scenario: { mode: "live" },
+        ...(extra?.count === undefined ? {} : { participants: extra.count }),
+        ...(extra?.caps ? { caps: extra.caps } : {}),
+        execution: { target: "e2b-desktop", timeoutMs: 60_000 },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       return parsed.config;
@@ -6828,8 +6825,8 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   it("flushes liveActor items into the in-progress bundle mid-run, and the final write replaces them", async () => {
     const secret = "synthetic-live-assignment-secret";
     const config = cuaConfig();
-    config.actors[0]!.mission = `Explore with ${secret}.`;
-    config.actors[0]!.tasks = [
+    actorOf(config)!.mission = `Explore with ${secret}.`;
+    actorOf(config)!.tasks = [
       {
         id: "settings",
         goal: `Save with ${secret}.`,
@@ -7131,26 +7128,21 @@ describe("runCuaActorLab cost estimates", () => {
     },
   ];
   function configWithModel(model?: string, caps?: { maxUsd?: number }): StudyConfig {
-    const parsed = parseStudyDocument({
-      schema: V2_SCHEMA,
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "cua-cost-proof",
       title: "CUA cost proof",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [
-        {
-          type: "openai-computer-use",
-          persona: "first-time-visitor",
-          mission: "Explore the app and stop.",
-          ...(model ? { model } : {}),
-        },
-      ],
-      execution: {
-        target: "e2b-desktop",
-        timeoutMs: 60_000,
-        desktop: { resolution: [1280, 800] },
-        ...(caps ? { caps } : {}),
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+        ...(model ? { model } : {}),
       },
-      scenario: { mode: "live" },
+      ...(caps ? { caps } : {}),
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] } },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;

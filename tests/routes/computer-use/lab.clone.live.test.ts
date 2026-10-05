@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 
 // The live rung for the clone subject provider: a config-only study that clones a small public
@@ -40,10 +40,12 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => 
     "clones, serves, probes, and drives a real repo from config alone",
     { timeout: 420_000 },
     async () => {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "cua-clone-live-proof",
         title: "CUA clone subject live proof",
+        route: "computer-use",
+        mode: "live",
         subject: {
           source: "clone",
           repos: ["mdn/beginner-html-site-styled"],
@@ -53,16 +55,13 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => 
             readyTimeoutMs: 60_000,
           },
         },
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "synthetic-new-user",
-            mission:
-              "Look at the page on screen. In your final message, state the main heading text exactly, then stop. Do not navigate anywhere else.",
-          },
-        ],
+        actor: {
+          type: "openai-computer-use",
+          persona: "synthetic-new-user",
+          mission:
+            "Look at the page on screen. In your final message, state the main heading text exactly, then stop. Do not navigate anywhere else.",
+        },
         execution: { target: "e2b-desktop", timeoutMs: 120_000 },
-        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 

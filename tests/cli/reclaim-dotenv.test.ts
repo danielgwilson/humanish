@@ -11,8 +11,8 @@ import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { appendSandboxOwner, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
-import { parseStudyDocument } from "../../src/study/config.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { type StudyConfig, STUDY_SCHEMA } from "../../src/study/types.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 import { runTerminal } from "../helpers/route-run.js";
 
@@ -41,20 +41,22 @@ vi.mock("../../src/substrates/e2b/sdk.js", async (importOriginal) => ({
 }));
 
 function dryRunConfig(): StudyConfig {
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "reclaim-env-fixture",
+    route: "terminal",
+    mode: "dry-run",
     subject: {
       source: "terminal-product",
       product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
     },
-    actors: [{ type: "codex-exec", mission: "Contract only." }],
+    actor: { type: "codex-exec", mission: "Contract only." },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 },
     execution: {
       target: "e2b-terminal",
       runtimeAuth: "openai-env",
       terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 } },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;

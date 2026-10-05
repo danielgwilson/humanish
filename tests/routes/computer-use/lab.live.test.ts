@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { V2_SCHEMA } from "../../../src/study/types.js";
-import { parseStudyDocument } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { parseStudy } from "../../../src/study/config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 
 // The single live rung for the computer-use route: a real study config dispatched through runStudyWith to
@@ -49,21 +49,20 @@ describe.skipIf(!LIVE)("cua-actor-lab (live, spend-gated)", () => {
     "dispatches a lab config to a real desktop session and persists a verified bundle",
     { timeout: 360_000 },
     async () => {
-      const parsed = parseStudyDocument({
-        schema: V2_SCHEMA,
+      const parsed = parseStudy({
+        schema: STUDY_SCHEMA,
         id: "cua-live-proof",
         title: "CUA lab live proof",
+        route: "computer-use",
+        mode: "live",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/proof.html" },
-        actors: [
-          {
-            type: "openai-computer-use",
-            persona: "synthetic-new-user",
-            mission:
-              "Look at the page on screen, scroll down once to see the rest of it, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else.",
-          },
-        ],
+        actor: {
+          type: "openai-computer-use",
+          persona: "synthetic-new-user",
+          mission:
+            "Look at the page on screen, scroll down once to see the rest of it, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else.",
+        },
         execution: { target: "e2b-desktop", timeoutMs: 120_000 },
-        scenario: { mode: "live" },
         policies: { redactScreenshots: true },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
