@@ -45,8 +45,12 @@ const NOTE_CHAR_LIMIT = 32_000;
  * hold its latest progress, so the note gives up the turns between them.
  */
 const NOTE_HEAD_LINES = 4;
-/** One note line's cap, so a reply with many actions cannot push the note past its own cap. */
-const LINE_CHAR_LIMIT = 1_500;
+/**
+ * One note line's cap, so a reply with many actions cannot push the note past its own cap. It
+ * leaves room for the clipped thought, message and hint text plus about 1,000 characters of
+ * actions, such as several typed form fields.
+ */
+const LINE_CHAR_LIMIT = 2_000;
 /**
  * Image input tokens per 32-pixel patch. The gpt-5.x and gpt-6 models bill 1.2 per patch, and at
  * the default (auto) detail gpt-5.6 and gpt-6 keep the screenshot's own size. Models that resize
@@ -212,7 +216,7 @@ function describeExchange(exchange: CarriedExchange): string {
   const parts = [
     thought.length > 0 ? `thought: ${clip(thought.join(" "), 400)}` : undefined,
     said.length > 0 ? `said: ${clip(said.join(" "), 300)}` : undefined,
-    did.length > 0 ? `did: ${clip(did.join(", "), 400)}` : undefined,
+    did.length > 0 ? `did: ${did.join(", ")}` : undefined,
     told.length > 0 ? `was told: ${clip(told.join(" "), 300)}` : undefined,
   ].filter((part) => part !== undefined);
   const line = `Turn ${exchange.turn}: ${parts.length > 0 ? parts.join("; ") : "no recorded output"}`;

@@ -165,7 +165,7 @@ describe("an explicit-context conversation", () => {
     const noteText = note.content[0]!.text;
     const lines = noteText.split("\n").slice(1);
     expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) expect(line.length).toBeLessThanOrEqual(1_500);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(2_000);
     expect(noteText.length).toBeLessThan(33_000);
   });
 
@@ -239,11 +239,28 @@ describe("cutting past the budget", () => {
     expect(note.content[0]!.text.length).toBeLessThan(33_000);
   });
 
-  it("keeps the text that came back with a summarized turn's screenshot", async () => {
+  it("keeps a summarized turn's typed values and the text that came back with its screenshot", async () => {
+    // Turn 3 fills four long form fields, then a short code, then clicks.
+    const form = (n: number): Record<string, unknown> => {
+      const value = reply(n);
+      const output = value.output as Array<Record<string, unknown>>;
+      output[2] = {
+        ...output[2],
+        actions: [
+          ...["name", "street", "city", "notes"].map((field) => ({
+            type: "type",
+            text: `${field}: ${"x".repeat(110)}`,
+          })),
+          { type: "type", text: "PIN4417" },
+          { type: "click", x: n, y: n },
+        ],
+      };
+      return value;
+    };
     const bodies: SentBody[] = [];
     const fetchFn: FetchLike = async (_url, init) => {
       bodies.push(JSON.parse(init.body) as SentBody);
-      const value = reply(bodies.length);
+      const value = bodies.length === 3 ? form(3) : reply(bodies.length);
       return {
         ok: true,
         status: 200,
@@ -265,7 +282,7 @@ describe("cutting past the budget", () => {
     // Turn 3's exchange holds the hint that answered it, so its note line keeps the hint.
     const note = JSON.stringify(bodies[79]!.input[1]);
     expect(note).toMatch(
-      /Turn 3: [^\n]*did: click \(3, 3\); was told: Your click on turn 3 was not run\./,
+      /Turn 3: [^\n]*type \\"PIN4417\\", click \(3, 3\); was told: Your click on turn 3 was not run\./,
     );
   });
 });
