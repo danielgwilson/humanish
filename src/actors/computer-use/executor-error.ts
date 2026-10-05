@@ -24,7 +24,7 @@ export type CuaExecutorDisposition = "not_dispatched" | "outcome_uncertain";
 export const CUA_REJECTION_REASONS = Object.freeze(["extra_tab"] as const);
 export type CuaRejectionReason = (typeof CUA_REJECTION_REASONS)[number];
 
-export function isCuaRejectionReason(value: unknown): value is CuaRejectionReason {
+function isCuaRejectionReason(value: unknown): value is CuaRejectionReason {
   return (CUA_REJECTION_REASONS as readonly unknown[]).includes(value);
 }
 
