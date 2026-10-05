@@ -68,6 +68,17 @@ const CREDENTIAL_PARAMETER = [
 // them: GITHUB_TOKEN, VERCEL_TOKEN, AWS_SECRET_ACCESS_KEY, DATABASE_PASSWORD.
 const CREDENTIAL_VARIABLE = String.raw`\b(?:[A-Z][A-Z0-9_]{0,48}_)?(?:TOKEN|SECRET|SECRET_KEY|PASSWORD|PASSWD|API_KEY|APIKEY|ACCESS_KEY|PRIVATE_KEY)`;
 
+// The public E2B pages its errors link to, which name no sandbox and carry no credential: the
+// dashboard as the SDK's missing-key error names it (https://e2b.dev/dashboard?tab=keys), with no
+// path below /dashboard and no query but one short `tab`, and a docs page as the API's 401 names
+// it (https://docs.e2b.dev/api-key), whose path segments hold only letters and hyphens and which
+// has no query. Neither has user info, and only closing punctuation may follow before the next
+// space or ")".
+const E2B_PUBLIC_PAGE = [
+  String.raw`(?:www\.)?e2b\.dev\/dashboard\/?(?:\?tab=[a-z]{1,16})?`,
+  String.raw`(?:docs\.e2b\.dev|(?:www\.)?e2b\.dev\/docs)(?:\/[a-z][a-z-]{0,39}){0,8}\/?`,
+].join("|");
+
 // A pattern that matches a credential by its context puts the context in a `keep` group, which
 // redaction leaves in place: `?token=[REDACTED_SECRET]`. Context goes in a group and not in a
 // lookbehind, because a pattern that starts with a lookbehind is tried at every position of the
@@ -131,10 +142,12 @@ const SECRET_PATTERNS: RegExp[] = [
     "g",
   ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
-  // key. One URL is exempt: E2B's dashboard, as the SDK's missing-key error names it
-  // (https://e2b.dev/dashboard?tab=keys), with no userinfo, no path below /dashboard, no query but
-  // one short `tab`, and only closing punctuation before the next space or ")".
-  /(?!https:\/\/(?:www\.)?e2b\.dev\/dashboard\/?(?:\?tab=[a-z]{1,16})?[.,;:!?'"]*(?:[)\s]|$))https?:\/\/[^/\s]*e2b[^)\s]+/gi,
+  // key. The host part stops at a backslash or quote, so a URL followed by an escaped line break
+  // and an `E2B_...` variable in JSON text is not read as an E2B host.
+  new RegExp(
+    String.raw`(?!https:\/\/(?:${E2B_PUBLIC_PAGE})[.,;:!?'"]*(?:[)\s]|$))https?:\/\/[^/\s\\"'<>]*e2b[^)\s]+`,
+    "gi",
+  ),
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 

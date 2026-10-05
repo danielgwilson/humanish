@@ -195,6 +195,14 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
   { name: "sandbox id marker", text: `"sandboxId": "[redacted-sandbox-id]"` },
   { name: "sandbox id label", text: `[redacted-sandbox-id ${synthetic(HEX, 16, 111)}]` },
   { name: "E2B dashboard URL", text: "Get a key at https://e2b.dev/dashboard?tab=keys." },
+  {
+    name: "E2B docs URL in the API's 401",
+    text: "Invalid API key, please visit https://docs.e2b.dev/api-key for more information.",
+  },
+  {
+    name: "URL before an escaped line break and an E2B variable",
+    text: JSON.stringify({ output: "HOST=http://192.0.2.1\nE2B_SANDBOX=true\n" }),
+  },
   { name: "egress placeholder", text: `CODEX_API_KEY=${OPENAI_EGRESS_PLACEHOLDER}` },
   { name: "loopback app URL", text: "http://127.0.0.1:3000/todos?filter=active&page=2" },
   {
