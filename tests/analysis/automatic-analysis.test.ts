@@ -119,7 +119,7 @@ describe("automatic analysis admission and producer boundary", () => {
       { cwd, runId: "interrupted", dryRun: false, ok: false },
       finished,
       config,
-      { deps: { analysis: { run } }, emit: onEvent! },
+      { deps: { analysis: { run } }, emit: (event) => void onEvent!(event) },
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
