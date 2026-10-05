@@ -31,6 +31,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
+import { LOCAL_ONLY_RUN_FILES } from "../run/local-only-files.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -57,8 +58,7 @@ const OMITTED = new Map([
   ["observer/index.html", "regenerated Observer"],
   ["observer/observer-data.json", "regenerated Observer projection"],
   ["observer/study-analysis.json", "analysis must be regenerated against derivative evidence"],
-  ["status.json", "local process status is not a new attempt"],
-  ["sandbox-receipts.ndjson", "operational journal does not confer a derivative resource lease"],
+  ...LOCAL_ONLY_RUN_FILES,
 ]);
 const PNG_MAGIC = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 

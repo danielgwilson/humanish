@@ -8,6 +8,7 @@ import path from "node:path";
 import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import { loadAnalysis } from "../analysis/load.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
+import { isLocalOnlyRunFile } from "../run/local-only-files.js";
 import { listRuns } from "../run/stored-runs.js";
 import { readAnalysisAccounting } from "../run/costs.js";
 import {
@@ -121,10 +122,12 @@ export async function serveRunPath(
   // file serving bypass its current-content checks or a warmed source-only admission cache.
   const derivedRoot = cleanedRelativePath.split("/")[0];
   const derivedLeaf = path.posix.basename(cleanedRelativePath);
+  // Local-only files (raw sandbox ids, the recording pid) are read in process, never served.
   if (
     derivedRoot === ".analysis-lock" ||
     derivedLeaf.startsWith(".humanish-write-") ||
-    isAnalysisRecordPath(cleanedRelativePath)
+    isAnalysisRecordPath(cleanedRelativePath) ||
+    isLocalOnlyRunFile(cleanedRelativePath)
   ) {
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
