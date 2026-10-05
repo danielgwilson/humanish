@@ -43,6 +43,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   verify failed the bundle the dry run had just written. The summary now names the URL by its
   digest, `[target-url:<digest>]`, as the participant records in the same bundle already did. A
   dry-run bundle written by 0.111.0 or earlier still fails verify; run the dry run again.
+- A computer-use participant on a zero-data-retention OpenAI organization rewrote the start of
+  its prompt on every request once its carried conversation passed about 64,000 tokens, so the
+  provider's prompt cache stopped serving it. In a simulation, 109 turns at 1280x800 cost about
+  $23 of input where a stable prefix costs about $2.70. Past the budget the conversation is now
+  cut to half of it in one step, and each request until the next cut starts with the whole
+  previous request: the same 109 turns cost about $3.30. The progress note that replaces the
+  oldest turns keeps its first four lines when it reaches its cap, and its cap is 32,000
+  characters, up from 16,000. It dropped its oldest lines first before, so a fact from turn 1
+  left the participant's requests in a long session: from turn 70 on in a 120-turn test. A note
+  line also keeps the text that came back with its turn's screenshot, such as a note that an
+  action was not run.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
