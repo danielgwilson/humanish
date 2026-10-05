@@ -10,6 +10,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- `humanish doctor` run inside a terminal study's sandbox reported the `CODEX_API_KEY` placeholder
+  as `supplied by process env`, so a participant read it as a key it could use. doctor now says
+  the value is the sandbox placeholder and that no usable key is available, and key discovery no
+  longer counts the placeholder as a key.
 - A Codex participant that asks for a wait longer than 30 seconds now waits 30 seconds and keeps
   its session; before, the whole session ended with `protocol_error`. The trace records each
   shortened wait as a `wait shortened` notice with the requested and applied durations, the
