@@ -34,6 +34,12 @@ function num(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
+/** The usage records in complete stdout lines, kept from output past the transcript cap so
+ *  parseTerminalTokenUsage can count them with the stored ones. */
+export function terminalUsageRecords(lines: string): string[] {
+  return Array.from(lines.matchAll(USAGE_RE), (match) => match[0]);
+}
+
 /**
  * Accumulate runtime-turn usage from a captured `codex exec --json` stream. A Codex turn may
  * include multiple provider requests; these records cannot establish per-request pricing tiers.
