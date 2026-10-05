@@ -1,6 +1,6 @@
 // The computer-use route: a subject (an app-url the caller provisioned, or a repo the
 // humanish clones and serves in the sandbox) driven by a registry-resolved computer-use actor inside a
-// hosted E2B desktop. On this path `actors[].type` selects the actor: the
+// hosted E2B desktop. On this path `actor.type` selects the actor: the
 // descriptor returned by the registry runs the session; the route provisions the desktop and
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //

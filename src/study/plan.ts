@@ -1,5 +1,5 @@
 // The route decision. A study's route follows from its composition (subject.source,
-// execution.target, the first actor's registered run kind, subject.topology), never from a
+// execution.target, the actor's registered run kind, `route: shared-world`), never from a
 // declared kind. This is the only function that decides it.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";

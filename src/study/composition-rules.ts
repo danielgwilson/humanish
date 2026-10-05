@@ -29,10 +29,21 @@ import {
   actorOf,
   participantList,
   declaredParticipantCount,
+  surfaceCount,
   modeOf,
   scenarioRefOf,
   declaresSharedWorld,
 } from "./study-fields.js";
+
+/**
+ * The count a scripted or terminal composition reads: its surfaces, or a participant count.
+ * parse/front.ts refuses `participants` on route: scripted and route: terminal, and `surfaces` off
+ * route: scripted, but a study can declare a route its composition does not take, and these rules
+ * run before parseStudy compares the two. migrate's view of a v2 file reaches them the same way.
+ */
+function participantOrSurfaceCount(config: StudyConfig): number | undefined {
+  return declaredParticipantCount(config) ?? surfaceCount(config);
+}
 
 /** The first composition rule a config breaks, in the parser's order, or null. */
 export function compositionReason(config: StudyConfig): string | null {
@@ -118,6 +129,9 @@ function appUrlValidationReason(config: StudyConfig): string | null {
       if (!scenarioRefOf(config)) {
         return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
       }
+      if ((participantOrSurfaceCount(config) ?? 1) > 2) {
+        return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
+      }
       if (config.policies?.redactScreenshots === true) {
         return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
       }
@@ -183,7 +197,9 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
     if (!scenarioRefOf(config)) {
       return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
     }
-    // A study that declares another route can still list participants.
+    if ((participantOrSurfaceCount(config) ?? 1) > 2) {
+      return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
+    }
     if (participantList(config) !== undefined) {
       return "`participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces.";
     }
@@ -290,8 +306,7 @@ function desktopCliValidationReason(config: StudyConfig): string | null {
 // an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is a
 // parse error): a registered terminal actor only, execution.target e2b-terminal or absent (absent
 // defaults to e2b-terminal, the only target where an in-sandbox agent runs), one participant until
-// fan-out lands. parse/front.ts refuses `participants` on route: terminal; a study that declares
-// another route can still count them.
+// fan-out lands.
 function terminalValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = actorOf(config)?.type ?? "";
@@ -301,7 +316,7 @@ function terminalValidationReason(config: StudyConfig): string | null {
     if (!actorResolvesToTerminal(type)) {
       return `actor.type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
     }
-    if ((declaredParticipantCount(config) ?? 1) > 1) {
+    if ((participantOrSurfaceCount(config) ?? 1) > 1) {
       return "Terminal fan-out to more than one participant is not supported yet; set participants to 1.";
     }
   } else if (config.execution?.target === "e2b-terminal") {

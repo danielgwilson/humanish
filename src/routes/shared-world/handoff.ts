@@ -43,7 +43,7 @@ const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
 // convergence proof): at most this many single-frame reads before the participant is assumed to be
 // somewhere without a code. Each reader stops the instant it has what it needs, so in practice only
 // a handful fire (a participant reaches its /lobby within a few turns). NOTE: these reads are
-// out-of-band OpenAI calls (external-public route only) and are left out of execution.caps.maxUsd,
+// out-of-band OpenAI calls (external-public route only) and are left out of caps.maxUsd,
 // so this hard cap is what bounds their spend (each read is one cheap single-frame OCR call). If
 // this route ever runs under a strict budget, fold the estimate in.
 const MAX_LOBBY_CODE_VISION_READS = 30;

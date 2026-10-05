@@ -112,8 +112,8 @@ export interface ComputerUseRunInput {
   cwd: string;
   open?: boolean;
   runId?: string;
-  /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `lanes`
-   *  roster is declared; a roster's length is authoritative). */
+  /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `participants`
+   *  list is declared; a roster's length is authoritative). */
   countOverride?: number;
   /** Explicitly create a new run containing failed or selected participants from a prior fan-out run. */
   rerun?: {
@@ -265,7 +265,7 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
   | "HUMANISH_RUN_ID_IN_USE"
-  // A fail-closed spend cap (execution.caps.maxUsd) was set but src/run/pricing.ts has no rate for the
+  // A fail-closed spend cap (caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped: an unenforceable cap is more dangerous than none.
   | "HUMANISH_COMPUTER_USE_UNPRICED_CAP"
@@ -509,7 +509,7 @@ export interface ParticipantModelDeps {
   artifactRoot: PreparedOutputRoot;
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
-  /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
+  /** The study's shared spend ledger, present exactly when caps.maxTotalUsd is set on a
    *  live run. Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
   /**

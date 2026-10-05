@@ -1,5 +1,5 @@
 // How long a live terminal sandbox may live. Its server-side timeout has to cover everything that
-// runs in it before the codex command, the command's own wall clock (scenario.caps.maxMinutes) and
+// runs in it before the codex command, the command's own wall clock (caps.maxMinutes) and
 // the reclamation buffer after that clock's kill. A timeout shorter than that lets E2B kill the
 // sandbox before the command's deadline and before the evidence is read.
 

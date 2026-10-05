@@ -70,8 +70,8 @@ export function registeredTerminalActors(): string[] {
 }
 
 /**
- * The declared fan-out participant count on the computer-use route: a `lanes[]` roster's length, else
- * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
+ * The declared fan-out participant count on the computer-use route: a `participants` list's
+ * length, else a participant count, else 1. The single source of truth shared by the parser, the engine,
  * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
 export function computerUseParticipantCount(config: StudyConfig): number {
@@ -131,8 +131,8 @@ export function isComputerUseComposition(config: StudyConfig): boolean {
  * `shared-world` topology. Mirror of isComputerUseComposition; the single source of truth shared by
  * routeOf (which checks it before the computer-use route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
- * clone/local-tree × e2b-desktop × computer-use composition without `topology: shared-world` stays per-lane-worlds
- * (the computer-use route); the topology declaration is the override switch.
+ * clone/local-tree × e2b-desktop × computer-use composition without `route: shared-world` stays per-lane-worlds
+ * (the computer-use route); the route declaration is the override switch.
  */
 export function isSharedWorldComposition(config: StudyConfig): boolean {
   return (
@@ -152,7 +152,7 @@ export function isProvisionedSharedWorldComposition(config: StudyConfig): boolea
 
 /**
  * The external-public shared-world shape: a real public deployment used directly as
- * the shared plane: `source: app-url` + `topology: shared-world` + a computer-use actor on
+ * the shared plane: `source: app-url` + `route: shared-world` + a computer-use actor on
  * e2b-desktop + `policies.allowPublicTargets: true`. No getHost, no clone, no subject sandbox, no
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
  * externalPublicSharedWorldValidationReason, not here; this predicate is the router only, so a

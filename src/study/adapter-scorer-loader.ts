@@ -118,7 +118,7 @@ const SCORER_CAPABLE_ROUTES: ReadonlySet<StudyRoute> = new Set<StudyRoute>([
 const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 
 /**
- * Resolve + load a config-declared scorer module. Resolution clones scenario.ref exactly
+ * Resolve + load a config-declared scorer module. Resolution clones the scripted `scenario` resolution exactly
  * (prepareSelectedOutputDirectory → cwd-clamp → readContainedRegularFile), then `import()`s the
  * entry file in a broad try/catch. The digest is over the readContainedRegularFile entry bytes.
  */
@@ -171,11 +171,11 @@ export async function loadAdapterScorer(args: {
     );
   }
 
-  // Root token: realpath(cwd) → prepareSelectedOutputDirectory(dirname, cwd). Mirrors scenario.ref.
+  // Root token: realpath(cwd) → prepareSelectedOutputDirectory(dirname, cwd). Mirrors the scripted `scenario`.
   const physicalCwd = await realpath(path.resolve(args.cwd));
   const root = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
 
-  // Clamp verbatim from the scripted scenario.ref branch: resolve → relative → reject escape/absolute.
+  // Clamp verbatim from the scripted `scenario` branch: resolve → relative → reject escape/absolute.
   const absolutePath = path.resolve(root.physicalPath, trimmed);
   const relative = path.relative(root.physicalPath, absolutePath);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {

@@ -1,4 +1,4 @@
-// Resolve a scripted-browser study's `scenario.ref` to a committed scenario file and parse its
+// Resolve a scripted-browser study's `scenario` to a committed scenario file and parse its
 // `browser.steps` into the journey the actor runs. The ref is an id or a repo-relative path that must
 // stay inside the project; provenance records it repo-relative with the scenario's digest.
 
@@ -12,7 +12,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../../run/contained-output.js";
 
-// Same public-safe token shape the study id uses; an id-style scenario.ref must match it before
+// Same public-safe token shape the study id uses; an id-style `scenario` must match it before
 // it is interpolated into a repo path.
 const SCENARIO_REF_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
@@ -25,7 +25,7 @@ interface ResolvedScriptedScenario {
 }
 
 /**
- * Resolve and consume `scenario.ref`. Path-style refs (contain a separator or end .yaml/.yml)
+ * Resolve and consume `scenario`. Path-style refs (contain a separator or end .yaml/.yml)
  * resolve against cwd and are clamped inside it: a ../../ escape is rejected, never recorded
  * as repo-relative provenance. Id-style refs must be public-safe tokens and resolve to
  * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed. planScriptedStudy

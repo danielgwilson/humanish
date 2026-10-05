@@ -103,11 +103,11 @@ export interface ScriptedBrowserSessionOptions {
   evidenceAppUrl?: string;
   /** Defaults to loopback. Provisioned subjects drive a private URL but persist redacted labels. */
   urlPolicy?: ScriptedBrowserEvidenceUrlPolicy;
-  /** Parsed + validated by the backend (scenario.ref is consumed there, fail-closed). */
+  /** Parsed + validated by the backend (`scenario` is consumed there, fail-closed). */
   journey: BrowserPersonaJourney;
   /** One session per surface. */
   surface: BrowserSurface;
-  /** id = actors[0].persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
+  /** id = actor.persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
    *  (the step manifest is the "prompt"; no model prompt exists on this route). */
   persona: ActorPersonaRef;
   /** Journey wall-clock budget in ms; the route passes execution.timeoutMs or 300_000. */

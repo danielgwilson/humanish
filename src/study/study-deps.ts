@@ -38,7 +38,7 @@ export interface StudyDeps {
   readonly subjectPhaseSink?: (event: SubjectPhaseEvent, participant?: ParticipantRef) => void;
   /**
    * Shared world: runs each participant's computer-use session in place of the actor's own. The
-   * planner reads whether it is set: a custom runner cannot enforce actors[0].maxOutputTokens.
+   * planner reads whether it is set: a custom runner cannot enforce actor.maxOutputTokens.
    */
   readonly runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**

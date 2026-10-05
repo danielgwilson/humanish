@@ -6,7 +6,7 @@
 //
 // Spend: scripted steps make no model requests, and their traces record zero token usage. A local
 // app-url run spends no sandbox minutes; a live clone run spends E2B minutes to clone and serve the
-// subject. `scenario.mode: live` is required anyway, because a live run actuates a real browser
+// subject. `mode: live` is required anyway, because a live run actuates a real browser
 // against a real app (it fills forms and clicks buttons). A dry run parses and digest-pins the
 // scenario and writes the contract bundle without touching anything.
 //

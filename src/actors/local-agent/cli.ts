@@ -3,7 +3,7 @@
 // mapping and JSON reading the two Claude Code paths share, and the one-shot Claude Code provider.
 //
 // A developer trying humanish often already has a coding agent signed in (Codex on a ChatGPT plan,
-// Claude Code on a Max plan), so `actors[0].type: local-agent` lets that agent decide the next
+// Claude Code on a Max plan), so `actor.type: local-agent` lets that agent decide the next
 // action instead of a provider API key. Codex runs as a restricted app-server participant
 // (actors/codex/restricted-participant.ts) and Claude Code as one session for the whole run
 // (claude-session.ts). The one-shot provider below spawns `claude -p` per turn, with no memory of

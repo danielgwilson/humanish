@@ -73,7 +73,7 @@ export async function liveCuaRejection(args: {
     };
   }
   // Fail-closed cap: a maxUsd cap needs a measurable per-turn estimate.
-  // If the operator set execution.caps.maxUsd but src/run/pricing.ts has no rate for the resolved
+  // If the operator set caps.maxUsd but src/run/pricing.ts has no rate for the resolved
   // model, the loop could not enforce the cap, and silently running uncapped would break the
   // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run
   // uncapped: an unenforceable cap is more dangerous than none. The operator picks a priced model

@@ -693,7 +693,7 @@ export interface StudyCommsReceivingEmail {
 interface StudyCommsCaptureEmail {
   connection?: never;
   allowedOrigins?: never;
-  /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
+  /** Which implementation backs the inbox (a backend discriminator, distinct from `mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense: an in-sandbox
    *  catch captures the app's sends. Provider-backed receiving uses the separate
    *  StudyCommsReceivingEmail configuration selected by a saved connection. */

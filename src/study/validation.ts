@@ -111,7 +111,7 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
 }
 
 /**
- * Cross-validate a `topology: shared-world` declaration. Returns the failure message, or
+ * Cross-validate a `route: shared-world` declaration. Returns the failure message, or
  * null when the one shared-world route can run it: the external-public checks for an app-url
  * subject, the provisioned checks otherwise. Enforced at parse and again by the route, since
  * runStudyWith takes a config that skipped the parser.
@@ -328,7 +328,7 @@ export function concurrentSharedWorldValidationReason(config: StudyConfig): stri
  * it rejects every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
  * are inert with no sandbox, so they fail closed), and requires a
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
- * concurrency >= 2 + an actors[0].lanes roster of ≥2 with exactly one host participant. The getHost synthetic
+ * concurrency >= 2 + a `participants` list of ≥2 with exactly one host participant. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
  * Enforced at parse and re-enforced in the engine (runStudyWith takes a config that skipped the parser).
  */
