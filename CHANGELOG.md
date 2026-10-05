@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A Codex participant that asks for a wait longer than 30 seconds now waits 30 seconds and keeps
+  its session; before, the whole session ended with `protocol_error`. The trace records each
+  shortened wait as a `wait shortened` notice with the requested and applied durations, the
+  participant is told on its next request, and the `humanish_ui` tool description states the cap.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library
