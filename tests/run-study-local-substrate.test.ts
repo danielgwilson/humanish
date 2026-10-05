@@ -15,18 +15,21 @@ vi.mock("../src/routes/computer-use/local-vm.js", () => ({
 }));
 
 import { runStudyWith } from "../src/run-study.js";
-import type { StudyConfig } from "../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../src/study/types.js";
+import { libraryConfig } from "./helpers/library-config.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
 import type { CuaExecutor, CuaProvider } from "../src/actors/computer-use/loop.js";
 
-const config: StudyConfig = {
-  schema: "humanish.lab.v2",
+const manifest = {
+  schema: STUDY_SCHEMA,
   id: "local-scored",
+  route: "computer-use",
+  mode: "live",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:4173/" },
-  actors: [{ type: "openai-computer-use", mission: "Save a synthetic note." }],
+  actor: { type: "openai-computer-use", mission: "Save a synthetic note." },
   execution: { target: "local" },
-  scenario: { mode: "live" },
 };
+const config: StudyConfig = libraryConfig(manifest);
 
 const score = (): RunAdapterScore => ({
   schema: "humanish.adapter-score.v1",
@@ -106,10 +109,10 @@ describe("local browser study selection", () => {
       throw new Error("unexpected provider");
     });
     const outcome = await runStudyWith(
-      {
-        ...config,
-        actors: [{ type: "local-agent", localAgent: "codex", mission: "Save a synthetic note." }],
-      },
+      libraryConfig({
+        ...manifest,
+        actor: { type: "local-agent", localAgent: "codex", mission: "Save a synthetic note." },
+      }),
       { cwd, dryRun: true, open: false, inProcess: { executor }, createProvider },
     );
 

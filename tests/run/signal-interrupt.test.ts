@@ -27,8 +27,8 @@ function screenshot(): string {
 const CHILD = `
   const root = process.env.REPO_ROOT;
   const { runStudyWith } = await import(root + "/src/run-study.ts");
-  const { parseStudyDocument } = await import(root + "/src/study/config.ts");
-  const { V2_SCHEMA } = await import(root + "/src/study/types.ts");
+  const { parseStudy } = await import(root + "/src/study/config.ts");
+  const { STUDY_SCHEMA } = await import(root + "/src/study/types.ts");
   const frame = Buffer.from(process.env.PROBE_PNG, "base64");
   const noop = async () => undefined;
   const sandbox = {
@@ -48,13 +48,14 @@ const CHILD = `
       kill: async () => { process.stdout.write("killed\\n"); return true; },
     },
   };
-  const parsed = parseStudyDocument({
-    schema: V2_SCHEMA,
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
     id: "signal-probe",
+    route: "computer-use",
+    mode: "live",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore." }],
+    actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore." },
     execution: { target: "e2b-desktop", timeoutMs: 60000, desktop: { resolution: [1280, 800] } },
-    scenario: { mode: "live" },
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);

@@ -14,7 +14,8 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
   checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 
-import type { StudyConfig } from "../../../src/study/types.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
+import { libraryConfig } from "../../helpers/library-config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import type { AdapterScoringContext } from "../../../src/study/adapter-scorer-loader.js";
 import type { StudyEvent } from "../../../src/study/run-study-events.js";
@@ -31,14 +32,15 @@ describe("local browser dry-run", () => {
 
   it("uses the local route contract without preparing a runtime or checking account quota", async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-dry-"));
-    const config: StudyConfig = {
-      schema: "humanish.lab.v2",
+    const config = libraryConfig({
+      schema: STUDY_SCHEMA,
       id: "local-browser",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
-      actors: [{ type: "local-agent", localAgent: "codex", mission: "Complete a synthetic task." }],
+      actor: { type: "local-agent", localAgent: "codex", mission: "Complete a synthetic task." },
       execution: { target: "local", timeoutMs: 120_000 },
-      scenario: { mode: "live" },
-    };
+    });
 
     const outcome = await runStudyWith(config, { cwd, dryRun: true, open: false });
     expect((outcome.result as { ok?: boolean }).ok).not.toBe(false);
@@ -48,14 +50,15 @@ describe("local browser dry-run", () => {
 
   it("keeps a caller's scorer through the local study", async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-scored-"));
-    const config: StudyConfig = {
-      schema: "humanish.lab.v2",
+    const config = libraryConfig({
+      schema: STUDY_SCHEMA,
       id: "local-scored",
+      route: "computer-use",
+      mode: "live",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
-      actors: [{ type: "openai-computer-use", mission: "Complete a synthetic task." }],
+      actor: { type: "openai-computer-use", mission: "Complete a synthetic task." },
       execution: { target: "local" },
-      scenario: { mode: "live" },
-    };
+    });
     const score = vi.fn((ctx: AdapterScoringContext): RunAdapterScore => ({
       schema: "humanish.adapter-score.v1",
       namespace: "example-adapter",

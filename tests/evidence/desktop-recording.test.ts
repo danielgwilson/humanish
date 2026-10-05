@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { parseStudyDocument } from "../../src/study/config.js";
-import { type StudyConfig } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { collectDesktopRecording } from "../../src/evidence/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { exportRun } from "../../src/feedback/export.js";
@@ -109,19 +109,27 @@ describe("optional recording evidence", () => {
 });
 
 it("keeps capture optional and rejects declarations that no runtime will consume", () => {
-  const config: StudyConfig = {
-    schema: "humanish.lab.v2",
-    id: "record-browser",
-    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
-    actors: [{ type: "openai-computer-use" }],
-    execution: { target: "e2b-desktop", desktop: { recording: { audio: true } } },
-    scenario: { mode: "live" },
+  const execution: { target: string; desktop: { recording?: { audio: boolean } } } = {
+    target: "e2b-desktop",
+    desktop: { recording: { audio: true } },
   };
-  expect(parseStudyDocument(config).ok).toBe(true);
-  config.actors[0]!.type = "scripted-browser";
-  config.execution!.target = "local";
-  config.scenario!.ref = "scripted-first-run";
-  expect(parseStudyDocument(config).ok).toBe(false);
-  delete config.execution!.desktop!.recording;
-  expect(parseStudyDocument(config).ok).toBe(true);
+  const config: Record<string, unknown> = {
+    schema: STUDY_SCHEMA,
+    id: "record-browser",
+    route: "computer-use",
+    mode: "live",
+    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
+    actor: { type: "openai-computer-use" },
+    execution,
+  };
+  expect(parseStudy(config).ok).toBe(true);
+  Object.assign(config, {
+    route: "scripted",
+    actor: { type: "scripted-browser" },
+    scenario: "scripted-first-run",
+  });
+  execution.target = "local";
+  expect(parseStudy(config).ok).toBe(false);
+  delete execution.desktop.recording;
+  expect(parseStudy(config).ok).toBe(true);
 });
