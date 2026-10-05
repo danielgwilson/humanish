@@ -1,6 +1,10 @@
 import { classifyCuaAction } from "../../affordance.js";
 import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
-import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
+import {
+  ComputerUseExecutorError,
+  isComputerUseExecutorError,
+  type CuaRejectionReason,
+} from "../executor-error.js";
 import {
   CuaAbortError,
   CuaDeadlineError,
@@ -135,8 +139,15 @@ export interface ActionBatch {
   readonly hint: string | undefined;
 }
 
-function rejectedActionHint(title: string): string {
-  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
+/** What the participant can do about a rejection whose reason the executor named. */
+const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.freeze({
+  extra_tab:
+    "It was rejected because more than one browser tab is open: typing works only while the study's original tab is the only tab. Switch to the other tab and close it, keep the study's original tab open, then type again.",
+});
+
+function rejectedActionHint(title: string, reason: CuaRejectionReason | undefined): string {
+  const remedy = reason === undefined ? "" : ` ${REJECTION_REMEDIES[reason]}`;
+  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
 
 function shortenedWaitHint(wait: ShortenedWait): string {
@@ -205,16 +216,17 @@ export async function runActionBatch(
         for (let later = index + 1; later < actions.length; later++) {
           execution.actions.push({ index: later, status: "not_dispatched" });
         }
+        const { reason } = error;
         trace.record("notice", () =>
           notice(
             "warn",
             "action rejected before dispatch",
             session.redactNarration(
-              `action: ${title}; code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: ${actions.length - index - 1}`,
+              `action: ${title}; code: action_rejected; disposition: not_dispatched;${reason === undefined ? "" : ` reason: ${reason};`} remaining batch actions not dispatched: ${actions.length - index - 1}`,
             ),
           ),
         );
-        notes.push(rejectedActionHint(title));
+        notes.push(rejectedActionHint(title, reason));
         return { execution, hint: hint() };
       }
       if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;

@@ -18,6 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   its session; before, the whole session ended with `protocol_error`. The trace records each
   shortened wait as a `wait shortened` notice with the requested and applied durations, the
   participant is told on its next request, and the `humanish_ui` tool description states the cap.
+- On local browser studies, a `type` action refused because a second tab is open now says so.
+  The trace's rejection notice records `reason: extra_tab`, and the participant is told to
+  switch to the other tab, close it and type again. Before, the participant got a generic
+  rejection and kept retrying until its time ran out. The local browser docs state the one-tab
+  rule.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
