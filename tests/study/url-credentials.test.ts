@@ -193,12 +193,14 @@ describe("study URLs with credentials in a library caller's config, which skips 
     expect(planned.refusal.message).toMatch(/^`subject\.appUrl` has a user name or password/);
     expect(planned.refusal.message).not.toContain(TOKEN);
 
+    // The parsed config with a credential in one entry; the parser fills the concurrency.
     const withEntry = libraryConfig({
       ...shared,
       participants: [
         { id: "host", host: true },
         { id: "guest", entry: `/lobby?token=${TOKEN}` },
       ],
+      execution: { ...shared.execution, concurrency: 2 },
     });
     const entryPlanned = planStudy(withEntry, { cwd: process.cwd(), dryRun: true });
     expect(entryPlanned.ok).toBe(false);
