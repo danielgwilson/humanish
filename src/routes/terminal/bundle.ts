@@ -28,6 +28,7 @@ import {
   TERMINAL_TRANSCRIPT_ARTIFACT,
 } from "../../run/terminal-contract.js";
 import type { TerminalLedgers } from "./types.js";
+import { DEFAULT_RUNTIME_AUTH } from "./runtime-auth.js";
 import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**
@@ -108,7 +109,7 @@ export function buildTerminalProductBundle(args: {
       type: "terminal-lab.credentials.declared",
       // Names-only evidence: the runtime-auth channel is declared; no value is ever
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
-      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
+      message: `Runtime auth channel: ${args.runtimeAuth ?? `${DEFAULT_RUNTIME_AUTH}, the default`} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-003-caps",

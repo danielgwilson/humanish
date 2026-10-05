@@ -266,7 +266,8 @@ function nonceFrom(command: string): string {
 
 function liveConfig(overrides?: {
   caps?: Record<string, number> | null;
-  runtimeAuth?: StudyRuntimeAuth;
+  /** null declares none, so the route's default applies. */
+  runtimeAuth?: StudyRuntimeAuth | null;
   egressAllow?: string[];
 }): StudyConfig {
   const raw: Record<string, unknown> = {
@@ -286,7 +287,9 @@ function liveConfig(overrides?: {
     ],
     execution: {
       target: "e2b-terminal",
-      runtimeAuth: overrides?.runtimeAuth ?? "openai-env",
+      ...(overrides?.runtimeAuth === null
+        ? {}
+        : { runtimeAuth: overrides?.runtimeAuth ?? "openai-env" }),
       ...(overrides?.egressAllow ? { egressAllow: overrides.egressAllow } : {}),
       timeoutMs: 600_000,
       terminal: { transport: "exec-stream", stdin: "disabled" },
@@ -1727,6 +1730,43 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     },
   );
+
+  it("keeps the raw key outside the sandbox when the study declares no runtimeAuth", async () => {
+    const creates: RecordedCreate[] = [];
+    const runs: RecordedRun[] = [];
+    const result = await runTerminalProductStudy({
+      cwd,
+      config: liveConfig({ runtimeAuth: null }),
+      dryRun: false,
+      open: false,
+      env: baseEnv(),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed: [],
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(creates[0]?.envs).toBeUndefined();
+    expect(creates[0]?.network?.rules?.["api.openai.com"]).toEqual([
+      { transform: { headers: { Authorization: `Bearer ${FAKE_RUNTIME_KEY}` } } },
+    ]);
+    expect(runs.find((r) => r.command.includes(" exec "))?.envs?.CODEX_API_KEY).toBe(
+      OPENAI_EGRESS_PLACEHOLDER,
+    );
+    expect(JSON.stringify(runs)).not.toContain(FAKE_RUNTIME_KEY);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const trace = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+    expect(trace.capabilities.keyPlacement).toBe("external");
+  });
 
   it("retries sandbox create once after a transient provider error and says so", async () => {
     const creates: RecordedCreate[] = [];

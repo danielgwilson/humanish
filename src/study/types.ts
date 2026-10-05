@@ -477,10 +477,11 @@ export interface StudyExecutionTerminal {
 }
 
 /**
- * The terminal agent's runtime-auth channel. "openai-env" (the default) passes the raw runtime
- * key command-scoped. "openai-egress" keeps it in an E2B outbound header transform for the default
- * OpenAI endpoint and passes an inert placeholder to Codex. The latter still gives every sandbox
- * process a spendable OpenAI proxy capability; it is not a spend cap or an egress restriction.
+ * The terminal agent's runtime-auth channel. "openai-egress" (the default) keeps the raw runtime
+ * key in an E2B outbound header transform for the default OpenAI endpoint and passes an inert
+ * placeholder to Codex. It still gives every sandbox process a spendable OpenAI proxy capability;
+ * it is not a spend cap or an egress restriction. "openai-env" passes the raw key command-scoped,
+ * where the agent and its child processes can read it.
  */
 export type StudyRuntimeAuth = "openai-env" | "openai-egress";
 
@@ -587,8 +588,9 @@ export interface StudyExecution {
   caps?: StudyScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: StudyExecutionTerminal;
-  /** `terminal-product` route: runtime key placement, defaulting to openai-env. openai-egress
-   *  uses an external header transform; dry-runs record declarations only. Inert on other routes. */
+  /** `terminal-product` route: runtime key placement, defaulting to openai-egress, an external
+   *  header transform. openai-env passes the key to the agent command. Dry-runs record declarations
+   *  only. Inert on other routes. */
   runtimeAuth?: StudyRuntimeAuth;
   /** Terminal Codex package pin. Omit to resolve latest once, observe it, then execute that version. */
   runtime?: { version: string };
