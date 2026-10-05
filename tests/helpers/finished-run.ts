@@ -28,6 +28,8 @@ export async function publishRun(
     shape?: (bundle: RunBundle) => RunBundle;
     /** Interrupt the run as the CLI's signal handler does, before the route finishes it. */
     interruptedBy?: RunInterruptSignal;
+    /** Publish a run whose route reported no participant session start. */
+    noParticipant?: boolean;
   } = {},
 ): Promise<FinishedRun> {
   const mode = options.mode ?? "live";
@@ -52,6 +54,7 @@ export async function publishRun(
       renderReview: (published) => `# Review ${published.runId}\n`,
     });
     if (!started.ok) throw new Error(started.message);
+    if (options.noParticipant !== true) started.run.participantStarted();
     if (options.interruptedBy !== undefined) {
       const active = activeRuns().find((run) => run.runId === runId);
       if (active === undefined) throw new Error(`run ${runId} is not registered as active`);
@@ -67,49 +70,4 @@ export async function publishRun(
 export function asLiveRecording(bundle: RunBundle): RunBundle {
   const [first, ...rest] = bundle.streams;
   return { ...bundle, streams: first ? [{ ...first, status: "complete" }, ...rest] : rest };
-}
-
-/**
- * The synthetic bundle with a participant that ran: its first stream carries an actor trace, as
- * every route writes once a session returns. The preview template has none.
- */
-export function withParticipantTrace(bundle: RunBundle): RunBundle {
-  const [first, ...rest] = bundle.streams;
-  if (first === undefined) throw new Error("the template bundle has no stream");
-  return {
-    ...bundle,
-    streams: [
-      {
-        ...first,
-        actor: {
-          schema: "humanish.actor-trace.v1",
-          provider: "synthetic",
-          protocol: "cua-loop",
-          lane: "computer-use",
-          persona: { id: "synthetic-participant", traitsApplied: [], promptDigest: "a".repeat(64) },
-          redaction: { status: "passed", screenshots: "n/a", notes: "Synthetic trace." },
-          startedAt: "2026-09-01T00:00:00.000Z",
-          completedAt: "2026-09-01T00:01:00.000Z",
-          durationMs: 60000,
-          status: "failed",
-          completionReason: "harness_error",
-          reason: "The synthetic session failed.",
-          ids: {},
-          counts: {},
-          items: [],
-          capabilities: {
-            headless: true,
-            structuredTrace: true,
-            lanes: ["computer-use"],
-            producesScreenshots: false,
-            byoModel: false,
-            preGrantableApprovals: false,
-            inProcessTools: false,
-            license: "open",
-          },
-        },
-      },
-      ...rest,
-    ],
-  };
 }

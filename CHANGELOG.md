@@ -23,9 +23,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   both its text and `--json` output. review.json on disk is unchanged.
 - A live run that failed before any participant started, such as one whose E2B key was refused,
   printed "Participants finished; preparing analysis…". The line, and the `analysis-started` and
-  `analysis-finished` events behind it, now come only when a participant ran: a stream in the
-  published `run.json` carries an actor trace. The analysis outcome is recorded and printed as
-  before, for example "analysis: skipped because no participant left evidence".
+  `analysis-finished` events behind it, now come only when a participant's session started, on
+  any route; a session that started and then threw counts. The analysis outcome is recorded and
+  printed as before, for example "analysis: skipped because no participant left evidence".
 - A live scripted run failed every surface with "Scripted browser launch failed:
   browserType.launch: Target page, context or browser has been closed" when `TMPDIR` was a long
   path. Chrome puts its singleton socket at `$TMPDIR/com.google.Chrome.XXXXXX/SingletonSocket`, a

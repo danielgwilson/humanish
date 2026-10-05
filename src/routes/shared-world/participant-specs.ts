@@ -221,7 +221,11 @@ export function participantRunDeps(
     studyCwd: ctx.cwd,
     redactScreenshots: ctx.redactScreenshots,
     scrubKnownValues,
-    runSession: ctx.runSession,
+    // A session that throws returns no trace; the run still records that it started.
+    runSession: (options) => {
+      ctx.run.participantStarted();
+      return ctx.runSession(options);
+    },
     // A local-agent brain runs each participant on the operator's signed-in agent, as on computer
     // use.
     brain: ctx.plan.brain,

@@ -83,6 +83,12 @@ interface Run {
    */
   writeSnapshot(bundle: RunBundle): Promise<void>;
   /**
+   * A participant's session started: its actor began to act on the subject. FinishedRun's
+   * participantsRan reads this, so a session that throws before it returns a trace still counts,
+   * and a run that failed before any session (a refused E2B key) does not.
+   */
+  participantStarted(): void;
+  /**
    * The one final publication: run.json with `outcome` set from `outcome`, then the status
    * outcome copied from it, then review.json, review.md, events.ndjson,
    * observer/observer-data.json, and last the latest pointer. The status goes after run.json so
@@ -131,12 +137,7 @@ export class FinishedRun {
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
   readonly paths: PreparedRunArtifactPaths;
-  /**
-   * A participant ran: a stream of the published bundle carries its actor trace. Every route
-   * writes one once a participant's session returns, so a run that failed before any session
-   * started (a refused E2B key) has none.
-   */
-  readonly participantsRan: boolean;
+  readonly #participantsRan: () => boolean;
 
   constructor(
     key: typeof issueKey,
@@ -146,12 +147,12 @@ export class FinishedRun {
     outcome: RecordedOutcome,
     recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>,
     interrupted: () => boolean,
-    participantsRan: boolean,
+    participantsRan: () => boolean,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
     this.paths = paths;
-    this.participantsRan = participantsRan;
+    this.#participantsRan = participantsRan;
     this.#observer = observer;
     this.#outcome = outcome;
     this.#recordFailure = recordFailure;
@@ -164,6 +165,11 @@ export class FinishedRun {
    */
   get interrupted(): boolean {
     return this.#interrupted();
+  }
+
+  /** The route reported a participant's session started (Run.participantStarted). */
+  get participantsRan(): boolean {
+    return this.#participantsRan();
   }
 
   static isIssued(value: unknown): value is FinishedRun {
@@ -247,8 +253,10 @@ function runPublisher(args: {
   now: () => number;
   /** The scope's tracker, so the scope waits for a failure recorded after the Observer render. */
   admit: <V>(operation: Promise<V>) => Promise<V>;
+  /** Whether the route reported a participant's session started. */
+  participantsRan: () => boolean;
 }): RunPublisher {
-  const { options, runId, paths, runStatus, now, admit } = args;
+  const { options, runId, paths, runStatus, now, admit, participantsRan } = args;
   const observer = observerTarget(options);
   let pointerWritten = false;
   // The bundle of the last write asked for, and the outcome every later write carries once a
@@ -348,7 +356,7 @@ function runPublisher(args: {
       current,
       recordFailure,
       () => runStatus.interrupted,
-      bundle.streams.some((stream) => stream.actor !== undefined),
+      participantsRan,
     );
   };
 
@@ -445,7 +453,16 @@ export async function runScope<T>(
   ): { run: Run; interrupt: (signal: RunInterruptSignal) => Promise<void> } => {
     const now = options.now ?? Date.now;
     const createdAt = new Date(now()).toISOString();
-    const publisher = runPublisher({ options, runId, paths, runStatus, now, admit });
+    let participantsRan = false;
+    const publisher = runPublisher({
+      options,
+      runId,
+      paths,
+      runStatus,
+      now,
+      admit,
+      participantsRan: () => participantsRan,
+    });
     let finishCalled = false;
     const checkIdentity = (bundle: RunBundle): string | undefined =>
       bundle.runId !== runId || bundle.mode !== options.mode
@@ -458,6 +475,9 @@ export async function runScope<T>(
       mode: options.mode,
       ...(options.study === undefined ? {} : { study: options.study }),
       paths,
+      participantStarted() {
+        participantsRan = true;
+      },
       writeSnapshot(bundle) {
         if (closed) return refuse("The run scope has closed.");
         if (finishCalled) return refuse("Run.finish was called; no snapshot follows it.");

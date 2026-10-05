@@ -1536,9 +1536,9 @@ sandbox. 0.109.0 removed the 0.107 names (`runLab`, `RunLabOptions`, `parseLabCo
   `durationMs` on completed phases. Computer use sends a participant target, shared world the
   subject.
 - `analysis-started` and `analysis-finished`, around post-run analysis. `analysis-finished`
-  fires after success, failure and cancellation. Neither fires for a run where no participant
-  ran, meaning no stream in its `run.json` carries an actor trace, such as one whose E2B key was
-  refused. That run's analysis outcome is still recorded.
+  fires after success, failure and cancellation. Neither fires for a run where no participant's
+  session started, such as one whose E2B key was refused before a desktop existed. A session that
+  started and then threw counts as started. That run's analysis outcome is still recorded.
 
 `onEvent` is never awaited, and it changes no output: subject phases still print to stderr. A
 throw or a rejected promise becomes a redacted run warning.

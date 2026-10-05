@@ -16,7 +16,7 @@ import {
   automaticAnalysisSucceeded,
 } from "../../src/analysis/automatic-completion.js";
 import { FinishedRun } from "../../src/run/run.js";
-import { asLiveRecording, publishRun, withParticipantTrace } from "../helpers/finished-run.js";
+import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
 import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
@@ -33,7 +33,6 @@ import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
-import type { RunBundle } from "../../src/run/bundle.js";
 import { studyFileText } from "../helpers/study-file.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
@@ -132,16 +131,9 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("records the analysis of a run where no participant ran, without the analysis events", async () => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    // The bundle a run that failed at E2B login publishes: its participant failed with no trace.
-    const failedBeforeSession = (bundle: RunBundle): RunBundle => ({
-      ...bundle,
-      streams: bundle.streams.map(({ actor: _actor, ...stream }) => ({
-        ...stream,
-        status: "failed",
-      })),
-    });
-    const ran = await publishRun(cwd, "participant-ran", { shape: withParticipantTrace });
-    const none = await publishRun(cwd, "no-participant", { shape: failedBeforeSession });
+    // A run that failed at E2B login: its route reported no session start.
+    const ran = await publishRun(cwd, "participant-ran");
+    const none = await publishRun(cwd, "no-participant", { noParticipant: true });
     const skip = {
       state: "skipped",
       reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
@@ -376,7 +368,7 @@ describe("automatic analysis admission and producer boundary", () => {
         }) as AutomaticAnalysisOutcome,
     );
     const emit = vi.fn();
-    const finished = await publishRun(cwd, "exact-recording", { shape: withParticipantTrace });
+    const finished = await publishRun(cwd, "exact-recording");
     const prepared = finished.paths;
     const original = {
       cwd,
@@ -440,9 +432,7 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("rejects a replacement recording after final publication instead of rebinding before dispatch", async () => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    const finished = await publishRun(cwd, "pinned-source", {
-      shape: (bundle) => withParticipantTrace(asLiveRecording(bundle)),
-    });
+    const finished = await publishRun(cwd, "pinned-source", { shape: asLiveRecording });
     const prepared = finished.paths;
     expect((await verifyRun(cwd, "pinned-source")).ok).toBe(true);
     const staging = path.join(cwd, "replacement-staging");
@@ -572,7 +562,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const cleanup = vi.fn();
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "retained", dryRun: false, ok: true },
-      await publishRun(cwd, "retained", { shape: withParticipantTrace }),
+      await publishRun(cwd, "retained"),
       config,
       {
         deps: {

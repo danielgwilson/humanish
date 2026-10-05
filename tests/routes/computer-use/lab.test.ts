@@ -3804,12 +3804,14 @@ describe("runCuaActorLab", () => {
     const { module, killed } = makeFakeModule(sandbox);
     // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
     let clock = 0;
+    const events: string[] = [];
     const stderr = captureStderr();
     const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        onEvent: (event) => void events.push(event.type),
       },
       {
         now: () => (clock += 30_000),
@@ -3821,6 +3823,11 @@ describe("runCuaActorLab", () => {
     ).finally(stderr.stop);
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
+    // The session started and threw without a trace; the run still counts its participant.
+    expect(events.filter((type) => type.startsWith("analysis-"))).toEqual([
+      "analysis-started",
+      "analysis-finished",
+    ]);
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
@@ -3933,12 +3940,14 @@ describe("runCuaActorLab", () => {
   });
 
   it("turns a missing @e2b/desktop peer into a structured failure with a complete failed bundle (no raw throw, no orphan dir)", async () => {
+    const events: string[] = [];
     const stderr = captureStderr();
     const outcome = await runStudyWith(
       cuaConfig(),
       {
         cwd,
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        onEvent: (event) => void events.push(event.type),
       },
       {
         desktopModule: async () => {
@@ -3950,6 +3959,8 @@ describe("runCuaActorLab", () => {
     ).finally(stderr.stop);
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
+    // No session started, so no analysis events, as with a refused E2B key.
+    expect(events.filter((type) => type.startsWith("analysis-"))).toEqual([]);
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");

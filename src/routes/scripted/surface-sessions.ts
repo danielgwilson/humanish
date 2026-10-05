@@ -34,13 +34,16 @@ export function runScriptedSessions(
     deps: StudyDeps;
     browserCommand: string | undefined;
     runPaths: PreparedRunArtifactPaths;
+    /** Called as each surface's session starts, before it can throw or return. */
+    onSessionStart: () => void;
   },
 ): Promise<ScriptedBrowserSessionResult[]> {
   const { appUrl, evidenceAppUrl, urlPolicy, journey, persona, timeoutMs, artifactRoot } = session;
-  const { surfaces, deps, browserCommand, runPaths } = run;
+  const { surfaces, deps, browserCommand, runPaths, onSessionStart } = run;
   const runSession = deps.runScriptedSession;
   return Promise.all(
     surfaces.map((surface) => {
+      onSessionStart();
       const sessionOptions: ScriptedBrowserSessionOptions = {
         appUrl,
         evidenceAppUrl,

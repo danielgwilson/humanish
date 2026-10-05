@@ -168,6 +168,7 @@ async function runScriptedPlanInScope(
           deps: setup.deps,
           browserCommand: setup.browserCommand,
           runPaths,
+          onSessionStart: () => run.participantStarted(),
         },
       );
     } catch (error) {
