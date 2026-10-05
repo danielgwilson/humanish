@@ -181,8 +181,6 @@ export async function followObserver(
     signals?: WatchStopSignal[];
   } = {},
 ): Promise<void> {
-  io.writeOut(`watching: ${result.serverUrl ?? result.observerUrl ?? result.observerPath}\n`);
-  io.writeOut("watching: press Ctrl-C to stop\n");
   await new Promise<void>((resolve) => {
     const signalTarget = options.signalTarget ?? process;
     const signals = options.signals ?? ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -232,6 +230,10 @@ export async function followObserver(
       handlers.set(signal, handler);
       signalTarget.once(signal, handler);
     }
+    // Print the prompt only once the handlers are in place: a Ctrl-C that arrives sooner would
+    // take Node's default action and end the process without closing the server.
+    io.writeOut(`watching: ${result.serverUrl ?? result.observerUrl ?? result.observerPath}\n`);
+    io.writeOut("watching: press Ctrl-C to stop\n");
   });
 }
 

@@ -252,8 +252,6 @@ async function serveObserveUntilSignal(
   // Keep the JSON envelope on stdout clean: route attach/stop chatter to stderr
   // for machine output, and to stdout for humans.
   const note = options.json ? io.writeErr : io.writeOut;
-  note(`serving: ${server.url}\n`);
-  note("serving: press Ctrl-C to stop\n");
   await new Promise<void>((resolveWait) => {
     const signals: WatchStopSignal[] = ["SIGINT", "SIGTERM", "SIGHUP"];
     const handlers = new Map<WatchStopSignal, () => void>();
@@ -289,6 +287,9 @@ async function serveObserveUntilSignal(
       handlers.set(signal, handler);
       process.once(signal, handler);
     }
+    // The prompt follows the handlers, as in followObserver.
+    note(`serving: ${server.url}\n`);
+    note("serving: press Ctrl-C to stop\n");
   });
 }
 
