@@ -8,7 +8,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changes
+### Changed
 
 - `humanish watch` and `humanish observe` (one run) print the result and the Observer path and
   exit 0 when nobody is at a terminal: stdin or stdout is not a terminal, or an agent runner
