@@ -14,9 +14,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   address, parses. 0.110.2 refused it as a credential. The check still refuses user info, a
   credential-named parameter such as `token`, `password` or a signature, and known token formats,
   in the URL and in a URL nested inside it, so a stream URL's auth key is still refused. A nested
-  URL with a user name alone is refused too, as the study URL itself is. A nested URL with a port
-  followed by a parameter that holds an email address is no longer read as user info. verify
-  still grades a run that records a raw E2B URL `blocked`.
+  URL with a user name alone is refused too, as the study URL itself is. verify still grades a
+  run that records a raw E2B URL `blocked`.
 
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 

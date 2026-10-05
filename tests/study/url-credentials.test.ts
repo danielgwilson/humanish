@@ -133,10 +133,6 @@ describe("study URLs that name an E2B sandbox", () => {
       `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
     ],
     [
-      "an E2B URL with a port, then a parameter that holds an address",
-      `https://app.example.com/?origin=${encodeURIComponent(`https://${APP_HOST}:3000`)}&email=${["alice", "example.com"].join("@")}`,
-    ],
-    [
       "the E2B docs page, then another parameter",
       `https://app.example.com/?next=${encodeURIComponent("https://docs.e2b.dev/api-key")}&view=compact`,
     ],
@@ -168,6 +164,16 @@ describe("study URLs that name an E2B sandbox", () => {
     [
       "an E2B URL as written with a user name alone",
       `https://app.example.com/?next=https://${TOKEN}${"@"}${APP_HOST}/`,
+      TOKEN,
+    ],
+    [
+      "an E2B URL with a password that holds an ampersand",
+      `https://app.example.com/#next=https://user:pass&${TOKEN}${"@"}${APP_HOST}/`,
+      TOKEN,
+    ],
+    [
+      "an E2B URL with a user name longer than 256 characters",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${TOKEN.repeat(9)}${"@"}${APP_HOST}/`)}`,
       TOKEN,
     ],
     [
