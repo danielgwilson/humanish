@@ -35,15 +35,18 @@
 
 import path from "node:path";
 import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
-import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
-import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
-import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
+import { type RunScope } from "../../run/run.js";
+import {
+  admitRoute,
+  completeRefusalAnalysis,
+  type RefusedStudy,
+  type RouteAdmission,
+} from "../../run/route-shell.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
-import { planSharedWorldStudy, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
+import { sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentStudyFailure, finishConcurrentRun } from "./result.js";
@@ -61,7 +64,6 @@ import {
   type LiveParticipants,
   type PlaneContext,
   type PlaneResults,
-  type RunConcurrentSharedWorldStudyOptions,
   type PlaneSelection,
 } from "./types.js";
 import { rosterOf } from "../../study/parse/actors.js";
@@ -74,27 +76,9 @@ const LOCAL_AGENT_REFUSAL_CODES = {
   "unpriced-cap": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
 } as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldStudyErrorCode>;
 
-/**
- * The library entry for a shared-world study. It plans the config with planSharedWorldStudy and runs
- * the plan with runSharedWorldPlan, whose run scope and withTransientCommsSecrets wrapper cover the
- * run and its analysis.
- */
-export async function runConcurrentSharedWorld(
-  options: RunConcurrentSharedWorldStudyOptions,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  const { config, dryRun, ...input } = options;
-  // planSharedWorldStudy makes every configuration refusal, in the order this route always has.
-  const planned = planSharedWorldStudy(config, {
-    dryRun,
-    hasRunSession: input.deps?.runSession !== undefined,
-  });
-  if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);
-  return sharedWorldStudyRefusal(options, planned.refusal);
-}
-
 /** A refused shared-world study's result: the route's envelope, and a refusal's analysis record. */
 export function sharedWorldStudyRefusal(
-  options: RunConcurrentSharedWorldStudyOptions,
+  options: SharedWorldRunInput & RefusedStudy,
   refusal: SharedWorldRefusal,
 ): Promise<ConcurrentSharedWorldStudyResult> {
   const { config, dryRun } = options;
@@ -110,74 +94,55 @@ export function sharedWorldStudyRefusal(
     dryRun,
     runId: options.runId,
   });
-  // A refusal starts no run, so a declared or default analysis is recorded as skipped.
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  return completeAutomaticAnalysis(
+  return completeRefusalAnalysis(
     fail(refusal.code, refusal.message, refusal.actor),
-    undefined,
-    analysis.ok ? analysis.config : undefined,
+    config,
     options,
-    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
 }
 
 /**
  * runStudyWith's step for a shared-world plan. It runs a live plan's local checks (the keys, a local
  * agent's sign-in and the subject env) before any run scope opens, so the CLI can present their refusal before it loads a
- * declared scorer, and returns the run that continues from them with that scorer.
+ * declared scorer, and returns the run that continues from them with that scorer. The run and its
+ * analysis share one scope for the email secrets it registers.
  */
-export async function admitSharedWorldPlan(
+export function admitSharedWorldPlan(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
   config: StudyConfig,
 ): Promise<AdmittedPlan<"shared-world">> {
-  const refused = await admitSharedWorldRun(plan, input);
-  if (refused) return { ok: false, outcome: sharedWorldOutcome(refused) };
-  return {
-    ok: true,
-    run: async (scorer) =>
-      sharedWorldOutcome(
-        await runAdmittedSharedWorldRun(
-          plan,
-          withLateScorer(input, scorer, browserRouteScorer),
-          config,
-        ),
-      ),
-  };
-}
-
-function sharedWorldOutcome(result: ConcurrentSharedWorldStudyResult) {
-  return { route: "shared-world", result } as const;
-}
-
-/** Run a shared-world plan: its local checks, then the run. */
-export async function runSharedWorldPlan(
-  plan: SharedWorldPlan,
-  input: SharedWorldRunInput,
-  config: StudyConfig,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  const refused = await admitSharedWorldRun(plan, input);
-  return refused ?? runAdmittedSharedWorldRun(plan, input, config);
+  return admitRoute({
+    route: "shared-world",
+    analysis: plan.analysis,
+    input,
+    admit: () => admitSharedWorldRun(plan, input),
+    withScorer: (base, scorer) => withLateScorer(base, scorer, browserRouteScorer),
+    runInScope: (_admitted, running, scope) => runPlanInScope(plan, running, config, scope),
+    commsSecrets: true,
+  });
 }
 
 /**
  * A live plan's local checks, made outside any run scope: the keys, a local agent's sign-in, then
- * the subject env. A refusal is the result runSharedWorldPlan returns for it, with the analysis
- * record of a run that never started.
+ * the subject env.
  */
 async function admitSharedWorldRun(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
-): Promise<ConcurrentSharedWorldStudyResult | undefined> {
-  if (plan.dryRun) return undefined;
+): Promise<RouteAdmission<"shared-world", undefined>> {
+  const admitted = { ok: true, admitted: undefined } as const;
+  if (plan.dryRun) return admitted;
   const env = input.env ?? process.env;
   const fail = (code: ConcurrentSharedWorldStudyErrorCode, message: string) =>
-    completeSharedWorldAnalysis(
-      plan,
-      input,
-      sharedWorldFailure(plan, input)(code, message, sharedWorldDescriptorOf(plan.actor).id),
-      undefined,
-    );
+    ({
+      ok: false,
+      result: sharedWorldFailure(plan, input)(
+        code,
+        message,
+        sharedWorldDescriptorOf(plan.actor).id,
+      ),
+    }) as const;
   // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
   // plane's lobby-code reader; a local-agent brain's participants run on the operator's signed-in
   // agent instead.
@@ -201,37 +166,7 @@ async function admitSharedWorldRun(
       `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
     );
   }
-  return undefined;
-}
-
-/**
- * Runs an admitted plan in its own run scope, then its automatic analysis. The
- * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
- * analysis.
- */
-function runAdmittedSharedWorldRun(
-  plan: SharedWorldPlan,
-  input: SharedWorldRunInput,
-  config: StudyConfig,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  return withTransientCommsSecrets(async () => {
-    const { result, finished } = await runScope((scope) =>
-      runPlanInScope(plan, input, config, scope),
-    );
-    return completeSharedWorldAnalysis(plan, input, result, finished);
-  });
-}
-
-function completeSharedWorldAnalysis(
-  plan: SharedWorldPlan,
-  input: SharedWorldRunInput,
-  result: ConcurrentSharedWorldStudyResult,
-  finished: FinishedRun | undefined,
-): Promise<ConcurrentSharedWorldStudyResult> {
-  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
-    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
-  });
+  return admitted;
 }
 
 /** The route's envelope for a run that stops before its bundle. */

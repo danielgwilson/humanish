@@ -27,12 +27,11 @@ import {
 // The ledgers reach an adapter through its scoring context; the type needs no export of its own.
 type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 
-// Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseStudy + runTerminalProductStudy +
+// Reuse the slice-2/3 fake-E2B-module + mock-CLI pattern. (parseStudy +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test: the adapter itself uses the barrel exclusively, asserted below.)
 import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { parseStudyDocument } from "../../../src/study/config.js";
-import { runTerminalProductStudy } from "../../../src/routes/terminal/route.js";
 import type { TerminalScorer } from "../../../src/routes/terminal/types.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
@@ -40,6 +39,7 @@ import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { DECLARED_SCORER_MALFORMED } from "../../../src/study/adapter-extension.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
+import { runTerminal } from "../../helpers/route-run.js";
 
 // =============================================================================================
 // The thin example adapter: this is the ~40-line extension an adopter would write in its repo.
@@ -263,7 +263,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
       score: exampleAdapterScore,
       deriveFeedback: exampleAdapterFeedback,
     });
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -345,7 +345,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
         };
       },
     });
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -381,7 +381,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
 
   it("default behavior is unchanged when no scorer/feedback hook is given", async () => {
     const inputs = passingRun({}); // no score, no deriveFeedback
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -423,7 +423,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
           },
         ] as unknown as RunFeedbackCandidate[],
     });
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -462,7 +462,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
       const inputs = passingRun({
         score: (ctx) => ({ ...exampleAdapterScore(ctx), data: [] }) as unknown as RunAdapterScore,
       });
-      const result = await runTerminalProductStudy({
+      const result = await runTerminal({
         cwd,
         config: liveConfig(),
         dryRun: false,
@@ -489,7 +489,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
         return candidate ? [{ ...candidate, idempotency_key: "  " }] : [];
       },
     });
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -524,7 +524,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
       },
     });
 
-    const result = await runTerminalProductStudy({
+    const result = await runTerminal({
       cwd,
       config: liveConfig(),
       dryRun: false,
@@ -566,7 +566,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
     });
 
     await expect(
-      runTerminalProductStudy({
+      runTerminal({
         cwd,
         config: liveConfig(),
         dryRun: false,

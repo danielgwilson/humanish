@@ -6,11 +6,8 @@ import { parseStudyDocument } from "../../src/study/config.js";
 import { type StudyConfig } from "../../src/study/types.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
-import { runCuaActorStudy } from "../../src/routes/computer-use/route.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
-import { runScriptedBrowserStudy } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
+import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -96,9 +93,9 @@ describe("declared task protocol admission", () => {
   );
 
   it.each([
-    ["shared-world", runConcurrentSharedWorld],
-    ["terminal", runTerminalProductStudy],
-    ["scripted", runScriptedBrowserStudy],
+    ["shared-world", runSharedWorld],
+    ["terminal", runTerminal],
+    ["scripted", runScripted],
   ] as const)(
     "direct %s entry refuses tasks even when given a CUA-shaped config",
     async (_route, runner) => {
@@ -119,7 +116,7 @@ describe("declared task protocol admission", () => {
     const parsed = parseStudyDocument(config);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("Multiple actors are not supported");
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd: path.join(cwd, "must-not-exist"),
       config,
       dryRun: false,

@@ -29,10 +29,7 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
-import {
-  runConcurrentSharedWorld,
-  runSharedWorldPlan,
-} from "../../../src/routes/shared-world/route.js";
+import { admitSharedWorldPlan } from "../../../src/routes/shared-world/route.js";
 import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
@@ -64,6 +61,7 @@ import * as observerRender from "../../../src/observer/render.js";
 import { fullScreenXwininfo } from "../../helpers/full-screen-xwininfo.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { runAdmitted, runSharedWorld } from "../../helpers/route-run.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -632,7 +630,7 @@ describe("host-first handoff barrier + convergence", () => {
   it("host resolves the latch; followers open only after, receive the code, and windows overlap", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen }));
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -705,7 +703,7 @@ describe("host-first handoff barrier + convergence", () => {
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({ seen, stuckPersonaId: "casual-friend" }),
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -753,7 +751,7 @@ describe("host-first handoff barrier + convergence", () => {
       },
       handoffDeadlineMs: 5_000,
     });
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -793,7 +791,7 @@ describe("host-first scheduling: host runs on a dedicated slot, never starved", 
       makeExternalRunSession({ seen }),
       { handoffDeadlineMs: 5_000 }, // a real deadline; a deadlock would blow past it and fail the test
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal({ hostLast: true, concurrency: 2 }),
       dryRun: false,
@@ -834,7 +832,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     const { env, deps } = makeExternalSeams(
       makeExternalRunSession({ seen, observedOrigin: "https://www.lobby-trivia.example.test" }),
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -878,7 +876,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
         divergentOrigin: "https://lobby-trivia.example.test",
       }),
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -908,7 +906,7 @@ describe("observed-origin convergence (redirect tolerated)", () => {
 // ---------------------------------------------------------------------------
 // 4d. review.summary is plane-class-aware (external-public, not getHost).
 // ---------------------------------------------------------------------------
-describe("runSharedWorldPlan", () => {
+describe("admitSharedWorldPlan", () => {
   it("runs a plan alone: the bundle records the plan's lab id, title and owner", async () => {
     const config = parseExternal();
     const planned = planSharedWorldStudy(config, { dryRun: true });
@@ -920,7 +918,7 @@ describe("runSharedWorldPlan", () => {
       title: "Planned title",
       plane: { ...planned.plan.plane, owner: "planned/owner" },
     };
-    const result = await runSharedWorldPlan(plan, { cwd }, config);
+    const result = await runAdmitted(admitSharedWorldPlan(plan, { cwd }, config));
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -936,7 +934,7 @@ describe("runSharedWorldPlan", () => {
   it("refuses subject.env on an external-public config a library caller builds", async () => {
     const parsed = parseExternal();
     const config: StudyConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
-    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
+    const result = await runSharedWorld({ cwd, config, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
     expect(result.runId).toBe("not-created");
@@ -945,7 +943,7 @@ describe("runSharedWorldPlan", () => {
 
 describe("review.summary is external-public plane-aware", () => {
   it("dry-run summary names the external-public plane (no getHost/clone/seed), not a getHost-exposed plane", async () => {
-    const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: true });
+    const result = await runSharedWorld({ cwd, config: parseExternal(), dryRun: true });
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
@@ -959,7 +957,7 @@ describe("review.summary is external-public plane-aware", () => {
   it("live summary reports lobby convergence and drops the state-delta clause", async () => {
     const seen: CuaActorSessionOptions[] = [];
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -986,7 +984,7 @@ describe("review.summary is external-public plane-aware", () => {
         sessionOutcome: { status: "passed", completionReason: "budget_reached" },
       }),
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1019,7 +1017,7 @@ describe("handoff timeout fail-closed", () => {
     config.actors[0]!.model = "gpt-5.5";
     config.execution!.caps = { maxUsd: 1, maxTotalUsd: 0.04 };
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }));
-    await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
+    await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(seen).toHaveLength(3);
     const usage = { input: 5000, output: 0 };
     expect(seen[0]!.overRunBudget?.(usage)).toBeNull();
@@ -1033,7 +1031,7 @@ describe("handoff timeout fail-closed", () => {
     config.actors[0]!.model = "unknown-priced-model";
     config.execution!.caps = { maxTotalUsd: 1 };
     const { env, deps, created } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
-    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, env, deps });
+    const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
     expect(result.error?.message).toContain("humanish has no rate for model");
     expect(created).toHaveLength(0);
   });
@@ -1045,7 +1043,7 @@ describe("handoff timeout fail-closed", () => {
       },
       { handoffDeadlineMs: 5000 },
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1071,7 +1069,7 @@ describe("handoff timeout fail-closed", () => {
       makeExternalRunSession({ seen, hostFiresLobby: false }),
       { handoffDeadlineMs: 30 },
     );
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1152,7 +1150,7 @@ async function externalPublicRun(
   session: Parameters<typeof makeExternalRunSession>[0] = { seen: [] },
 ): Promise<{ runId: string; ok: boolean }> {
   const { env, deps } = makeExternalSeams(makeExternalRunSession(session));
-  const result = await runConcurrentSharedWorld({
+  const result = await runSharedWorld({
     cwd,
     config: parseExternal(),
     dryRun: false,
@@ -1323,7 +1321,7 @@ it("routes actor output limits and per-participant reasoning to concurrent provi
     };
   });
   try {
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config,
       dryRun: false,
@@ -1351,7 +1349,7 @@ describe("external-public run directory goldens", () => {
   ] as const)("%s with three participants", async (_label, dryRun, golden) => {
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const stderr = captureStderr();
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun,
@@ -1387,7 +1385,7 @@ describe("the live Observer gate on the external-public plane", () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const running = runConcurrentSharedWorld({
+    const running = runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1411,7 +1409,7 @@ describe("the live Observer gate on the external-public plane", () => {
     const analysis = automaticAnalysisBoundary();
     const failure = new Error("synthetic observer failure");
     await expect(
-      runConcurrentSharedWorld({
+      runSharedWorld({
         cwd,
         config: parseExternal(),
         dryRun: false,
@@ -1448,7 +1446,7 @@ describe("the in-progress bundle on the external-public plane", () => {
     });
     const runId = "external-public-unattached-snapshot";
     const runJson = path.join(cwd, ".humanish", "runs", runId, "run.json");
-    const runPromise = runConcurrentSharedWorld({
+    const runPromise = runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1529,7 +1527,7 @@ describe("external-public participant wiring", () => {
       };
     };
     const { env, deps } = makeExternalSeams(narrating);
-    const result = await runConcurrentSharedWorld({
+    const result = await runSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun: false,
@@ -1547,7 +1545,7 @@ describe("external-public participant wiring", () => {
     const attach = vi.spyOn(observerRender, "attachObserverRuntimeStreamUrls");
     try {
       const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
-      const result = await runConcurrentSharedWorld({
+      const result = await runSharedWorld({
         cwd,
         config: parseExternal(),
         dryRun: false,
@@ -1594,7 +1592,7 @@ describe("external-public participant wiring", () => {
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
-      const result = await runConcurrentSharedWorld({
+      const result = await runSharedWorld({
         cwd,
         config: parsed.config,
         dryRun: false,
@@ -1631,7 +1629,7 @@ describe("external-public comms catch token", () => {
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
-      const result = await runConcurrentSharedWorld({
+      const result = await runSharedWorld({
         cwd,
         config: parsed.config,
         dryRun: false,
@@ -1677,7 +1675,7 @@ describe("external-public comms catch token", () => {
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
       const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
-      const result = await runConcurrentSharedWorld({
+      const result = await runSharedWorld({
         cwd,
         config: parsed.config,
         dryRun: false,

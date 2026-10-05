@@ -36,7 +36,7 @@ import type {
   CuaProvider,
   CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import { runComputerUsePlan, runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
+import { admitComputerUsePlan } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
 import { CUA_ACTOR_STUDY_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
@@ -88,6 +88,7 @@ import { prepareSelectedOutputDirectory } from "../../../src/run/contained-outpu
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
+import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves both faces of the sandbox: the
@@ -569,7 +570,7 @@ describe("desktop-cli runtime prerequisites", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, created, killed } = makeFakeModule(sandbox);
       let sessionCallIndex = -1;
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config,
         dryRun: false,
@@ -623,7 +624,7 @@ describe("desktop-cli runtime prerequisites", () => {
     });
     const { module, killed } = makeFakeModule(sandbox);
     let sessions = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configFor(),
       dryRun: false,
@@ -685,7 +686,7 @@ describe("runCuaActorLab", () => {
     });
     try {
       const { module } = makeFakeModule(makeFakeSandbox());
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: parsed.config,
         dryRun: false,
@@ -752,7 +753,7 @@ describe("runCuaActorLab", () => {
     });
     try {
       const { module, created } = makeFakeModule(makeFakeSandbox());
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: parsed.config,
         dryRun: false,
@@ -896,7 +897,7 @@ describe("runCuaActorLab", () => {
     });
     try {
       const { module } = makeFakeModule(makeFakeSandbox());
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: parsed.config,
         dryRun: false,
@@ -940,7 +941,7 @@ describe("runCuaActorLab", () => {
   it.each(["missing-artifact", "missing-run"] as const)(
     "classifies the real Observer's %s refusal as invalid evidence",
     async (kind) => {
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: cuaConfig(),
         dryRun: true,
@@ -994,7 +995,7 @@ describe("runCuaActorLab", () => {
       expect(source.streams[0].actor.status).toBe("incomplete");
       return { state: "failed" as const, reason: "analysis_validation_failed" };
     });
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config,
       dryRun: false,
@@ -1033,7 +1034,7 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 0;
     let allocations = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config,
       dryRun: false,
@@ -1053,7 +1054,7 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 16;
     let called = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config,
       dryRun: false,
@@ -1098,7 +1099,7 @@ describe("runCuaActorLab", () => {
         subject: { ...planned.plan.runner.subject, appUrl: "http://127.0.0.1:4555/" },
       },
     };
-    const result = await runComputerUsePlan(plan, { cwd }, config);
+    const result = await runAdmitted(admitComputerUsePlan(plan, { cwd }, config));
     expect(result.ok).toBe(true);
     expect(result.appUrl).toBe("http://127.0.0.1:4555/");
     const bundle = JSON.parse(
@@ -1150,7 +1151,7 @@ describe("runCuaActorLab", () => {
     const pinnedA = await realpath(physicalA);
 
     let preflightCalls = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd: cwdAlias,
       config: cuaConfig(),
       dryRun: true,
@@ -1897,7 +1898,7 @@ describe("runCuaActorLab", () => {
     };
     let desktopLoads = 0,
       modelCalls = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config,
       dryRun: false,
@@ -3848,7 +3849,7 @@ describe("runCuaActorLab", () => {
   it("rejects a non-computer-use actor at the engine even if a config bypasses the parser", async () => {
     const config = cuaConfig();
     const tampered = { ...config, actors: [{ type: "codex-app-server" }] };
-    const result = await runCuaActorStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runComputerUse({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
   });
@@ -3862,7 +3863,7 @@ describe("runCuaActorLab", () => {
       actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }],
     };
     let desktopLoads = 0;
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: tampered,
       dryRun: false,
@@ -3885,7 +3886,7 @@ describe("runCuaActorLab", () => {
       ...config,
       subject: { source: "app-url" as const, appUrl: "https://example.com/" },
     };
-    const result = await runCuaActorStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runComputerUse({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE");
     // Nothing was persisted, so no artifact can mislabel the public URL as loopback.
@@ -4809,7 +4810,7 @@ describe("runCuaActorLab", () => {
     const config = cloneCuaConfig();
     const { serve: _serve, ...subjectWithoutServe } = config.subject;
     const tampered: StudyConfig = { ...config, subject: subjectWithoutServe };
-    const result = await runCuaActorStudy({ cwd, config: tampered, dryRun: true });
+    const result = await runComputerUse({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
   });
@@ -5482,7 +5483,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       ({ ...base, subject: { ...base.subject, state } }) as StudyConfig;
 
     // Bad step name (interpolates into in-sandbox paths: must fail closed).
-    const badName = await runCuaActorStudy({
+    const badName = await runComputerUse({
       cwd,
       config: tamper({ seed: [{ name: "Bad Name!", command: "true" }] }),
       dryRun: true,
@@ -5492,7 +5493,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(badName.runId).toBe("not-created");
 
     // Duplicate step names.
-    const dupe = await runCuaActorStudy({
+    const dupe = await runComputerUse({
       cwd,
       config: tamper({
         seed: [
@@ -5505,7 +5506,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(dupe.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
 
     // external must name a provisioned channel (subset of subject.env).
-    const unbacked = await runCuaActorStudy({
+    const unbacked = await runComputerUse({
       cwd,
       config: tamper({ external: ["REDIS_URL"] }),
       dryRun: true,
@@ -5518,7 +5519,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       ...appUrlBase,
       subject: { ...appUrlBase.subject, state: { seed: [{ name: "a", command: "true" }] } },
     } as StudyConfig;
-    const onAppUrl = await runCuaActorStudy({ cwd, config: appUrlTampered, dryRun: true });
+    const onAppUrl = await runComputerUse({ cwd, config: appUrlTampered, dryRun: true });
     expect(onAppUrl.ok).toBe(false);
     expect(onAppUrl.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
     expect(onAppUrl.error?.message).toContain("clone subjects");
@@ -6591,7 +6592,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
   // The two boot-time fail-closed guards, both before any key check / any E2B touch.
   it("inProcess without createProvider → EXECUTOR_NO_PROVIDER (before any key check)", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runCuaActorStudy({
+    const outcome = await runComputerUse({
       cwd,
       config: localAppConfig(),
       dryRun: false,
@@ -6611,7 +6612,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
 
   it("local-app subject with no hooks → LOCAL_APP_NO_EXECUTOR (a structured error, never a desktop attempt, before key-gating)", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const outcome = await runCuaActorStudy({
+    const outcome = await runComputerUse({
       cwd,
       config: localAppConfig(),
       dryRun: false,
@@ -7148,7 +7149,7 @@ describe("runCuaActorLab cost estimates", () => {
 
   it("attaches a labeled per-participant + run-level estimated cost with provenance and deterministic desktop-minutes; verify passes", async () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configWithModel(), // default resolves to gpt-5.6-sol, the 5.6-generation flagship
       dryRun: false,
@@ -7224,7 +7225,7 @@ describe("runCuaActorLab cost estimates", () => {
           throw new Error("synthetic metadata failure");
         };
       const { module, killed } = makeFakeModule(sandbox);
-      const result = await runCuaActorStudy({
+      const result = await runComputerUse({
         cwd,
         config: configWithModel(),
         dryRun: false,
@@ -7305,7 +7306,7 @@ describe("runCuaActorLab cost estimates", () => {
 
   it("declares absent (null + reason) for an unpriced model and sums only the known lines into the total", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configWithModel("gpt-4o-unpriced-xyz"),
       dryRun: false,
@@ -7343,7 +7344,7 @@ describe("runCuaActorLab cost estimates", () => {
   });
 
   it("dry-run invents no spend: the bundle carries no cost block", async () => {
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configWithModel(),
       dryRun: true,
@@ -7356,7 +7357,7 @@ describe("runCuaActorLab cost estimates", () => {
 
   it("refuses a maxUsd cap on a model src/run/pricing.ts cannot price, before creating any sandbox", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configWithModel("gpt-4o-unpriced-xyz", { maxUsd: 5 }),
       dryRun: false,
@@ -7375,7 +7376,7 @@ describe("runCuaActorLab cost estimates", () => {
 
   it("accepts a maxUsd cap on a priced model and runs: a priced cap is wired, never a refusal", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
-    const result = await runCuaActorStudy({
+    const result = await runComputerUse({
       cwd,
       config: configWithModel("computer-use-preview", { maxUsd: 50 }),
       dryRun: false,

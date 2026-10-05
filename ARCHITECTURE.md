@@ -9,24 +9,19 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 
 The steps follow a live computer-use study on a hosted E2B desktop. Every route shares steps 1, 2, 7
 and 8. Steps 3 to 6 run in the route's admit function and the `run()` it returns, which `runStudyWith`
-reaches through `admitPlan` (`src/run-study.ts`):
+reaches through `admitPlan` (`src/run-study.ts`). Four of the admit functions hand their checks and
+the body they run inside the run scope to `admitRoute` (`src/run/route-shell.ts`). It completes the
+automatic analysis of a refusal, and its `run()` opens the run scope, runs the body and completes
+the analysis of the run:
 
-- computer-use: `admitComputerUsePlan` (`src/routes/computer-use/route.ts`); its `run()` calls
-  `runAdmittedCuaRun` (`src/routes/computer-use/route.ts`).
-- scripted: `admitScriptedPlan` (`src/routes/scripted/route.ts`); its `run()` calls
-  `runScriptedPlan` (`src/routes/scripted/route.ts`).
-- terminal: `admitTerminalPlan` (`src/routes/terminal/route.ts`); its `run()` calls
-  `runAdmittedTerminalRun` (`src/routes/terminal/route.ts`).
-- shared-world: `admitSharedWorldPlan` (`src/routes/shared-world/route.ts`); its `run()` calls
-  `runAdmittedSharedWorldRun` (`src/routes/shared-world/route.ts`).
+- computer-use: `admitComputerUsePlan` (`src/routes/computer-use/route.ts`), with the checks in
+  `admitCuaRun` (`src/routes/computer-use/setup.ts`).
+- scripted: `admitScriptedPlan` (`src/routes/scripted/route.ts`), whose checks run inside the run.
+- terminal: `admitTerminalPlan` (`src/routes/terminal/route.ts`), with a live plan's checks in
+  `checkLiveTerminalMachine` (`src/routes/terminal/session.ts`).
+- shared-world: `admitSharedWorldPlan` (`src/routes/shared-world/route.ts`).
 - preview: `admitPreviewPlan` (`src/routes/preview.ts`); its `run()` calls `runPreviewPlan`
   (`src/routes/preview.ts`), which publishes a fixture bundle.
-
-`runComputerUsePlan` (`src/routes/computer-use/route.ts`), `runTerminalPlan`
-(`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`)
-admit and run in one call. Only tests call them, directly or through the route modules'
-`runCuaActorStudy`, `runTerminalProductStudy` and `runConcurrentSharedWorld`. `runStudyWith` and the CLI do
-not.
 
 1. **Parse.** `runStudyCommand` (`src/cli/commands/study-run.ts`) calls `resolveStudyManifest`
    (`src/study/discover.ts`), which calls `parseStudy` (`src/study/config.ts`). It rejects unknown

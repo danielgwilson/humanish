@@ -26,12 +26,13 @@ import { V2_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
-import { runComputerUsePlan, runCuaActorStudy } from "../../../src/routes/computer-use/route.js";
+import { admitComputerUsePlan } from "../../../src/routes/computer-use/route.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
-import type { RunCuaActorStudyOptions } from "../../../src/routes/computer-use/types.js";
+import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types.js";
 
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
+import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 
 type SessionRunner = NonNullable<StudyDeps["runSession"]>;
 
@@ -184,13 +185,10 @@ async function run(
   {
     localDesktop = true,
     ...driving
-  }: { localDesktop?: boolean } & Pick<
-    RunCuaActorStudyOptions,
-    "createProvider" | "inProcess"
-  > = {},
+  }: { localDesktop?: boolean } & Pick<ComputerUseRunInput, "createProvider" | "inProcess"> = {},
 ) {
   const sessions: CuaActorSessionOptions[] = [];
-  const result = await runCuaActorStudy({
+  const result = await runComputerUse({
     cwd,
     config: localDesktop ? onLocalDesktop(config) : config,
     dryRun: false,
@@ -368,10 +366,12 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       ...planned.plan,
       runner: { ...planned.plan.runner, brain } as ComputerUsePlan["runner"],
     };
-    return runComputerUsePlan(
-      plan,
-      { cwd, env, deps: { runSession }, localVm: fakeLocalVm() },
-      config,
+    return runAdmitted(
+      admitComputerUsePlan(
+        plan,
+        { cwd, env, deps: { runSession }, localVm: fakeLocalVm() },
+        config,
+      ),
     );
   }
 

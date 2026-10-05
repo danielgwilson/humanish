@@ -19,9 +19,9 @@ import {
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
-import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+import { participantPlanOf } from "../../helpers/participant-run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -205,7 +205,7 @@ describe("caps parsing and session defaults", () => {
     const parsed = parseStudy(baseLab);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
+    expect(participantPlanOf(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
   });
 
   it("derives a provisioned-route default that fits the one-hour sandbox cap", () => {
@@ -220,7 +220,7 @@ describe("caps parsing and session defaults", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // 60m cap − 30m provisioning − 10m teardown buffer = 20 minutes of session room.
-    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(20 * 60_000);
+    expect(participantPlanOf(parsed.config).perLaneSessionBudgetMs).toBe(20 * 60_000);
   });
 
   it("subtracts declared state seeding from the derived default", () => {
@@ -241,6 +241,6 @@ describe("caps parsing and session defaults", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // Two 5-minute default seed steps shrink the room to 10 minutes.
-    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(10 * 60_000);
+    expect(participantPlanOf(parsed.config).perLaneSessionBudgetMs).toBe(10 * 60_000);
   });
 });

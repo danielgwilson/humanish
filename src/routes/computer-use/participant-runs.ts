@@ -8,10 +8,6 @@ import {
   LOCAL_BROWSER_LIFETIME_MS,
 } from "../../substrates/local/runtime-config.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-import {
-  computerUseParticipants,
-  type ComputerUseParticipant,
-} from "../../study/plan-participants.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { type StudyConfig } from "../../study/types.js";
@@ -118,41 +114,23 @@ function envLoweredConcurrency(
   return { bound: planned };
 }
 
-/** What the participant table is built from: the plan's participants, bound and budgets. */
-interface PlannedParticipants {
-  readonly participants: readonly ComputerUseParticipant[];
-  readonly concurrency: number;
-  readonly sessionBudgetMs: number;
-  readonly sandboxMs: number;
-  /** A desktop-cli subject gives each prompt the terminal-surface wording. */
-  readonly desktopCli: boolean;
-}
-
-/** The same inputs from a config, for callers that have no plan. */
-function plannedParticipantsOf(config: StudyConfig, countOverride?: number): PlannedParticipants {
-  const participants = computerUseParticipants(config, countOverride);
-  return {
-    participants,
-    concurrency: boundedConcurrency(config.execution?.concurrency, participants.length),
-    sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
-    sandboxMs: resolveParticipantSandboxMs(config),
-    desktopCli: config.subject.source === "desktop-cli",
-  };
-}
-
-/** Build the participant runs and the public plan from the planned participants (pure). */
-function participantRunsAndPlan(
-  planned: PlannedParticipants,
+/**
+ * Build the participant runs and the public plan from a computer-use plan (pure). The same plan
+ * appears in dry-run and live, marked $0 for a dry run. `env` may lower the planned concurrency;
+ * `personas` are the compiled committed personas the prompts carry.
+ */
+export function participantRunsAndPlan(
+  plan: ComputerUsePlan,
   opts: {
     env?: Record<string, string | undefined>;
-    dryRun?: boolean;
     personas?: Map<string, ResolvedPersona>;
   } = {},
 ): ParticipantRunsAndPlan {
   const env = opts.env ?? {};
   // Who each participant is (id, persona, focus, device, limits) comes from the plan; this adds
   // what the route derives from it: the prompt, bundle ids and artifact paths.
-  const { participants } = planned;
+  const { participants } = plan.runner;
+  const desktopCli = plan.runner.subject.kind === "desktop-cli";
   const participantCount = participants.length;
 
   const runs: DesktopParticipantRun[] = participants.map((participant) => {
@@ -168,7 +146,7 @@ function participantRunsAndPlan(
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(focus === undefined ? {} : { instruction: focus }),
       device: { name: device.name, preset: device.preset },
-      ...(planned.desktopCli ? { surface: "desktop-cli" as const } : {}),
+      ...(desktopCli ? { surface: "desktop-cli" as const } : {}),
     });
     const run = resolveParticipant(participant, {
       persona: composed.persona,
@@ -186,9 +164,9 @@ function participantRunsAndPlan(
     };
   });
 
-  const resolved = envLoweredConcurrency(planned.concurrency, participantCount, env);
+  const resolved = envLoweredConcurrency(plan.concurrency, participantCount, env);
   const concurrency = resolved.bound;
-  const { sessionBudgetMs, sandboxMs } = planned;
+  const { sessionBudgetMs, sandboxMs } = plan;
   const participantPlan: CuaParticipantPlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
@@ -199,7 +177,7 @@ function participantRunsAndPlan(
     waves: Math.ceil(participantCount / concurrency),
     perLaneSessionBudgetMs: sessionBudgetMs,
     worstCaseSandboxMinutes: Math.round((participantCount * sandboxMs) / 60_000),
-    dryRun: opts.dryRun === true,
+    dryRun: plan.dryRun,
     lanes: runs.map((spec) => ({
       id: spec.planned.id,
       ...(spec.planned.labels.actorType === undefined
@@ -228,25 +206,6 @@ function participantRunsAndPlan(
     })),
   };
   return { runs, participantPlan };
-}
-
-/**
- * Pure pre-flight plan resolver (runs in dry-run and live). Returns the participant table, the
- * effective concurrency, the wave count, the per-participant session budget, and the worst-case total
- * sandbox-minutes, before any sandbox or provider call. The same plan appears in dry-run,
- * marked $0 (dryRun: true).
- */
-export function resolveCuaParticipantPlan(
-  config: StudyConfig,
-  opts: {
-    countOverride?: number;
-    env?: Record<string, string | undefined>;
-    dryRun?: boolean;
-    personas?: Map<string, ResolvedPersona>;
-  } = {},
-): CuaParticipantPlan {
-  const { countOverride, ...rest } = opts;
-  return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).participantPlan;
 }
 
 /** Print the participant plan to stderr before any sandbox/provider call (public-safe: ids, devices,
@@ -319,16 +278,10 @@ export async function loadCuaParticipants(args: {
     args.projectRoot,
     participants.map((participant) => participant.personaId),
   );
-  const { runs: participantRuns, participantPlan } = participantRunsAndPlan(
-    {
-      participants,
-      concurrency: plan.concurrency,
-      sessionBudgetMs: plan.sessionBudgetMs,
-      sandboxMs: plan.sandboxMs,
-      desktopCli: plan.runner.subject.kind === "desktop-cli",
-    },
-    { env: args.env, dryRun: plan.dryRun, personas },
-  );
+  const { runs: participantRuns, participantPlan } = participantRunsAndPlan(plan, {
+    env: args.env,
+    personas,
+  });
   const rerun = plan.rerun;
   if (!rerun) return { ok: true, participantRuns, participantPlan };
 

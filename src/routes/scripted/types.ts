@@ -3,7 +3,6 @@
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
 import type { StudyEvent } from "../../study/run-study-events.js";
 import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
-import type { StudyConfig } from "../../study/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import type { StudyDeps } from "../../study/study-deps.js";
@@ -11,17 +10,12 @@ import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import { type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and study. */
-export type ScriptedRunInput = Omit<RunScriptedBrowserStudyOptions, "config" | "dryRun">;
-
-export interface RunScriptedBrowserStudyOptions {
+export interface ScriptedRunInput {
   /** Cancels post-run analysis only. */
   analysisSignal?: AbortSignal;
   /** Reports the analysis window to onEvent; built by normalizeRunStudyOptions. */
   emit?: (event: StudyEvent) => void;
   cwd: string;
-  config: StudyConfig;
-  /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
-  dryRun: boolean;
   open?: boolean;
   runId?: string;
   /** Keys and subject env for the run. Defaults to process.env. Values are scrubbed; names persist. */

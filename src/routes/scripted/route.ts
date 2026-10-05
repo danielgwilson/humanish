@@ -19,51 +19,29 @@ import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
-import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { ScriptedPlan } from "../../study/plan-types.js";
 import type { AdmittedPlan } from "../../run-study.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
-import { runScope, type RunScope } from "../../run/run.js";
+import { type RunScope } from "../../run/run.js";
+import { admitRoute, completeRefusalAnalysis, type RefusedStudy } from "../../run/route-shell.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { injectedBrowser, planScriptedStudy, type ScriptedRefusal } from "./plan.js";
+import { type ScriptedRefusal } from "./plan.js";
 import { finishScriptedRun } from "./result.js";
 import { UnsafeScriptedSessionResultError } from "./session-result.js";
 import { prepareScriptedRun } from "./setup.js";
 import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
-import {
-  type RunScriptedBrowserStudyOptions,
-  type ScriptedBrowserStudyResult,
-  type ScriptedRunInput,
-} from "./types.js";
+import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
-
-/**
- * The config-taking entry point. It plans, returns a refusal with the envelope the route has always
- * returned at that refusal's stage, and otherwise runs the plan.
- */
-export async function runScriptedBrowserStudy(
-  options: RunScriptedBrowserStudyOptions,
-): Promise<ScriptedBrowserStudyResult> {
-  const { config, dryRun, ...input } = options;
-  // planScriptedStudy makes every configuration refusal, in the order this route always has.
-  const planned = planScriptedStudy(config, {
-    dryRun,
-    injectedBrowser: injectedBrowser(input.deps),
-  });
-  if (planned.ok) return runScriptedPlan(planned.plan, input);
-  return scriptedStudyRefusal(options, planned.refusal);
-}
 
 /**
  * A refused scripted study's result, at the refusal's stage: a before-scope refusal has its own field
  * order and no analysis record; the others come after the output directory checks.
  */
 export async function scriptedStudyRefusal(
-  options: RunScriptedBrowserStudyOptions,
+  options: ScriptedRunInput & RefusedStudy,
   refusal: ScriptedRefusal,
 ): Promise<ScriptedBrowserStudyResult> {
   const { config, dryRun } = options;
@@ -97,14 +75,7 @@ export async function scriptedStudyRefusal(
     warnings: [],
     error: { code: refusal.code, message: refusal.message },
   };
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  return completeAutomaticAnalysis(
-    refused,
-    undefined,
-    analysis.ok ? analysis.config : undefined,
-    options,
-    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
-  );
+  return completeRefusalAnalysis(refused, config, options);
 }
 
 /**
@@ -114,34 +85,13 @@ export async function scriptedStudyRefusal(
 export function admitScriptedPlan(
   plan: ScriptedPlan,
   input: ScriptedRunInput,
-): AdmittedPlan<"scripted"> {
-  return {
-    ok: true,
-    run: async () => ({
-      route: "scripted",
-      result: await runScriptedPlan(plan, input),
-    }),
-  };
-}
-
-/**
- * Run a scripted plan. The run scope gives a direct library caller the same status-record lifetime
- * the CLI gets: returning from this function finalizes any record the run opened, whichever of its
- * fail-closed exits it took. Each route opens its own scope; `runStudyWith` opens none. Without this a
- * test or an adopter calling the route directly leaves
- * the 5s cadence ticking into a directory something else is deleting, which surfaces as an
- * unrelated ENOTEMPTY.
- */
-export async function runScriptedPlan(
-  plan: ScriptedPlan,
-  input: ScriptedRunInput,
-): Promise<ScriptedBrowserStudyResult> {
-  const { result, finished } = await runScope((scope) =>
-    runScriptedPlanInScope(plan, input, scope),
-  );
-  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
-    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
+): Promise<AdmittedPlan<"scripted">> {
+  return admitRoute({
+    route: "scripted",
+    analysis: plan.analysis,
+    input,
+    admit: () => ({ ok: true, admitted: plan }),
+    runInScope: runScriptedPlanInScope,
   });
 }
 

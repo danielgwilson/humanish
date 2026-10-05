@@ -56,9 +56,8 @@ export function checkLiveTerminalMachine(
 }
 
 /**
- * The live in-sandbox agent session orchestrator (mirror of runCuaActorStudy's E2B branch). Enforces
- * the 8-point safety contract by construction; fails closed before any sandbox/key/spend on any
- * precondition miss. Persists the substrate-lifecycle/command-log/interventions/cleanup ledgers,
+ * The live in-sandbox agent session orchestrator. Enforces the 8-point safety contract by
+ * construction; fails closed before any sandbox/key/spend on any precondition miss. Persists the substrate-lifecycle/command-log/interventions/cleanup ledgers,
  * the redacted terminal event stream + normalized transcript, the agent report, and the
  * provider-neutral actor trace; tears the sandbox down in a finally and proves the teardown.
  */

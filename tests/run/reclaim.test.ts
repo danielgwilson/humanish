@@ -13,7 +13,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // is exercised, not mocked away.
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
-import { runTerminalProductStudy } from "../../src/routes/terminal/route.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import {
   appendSandboxOwner,
@@ -26,6 +25,7 @@ import { runIdOf } from "../../src/run/paths.js";
 import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import { sandboxOwnerTags } from "../../src/run/sandbox-creates.js";
 import type { E2BDesktopModule, E2BListedSandbox } from "../../src/substrates/e2b/sdk.js";
+import { runTerminal } from "../helpers/route-run.js";
 
 function dryRunConfig(): StudyConfig {
   const parsed = parseStudy({
@@ -110,7 +110,7 @@ function fakeModule(
  * tags, as a run from this version does before its first create.
  */
 async function dryRun(cwd: string) {
-  const run = await runTerminalProductStudy({
+  const run = await runTerminal({
     cwd,
     config: dryRunConfig(),
     dryRun: true,
@@ -154,7 +154,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("reports a receipt from an unknown provider without killing anything on E2B", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -188,7 +188,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("kills an old receipt with no provider and a new e2b one through the same E2B path", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -224,7 +224,7 @@ describe("sandbox receipts + humanish reclaim", () => {
   });
 
   it("reclaims by recorded exact id: kills the living, reports the gone, fails loud on a provider error, dedupes racing receipts", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -597,7 +597,7 @@ describe("humanish reclaim and owner lines", () => {
   });
 
   it("ignores an owner line that is partial or names another run, and calls nothing clean", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -627,7 +627,7 @@ describe("humanish reclaim and owner lines", () => {
   });
 
   it("leaves an earlier unconfirmed create outcome alone when the run recorded no tags", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,
@@ -673,7 +673,7 @@ describe("reclaim of unreadable receipts", () => {
   it.skipIf(process.getuid?.() === 0)(
     "reports receipts it cannot read instead of claiming there are none",
     async () => {
-      const run = await runTerminalProductStudy({
+      const run = await runTerminal({
         cwd,
         config: dryRunConfig(),
         dryRun: true,
@@ -712,7 +712,7 @@ describe("reclaim with E2B_DEBUG=true", () => {
   });
 
   it("refuses before loading the SDK and keeps the receipts", async () => {
-    const run = await runTerminalProductStudy({
+    const run = await runTerminal({
       cwd,
       config: dryRunConfig(),
       dryRun: true,

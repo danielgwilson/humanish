@@ -64,7 +64,7 @@ public `runComputerUseLoop` refuses them. The actor passes them through
 `runComputerUseLoopWithTaps`. A library caller wraps the executor's `observe` (for `url` and
 `screenshot`) or the provider's `nextTurn` (for `reasoning` and `message`).
 
-Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
+Flow, a host-first barrier inside the shared-world route's fan-out:
 
 1. **Designated host.** Exactly one roster entry carries `host: true` (validated). Its mission = create
    the shared lobby; its browser opens `subject.appUrl`.
