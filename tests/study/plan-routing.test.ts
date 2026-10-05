@@ -16,7 +16,7 @@ import {
   isScriptedBrowserComposition,
   isTerminalProductComposition,
 } from "../../src/study/routing.js";
-import { V2_SCHEMA, type StudyConfig } from "../../src/study/types.js";
+import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -62,16 +62,19 @@ function describeRouting(config: StudyConfig): string {
 describe("lab routing", () => {
   it("pins the route and every composition predicate over the config grid", async () => {
     const grid: Record<string, string> = {};
+    // The topology axis is the declared route: `route: shared-world`, or a route routeOf does not
+    // read. Its row keys keep the v2 name, so the golden stays comparable.
     for (const source of sources)
       for (const target of targets)
         for (const type of actors)
           for (const topology of [undefined, "shared-world"])
             for (const allowPublicTargets of [undefined, true]) {
               const config = {
-                schema: V2_SCHEMA,
+                schema: STUDY_SCHEMA,
                 id: "grid",
-                subject: { source, ...(topology === undefined ? {} : { topology }) },
-                actors: [{ type }],
+                route: topology ?? "computer-use",
+                subject: { source },
+                actor: { type },
                 ...(target === undefined ? {} : { execution: { target } }),
                 ...(allowPublicTargets === undefined ? {} : { policies: { allowPublicTargets } }),
               } as unknown as StudyConfig;

@@ -1,5 +1,5 @@
 import type { StudyConfig } from "../../study/types.js";
-import { actorOf, actorsOf, participantList } from "../../study/study-fields.js";
+import { actorOf, capsOf, participantList } from "../../study/study-fields.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
@@ -15,14 +15,15 @@ export function isLocalBrowserStudy(config: StudyConfig): boolean {
 
 /** Defaults for the explicitly selected local substrate; hosted configurations are untouched. */
 export function localBrowserDefaults(config: StudyConfig): StudyConfig {
-  if (!isLocalBrowserStudy(config)) return config;
+  const actor = actorOf(config);
+  if (!isLocalBrowserStudy(config) || actor === undefined) return config;
   return {
     ...config,
-    actors: actorsOf(config).map((actor) => ({
+    actor: {
       ...actor,
       model: actor.model ?? "gpt-6-astra",
       reasoningEffort: actor.reasoningEffort ?? "low",
-    })),
+    },
     execution: {
       ...config.execution,
       timeoutMs: config.execution?.timeoutMs ?? MAX_SESSION_MS,
@@ -31,7 +32,7 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
         resolution: config.execution?.desktop?.resolution ?? [960, 720],
       },
     },
-    ...(config.review?.analysis === undefined && actorOf(config)?.type === "local-agent"
+    ...(config.review?.analysis === undefined && actor.type === "local-agent"
       ? { review: { ...config.review, analysis: { provider: "codex" as const } } }
       : {}),
   };
@@ -44,7 +45,6 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
     return "Local browser sessions currently support at most 20 minutes, within the runtime's 30-minute lifetime.";
   }
   if (
-    actorsOf(config).length !== 1 ||
     !actor ||
     (actor.type === "local-agent" && actor.localAgent !== undefined && actor.localAgent !== "codex")
   ) {
@@ -78,10 +78,8 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
         (entry) => entry.reasoningEffort !== undefined && entry.reasoningEffort !== "low",
       ) ||
       actor.maxOutputTokens !== undefined ||
-      config.execution?.caps?.maxUsd !== undefined ||
-      config.execution?.caps?.maxTotalUsd !== undefined ||
-      config.scenario?.caps?.maxUsd !== undefined ||
-      config.scenario?.caps?.maxTotalUsd !== undefined)
+      capsOf(config)?.maxUsd !== undefined ||
+      capsOf(config)?.maxTotalUsd !== undefined)
   ) {
     return "Local Codex participants currently use gpt-6-astra at low effort. Account dollar/output-token caps are unavailable; use API participants for those controls.";
   }

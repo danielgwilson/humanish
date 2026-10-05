@@ -1,5 +1,5 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN, focusOf } from "./parse/actors.js";
+import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
 import {
@@ -14,13 +14,7 @@ import {
   isTerminalProductComposition,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
-import {
-  actorOf,
-  actorsOf,
-  participantList,
-  declaredParticipantCount,
-  declaresSharedWorld,
-} from "./study-fields.js";
+import { actorOf, participantList, declaresSharedWorld } from "./study-fields.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -29,25 +23,18 @@ import {
  * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
  */
 export function computerUseValidationReason(config: StudyConfig): string | null {
-  const actor = actorOf(config);
   const roster = participantList(config);
   const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
   }
   // clone.fanout is a declared behavior change: rejected on the computer-use route (was
-  // inert-warned). Fan-out is declared via `actors[0].count` or `actors[0].lanes`;
-  // subject.clone.fanout never applied here.
+  // inert-warned). Fan-out is declared with `participants`; subject.clone.fanout never applied
+  // here.
   if (config.subject.clone?.fanout !== undefined) {
     return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)";
   }
   if (roster !== undefined) {
-    if (declaredParticipantCount(config) !== undefined) {
-      return "Set either `actors[0].count` (identical participants) or `actors[0].lanes` (a roster of distinct participants), not both.";
-    }
-    if (focusOf(actor) !== undefined) {
-      return "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant.";
-    }
     if (
       config.execution?.desktop?.resolution !== undefined &&
       roster.some((entry) => entry.device !== undefined)
@@ -74,7 +61,7 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
   // Public targets fan out into N independent worlds driving the same public app, which is an
   // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
   // when every roster entry declares its own target, making the adapter-owned topology explicit. But when
-  // `subject.topology: shared-world` is also declared, N participants against one public target is the
+  // `route: shared-world` is also declared, N participants against one public target is the
   // external-public shared-world topology, so route it there (a real public deployment
   // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
   if (
@@ -137,8 +124,8 @@ export function sharedWorldValidationReason(config: StudyConfig): string | null 
 
 /**
  * The structural checks every provisioned shared world shares. It requires: a clone or local-tree source + e2b-desktop
- * target + a computer-use actor + a `subject.serve` block + an `actors[0].lanes` roster of ≥2 roles (the
- * roster is the role roster; there is no separate roles[] field), and every role `entry` must resolve
+ * target + a computer-use actor + a `subject.serve` block + a `participants` list of ≥2 (the list
+ * is the role roster; there is no separate roles[] field), and every role `entry` must resolve
  * same-origin (loopback) with serve.url. Fail-closed: a half-declared shared-world is rejected,
  * never silently downgraded.
  */
@@ -216,12 +203,11 @@ export function desktopMediaValidationReason(
     return "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium.";
   }
   if (media.microphone !== undefined) {
+    const actor = actorOf(config);
     if (
-      actorsOf(config).some(
-        (actor) =>
-          actor.type !== "local-agent" ||
-          (actor.localAgent !== undefined && actor.localAgent !== "codex"),
-      )
+      actor !== undefined &&
+      (actor.type !== "local-agent" ||
+        (actor.localAgent !== undefined && actor.localAgent !== "codex"))
     ) {
       return "Participant speech currently requires local-agent with Codex, on a local or hosted desktop.";
     }
@@ -241,7 +227,7 @@ export function receivingEmailValidationReason(config: StudyConfig): string | un
   ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
-  if (actorsOf(config).some((actor) => actor.type === "local-agent")) {
+  if (actorOf(config)?.type === "local-agent") {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
   return undefined;
@@ -253,14 +239,8 @@ export function taskProtocolValidationReason(
   config: StudyConfig,
   supportsTasks = isComputerUseComposition(config) && !isSharedWorldComposition(config),
 ): string | null {
-  for (const [index, actor] of actorsOf(config).entries()) {
-    if (actor.tasks === undefined) continue;
-    if (index > 0) {
-      return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol.`;
-    }
-    if (!supportsTasks) {
-      return "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
-    }
+  if (actorOf(config)?.tasks !== undefined && !supportsTasks) {
+    return "actor.tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
   }
   return null;
 }
@@ -277,23 +257,6 @@ export function cloneTargetValidationReason(config: StudyConfig): string | null 
   if (config.subject.source !== "clone" || target === "e2b-desktop") return null;
   const got = target === undefined ? "it is absent" : `got "${target}"`;
   return `clone subjects require \`execution.target: e2b-desktop\` (${got}): humanish clones and serves the repo inside a hosted desktop sandbox. \`execution.target: local\` applies to app-url and local-app subjects.`;
-}
-
-/**
- * Refuse a positive `scenario.caps.maxUsd` or `maxTotalUsd` on a computer-use study.
- * `scenario.caps` belongs to the terminal route; the computer-use route stops on `execution.caps`,
- * so a dollar figure here would read as a cap while the study ran uncapped. Zero spends nothing
- * either way and stays a warning. Enforced at parse and again on the computer-use routes for
- * library callers.
- */
-export function scenarioCapsValidationReason(config: StudyConfig): string | null {
-  if (!isComputerUseComposition(config)) return null;
-  for (const key of ["maxUsd", "maxTotalUsd"] as const) {
-    const value = config.scenario?.caps?.[key];
-    if (value === undefined || value <= 0) continue;
-    return `scenario.caps.${key} (${value}) does not cap a computer-use study: this route stops on execution.caps.${key}. Move the value to execution.caps.${key}; scenario.caps applies only to terminal-product studies.`;
-  }
-  return null;
 }
 
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */

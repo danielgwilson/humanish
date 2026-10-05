@@ -20,7 +20,7 @@ export interface Participant {
   readonly id: string;
   /** 0-based position in the roster. Bundle `sim-NNN` and `stream-NNN` ids derive from it. */
   readonly index: number;
-  /** `lanes[i].persona ?? actors[0].persona`. The route compiles the committed persona file. */
+  /** `participants[i].persona ?? actor.persona`. The route compiles the committed persona file. */
   readonly personaId: string | undefined;
   /** The declared mission and per-participant focus. An absent mission takes the route's default. */
   readonly assignment: { readonly mission?: string; readonly focus?: string };
@@ -39,7 +39,7 @@ interface DesktopParticipant extends Participant {
     readonly preset: DevicePreset;
     readonly resolution: [number, number];
   };
-  /** The `lanes[]` entry's value, else actor value, else absent (the provider default is recorded in the trace). */
+  /** The `participants` entry's value, else actor value, else absent (the provider default is recorded in the trace). */
   readonly limits: {
     readonly stopWhen?: StopWhen;
     readonly dwell?: DwellWindow;

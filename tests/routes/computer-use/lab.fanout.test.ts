@@ -42,7 +42,11 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
+import {
+  STUDY_SCHEMA,
+  type StudyConfig,
+  type StudyParticipantEntry,
+} from "../../../src/study/types.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { actorOf } from "../../../src/study/study-fields.js";
 import { runStudyWith } from "../../../src/run-study.js";
@@ -278,7 +282,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
 /** A 4-participant differentiated roster on a loopback app-url subject. */
 function fanoutConfig(overrides?: {
   concurrency?: number;
-  lanes?: StudyConfig["actors"][0]["lanes"];
+  lanes?: StudyParticipantEntry[];
   template?: string;
   reasoningEffort?: string;
 }): StudyConfig {

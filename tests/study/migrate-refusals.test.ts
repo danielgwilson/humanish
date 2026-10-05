@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
 import { convertStudyText } from "../../src/study/migrate/convert.js";
-import { V2_SCHEMA } from "../../src/study/types.js";
+import { V2_SCHEMA } from "../../src/study/migrate/v2.js";
 
 interface RefusalCase {
   readonly name: string;

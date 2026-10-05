@@ -157,7 +157,7 @@ describe("terminal-product parse matrix", () => {
       transport: "exec-stream",
       stdin: "disabled",
     });
-    expect(capsOf(parsed.config, "terminal")).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
+    expect(capsOf(parsed.config)).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
     expect(isTerminalProductComposition(parsed.config)).toBe(true);
     expect(routeOf(parsed.config)).toBe("terminal");
   });

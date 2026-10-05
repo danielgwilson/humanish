@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse, parseDocument, visit } from "yaml";
 
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { routeOf } from "../../src/study/routing.js";
 import { convertStudyText } from "../../src/study/migrate/convert.js";
@@ -48,7 +48,9 @@ const plain = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
 
 describe("every committed lab", () => {
   it("converts to a v3 study that parses, takes the same route and plans the same", async () => {
-    // The 21 v2 files this repo committed before its studies moved to humanish/studies.
+    // The 21 v2 files this repo committed before its studies moved to humanish/studies. Each
+    // planned the same as the committed study of the same name under the v2 parser, and
+    // tests/golden/plans/committed.json pins those plans.
     const dir = path.join(ROOT, "tests", "fixtures", "labs-v2");
     const names = (await readdir(dir)).filter((name) => name.endsWith(".yaml")).sort();
     expect(names).toHaveLength(21);
@@ -56,14 +58,16 @@ describe("every committed lab", () => {
     for (const name of names) {
       const text = await readFile(path.join(dir, name), "utf8");
       const conversion = convert(text);
-      const v2 = parseStudyDocument(parse(text));
+      const committed = parseStudy(
+        parse(await readFile(path.join(ROOT, "humanish", "studies", name), "utf8")),
+      );
       const v3 = parseStudy(parse(conversion.text));
-      if (!v2.ok || !v3.ok) throw new Error(`${name} did not parse`);
+      if (!committed.ok || !v3.ok) throw new Error(`${name} did not parse`);
       expect(v3.config.schema, name).toBe("humanish.study.v3");
-      expect(routeOf(v3.config), name).toBe(routeOf(v2.config));
+      expect(routeOf(v3.config), name).toBe(routeOf(committed.config));
       for (const dryRun of [true, false]) {
         expect(plain(planStudy(v3.config, { cwd: ROOT, dryRun })), name).toEqual(
-          plain(planStudy(v2.config, { cwd: ROOT, dryRun })),
+          plain(planStudy(committed.config, { cwd: ROOT, dryRun })),
         );
       }
       // Every comment is in the study, or reported with the key it sat on.

@@ -119,31 +119,6 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "scenario dollar cap": {
-    "schema": "humanish.study-result.v1",
-    "route": "shared-world",
-    "studyId": "adm-sharedprovisioned",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "topology": "shared-world",
-    "topologyMode": "concurrent",
-    "roleCount": 2,
-    "concurrency": 2,
-    "dryRun": true,
-    "runId": "not-created",
-    "roles": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
   "provisioned plane concurrency 1": {
     "schema": "humanish.study-result.v1",
     "route": "shared-world",
@@ -459,32 +434,7 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
-  "invalid output limit and scenario dollar cap": {
-    "schema": "humanish.study-result.v1",
-    "route": "shared-world",
-    "studyId": "adm-sharedprovisioned",
-    "ok": false,
-    "cwd": "[cwd]",
-    "actor": "openai-computer-use",
-    "topology": "shared-world",
-    "topologyMode": "concurrent",
-    "roleCount": 2,
-    "concurrency": 2,
-    "dryRun": true,
-    "runId": "not-created",
-    "roles": [],
-    "warnings": [],
-    "error": {
-      "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "actor.maxOutputTokens must be a positive safe integer."
-    },
-    "automaticAnalysisTrigger": "default",
-    "automaticAnalysis": {
-      "state": "skipped",
-      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
-    }
-  },
-  "scenario dollar cap and provisioned plane concurrency 1": {
+  "invalid output limit and provisioned plane concurrency 1": {
     "schema": "humanish.study-result.v1",
     "route": "shared-world",
     "studyId": "adm-sharedprovisioned",
@@ -501,7 +451,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_INVALID",
-      "message": "scenario.caps.maxUsd (1) does not cap a computer-use study: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product studies."
+      "message": "actor.maxOutputTokens must be a positive safe integer."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

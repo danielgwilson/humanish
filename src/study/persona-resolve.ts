@@ -10,8 +10,7 @@ import {
 } from "../run/contained-output.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import { realpath } from "node:fs/promises";
-import { rosterOf } from "./parse/actors.js";
-import { actorsOf } from "./study-fields.js";
+import { actorOf, participantList } from "./study-fields.js";
 import type { StudyConfig } from "./types.js";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal route enforces. */
@@ -108,11 +107,10 @@ export async function resolveCommittedPersonas(
  */
 export function studyPersonaIds(config: StudyConfig): string[] {
   const ids: string[] = [];
-  for (const actor of actorsOf(config)) {
-    if (actor.persona) ids.push(actor.persona);
-    for (const entry of rosterOf(actor) ?? []) {
-      if (entry.persona) ids.push(entry.persona);
-    }
+  const persona = actorOf(config)?.persona;
+  if (persona) ids.push(persona);
+  for (const entry of participantList(config) ?? []) {
+    if (entry.persona) ids.push(entry.persona);
   }
   return [...new Set(ids)];
 }

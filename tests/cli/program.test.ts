@@ -545,7 +545,8 @@ describe("humanish CLI scaffold", () => {
           config: {
             id: string;
             subject: { source: string };
-            actors: Array<{ type: string; count?: number }>;
+            actor: { type: string };
+            participants?: number;
           };
         };
         expect(inspect.exitCode).toBe(0);
@@ -556,9 +557,10 @@ describe("humanish CLI scaffold", () => {
             subject: { source: "this-repo" },
           }),
         );
-        expect(envelope.config.actors[0]).toEqual(
-          expect.objectContaining({ type: "synthetic-persona", count: 2 }),
+        expect(envelope.config.actor).toEqual(
+          expect.objectContaining({ type: "synthetic-persona" }),
         );
+        expect(envelope.config.participants).toBe(2);
       },
     );
   });

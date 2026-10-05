@@ -4,7 +4,7 @@
 // a library caller's config itself, under its route's error codes. The planners call the shared
 // checks in study/validation.ts and desktopCliProductReason below. The other subject rules here have
 // planner counterparts whose conditions and wording differ (clone serve and repo, local-tree
-// target, in-process fan-out, loopback targets, scripted scenario.ref).
+// target, in-process fan-out, loopback targets, scripted `scenario`).
 
 import { isLoopbackUrl } from "./parse/subject.js";
 import { REPO_SLUG_PATTERN } from "./parse/values.js";
@@ -29,7 +29,6 @@ import {
   actorOf,
   participantList,
   declaredParticipantCount,
-  surfaceCount,
   modeOf,
   scenarioRefOf,
   declaresSharedWorld,
@@ -119,9 +118,6 @@ function appUrlValidationReason(config: StudyConfig): string | null {
       if (!scenarioRefOf(config)) {
         return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
       }
-      if ((surfaceCount(config) ?? 1) > 2) {
-        return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
-      }
       if (config.policies?.redactScreenshots === true) {
         return "`policies.redactScreenshots: true` is not supported on the scripted-browser route yet, so its screenshots would be stored unredacted in .humanish/. Remove the setting, or use a computer-use actor, which blurs screenshots as it takes them.";
       }
@@ -139,9 +135,8 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return `actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
       // Multi-participant fan-out is consumed on this route (`per-lane-worlds`; the shared cua
-      // cross-validation below enforces `lanes`/`count` XOR rules, the 16 cap, and the
-      // per-participant target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
-      // fan-out).
+      // cross-validation below enforces the 16 cap, the per-participant target gates, and the
+      // allowPublicTargets+N>1 rejection for ambiguous one-target fan-out).
       // Loopback by default; an owner may declare a public/preview target via policies.
       const targets = [config.subject.appUrl ?? "", ...declaredTargets(config)];
       const unsafeTarget = targets.find(
@@ -177,7 +172,9 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
     if (!REPO_SLUG_PATTERN.test(repo)) {
       return `subject.repos[0] must be an owner/repo slug (got "${repo}").`;
     }
-    if (config.subject.topology !== undefined) {
+    // migrate converts a v2 file's `subject.topology: shared-world` to `route: shared-world`, and
+    // refuses it here with the v2 parser's message.
+    if (declaresSharedWorld(config)) {
       return "A clone scripted-browser study does not support `subject.topology` yet: it runs one synthetic subject for its scripted actor. Remove `subject.topology`.";
     }
     if (config.subject.clone?.fanout !== undefined || config.subject.clone?.keep === true) {
@@ -186,9 +183,7 @@ function scriptedBrowserValidationReason(config: StudyConfig): string | null {
     if (!scenarioRefOf(config)) {
       return "A scripted-browser study needs `scenario`: the actor runs the browser steps in that scenario file.";
     }
-    if ((surfaceCount(config) ?? 1) > 2) {
-      return "A scripted-browser study takes `surfaces` 1 (desktop) or 2 (desktop and mobile). Higher counts are not supported yet.";
-    }
+    // A study that declares another route can still list participants.
     if (participantList(config) !== undefined) {
       return "`participants` is not supported on the scripted-browser route yet. Use `surfaces` to choose the desktop and mobile surfaces.";
     }
@@ -235,8 +230,8 @@ function cloneComputerUseValidationReason(config: StudyConfig): string | null {
       return `subject.repos[0] must be an owner/repo slug (got "${repo}").`;
     }
     // Fan-out is consumed here: N participants each clone the same single repo into their own
-    // E2B desktop (`per-lane-worlds`). The shared cua cross-validation below enforces the
-    // `lanes`/`count` rules and the 16 cap; the single-repo rule above is unchanged.
+    // E2B desktop (`per-lane-worlds`). The shared cua cross-validation below enforces the 16 cap;
+    // the single-repo rule above is unchanged.
   }
   return null;
 }
@@ -295,7 +290,8 @@ function desktopCliValidationReason(config: StudyConfig): string | null {
 // an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is a
 // parse error): a registered terminal actor only, execution.target e2b-terminal or absent (absent
 // defaults to e2b-terminal, the only target where an in-sandbox agent runs), one participant until
-// fan-out lands.
+// fan-out lands. parse/front.ts refuses `participants` on route: terminal; a study that declares
+// another route can still count them.
 function terminalValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = actorOf(config)?.type ?? "";

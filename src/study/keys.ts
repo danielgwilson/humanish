@@ -1,19 +1,20 @@
 // Every mapping key parseStudy reads, by path. A key that is not listed fails the study as
 // unknown, so a typo stops the run instead of being dropped. `true` marks a leaf: its parser
 // checks the value (scalars, lists, and mappings that check their own keys). Each level satisfies
-// the parsed type's keys, so a field added to a Lab* interface must be added here too.
+// the parsed type's keys, so a field added to a Study* interface must be added here too.
+// migrate/v2.ts builds the humanish.lab.v2 table from the exported sections.
 
 import type { DwellWindow, StopWhen, StopWhenRule } from "../actors/stop-conditions.js";
 import type { StudyTask } from "./tasks.js";
 import type {
-  StudyActor,
-  StudyParticipantEntry,
-  StudyActorRosterGroup,
+  StudyCaps,
   StudyConfig,
+  StudyParticipantEntry,
+  StudyParticipantGroup,
   StudySubject,
 } from "./types.js";
 
-type KeyShape = { readonly [key: string]: true | KeyShape };
+export type KeyShape = { readonly [key: string]: true | KeyShape };
 // Exactly the keys of T: a missing or extra key is a compile error, so this table cannot drift
 // from the parsed types.
 type Keys<T> = { readonly [K in keyof Required<T>]: true | KeyShape };
@@ -40,19 +41,19 @@ const STOP_WHEN = {
 const DWELL = {
   ms: true,
   everyMs: true,
-  // oxlint-disable-next-line unicorn/no-thenable -- `then` is the documented dwell field of humanish.lab.v2
+  // oxlint-disable-next-line unicorn/no-thenable -- `then` is the documented dwell field of a study
   then: true,
   when: STOP_WHEN,
 } satisfies Keys<DwellWindow>;
 
-const CAPS = {
+export const CAPS = {
   maxUsd: true,
   maxTotalUsd: true,
   maxJobs: true,
   maxMinutes: true,
-} satisfies Keys<Field<Execution, "caps">>;
+} satisfies Keys<StudyCaps>;
 
-const PARTICIPANT_ENTRY = {
+export const PARTICIPANT_ENTRY = {
   id: true,
   actorType: true,
   surface: true,
@@ -68,9 +69,8 @@ const PARTICIPANT_ENTRY = {
   dwell: DWELL,
 } satisfies Keys<StudyParticipantEntry>;
 
-const SUBJECT = {
+export const SUBJECT = {
   source: true,
-  topology: true,
   exposure: true,
   appUrl: true,
   repos: true,
@@ -117,15 +117,8 @@ const SUBJECT = {
   } satisfies Keys<State>,
 } satisfies Keys<StudySubject>;
 
-const ACTOR = {
+export const ACTOR = {
   type: true,
-  count: true,
-  lanes: PARTICIPANT_ENTRY,
-  // Roster groups are participants with a count; the parser expands them into `lanes[]`.
-  roster: {
-    ...PARTICIPANT_ENTRY,
-    count: true,
-  } satisfies Keys<StudyActorRosterGroup>,
   persona: true,
   mission: true,
   model: true,
@@ -135,14 +128,9 @@ const ACTOR = {
   stopWhen: STOP_WHEN,
   dwell: DWELL,
   tasks: { id: true, goal: true, success: STOP_WHEN } satisfies Keys<StudyTask>,
-  laneFocus: {
-    id: true,
-    label: true,
-    instruction: true,
-  } satisfies Keys<Field<StudyActor, "laneFocus">>,
-} satisfies Keys<StudyActor & { roster: unknown }>;
+} satisfies Keys<StudyConfig["actor"]>;
 
-const EXECUTION = {
+export const EXECUTION = {
   target: true,
   runtime: { version: true } satisfies Keys<Field<Execution, "runtime">>,
   runtimeAuth: true,
@@ -150,7 +138,6 @@ const EXECUTION = {
   timeoutMs: true,
   completionTimeoutMs: true,
   egressAllow: true,
-  caps: CAPS,
   terminal: { stdin: true, transport: true } satisfies Keys<Field<Execution, "terminal">>,
   desktop: {
     template: true,
@@ -198,22 +185,25 @@ const EMAIL = {
   recipients: { lane: true, address: true } satisfies Keys<Field<Email, "recipients">[number]>,
 } satisfies Keys<Email>;
 
-const V2_KEYS = {
+// humanish.study.v3. A list entry with a `count` is a group, so `participants` keys an entry's keys
+// and a group's together: parseStudy checks which form the route takes.
+const STUDY_KEYS = {
   schema: true,
   id: true,
   title: true,
   description: true,
+  route: true,
+  mode: true,
   subject: SUBJECT,
-  actors: ACTOR,
+  actor: ACTOR,
+  participants: {
+    ...PARTICIPANT_ENTRY,
+    count: true,
+  } satisfies Keys<StudyParticipantEntry & StudyParticipantGroup>,
+  surfaces: true,
+  caps: CAPS,
   execution: EXECUTION,
-  // Inline personas are validated by the persona resolver.
-  personas: true,
-  scenario: {
-    ref: true,
-    mode: true,
-    inline: true,
-    caps: CAPS,
-  } satisfies Keys<Field<StudyConfig, "scenario">>,
+  scenario: true,
   policies: {
     redactRepos: true,
     redactScreenshots: true,
@@ -236,33 +226,12 @@ const V2_KEYS = {
   comms: { email: EMAIL } satisfies Keys<Field<StudyConfig, "comms">>,
 } satisfies Keys<StudyConfig>;
 
-function without(shape: KeyShape, ...keys: string[]): KeyShape {
-  return Object.fromEntries(Object.entries(shape).filter(([key]) => !keys.includes(key)));
-}
-
-// humanish.study.v3. The route is declared, so `subject.topology` goes. The participant keys leave
-// the actor for `participants`, and `caps` is one top-level block. Top-level `personas` and
-// `scenario.inline` are read by no route, and `scenario` is a string.
-const STUDY_KEYS: KeyShape = {
-  schema: true,
-  id: true,
-  title: true,
-  description: true,
-  route: true,
-  mode: true,
-  subject: without(SUBJECT, "topology"),
-  actor: without(ACTOR, "count", "lanes", "roster", "laneFocus"),
-  // A count, `{ count, instruction }` or a list of entries. studyToV2 checks which form the route
-  // takes; an entry with a count is a group.
-  participants: { ...PARTICIPANT_ENTRY, count: true },
-  surfaces: true,
-  caps: CAPS,
-  execution: without(EXECUTION, "caps"),
-  scenario: true,
-  policies: V2_KEYS.policies,
-  review: V2_KEYS.review,
-  defaults: V2_KEYS.defaults,
-  comms: V2_KEYS.comms,
+/** The sections a humanish.lab.v2 file shares with a v3 one. */
+export const SHARED_SECTIONS = {
+  policies: STUDY_KEYS.policies,
+  review: STUDY_KEYS.review,
+  defaults: STUDY_KEYS.defaults,
+  comms: STUDY_KEYS.comms,
 };
 
 /**
@@ -297,14 +266,14 @@ export function studyKeyPaths(depth: number): string[] {
   return paths;
 }
 
-/** The first key in `raw` that V2_KEYS does not list, as an error message; undefined if none. */
-export function findUnknownV2Key(raw: unknown): string | undefined {
-  return walk(raw, V2_KEYS, "", "study");
-}
-
 /** The first key in a humanish.study.v3 document that the format does not have; undefined if none. */
 export function findUnknownStudyKey(raw: unknown): string | undefined {
-  return walk(raw, STUDY_KEYS, "", "study");
+  return findUnknownKey(raw, STUDY_KEYS);
+}
+
+/** The first key in `raw` that `shape` does not list, as an error message; undefined if none. */
+export function findUnknownKey(raw: unknown, shape: KeyShape): string | undefined {
+  return walk(raw, shape, "", "study");
 }
 
 function walk(value: unknown, shape: KeyShape, path: string, noun: string): string | undefined {

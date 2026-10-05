@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 
 import { stringsOf } from "../../scripts/lib/src-strings.mjs";
 import { isStudyKeyPath } from "../../src/study/keys.js";
-import { studySpelling } from "../../src/study/parse/study-v3.js";
 
 // The top-level keys of a v3 file, then the v2 keys v3 dropped. A path a string names reads as a
 // study key when it starts with one of these.
@@ -47,27 +46,10 @@ const PATH = new RegExp(
 // `review.json`, `actor.json` and `comms.yaml` are file names.
 const FILE_NAME = /\.(?:json|jsonl|md|ya?ml|ts|mjs|js|txt|html)$/;
 
-// parseStudy reads a v3 file through the v2 parser and rewrites these files' messages with
-// studySpelling, so they may use the v2 spelling it rewrites. The semantic checks the routes
-// repeat for a config built without parseStudy (composition-rules.ts, validation.ts,
-// parse/execution.ts, parse/subject.ts) already spell v3 keys, so they are checked as written.
-const SPELLED = new Set([
-  "src/study/config.ts",
-  "src/study/keys.ts",
-  "src/study/warnings.ts",
-  "src/study/parse/actors.ts",
-  "src/study/parse/comms.ts",
-  "src/study/parse/subject-state.ts",
-  "src/study/parse/values.ts",
-]);
-
 // migrate's reader of a v2 file, whose messages and dropped keys are the v2 file's own paths.
 const V2_READER = "src/study/migrate/v2.ts";
 
 const MIGRATE = "migrate names the v2 keys of the file it converts";
-const V2_ONLY = "a v3 file cannot set this key, so only migrate's v2 parse reaches the message";
-const V2_SHAPE =
-  "a v2 shape a v3 file cannot express, reached by migrate's v2 parse and a v2-shaped library config; PR 8 deletes it";
 const PREFLIGHT = "a preflight target's kind or label, typed values in the preflight JSON";
 const NOT_STUDY = "not a study key";
 
@@ -121,37 +103,20 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
   { file: "src/study/migrate/convert.ts", path: "scenario.mode", reason: MIGRATE },
   { file: "src/study/migrate/convert.ts", path: "subject.topology", reason: MIGRATE },
   {
-    file: "src/study/parse/study-v3.ts",
-    path: "actors[0]",
-    reason: "studySpelling's own input: the v2 path it rewrites",
-  },
-  {
-    file: "src/study/parse/study-v3.ts",
+    file: "src/study/parse/front.ts",
     path: "subject.topology",
-    reason: "studySpelling's input, and the message for a file that still sets the moved key",
+    reason: "the message for a file that still sets the moved key",
   },
   {
-    file: "src/study/parse/study-v3.ts",
+    file: "src/study/parse/front.ts",
     path: "execution.caps",
     reason: "the message for a file that still sets the moved key",
   },
-  { file: "src/study/parse/subject.ts", path: "subject.topology", reason: V2_ONLY },
-  { file: "src/study/composition-rules.ts", path: "subject.topology", reason: V2_ONLY },
-  { file: "src/study/validation.ts", path: "actors[0].count", reason: V2_SHAPE },
-  { file: "src/study/validation.ts", path: "actors[0].lanes", reason: V2_SHAPE },
-  { file: "src/study/validation.ts", path: "actors[0].laneFocus", reason: V2_SHAPE },
-  { file: "src/study/validation.ts", path: "actors[0]", reason: V2_SHAPE },
-  { file: "src/study/validation.ts", path: "scenario.caps", reason: V2_SHAPE },
-  { file: "src/study/validation.ts", path: "execution.caps", reason: V2_SHAPE },
   {
-    file: "src/study/warnings.ts",
+    file: "src/study/composition-rules.ts",
     path: "subject.topology",
-    reason: `${V2_ONLY}; migrate reports it as dropped`,
-  },
-  {
-    file: "src/study/warnings.ts",
-    path: "scenario.inline",
-    reason: `${V2_ONLY}; migrate reports it as dropped`,
+    reason:
+      "migrate's refusal of a v2 scripted clone with `subject.topology`, which `route: shared-world` also reaches",
   },
   { file: "src/study/preflight.ts", path: "actors[0].lanes", reason: PREFLIGHT },
   { file: "src/study/preflight.ts", path: "actors[0].lanes[].target", reason: PREFLIGHT },
@@ -178,12 +143,10 @@ function namedPaths(): Hit[] {
   for (const file of [...sourceFiles("src"), ...sourceFiles("tui/src")]) {
     if (file === V2_READER) continue;
     const text = readFileSync(file, "utf8");
-    const spelled = SPELLED.has(file);
     for (const string of stringsOf(parseSync(file, text).program, false, true)) {
-      const message = spelled ? studySpelling(string.text, "computer-use", []) : string.text;
-      for (const match of message.matchAll(PATH)) {
+      for (const match of string.text.matchAll(PATH)) {
         if (FILE_NAME.test(match[0]) || isStudyKeyPath(match[0])) continue;
-        const offset = string.start + (spelled ? 0 : (match.index ?? 0));
+        const offset = string.start + (match.index ?? 0);
         found.push({ file, line: text.slice(0, offset).split("\n").length, path: match[0] });
       }
     }
@@ -197,11 +160,7 @@ describe("messages name study keys by their v3 path", () => {
   it("every dotted study path in a src string is a key a v3 file can set", () => {
     const unknown = hits
       .filter((hit) => !ALLOWED.some((entry) => entry.file === hit.file && entry.path === hit.path))
-      .map((hit) => {
-        const v3 = studySpelling(hit.path, "computer-use", []);
-        const hint = v3 !== hit.path && isStudyKeyPath(v3) ? ` (say ${v3})` : "";
-        return `${hit.file}:${hit.line} ${hit.path}${hint}`;
-      });
+      .map((hit) => `${hit.file}:${hit.line} ${hit.path}`);
     expect(unknown).toEqual([]);
   });
 

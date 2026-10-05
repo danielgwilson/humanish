@@ -31,12 +31,11 @@ function deepFreeze<T>(value: T, frozen = new WeakSet<object>()): T {
 }
 
 function residualOf(config: StudyConfig): Readonly<ResidualConfig> {
-  const { comms, policies, personas, defaults, review } = config;
+  const { comms, policies, defaults, review } = config;
   return deepFreeze(
     structuredClone({
       ...(comms === undefined ? {} : { comms }),
       ...(policies === undefined ? {} : { policies }),
-      ...(personas === undefined ? {} : { personas }),
       ...(defaults === undefined ? {} : { defaults }),
       ...(review === undefined ? {} : { review }),
       ...(config.execution?.desktop === undefined && config.execution?.target === undefined
@@ -65,11 +64,8 @@ export function isNonEmpty<T>(values: readonly T[]): values is NonEmpty<T> {
   return values.length > 0;
 }
 
-export function planCaps(
-  config: StudyConfig,
-  route: "computer-use" | "shared-world",
-): ComputerUsePlan["caps"] {
-  const caps = capsOf(config, route);
+export function planCaps(config: StudyConfig): ComputerUsePlan["caps"] {
+  const caps = capsOf(config);
   return {
     ...(caps?.maxUsd === undefined ? {} : { maxUsd: caps.maxUsd }),
     ...(caps?.maxTotalUsd === undefined ? {} : { maxTotalUsd: caps.maxTotalUsd }),

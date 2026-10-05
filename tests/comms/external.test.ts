@@ -20,8 +20,8 @@ import {
 } from "../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
-import { STUDY_SCHEMA, V2_SCHEMA } from "../../src/study/types.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
+import { parseStudy } from "../../src/study/config.js";
 import { freePort } from "../helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";
@@ -183,18 +183,20 @@ describe("comms.email.external config", () => {
     if (!badEnv.ok) expect(badEnv.error.message).toContain("authTokenEnv");
   });
 
-  it("warns when an external catch is declared on a route where humanish hosts its own", () => {
-    const provisioned = parseStudyDocument({
-      schema: V2_SCHEMA,
+  it("refuses an external catch on a route where humanish hosts its own", () => {
+    const provisioned = parseStudy({
+      schema: STUDY_SCHEMA,
       id: "conflict",
+      route: "computer-use",
+      mode: "live",
       subject: {
         source: "clone",
         repos: ["e/a"],
         serve: { start: "npm start", url: "http://127.0.0.1:3000/" },
       },
-      actors: [{ type: "openai-computer-use", count: 1, mission: "Sign up." }],
+      actor: { type: "openai-computer-use", mission: "Sign up." },
+      participants: 1,
       execution: { target: "e2b-desktop" },
-      scenario: { mode: "live" },
       comms: {
         email: {
           injectEnv: "RESEND_API_URL",
@@ -202,11 +204,10 @@ describe("comms.email.external config", () => {
         },
       },
     });
-    expect(provisioned.ok).toBe(true);
-    if (!provisioned.ok) return;
     // Two catches would exist and the app would point at humanish's, so the declared one would
-    // silently collect nothing: say so rather than letting it look wired.
-    expect(provisioned.warnings.join("\n")).toContain("comms.email.external");
+    // silently collect nothing: refuse rather than let it look wired.
+    expect(provisioned.ok).toBe(false);
+    if (!provisioned.ok) expect(provisioned.error.message).toContain("comms.email.external");
   });
 });
 

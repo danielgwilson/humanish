@@ -23,7 +23,13 @@ import { isComputerUseComposition } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
-import { actorOf, participantList, declaredParticipantCount, capsOf } from "./study-fields.js";
+import {
+  actorOf,
+  participantList,
+  declaredParticipantCount,
+  capsOf,
+  surfaceCount,
+} from "./study-fields.js";
 
 export const STUDY_SUMMARY_SCHEMA = "humanish.study-summary.v1";
 
@@ -111,8 +117,13 @@ function participantsOf(config: StudyConfig): string | undefined {
     .filter((persona): persona is string => typeof persona === "string");
   const personas =
     rosterPersonas.length > 0 ? rosterPersonas : actor.persona === undefined ? [] : [actor.persona];
+  // A scripted study's participants are its surfaces, one replay on each.
   const count =
-    declaredParticipantCount(config) ?? participantList(config)?.length ?? personas.length ?? 1;
+    declaredParticipantCount(config) ??
+    surfaceCount(config) ??
+    participantList(config)?.length ??
+    personas.length ??
+    1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
   // Several participants of one persona reads as "3 × skeptical-power-user"; genuinely different people
@@ -120,10 +131,10 @@ function participantsOf(config: StudyConfig): string | undefined {
   return unique.length === 1 ? `${count} × ${unique[0]}` : unique.join(" · ");
 }
 
-/** The computer-use caps; `execution.caps` is inert on other routes, so none is drawn there. */
+/** The computer-use caps. Other routes draw none. */
 function summaryCapsOf(config: StudyConfig): StudyCaps {
   if (!isComputerUseComposition(config)) return {};
-  const caps = capsOf(config, "computer-use");
+  const caps = capsOf(config);
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
     ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {}),

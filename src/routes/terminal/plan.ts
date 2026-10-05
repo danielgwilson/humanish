@@ -135,7 +135,7 @@ export function planTerminalStudy(
     ...(egressAllow === undefined ? {} : { egressAllow }),
     ...(stdin === undefined ? {} : { stdin }),
   };
-  const caps = capsOf(config, "terminal");
+  const caps = capsOf(config);
   if (input.dryRun)
     return { ok: true, plan: { ...shared, dryRun: true, ...(caps ? { caps } : {}) } };
 

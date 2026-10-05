@@ -3,6 +3,7 @@ import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import { isExactRuntimeVersion } from "../../routes/terminal/runtime.js";
 import { invalid, nonNegNumber, posInt, str } from "./values.js";
 import type {
+  StudyCaps,
   StudyParseFailure,
   StudyDefaults,
   StudyDesktopFidelity,
@@ -12,8 +13,6 @@ import type {
   StudyExecutionTerminal,
   StudyPolicies,
   StudyReview,
-  StudyScenario,
-  StudyScenarioCaps,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
 
@@ -45,13 +44,6 @@ export function parseExecution(
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
-  // Reuse the terminal route's caps parser (same shape, not a fork); a malformed budget is a hard
-  // error, never silently dropped (a cap that silently does nothing would be a safety lie).
-  const capsResult = parseCaps(raw.caps);
-  if (!capsResult.ok) {
-    return capsResult;
-  }
-  if (capsResult.value) execution.caps = capsResult.value;
   const terminalResult = parseTerminal(raw.terminal);
   if (!terminalResult.ok) {
     return terminalResult;
@@ -270,49 +262,22 @@ function parseDesktop(
   return { ok: true, value: Object.keys(desktop).length > 0 ? desktop : undefined };
 }
 
-export function parsePersonas(raw: unknown): Record<string, unknown>[] | undefined {
-  if (!Array.isArray(raw)) {
-    return undefined;
-  }
-  const personas = raw.filter(isRecord);
-  return personas.length > 0 ? personas : undefined;
-}
-
-export function parseScenario(
-  raw: unknown,
-): { ok: true; value: StudyScenario | undefined } | StudyParseFailure {
-  if (!isRecord(raw)) {
-    return { ok: true, value: undefined };
-  }
-  const scenario: StudyScenario = {};
-  const ref = str(raw.ref);
-  if (ref) scenario.ref = ref;
-  if (isRecord(raw.inline)) scenario.inline = raw.inline;
-  const mode = str(raw.mode);
-  if (mode === "dry-run" || mode === "live") scenario.mode = mode;
-  const capsResult = parseCaps(raw.caps);
-  if (!capsResult.ok) {
-    return capsResult;
-  }
-  if (capsResult.value) scenario.caps = capsResult.value;
-  return { ok: true, value: Object.keys(scenario).length > 0 ? scenario : undefined };
-}
-
 /**
- * Parse `scenario.caps`. Returns a parse failure on a malformed value rather than silently
+ * Parse a `caps` block's values. Returns a parse failure on a malformed value rather than silently
  * dropping a budget declaration (a cap that silently does nothing would claim protection it
- * does not give). Each cap must be a non-negative finite number.
+ * does not give). Each cap must be a non-negative finite number. readStudyFront has checked the
+ * keys against the route; migrate checks a v2 file's two caps blocks with it.
  */
-function parseCaps(
+export function parseCaps(
   raw: unknown,
-): { ok: true; value: StudyScenarioCaps | undefined } | StudyParseFailure {
+): { ok: true; value: StudyCaps | undefined } | StudyParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
     return invalid("`caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");
   }
-  const caps: StudyScenarioCaps = {};
+  const caps: StudyCaps = {};
   for (const key of ["maxUsd", "maxTotalUsd", "maxJobs", "maxMinutes"] as const) {
     if (raw[key] === undefined) continue;
     const value = nonNegNumber(raw[key]);

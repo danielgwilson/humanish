@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
+import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { migrateStudies } from "../../src/study/migrate/migrate.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
@@ -686,9 +686,11 @@ describe("every committed lab", () => {
     expect(names).toHaveLength(21);
     const result = await migrateStudies({ cwd });
     expect(result.ok).toBe(true);
+    // Each v2 fixture planned the same as the committed study of the same name under the v2
+    // parser; tests/golden/plans/committed.json pins those plans.
     for (const name of names) {
-      const before = parseStudyDocument(
-        parse(await readFile(path.join(ROOT, "tests/fixtures/labs-v2", name), "utf8")),
+      const before = parseStudy(
+        parse(await readFile(path.join(ROOT, "humanish/studies", name), "utf8")),
       );
       const after = parseStudy(
         parse(await readFile(path.join(cwd, "humanish/studies", name), "utf8")),

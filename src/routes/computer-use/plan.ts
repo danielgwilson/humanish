@@ -36,7 +36,6 @@ import {
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
-  scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { desktopCliProductReason } from "../../study/composition-rules.js";
@@ -188,10 +187,7 @@ function unsupportedDeclarationReason(
   driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
-  const reason =
-    desktopMediaValidationReason(config) ||
-    outputTokenLimitValidationReason(config) ||
-    scenarioCapsValidationReason(config);
+  const reason = desktopMediaValidationReason(config) || outputTokenLimitValidationReason(config);
   if (reason) return invalid(reason);
   if (
     actorOf(config)?.maxOutputTokens !== undefined &&
@@ -476,7 +472,7 @@ export function planComputerUseStudy(
       concurrency: boundedConcurrency(declared, n),
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
-      caps: planCaps(config, "computer-use"),
+      caps: planCaps(config),
       ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:
         base.dryRun || runner.desktop === "in-process"

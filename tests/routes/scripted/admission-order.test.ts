@@ -21,7 +21,7 @@ type Raw = Record<string, unknown>;
 type Mutate = (config: Raw) => void;
 
 const record = (config: Raw, key: string): Raw => config[key] as Raw;
-const actor = (config: Raw): Raw => (config.actors as Raw[])[0]!;
+const actor = (config: Raw): Raw => config.actor as Raw;
 const cloneSubject = libraryLab("scriptedClone").subject as Raw;
 
 const rules: [string, Mutate][] = [
@@ -49,13 +49,13 @@ const rules: [string, Mutate][] = [
       record(c, "execution").target = "e2b-desktop";
     },
   ],
-  ["missing scenario ref", (c) => delete record(c, "scenario").ref],
+  ["missing scenario ref", (c) => delete c.scenario],
   [
     "live clone without an E2B key",
     (c) => {
       c.subject = structuredClone(cloneSubject);
       record(c, "execution").target = "e2b-desktop";
-      record(c, "scenario").mode = "live";
+      c.mode = "live";
     },
   ],
 ];

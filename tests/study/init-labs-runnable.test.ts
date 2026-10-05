@@ -136,7 +136,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
       try {
         const live = await runComputerUse({
           cwd,
-          config: { ...config, scenario: { ...config.scenario, mode: "live" } },
+          config: { ...config, mode: "live" },
           dryRun: false,
           env: { ...env, E2B_API_KEY: "synthetic-starter-e2b-key" },
           ...(local ? {} : { deps: { desktopModule: async () => desktopReached() } }),
@@ -164,8 +164,6 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     if (!parsed.ok) return;
     expect(actorOf(parsed.config)?.type).toBe(actor);
     expect(parsed.config.execution?.timeoutMs).toBe(600_000);
-    expect(capsOf(parsed.config, "computer-use")?.maxUsd).toBe(
-      actor === "local-agent" ? undefined : 2,
-    );
+    expect(capsOf(parsed.config)?.maxUsd).toBe(actor === "local-agent" ? undefined : 2);
   });
 });

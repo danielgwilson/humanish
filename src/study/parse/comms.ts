@@ -92,12 +92,17 @@ function parseCommsEmail(raw: unknown): { ok: true; value: StudyCommsEmail } | S
   return { ok: true, value: email };
 }
 
-/** A real inbox: a saved connection, with optional link and allowed origins and nothing else. */
+/**
+ * A real inbox: a saved connection, with optional link and allowed origins and nothing else. The
+ * parsed config adds `kind: real`, so a config parseStudy returned parses again with it.
+ */
 function parseEmailConnection(
   raw: Record<string, unknown>,
 ): { ok: true; value: StudyCommsReceivingEmail } | StudyParseFailure {
   const unsupported = Object.keys(raw).filter(
-    (key) => !["connection", "linkOrigin", "allowedOrigins"].includes(key),
+    (key) =>
+      !["connection", "linkOrigin", "allowedOrigins"].includes(key) &&
+      !(key === "kind" && raw.kind === "real"),
   );
   if (unsupported.length)
     return invalid(

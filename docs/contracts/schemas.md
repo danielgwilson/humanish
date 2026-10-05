@@ -59,10 +59,11 @@ workflow without leaking private upstream truth into core.
 
 ## Study File
 
-Schema: `humanish.study.v3`. `src/study/parse/study-v3.ts` rewrites a v3 document into the
-normalized config in `src/study/types.ts`, which `src/study/config.ts` parses. humanish refuses a
-`humanish.lab.v2` file with `HUMANISH_STUDY_V2_UNSUPPORTED`, whose message names
-`humanish migrate <path>`; migrate converts the file to v3.
+Schema: `humanish.study.v3`. `src/study/config.ts` parses a v3 document into `StudyConfig`
+(`src/study/types.ts`), which has the file's keys; `src/study/parse/front.ts` checks the route and
+the forms of `participants`, `surfaces` and `caps` it takes. humanish refuses a `humanish.lab.v2`
+file with `HUMANISH_STUDY_V2_UNSUPPORTED`, whose message names `humanish migrate <path>`; migrate
+converts the file to v3.
 
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:

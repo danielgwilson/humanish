@@ -23,8 +23,8 @@ import {
   removedOptionRefusal,
 } from "./study/run-study-options.js";
 import type { RunStudyDriving, RunStudyHomes } from "./study/run-study-homes.js";
-import { V2_SCHEMA, type StudyConfig } from "./study/types.js";
-import { V2_UNSUPPORTED_MESSAGE } from "./study/config.js";
+import type { StudyConfig } from "./study/types.js";
+import { V2_SCHEMA, V2_UNSUPPORTED_MESSAGE } from "./study/migrate/v2.js";
 import type { ObserverResult } from "./observer/render.js";
 import { admitComputerUsePlan, computerUseStudyRefusal } from "./routes/computer-use/route.js";
 import { type CuaActorStudyResult } from "./routes/computer-use/types.js";
@@ -68,7 +68,7 @@ export async function runStudy(
   options: RunStudyOptions,
 ): Promise<StudyOutcome> {
   const refusal =
-    config.schema === V2_SCHEMA
+    (config.schema as string) === V2_SCHEMA
       ? ({
           ok: false,
           code: "HUMANISH_STUDY_V2_UNSUPPORTED",

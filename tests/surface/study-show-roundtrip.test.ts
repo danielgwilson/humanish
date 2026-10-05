@@ -1,8 +1,6 @@
 // The config `humanish study show --json` prints is a study file: parseStudy accepts it and returns
-// the same config. That holds once StudyConfig has the v3 file's shape. Until then the printed
-// config keeps the v2 keys (`actors:`) under the v3 schema, parseStudy refuses it, and each case
-// below is marked `it.fails`. Drop `.fails` with the change that gives StudyConfig the v3 shape.
-// The corpus is every committed study, every study each init starter set writes, and
+// the same config, defaults filled and participant groups expanded. The corpus is every committed
+// study, every study each init starter set writes, and
 // tests/fixtures/study-summary/mixed-participants.yaml, whose participant group the parser expands.
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { readdirSync } from "node:fs";
@@ -78,7 +76,6 @@ describe("study show --json prints a config parseStudy reads back", () => {
     return studyShowJson(cwd, study);
   }
 
-  // Keeps the round trip below from passing as `.fails` because study show itself broke.
   it.each(CASES)("study show prints a config for $label", async (study) => {
     const { exitCode, json } = await shown(study);
     expect(exitCode).toBe(0);
@@ -86,7 +83,7 @@ describe("study show --json prints a config parseStudy reads back", () => {
     expect(json.config).toBeTypeOf("object");
   });
 
-  it.fails.each(CASES)("the config of $label parses back to itself", async (study) => {
+  it.each(CASES)("the config of $label parses back to itself", async (study) => {
     const { json } = await shown(study);
     const result = parseStudy(json.config);
     expect(result).toMatchObject({ ok: true });

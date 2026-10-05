@@ -4,8 +4,6 @@ import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import { type ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { StudyRoute } from "./routing.js";
 
-export const V2_SCHEMA = "humanish.lab.v2";
-
 /** The study format: it declares its route, one actor, its participants and one caps block. */
 export const STUDY_SCHEMA = "humanish.study.v3";
 
@@ -31,17 +29,6 @@ type StudySubjectSource =
   | "terminal-product"
   | "desktop-cli"
   | "local-tree";
-
-/**
- * How a subject's world relates across participants. `per-lane-worlds` (the default; absent ==
- * this) is the only fan-out topology the computer-use route ships: N participants, N independent
- * worlds, isolation + per-participant attribution. `shared-world` is the declared override: one
- * mutable service plane that N participants use at the same time, so their actions interact through
- * shared state. Consumed only on the shared-world routes (a provisioned clone plane, or an
- * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
- * (claims match mechanism).
- */
-type StudySubjectTopology = "per-lane-worlds" | "shared-world";
 
 export interface StudySubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
@@ -213,25 +200,17 @@ export interface StudySubjectProduct {
 export interface StudySubject {
   source: StudySubjectSource;
   /**
-   * World topology across participants. Absent == `per-lane-worlds` (the isolation default; every
-   * existing study is byte-stable). `shared-world` is the declared override: one mutable service
-   * plane, N participants at once, each in its role. Consumed only on the shared-world routes (a
-   * provisioned clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2
-   * participants); inert/warned elsewhere.
-   */
-  topology?: StudySubjectTopology;
-  /**
    * Concurrent shared-world route only: the author's required attestation that the
    * subject behind the internet-reachable `getHost` URL is synthetic seeded data. The concurrent
    * route exposes the subject on a tokenless public URL for the run's duration, so real/external
    * data must never sit behind it. This is author-trust + a provenance gate (verify also requires
    * `subject.state.provenance == "seeded"`). It does not guarantee the data is synthetic. Required when
-   * `topology: shared-world` + `execution.concurrency > 1`; inert/warned elsewhere.
+   * `route: shared-world` + `execution.concurrency > 1`; inert/warned elsewhere.
    */
   exposure?: "synthetic";
   /**
    * External-public shared-world route only: the author's required ownership
-   * attestation when a real public deployment (`source: app-url` + `topology: shared-world` +
+   * attestation when a real public deployment (`source: app-url` + `route: shared-world` +
    * `concurrency > 1` + `policies.allowPublicTargets: true`) is used directly as the shared plane.
    * The harness neither provisions nor exposes this target (no getHost, no clone, no seed), so it
    * cannot attest the data is synthetic; instead the operator must attest they own/operate it.
@@ -297,13 +276,6 @@ export interface StudySubject {
   localTree?: StudySubjectLocalTree;
 }
 
-export interface StudyParticipantFocus {
-  id?: string;
-  label?: string;
-  /** Per-participant steer appended to the actor's mission. Consumed on the app-url route. */
-  instruction?: string;
-}
-
 /**
  * One participant in a differentiated fan-out on the computer-use E2B route (`per-lane-worlds`).
  * Each entry becomes an independent E2B desktop sandbox with its own persona/device/starting-steer. All
@@ -316,7 +288,7 @@ export interface StudyParticipantEntry {
   id?: string;
   /**
    * App-defined actor type label for grouping simulated users ("operator", "viewer",
-   * "maintainer", etc.). It is separate from the execution actor dispatch key (`actors[0].type`);
+   * "maintainer", etc.). It is separate from the execution actor dispatch key (`actor.type`);
    * it is adapter-owned taxonomy for roster/readback.
    */
   actorType?: string;
@@ -324,7 +296,7 @@ export interface StudyParticipantEntry {
   surface?: string;
   /** App-defined correlation id tying participants to one shared case/account/work item. */
   caseGroup?: string;
-  /** Persona id/label threaded into this participant's actor prompt. Default: actors[0].persona. */
+  /** Persona id/label threaded into this participant's actor prompt. Default: actor.persona. */
   persona?: string;
   /** Named hosted-screen preset for this participant. XOR raw execution.desktop.resolution. */
   device?: string;
@@ -368,18 +340,6 @@ export interface StudyParticipantEntry {
   host?: boolean;
 }
 
-/**
- * Compact authoring sugar for repeated participant groups. The parser expands each group into concrete
- * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
- * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
- */
-export interface StudyActorRosterGroup extends Omit<StudyParticipantEntry, "id"> {
-  /** Public-safe group id; prefixes generated participant ids. */
-  id: string;
-  /** Number of participants to generate for this group. */
-  count: number;
-}
-
 export interface StudyActor {
   /**
    * The actor label. On computer-use (including shared-world), scripted-browser, and
@@ -389,18 +349,8 @@ export interface StudyActor {
    * the descriptor for dispatch and capability enforcement.
    */
   type: string;
-  /** Participant count, route-specific (see the scope header in config.ts): synthetic simCount; scripted
-   *  surface roster {1 = desktop, 2 = desktop + mobile, default 1}; computer-use E2B route the
-   *  homogeneous fan-out participant count (cap 16). XOR `lanes`. */
-  count?: number;
-  /** Computer-use E2B route: a differentiated fan-out roster (`per-lane-worlds`). XOR `count`,
-   *  `roster`, and `laneFocus`. Cap 16 participants. Consumed only on the cua E2B route
-   *  (inert/warned elsewhere). */
-  lanes?: StudyParticipantEntry[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
-  /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
-  laneFocus?: StudyParticipantFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
    *  its own is a complete, valid study; `tasks` is additive, never required. */
   mission?: string;
@@ -428,7 +378,7 @@ export interface StudyActor {
    */
   localAgent?: "codex" | "claude";
   /**
-   * How hard the model is asked to think, per turn. A `lanes[]` entry's `reasoningEffort` overrides this.
+   * How hard the model is asked to think, per turn. A `participants` entry's `reasoningEffort` overrides this.
    *
    * Absent means the provider's default, and absence is recorded as absence: a run that did not
    * declare an effort does not claim one. Support is model-dependent (see src/actors/reasoning-effort.ts),
@@ -443,12 +393,12 @@ export interface StudyActor {
    */
   reasoningEffort?: ReasoningEffort;
   /**
-   * Deterministic completion guard used as the default for CUA participants. A `lanes[]` entry's stopWhen
+   * Deterministic completion guard used as the default for CUA participants. A `participants` entry's stopWhen
    * overrides this value.
    */
   stopWhen?: StopWhen;
   /**
-   * A declared observation window, the default for every participant; a `lanes[]` entry's dwell overrides
+   * A declared observation window, the default for every participant; a `participants` entry's dwell overrides
    * it. `when` is a stopWhen-shaped condition (absent: the window opens after the first
    * observation); `ms` is the hold, `everyMs` the frame cadence (default 10 s), `then` whether
    * the participant continues afterwards (default) or the session ends. The harness takes no
@@ -573,20 +523,6 @@ export interface StudyExecution {
    */
   concurrency?: number;
   desktop?: StudyExecutionDesktop;
-  /**
-   * Blast-radius budget for each computer-use participant. Consumed on the computer-use route:
-   * `caps.maxUsd`, when set, is a fail-closed abort: the session stops the moment its running
-   * estimated spend crosses it (the runaway-retry guard), and a cap on a model src/run/pricing.ts
-   * cannot price is refused at preflight rather than run uncapped. It is a per-participant cap:
-   * enforced inside each participant's loop, so an N-participant fan-out can spend up to N × maxUsd
-   * before any participant aborts (the run warns with the true ~N × cap ceiling).
-   * `caps.maxTotalUsd` is the shared study budget: one ledger across every participant, the knob a
-   * researcher actually reasons with. Absent = uncapped (the historical CUA behavior); maxUsd: 0
-   * still permits a request before reported usage trips it. Inert (warned) on non-computer-use
-   * routes. Reuses the same StudyScenarioCaps shape as the terminal route's `scenario.caps` (not a
-   * fork).
-   */
-  caps?: StudyScenarioCaps;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: StudyExecutionTerminal;
   /** `terminal-product` route: runtime key placement, defaulting to openai-egress, an external
@@ -611,49 +547,45 @@ export interface StudyExecution {
   egressAllow?: string[];
 }
 
-type StudyScenarioMode = "dry-run" | "live";
+type StudyMode = "dry-run" | "live";
 
 /**
- * The blast-radius budget for a route that passes a live key to an in-sandbox command.
- * Per the safety contract, the live key is never exercised without a fail-closed cap in force.
- * All values are non-negative numbers (0 is the no-spend default). Live runs require maxUsd and a
- * positive maxMinutes; maxUsd/maxJobs are checked after the session against known ledger signals
- * and maxMinutes is enforced as the command wall clock. Codex tokens are unpriced, so a live run
- * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_UNPRICED_CAP).
+ * A study's spend, job and time caps, the top-level `caps` block. Each route reads its own keys, and
+ * parseStudy refuses a key the route does not read. All values are non-negative numbers.
+ *
+ * Computer use and shared world read `maxUsd` and `maxTotalUsd`. `maxUsd`, when set, is a
+ * fail-closed abort for each participant: the session stops the moment its running estimated spend
+ * crosses it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is
+ * refused at preflight rather than run uncapped. It is enforced inside each participant's loop, so
+ * an N-participant fan-out can spend up to N × maxUsd before any participant aborts (the run warns
+ * with the true ~N × cap ceiling). Absent = uncapped; maxUsd: 0 still permits a request before
+ * reported usage trips it.
+ *
+ * The terminal route passes a live key to an in-sandbox command, and per the safety contract the
+ * live key is never exercised without a fail-closed cap in force. It reads `maxUsd`, `maxJobs` and
+ * `maxMinutes` (0 is the no-spend default). Live runs require maxUsd and a positive maxMinutes;
+ * maxUsd/maxJobs are checked after the session against known ledger signals and maxMinutes is
+ * enforced as the command wall clock. Codex tokens are unpriced, so a live run refuses a positive
+ * maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_UNPRICED_CAP).
  */
-export interface StudyScenarioCaps {
+export interface StudyCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
   maxUsd?: number;
   /**
    * study-level model-spend budget, the number a researcher actually reasons with: "this
    * study is N participants, roughly $X", decided once, up front, where recruiting decisions are
-   * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every participant's
-   * running estimated model spend feeds one shared ledger, and the moment the run total crosses
-   * this, each participant stops at its next turn with `budget_reached` (status `incomplete`:
-   * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
-   * participant's doing). Estimated model spend only; desktop-minutes ride the cost summary but
-   * not this ledger. Independent of the per-participant `maxUsd` backstop; either, both, or neither may
-   * be set. A positive `scenario.caps.maxTotalUsd` on a computer-use study is a parse error; on the
-   * terminal route it is inert (warned), since the single agent's maxUsd already caps the run.
+   * made. Computer use and shared world only: every participant's running estimated model spend
+   * feeds one shared ledger, and the moment the run total crosses this, each participant stops at
+   * its next turn with `budget_reached` (status `incomplete`: the participant ran out of budget;
+   * never `gave_up`, because a study-level stop is not the participant's doing). Estimated model
+   * spend only; desktop-minutes ride the cost summary but not this ledger. Independent of the
+   * per-participant `maxUsd` backstop; either, both, or neither may be set.
    */
   maxTotalUsd?: number;
-  /** Max billable product jobs the agent may trigger. 0 = none. */
+  /** Terminal: max billable product jobs the agent may trigger. 0 = none. */
   maxJobs?: number;
-  /** Max wall-clock minutes for the agent session. */
+  /** Terminal: max wall-clock minutes for the agent session. */
   maxMinutes?: number;
-}
-
-export interface StudyScenario {
-  /** Reference a committed scenario by id (humanish/scenarios/<ref>.yaml) or path. Consumed
-   *  (and required) on the scripted-browser route; forward-declared elsewhere. */
-  ref?: string;
-  /** Or inline the scenario body. Forward-declared: no route reads it yet, so a set value warns. */
-  inline?: Record<string, unknown>;
-  /** dry-run = a synthetic bundle with no provider spend; live = real run. Consumed. */
-  mode?: StudyScenarioMode;
-  /** Spend/job/time caps. Consumed (recorded in the bundle) on the terminal-product route;
-   *  inert (warned) elsewhere. */
-  caps?: StudyScenarioCaps;
 }
 
 export interface StudyPolicies {
@@ -831,46 +763,28 @@ export interface StudyCommsRecipient {
   address?: string;
 }
 
-export interface StudyConfig {
-  /** The format the file was written in. Both parse into this one shape. */
-  schema: typeof V2_SCHEMA | typeof STUDY_SCHEMA;
-  id: string;
-  title?: string;
-  description?: string;
-  subject: StudySubject;
-  actors: StudyActor[];
-  execution?: StudyExecution;
-  /** Forward-declared: no route reads it yet, so a set value warns. */
-  personas?: Record<string, unknown>[];
-  scenario?: StudyScenario;
-  policies?: StudyPolicies;
-  review?: StudyReview;
-  defaults?: StudyDefaults;
-  comms?: StudyComms;
-}
-
 /**
- * A humanish.study.v3 file as src/study/parse/study.ts reads it: the declared route, one actor, its
- * participants and one caps block. It has the keys the file has. parseStudy still returns the
- * StudyConfig above.
+ * A humanish.study.v3 study as parseStudy returns it, with the keys the file has: the declared
+ * route, one actor, its participants and one caps block.
  */
-export interface StudyV3 {
+export interface StudyConfig {
   schema: typeof STUDY_SCHEMA;
   id: string;
   title?: string;
   description?: string;
+  /** The route the study declares. parseStudy refuses one its subject and actor do not take. */
   route: StudyRoute;
   /** Absent: a dry run. */
-  mode?: StudyScenarioMode;
-  subject: Omit<StudySubject, "topology">;
-  actor: Omit<StudyActor, "count" | "lanes" | "laneFocus">;
+  mode?: StudyMode;
+  subject: StudySubject;
+  actor: StudyActor;
   /** Preview, computer-use and shared-world, in the form the file used. */
   participants?: StudyParticipants;
   /** Scripted only. */
   surfaces?: StudySurfaces;
   /** The caps keys the route reads. */
-  caps?: StudyScenarioCaps;
-  execution?: Omit<StudyExecution, "caps">;
+  caps?: StudyCaps;
+  execution?: StudyExecution;
   /** Scripted: a committed scenario id or path. */
   scenario?: string;
   policies?: StudyPolicies;
@@ -880,17 +794,19 @@ export interface StudyV3 {
 }
 
 /**
- * A count, a count with one instruction for every participant, or a list. A list entry with a
- * `count` is expanded into its participants, `<id>-01` to `<id>-NN`.
+ * A count, a count with one instruction for every participant, or a list. parseStudy expands a list
+ * entry with a `count` into its participants, `<id>-01` to `<id>-NN`.
  */
 type StudyParticipants = number | StudyParticipantGroup | StudyParticipantEntry[];
 
-interface StudyParticipantGroup {
+/** `participants` as identical participants that share one instruction. */
+export interface StudyParticipantGroup {
   count?: number;
   instruction?: string;
 }
 
-type StudySurfaces = readonly ["desktop"] | readonly ["desktop", "mobile"];
+/** The scripted surfaces: desktop, or desktop and mobile. */
+export type StudySurfaces = readonly ["desktop"] | readonly ["desktop", "mobile"];
 
 interface StudyParseSuccess {
   ok: true;

@@ -1,100 +1,18 @@
-// StudyConfig still has the humanish.lab.v2 shape, and the v3 shape replaces `actors`, `laneFocus`,
-// `execution.caps`, `scenario.caps`, `scenario.mode`, `scenario.ref` and `subject.topology`. Code
-// outside the parser reads those values through src/study/study-fields.ts, so the shape changes in
-// one file. This test parses every file under src/ and fails on a direct read of a v2 field outside
-// the parser, migrate and the accessors. It reads syntax, so it also sees reads the compiler cannot
-// tie to StudyConfig: a `Record<string, unknown>` cast, or a structural `{ actors?: ... }` parameter.
+// StudyConfig has the keys of a humanish.study.v3 file. The humanish.lab.v2 fields it replaced
+// (`actors`, `laneFocus`, `execution.caps`, `scenario.caps`, `scenario.mode`, `scenario.ref`,
+// `scenario.inline` and `subject.topology`) are read only by migrate, which converts a v2 file, and
+// by parse/front.ts, which tells a person where a moved key went. This test parses every file under
+// src/ and fails on a read of a v2 field anywhere else. It reads syntax, so it also sees reads the
+// compiler cannot tie to StudyConfig: a `Record<string, unknown>` cast, or a structural
+// `{ actors?: ... }` parameter.
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { parseSync } from "oxc-parser";
 import { describe, expect, it } from "vitest";
 
-// The types declare the v2 shape; the parser, its key table, migrate and the accessors read it.
-const EXEMPT = [
-  "src/study/types.ts",
-  "src/study/config.ts",
-  "src/study/keys.ts",
-  "src/study/parse/",
-  "src/study/migrate/",
-  "src/study/study-fields.ts",
-];
-
-const PER_ACTOR =
-  "reads each declared actor; a library config may declare more than one, and the v3 shape has one";
-const INERT_ROW =
-  "an inert-field row keeps its v2 name until the v3 shape lands, because migrate reports it as a v2 path";
-const V2_ONLY = "a v2 key with no v3 key; the check goes with the v2 shape";
-const OTHER_CAPS =
-  "reads the caps block this route does not use, which a route-aware capsOf cannot return";
-
-/** Direct reads that stay until StudyConfig takes the v3 shape: the file, the code, how many, why. */
-const ALLOWED: readonly { file: string; code: string; count: number; reason: string }[] = [
-  { file: "src/study/persona-resolve.ts", code: "rosterOf(actor)", count: 1, reason: PER_ACTOR },
-  { file: "src/study/url-credentials.ts", code: "rosterOf(actor)", count: 1, reason: PER_ACTOR },
-  { file: "src/study/warnings.ts", code: "rosterOf(actor)", count: 5, reason: INERT_ROW },
-  { file: "src/study/warnings.ts", code: "focusOf(actor)", count: 4, reason: INERT_ROW },
-  {
-    file: "src/study/warnings.ts",
-    code: 'StudyConfig["actors"]',
-    count: 1,
-    reason: `the actor type of the inert-field rows; ${INERT_ROW}`,
-  },
-  {
-    file: "src/study/warnings.ts",
-    code: "config.subject.topology",
-    count: 1,
-    reason: `any topology, including per-lane-worlds; ${INERT_ROW}`,
-  },
-  {
-    file: "src/study/warnings.ts",
-    code: "config.execution?.caps",
-    count: 1,
-    reason: `${OTHER_CAPS}; ${INERT_ROW}`,
-  },
-  {
-    file: "src/study/warnings.ts",
-    code: "config.scenario?.caps",
-    count: 2,
-    reason: `${OTHER_CAPS}; ${INERT_ROW}`,
-  },
-  {
-    file: "src/study/warnings.ts",
-    code: "config.scenario?.inline",
-    count: 1,
-    reason: `${V2_ONLY}; ${INERT_ROW}`,
-  },
-  {
-    file: "src/study/validation.ts",
-    code: "focusOf(actor)",
-    count: 1,
-    reason: `laneFocus with lanes: ${V2_ONLY}`,
-  },
-  {
-    file: "src/study/validation.ts",
-    code: "config.scenario?.caps",
-    count: 1,
-    reason: `a scenario.caps budget on computer use: ${OTHER_CAPS}`,
-  },
-  {
-    file: "src/study/composition-rules.ts",
-    code: "config.subject.topology",
-    count: 1,
-    reason: `any topology on a scripted clone, including per-lane-worlds: ${V2_ONLY}`,
-  },
-  {
-    file: "src/substrates/local/runtime-config.ts",
-    code: "config.execution?.caps",
-    count: 2,
-    reason: "a budget in either caps block refuses a local Codex participant",
-  },
-  {
-    file: "src/substrates/local/runtime-config.ts",
-    code: "config.scenario?.caps",
-    count: 2,
-    reason: "a budget in either caps block refuses a local Codex participant",
-  },
-];
+// migrate reads v2 files; parse/front.ts names the v2 keys a v3 file must not set.
+const EXEMPT = ["src/study/migrate/", "src/study/parse/front.ts"];
 
 interface Node {
   readonly type: string;
@@ -215,22 +133,9 @@ const hits = sourceFiles("src")
   )
   .flatMap((file) => v2Reads(file, readFileSync(file, "utf8")));
 
-const keyOf = (file: string, code: string) => `${file} ${code}`;
-
-describe("src reads the study through src/study/study-fields.ts", () => {
-  it("has no direct read of a v2 study field outside the parser and the accessors", () => {
-    const allowed = new Set(ALLOWED.map((entry) => keyOf(entry.file, entry.code)));
-    const direct = hits
-      .filter((hit) => !allowed.has(keyOf(hit.file, hit.code)))
-      .map((hit) => `${hit.file}:${hit.line} ${hit.code}`);
-    expect(direct).toEqual([]);
-  });
-
-  it("each allowed read still occurs, as often as listed", () => {
-    for (const entry of ALLOWED) {
-      const found = hits.filter((hit) => hit.file === entry.file && hit.code === entry.code);
-      expect(found.length, `${entry.file} ${entry.code}: ${entry.reason}`).toBe(entry.count);
-    }
+describe("src reads no humanish.lab.v2 study field outside migrate", () => {
+  it("has no read of a v2 study field outside migrate and parse/front.ts", () => {
+    expect(hits.map((hit) => `${hit.file}:${hit.line} ${hit.code}`)).toEqual([]);
   });
 
   it("finds a planted read in each form it guards", () => {
