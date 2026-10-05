@@ -133,6 +133,14 @@ describe("study URLs that name an E2B sandbox", () => {
       `https://app.example.com/#next=${encodeURIComponent(`https://${APP_HOST}/`)}`,
     ],
     [
+      "an E2B URL with a port, then a parameter that holds an address",
+      `https://app.example.com/?origin=${encodeURIComponent(`https://${APP_HOST}:3000`)}&email=${["alice", "example.com"].join("@")}`,
+    ],
+    [
+      "the E2B docs page, then another parameter",
+      `https://app.example.com/?next=${encodeURIComponent("https://docs.e2b.dev/api-key")}&view=compact`,
+    ],
+    [
       "an E2B URL inside a base64 state parameter",
       `https://app.example.com/callback?state=${Buffer.from(JSON.stringify({ returnTo: `https://${APP_HOST}/home` })).toString("base64url")}`,
     ],
@@ -150,6 +158,21 @@ describe("study URLs that name an E2B sandbox", () => {
     [
       "an E2B URL with a password in its user info",
       `https://app.example.com/?next=${encodeURIComponent(`https://user:${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "an E2B URL with a user name alone",
+      `https://app.example.com/?next=${encodeURIComponent(`https://${TOKEN}${"@"}${APP_HOST}/`)}`,
+      TOKEN,
+    ],
+    [
+      "an E2B URL as written with a user name alone",
+      `https://app.example.com/?next=https://${TOKEN}${"@"}${APP_HOST}/`,
+      TOKEN,
+    ],
+    [
+      "a URL with an apostrophe in its user info",
+      `https://app.example.com/?next=${encodeURIComponent(`https://o'hare:${TOKEN}${"@"}${APP_HOST}/`)}`,
       TOKEN,
     ],
     [

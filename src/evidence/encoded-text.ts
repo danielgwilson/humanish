@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 
 import { readPlainText } from "./plain-text.js";
-import { containsCredential, containsSensitive } from "./redaction.js";
+import { containsSensitive } from "./redaction.js";
 
 // HTML5 named references that stand for printable ASCII. Letters and digits have only numeric
 // references, which decodeEscapes handles.
@@ -202,15 +202,12 @@ function decodeTransferEscapes(text: string): string {
 export interface EncodedTextScanOptions {
   /** Do not count an encoded binary run as opaque. */
   readonly allowOpaqueBase64?: boolean;
-  /**
-   * Match credentials only. Local paths do not count, as a URL's path may look like one, and
-   * neither does a URL on an E2B host, which names a sandbox but holds no credential of its own.
-   */
-  readonly credentialsOnly?: boolean;
+  /** What counts as sensitive in the text and in each decoding of it; containsSensitive by default. */
+  readonly matches?: (text: string) => boolean;
 }
 
 const matcherOf = (options: EncodedTextScanOptions): ((text: string) => boolean) =>
-  options.credentialsOnly === true ? containsCredential : containsSensitive;
+  options.matches ?? containsSensitive;
 
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
@@ -327,12 +324,11 @@ const scanCache = new Map<string, EncodedTextScan>();
  */
 export function scanEncodedTextCached(
   text: string,
-  options: EncodedTextScanOptions = {},
+  options: Pick<EncodedTextScanOptions, "allowOpaqueBase64"> = {},
 ): EncodedTextScan {
   const key = [
     ENCODED_SCAN_VERSION,
     options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
-    options.credentialsOnly === true ? "credentials-only" : "secrets-and-paths",
     createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
   ].join(":");
   const cached = scanCache.get(key);

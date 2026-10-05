@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { scanEncodedText } from "../../src/evidence/encoded-text.js";
-import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
+import { containsCredential, containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { ALNUM, ORDINARY_VALUES, SECRET_FORMATS, synthetic } from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
@@ -43,14 +43,14 @@ describe("secret formats", () => {
         (format) => [format.name, format.text] as const,
       ),
     )(`finds %s ${encoding} as a credential`, (_name, text) => {
-      expect(scanEncodedText(encode(text), { credentialsOnly: true }).sensitive).toBe(true);
+      expect(scanEncodedText(encode(text), { matches: containsCredential }).sensitive).toBe(true);
     });
   }
 
   it("finds an E2B app URL as sensitive and not as a credential", () => {
     const url = `https://${E2B_APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${E2B_APP_HOST}`)}`;
     expect(scanEncodedText(url).sensitive).toBe(true);
-    expect(scanEncodedText(url, { credentialsOnly: true }).sensitive).toBe(false);
+    expect(scanEncodedText(url, { matches: containsCredential }).sensitive).toBe(false);
     expect(redactText(url)).not.toContain(E2B_APP_HOST);
   });
 
