@@ -24,6 +24,9 @@ export function urlCredentialReason(
   } catch {
     return undefined;
   }
+  // The URL parser drops tabs and line breaks, which can split a key the scan would otherwise read.
+  if (/[\u0000-\u001f\u007f]/.test(value))
+    return `\`${field}\` has a tab, line break or other control character in it, which the URL parser drops. Write the URL without it.`;
   if (url.username !== "" || url.password !== "")
     return `\`${field}\` has a user name or password in it. humanish records the URL in the run, and the participant's browser shows it in every screenshot, so the credential would reach the bundle and the model. Remove it from the URL and give the participant a test account to sign in with.`;
   if (urlPartsHoldSecret(value, url))
@@ -43,7 +46,13 @@ export function entryCredentialReason(field: string, entry: string): string | un
  */
 function urlPartsHoldSecret(value: string, url: URL): boolean {
   const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
-  const pieces = [written, `${url.pathname}${url.search}${url.hash}`, ...written.split(/[/?#&=;]/)];
+  const normalized = `${url.pathname}${url.search}${url.hash}`;
+  const pieces = [
+    written,
+    normalized,
+    ...written.split(/[/?#&=;]/),
+    ...normalized.split(/[/?#&=;]/),
+  ];
   return pieces.some(
     (piece) =>
       piece.length > 0 &&

@@ -52,6 +52,17 @@ describe("study URLs with credentials", () => {
       `https://preview.example.com/x/${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64")}`,
     ],
     [
+      "a base64 key after a long path segment",
+      `https://preview.example.com/${"a".repeat(65)}/${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64")}`,
+    ],
+    [
+      "a tab that the URL parser drops from an encoded key",
+      (() => {
+        const encoded = Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64");
+        return `https://preview.example.com/${"a".repeat(65)}/${encoded.slice(0, 1)}\t${encoded.slice(1)}`;
+      })(),
+    ],
+    [
       "a base64-encoded key",
       `https://preview.example.com/?payload=${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64url")}`,
     ],

@@ -14,7 +14,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   `HUMANISH_STUDY_INVALID`: a user name or password in `subject.appUrl`, `subject.serve.url`,
   `subject.product.publicSurfaces` or a participant's `target` or `entry`, or a path, query or
   fragment that `verify` flags, such as `x-vercel-protection-bypass=`, `_vercel_share=`, `token=`
-  or `access_token=` with a value of 16 characters or more. A run recorded such a URL as given,
+  or `access_token=` with a value of 16 characters or more, or a tab, line break or other control
+  character, which the URL parser drops. A run recorded such a URL as given,
   and the participant's address bar showed it in every screenshot and model request. Remove the
   credential from the URL; for a protected preview, open the deployment to the study or build the
   app in the desktop with a clone subject. Ordinary parameters such as `?page=2` still parse. In a
