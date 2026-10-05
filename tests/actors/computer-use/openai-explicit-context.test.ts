@@ -240,52 +240,63 @@ describe("cutting past the budget", () => {
   });
 
   it("keeps a summarized turn's typed values and the text that came back with its screenshot", async () => {
-    // Turn 3 fills four long form fields, then a short code, then clicks.
-    const form = (n: number): Record<string, unknown> => {
-      const value = reply(n);
-      const output = value.output as Array<Record<string, unknown>>;
-      output[2] = {
-        ...output[2],
-        actions: [
-          ...["name", "street", "city", "notes"].map((field) => ({
-            type: "type",
-            text: `${field}: ${"x".repeat(110)}`,
-          })),
-          { type: "type", text: "PIN4417" },
-          { type: "click", x: n, y: n },
-        ],
-      };
-      return value;
-    };
-    const bodies: SentBody[] = [];
-    const fetchFn: FetchLike = async (_url, init) => {
-      bodies.push(JSON.parse(init.body) as SentBody);
-      const value = bodies.length === 3 ? form(3) : reply(bodies.length);
-      return {
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(value),
-        json: async () => value,
-      };
-    };
-    const provider = createOpenAiResponsesProvider({
-      apiKey: "test-key",
-      fetchFn,
-      delayFn: async () => undefined,
-      zeroDataRetention: true,
-    });
-    for (let turn = 1; turn <= 80; turn += 1)
-      await provider.nextTurn(
-        turn === 4 ? { ...request(), contextHint: "Your click on turn 3 was not run." } : request(),
-        new AbortController().signal,
-      );
-    // Turn 3's exchange holds the hint that answered it, so its note line keeps the hint.
-    const note = JSON.stringify(bodies[79]!.input[1]);
-    expect(note).toMatch(
-      /Turn 3: [^\n]*type \\"PIN4417\\", click \(3, 3\); was told: Your click on turn 3 was not run\./,
+    const four = await turnThreeNoteLine(4);
+    expect(four).toMatch(
+      /type "PIN4417", click \(3, 3\); was told: Your click on turn 3 was not run\.$/,
     );
+    // Twenty long fields pass the line cap: the actions give up room, and the hint stays whole.
+    const twenty = await turnThreeNoteLine(20);
+    expect(twenty).toMatch(/\.\.\.; was told: Your click on turn 3 was not run\.$/);
+    expect(twenty.length).toBeLessThanOrEqual(2_000);
   });
 });
+
+/**
+ * Turn 3's note line after 80 turns, where turn 3 types `fields` long form fields, then a short
+ * code, then clicks, and the request that answers it carries a hint that the click did not run.
+ */
+async function turnThreeNoteLine(fields: number): Promise<string> {
+  const form = (n: number): Record<string, unknown> => {
+    const value = reply(n);
+    const output = value.output as Array<Record<string, unknown>>;
+    output[2] = {
+      ...output[2],
+      actions: [
+        ...Array.from({ length: fields }, (_, i) => ({
+          type: "type",
+          text: `field ${i}: ${"x".repeat(110)}`,
+        })),
+        { type: "type", text: "PIN4417" },
+        { type: "click", x: n, y: n },
+      ],
+    };
+    return value;
+  };
+  const bodies: SentBody[] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    bodies.push(JSON.parse(init.body) as SentBody);
+    const value = bodies.length === 3 ? form(3) : reply(bodies.length);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    zeroDataRetention: true,
+  });
+  for (let turn = 1; turn <= 80; turn += 1)
+    await provider.nextTurn(
+      turn === 4 ? { ...request(), contextHint: "Your click on turn 3 was not run." } : request(),
+      new AbortController().signal,
+    );
+  const note = bodies[79]!.input[1] as { content: Array<{ text: string }> };
+  return note.content[0]!.text.split("\n").find((line) => line.startsWith("Turn 3: ")) ?? "";
+}
 
 describe("the mode switch", () => {
   it("switches mid-session and records when, keeping what came before the switch", async () => {

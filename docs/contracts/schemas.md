@@ -990,7 +990,7 @@ Core-owned fields:
   ones, and names the turns between them as not listed.
   The two newest exchanges are always carried whole, even when they alone pass
   the budget. Between cuts each request starts with the whole previous request,
-  so the provider's prompt cache serves all of it; the request after a cut is
+  so the provider's prompt cache can serve all of it; the request after a cut is
   billed as new input. `tokenUsage.turns` has each request's `cachedInput` and
   `cacheWriteInput`. `summarizedTurns` counts the earlier exchanges the latest
   `explicit_context` request no longer carried whole: lines of the note, or

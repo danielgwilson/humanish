@@ -12,15 +12,14 @@ import type { CuaAction } from "./loop.js";
 // When the estimate passes the budget, the conversation is cut down to half the budget in one
 // step: the opening screenshot goes first, then the oldest exchanges become lines of a progress
 // note that keeps their reasoning summaries, messages and actions, and the text that answered
-// them, such as a note that an action was not run. The note is an
-// assistant message, so text the model wrote (which can quote a web page) keeps the trust it had
-// when the model wrote it. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed, so a
+// them, such as a note that an action was not run. The note is an assistant message, so text the
+// model wrote (which can quote a web page) keeps the trust it had when the model wrote it. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed, so a
 // request passes the budget when they alone exceed it; the trace's per-request estimate shows when
 // that happens.
 //
 // A cut rewrites the start of the prompt, so the provider's prompt cache misses on the request
 // after it. Between cuts nothing already sent changes: each request starts with the whole of the
-// previous request, and the cache serves all of it. A cut of one exchange per turn would rewrite
+// previous request, which the cache can serve. A cut of one exchange per turn would rewrite
 // the note on every request past the budget, and each of those requests would be billed in full.
 
 /** The estimated input a carried conversation may reach before it is cut. */
@@ -213,14 +212,22 @@ function describeExchange(exchange: CarriedExchange): string {
       }
     }
   }
-  const parts = [
+  const lead = `Turn ${exchange.turn}: `;
+  const before = [
     thought.length > 0 ? `thought: ${clip(thought.join(" "), 400)}` : undefined,
     said.length > 0 ? `said: ${clip(said.join(" "), 300)}` : undefined,
-    did.length > 0 ? `did: ${did.join(", ")}` : undefined,
-    told.length > 0 ? `was told: ${clip(told.join(" "), 300)}` : undefined,
   ].filter((part) => part !== undefined);
-  const line = `Turn ${exchange.turn}: ${parts.length > 0 ? parts.join("; ") : "no recorded output"}`;
-  return `${clip(line, LINE_CHAR_LIMIT - 1)}.`;
+  const after = told.length > 0 ? [`was told: ${clip(told.join(" "), 300)}`] : [];
+  // The hint can say an action did not run, so the actions give up whatever room it needs.
+  const fixed = [...before, ...after].reduce((length, part) => length + part.length + 2, 0);
+  const room = LINE_CHAR_LIMIT - 1 - lead.length - fixed - "did: ".length;
+  const actions = did.length > 0 ? [`did: ${clip(did.join(", "), room)}`] : [];
+  const parts = [...before, ...actions, ...after];
+  const line = clip(
+    `${lead}${parts.length > 0 ? parts.join("; ") : "no recorded output"}`,
+    LINE_CHAR_LIMIT - 1,
+  );
+  return /[.!?]$/.test(line) ? line : `${line}.`;
 }
 
 function describeAction(action: CuaAction): string {
