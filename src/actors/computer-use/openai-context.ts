@@ -9,19 +9,40 @@ import type { CuaAction } from "./loop.js";
 // The Responses API pairs items: every computer_call needs its computer_call_output, and a
 // reasoning item travels with the item it preceded. The conversation is therefore cut only at
 // exchange boundaries: one reply's output items together with the items that answered them.
-// When the estimate passes the budget, the opening screenshot goes first, then the oldest
-// exchanges become lines of a progress note that keeps their reasoning summaries, messages and
-// actions as text. The note is an assistant message, so text the model wrote (which can quote a
-// web page) keeps the trust it had when the model wrote it. The newest MIN_KEPT_EXCHANGES
-// exchanges are never collapsed, so a request passes the budget when they alone exceed it; the
-// trace's per-request estimate shows when that happens.
+// When the estimate passes the budget, the conversation is cut down to half the budget in one
+// step: the opening screenshot goes first, then the oldest exchanges become lines of a progress
+// note that keeps their reasoning summaries, messages and actions as text. The note is an
+// assistant message, so text the model wrote (which can quote a web page) keeps the trust it had
+// when the model wrote it. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed, so a
+// request passes the budget when they alone exceed it; the trace's per-request estimate shows when
+// that happens.
+//
+// A cut rewrites the start of the prompt, so the provider's prompt cache misses on the request
+// after it. Between cuts nothing already sent changes: each request starts with the whole of the
+// previous request, and the cache serves all of it. A cut of one exchange per turn would rewrite
+// the note on every request past the budget, and each of those requests would be billed in full.
 
-/** The estimated input a carried conversation may reach before its oldest turns are summarized. */
+/** The estimated input a carried conversation may reach before it is cut. */
 export const CONTEXT_TOKEN_BUDGET = 64_000;
+/**
+ * The share of the budget a cut brings the carried conversation down to. The rest is the growth
+ * the cache serves until the next cut: about 19 turns of 1280x800 screenshots, or 12 at
+ * 1920x1080.
+ */
+const CUT_TARGET_SHARE = 0.5;
 /** Exchanges always carried whole, so the model sees its latest actions with their screens. */
 const MIN_KEPT_EXCHANGES = 2;
-/** The progress note's length cap; past it, the oldest lines are counted instead of shown. */
+/**
+ * The progress note's length cap. Past it, the oldest lines after the first NOTE_HEAD_LINES are
+ * counted instead of shown.
+ */
 const NOTE_CHAR_LIMIT = 16_000;
+/**
+ * Note lines kept whatever the note's length. A session's first turns are where it usually learns
+ * what it must carry to the end, such as an account, an address or a code, and the newest lines
+ * hold its latest progress, so the note gives up the turns between them.
+ */
+const NOTE_HEAD_LINES = 4;
 /** One note line's cap, so a reply with many actions cannot push the note past its own cap. */
 const LINE_CHAR_LIMIT = 1_200;
 /**
@@ -32,6 +53,11 @@ const LINE_CHAR_LIMIT = 1_200;
 const TOKENS_PER_PATCH = 1.2;
 /** A screenshot whose size cannot be read is estimated as a 2,500-patch image. */
 const UNKNOWN_IMAGE_TOKENS = 3_000;
+
+interface NoteLine {
+  readonly turn: number;
+  readonly text: string;
+}
 
 interface CarriedExchange {
   /** The accepted reply's number, from 1; a reply set aside at its output limit is not counted. */
@@ -53,8 +79,12 @@ export class CarriedConversation {
   private readonly exchanges: CarriedExchange[] = [];
   /** The latest accepted reply's output items, which the next request answers. */
   private pending: { turn: number; output: readonly unknown[] } | undefined;
-  private readonly notes: string[] = [];
-  private notesDropped = 0;
+  private readonly notes: NoteLine[] = [];
+  /**
+   * The turns whose note lines were dropped to keep the note under its cap. Lines are dropped in
+   * turn order from just after the head, so they are one run of consecutive turns.
+   */
+  private elided: { first: number; last: number } | undefined;
   private collapsedTurns = 0;
 
   constructor(private readonly budget = CONTEXT_TOKEN_BUDGET) {}
@@ -96,30 +126,45 @@ export class CarriedConversation {
   }
 
   private trim(): void {
-    while (estimateTokens(this.carried()) > this.budget) {
+    if (estimateTokens(this.carried()) <= this.budget) return;
+    const target = Math.floor(this.budget * CUT_TARGET_SHARE);
+    while (estimateTokens(this.carried()) > target) {
       if (this.opening !== undefined && imagesOf(this.opening).length > 0) {
         this.opening = withoutImages(this.opening);
         continue;
       }
       if (this.exchanges.length <= MIN_KEPT_EXCHANGES) return;
       const oldest = this.exchanges.shift()!;
-      this.notes.push(describeExchange(oldest));
+      this.notes.push({ turn: oldest.turn, text: describeExchange(oldest) });
       this.collapsedTurns += 1;
-      while (this.notes.join("\n").length > NOTE_CHAR_LIMIT && this.notes.length > 1) {
-        this.notes.shift();
-        this.notesDropped += 1;
-      }
+      this.capNote();
     }
+  }
+
+  private capNote(): void {
+    while (this.noteText().length > NOTE_CHAR_LIMIT && this.notes.length > NOTE_HEAD_LINES + 1) {
+      const [dropped] = this.notes.splice(NOTE_HEAD_LINES, 1);
+      this.elided = { first: this.elided?.first ?? dropped!.turn, last: dropped!.turn };
+    }
+  }
+
+  private noteText(): string {
+    const lines = this.notes.map((line) => line.text);
+    if (this.elided !== undefined) {
+      const { first, last } = this.elided;
+      const which = first === last ? `Turn ${first} is` : `Turns ${first} to ${last} are`;
+      lines.splice(NOTE_HEAD_LINES, 0, `(${which} not listed.)`);
+    }
+    return lines.join("\n");
   }
 
   private noteItem(): Record<string, unknown> | undefined {
     if (this.notes.length === 0) return undefined;
     const lead =
       `My notes on my earlier turns in this session, oldest first. Their screenshots are no ` +
-      `longer shown; this is what I thought, said and did.` +
-      (this.notesDropped === 0 ? "" : ` (${this.notesDropped} earlier turns are not listed.)`);
+      `longer shown; this is what I thought, said and did.`;
     return inputMessage("assistant", [
-      { type: "output_text", text: `${lead}\n${this.notes.join("\n")}` },
+      { type: "output_text", text: `${lead}\n${this.noteText()}` },
     ]);
   }
 }

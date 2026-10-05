@@ -115,6 +115,8 @@ The [rate table](repo:src/run/pricing.ts) records its date, source, and whether 
 
 Where the model has separate cache or long-context rates, per-request usage lets the estimator apply them. Missing usage limits what can be priced; a complete-looking total is not proof that every provider charge was observed.
 
+On an OpenAI organization with zero data retention, the provider keeps no conversation, so a computer-use participant sends its whole conversation with every request. The actor trace records this as `conversation.mode: explicit_context`. Input per request grows with the session up to about 64,000 estimated tokens, then drops to about 32,000 as the oldest turns become a text note, and grows again. The provider's prompt cache serves everything but the newest turn, except on the request after each drop, which is billed as new input. In a simulation of 120 turns on 1280x800 screens, 93% of input was cached and input cost about $3.70 on `gpt-5.6-sol`. The trace's `tokenUsage.turns` has each request's cached and cache-write tokens.
+
 Shared-world participants and their provisioned subject desktop, a scripted-browser clone's subject desktop, and the terminal sandbox are priced the same way.
 
 ## Know what the numbers leave out

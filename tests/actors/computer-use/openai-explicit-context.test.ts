@@ -149,6 +149,59 @@ describe("an explicit-context conversation", () => {
     expect(text(last)).not.toContain('"call_id":"call_1"');
   });
 
+  it("cuts in one step past the budget, so each request between cuts starts with the previous one", async () => {
+    const { bodies, provider } = await runTurns(200, { zeroDataRetention: true });
+    const record = provider.conversation!;
+    // A request that does not start with the whole previous request breaks the prompt cache.
+    const misses: number[] = [];
+    for (let i = 1; i < bodies.length; i += 1) {
+      const previous = bodies[i - 1]!.input.map((item) => JSON.stringify(item));
+      const head = bodies[i]!.input.slice(0, previous.length).map((item) => JSON.stringify(item));
+      if (head.join("\n") !== previous.join("\n")) misses.push(i + 1);
+    }
+    expect(misses.length).toBeGreaterThan(0);
+    // Each miss follows a cut: that request carries fewer exchanges than the one before it.
+    for (const request of misses)
+      expect(record.requests[request - 1]!.carriedExchanges!).toBeLessThan(
+        record.requests[request - 2]!.carriedExchanges!,
+      );
+    // A cut frees half the budget, which at 1280x800 is more than 15 turns of screenshots.
+    for (let i = 1; i < misses.length; i += 1)
+      expect(misses[i]! - misses[i - 1]!).toBeGreaterThan(15);
+    const estimates = record.requests.map((request) => request.estimatedInputTokens ?? 0);
+    for (const estimate of estimates) expect(estimate).toBeLessThan(CONTEXT_TOKEN_BUDGET + 3_000);
+  });
+
+  it("keeps the note's first turns when the note reaches its cap", async () => {
+    const chatty = (n: number): Record<string, unknown> => {
+      const value = reply(n);
+      const output = value.output as Array<Record<string, unknown>>;
+      output[1] = {
+        ...output[1],
+        content: [
+          {
+            type: "output_text",
+            text:
+              n === 1
+                ? "turn-1 said: my account code is 4417"
+                : `turn-${n} said: ${"still working through the form. ".repeat(9)}`,
+          },
+        ],
+      };
+      return value;
+    };
+    const { bodies, provider } = await runTurns(200, { zeroDataRetention: true }, chatty);
+    const summarized = provider.conversation!.summarizedTurns;
+    const note = bodies[199]!.input[1] as { role: string; content: Array<{ text: string }> };
+    expect(note.role).toBe("assistant");
+    const lines = note.content[0]!.text.split("\n");
+    const turnLines = lines.filter((line) => line.startsWith("Turn "));
+    // The note dropped some summarized turns to stay under its cap, and kept turn 1.
+    expect(turnLines.length).toBeLessThan(summarized);
+    expect(turnLines[0]).toMatch(/^Turn 1: .*4417/);
+    expect(note.content[0]!.text.length).toBeLessThan(17_000);
+  });
+
   it("caps each note line, so a reply with many actions cannot overrun the note", async () => {
     const busy = (n: number): Record<string, unknown> => {
       const value = reply(n);

@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A computer-use participant on a zero-data-retention OpenAI organization rewrote the start of
+  its prompt on every request once its carried conversation passed about 64,000 tokens, so the
+  provider's prompt cache stopped serving it. In a simulation, 109 turns at 1280x800 cost about
+  $23 of input where a stable prefix costs about $2.70. Past the budget the conversation is now
+  cut to half of it in one step, and each request until the next cut starts with the whole
+  previous request: the same 109 turns cost about $3.30. The progress note that replaces the
+  oldest turns also keeps its first four lines when it reaches its 16,000-character cap. It
+  dropped its oldest lines first before, so a fact from turn 1 left the participant's requests
+  in a long session: from turn 70 on in a 120-turn test.
+
 ## 0.111.0: StudyConfig has the keys of a v3 study file (2026-10-05)
 
 humanish 0.111.0 is the first breaking release under the compatibility policy. It breaks library

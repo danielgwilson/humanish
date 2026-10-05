@@ -982,10 +982,16 @@ Core-owned fields:
   conversation from the client, with `store: false` and the reasoning returned
   in encrypted form. It carries the opening message, every exchange of a reply
   with the outputs that answered it, and the latest reply. Past an estimated
-  64,000 input tokens the opening screenshot is dropped first, then the oldest
-  exchanges become lines of a note, sent as an assistant message, that keeps
-  their reasoning summaries, messages and actions as text. The two newest
-  exchanges are always carried whole, even when they alone pass the budget. `summarizedTurns` counts the earlier exchanges the latest
+  64,000 input tokens it is cut down to 32,000 in one step: the opening
+  screenshot is dropped first, then the oldest exchanges become lines of a note,
+  sent as an assistant message, that keeps their reasoning summaries, messages
+  and actions as text. Past 16,000 characters the note keeps its first four
+  lines and its newest ones, and names the turns between them as not listed.
+  The two newest exchanges are always carried whole, even when they alone pass
+  the budget. Between cuts each request starts with the whole previous request,
+  so the provider's prompt cache serves all of it; the request after a cut is
+  billed as new input. `tokenUsage.turns` has each request's `cachedInput` and
+  `cacheWriteInput`. `summarizedTurns` counts the earlier exchanges the latest
   `explicit_context` request no longer carried whole: lines of the note, or
   only counted once the note reached its cap.
   `requests[]` has one entry per participant request: its `mode` and, in

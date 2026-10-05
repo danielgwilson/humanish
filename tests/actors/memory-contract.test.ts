@@ -243,6 +243,83 @@ const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   },
 };
 
+/** An explicit-context session long enough to pass the carried budget and the note's cap. */
+const LONG_TURNS = 120;
+
+/** A 1280x800 screen: the size, which the carried estimate reads, is what matters here. */
+const SCREEN = (() => {
+  const image = new PNG({ width: 1280, height: 800 });
+  image.data.fill(220);
+  return PNG.sync.write(image);
+})();
+
+/**
+ * Drive a zero-data-retention participant for LONG_TURNS turns of 1280x800 screens with replies the
+ * size of live ones, and return each request's input: with no server-side state, the input is all
+ * the model holds.
+ */
+async function longExplicitContextInputs(): Promise<{ inputs: unknown[][]; summarized: number }> {
+  const inputs: unknown[][] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { input: unknown[]; previous_response_id?: string };
+    expect(body.previous_response_id).toBeUndefined();
+    inputs.push(body.input);
+    const turn = inputs.length;
+    const value = {
+      id: `resp_${turn}`,
+      status: "completed",
+      output: [
+        {
+          type: "reasoning",
+          id: `rs_${turn}`,
+          summary: [
+            {
+              type: "summary_text",
+              text: "I read the page and chose the next control. ".repeat(6),
+            },
+          ],
+          encrypted_content: "e".repeat(1_200),
+        },
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              text:
+                turn === 1 ? TURN_ONE : `Next. ${"Still working through onboarding. ".repeat(5)}`,
+            },
+          ],
+        },
+        {
+          type: "computer_call",
+          call_id: `call_${turn}`,
+          actions: [{ type: "click", x: 1, y: 1 }],
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 1 },
+    };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "test-key",
+    fetchFn,
+    delayFn: async () => undefined,
+    zeroDataRetention: true,
+  });
+  const signal = new AbortController().signal;
+  for (let turn = 1; turn <= LONG_TURNS; turn += 1)
+    await provider.nextTurn(
+      { ...request(turn), observation: { screenshot: SCREEN, stateSignature: `s-${turn}` } },
+      signal,
+    );
+  return { inputs, summarized: provider.conversation!.summarizedTurns };
+}
+
 describe("participant memory across turns", () => {
   it("names every registered actor", () => {
     expect(Object.keys(BRAINS).sort()).toEqual(Object.keys(actorRegistry).sort());
@@ -260,3 +337,35 @@ describe("participant memory across turns", () => {
     }
   }
 });
+
+describe("an explicit-context participant past its carried budget", () => {
+  it(`still holds turn 1 on each of ${LONG_TURNS} turns, and keeps its prompt prefix between cuts`, async () => {
+    const { inputs, summarized } = await longExplicitContextInputs();
+    expect(inputs).toHaveLength(LONG_TURNS);
+    for (let turn = 2; turn <= LONG_TURNS; turn += 1)
+      expect(JSON.stringify(inputs[turn - 1]), `turn ${turn}`).toContain("4417");
+
+    // The session passed the budget and the note's cap: the last note lists fewer turns than it summarized.
+    const note = asNote(inputs[LONG_TURNS - 1]![1]);
+    expect(summarized).toBeGreaterThan(0);
+    expect(note.filter((line) => line.startsWith("Turn ")).length).toBeLessThan(summarized);
+
+    // Between cuts each request starts with the whole previous request, so the provider's prompt
+    // cache serves it. Cuts come at least ten turns apart.
+    const misses: number[] = [];
+    for (let turn = 2; turn <= LONG_TURNS; turn += 1) {
+      const previous = JSON.stringify(inputs[turn - 2]).slice(0, -1);
+      if (!JSON.stringify(inputs[turn - 1]).startsWith(previous)) misses.push(turn);
+    }
+    expect(misses.length).toBeGreaterThan(0);
+    expect(misses.length).toBeLessThanOrEqual(LONG_TURNS / 10);
+    for (let i = 1; i < misses.length; i += 1)
+      expect(misses[i]! - misses[i - 1]!).toBeGreaterThanOrEqual(10);
+  });
+});
+
+function asNote(item: unknown): string[] {
+  const { role, content } = item as { role?: string; content?: Array<{ text?: string }> };
+  expect(role).toBe("assistant");
+  return (content?.[0]?.text ?? "").split("\n");
+}
