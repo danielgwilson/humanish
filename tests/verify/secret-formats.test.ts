@@ -83,6 +83,15 @@ describe("secret formats", () => {
     },
   );
 
+  it.each([
+    ["wrapped base64", `${"a".repeat(16)}\n${"aaaa\n".repeat(1 << 21)}`],
+    ["a Windows path", `C:\\Users\\${"a\\".repeat(4 << 20)}`],
+  ])("reads 8 MB of %s without overflowing the stack", (_name, text) => {
+    expect(() => containsSensitive(text)).not.toThrow();
+    expect(() => redactText(text)).not.toThrow();
+    expect(() => scanEncodedText(text)).not.toThrow();
+  });
+
   it("keeps JSON parseable when it redacts a value inside a JSON string", () => {
     for (const format of SECRET_FORMATS) {
       const redacted = redactText(JSON.stringify({ line: format.text }));

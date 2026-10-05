@@ -76,11 +76,6 @@ export function decodeEscapes(text: string): string {
 const BASE64_RUN = /[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}/g;
 // The URL-safe alphabet swaps `+/` for `-_`. Only runs that use `-` or `_` need this pass.
 const BASE64URL_RUN = /[A-Za-z0-9_-]{16}[A-Za-z0-9_-]*={0,2}/g;
-// MIME and PEM wrap base64 at 64 or 76 characters a line. The lookbehind starts a match only at the
-// start of a run, and each lookahead-backreference pair takes a line whole, so a long unwrapped run
-// cannot backtrack.
-const WRAPPED_BASE64 =
-  /(?<![A-Za-z0-9+/])(?=([A-Za-z0-9+/]{16}[A-Za-z0-9+/]*))\1(?:[ \t]*\r?\n[ \t]*(?=([A-Za-z0-9+/]{4}[A-Za-z0-9+/]*))\2)+={0,2}/g;
 // Hex-encoded text, at least sixteen bytes of it.
 const HEX_RUN = /[0-9a-f]{32}[0-9a-f]*/gi;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
@@ -102,10 +97,57 @@ const ARCHIVE_MAGIC: readonly (readonly number[])[] = [
 ];
 const CONTROL_CHARACTERS = /[\x00-\x08\x0b\x0c\x0e-\x1f]/;
 // A run such as `com/x/<base64>` from a URL path starts with segments that shift the alignment of
-// the base64 after them. A run up to this long is also decoded from just after each slash in its
-// first SLASH_START_SPAN characters. Longer runs are images, fonts and archives, not URLs.
+// the base64 after them. A run up to this long is also decoded one slash-separated piece at a time,
+// and from just after each slash in its first SLASH_START_SPAN characters, for base64 that holds a
+// slash itself. Longer runs are images, fonts and archives, not URLs.
 const MAX_SLASH_START_RUN = 4096;
 const SLASH_START_SPAN = 64;
+
+function isBase64Code(code: number): boolean {
+  return (
+    (code >= 0x30 && code <= 0x39) ||
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x61 && code <= 0x7a) ||
+    code === 0x2b ||
+    code === 0x2f
+  );
+}
+
+/**
+ * Base64 that MIME and PEM wrap at 64 or 76 characters a line: a run of 16 or more characters that
+ * ends its line, then the leading run of 4 or more on each following line, for as long as a line
+ * holds nothing else. Read line by line, so a long wrapped block costs linear time and no regex
+ * stack.
+ */
+function wrappedBase64Runs(text: string): string[] {
+  const runs: string[] = [];
+  let current: string[] = [];
+  const flush = (): void => {
+    if (current.length > 1) runs.push(current.join(""));
+    current = [];
+  };
+  for (const raw of text.split("\n")) {
+    const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    let end = line.length;
+    while (end > 0 && (line[end - 1] === " " || line[end - 1] === "\t")) end -= 1;
+    let start = 0;
+    while (start < end && (line[start] === " " || line[start] === "\t")) start += 1;
+    if (current.length > 0) {
+      let lead = start;
+      while (lead < end && isBase64Code(line.charCodeAt(lead))) lead += 1;
+      if (lead - start >= 4) {
+        current.push(line.slice(start, lead));
+        if (lead === end) continue;
+      }
+      flush();
+    }
+    let tail = end;
+    while (tail > 0 && isBase64Code(line.charCodeAt(tail - 1))) tail -= 1;
+    if (end - tail >= 16) current = [line.slice(tail, end)];
+  }
+  flush();
+  return runs;
+}
 // Base64 inside base64 is read this many levels deep.
 const MAX_DEPTH = 2;
 
@@ -226,13 +268,16 @@ export function scanEncodedText(
   )
     return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
-  // A run decoded from a slash only adds findings; its bytes are not judged opaque.
+  // A piece or a run decoded from a slash only adds findings; its bytes are not judged opaque.
   const slashStarts: Buffer[] = [];
   for (const [match] of expanded.matchAll(BASE64_RUN)) {
     // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
     if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
     runs.push({ run: match, bytes: Buffer.from(match, "base64") });
     if (match.length > MAX_SLASH_START_RUN) continue;
+    for (const piece of match.split("/"))
+      if (piece.length >= 16 && piece.length < match.length)
+        slashStarts.push(Buffer.from(piece, "base64"));
     for (
       let slash = match.indexOf("/");
       slash !== -1 && slash < SLASH_START_SPAN && match.length - slash > 16;
@@ -243,10 +288,8 @@ export function scanEncodedText(
   for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
     if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
   }
-  for (const [match] of expanded.matchAll(WRAPPED_BASE64)) {
-    const run = match.replace(/\s+/g, "");
+  for (const run of wrappedBase64Runs(expanded))
     runs.push({ run, bytes: Buffer.from(run, "base64") });
-  }
   let opaque = false;
   for (const { run, bytes } of runs) {
     const result = inspectDecoded(bytes, run, options, depth);

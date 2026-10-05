@@ -685,9 +685,13 @@ wrapped across lines, and inside hex runs of 32 characters or more:
 
 `observer/index.html` is exempt from that base64 rule: serve renders it from
 `run.json`, export regenerates it, and it embeds the Observer's own base64 fonts.
-Its text is still scanned. Known limits: base64 split across separate strings,
-nesting deeper than three levels, and encodings a pattern scan cannot undo (such
-as encryption) still grade `share_ready`. `tests/verify/encoding-coverage.test.ts`
+Its text is still scanned. A base64 run of up to 4096 characters is also read one
+slash-separated piece at a time, and from just after each slash in its first 64
+characters, so a URL path before an encoded key cannot shift its decoding. Known
+limits: base64 split across separate strings, nesting deeper than three levels,
+base64 that holds a slash itself and starts more than 64 characters into a longer
+run, and encodings a pattern scan cannot undo (such as encryption) still grade
+`share_ready`. `tests/verify/encoding-coverage.test.ts`
 records each case.
 
 Real email receiving adds `publication.restrictions: [real-communications]` and

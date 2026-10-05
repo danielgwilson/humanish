@@ -139,6 +139,18 @@ export const SECRET_FORMATS: readonly SecretFormat[] = [
     text: `https://example.com/x/${Buffer.from(`${"sk-" + "proj-"}${synthetic(ALNUM, 48, 42)}`).toString("base64")}`,
   },
   {
+    name: "password parameter after a placeholder-like prefix",
+    text: `https://example.com/?password=${"$"}prefix${"@"}Abcdefghijk${synthetic(DIGITS, 5, 43)}`,
+  },
+  {
+    name: "base64 key after a long URL path segment",
+    text: `https://example.com/${"a".repeat(65)}/${Buffer.from(`${"sk-" + "proj-"}${synthetic(ALNUM, 21, 44)}`).toString("base64")}`,
+  },
+  {
+    name: "database URL with a password",
+    text: `postgres://app:${synthetic(ALNUM, 20, 45)}${"@"}db.example.com:5432/app`,
+  },
+  {
     name: "token query parameter",
     text: `https://app.example.com/invite?token=${synthetic(BASE64URL, 32, 27)}`,
   },
@@ -209,6 +221,11 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
     text: `{"TOKEN":1.234567890123456e+25,"next":"kept"}`,
   },
   { name: "masked token", text: "https://app.example.com/invite?token=****************" },
+  { name: "JSON exponent with a long exponent", text: `{"TOKEN":1.234567890123456e+00001}` },
+  {
+    name: "JSON number at a secret access key name",
+    text: `{"SecretAccessKey":${"1234567890".repeat(4)}}`,
+  },
   { name: "token usage", text: `{"inputTokens":1234,"outputTokens":567,"cachedTokens":0}` },
   { name: "prose", text: "Bearer tokens expire after an hour. Enter the password from the email." },
   { name: "run id", text: "cua-20261005-123456-ab12cd" },

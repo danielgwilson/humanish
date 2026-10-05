@@ -12,8 +12,9 @@ import { isRecord } from "../run/type-guards.js";
 
 // A whole value that stands in for a secret rather than being one, as written or percent-encoded:
 // a redaction marker, a shell or template variable, a placeholder in angle brackets, or a mask of
-// asterisks. The context patterns skip a value only when one of these is all of it, up to the
-// next delimiter, so a password that merely starts with `*` or `$` still counts.
+// asterisks. A context pattern skips a value only when one of these is all of it, up to a
+// character that ends that pattern's value, so a password that merely starts with `*` or `$`
+// still counts.
 const PLACEHOLDER = [
   String.raw`\[REDACTED_[A-Z0-9_]{1,40}\]`,
   String.raw`%5[Bb]REDACTED_[A-Z0-9_]{1,40}%5[Dd]`,
@@ -27,14 +28,21 @@ const PLACEHOLDER = [
   String.raw`\*{3,64}`,
   String.raw`(?:%2[Aa]){3,64}`,
 ].join("|");
-const NOT_A_PLACEHOLDER = String.raw`(?!(?:${PLACEHOLDER})(?:[\s&#"'<>\\@;,)\]}]|$))`;
+const notAPlaceholder = (valueEnd: string): string =>
+  String.raw`(?!(?:${PLACEHOLDER})(?:${valueEnd}|$))`;
 
 // An optional quote around a name or a value, also as JSON writes it inside other JSON strings,
 // four levels deep (\", \\\", ...).
 const QUOTE = String.raw`(?:\\{0,15}["'])?`;
 
 // A JSON number, which a credential-named key can hold and redaction must not turn into a string.
-const NOT_A_NUMBER = String.raw`(?!-?[0-9]{1,64}(?:\.[0-9]{0,64})?(?:[eE][+-]?[0-9]{1,4})?(?:[\s,}\]]|$))`;
+// The bounds are far past any number a run writes and keep the lookahead linear.
+const NOT_A_NUMBER = String.raw`(?!-?[0-9]{1,512}(?:\.[0-9]{0,512})?(?:[eE][+-]?[0-9]{1,64})?(?:[\s,}\]]|$))`;
+
+// The characters that end each context pattern's value.
+const USERINFO_END = String.raw`[\s@/?#"'<>\\]`;
+const PARAMETER_END = String.raw`[\s&#"'<>\\]`;
+const VARIABLE_END = String.raw`[\s"'\\,;&]`;
 
 // Query and fragment parameters that carry a credential. `page_token` and other cursors match too;
 // their values are long and opaque, so a reader cannot tell them from a credential either.
@@ -89,7 +97,7 @@ const SECRET_PATTERNS: RegExp[] = [
   // A JWT starts only where a token run starts, so a run of `eyJ-` repeated is read once.
   /eyJ(?<![A-Za-z0-9_-]eyJ)[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20}[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{10}[A-Za-z0-9_-]*\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
-  /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
+  /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s"'<>\\]+:[^@/\s"'<>\\]+@[^\s"'<>\\]+/g,
   /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20}[A-Za-z0-9._~+/=-]*/g,
   /\bBearer\s+[A-Za-z0-9._~+/-]{24}[A-Za-z0-9._~+/-]*\b/g,
   new RegExp(
@@ -99,19 +107,19 @@ const SECRET_PATTERNS: RegExp[] = [
   // The password in a URL's userinfo, any scheme, with or without a user name:
   // https://user:password@host, https://:password@host.
   new RegExp(
-    String.raw`(?<keep>\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/?#"'<>\\[\]]{0,256}:)${NOT_A_PLACEHOLDER}[^\s@/?#"'<>\\]{1,256}(?=@)`,
+    String.raw`(?<keep>\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/?#"'<>\\[\]]{0,256}:)${notAPlaceholder(USERINFO_END)}[^\s@/?#"'<>\\]{1,256}(?=@)`,
     "gi",
   ),
   // A credential-named query or fragment parameter's value, up to the next delimiter, so a
   // password with punctuation in it counts whole. `;` also follows an HTML `&amp;`.
   new RegExp(
-    String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${NOT_A_PLACEHOLDER}[^\s&#"'<>\\]{16}[^\s&#"'<>\\]*`,
+    String.raw`(?<keep>[?&#;](?:${CREDENTIAL_PARAMETER})=)${notAPlaceholder(PARAMETER_END)}[^\s&#"'<>\\]{16}[^\s&#"'<>\\]*`,
     "gi",
   ),
   // An Amazon Web Services secret access key next to its name, as a credentials file, an env
   // line or a temporary-credentials JSON response writes it. The key is 40 characters, no prefix.
   new RegExp(
-    String.raw`(?<keep>\b(?:aws_?)?secret_?access_?key${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])`,
+    String.raw`(?<keep>\b(?:aws_?)?secret_?access_?key${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_NUMBER}[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=])`,
     "gi",
   ),
   // A credential-named variable set to a value of 16 characters or more, up to the next space,
@@ -119,7 +127,7 @@ const SECRET_PATTERNS: RegExp[] = [
   // such as humanish-egress-auth-placeholder and JSON numbers do not count. The lookaheads are
   // bounded, so a long run of `TOKEN=` costs linear time.
   new RegExp(
-    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${NOT_A_PLACEHOLDER}${NOT_A_NUMBER}(?=[^\s"'\\,;&]{0,255}[0-9])(?=[^\s"'\\,;&]{0,255}[A-Za-z])[^\s"'\\,;&]{16}[^\s"'\\,;&]*`,
+    String.raw`(?<keep>${CREDENTIAL_VARIABLE}${QUOTE}[ \t]{0,4}[:=][ \t]{0,4}${QUOTE})${notAPlaceholder(VARIABLE_END)}${NOT_A_NUMBER}(?=[^\s"'\\,;&]{0,255}[0-9])(?=[^\s"'\\,;&]{0,255}[A-Za-z])[^\s"'\\,;&]{16}[^\s"'\\,;&]*`,
     "g",
   ),
   // Any URL on an E2B host: a sandbox host names its sandbox, and a stream URL carries its auth
@@ -139,7 +147,10 @@ const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"],
   // A Windows profile path, with `\`, `\\` (JSON-escaped) or `/` between segments. A match never
   // ends in a backslash, so it cannot swallow the escape of a closing quote.
-  [/\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:(?:\\\\|\\|\/)[^\\/\s"'`<>)]+)+/g, "[REDACTED_LOCAL_PATH]"],
+  [
+    /\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:\\\\|\\|\/)[^\\/\s"'`<>)]+[^\s"'`<>)]*/g,
+    "[REDACTED_LOCAL_PATH]",
+  ],
 ];
 
 /** Every pattern containsSensitive tests. A test pins each to ASCII, which scanEncodedText relies on. */
