@@ -1,0 +1,12 @@
+# v2 reads an empty laneFocus as no focus, so the count converts to participants: 2.
+schema: humanish.lab.v2
+id: focus-empty
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    count: 2
+    laneFocus: {}
+execution:
+  target: e2b-desktop

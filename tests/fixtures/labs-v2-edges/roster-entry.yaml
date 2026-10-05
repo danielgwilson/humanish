@@ -1,0 +1,14 @@
+# A roster group with an entry on computer use reports actors[0].lanes[].entry dropped.
+schema: humanish.lab.v2
+id: roster-entry
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    roster:
+      - id: group
+        count: 2
+        entry: http://127.0.0.1:3000/start
+execution:
+  target: e2b-desktop

@@ -1,0 +1,11 @@
+# A scripted count written as a string converts to both surfaces.
+schema: humanish.lab.v2
+id: scripted-count-string
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000
+actors:
+  - type: scripted-browser
+    count: "2"
+scenario:
+  ref: scripted-first-run
