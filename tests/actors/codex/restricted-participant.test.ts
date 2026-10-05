@@ -209,9 +209,26 @@ describe("restricted participant conversation", () => {
       { kind: "click", x: 1.5, y: 2.25, button: null },
       { kind: "click", x: 1, y: 2, heldKeys: ["SHIFT"] },
       { kind: "wait", ms: null },
+      { kind: "wait", ms: -1 },
+      { kind: "wait", ms: 60_000, extra: true },
       { kind: "type", text: null },
     ])
       expect(() => parseParticipantTool({ narration: "x", actions: [action] })).toThrow();
+    expect(
+      parseParticipantTool({
+        narration: "I will wait for the other person.",
+        actions: [
+          { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
+          { kind: "wait", ms: 90_000 },
+        ],
+      }),
+    ).toMatchObject({
+      actions: [
+        { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
+        { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
+      ],
+      shortenedWaits: [{ index: 1, requestedMs: 90_000, ms: PARTICIPANT_LIMITS.waitMs }],
+    });
     expect(parseParticipantFinal(finalOutput()).closingReport).toEqual({
       summary: "I saved the note.",
       frictionReports: ["The first click was skipped, so I retried."],
