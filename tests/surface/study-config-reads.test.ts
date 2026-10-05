@@ -1,18 +1,16 @@
 // StudyConfig has the keys of a humanish.study.v3 file. The humanish.lab.v2 fields it replaced
 // (`actors`, `laneFocus`, `execution.caps`, `scenario.caps`, `scenario.mode`, `scenario.ref`,
-// `scenario.inline` and `subject.topology`) are read only by migrate, which converts a v2 file, and
-// by parse/front.ts, which tells a person where a moved key went. This test parses every file under
-// src/ and fails on a read of a v2 field anywhere else. It reads syntax, so it also sees reads the
-// compiler cannot tie to StudyConfig: a `Record<string, unknown>` cast, or a structural
-// `{ actors?: ... }` parameter.
+// `scenario.inline` and `subject.topology`) are read only under src/study/migrate/, which converts
+// a v2 file and names where each moved key went. This test parses every file under src/ and fails on
+// a read of a v2 field anywhere else. It reads syntax, so it also sees reads the compiler cannot tie
+// to StudyConfig: a `Record<string, unknown>` cast, or a structural `{ actors?: ... }` parameter.
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { parseSync } from "oxc-parser";
 import { describe, expect, it } from "vitest";
 
-// migrate reads v2 files; parse/front.ts names the v2 keys a v3 file must not set.
-const EXEMPT = ["src/study/migrate/", "src/study/parse/front.ts"];
+const MIGRATE = "src/study/migrate/";
 
 interface Node {
   readonly type: string;
@@ -69,10 +67,6 @@ function v2Read(node: Node, inPattern: boolean): boolean {
     if (V2_KEYS.has(name)) return true;
     return (BLOCK_FIELDS.get(name) ?? []).some((block) => endsWith(node.object, block));
   }
-  if (node.type === "CallExpression") {
-    const callee = unwrap(node.callee);
-    return callee?.type === "Identifier" && ["rosterOf", "focusOf"].includes(String(callee.name));
-  }
   // `const { actors } = config` and a structural `{ actors?: ... }` parameter type.
   if (node.type === "Property" || node.type === "TSPropertySignature") {
     const name = keyName(node);
@@ -127,14 +121,11 @@ function v2Reads(file: string, text: string): Hit[] {
 }
 
 const hits = sourceFiles("src")
-  .filter(
-    (file) =>
-      !EXEMPT.some((exempt) => (exempt.endsWith("/") ? file.startsWith(exempt) : file === exempt)),
-  )
+  .filter((file) => !file.startsWith(MIGRATE))
   .flatMap((file) => v2Reads(file, readFileSync(file, "utf8")));
 
 describe("src reads no humanish.lab.v2 study field outside migrate", () => {
-  it("has no read of a v2 study field outside migrate and parse/front.ts", () => {
+  it("has no read of a v2 study field outside migrate", () => {
     expect(hits.map((hit) => `${hit.file}:${hit.line} ${hit.code}`)).toEqual([]);
   });
 
@@ -147,19 +138,18 @@ describe("src reads no humanish.lab.v2 study field outside migrate", () => {
       "const e = config.scenario?.mode;",
       "const f = scenario.ref;",
       "const g = config.subject.topology;",
-      "const h = rosterOf(actor);",
       "const { actors } = config;",
-      "function i(config: { actors?: unknown[] }) { return config; }",
-      'type J = StudyConfig["actors"];',
+      "function h(config: { actors?: unknown[] }) { return config; }",
+      'type I = StudyConfig["actors"];',
     ];
     for (const line of planted) {
       expect(v2Reads("planted.ts", line), line).toHaveLength(1);
     }
     for (const line of [
-      "const k = { actors: [] };",
-      "const l = run.lanes;",
-      "const m = bundle.topology;",
-      'const n = "config.actors[0]";',
+      "const j = { actors: [] };",
+      "const k = run.lanes;",
+      "const l = bundle.topology;",
+      'const m = "config.actors[0]";',
       "// config.actors[0]",
     ]) {
       expect(v2Reads("planted.ts", line), line).toEqual([]);

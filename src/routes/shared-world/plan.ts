@@ -38,7 +38,6 @@ import {
 } from "../../study/validation.js";
 import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
-import { actorOf, capsOf } from "../../study/study-fields.js";
 
 /** The error a shared-world study returns before a run starts. */
 export interface SharedWorldRefusal extends RouteRefusal<
@@ -88,7 +87,7 @@ export function planSharedWorldStudy(
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
-  const actorType = actorOf(config)?.type ?? "";
+  const actorType = config.actor?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor))
     return refuse(
@@ -111,12 +110,12 @@ export function planSharedWorldStudy(
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));
   if (invalidReason) return refuse(invalid, invalidReason, actor);
-  if (actorOf(config)?.maxOutputTokens !== undefined && input.hasRunSession === true)
+  if (config.actor?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
 
-  const caps = capsOf(config);
+  const caps = config.caps;
   if (!input.dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
-    const model = (actorOf(config)?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
+    const model = (config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
       return refuse("HUMANISH_SHARED_WORLD_UNPRICED_CAP", unpricedCapMessage(model), actor);
   }

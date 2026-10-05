@@ -21,17 +21,13 @@ export const EXEMPT_PATHS = [
   // The saved sharedWorld block (roleId, laneWindows) and cost lines (laneId).
   "src/run/shared-world-evidence.ts",
   "src/run/cost-summary.ts",
-  // The manifest's actors[0].lanes and laneFocus keys, which the parser reads.
-  "src/study/parse/actors.ts",
   // The manifest's comms recipient key, `lane`, which the parser reads.
   "src/study/parse/comms.ts",
-  // Every manifest key the parser accepts, including `lanes`, `laneFocus` and a recipient's `lane`.
+  // Every manifest key the parser accepts, including a recipient's `lane`.
   "src/study/keys.ts",
-  // The manifest's types, whose keys keep `lanes`, `laneFocus` and `lane`.
+  // The manifest's types, whose comms recipient keeps `lane`.
   "src/study/types.ts",
-  // The accessors over the manifest's actors[0].lanes and laneFocus keys.
-  "src/study/study-fields.ts",
-  // migrate's reader of a v2 file, whose actors[0].lanes and laneFocus keys it checks and moves.
+  // migrate's reader of a v2 file, whose `actors[0].lanes` and `laneFocus` keys it checks and moves.
   "src/study/migrate/v2.ts",
   // The saved run bundle's fields (laneId, simId, simIds), checked when a bundle is read.
   "src/run/bundle-shape.ts",

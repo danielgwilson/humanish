@@ -23,7 +23,6 @@ import {
   TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS,
   type TerminalProductStudyResult,
 } from "./types.js";
-import { actorOf, capsOf } from "../../study/study-fields.js";
 
 /** The error a terminal study returns before a run starts. `actor` names the registered actor. */
 export interface TerminalRefusal extends RouteRefusal<
@@ -77,7 +76,7 @@ export function planTerminalStudy(
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
 
-  const actorType = actorOf(config)?.type ?? "";
+  const actorType = config.actor?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isTerminalActorDescriptor(descriptor))
     return refuse(
@@ -86,7 +85,7 @@ export function planTerminalStudy(
     );
 
   const runtimeVersion = config.execution?.runtime?.version;
-  const actor = actorOf(config);
+  const actor = config.actor;
   if (
     (config.execution?.runtime !== undefined && !isExactRuntimeVersion(runtimeVersion)) ||
     (actor?.model !== undefined &&
@@ -135,7 +134,7 @@ export function planTerminalStudy(
     ...(egressAllow === undefined ? {} : { egressAllow }),
     ...(stdin === undefined ? {} : { stdin }),
   };
-  const caps = capsOf(config);
+  const caps = config.caps;
   if (input.dryRun)
     return { ok: true, plan: { ...shared, dryRun: true, ...(caps ? { caps } : {}) } };
 

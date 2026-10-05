@@ -8,7 +8,6 @@ import { isSharedWorldComposition, participantIdAt } from "./routing.js";
 import type { StudyTask } from "./tasks.js";
 import type { StudyParticipantEntry, StudyConfig } from "./types.js";
 import {
-  actorOf,
   participantList,
   declaredParticipantCount,
   participantInstruction,
@@ -90,7 +89,7 @@ function desktopParticipant(
   kind: "lane" | "seat",
   focus: string | undefined,
 ): DesktopParticipant {
-  const actor = actorOf(config);
+  const actor = config.actor;
   const device = resolveParticipantDevice(config, entry?.device);
   const personaId = entry?.persona ?? actor?.persona;
   const mission = actor?.mission;
@@ -129,7 +128,7 @@ export function computerUseParticipants(
   config: StudyConfig,
   countOverride?: number,
 ): ComputerUseParticipant[] {
-  const actor = actorOf(config);
+  const actor = config.actor;
   const roster = participantList(config);
   const count = roster
     ? roster.length

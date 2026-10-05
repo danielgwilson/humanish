@@ -18,7 +18,6 @@ import {
 } from "../../src/study/tasks.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
-import { actorOf } from "../../src/study/study-fields.js";
 
 const PROTOCOL: StudyTask[] = [
   {
@@ -144,7 +143,7 @@ describe("tasks config parsing", () => {
     // Tasks are additive. Requiring a protocol would break every lab that exists.
     const parsed = lab({ mission: "Explore the app and stop." });
     expect(parsed.ok).toBe(true);
-    if (parsed.ok) expect(actorOf(parsed.config)?.tasks).toBeUndefined();
+    if (parsed.ok) expect(parsed.config.actor?.tasks).toBeUndefined();
   });
 
   it("accepts a protocol alongside the mission", () => {
@@ -161,7 +160,7 @@ describe("tasks config parsing", () => {
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const tasks = actorOf(parsed.config)?.tasks ?? [];
+    const tasks = parsed.config.actor?.tasks ?? [];
     expect(tasks).toHaveLength(2);
     expect(tasks[0]).toMatchObject({ id: "sign-up", goal: "Create an account." });
     // A task with no criterion is legal: not everything you ask for is observable.

@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { modeOf } from "../../../src/study/study-fields.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { runTerminal } from "../../helpers/route-run.js";
@@ -93,7 +92,7 @@ describe("terminal admission order", () => {
     for (const [name, config] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-admission-"));
       dirs.push(cwd);
-      const dryRun = modeOf(config) !== "live";
+      const dryRun = config.mode !== "live";
       const result = await runTerminal({ cwd, config, dryRun, env: {} });
       expect(await readdir(cwd), name).toEqual([]);
       let text = JSON.stringify(result);

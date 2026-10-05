@@ -12,7 +12,6 @@ import { starterFilesFor } from "../../src/study/init-templates.js";
 import { resolveStudyManifest, listStudyManifests } from "../../src/study/discover.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { routeOf } from "../../src/study/plan.js";
-import { actorOf, capsOf } from "../../src/study/study-fields.js";
 import { isLocalBrowserStudy } from "../../src/substrates/local/runtime-config.js";
 import { runComputerUse } from "../helpers/route-run.js";
 
@@ -150,7 +149,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
       }
       expect(
         desktopReached,
-        `${file.path} (${actorOf(config)?.type}) was refused before a desktop: ${refusal}`,
+        `${file.path} (${config.actor?.type}) was refused before a desktop: ${refusal}`,
       ).toHaveBeenCalled();
     }
   }, 180_000);
@@ -162,8 +161,8 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     const parsed = parseStudy(parse(tryLive.contents));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(actorOf(parsed.config)?.type).toBe(actor);
+    expect(parsed.config.actor?.type).toBe(actor);
     expect(parsed.config.execution?.timeoutMs).toBe(600_000);
-    expect(capsOf(parsed.config)?.maxUsd).toBe(actor === "local-agent" ? undefined : 2);
+    expect(parsed.config.caps?.maxUsd).toBe(actor === "local-agent" ? undefined : 2);
   });
 });

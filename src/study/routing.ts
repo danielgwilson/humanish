@@ -2,12 +2,7 @@ import type { ActorCapabilities } from "../actors/contract.js";
 import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import type { StudyConfig } from "./types.js";
-import {
-  actorOf,
-  participantList,
-  declaredParticipantCount,
-  declaresSharedWorld,
-} from "./study-fields.js";
+import { participantList, declaredParticipantCount } from "./study-fields.js";
 
 // Hard cap on computer-use participants. No setting raises it: each participant is a paid desktop,
 // and they all run at once.
@@ -104,7 +99,7 @@ export function isComputerUseComposition(config: StudyConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the computer-use route exactly like an app-url subject with a computer-use actor.
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
-    return actorResolvesToComputerUse(actorOf(config)?.type);
+    return actorResolvesToComputerUse(config.actor?.type);
   }
   // desktop-cli hands the participant a terminal instead of a served page, but it is the
   // same route: same desktop, same actor, same prompt fields. Leaving it out of this predicate told
@@ -113,7 +108,7 @@ export function isComputerUseComposition(config: StudyConfig): boolean {
   if (config.subject.source === "desktop-cli") {
     return (
       (config.execution?.target === undefined || config.execution.target === "e2b-desktop") &&
-      actorResolvesToComputerUse(actorOf(config)?.type)
+      actorResolvesToComputerUse(config.actor?.type)
     );
   }
   // local-tree packs+uploads the working tree, then serves it exactly like a computer-use clone
@@ -121,7 +116,7 @@ export function isComputerUseComposition(config: StudyConfig): boolean {
   return (
     (config.subject.source === "clone" || config.subject.source === "local-tree") &&
     config.execution?.target === "e2b-desktop" &&
-    actorResolvesToComputerUse(actorOf(config)?.type)
+    actorResolvesToComputerUse(config.actor?.type)
   );
 }
 
@@ -144,9 +139,9 @@ export function isSharedWorldComposition(config: StudyConfig): boolean {
 export function isProvisionedSharedWorldComposition(config: StudyConfig): boolean {
   return (
     (config.subject.source === "clone" || config.subject.source === "local-tree") &&
-    declaresSharedWorld(config) &&
+    config.route === "shared-world" &&
     config.execution?.target === "e2b-desktop" &&
-    actorResolvesToComputerUse(actorOf(config)?.type)
+    actorResolvesToComputerUse(config.actor?.type)
   );
 }
 
@@ -162,9 +157,9 @@ export function isProvisionedSharedWorldComposition(config: StudyConfig): boolea
 export function isExternalPublicSharedWorldComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
-    declaresSharedWorld(config) &&
+    config.route === "shared-world" &&
     config.execution?.target === "e2b-desktop" &&
-    actorResolvesToComputerUse(actorOf(config)?.type) &&
+    actorResolvesToComputerUse(config.actor?.type) &&
     config.policies?.allowPublicTargets === true
   );
 }
@@ -206,16 +201,14 @@ export function isScriptedBrowserComposition(config: StudyConfig): boolean {
 }
 
 function isLocalScriptedBrowserComposition(config: StudyConfig): boolean {
-  return (
-    config.subject.source === "app-url" && actorResolvesToScriptedBrowser(actorOf(config)?.type)
-  );
+  return config.subject.source === "app-url" && actorResolvesToScriptedBrowser(config.actor?.type);
 }
 
 export function isProvisionedScriptedBrowserComposition(config: StudyConfig): boolean {
   return (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
-    actorResolvesToScriptedBrowser(actorOf(config)?.type)
+    actorResolvesToScriptedBrowser(config.actor?.type)
   );
 }
 
@@ -227,7 +220,7 @@ export function isProvisionedScriptedBrowserComposition(config: StudyConfig): bo
  */
 export function isTerminalProductComposition(config: StudyConfig): boolean {
   return (
-    config.subject.source === "terminal-product" && actorResolvesToTerminal(actorOf(config)?.type)
+    config.subject.source === "terminal-product" && actorResolvesToTerminal(config.actor?.type)
   );
 }
 
