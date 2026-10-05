@@ -89,6 +89,8 @@ const withAnalysis = (body) =>
 let data = fixture();
 let otherData = null;
 let responseMode = "ok";
+// A stopped server: every request's connection closes with no response.
+let serverStopped = false;
 let pollCount = 0;
 let exerciseDesktopIsolation = false;
 const requests = [];
@@ -98,6 +100,12 @@ const server = createServer((request, response) => {
   const url = new URL(request.url, "http://127.0.0.1");
   const entry = { path: url.pathname, at: new Date().toISOString(), status: 200 };
   requests.push(entry);
+  if (serverStopped) {
+    if (url.pathname === "/observer/observer-data.json") pollCount += 1;
+    entry.status = 0;
+    request.socket.destroy();
+    return;
+  }
   response.setHeader("cache-control", "no-store");
   response.setHeader("referrer-policy", "no-referrer");
   if (url.pathname === "/restricted-browser") {
@@ -775,6 +783,7 @@ async function runCase(id, options, action) {
   analysisMode = "ok";
   imageModes.clear();
   responseMode = "ok";
+  serverStopped = false;
   pollCount = 0;
   exerciseDesktopIsolation = false;
   if (options.prepare) options.prepare();
@@ -3351,6 +3360,43 @@ try {
     record.checks.requestClosed = pending.closed;
     record.checks.pollsAfterLeaving = pollCount - left;
   });
+  for (const running of [false, true])
+    await runCase(
+      `server-stopped-${running ? "live" : "finished"}`,
+      { running, phone: running, touch: running },
+      async ({ page, record, snap }) => {
+        await page.goto(`${origin}/observer/index.html`);
+        await page.locator(".card").first().waitFor();
+        const polls = pollCount;
+        serverStopped = true;
+        // One unanswered poll is a hiccup; the notice waits for three in a row.
+        await until(() => pollCount >= polls + 1, "No poll reached the stopped server");
+        await wait(300);
+        assert.equal(await page.locator(".server-stopped").count(), 0);
+        const notice = page.locator(".server-stopped");
+        await notice.waitFor({ timeout: 20_000 });
+        const text = await notice.innerText();
+        for (const expected of [
+          "The Observer server stopped answering",
+          running ? "the run was still running" : "The run had ended",
+          `humanish observe --run ${data.run.runId}`,
+          `.humanish/runs/${data.run.runId}/observer/index.html`,
+        ])
+          assert(text.includes(expected), `Server notice lacks: ${expected}`);
+        // Captures requested after the stop fail too; no tile may call that a missing frame.
+        await page.getByRole("slider", { name: "Seek study recording", exact: true }).press("Home");
+        await wait(800);
+        assert.equal(await page.getByText("Frame unavailable").count(), 0);
+        assert.equal(await page.locator(".card-retry").count(), 0);
+        const width = await pageWidth(page);
+        assert(width.page <= width.viewport + 1, "Server notice overflows the page");
+        record.checks = { text, width, polls: pollCount - polls };
+        await snap("server-stopped-notice");
+        serverStopped = false;
+        await notice.waitFor({ state: "detached", timeout: 12_000 });
+        await snap("server-answers-again");
+      },
+    );
   await runCase(
     "terminal-recording",
     {
