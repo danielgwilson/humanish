@@ -26,6 +26,7 @@ import {
 } from "../io.js";
 import {
   exposureRequestFromOptions,
+  followDecision,
   followObserver,
   type ObserverPlan,
   planObserver,
@@ -155,7 +156,9 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
   const dryRun = resolveStudyDryRun(args.config, args.options.dryRun, true) ?? true;
   const port = parseObserverPort(args.options.port ?? "0");
   const wantsFollow =
-    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+    args.mode === "watch" &&
+    dryRun !== true &&
+    followDecision({ wantsMachine, detach: args.options.detach, serve: args.options.serve }).follow;
   if (port === null) {
     refuseCua(
       args,
@@ -177,7 +180,8 @@ function prepareCuaWatch(
   // one surface that serves runtime E2B stream URLs, so it must sit behind edge auth.
   const exposeValidation = validateExposure("watch", exposureRequestFromOptions(args.options), {
     dryRun: settings.dryRun,
-    detach: args.options.detach === true,
+    // A watch that will not follow, because of --detach or no interactive terminal, cannot expose.
+    detach: args.options.detach === true || (!settings.wantsMachine && !settings.wantsFollow),
     json: settings.wantsMachine,
   });
   if (!exposeValidation.ok) {
@@ -200,6 +204,7 @@ function prepareCuaWatch(
           port: args.options.port ?? "0",
           open: settings.shouldOpen,
           ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+          ...(args.options.serve === undefined ? {} : { serve: args.options.serve }),
         })
       : undefined;
   if (finishedPlan === null) return undefined;

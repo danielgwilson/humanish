@@ -196,7 +196,6 @@ describe("humanish.study.v3 twins", () => {
     expect([...seen].sort()).toEqual([
       "humanish/studies/cua-browser.yaml",
       "humanish/studies/first-run.yaml",
-      "humanish/studies/lobby-trivia-3player.yaml",
       "humanish/studies/local-browser.yaml",
       "humanish/studies/try-live.yaml",
     ]);

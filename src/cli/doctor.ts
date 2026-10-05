@@ -37,6 +37,7 @@ import {
   readImplicitProjectFile,
   validateCwd,
 } from "../run/project.js";
+import { cli } from "./invocation.js";
 
 const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
 
@@ -196,8 +197,7 @@ export async function doctor(
       {
         name: "setup route",
         ok: true,
-        message:
-          "General capabilities only. Use humanish doctor --study <study> for the selected participant's requirements and separate analysis readiness.",
+        message: `General capabilities only. Use ${cli("doctor --study <study>")} for the selected participant's requirements and separate analysis readiness.`,
       },
     ]),
   ];
@@ -275,7 +275,7 @@ async function sourceCheck(projectRoot: PreparedSelectedOutputDirectory) {
     ok,
     message: ok
       ? "committed humanish/ source directory is present and safe to read"
-      : "no readable humanish/ source directory; run humanish init --yes",
+      : `no readable humanish/ source directory; run ${cli("init --yes")}`,
   };
 }
 
@@ -289,7 +289,7 @@ async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) 
     ok,
     message: ok
       ? ".gitignore lists .humanish/"
-      : ".gitignore does not list .humanish/; run humanish init --yes",
+      : `.gitignore does not list .humanish/; run ${cli("init --yes")}`,
   };
 }
 

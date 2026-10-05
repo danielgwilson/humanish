@@ -18,6 +18,7 @@ import {
 import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
+import { cli } from "../../cli/invocation.js";
 
 const docker = async (args: string[]): Promise<string> =>
   (await runtimeDocker(args, {}, 60_000)).stdout.trim();
@@ -74,14 +75,14 @@ function checkDesktopOptions(options: LocalFirecrackerOptions): { url: URL; inbo
     guestMediaConfigSchema.parse(options.media);
     if (options.assets.media !== true)
       throw new Error(
-        "This local runtime does not include media. Run humanish runtime setup --media.",
+        `This local runtime does not include media. Run ${cli("runtime setup --media")}.`,
       );
   }
   if (options.recording !== undefined) {
     desktopRecordingConfigSchema.parse(options.recording);
     if (options.assets.media !== true)
       throw new Error(
-        "This runtime does not include the recorder. Run humanish runtime setup --media.",
+        `This runtime does not include the recorder. Run ${cli("runtime setup --media")}.`,
       );
   }
   let url: URL;

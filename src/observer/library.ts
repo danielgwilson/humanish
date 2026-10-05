@@ -1,4 +1,5 @@
 import type { RunDisplay } from "../run/display.js";
+import { cli } from "../cli/invocation.js";
 
 export interface LibraryHistory {
   latestRunId: string | null;
@@ -40,8 +41,8 @@ const DISPLAY_TONES: Record<RunDisplay["tone"], string> = {
 
 export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOptions): string {
   const emptyState = opts.safe
-    ? "No share_ready runs yet. Run `humanish verify` to see why."
-    : "No runs yet. Run `humanish watch` to create one.";
+    ? `No share_ready runs yet. Run \`${cli("verify")}\` to see why.`
+    : `No runs yet. Run \`${cli("run first-run")}\` to create one.`;
 
   return `<!doctype html>
 <html lang="en" data-theme="dark">

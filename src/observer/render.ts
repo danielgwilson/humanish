@@ -39,6 +39,7 @@ import {
   writeResponse,
   type ObserverRuntimeStreamUrl,
 } from "./run-routes.js";
+import { cli } from "../cli/invocation.js";
 
 const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -267,7 +268,7 @@ export async function renderObserver(
       loaded.bundle.mode === "live"
         ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
         : "This is a dry run: its participants are synthetic and no product behavior was tested.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      `Before filing public feedback, use \`${cli("feedback issue")}\` so redaction and public-safety checks gate the payload.`,
       ...(openResult.warning ? [openResult.warning] : []),
     ],
   };

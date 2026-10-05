@@ -142,6 +142,7 @@ humanish watch [options] [study]
 | `--allow-email <addr>` | Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth. |
 | `--allow-domain <domain>` | Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth. |
 | `--public-url <origin>` | Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose. |
+| `--serve` | Serve the Observer and stay attached until Ctrl-C even without an interactive terminal; by default an agent's shell or a pipe gets the result and an exit. |
 | `-h, --help` | Show help for this command. |
 
 ## humanish observe
@@ -160,6 +161,7 @@ humanish observe [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--open` | Open the Observer in the default browser. |
 | `--no-open` | Serve without opening a browser. |
+| `--serve` | Serve one run until Ctrl-C even without an interactive terminal; by default an agent's shell or a pipe gets the Observer path and an exit. |
 | `--json` | Print a machine-readable JSON response. |
 | `--safe` | Serve only runs whose verify shareSafety is share_ready; other runs are not served at all. |
 | `--expose` | Share the library beyond this machine. Requires --oauth or --public-url, or --safe. |

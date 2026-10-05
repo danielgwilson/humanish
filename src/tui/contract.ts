@@ -25,6 +25,7 @@ import type { CommsSetupResult } from "../comms/connections.js";
 import type { CommsSetupStatus } from "../comms/setup.js";
 import type { CommsCheckResult, CommsConfigureResult } from "../comms/setup.js";
 import type { CommsRecoveryEntry } from "../comms/lease-store.js";
+import { cli } from "../cli/invocation.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 interface TuiVersionInfo {
@@ -165,12 +166,12 @@ export function terminalSurfaceMessage(state: {
   nodeVersion: string;
 }): string {
   if (!state.supported) {
-    return `\`humanish tui\` needs Node ${TUI_MIN_NODE_MAJOR}+ (this is ${state.nodeVersion}); every other command works here`;
+    return `\`${cli("tui")}\` needs Node ${TUI_MIN_NODE_MAJOR}+ (this is ${state.nodeVersion}); every other command works here`;
   }
   if (!state.bundlePresent) {
-    return "`humanish tui` is not built in this checkout; run `pnpm build` (installed packages ship it prebuilt)";
+    return `\`${cli("tui")}\` is not built in this checkout; run \`pnpm build\` (installed packages ship it prebuilt)`;
   }
   return state.interactive
-    ? "`humanish tui` opens the interactive surface for browsing studies and runs"
-    : "`humanish tui` is the interactive screen a person uses to watch and start runs here. This shell is not a terminal, so pass it on to a person at one";
+    ? `\`${cli("tui")}\` opens the interactive surface for browsing studies and runs`
+    : `\`${cli("tui")}\` is the interactive screen a person uses to watch and start runs here. This shell is not a terminal, so pass it on to a person at one`;
 }

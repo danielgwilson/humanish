@@ -160,7 +160,7 @@ export function validateExposure(
     if (live && (live.dryRun || live.detach || live.json)) {
       return fail(
         "EXPOSE_REQUIRES_LIVE_FOLLOW",
-        "watch --expose streams a live desktop over an attached follow channel; it cannot combine with --dry-run, --detach, or --json.",
+        "watch --expose streams a live desktop over an attached follow channel. It cannot combine with --dry-run, --detach or --json, and without an interactive terminal it needs --serve.",
       );
     }
     // --safe is a share_ready library filter for `serve`; watch streams a single live run that is

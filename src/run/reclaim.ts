@@ -54,6 +54,7 @@ import {
 } from "./reclaim-outcomes.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
+import { cli } from "../cli/invocation.js";
 
 export { RECLAIM_RECEIPT_ARTIFACT };
 
@@ -153,7 +154,7 @@ async function reclaimRun(
       ...base,
       error: {
         code: "HUMANISH_RECLAIM_RUN_NOT_FOUND",
-        message: `No run found for "${runInput}" (use \`humanish runs\` to list runs).`,
+        message: `No run found for "${runInput}" (use \`${cli("runs")}\` to list runs).`,
       },
     };
   }

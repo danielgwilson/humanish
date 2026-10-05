@@ -31,6 +31,7 @@ it("observe follows selected-run evidence and lifecycle over protected HTTP, the
         "--run",
         "selected",
         "--no-open",
+        "--serve",
         "--json",
       ],
       {

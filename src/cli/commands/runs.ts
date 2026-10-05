@@ -31,6 +31,7 @@ import {
 import { plural } from "../../run/text.js";
 import { warnAndQueue } from "../deprecations.js";
 import { type AnalysisFindings, formatFindings, readRunFindings } from "../findings.js";
+import { cli } from "../invocation.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
   addRunOptions(
@@ -244,7 +245,7 @@ export function registerRuntimeCommands(parent: Command, io: CliIo): void {
           const message =
             error instanceof Error
               ? error.message
-              : "Local runtime setup failed. Run humanish runtime setup to retry.";
+              : `Local runtime setup failed. Run ${cli("runtime setup")} to retry.`;
           const result = {
             schema: "humanish.runtime-result.v1",
             ok: false,
@@ -323,7 +324,7 @@ async function runReclaimCommand(
 /** The command that finishes what a reclaim left open, with --cwd when it was given. */
 function reclaimCommand(result: ReclaimResult, cwd: string, preflight: boolean): string {
   const target = preflight ? "--preflight" : `--run ${shellArg(result.runId)}`;
-  return `humanish reclaim ${target}${cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`}`;
+  return cli(`reclaim ${target}${cwd === "." ? "" : ` --cwd ${shellArg(cwd)}`}`);
 }
 
 function formatReclaimHuman(result: ReclaimResult, cwd: string, preflight: boolean): HumanOutput {
@@ -416,7 +417,7 @@ function formatReviewHuman(
       ? {
           error: {
             ...error,
-            message: `${error.message} humanish verify --run ${result.run} shows why.`,
+            message: `${error.message} ${cli(`verify --run ${result.run}`)} shows why.`,
           },
         }
       : humanError(error);
@@ -478,7 +479,7 @@ function formatVerifyHuman(result: VerifyResult): HumanOutput {
     ...result.warnings.map((warning) => `warning: ${warning}`),
   );
   const cwdFlag = result.cwd === process.cwd() ? "" : ` --cwd ${result.cwd}`;
-  if (!result.ok) lines.push(`every check: humanish verify --run ${runId}${cwdFlag} --verbose`);
+  if (!result.ok) lines.push(`every check: ${cli(`verify --run ${runId}${cwdFlag} --verbose`)}`);
   return `${lines.join("\n")}\n`;
 }
 

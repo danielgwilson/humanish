@@ -11,6 +11,7 @@ import {
   localAgentVersionRefusal,
   type LocalAgentId,
 } from "./cli.js";
+import { cli } from "../../cli/invocation.js";
 
 /** Why a local-agent participant cannot run here. */
 export type LocalAgentRefusal =
@@ -63,7 +64,7 @@ export async function localAgentRefusal(args: {
       message:
         compatibility === "unsupported_platform"
           ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
-          : `Hosted Codex participants need a Codex CLI release humanish runs: ${describeCodexCliAdmission()}. Run \`humanish doctor\` for the release it found and the command that replaces it; no desktop was launched.`,
+          : `Hosted Codex participants need a Codex CLI release humanish runs: ${describeCodexCliAdmission()}. Run \`${cli("doctor")}\` for the release it found and the command that replaces it; no desktop was launched.`,
     };
   }
   if (

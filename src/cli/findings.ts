@@ -14,6 +14,7 @@ import { resolvePhysicalCwd, runIdOf } from "../run/paths.js";
 import { plural } from "../run/text.js";
 import { shellQuote } from "../substrates/shell.js";
 import { analysisOutcomeText, type CliIo, wantsJson } from "./io.js";
+import { cli } from "./invocation.js";
 
 export const ANALYSIS_FINDINGS_SCHEMA = "humanish.analysis-findings.v1";
 
@@ -108,7 +109,7 @@ function cwdFlag(cwd: string): string {
 }
 
 function analyzeCommand(source: FindingsSource, provider: string | undefined): string {
-  const run = `humanish analyze --run ${source.runId}${source.cwdFlag}`;
+  const run = cli(`analyze --run ${source.runId}${source.cwdFlag}`);
   return provider === "codex"
     ? `${run} --provider codex`
     : `${run} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
@@ -247,7 +248,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       source,
       "unavailable",
       "ANALYSIS_SENSITIVE_TEXT_QUARANTINED",
-      `The analysis text matched a sensitive-text pattern, so it is not printed. humanish analyze show --run ${source.runId}${source.cwdFlag} --json prints the raw record.`,
+      `The analysis text matched a sensitive-text pattern, so it is not printed. ${cli(`analyze show --run ${source.runId}${source.cwdFlag} --json`)} prints the raw record.`,
       null,
     );
   const job = loaded.automatic;
@@ -257,7 +258,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       "running",
       null,
       "The automatic analysis is still running. Check again when it finishes.",
-      `humanish review --run ${source.runId}${source.cwdFlag}`,
+      cli(`review --run ${source.runId}${source.cwdFlag}`),
     );
   if (analysis && analysis.result === null)
     return withoutFindings(
@@ -298,7 +299,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       "unavailable",
       job?.reason ?? loaded.warnings[0] ?? null,
       "This run's analysis records could not be read or checked, so no findings are shown.",
-      `humanish analyze list --run ${source.runId}${source.cwdFlag}`,
+      cli(`analyze list --run ${source.runId}${source.cwdFlag}`),
     );
   return withoutFindings(
     source,
@@ -345,7 +346,7 @@ export function missingRunFindings(cwd: string, run: string): AnalysisFindings {
     "unavailable",
     "ANALYSIS_RUN_NOT_FOUND",
     `Run ${run} was not found or its storage is unsafe.`,
-    `humanish runs${flag}`,
+    cli(`runs${flag}`),
   );
 }
 
@@ -505,7 +506,7 @@ export async function writeRunFindings(
     return;
   try {
     const view = await readRunFindings(cwd, result.runId, analysisId);
-    const full = `humanish review --run ${view.runId}${cwdFlag(cwd)}`;
+    const full = cli(`review --run ${view.runId}${cwdFlag(cwd)}`);
     io.writeOut(`${formatFindingsSummary(view, full).join("\n")}\n`);
   } catch {
     // The run's own result is already printed; review reads the same record later.

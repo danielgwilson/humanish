@@ -38,6 +38,7 @@ export function watchFinishedPlan(
     port: args.options.port ?? "0",
     open: shouldOpen,
     ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+    ...(args.options.serve === undefined ? {} : { serve: args.options.serve }),
   });
 }
 

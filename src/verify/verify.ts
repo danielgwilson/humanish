@@ -33,6 +33,7 @@ import { rerunLineageFindings } from "./rerun.js";
 import { sharedWorldEvidenceFindings } from "./shared-world.js";
 import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./subject.js";
 import { plural } from "../run/text.js";
+import { cli } from "../cli/invocation.js";
 
 export const VERIFY_SCHEMA = "humanish.verify-result.v1";
 
@@ -572,7 +573,7 @@ function buildShareSafety(args: {
     ];
     reasons.push({
       code: "RAW_SANDBOX_ID",
-      message: `Raw sandbox ids appear in ${files.sort().join(", ")}. Runs from 0.110 keep them only in sandbox-receipts.ndjson; \`humanish export --format bundle --redact-screenshots\` writes a copy without them.`,
+      message: `Raw sandbox ids appear in ${files.sort().join(", ")}. Runs from 0.110 keep them only in sandbox-receipts.ndjson; \`${cli("export --format bundle --redact-screenshots")}\` writes a copy without them.`,
     });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle, args.redactedShapeFrames);

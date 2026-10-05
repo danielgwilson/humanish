@@ -4,9 +4,6 @@ import {
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
 import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
 import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
@@ -15,23 +12,11 @@ import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import { warnAndQueue, withQueuedWarnings } from "./deprecations.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
+import { cli } from "./invocation.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 
-function readCliVersion(): string {
-  const packageJsonPath = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "package.json",
-  );
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
-  return typeof packageJson.version === "string" && packageJson.version.trim()
-    ? packageJson.version
-    : "0.0.0";
-}
-
-export const CLI_VERSION = readCliVersion();
+export { CLI_VERSION } from "./version.js";
 
 export interface CliIo {
   writeOut(text: string): void;
@@ -89,6 +74,8 @@ export interface StudyCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** watch only: serve and follow the Observer even without an interactive terminal. */
+  serve?: boolean | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
   scorer?: string | undefined;
   // watch --expose surface (tunnel-edge auth). Only the computer-use route live-serves a run; other
@@ -248,12 +235,13 @@ export type HumanOutput = string | { stdout?: string; error?: CliError | undefin
  * command: the run-not-found and missing-study messages do.
  */
 const NEXT_COMMAND: Readonly<Record<string, string>> = {
-  HUMANISH_STUDY_NOT_FOUND: "humanish study list",
+  HUMANISH_STUDY_NOT_FOUND: "study list",
 };
 
 /** `<command> failed: <message>`, then `code: <CODE>`, then `next: <command>` when one is known. */
 export function formatCliError(command: string, error: CliError): string {
-  const next = error.code === undefined ? undefined : NEXT_COMMAND[error.code];
+  const rest = error.code === undefined ? undefined : NEXT_COMMAND[error.code];
+  const next = rest === undefined ? undefined : cli(rest);
   return (
     [
       `${command} failed: ${error.message}`,
@@ -462,7 +450,7 @@ function overBudgetAnalysisHint(result: AutomaticAnalysisResult & { runId?: stri
   const estimate = result.automaticAnalysis?.result?.admission?.estimatedCostUsd ?? null;
   const suggested = Math.ceil(estimate ?? DEFAULT_ANALYSIS_MAX_COST_USD + 1);
   const shown = estimate === null ? "" : ` ($${estimate.toFixed(2)})`;
-  return `analysis: its estimate${shown} is over the default $${DEFAULT_ANALYSIS_MAX_COST_USD} cap, so no request was sent. To analyze this run: humanish analyze --run ${result.runId ?? "latest"} --max-cost ${suggested}\n`;
+  return `analysis: its estimate${shown} is over the default $${DEFAULT_ANALYSIS_MAX_COST_USD} cap, so no request was sent. To analyze this run: ${cli(`analyze --run ${result.runId ?? "latest"} --max-cost ${suggested}`)}\n`;
 }
 
 export function automaticAnalysisEnvelope<T>(result: T): T {

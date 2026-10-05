@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { cli } from "../../cli/invocation.js";
 
 const exec = promisify(execFile);
 export const LIMA_INSTANCE = "humanish-runtime";
@@ -130,13 +131,13 @@ export async function limaStatus(
     version = (await hostExec("limactl", ["--version"], options)).stdout;
   } catch {
     throw new Error(
-      "Install Lima 2.2 or newer (brew install lima), then run humanish runtime setup. Docker Desktop is not required.",
+      `Install Lima 2.2 or newer (brew install lima), then run ${cli("runtime setup")}. Docker Desktop is not required.`,
     );
   }
   const match = /\b(\d+)\.(\d+)\.\d+/.exec(version);
   if (!match || Number(match[1]) < 2 || (Number(match[1]) === 2 && Number(match[2]) < 2))
     throw new Error(
-      "Update Lima to 2.2 or newer (brew upgrade lima), then run humanish runtime setup.",
+      `Update Lima to 2.2 or newer (brew upgrade lima), then run ${cli("runtime setup")}.`,
     );
   const output = (await hostExec("limactl", ["list", "--json"], options)).stdout.trim();
   const instance = output
@@ -155,8 +156,8 @@ export async function limaStatus(
     ready: instance?.status === "Running",
     exists: !!instance,
     message: instance
-      ? "The humanish Lima host is stopped. Run humanish runtime setup to start it."
-      : "Run humanish runtime setup to create the humanish Lima host and install the browser runtime.",
+      ? `The humanish Lima host is stopped. Run ${cli("runtime setup")} to start it.`
+      : `Run ${cli("runtime setup")} to create the humanish Lima host and install the browser runtime.`,
   };
 }
 
