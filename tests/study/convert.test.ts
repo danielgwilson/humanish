@@ -11,7 +11,7 @@ import { parse, parseDocument, visit } from "yaml";
 import { parseStudy, parseStudyDocument } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import { routeOf } from "../../src/study/routing.js";
-import { convertStudyText } from "../../src/study/convert.js";
+import { convertStudyText } from "../../src/study/migrate/convert.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 

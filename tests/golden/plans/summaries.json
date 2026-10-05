@@ -1,0 +1,798 @@
+{
+  "committed": {
+    "comms-email-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "comms-email-demo",
+        "subject": "clone example-org/user-app",
+        "participants": "first-time-visitor · impatient-skimmer",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "first-time-visitor",
+          "resolved": false
+        },
+        {
+          "id": "impatient-skimmer",
+          "resolved": false
+        }
+      ]
+    },
+    "detect-taskly-clean": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "detect-taskly-clean",
+        "subject": "local-tree",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 3
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "detect-taskly-planted": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "detect-taskly-planted",
+        "subject": "local-tree",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 3
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "detect-todomvc": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "detect-todomvc",
+        "subject": "clone tastejs/todomvc",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 3
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "dwell-window-todomvc": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "dwell-window-todomvc",
+        "subject": "clone tastejs/todomvc",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 2,
+          "studyUsd": 2
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "effort-contrast-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "effort-contrast-demo",
+        "subject": "clone drawdb-io/drawdb",
+        "participants": "2 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "per-lane",
+        "caps": {
+          "laneUsd": 15
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "fanout-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "fanout-demo",
+        "subject": "app-url http://127.0.0.1:3000/",
+        "participants": "first-time-visitor · impatient-skimmer · power-user · comparison-shopper",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "first-time-visitor",
+          "resolved": false
+        },
+        {
+          "id": "impatient-skimmer",
+          "resolved": false
+        },
+        {
+          "id": "power-user",
+          "resolved": false
+        },
+        {
+          "id": "comparison-shopper",
+          "resolved": false
+        }
+      ]
+    },
+    "first-contact": {
+      "summary": {
+        "schema": "humanish.study-summary.v1",
+        "studyId": "first-contact",
+        "subject": "terminal-product",
+        "participants": "1 × autonomous-coding-agent",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "autonomous-coding-agent",
+          "resolved": false
+        }
+      ]
+    },
+    "first-run": {
+      "summary": {
+        "schema": "humanish.study-summary.v1",
+        "studyId": "first-run",
+        "subject": "this-repo",
+        "participants": "4 participants",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": []
+    },
+    "handed-a-human-surface": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "handed-a-human-surface",
+        "subject": "terminal-product",
+        "participants": "1 × autonomous-coding-agent",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "autonomous-coding-agent",
+          "resolved": false
+        }
+      ]
+    },
+    "last-mile": {
+      "summary": {
+        "schema": "humanish.study-summary.v1",
+        "studyId": "last-mile",
+        "subject": "terminal-product",
+        "participants": "1 × autonomous-coding-agent",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "autonomous-coding-agent",
+          "resolved": false
+        }
+      ]
+    },
+    "later-tab-emulation": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "later-tab-emulation",
+        "subject": "local-tree",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 1,
+          "studyUsd": 1
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "lobby-trivia-3player": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "lobby-trivia-3player",
+        "subject": "app-url https://lobby-trivia.example.test/",
+        "participants": "party-host · competitive-friend · casual-friend",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "party-host",
+          "resolved": false
+        },
+        {
+          "id": "competitive-friend",
+          "resolved": false
+        },
+        {
+          "id": "casual-friend",
+          "resolved": false
+        }
+      ]
+    },
+    "participant-camera": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "participant-camera",
+        "subject": "local-tree",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 1,
+          "studyUsd": 1
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "persona-contrast-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "persona-contrast-demo",
+        "subject": "clone drawdb-io/drawdb",
+        "participants": "skeptical-power-user · synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 15
+        }
+      },
+      "personas": [
+        {
+          "id": "skeptical-power-user",
+          "resolved": true
+        },
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "scripted-demo": {
+      "summary": {
+        "schema": "humanish.study-summary.v1",
+        "studyId": "scripted-demo",
+        "subject": "app-url http://127.0.0.1:5173",
+        "participants": "2 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    },
+    "shared-world-concurrent-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "shared-world-concurrent-demo",
+        "subject": "clone example-org/collab-notes-app",
+        "participants": "contributor · reviewer · impatient-skimmer",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "contributor",
+          "resolved": false
+        },
+        {
+          "id": "reviewer",
+          "resolved": false
+        },
+        {
+          "id": "impatient-skimmer",
+          "resolved": false
+        }
+      ]
+    },
+    "shared-world-concurrent-live": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "shared-world-concurrent-live",
+        "subject": "clone danielgwilson/humanish",
+        "participants": "weekly-planner · ops-coordinator · on-the-go-contributor",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "weekly-planner",
+          "resolved": false
+        },
+        {
+          "id": "ops-coordinator",
+          "resolved": false
+        },
+        {
+          "id": "on-the-go-contributor",
+          "resolved": false
+        }
+      ]
+    },
+    "signup-email-verify": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "signup-email-verify",
+        "subject": "clone documenso/documenso",
+        "participants": "synthetic-new-user · skeptical-power-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 15,
+          "studyUsd": 25
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        },
+        {
+          "id": "skeptical-power-user",
+          "resolved": true
+        }
+      ]
+    },
+    "terminal-product-demo": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "terminal-product-demo",
+        "subject": "terminal-product",
+        "participants": "1 × autonomous-creative-agent",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {}
+      },
+      "personas": [
+        {
+          "id": "autonomous-creative-agent",
+          "resolved": false
+        }
+      ]
+    },
+    "tui-self-study": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "tui-self-study",
+        "subject": "desktop-cli",
+        "participants": "1 × synthetic-new-user",
+        "model": "gpt-5.6-sol",
+        "reasoningEffort": "medium",
+        "caps": {
+          "laneUsd": 5
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        }
+      ]
+    }
+  },
+  "starters": {
+    "openai-computer-use": {
+      "cua-browser": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "cua-browser",
+          "subject": "clone your-org/your-app",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "first-run": {
+        "summary": {
+          "schema": "humanish.study-summary.v1",
+          "studyId": "first-run",
+          "subject": "this-repo",
+          "participants": "4 participants",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": []
+      },
+      "local-browser": {
+        "summary": {
+          "analysis": {
+            "provider": "codex",
+            "billing": "account-unknown",
+            "model": "gpt-6-astra",
+            "maxCostUsd": null,
+            "trigger": "explicit"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "local-browser",
+          "subject": "app-url http://127.0.0.1:3000",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "try-live": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "try-live",
+          "subject": "clone drawdb-io/drawdb",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {
+            "laneUsd": 2
+          }
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      }
+    },
+    "local-agent codex": {
+      "cua-browser": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "cua-browser",
+          "subject": "clone your-org/your-app",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "first-run": {
+        "summary": {
+          "schema": "humanish.study-summary.v1",
+          "studyId": "first-run",
+          "subject": "this-repo",
+          "participants": "4 participants",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": []
+      },
+      "local-browser": {
+        "summary": {
+          "analysis": {
+            "provider": "codex",
+            "billing": "account-unknown",
+            "model": "gpt-6-astra",
+            "maxCostUsd": null,
+            "trigger": "explicit"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "local-browser",
+          "subject": "app-url http://127.0.0.1:3000",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "try-live": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "try-live",
+          "subject": "clone drawdb-io/drawdb",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      }
+    },
+    "local-agent claude": {
+      "cua-browser": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "cua-browser",
+          "subject": "clone your-org/your-app",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "first-run": {
+        "summary": {
+          "schema": "humanish.study-summary.v1",
+          "studyId": "first-run",
+          "subject": "this-repo",
+          "participants": "4 participants",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": []
+      },
+      "local-browser": {
+        "summary": {
+          "analysis": {
+            "provider": "codex",
+            "billing": "account-unknown",
+            "model": "gpt-6-astra",
+            "maxCostUsd": null,
+            "trigger": "explicit"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "local-browser",
+          "subject": "app-url http://127.0.0.1:3000",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      },
+      "try-live": {
+        "summary": {
+          "analysis": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "trigger": "default"
+          },
+          "schema": "humanish.study-summary.v1",
+          "studyId": "try-live",
+          "subject": "clone drawdb-io/drawdb",
+          "participants": "1 × synthetic-new-user",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "medium",
+          "caps": {}
+        },
+        "personas": [
+          {
+            "id": "synthetic-new-user",
+            "resolved": true
+          }
+        ]
+      }
+    }
+  },
+  "fixtures": {
+    "mixed-participants": {
+      "summary": {
+        "analysis": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "trigger": "default"
+        },
+        "schema": "humanish.study-summary.v1",
+        "studyId": "mixed-participants",
+        "subject": "app-url http://127.0.0.1:3000/",
+        "participants": "synthetic-new-user · skeptical-power-user · fixture-only-persona",
+        "model": "gpt-6-astra",
+        "reasoningEffort": "per-lane",
+        "caps": {
+          "laneUsd": 2,
+          "studyUsd": 5
+        }
+      },
+      "personas": [
+        {
+          "id": "synthetic-new-user",
+          "resolved": true
+        },
+        {
+          "id": "skeptical-power-user",
+          "resolved": true
+        },
+        {
+          "id": "fixture-only-persona",
+          "resolved": false
+        }
+      ]
+    }
+  }
+}

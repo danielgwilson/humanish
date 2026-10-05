@@ -113,7 +113,7 @@ export function parseStudy(raw: unknown): StudyParseResult {
  * Validate a parsed YAML object, humanish.study.v3 or humanish.lab.v2, into a StudyConfig. Pure:
  * the caller owns file IO. Structural validation only. Fields the engine does not yet consume are
  * accepted but reported in `warnings` so `study show` never silently swallows a setting that does
- * nothing. migrate's conversion (convert.ts) calls it directly, since it reads v2 files.
+ * nothing. migrate's conversion (migrate/convert.ts) calls it directly, since it reads v2 files.
  */
 export function parseStudyDocument(raw: unknown): StudyParseResult {
   if (!isRecord(raw)) {

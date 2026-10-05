@@ -1,0 +1,13 @@
+# v2 drops an empty focus instruction, so the count converts to participants: 2.
+schema: humanish.lab.v2
+id: focus-empty-instruction
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    count: 2
+    laneFocus:
+      instruction: ""
+execution:
+  target: e2b-desktop

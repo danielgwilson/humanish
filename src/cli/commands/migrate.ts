@@ -1,6 +1,10 @@
 import type { Command } from "commander";
 
-import { migrateStudies, type MigrateFile, type MigrateResult } from "../../study/migrate.js";
+import {
+  migrateStudies,
+  type MigrateFile,
+  type MigrateResult,
+} from "../../study/migrate/migrate.js";
 import {
   CWD_OPTION_DESCRIPTION,
   JSON_OPTION_DESCRIPTION,

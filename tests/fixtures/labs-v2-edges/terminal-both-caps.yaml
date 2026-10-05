@@ -1,0 +1,18 @@
+# A terminal study with both caps blocks keeps scenario.caps and reports execution.caps dropped.
+schema: humanish.lab.v2
+id: terminal-both-caps
+subject:
+  source: terminal-product
+  product:
+    name: example-tool
+    publicSurfaces:
+      - https://example.com/
+actors:
+  - type: codex-exec
+execution:
+  caps:
+    maxUsd: 1
+scenario:
+  caps:
+    maxUsd: 2
+    maxMinutes: 5

@@ -1,0 +1,1011 @@
+{
+  "openai-computer-use": {
+    "cua-browser": {
+      "dry": {
+        "studyId": "cua-browser",
+        "title": "Computer-use browser study",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "desktop": {
+              "device": "desktop"
+            },
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "repos": [
+              "your-org/your-app"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "openai-computer-use",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "openai",
+            "model": "gpt-5.6-sol"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Explore the app as a brand-new user trying to complete its primary flow. Note anything confusing. Stop when the flow completes or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {}
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "your-org/your-app",
+            "serve": {
+              "start": "pnpm start",
+              "url": "http://127.0.0.1:3000/",
+              "install": "pnpm install --frozen-lockfile",
+              "build": "pnpm build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 1200000,
+        "sandboxMs": 3600000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "key",
+            "name": "OPENAI_API_KEY"
+          }
+        ]
+      }
+    },
+    "first-run": {
+      "dry": {
+        "studyId": "first-run",
+        "title": "First-run synthetic Observer",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "preview",
+        "participantCount": 4
+      },
+      "live": {
+        "refusal": {
+          "route": "preview",
+          "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+          "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
+        }
+      }
+    },
+    "local-browser": {
+      "dry": {
+        "studyId": "local-browser",
+        "title": "Local browser · your app · Codex account",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "review": {
+            "analysis": {
+              "provider": "codex"
+            }
+          },
+          "execution": {
+            "desktop": {
+              "resolution": [
+                960,
+                720
+              ]
+            },
+            "target": "local"
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "provider": "codex",
+            "model": "gpt-6-astra",
+            "question": null,
+            "timeoutMs": 600000,
+            "maxCostUsd": null,
+            "maxOutputTokens": null,
+            "identity": {
+              "transport": "codex-app-server",
+              "authentication": "chatgpt-account",
+              "billing": "account-unknown",
+              "requestedModel": "gpt-6-astra",
+              "resolvedModel": "gpt-6-astra",
+              "reasoningEffort": "low",
+              "toolPolicy": "restricted-codex-v1",
+              "cliVersion": "0.160.0"
+            }
+          },
+          "trigger": "explicit",
+          "preferLargerOutput": false
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "local-agent",
+        "runner": {
+          "desktop": "local-vm",
+          "brain": {
+            "kind": "local-agent",
+            "agent": "codex",
+            "declaredModel": "gpt-6-astra"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "custom",
+                "preset": {
+                  "width": 960,
+                  "height": 720,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  960,
+                  720
+                ]
+              },
+              "limits": {
+                "reasoningEffort": "low"
+              }
+            }
+          ],
+          "subject": {
+            "kind": "app-url",
+            "appUrl": "http://127.0.0.1:3000",
+            "publicTargets": false
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 120000,
+        "sandboxMs": 1800000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "local-vm"
+          },
+          {
+            "kind": "local-agent",
+            "agent": "codex"
+          }
+        ]
+      }
+    },
+    "try-live": {
+      "dry": {
+        "studyId": "try-live",
+        "title": "Your first live study: one participant on a demo app",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "clone": {
+              "depth": 1
+            },
+            "repos": [
+              "drawdb-io/drawdb"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "openai-computer-use",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "openai",
+            "model": "gpt-5.6-sol"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {
+                "maxOutputTokens": 8192
+              }
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "drawdb-io/drawdb",
+            "serve": {
+              "start": "npx vite preview --host 127.0.0.1 --port 3000",
+              "url": "http://127.0.0.1:3000/",
+              "install": "npm install --no-audit --no-fund",
+              "build": "npm run build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 600000,
+        "sandboxMs": 3000000,
+        "caps": {
+          "maxUsd": 2
+        }
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "key",
+            "name": "OPENAI_API_KEY"
+          }
+        ]
+      }
+    }
+  },
+  "local-agent codex": {
+    "cua-browser": {
+      "dry": {
+        "studyId": "cua-browser",
+        "title": "Computer-use browser study",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "desktop": {
+              "device": "desktop"
+            },
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "repos": [
+              "your-org/your-app"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "openai-computer-use",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "openai",
+            "model": "gpt-5.6-sol"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Explore the app as a brand-new user trying to complete its primary flow. Note anything confusing. Stop when the flow completes or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {}
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "your-org/your-app",
+            "serve": {
+              "start": "pnpm start",
+              "url": "http://127.0.0.1:3000/",
+              "install": "pnpm install --frozen-lockfile",
+              "build": "pnpm build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 1200000,
+        "sandboxMs": 3600000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "key",
+            "name": "OPENAI_API_KEY"
+          }
+        ]
+      }
+    },
+    "first-run": {
+      "dry": {
+        "studyId": "first-run",
+        "title": "First-run synthetic Observer",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "preview",
+        "participantCount": 4
+      },
+      "live": {
+        "refusal": {
+          "route": "preview",
+          "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+          "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
+        }
+      }
+    },
+    "local-browser": {
+      "dry": {
+        "studyId": "local-browser",
+        "title": "Local browser · your app · Codex account",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "review": {
+            "analysis": {
+              "provider": "codex"
+            }
+          },
+          "execution": {
+            "desktop": {
+              "resolution": [
+                960,
+                720
+              ]
+            },
+            "target": "local"
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "provider": "codex",
+            "model": "gpt-6-astra",
+            "question": null,
+            "timeoutMs": 600000,
+            "maxCostUsd": null,
+            "maxOutputTokens": null,
+            "identity": {
+              "transport": "codex-app-server",
+              "authentication": "chatgpt-account",
+              "billing": "account-unknown",
+              "requestedModel": "gpt-6-astra",
+              "resolvedModel": "gpt-6-astra",
+              "reasoningEffort": "low",
+              "toolPolicy": "restricted-codex-v1",
+              "cliVersion": "0.160.0"
+            }
+          },
+          "trigger": "explicit",
+          "preferLargerOutput": false
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "local-agent",
+        "runner": {
+          "desktop": "local-vm",
+          "brain": {
+            "kind": "local-agent",
+            "agent": "codex",
+            "declaredModel": "gpt-6-astra"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "custom",
+                "preset": {
+                  "width": 960,
+                  "height": 720,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  960,
+                  720
+                ]
+              },
+              "limits": {
+                "reasoningEffort": "low"
+              }
+            }
+          ],
+          "subject": {
+            "kind": "app-url",
+            "appUrl": "http://127.0.0.1:3000",
+            "publicTargets": false
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 120000,
+        "sandboxMs": 1800000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "local-vm"
+          },
+          {
+            "kind": "local-agent",
+            "agent": "codex"
+          }
+        ]
+      }
+    },
+    "try-live": {
+      "dry": {
+        "studyId": "try-live",
+        "title": "Your first live study: one participant on a demo app",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "clone": {
+              "depth": 1
+            },
+            "repos": [
+              "drawdb-io/drawdb"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "local-agent",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "local-agent",
+            "agent": "codex"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {}
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "drawdb-io/drawdb",
+            "serve": {
+              "start": "npx vite preview --host 127.0.0.1 --port 3000",
+              "url": "http://127.0.0.1:3000/",
+              "install": "npm install --no-audit --no-fund",
+              "build": "npm run build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 600000,
+        "sandboxMs": 3000000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "local-agent",
+            "agent": "codex"
+          }
+        ]
+      }
+    }
+  },
+  "local-agent claude": {
+    "cua-browser": {
+      "dry": {
+        "studyId": "cua-browser",
+        "title": "Computer-use browser study",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "desktop": {
+              "device": "desktop"
+            },
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "repos": [
+              "your-org/your-app"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "openai-computer-use",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "openai",
+            "model": "gpt-5.6-sol"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Explore the app as a brand-new user trying to complete its primary flow. Note anything confusing. Stop when the flow completes or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {}
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "your-org/your-app",
+            "serve": {
+              "start": "pnpm start",
+              "url": "http://127.0.0.1:3000/",
+              "install": "pnpm install --frozen-lockfile",
+              "build": "pnpm build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 1200000,
+        "sandboxMs": 3600000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "key",
+            "name": "OPENAI_API_KEY"
+          }
+        ]
+      }
+    },
+    "first-run": {
+      "dry": {
+        "studyId": "first-run",
+        "title": "First-run synthetic Observer",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "preview",
+        "participantCount": 4
+      },
+      "live": {
+        "refusal": {
+          "route": "preview",
+          "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+          "message": "this-repo studies are dry-run only; use a clone or app-url subject for a live run."
+        }
+      }
+    },
+    "local-browser": {
+      "dry": {
+        "studyId": "local-browser",
+        "title": "Local browser · your app · Codex account",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "review": {
+            "analysis": {
+              "provider": "codex"
+            }
+          },
+          "execution": {
+            "desktop": {
+              "resolution": [
+                960,
+                720
+              ]
+            },
+            "target": "local"
+          },
+          "subject": {}
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "provider": "codex",
+            "model": "gpt-6-astra",
+            "question": null,
+            "timeoutMs": 600000,
+            "maxCostUsd": null,
+            "maxOutputTokens": null,
+            "identity": {
+              "transport": "codex-app-server",
+              "authentication": "chatgpt-account",
+              "billing": "account-unknown",
+              "requestedModel": "gpt-6-astra",
+              "resolvedModel": "gpt-6-astra",
+              "reasoningEffort": "low",
+              "toolPolicy": "restricted-codex-v1",
+              "cliVersion": "0.160.0"
+            }
+          },
+          "trigger": "explicit",
+          "preferLargerOutput": false
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "local-agent",
+        "runner": {
+          "desktop": "local-vm",
+          "brain": {
+            "kind": "local-agent",
+            "agent": "codex",
+            "declaredModel": "gpt-6-astra"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck."
+              },
+              "labels": {},
+              "device": {
+                "name": "custom",
+                "preset": {
+                  "width": 960,
+                  "height": 720,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  960,
+                  720
+                ]
+              },
+              "limits": {
+                "reasoningEffort": "low"
+              }
+            }
+          ],
+          "subject": {
+            "kind": "app-url",
+            "appUrl": "http://127.0.0.1:3000",
+            "publicTargets": false
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 120000,
+        "sandboxMs": 1800000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "local-vm"
+          },
+          {
+            "kind": "local-agent",
+            "agent": "codex"
+          }
+        ]
+      }
+    },
+    "try-live": {
+      "dry": {
+        "studyId": "try-live",
+        "title": "Your first live study: one participant on a demo app",
+        "residual": {
+          "defaults": {
+            "open": true
+          },
+          "execution": {
+            "target": "e2b-desktop"
+          },
+          "subject": {
+            "clone": {
+              "depth": 1
+            },
+            "repos": [
+              "drawdb-io/drawdb"
+            ]
+          }
+        },
+        "dryRun": true,
+        "analysis": {
+          "config": {
+            "model": "gpt-6-astra",
+            "maxCostUsd": 3,
+            "timeoutMs": 600000,
+            "maxOutputTokens": 16384,
+            "question": null
+          },
+          "trigger": "default",
+          "preferLargerOutput": true
+        },
+        "requirements": [],
+        "route": "computer-use",
+        "actor": "local-agent",
+        "runner": {
+          "desktop": "e2b-desktop",
+          "brain": {
+            "kind": "local-agent",
+            "agent": "claude"
+          },
+          "participants": [
+            {
+              "id": "lane-01",
+              "index": 0,
+              "personaId": "synthetic-new-user",
+              "assignment": {
+                "mission": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated."
+              },
+              "labels": {},
+              "device": {
+                "name": "desktop",
+                "preset": {
+                  "width": 1440,
+                  "height": 950,
+                  "isMobile": false,
+                  "deviceScaleFactor": 1
+                },
+                "resolution": [
+                  1440,
+                  950
+                ]
+              },
+              "limits": {}
+            }
+          ],
+          "subject": {
+            "kind": "clone",
+            "repo": "drawdb-io/drawdb",
+            "serve": {
+              "start": "npx vite preview --host 127.0.0.1 --port 3000",
+              "url": "http://127.0.0.1:3000/",
+              "install": "npm install --no-audit --no-fund",
+              "build": "npm run build"
+            },
+            "env": []
+          }
+        },
+        "concurrency": 1,
+        "sessionBudgetMs": 600000,
+        "sandboxMs": 3000000,
+        "caps": {}
+      },
+      "live": {
+        "requirements": [
+          {
+            "kind": "key",
+            "name": "E2B_API_KEY"
+          },
+          {
+            "kind": "local-agent",
+            "agent": "claude"
+          }
+        ]
+      }
+    }
+  }
+}

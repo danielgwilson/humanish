@@ -16,10 +16,10 @@ import { link, lstat, readdir, readFile, realpath, rename, rmdir } from "node:fs
 import path from "node:path";
 import { parseDocument } from "yaml";
 
-import type { StudyRoute } from "./routing.js";
-import { isNodeError } from "../run/type-guards.js";
+import type { StudyRoute } from "../routing.js";
+import { isNodeError } from "../../run/type-guards.js";
 import { convertStudyText, isStudyV3, type DroppedKey, type MovedKey } from "./convert.js";
-import { otherStudyFiles, STUDY_DIRECTORIES, studyFileStem } from "./files.js";
+import { otherStudyFiles, STUDY_DIRECTORIES, studyFileStem } from "../files.js";
 import {
   assertDirectory,
   bindDirectory,

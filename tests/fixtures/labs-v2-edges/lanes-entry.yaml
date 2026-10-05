@@ -1,0 +1,14 @@
+# A participant list with an entry on computer use reports actors[0].lanes[].entry dropped.
+schema: humanish.lab.v2
+id: lanes-entry
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    lanes:
+      - id: first
+        entry: http://127.0.0.1:3000/start
+      - id: second
+execution:
+  target: e2b-desktop

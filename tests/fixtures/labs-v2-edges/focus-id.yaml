@@ -1,0 +1,13 @@
+# A focus with only an id converts to participants: 2 and reports actors[0].laneFocus.id dropped.
+schema: humanish.lab.v2
+id: focus-id
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actors:
+  - type: openai-computer-use
+    count: 2
+    laneFocus:
+      id: focus-a
+execution:
+  target: e2b-desktop

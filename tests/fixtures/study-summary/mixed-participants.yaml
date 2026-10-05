@@ -1,0 +1,34 @@
+# Read by tests/study/summaries.test.ts and tests/surface/study-show-roundtrip.test.ts. It holds
+# what no committed study does at once: a declared model, participants with different personas, a
+# participant whose effort differs from the actor's, a group the parser expands, and a persona id
+# with no file.
+schema: humanish.study.v3
+id: mixed-participants
+title: Summary fixture with a declared model and mixed participants
+description: >-
+  Four participants on a loopback app, for the summary and study show pins. Never run.
+route: computer-use
+mode: dry-run
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000/
+actor:
+  type: openai-computer-use
+  model: gpt-6-astra
+  reasoningEffort: low
+  mission: Create one item, rename it, then stop.
+participants:
+  - id: newcomer
+    persona: synthetic-new-user
+  - id: expert
+    persona: skeptical-power-user
+    reasoningEffort: high
+  - id: skimmer
+    count: 2
+    persona: fixture-only-persona
+caps:
+  maxUsd: 2
+  maxTotalUsd: 5
+execution:
+  target: e2b-desktop
+  timeoutMs: 600000

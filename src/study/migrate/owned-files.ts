@@ -8,7 +8,7 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { isNodeError } from "../run/type-guards.js";
+import { isNodeError } from "../../run/type-guards.js";
 
 export interface FileIdentity {
   readonly dev: bigint;

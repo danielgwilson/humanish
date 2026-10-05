@@ -1,6 +1,6 @@
 // A humanish.study.v3 file parses into the same config as its humanish.lab.v2 source, so the planner
 // cannot tell them apart. Each committed lab gets a v3 twin, built here by the key mapping in
-// handoffs/2026-10-02-study/DESIGN.md section 3, independently of src/study/convert.ts. The starters
+// handoffs/2026-10-02-study/DESIGN.md section 3, independently of src/study/migrate/convert.ts. The starters
 // init writes are v3 already. Error cases are in study-v3-errors.test.ts.
 
 import { readFile, readdir } from "node:fs/promises";
