@@ -65,6 +65,14 @@ the forms of `participants`, `surfaces` and `caps` it takes. humanish refuses a 
 file with `HUMANISH_STUDY_V2_UNSUPPORTED`, whose message names `humanish migrate <path>`; migrate
 converts the file to v3.
 
+The parsed config is the file with defaults filled: a `participants` entry with a `count` expanded
+into its participants, `comms.email.recipients` and a shared world's `execution.concurrency`
+filled, `kind: real` added beside an email `connection`, and a local browser study's model,
+effort, timeout and resolution. `humanish study show --json` prints that config, and `parseStudy`
+reads it back to the same config. Before 0.111.0, `StudyConfig` had the `humanish.lab.v2` keys
+(`actors`, `execution.caps`, the `scenario` object, `subject.topology`); the 0.111.0 release notes
+map each one to its v3 key.
+
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:
 
@@ -1553,6 +1561,15 @@ Refusals:
   a preview or scripted study, `createProvider` off computer use, or `prepareDesktop` where no E2B
   desktop exists. The message names the option and the route. The same code refuses a field
   `RunStudyOptions` no longer has (below); that message names the field and where its job went.
+- `HUMANISH_STUDY_V2_UNSUPPORTED`: the config is `humanish.lab.v2`, or it still sets a
+  `StudyConfig` field of humanish 0.110 that 0.111.0 renamed: `actors`, a `scenario` object,
+  `execution.caps`, `subject.topology` or `personas`. The message names each one's v3 field. The
+  planners read only the v3 fields, so a budget left in `execution.caps` would otherwise run
+  uncapped.
+- `HUMANISH_STUDY_INVALID`: the config has no `actor` object, or its `route` is missing or is not
+  the route its subject and actor take. The message is the one `parseStudy` gives.
+
+`runStudy` checks the config before the options, so a config refusal comes first.
 
 `rerun.laneIds`, the older name of `rerun.participantIds`, was removed in 0.107.0. A caller that
 still passes it is refused with `HUMANISH_STUDY_OPTION_UNSUPPORTED`; use `rerun.participantIds`.

@@ -31,7 +31,15 @@ if (outcome.route === "computer-use") {
 
 `parseStudy` takes a decoded object, not YAML text: a `humanish.study.v3` study. It refuses a
 0.107 `humanish.lab.v2` one with `HUMANISH_STUDY_V2_UNSUPPORTED`; `humanish migrate` converts the
-file. `runStudy`'s options are `RunStudyOptions`:
+file. The `StudyConfig` it returns has the file's keys (`route`, `actor`, `participants`, `caps`,
+`mode`) with defaults filled, so `parsed.config.actor.type` is the actor and
+`parsed.config.caps?.maxUsd` the budget. A config you build yourself has the same keys.
+
+`runStudy` refuses a config that still sets a `StudyConfig` field of humanish 0.110 (`actors`, a
+`scenario` object, `execution.caps`, `subject.topology` or `personas`) with
+`HUMANISH_STUDY_V2_UNSUPPORTED`, naming each field's v3 key. It refuses a config with no `actor`,
+or a `route` its subject and actor do not take, with `HUMANISH_STUDY_INVALID`. Each refusal comes
+in the route's result before anything runs. `runStudy`'s options are `RunStudyOptions`:
 `env`, `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `onEvent`, `onStream`,
 `analysisSignal` and `onObserverReady`, beside `dryRun`, `runId`, `count` and `rerun`. The
 [library options contract](repo:docs/contracts/schemas.md#library-options)
