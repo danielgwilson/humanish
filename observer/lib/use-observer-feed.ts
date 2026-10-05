@@ -13,7 +13,12 @@ import {
 export interface ObserverConnection {
   state: "connecting" | "current" | "retrying" | "offline";
   lastReceivedAt: number | null;
+  /** The serving process stopped answering: several polls in a row got no response at all. */
+  serverStopped?: boolean;
 }
+
+/** One failed poll is a hiccup. This many in a row, each with no response, is a stopped server. */
+const SERVER_STOPPED_AFTER = 3;
 
 export function useObserverFeed(
   initial: ObserverData | null,
@@ -31,6 +36,8 @@ export function useObserverFeed(
   });
   const [revision, setRevision] = useState(0);
   const retry = useCallback(() => setRevision((v) => v + 1), []);
+  // Retry restarts polling. The count survives it, so a notice stays until a server answers.
+  const unanswered = useRef(0);
   useEffect(() => {
     if (snapshot || !isServedOrigin(window.location.protocol)) return;
     let disposed = false;
@@ -39,20 +46,35 @@ export function useObserverFeed(
     let nextHistory = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
-    const fetchImpl: typeof fetch = (input, init) => window.fetch(input, init);
+    let answered = false;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const response = await window.fetch(input, init);
+      answered = true;
+      return response;
+    };
     const poll = async () => {
       if (disposed || inFlight) return;
       inFlight = true;
+      answered = false;
       controller = new AbortController();
       const deadline = setTimeout(() => controller?.abort(), 15_000);
       try {
         const next = await fetchObserverData(fetchImpl, "observer-data.json", controller.signal);
         if (disposed) return;
+        // A response of any status means a server is there. Only silence counts toward a stop,
+        // and not while the browser itself reports no network.
+        if (answered) unanswered.current = 0;
+        else if (navigator.onLine !== false) unanswered.current += 1;
         if (next && (runId === undefined || next.run.runId === runId)) {
           runId = next.run.runId;
           setData(next);
           setConnection({ state: "current", lastReceivedAt: Date.now() });
-        } else setConnection((prev) => ({ ...prev, state: "retrying" }));
+        } else
+          setConnection((prev) => ({
+            ...prev,
+            state: "retrying",
+            serverStopped: unanswered.current >= SERVER_STOPPED_AFTER,
+          }));
         if (Date.now() >= nextHistory) {
           const nextIndex = await fetchHistoryIndex(fetchImpl, controller.signal);
           if (!disposed && nextIndex) setHistory(nextIndex);

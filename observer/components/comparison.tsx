@@ -30,7 +30,10 @@ export function Comparison({
   onBack,
   onOpen,
   onLocationChange,
+  serverStopped = false,
 }: {
+  /** The serving process is gone; one page notice says so in place of a message per frame. */
+  serverStopped?: boolean;
   data: ObserverData;
   streams: ObserverStream[];
   history: HistoryIndex | null;
@@ -47,6 +50,12 @@ export function Comparison({
   const [otherLane, setOtherLane] = useState(() => comparisonRoute().lane);
   const [loadState, setLoadState] = useState("");
   const [failedImages, setFailedImages] = useState<string[]>([]);
+  const [previousStopped, setPreviousStopped] = useState(serverStopped);
+  if (previousStopped !== serverStopped) {
+    setPreviousStopped(serverStopped);
+    // Requests failed while no server answered; ask again once one does.
+    if (!serverStopped) setFailedImages([]);
+  }
   const availableOther = !!history?.runs.some((run) => run.runId === otherId);
   const otherAllowed = streams.length < 3;
   useEffect(() => {
@@ -277,7 +286,8 @@ export function Comparison({
               ? new URL(frame.href, new URL(p.base, window.location.href)).href
               : frame.href
             : null;
-          const failed = href !== null && failedImages.includes(href);
+          const failed = href !== null && !serverStopped && failedImages.includes(href);
+          const unreachable = href !== null && serverStopped && failedImages.includes(href);
           return (
             <article
               key={`${p.run}/${p.stream.id}`}
@@ -287,7 +297,7 @@ export function Comparison({
               <h2>{p.name}</h2>
               <p className="compare-run">{p.run}</p>
               <div className="compare-stage">
-                {href && !failed ? (
+                {unreachable ? null : href && !failed ? (
                   <img
                     src={href}
                     alt={`Recorded frame from ${p.name}`}

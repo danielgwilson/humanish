@@ -13,6 +13,7 @@ import { EmptyState } from "./components/empty-state";
 import { ParticipantStub } from "./components/participant-stub";
 import { Player } from "./components/player";
 import { RunStatus } from "./components/run-status";
+import { ServerStoppedNotice } from "./components/server-stopped";
 import { SavedMoments } from "./components/saved-moments";
 import { Sidebar, type StudyLibrary } from "./components/sidebar";
 import { Select } from "./components/ui/select";
@@ -680,6 +681,7 @@ export function App({
       ) : null}
       {comparison ? (
         <Comparison
+          serverStopped={connection.serverStopped === true}
           data={data}
           streams={streams.filter((s) => compareIds.includes(s.id))}
           history={history}
@@ -723,6 +725,7 @@ export function App({
       ) : (
         <StudyGrid
           key={data.run.runId}
+          serverStopped={connection.serverStopped === true}
           recording={studyPlayback.recording}
           atMs={studyPlayback.atMs}
           reviewing={studyPlayback.reviewing}
@@ -865,7 +868,10 @@ export function App({
               </nav>
               <ShareStatus data={data} />
             </section>
-            {needsAttention || monitoring ? (
+            {connection.serverStopped ? (
+              <ServerStoppedNotice data={data} connection={connection} now={now} onRetry={retry} />
+            ) : null}
+            {(needsAttention && !connection.serverStopped) || monitoring ? (
               <RunStatus
                 data={data}
                 connection={connection}
