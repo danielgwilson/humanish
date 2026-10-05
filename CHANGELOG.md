@@ -33,19 +33,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- `humanish verify` caught 12 of 31 common secret formats in a run file. It now also catches
-  Vercel tokens and preview bypass and share parameters, the password in a URL's user info,
-  credential query and fragment parameters such as `token=`, `access_token=` and
-  `X-Amz-Signature=` up to the next delimiter, AWS secret access keys next to their name, Google
-  OAuth access tokens, Stripe test and webhook keys, Slack webhook URLs and app tokens, basic
-  `Authorization` values, npm, GitLab and SendGrid tokens, upper-case `*_TOKEN`, `*_SECRET`,
-  `*_PASSWORD` and `*_API_KEY` variables set to a long value with a digit and a letter, quoted or
-  not, also inside a JSON string, and Windows profile paths, as written, percent-encoded or
-  base64-encoded. Redaction keeps the parameter or user name and replaces the value:
-  `?token=[REDACTED_SECRET]`.
+- `humanish verify` caught 12 of the 38 secret formats `tests/verify/secret-formats.test.ts` lists.
+  It now catches all 38, as written, percent-encoded or base64-encoded, including base64 in a URL
+  path segment. The additions: Vercel tokens and preview bypass and share parameters, the password
+  in a URL's user info, credential query and fragment parameters such as `token=`,
+  `access_token=` and `X-Amz-Signature=` up to the next delimiter, AWS secret access keys next to
+  their name, Google OAuth access tokens, Stripe test and webhook keys, Slack webhook URLs and app
+  tokens, basic `Authorization` values, npm, GitLab and SendGrid tokens, upper-case `*_TOKEN`,
+  `*_SECRET`, `*_PASSWORD` and `*_API_KEY` variables set to a long value with a digit and a letter,
+  quoted or not and also inside JSON strings, and Windows profile paths. A value that is only a
+  placeholder, such as `[REDACTED_SECRET]`, `${TOKEN}` or `<your-token>`, does not count; a value
+  that merely starts with `*` or `$` does. Redaction keeps the parameter or user name and replaces
+  the value: `?token=[REDACTED_SECRET]`.
 - A run file holding a token-shaped run of several megabytes, such as `sk-` or `Bearer ` followed
-  by 8 MB of letters, made `verify` and redaction throw `Maximum call stack size exceeded`. The
-  patterns now scan such a run in linear time.
+  by 8 MB of letters, made `verify` and redaction throw `Maximum call stack size exceeded`, and so
+  did 8 MB of base64 or hex in verify's decoding stage. The patterns and the decoder now read such a
+  run in linear time.
 - `humanish observe --all --safe` served a `share_ready` run's `sandbox-receipts.ndjson`, which
   holds the raw sandbox ids, and its `status.json`, which holds the recording process id, to
   anyone the library admits, on a tunnel without edge auth too. No Observer server serves either

@@ -26,8 +26,7 @@ export function urlCredentialReason(
   }
   if (url.username !== "" || url.password !== "")
     return `\`${field}\` has a user name or password in it. humanish records the URL in the run, and the participant's browser shows it in every screenshot, so the credential would reach the bundle and the model. Remove it from the URL and give the participant a test account to sign in with.`;
-  const rest = `${url.pathname}${url.search}${url.hash}`;
-  if (scanEncodedText(rest, { secretsOnly: true, allowOpaqueBase64: true }).sensitive)
+  if (urlPartsHoldSecret(value, url))
     return `\`${field}\` carries a credential in its path, query or fragment, such as a token, a signature or a preview bypass parameter. humanish records the URL in the run, and the participant's browser shows it in every screenshot. Remove it from the URL. For a protected preview, make the deployment reachable without a token for the study, or build the app in the desktop with a clone subject.`;
   return undefined;
 }
@@ -35,4 +34,19 @@ export function urlCredentialReason(
 /** Why the participant entry at `field` cannot be used, resolved as a path on the subject. */
 export function entryCredentialReason(field: string, entry: string): string | undefined {
   return urlCredentialReason(field, entry, ENTRY_BASE);
+}
+
+/**
+ * Whether the URL's path, query or fragment holds a secret: read whole, as the parser normalized
+ * it and as written (`..` segments can drop a segment from the normalized path), and one segment,
+ * value or fragment piece at a time, so the text around an encoded key cannot shift its decoding.
+ */
+function urlPartsHoldSecret(value: string, url: URL): boolean {
+  const written = value.replace(/^[a-z][a-z0-9+.-]{0,31}:\/\/[^/?#]*/i, "");
+  const pieces = [written, `${url.pathname}${url.search}${url.hash}`, ...written.split(/[/?#&=;]/)];
+  return pieces.some(
+    (piece) =>
+      piece.length > 0 &&
+      scanEncodedText(piece, { secretsOnly: true, allowOpaqueBase64: true }).sensitive,
+  );
 }

@@ -44,6 +44,14 @@ describe("study URLs with credentials", () => {
     ["a password alone", `https://:${TOKEN}@preview.example.com/`],
     ["a password with punctuation", `https://preview.example.com/?password=${TOKEN}!-${TOKEN}`],
     [
+      "a key a dot-dot segment removes from the normalized path",
+      `https://preview.example.com/${"sk-" + "proj-"}${TOKEN}${TOKEN}/../`,
+    ],
+    [
+      "a base64 key in a path segment",
+      `https://preview.example.com/x/${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64")}`,
+    ],
+    [
       "a base64-encoded key",
       `https://preview.example.com/?payload=${Buffer.from(`${"sk-" + "proj-"}${TOKEN}`).toString("base64url")}`,
     ],
