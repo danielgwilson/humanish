@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A scripted run now scrubs its known values (`E2B_API_KEY`, each `subject.env` value and the
+  clone repository) from the step trace in `traces/<surface>.json` and `actor-<surface>.json`, and
+  from the scenario goal, title and step labels it records. Before, a known value in a `goto` path,
+  a step label or a page error stayed in those files and in run.json, review.md, events.ndjson and
+  the Observer.
+- Each route now also scrubs a known value that a URL carries percent-encoded, such as a value with
+  a space in a page URL or in a link a participant or a terminal command prints. The encoded span
+  is replaced with `[REDACTED_SECRET]` and the rest of the text is kept as written. Before, only
+  the value as written was scrubbed.
+
 ## 0.111.3: Shared-world feedback candidates, scripted E2B key scrubbed, subject sandbox warnings (2026-10-06)
 
 humanish 0.111.3 gives shared-world runs feedback candidates and repairs seven places where one

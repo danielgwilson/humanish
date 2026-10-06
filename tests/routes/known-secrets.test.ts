@@ -10,6 +10,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { ActorCapabilities } from "../../src/actors/contract.js";
+import type {
+  CuaExecutor,
+  CuaObservation,
+  CuaProvider,
+  CuaTurn,
+} from "../../src/actors/computer-use/loop.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,
@@ -21,12 +28,14 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
-import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
+import { passingRun, streamingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 /** A value with no secret shape, so only the literal scrub can remove it. */
 const opaque = (label: string): string =>
   ["synthetic", label, "value", "do", "not", "leak"].join("-");
+/** A value with spaces, which a URL carries percent-encoded. */
+const spaced = (label: string): string => ["synthetic", label, "value do not leak"].join(" ");
 /** A value under the default four-character floor. */
 const SHORT = ["q", "7", "z"].join("");
 
@@ -283,13 +292,8 @@ describe("scripted scrubs its known values from the step trace", () => {
     expect(result.error).toBeUndefined();
     expect(result.sessions.map((session) => session.completionReason)).toEqual(["step_failed"]);
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    const files = await runFiles(runDir);
-    expect(files).toContain("traces/desktop.json");
-    const holding: string[] = [];
-    for (const file of files) {
-      if ((await readFile(path.join(runDir, file))).includes(e2b)) holding.push(file);
-    }
-    expect(holding).toEqual([]);
+    expect(await runFiles(runDir)).toContain("traces/desktop.json");
+    expect(await filesHolding(runDir, [e2b])).toEqual([]);
     const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
     expect(trace.steps[0].url).toMatch(
       /^http:\/\/127\.0\.0\.1:\d+\/settings\/\[REDACTED_SECRET\]$/,
@@ -298,6 +302,118 @@ describe("scripted scrubs its known values from the step trace", () => {
     expect(trace.steps[1].reason).toContain("Welcome [REDACTED_SECRET]");
   });
 });
+
+describe("computer use and terminal scrub their known values from every run file", () => {
+  it("computer use: a participant that narrates both keys, one percent-encoded, leaves no copy in any run file", async () => {
+    const openai = opaque("openai");
+    const e2b = spaced("e2b");
+    const values = [openai, e2b, encodeURIComponent(e2b)];
+    const capabilities: ActorCapabilities = {
+      headless: true,
+      structuredTrace: true,
+      lanes: ["computer-use"],
+      producesScreenshots: false,
+      byoModel: true,
+      preGrantableApprovals: false,
+      inProcessTools: false,
+      license: "open",
+    };
+    let turn = 0;
+    const provider: CuaProvider = {
+      id: "narrating-brain",
+      version: "0.1.0",
+      requiresFrame: false,
+      capabilities,
+      async nextTurn(): Promise<CuaTurn> {
+        turn += 1;
+        const quoted = `${openai} at http://127.0.0.1:5173/k/${encodeURIComponent(e2b)}`;
+        return turn >= 2
+          ? {
+              actions: [],
+              pendingSafetyChecks: [],
+              done: true,
+              message: `Done. The page showed ${quoted}, which was confusing.`,
+            }
+          : {
+              actions: [{ kind: "type", text: `${openai} ${e2b}` }],
+              pendingSafetyChecks: [],
+              done: false,
+              reasoning: `The page shows ${quoted}.`,
+              message: `Typing ${quoted}.`,
+            };
+      },
+    };
+    const executor: CuaExecutor = {
+      async observe(): Promise<CuaObservation> {
+        return {
+          stateSignature: `sig-${turn}`,
+          url: `http://127.0.0.1:5173/k/${encodeURIComponent(e2b)}`,
+          text: `token ${openai}`,
+          appState: { turn },
+        };
+      },
+      async execute(): Promise<void> {},
+    };
+    const result = await runComputerUse({
+      cwd,
+      config: parsed({
+        schema: STUDY_SCHEMA,
+        id: "known-secrets-computer-use-files",
+        title: "Known secrets in computer-use run files",
+        route: "computer-use",
+        mode: "live",
+        subject: { source: "local-app", appUrl: "http://localhost:5173/" },
+        actor: { type: "openai-computer-use", persona: "pixel-pat", mission: "Find the token." },
+        review: { analysis: false },
+      }),
+      dryRun: false,
+      env: { OPENAI_API_KEY: openai, E2B_API_KEY: e2b },
+      inProcess: { executor: async () => executor },
+      createProvider: async () => provider,
+    });
+    expect(result.session?.completionReason).toBe("goal_satisfied");
+    expect(await filesHolding(path.join(cwd, ".humanish", "runs", result.runId), values)).toEqual(
+      [],
+    );
+  });
+
+  it("terminal: output that prints both keys, one percent-encoded, leaves no copy in any run file", async () => {
+    const runtimeKey = opaque("runtime");
+    const e2b = spaced("e2b");
+    const values = [runtimeKey, e2b, encodeURIComponent(e2b)];
+    const config = terminalConfig({
+      actor: {
+        type: "codex-exec",
+        persona: "autonomous-creative-agent",
+        mission: "Discover the CLI.",
+      },
+    });
+    const run = {
+      ...streamingRun((nonce) => [
+        `key ${runtimeKey}\n`,
+        `see https://example.test/k/${encodeURIComponent(e2b)}\n`,
+        `raw ${e2b}\n`,
+        `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,
+      ]),
+      env: { OPENAI_API_KEY: runtimeKey, E2B_API_KEY: e2b },
+    };
+    const result = await runTerminal({ cwd, config, dryRun: false, ...run });
+    expect(result.ok).toBe(true);
+    expect(await filesHolding(path.join(cwd, ".humanish", "runs", result.runId), values)).toEqual(
+      [],
+    );
+  });
+});
+
+/** Each file under `root` that holds one of `values`, with the value it holds. */
+async function filesHolding(root: string, values: readonly string[]): Promise<string[]> {
+  const holding: string[] = [];
+  for (const file of await runFiles(root)) {
+    const bytes = await readFile(path.join(root, file));
+    for (const value of values) if (bytes.includes(value)) holding.push(`${file}: ${value}`);
+  }
+  return holding;
+}
 
 /** Every file under `root`, as a path relative to it. */
 async function runFiles(root: string): Promise<string[]> {

@@ -37,7 +37,7 @@ import {
 } from "../../../src/actors/scripted-browser/types.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../../src/actors/scripted-browser/journey.js";
 import { resolveBrowserCommand } from "../../../src/actors/scripted-browser/browser-command.js";
-import { scrubLiterals } from "../../../src/evidence/redaction.js";
+import { RunSecrets } from "../../../src/run/secrets.js";
 import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 
@@ -576,7 +576,7 @@ describe("runScriptedBrowserSession (completion semantics through the real step 
         timeoutMs: 10_000,
         artifactRoot,
         launchBrowser: async () => browser,
-        scrubKnownValues: scrubLiterals([known]),
+        scrubKnownValues: new RunSecrets([known]).scrub,
       });
 
       expect(state.url).toBe(`${appUrl}settings/${encodeURIComponent(known)}`);

@@ -19,7 +19,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "../../evidence/browser-hygiene.js";
-import { redactText, scrubDecodedToo } from "../../evidence/redaction.js";
+import { redactText } from "../../evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -122,7 +122,7 @@ export interface ScriptedBrowserSessionOptions {
   now?: () => number;
   /**
    * The run's scrub of its known secret values. Each URL and text the session records passes
-   * through it, percent-decoded too, before the trace is written or the capture returned.
+   * through it before the trace is written or the capture returned.
    */
   scrubKnownValues?: (text: string) => string;
 }
@@ -195,10 +195,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
     options.browserCommand ?? (options.launchBrowser ? "injected-browser" : "");
   const evidenceAppUrl = options.evidenceAppUrl ?? options.appUrl;
   const urlPolicy = options.urlPolicy ?? LOOPBACK_EVIDENCE_URL_POLICY;
-  const scrub =
-    options.scrubKnownValues === undefined
-      ? (text: string) => text
-      : scrubDecodedToo(options.scrubKnownValues);
+  const scrub = options.scrubKnownValues ?? ((text: string) => text);
 
   const finish = async (args: {
     capture: BrowserSurfaceCapture;
