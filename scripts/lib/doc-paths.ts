@@ -49,7 +49,7 @@ export function buildRepoIndex(paths: Iterable<string>): RepoIndex {
 // since moved. docs/evidence/ holds the dated study records current pages cite, so it is checked.
 const HISTORY_DIRECTORIES = ["docs/history/"];
 // A dated `pnpm arch:bench` result lists the src/ modules of the commit it measured, which later
-// commits move and delete. The README beside the results is checked.
+// commits move and delete. The `README.md` beside the results is checked.
 const DATED_ARCHITECTURE_RESULT = /^docs\/evidence\/architecture\/\d{4}-\d{2}-\d{2}-[\w-]+\.md$/;
 const ROOT_GUIDES = new Set([
   "README.md",

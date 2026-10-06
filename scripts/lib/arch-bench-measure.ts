@@ -62,6 +62,8 @@ export interface SeamRow {
   name: string;
   path: string;
   reasons: string[];
+  /** The seam is a function type. */
+  callable: boolean;
   members: number;
   functionMembers: number;
   srcImplementations: number;
@@ -109,52 +111,55 @@ export function measureArchitecture(
   };
 }
 
-/** One row per top-level src folder, largest first. */
-function folderRows(modules: readonly ModuleFacts[]): FolderRow[] {
-  const rows = new Map<
-    string,
-    {
-      files: number;
-      codeLines: number;
-      symbols: Set<string>;
-      targets: Set<string>;
-      importers: Set<string>;
-    }
-  >();
-  const rowOf = (folder: string) => {
-    let row = rows.get(folder);
-    if (row === undefined) {
-      row = {
+interface FolderInterface {
+  files: number;
+  codeLines: number;
+  /** Declarations modules in other src folders import, as `<path>#<name>`. */
+  symbols: Set<string>;
+  /** Files of the folder that modules in other src folders import. */
+  targets: Set<string>;
+  /** Other src folders that import the folder. */
+  importers: Set<string>;
+}
+
+/** Each top-level src folder's size and what other src folders import from it. */
+function folderInterfaces(modules: readonly ModuleFacts[]): Map<string, FolderInterface> {
+  const folders = new Map<string, FolderInterface>();
+  const folderOf = (name: string) => {
+    let folder = folders.get(name);
+    if (folder === undefined) {
+      folder = {
         files: 0,
         codeLines: 0,
         symbols: new Set(),
         targets: new Set(),
         importers: new Set(),
       };
-      rows.set(folder, row);
+      folders.set(name, folder);
     }
-    return row;
+    return folder;
   };
-  for (const module of modules) {
-    const folder = srcFolderOf(module.path);
-    if (module.role !== "src" || folder === undefined) continue;
-    const row = rowOf(folder);
-    row.files++;
-    row.codeLines += module.codeLines;
-  }
   for (const module of modules) {
     const from = srcFolderOf(module.path);
     if (module.role !== "src" || from === undefined) continue;
+    const own = folderOf(from);
+    own.files++;
+    own.codeLines += module.codeLines;
     for (const edge of module.imports) {
       const to = srcFolderOf(edge.target);
       if (to === undefined || to === from) continue;
-      const row = rowOf(to);
-      for (const symbol of edge.symbols) row.symbols.add(symbol);
-      row.targets.add(edge.target);
-      row.importers.add(from);
+      const folder = folderOf(to);
+      for (const symbol of edge.symbols) folder.symbols.add(symbol);
+      folder.targets.add(edge.target);
+      folder.importers.add(from);
     }
   }
-  return [...rows]
+  return folders;
+}
+
+/** One row per top-level src folder, largest first. */
+function folderRows(modules: readonly ModuleFacts[]): FolderRow[] {
+  return [...folderInterfaces(modules)]
     .map(([folder, row]) => ({
       folder,
       files: row.files,
@@ -196,8 +201,9 @@ function deletionCandidates(
 /**
  * How much of src/ tests reach directly, how often they replace a src module, and per folder the
  * files tests import that are not part of the folder's interface. A file is part of its folder's
- * interface when a module in another src folder imports it, or when no src module imports it at
- * all (an entry point, such as src/index.ts or a file only scripts load).
+ * interface when a module in another src folder imports it, when it declares something another
+ * folder imports through a re-export, or when no src module imports it at all (an entry point,
+ * such as src/index.ts or a file only scripts load).
  */
 function testSurface(modules: readonly ModuleFacts[]): TestSurface {
   const src = modules.filter((module) => module.role === "src");
@@ -212,14 +218,22 @@ function testSurface(modules: readonly ModuleFacts[]): TestSurface {
     srcMockCalls += calls;
     if (calls > 0) testFilesMockingSrc++;
   }
+  const interfaces = folderInterfaces(modules);
+  const declaresInterface = new Set(
+    [...interfaces.values()].flatMap((folder) =>
+      [...folder.symbols].map((symbol) => symbol.slice(0, symbol.lastIndexOf("#"))),
+    ),
+  );
   const folders = new Map<string, FolderTestReach>();
   for (const module of testImported) {
     const folder = srcFolderOf(module.path)!;
     const reach = folders.get(folder) ?? { folder, testImported: 0, pastInterface: [] };
     reach.testImported++;
-    const by = importers.get(module.path)!;
-    const fromOutside = [...by.src].some((importer) => srcFolderOf(importer) !== folder);
-    if (by.src.size > 0 && !fromOutside) reach.pastInterface.push(module.path);
+    const inInterface =
+      interfaces.get(folder)?.targets.has(module.path) ||
+      declaresInterface.has(module.path) ||
+      importers.get(module.path)!.src.size === 0;
+    if (!inInterface) reach.pastInterface.push(module.path);
     folders.set(folder, reach);
   }
   return {
@@ -264,6 +278,7 @@ function seamRows(seams: readonly SeamFacts[]): SeamRow[] {
         name: seam.name,
         path: seam.path,
         reasons: seam.reasons,
+        callable: seam.callable,
         members: seam.members,
         functionMembers: seam.functionMembers,
         srcImplementations: src.length,

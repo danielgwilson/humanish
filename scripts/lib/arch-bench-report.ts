@@ -206,7 +206,7 @@ function seams(result: ArchBenchResult, style: Style): string[] {
         style.code(row.name),
         style.code(row.path),
         row.reasons.join(", "),
-        `${row.functionMembers} of ${row.members}`,
+        row.callable ? "function type" : `${row.functionMembers} of ${row.members}`,
         row.srcImplementations,
         `${row.testImplementations} (${row.testFiles})`,
         VERDICTS[row.verdict],

@@ -53,6 +53,7 @@ const files: Record<string, string> = {
     "",
   ].join("\n"),
   "src/a/internal.ts": "export const internal = 1;\n",
+  "src/a/extra.ts": "export const extra = 3;\n",
   "src/a/options.ts": [
     "export interface Options {",
     "  label: string;",
@@ -65,11 +66,12 @@ const files: Record<string, string> = {
   "src/a/index.ts": [
     'export * from "./shell.js";',
     'export { helper as assist } from "./helper.js";',
+    'export { extra } from "./extra.js";',
     "",
   ].join("\n"),
   "src/b/tiny.ts": "export const tiny = 2;\n",
   "src/b/use.ts": [
-    'import { type Shell, VERSION, assist } from "../a/index.js";',
+    'import { type Shell, VERSION, assist, extra } from "../a/index.js";',
     'import type { Options } from "../a/options.js";',
     'import * as shellModule from "../a/shell.js";',
     'import { tiny } from "./tiny.js";',
@@ -79,7 +81,7 @@ const files: Record<string, string> = {
     "}",
     "",
     "export function go(shell: Shell): Promise<string> {",
-    "  return shell.run(`${VERSION} ${assist()} ${tiny} ${Object.keys(shellModule).length}`);",
+    "  return shell.run(`${VERSION} ${assist()} ${tiny + extra} ${Object.keys(shellModule).length}`);",
     "}",
     "",
     "export function stamp(deps: ClockDeps = {}): number {",
@@ -111,6 +113,7 @@ const files: Record<string, string> = {
   ].join("\n"),
   "src/index.ts": 'export { go } from "./b/use.js";\n',
   "tests/a.test.ts": [
+    'import { extra } from "../src/a/extra.js";',
     'import { internal } from "../src/a/internal.js";',
     'import { helper } from "../src/a/helper.js";',
     'import type { Shell } from "../src/a/index.js";',
@@ -136,7 +139,7 @@ const files: Record<string, string> = {
     "}",
     "",
     "const cast = {} as unknown as Shell;",
-    "export const all = [internal, helper(), go(fake), go(new FakeShell()), go(cast), stamp({ now: () => 1 })];",
+    "export const all = [extra, internal, helper(), go(fake), go(new FakeShell()), go(cast), stamp({ now: () => 1 })];",
     "",
   ].join("\n"),
 };
@@ -168,7 +171,12 @@ describe("arch:bench project facts", () => {
     expect(targets("src/b/use.ts")).toEqual([
       [
         "src/a/index.ts",
-        ["src/a/helper.ts#helper", "src/a/shell.ts#Shell", "src/a/shell.ts#VERSION"],
+        [
+          "src/a/extra.ts#extra",
+          "src/a/helper.ts#helper",
+          "src/a/shell.ts#Shell",
+          "src/a/shell.ts#VERSION",
+        ],
       ],
       ["src/a/options.ts", ["src/a/options.ts#Options"]],
       ["src/a/shell.ts", ["src/a/shell.ts#Shell", "src/a/shell.ts#VERSION"]],
@@ -178,6 +186,7 @@ describe("arch:bench project facts", () => {
     expect(targets("src/a/index.ts")).toEqual([
       ["src/a/shell.ts", ["src/a/shell.ts#Shell", "src/a/shell.ts#VERSION"]],
       ["src/a/helper.ts", ["src/a/helper.ts#helper"]],
+      ["src/a/extra.ts", ["src/a/extra.ts#extra"]],
     ]);
   });
 });
@@ -196,10 +205,10 @@ describe("arch:bench measures", () => {
       },
       {
         folder: "a",
-        files: 5,
-        codeLines: 19,
-        interfaceSymbols: 4,
-        linesPerSymbol: 5,
+        files: 6,
+        codeLines: 21,
+        interfaceSymbols: 5,
+        linesPerSymbol: 4,
         filesImportedFromOutside: 4,
         importingFolders: 1,
       },
@@ -217,22 +226,24 @@ describe("arch:bench measures", () => {
 
   it("lists small modules exactly one src module imports as deletion-test candidates", () => {
     expect(measures.deletionCandidates).toEqual([
+      { path: "src/a/extra.ts", codeLines: 1, importer: "src/a/index.ts", testImporters: 1 },
       { path: "src/a/internal.ts", codeLines: 1, importer: "src/a/helper.ts", testImporters: 1 },
       { path: "src/b/tiny.ts", codeLines: 1, importer: "src/b/use.ts", testImporters: 0 },
-      { path: "src/a/index.ts", codeLines: 2, importer: "src/b/use.ts", testImporters: 1 },
+      { path: "src/a/index.ts", codeLines: 3, importer: "src/b/use.ts", testImporters: 1 },
     ]);
   });
 
   it("finds the files tests import past their folder's interface, and the src mocks", () => {
     expect(measures.testSurface).toEqual({
-      srcModules: 9,
-      testImportedModules: 4,
-      share: 4 / 9,
+      srcModules: 10,
+      testImportedModules: 5,
+      share: 5 / 10,
       testFiles: 1,
       testFilesMockingSrc: 1,
       srcMockCalls: 2,
       folders: [
-        { folder: "a", testImported: 3, pastInterface: ["src/a/internal.ts"] },
+        // extra.ts is reached only through index.ts, but it declares what folder b imports.
+        { folder: "a", testImported: 4, pastInterface: ["src/a/internal.ts"] },
         { folder: "b", testImported: 1, pastInterface: [] },
       ],
     });
@@ -252,14 +263,14 @@ describe("arch:bench seams and report", () => {
     );
     // Options carries one callback among four members, so it is an option bag.
     expect(seams).toEqual({
-      ClockDeps: { reasons: ["name"], sites: ["tests/a.test.ts:26 typed"] },
+      ClockDeps: { reasons: ["name"], sites: ["tests/a.test.ts:27 typed"] },
       Shell: {
         reasons: ["parameter"],
         sites: [
           "src/b/use.ts:26 typed",
-          "tests/a.test.ts:11 structural",
-          "tests/a.test.ts:18 implements",
-          "tests/a.test.ts:25 cast",
+          "tests/a.test.ts:12 structural",
+          "tests/a.test.ts:19 implements",
+          "tests/a.test.ts:26 cast",
         ],
       },
     });
@@ -316,7 +327,7 @@ describe("arch:bench seams and report", () => {
       .split("\n")
       .map((line) => line.split(" | "));
     for (const [folder, files] of [
-      ["a", "5"],
+      ["a", "6"],
       ["b", "3"],
       ["(root)", "1"],
     ]) {
