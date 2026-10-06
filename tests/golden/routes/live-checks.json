@@ -34,6 +34,13 @@
       "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
     }
   },
+  "computer use: a missing OpenAI key with two signed-in agents": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
+      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex and Claude Code report authenticated on this machine. Set actor.type: local-agent to use one instead of a key."
+    }
+  },
   "shared world: an unpriced cap before keys": {
     "ok": false,
     "error": {
@@ -108,7 +115,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-      "message": "Live terminal-product studies declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --dotenv; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+      "message": "Live terminal-product studies need CODEX_API_KEY or OPENAI_API_KEY in the environment, and neither is set. `execution.runtimeAuth: openai-env` passes the key to the codex command only. Pass one with --dotenv; the value is never persisted."
     }
   },
   "terminal: E2B": {

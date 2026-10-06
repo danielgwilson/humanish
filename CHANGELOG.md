@@ -8,8 +8,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish review` and `humanish analyze show` on a dry run now name the command that starts a
+  live run, in `next` and on a `next:` line: `run` with the run's own study when its file sets
+  `mode: live`, else `run try-live` when the project has that starter study, else `run` with the
+  run's own study after setting `mode: live` in its file, else `study list`. Before, `next` was
+  null and the output named no command.
+
 ### Fixed
 
+- A live terminal study missing its runtime key now refuses with a message that names
+  `CODEX_API_KEY` and `OPENAI_API_KEY` and says where the study's `execution.runtimeAuth` puts the
+  key. Before, a study that left `execution.runtimeAuth` unset read `declare runtimeAuth
+"undefined"`. The code `HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING` and the exit status are
+  unchanged.
+- A refusal that names two signed-in coding agents now reads "Codex and Claude Code report
+  authenticated", where it read "reports".
 - A scripted run now scrubs its known values (`E2B_API_KEY`, each `subject.env` value and the
   clone repository) from the step trace in `traces/<surface>.json` and `actor-<surface>.json`, and
   from the app URL, scenario goal, title and step labels it records. A step whose label or id holds
