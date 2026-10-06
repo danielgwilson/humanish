@@ -108,13 +108,13 @@ function candidates(session: CuaLoopResult) {
     runId: "synthetic-feedback-integrity",
     scenarioId: "save-item",
     adapterId: "internal-fixture",
-    goal: "Save an item.",
     substrate: "e2b-desktop",
     participants: [
       {
         participantId: "lane-1",
         streamId: "stream-1",
         personaId: "synthetic-reviewer",
+        goal: "Save an item.",
         session,
         traceArtifactPath: "actors/stream-1.json",
         screenshots: [],

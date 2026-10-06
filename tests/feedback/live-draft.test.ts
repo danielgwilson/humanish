@@ -67,6 +67,7 @@ const PARTICIPANT_BASE = {
   participantId: "power-user",
   streamId: "stream-002",
   personaId: "skeptical-power-user",
+  goal: "Complete the flow.",
   traceArtifactPath: "actors/stream-002.json",
   screenshots: ["screenshots/power-user/turn-17.png"],
   commsArtifactPath: "comms/power-user-thread.json",
@@ -83,9 +84,10 @@ describe("participantFeedbackCandidates", () => {
       runId: "run-1",
       scenarioId: "cua-signup-email-verify",
       adapterId: "signup-email-verify",
-      goal: "Create an account and reach the dashboard.",
       substrate: "e2b-desktop",
-      participants: [{ ...PARTICIPANT_BASE, session }],
+      participants: [
+        { ...PARTICIPANT_BASE, goal: "Create an account and reach the dashboard.", session },
+      ],
     });
 
     expect(candidates).toHaveLength(1);
@@ -114,7 +116,6 @@ describe("participantFeedbackCandidates", () => {
       runId: "run-2",
       scenarioId: "cua-lab",
       adapterId: "lab",
-      goal: "Complete the flow.",
       substrate: "e2b-desktop",
       participants: [{ ...PARTICIPANT_BASE, session }],
     });
@@ -128,7 +129,6 @@ describe("participantFeedbackCandidates", () => {
         runId: "run-4",
         scenarioId: "cua-lab",
         adapterId: "lab",
-        goal: "Complete the flow.",
         substrate: "e2b-desktop",
         participants: [
           { ...PARTICIPANT_BASE, session: fakeSession("passed", "goal_satisfied", reason) },
@@ -164,7 +164,6 @@ describe("participantFeedbackCandidates", () => {
       runId: "run-3",
       scenarioId: "cua-lab",
       adapterId: "lab",
-      goal: "Complete the flow.",
       substrate: "e2b-desktop",
       participants: [
         { ...PARTICIPANT_BASE, session: clean },
@@ -267,13 +266,13 @@ describe("a multi-participant study's second finding is one flag away", () => {
         runId: "candidate-test",
         scenarioId: "cua-persona-axis",
         adapterId: "persona-axis",
-        goal: "Create two related tables.",
         substrate: "e2b-desktop",
         participants: [
           {
             ...PARTICIPANT_BASE,
             participantId: "impatient-expert",
             streamId: "stream-001",
+            goal: "Create two related tables using only the keyboard.",
             session: fakeSession(
               "passed",
               "goal_satisfied",
@@ -285,6 +284,7 @@ describe("a multi-participant study's second finding is one flag away", () => {
             participantId: "phone-newcomer",
             streamId: "stream-003",
             personaId: "synthetic-new-user",
+            goal: "Create two related tables on a phone.",
             session: fakeSession(
               "abandoned",
               "gave_up",
@@ -296,6 +296,7 @@ describe("a multi-participant study's second finding is one flag away", () => {
             participantId: "patient-newcomer",
             streamId: "stream-002",
             personaId: "synthetic-new-user",
+            goal: "Create two related tables.",
             session: fakeSession(
               "passed",
               "goal_satisfied",
@@ -357,6 +358,7 @@ describe("a multi-participant study's second finding is one flag away", () => {
       expect(chosen.ok).toBe(true);
       expect(chosen.draft?.source_candidate_id).toBe(candidates[1]!.id);
       expect(chosen.draft?.actual).toContain("detail popovers");
+      expect(chosen.draft?.expected).toBe("Create two related tables on a phone.");
       // The draft on disk is the chosen one now.
       const onDisk = JSON.parse(
         await readFile(

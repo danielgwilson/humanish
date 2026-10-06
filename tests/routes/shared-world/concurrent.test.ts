@@ -2796,7 +2796,8 @@ describe("shared-world feedback candidates from participant reports", () => {
     ]);
     for (const candidate of bundle.feedbackCandidates) {
       expect(candidate.scenario_id).toBe(bundle.scenario.id);
-      expect(candidate.expected).toBe(bundle.scenario.goal);
+      // The participant's own instructions, which open by naming its persona.
+      expect(candidate.expected).toContain(`Persona: ${candidate.persona_id}.`);
       expect(candidate.substrate).toBe("e2b-desktop");
       expect(candidate.evidence.some((item) => item.kind === "trace")).toBe(true);
     }
@@ -2851,6 +2852,29 @@ describe("shared-world feedback candidates from participant reports", () => {
     expect(bundle.feedbackCandidates.map((candidate) => candidate.id)).toEqual([
       "participant-report-persona-02",
       "adapter-board-readback",
+    ]);
+  });
+
+  it("expects each reporting participant's own instructions in its feedback candidate", async () => {
+    const config = concurrentConfig(2, 2);
+    const instructions = ["Add a task for the release.", "Close the oldest open task."];
+    participantList(config)!.forEach((participant, index) => {
+      participant.instruction = instructions[index]!;
+    });
+    const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(2), () => ({
+      reason: FRICTION,
+    }));
+    const result = await runSharedWorld({ cwd, config, dryRun: false, env, deps });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    // Which participant's instruction each candidate's expected text quotes.
+    const quoted = (expected: string) => instructions.filter((text) => expected.includes(text));
+    expect(
+      bundle.feedbackCandidates.map((candidate) => [candidate.id, quoted(candidate.expected)]),
+    ).toEqual([
+      ["participant-report-persona-01", [instructions[0]]],
+      ["participant-report-persona-02", [instructions[1]]],
     ]);
   });
 

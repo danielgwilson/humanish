@@ -1995,13 +1995,13 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
         runId: "zero-action-spend-fixture",
         scenarioId: "click-once",
         adapterId: "internal-fixture",
-        goal: "Click once.",
         substrate: "e2b-desktop",
         participants: [
           {
             participantId: "lane-1",
             streamId: "stream-1",
             personaId: persona.id,
+            goal: "Click once.",
             session: result,
             traceArtifactPath: "actors/stream-1.json",
             screenshots: [],

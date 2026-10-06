@@ -190,7 +190,6 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
         runId: args.run.runId,
         scenarioId: `cua-${plan.studyId}`,
         adapterId: plan.studyId,
-        goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
         substrate: plan.residual.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
         participants: specs.map((spec, index) => {
           const outcome = outcomes?.[index];
@@ -198,6 +197,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
             participantId: spec.planned.id,
             streamId: spec.streamId,
             personaId: spec.persona.id,
+            goal: redactText(spec.evidenceInstructions ?? spec.instructions),
             ...(outcome?.session === undefined ? {} : { session: outcome.session }),
             ...(outcome?.session === undefined
               ? {}

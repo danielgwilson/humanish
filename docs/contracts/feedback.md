@@ -54,7 +54,8 @@ from the computer-use and shared-world routes, when a participant reports
 friction or abandons the study goal, and from an adapter's `deriveFeedback` hook.
 Both routes build them with `participantFeedbackCandidates`
 (`src/routes/computer-use/participant-feedback.ts`): one candidate per reporting
-participant, named by its participant id, with no merging of reports that match.
+participant, named by its participant id, with that participant's own
+instructions as `expected` and no merging of reports that match.
 A shared-world candidate also cites the run's comms thread when the study
 captured one, since that thread belongs to the shared app. Adapter candidates
 follow the participant candidates.

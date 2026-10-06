@@ -516,13 +516,13 @@ export function buildSingleParticipantBundle(args: {
             runId: args.run.runId,
             scenarioId: `cua-${args.studyId}`,
             adapterId: args.studyId,
-            goal: redactText(args.mission),
             substrate: runnerSubstrate(args),
             participants: [
               {
                 participantId: args.participantId ?? "lane-01",
                 streamId: SINGLE.streamId,
                 personaId: args.persona.id,
+                goal: redactText(args.mission),
                 ...(args.session === undefined ? {} : { session: args.session }),
                 ...(args.traceArtifactPath === undefined
                   ? {}
