@@ -2,10 +2,11 @@
 // function and the run that returns. This is prepareStudy's path without runStudyWith's option
 // checks, a local study's desktop and the public sandbox view, so a test pins the route's own
 // planner order and the result the route returns. Each takes the route's input with the config
-// and the resolved dry run.
+// and the resolved dry run, and the fields planStudy adds to the plan (the study and its warnings).
 
 import type { AdmittedPlan, StudyResult } from "../../src/run-study.js";
 import type { RefusedStudy } from "../../src/run/route-shell.js";
+import type { RunStudyProvenance } from "../../src/run/study-provenance.js";
 import type { StudyRoute } from "../../src/study/routing.js";
 import { callerDrivingOf, planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import {
@@ -38,6 +39,9 @@ import type {
   TerminalRunInput,
 } from "../../src/routes/terminal/types.js";
 
+/** What planStudy adds to a route's plan: the study the run came from and the study's warnings. */
+type PlanFields = { readonly study?: RunStudyProvenance; readonly warnings?: readonly string[] };
+
 /** The result of an admitted plan's run, or of the refusal its checks made. */
 export async function runAdmitted<R extends StudyRoute>(
   admitting: Promise<AdmittedPlan<R>>,
@@ -49,6 +53,7 @@ export async function runAdmitted<R extends StudyRoute>(
 
 export async function runComputerUse(
   options: ComputerUseRunInput & RefusedStudy,
+  fields: PlanFields = {},
 ): Promise<CuaActorStudyResult> {
   const { config, dryRun, ...input } = options;
   const planned = planComputerUseStudy(config, {
@@ -59,11 +64,12 @@ export async function runComputerUse(
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
   if (!planned.ok) return computerUseStudyRefusal(options, planned.refusal);
-  return runAdmitted(admitComputerUsePlan(planned.plan, input, config));
+  return runAdmitted(admitComputerUsePlan({ ...planned.plan, ...fields }, input, config));
 }
 
 export async function runTerminal(
   options: TerminalRunInput & RefusedStudy,
+  fields: PlanFields = {},
 ): Promise<TerminalProductStudyResult> {
   const { config, dryRun, ...input } = options;
   const planned = planTerminalStudy(config, {
@@ -71,11 +77,12 @@ export async function runTerminal(
     hasCostProbe: input.deps?.costProbe !== undefined,
   });
   if (!planned.ok) return terminalStudyRefusal(options, planned.refusal);
-  return runAdmitted(admitTerminalPlan(planned.plan, input));
+  return runAdmitted(admitTerminalPlan({ ...planned.plan, ...fields }, input));
 }
 
 export async function runSharedWorld(
   options: SharedWorldRunInput & RefusedStudy,
+  fields: PlanFields = {},
 ): Promise<ConcurrentSharedWorldStudyResult> {
   const { config, dryRun, ...input } = options;
   const planned = planSharedWorldStudy(config, {
@@ -83,11 +90,12 @@ export async function runSharedWorld(
     hasRunSession: input.deps?.runSession !== undefined,
   });
   if (!planned.ok) return sharedWorldStudyRefusal(options, planned.refusal);
-  return runAdmitted(admitSharedWorldPlan(planned.plan, input, config));
+  return runAdmitted(admitSharedWorldPlan({ ...planned.plan, ...fields }, input, config));
 }
 
 export async function runScripted(
   options: ScriptedRunInput & RefusedStudy,
+  fields: PlanFields = {},
 ): Promise<ScriptedBrowserStudyResult> {
   const { config, dryRun, ...input } = options;
   const planned = planScriptedStudy(config, {
@@ -95,5 +103,5 @@ export async function runScripted(
     injectedBrowser: injectedBrowser(input.deps),
   });
   if (!planned.ok) return scriptedStudyRefusal(options, planned.refusal);
-  return runAdmitted(admitScriptedPlan(planned.plan, input));
+  return runAdmitted(admitScriptedPlan({ ...planned.plan, ...fields }, input));
 }
