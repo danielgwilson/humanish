@@ -1,7 +1,6 @@
 // Starts a concurrent shared-world run and prepares what its plane reads: the physical project,
 // the run, the participant specs, comms, the packed tree and email receiving.
 
-import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type {
@@ -9,7 +8,7 @@ import type {
   StudySubjectServe,
   StudySubjectStateCheckpoint,
 } from "../../study/types.js";
-import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
+import { type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import type { RunSecrets } from "../../run/secrets.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -47,11 +46,6 @@ import path from "node:path";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 
 const DEFAULT_PROBER_CADENCE_MS = 1000;
-
-function makeRunId(): string {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `concurrent-shared-world-${stamp}-${randomBytes(4).toString("hex")}`;
-}
 
 /** What validation derived from the study, which setup reads. */
 interface AdmittedStudy {
@@ -124,21 +118,11 @@ async function bindPhysicalProject(requestedCwd: string): Promise<string> {
     .physicalPath;
 }
 
-function startConcurrentRun(
-  study: AdmittedStudy,
-  cwd: string,
-  scope: RunScope,
-): ReturnType<RunScope["startRun"]> {
-  const { plan, input, deps } = study;
-  return scope.startRun({
+function startConcurrentRun(study: AdmittedStudy, cwd: string, scope: RunScope) {
+  return scope.startRun(study.plan, study.input, {
     cwd,
-    runId: input.runId,
-    mintRunId: makeRunId,
-    mode: plan.dryRun ? "dry-run" : "live",
-    study: plan.study,
-    warnings: plan.warnings,
+    prefix: "concurrent-shared-world",
     renderReview: renderConcurrentReviewMarkdown,
-    observer: { open: input.open === true, render: deps.renderObserver },
     secrets: study.secrets,
   });
 }
@@ -197,7 +181,7 @@ export async function prepareConcurrentRun(
   const started = await startConcurrentRun(study, cwd, scope);
   if (!started.ok) return { ok: false, result: fail(started.code, started.message, descriptor.id) };
   const { run } = started;
-  const { runId, createdAt, paths: runPaths } = run;
+  const { runId, createdAt, paths: runPaths, source } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const timeoutMs = plan.sessionTimeoutMs ?? defaultSessionTimeoutMs(plan);
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
@@ -206,13 +190,6 @@ export async function prepareConcurrentRun(
   const now = deps.now ?? Date.now;
   const proberCadenceMs = deps.proberCadenceMs ?? DEFAULT_PROBER_CADENCE_MS;
   const seedDigest = seedRecipeDigest(planeStateOf(plan));
-
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
 
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];

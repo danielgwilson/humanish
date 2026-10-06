@@ -1,9 +1,10 @@
 # Core Contract
 
-Each route mints its run id and builds its bundle, and starts the run
-through the run scope in `src/run/run.ts`. `startRun` creates
-`.humanish/runs/<id>` and begins `status.json`; the `Run` it returns publishes
-`run.json`, its projections and the latest pointer. `src/run/paths.ts` holds the
+Each route builds its bundle and starts the run through the run scope in
+`src/run/run.ts`. `startRun` takes the caller's run id or mints one from the
+route's prefix, creates `.humanish/runs/<id>`, begins `status.json` and captures
+the run's source; preview mints its own id and builds its source first. The
+`Run` it returns publishes `run.json`, its projections and the latest pointer. `src/run/paths.ts` holds the
 shared path rules and `src/run/git-state.ts` captures git state. The table
 below lists the records current bundles write.
 
