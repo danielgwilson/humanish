@@ -2,7 +2,6 @@
 // live checks that need no sandbox, pack a local tree, then start the run and build the
 // participant deps and bundle base that the participants and the finish share.
 
-import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { type RunScope } from "../../run/run.js";
@@ -12,7 +11,7 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { RunSecrets } from "../../run/secrets.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
-import { buildRunSource, type RunRerunLineage } from "../../run/bundle.js";
+import { type RunRerunLineage } from "../../run/bundle.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
@@ -320,34 +319,23 @@ export async function startCuaRun(
   admitted: AdmittedCuaRun,
   scope: RunScope,
 ): Promise<PreparedCuaRun> {
-  const { dryRun, cwd, seams, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
+  const { cwd, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
   const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which study this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
-  const started = await scope.startRun({
+  const started = await scope.startRun(plan, input, {
     cwd,
-    runId: input.runId,
-    mintRunId: makeCuaRunId,
-    mode: dryRun ? "dry-run" : "live",
-    study: plan.study,
-    warnings: plan.warnings,
+    prefix: "cua",
     renderReview: renderCuaReviewMarkdown,
-    observer: { open: input.open === true, render: seams.renderObserver },
     secrets: admitted.secrets,
   });
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
-  const { createdAt, paths: runPaths } = run;
+  const { paths: runPaths, source } = run;
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
 
   await prepareContainedOutputDirectory(runPaths, "screenshots");
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
 
   // Live-trace flush seam: runStudyParticipants fills it when a live run has an in-progress bundle
   // to grow; participants call it through deps.onTrace. It exists before deps so deps can reference it as
@@ -498,9 +486,4 @@ function subjectPhaseReporter(
     sink(event, participant);
     input.emit?.(phaseEvent(event, { kind: "participant", participant }));
   };
-}
-
-function makeCuaRunId(): string {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `cua-${stamp}-${randomBytes(4).toString("hex")}`;
 }

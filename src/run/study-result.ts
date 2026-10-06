@@ -13,6 +13,19 @@ export interface StudyResultIdentity<R extends string> {
   studyId: string;
 }
 
+/**
+ * The error codes every recorded route's result can carry besides its own: a study, option or
+ * analysis refusal from before the route's checks, and a run id that is already taken. Each route's
+ * error-code union is this set plus the codes named for that route.
+ */
+export type StudyResultErrorCode =
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_STUDY_V2_UNSUPPORTED"
+  | "HUMANISH_STUDY_INVALID"
+  | "HUMANISH_RUN_ID_IN_USE";
+
 /** The identity fields for a result of route `route` from the study `studyId`. */
 export function studyResultIdentity<R extends string>(
   route: R,

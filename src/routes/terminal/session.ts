@@ -1,8 +1,7 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { keysCheck } from "../../study/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
-import { buildRunSource } from "../../run/bundle.js";
 import { RunSecrets } from "../../run/secrets.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
@@ -78,28 +77,16 @@ export async function runLiveTerminalSession(
   const { mission, physicalCwd, persona, composedPrompt, verdictNonce } = prepared;
   const { secrets, sanitize } = prepared;
 
-  const started = await scope.startRun({
+  const started = await scope.startRun(plan, input, {
     cwd: physicalCwd,
-    runId: input.runId,
-    mintRunId: makeTerminalRunId,
-    // This entry point is the live terminal route; its dry-run sibling is a separate function.
-    mode: "live",
-    study: plan.study,
-    warnings: plan.warnings,
+    prefix: "terminal",
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: input.open === true, render: deps.renderObserver },
     now,
     secrets,
   });
   if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
-  const { runId, createdAt, paths: runPaths } = run;
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd: physicalCwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
+  const { runId, paths: runPaths, source } = run;
 
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
@@ -247,9 +234,4 @@ function composeLivePrompt(args: {
 /** The default mission when the study omits one. Public-safe, product-neutral author text. */
 export function defaultMission(productName: string): string {
   return `You are an autonomous agent. Discover ${productName} from its public surfaces and determine whether it can help with a durable real task. Stay within the declared no-spend caps. Leave feedback if the workflow is confusing.`;
-}
-
-export function makeTerminalRunId(): string {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `terminal-${stamp}-${randomBytes(4).toString("hex")}`;
 }

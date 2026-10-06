@@ -56,7 +56,7 @@ import type {
   SharedWorldParticipant,
 } from "../../study/plan-participants.js";
 import type { ResolvedParticipant } from "../../run/participant.js";
-import { type StudyResultIdentity } from "../../run/study-result.js";
+import { type StudyResultErrorCode, type StudyResultIdentity } from "../../run/study-result.js";
 
 // The fan-out topology of this route: N participants = N independent E2B desktop sandboxes,
 // each its own world (clone/serve + subject.state per participant). Shared-world has its own route.
@@ -243,11 +243,7 @@ export interface CuaParticipantSummary {
 }
 
 export type CuaActorStudyErrorCode =
-  | "HUMANISH_STUDY_ANALYSIS_INVALID"
-  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
-  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
-  | "HUMANISH_STUDY_V2_UNSUPPORTED"
-  | "HUMANISH_STUDY_INVALID"
+  | StudyResultErrorCode
   | "HUMANISH_COMPUTER_USE_FAILED"
   | "HUMANISH_COMPUTER_USE_KEYS_MISSING"
   // A local-agent participant's CLI is not on `PATH`. Refused at preflight (before any sandbox).
@@ -265,7 +261,6 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
-  | "HUMANISH_RUN_ID_IN_USE"
   // A fail-closed spend cap (caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped: an unenforceable cap is more dangerous than none.
