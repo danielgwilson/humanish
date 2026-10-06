@@ -9,6 +9,7 @@ import {
   resultOk,
   type ExecutionOutcome,
 } from "../../run/judge.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { participantExecutionFailures, participantOutcomeOk } from "./participant-facts.js";
 import { participantCapWarning } from "./participant-model.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
@@ -306,6 +307,10 @@ export async function finishCuaRun(
     policy,
   });
   const observer = await finished.renderObserver();
+  // A caller's renderer runs with this process's file access, so after one that reports success
+  // the run directory is checked again before the result points anyone at it. A failed render is
+  // already an evidence failure, and its error code stays the run's diagnosis.
+  if (observer.ok) await validatePreparedRunArtifactPaths(finished.paths);
   streams.attachFinal(observer);
 
   return cuaStudyResult({

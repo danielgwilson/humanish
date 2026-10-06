@@ -14,6 +14,7 @@ import {
   sharedWorldShortfall,
   type ExecutionFailure,
 } from "../../run/judge.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { participantExecutionFailures } from "../computer-use/participant-facts.js";
 import { participantCapWarning } from "../computer-use/participant-model.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
@@ -359,6 +360,10 @@ export async function finishConcurrentRun(
     policy,
   });
   const observer = await finished.renderObserver();
+  // A caller's renderer runs with this process's file access, so after one that reports success
+  // the run directory is checked again before the result points anyone at it. A failed render is
+  // already an evidence failure, and its error code stays the run's diagnosis.
+  if (observer.ok) await validatePreparedRunArtifactPaths(finished.paths);
   if (observer.ok && live.observer) {
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }

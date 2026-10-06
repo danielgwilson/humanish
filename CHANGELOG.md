@@ -39,6 +39,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   routes use. A clone repository or subject env value that a scripted run wrote as `[redacted]`
   now reads `[REDACTED_SECRET]`, and a value under four characters is no longer scrubbed, as on
   the other routes.
+- Computer-use and shared-world runs now check the run directory again after a caller's
+  `prepareDesktop` hook returns and after an Observer renderer reports success, as scripted and
+  terminal runs do. A link or a swapped directory left in the run directory stops the run with an
+  error, before a participant's screen check or the subject's provisioning, and before the result
+  points at the run.
 
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 

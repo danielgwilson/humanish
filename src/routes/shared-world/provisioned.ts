@@ -33,6 +33,7 @@ import {
   type SubjectDesktopUsage,
 } from "../../substrates/e2b/subject-sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { Shell } from "../../substrates/shell.js";
 import { defaultPackLocalTree } from "../computer-use/local-tree-pack.js";
 import {
@@ -206,7 +207,12 @@ class SubjectPlane {
     });
     this.subjectShell = e2bShell(this.subjectDesktop);
 
-    await this.ctx.input.prepareDesktop?.(this.subjectDesktop, { kind: "subject" });
+    if (this.ctx.input.prepareDesktop) {
+      await this.ctx.input.prepareDesktop(this.subjectDesktop, { kind: "subject" });
+      // The caller's hook runs with this process's file access, so the run directory is checked
+      // again before more evidence goes into it.
+      await validatePreparedRunArtifactPaths(this.ctx.runPaths);
+    }
   }
 
   // Start the in-sandbox email catch before the subject serve, so the app's send-API base URL
