@@ -7,8 +7,10 @@ import { firstLiveRefusal, keysCheck, subjectEnvCheck } from "../../study/requir
 import path from "node:path";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
+import { publicSafeToken } from "../../actors/scripted-browser/journey.js";
 import type {
   BrowserPersonaJourney,
+  BrowserPersonaStepManifest,
   ScriptedBrowserEvidenceUrlPolicy,
 } from "../../actors/scripted-browser/types.js";
 import type { ScriptedPlan } from "../../study/plan-types.js";
@@ -118,7 +120,7 @@ export async function prepareScriptedRun(
     ...scenario.journey,
     goal: secrets.scrub(scenario.journey.goal),
     scenarioTitle: secrets.scrub(scenario.journey.scenarioTitle),
-    steps: scenario.journey.steps.map((step) => ({ ...step, label: secrets.scrub(step.label) })),
+    steps: recordedStepIds(scenario.journey.steps, secrets),
   };
 
   // The plan lists E2B_API_KEY and the subject env only for a live clone.
@@ -187,4 +189,31 @@ export async function prepareScriptedRun(
       browserCommand,
     },
   };
+}
+
+/**
+ * The steps with their labels scrubbed and their ids safe to record. A step id names the step's
+ * screenshot file and is recorded beside it, and the parser derives an omitted id from the label,
+ * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose
+ * label or id holds a known value is renamed by its position instead.
+ */
+function recordedStepIds(
+  steps: readonly BrowserPersonaStepManifest[],
+  secrets: RunSecrets,
+): BrowserPersonaStepManifest[] {
+  const tokens = secrets.values().map((value) => publicSafeToken(value, ""));
+  const taken = new Set(steps.map((step) => step.id));
+  return steps.map((step, index) => {
+    const label = secrets.scrub(step.label);
+    const holds =
+      label !== step.label ||
+      secrets.scrub(step.id) !== step.id ||
+      tokens.some((token) => token.length > 0 && step.id.includes(token));
+    if (!holds) return { ...step, label };
+    const position = `step-${String(index + 1).padStart(2, "0")}`;
+    let id = position;
+    for (let suffix = 2; taken.has(id); suffix += 1) id = `${position}-${suffix}`;
+    taken.add(id);
+    return { ...step, id, label };
+  });
 }

@@ -63,6 +63,13 @@ describe("RunSecrets", () => {
     });
   });
 
+  it("replaces a value a terminal escape sequence splits, with the sequence", () => {
+    const secrets = new RunSecrets([value("key")]);
+    const split = `${value("key").slice(0, 6)}\x1b[31m${value("key").slice(6)}`;
+    expect(secrets.scrub(`printed ${split} here`)).toBe("printed [REDACTED_SECRET] here");
+    expect(secrets.spans(`at ${split}`)).toEqual([[3, 3 + split.length]]);
+  });
+
   it("replaces the JSON-escaped form of a value as short as the floor", () => {
     const short = ["q", '"', "z", "7"].join("");
     expect(new RunSecrets([short]).scrub(JSON.stringify({ key: short }))).toBe(

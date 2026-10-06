@@ -24,8 +24,9 @@ export class RunSecrets {
   readonly #minLength: number;
   /**
    * Replaces every held value with the marker, as written, in each encoded form, and where a URL
-   * carries it partly percent-encoded. It reads the values on each call, so a value added after
-   * the scrub was handed to a participant or a subject is scrubbed from then on.
+   * carries it partly percent-encoded or a terminal escape sequence splits it. It reads the values
+   * on each call, so a value added after the scrub was handed to a participant or a subject is
+   * scrubbed from then on.
    */
   readonly scrub: (text: string) => string;
 
@@ -38,7 +39,10 @@ export class RunSecrets {
     // Longest first, so a form that holds a shorter one, such as a JSON-escaped value ending in a
     // backslash, is replaced whole and leaves no stray escape behind.
     const literal = scrubLiterals(this.#forms, marker);
-    this.scrub = (text) => scrubPercentEncoded(literal(text), this.#held, marker);
+    this.scrub = (text) => {
+      const scrubbed = literal(text);
+      return replaceSpans(scrubbed, viewSpans(scrubbed, this.#held), marker);
+    };
   }
 
   /** Holds each value the run learns while it runs, unless it is under the floor or already held. */
@@ -59,27 +63,43 @@ export class RunSecrets {
 
   /**
    * Every held value as written and in each encoded form, longest first, in one array that later
-   * `add` calls extend. A scrub that matches across chunk boundaries reads these.
+   * `add` calls extend. The terminal recorder sizes the output it keeps past its cap from these.
    */
   forms(): readonly string[] {
     return this.#forms;
   }
+
+  /**
+   * Where `text` holds a held value: each encoded form as written, and each value in the text's
+   * view without terminal escape sequences and with percent escapes decoded. Sorted, with
+   * overlapping spans merged. A scrub that replaces across chunk boundaries reads these.
+   */
+  spans(text: string): Array<[number, number]> {
+    const found: Array<[number, number]> = viewSpans(text, this.#held);
+    for (const form of this.#forms)
+      for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + form.length))
+        found.push([at, at + form.length]);
+    return mergeSpans(found);
+  }
 }
 
-const ESCAPE_RUN = /(?:%[0-9A-Fa-f]{2})+/g;
+// What a terminal draws with (OSC, CSI and two-byte escape sequences) and what a URL encodes
+// with (runs of percent escapes). The view a value is looked for in drops the first and decodes
+// the second.
+const VIEW_SEQUENCE =
+  /\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[78=>]|(?:%[0-9A-Fa-f]{2})+/g;
 
 /**
- * Replaces each value the text carries partly percent-encoded. A browser encodes a space or a quote
- * in a URL path and leaves a `/` or a `:` as written, so a value with both matches no single
- * encoded form. Escape runs are decoded only to find the values: the span of the text each one
- * came from is replaced, and every other character stays as written, so text that is parsed after
- * the scrub, such as JSON, keeps its shape.
+ * Where a value is found in the text's view. A browser encodes a space or a quote in a URL path
+ * and leaves a `/` or a `:` as written, so a value with both matches no single encoded form, and a
+ * color code inside a value splits it. Each found value maps back to the span of `text` it came
+ * from, so the text keeps every other character as written.
  */
-function scrubPercentEncoded(text: string, values: readonly string[], marker: string): string {
-  if (!text.includes("%")) return text;
-  // The decoded text, and for each of its characters the span of `text` it came from. A character
-  // decoded from an escape run maps to the whole run.
-  let decoded = "";
+function viewSpans(text: string, values: readonly string[]): Array<[number, number]> {
+  if (!text.includes("%") && !text.includes("\x1b")) return [];
+  // The view, and for each of its characters the span of `text` it came from. A character decoded
+  // from an escape run maps to the whole run.
+  let view = "";
   const starts: number[] = [];
   const ends: number[] = [];
   const copy = (from: number, to: number): void => {
@@ -87,43 +107,57 @@ function scrubPercentEncoded(text: string, values: readonly string[], marker: st
       starts.push(at);
       ends.push(at + 1);
     }
-    decoded += text.slice(from, to);
+    view += text.slice(from, to);
   };
   let cursor = 0;
-  let anyDecoded = false;
-  for (const run of text.matchAll(ESCAPE_RUN)) {
-    let plain: string;
-    try {
-      plain = decodeURIComponent(run[0]);
-    } catch {
-      // Not UTF-8: the run stays as written and is copied with the text after it.
-      continue;
+  let changed = false;
+  for (const sequence of text.matchAll(VIEW_SEQUENCE)) {
+    let plain = "";
+    if (sequence[0].startsWith("%")) {
+      try {
+        plain = decodeURIComponent(sequence[0]);
+      } catch {
+        // Not UTF-8: the run stays as written and is copied with the text after it.
+        continue;
+      }
     }
-    copy(cursor, run.index);
-    cursor = run.index + run[0].length;
+    copy(cursor, sequence.index);
+    cursor = sequence.index + sequence[0].length;
     for (let unit = 0; unit < plain.length; unit += 1) {
-      starts.push(run.index);
+      starts.push(sequence.index);
       ends.push(cursor);
     }
-    decoded += plain;
-    anyDecoded = true;
+    view += plain;
+    changed = true;
   }
-  if (!anyDecoded) return text;
+  if (!changed) return [];
   copy(cursor, text.length);
 
   const spans: Array<[number, number]> = [];
-  for (const value of values) {
-    for (let at = decoded.indexOf(value); at !== -1; at = decoded.indexOf(value, at + value.length))
+  for (const value of values)
+    for (let at = view.indexOf(value); at !== -1; at = view.indexOf(value, at + value.length))
       spans.push([starts[at] ?? 0, ends[at + value.length - 1] ?? text.length]);
+  return spans;
+}
+
+/** Sorted, with overlapping spans merged; spans that only touch stay apart. */
+function mergeSpans(spans: Array<[number, number]>): Array<[number, number]> {
+  const merged: Array<[number, number]> = [];
+  for (const [from, to] of [...spans].sort((left, right) => left[0] - right[0])) {
+    const last = merged.at(-1);
+    if (last !== undefined && from < last[1]) last[1] = Math.max(last[1], to);
+    else merged.push([from, to]);
   }
+  return merged;
+}
+
+function replaceSpans(text: string, spans: Array<[number, number]>, marker: string): string {
   if (spans.length === 0) return text;
-  spans.sort((left, right) => left[0] - right[0]);
-  let scrubbed = "";
+  let replaced = "";
   let written = 0;
-  for (const [from, to] of spans) {
-    if (to <= written) continue;
-    scrubbed += from >= written ? `${text.slice(written, from)}${marker}` : "";
+  for (const [from, to] of mergeSpans(spans)) {
+    replaced += `${text.slice(written, from)}${marker}`;
     written = to;
   }
-  return `${scrubbed}${text.slice(written)}`;
+  return `${replaced}${text.slice(written)}`;
 }

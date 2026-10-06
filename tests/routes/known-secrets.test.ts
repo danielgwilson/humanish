@@ -243,7 +243,7 @@ describe("scripted scrubs its known values with [REDACTED_SECRET]", () => {
 });
 
 describe("scripted scrubs its known values from the step trace", () => {
-  it("leaves no copy of the E2B key in any run file when the app URL, a step URL, label, goal and failed step hold it", async () => {
+  it("leaves no copy of the E2B key in any run file or file name when the app URL, a step URL, label, derived step id, goal and failed step hold it", async () => {
     const e2b = opaque("e2b");
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(
@@ -256,8 +256,7 @@ describe("scripted scrubs its known values from the step trace", () => {
         "browser:",
         "  startPath: /",
         "  steps:",
-        "    - id: step-01-load",
-        `      label: Open settings for ${e2b}`,
+        `    - label: Open settings for ${e2b}`,
         "      action: goto",
         `      path: /settings/${e2b}`,
         "    - id: step-02-confirm",
@@ -292,13 +291,19 @@ describe("scripted scrubs its known values from the step trace", () => {
     expect(result.error).toBeUndefined();
     expect(result.sessions.map((session) => session.completionReason)).toEqual(["step_failed"]);
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    expect(await runFiles(runDir)).toContain("traces/desktop.json");
+    const files = await runFiles(runDir);
+    expect(files).toContain("traces/desktop.json");
+    expect(files.filter((file) => file.includes(e2b))).toEqual([]);
     expect(await filesHolding(runDir, [e2b])).toEqual([]);
     const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
     expect(trace.steps[0].url).toMatch(
       /^http:\/\/127\.0\.0\.1:\d+\/settings\/\[REDACTED_SECRET\]$/,
     );
     expect(trace.steps[0].label).toBe("Open settings for [REDACTED_SECRET]");
+    expect(trace.steps.map((step: { id: string }) => step.id)).toEqual([
+      "step-01",
+      "step-02-confirm",
+    ]);
     expect(trace.steps[1].reason).toContain("Welcome [REDACTED_SECRET]");
   });
 });
@@ -385,7 +390,9 @@ describe("computer use and terminal scrub their known values from every run file
     const escaped = JSON.stringify(e2b).slice(1, -1);
     const nested = JSON.stringify({ item: { aggregated_output: JSON.stringify({ key: e2b }) } });
     const escapedTwice = JSON.stringify(escaped).slice(1, -1);
-    const values = [runtimeKey, e2b, encoded, pathEncoded, escaped, escapedTwice];
+    // An escape no encoder writes for "s", which only the decoded view finds.
+    const oddlyEncoded = `%73${encodeURI(e2b.slice(1))}`;
+    const values = [runtimeKey, e2b, encoded, pathEncoded, escaped, escapedTwice, oddlyEncoded];
     const config = terminalConfig({
       actor: {
         type: "codex-exec",
@@ -405,24 +412,38 @@ describe("computer use and terminal scrub their known values from every run file
         `${pathEncoded.slice(12)}\n`,
         `${nested}\n`,
         `colored ${runtimeKey.slice(0, 8)}\x1b[31m${runtimeKey.slice(8)}\x1b[0m\n`,
+        `odd ${oddlyEncoded.slice(0, 10)}`,
+        `${oddlyEncoded.slice(10)}\n`,
         `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,
       ]),
       env: { OPENAI_API_KEY: runtimeKey, E2B_API_KEY: e2b },
     };
     const result = await runTerminal({ cwd, config, dryRun: false, ...run });
     expect(result.ok).toBe(true);
-    expect(await filesHolding(path.join(cwd, ".humanish", "runs", result.runId), values)).toEqual(
-      [],
-    );
+    // terminal-events.ndjson keeps escape sequences, JSON-escaped; reading it without them must not
+    // rejoin a value either.
+    expect(
+      await filesHolding(path.join(cwd, ".humanish", "runs", result.runId), values, (text) =>
+        text.replace(/(?:\x1b|\\u001b)\[[0-?]*[ -/]*[@-~]/g, ""),
+      ),
+    ).toEqual([]);
   });
 });
 
-/** Each file under `root` that holds one of `values`, with the value it holds. */
-async function filesHolding(root: string, values: readonly string[]): Promise<string[]> {
+/**
+ * Each file under `root` that holds one of `values`, with the value it holds, in the file as
+ * written and in `view` of it.
+ */
+async function filesHolding(
+  root: string,
+  values: readonly string[],
+  view: (text: string) => string = (text) => text,
+): Promise<string[]> {
   const holding: string[] = [];
   for (const file of await runFiles(root)) {
-    const bytes = await readFile(path.join(root, file));
-    for (const value of values) if (bytes.includes(value)) holding.push(`${file}: ${value}`);
+    const text = await readFile(path.join(root, file), "latin1");
+    for (const value of values)
+      if (text.includes(value) || view(text).includes(value)) holding.push(`${file}: ${value}`);
   }
   return holding;
 }

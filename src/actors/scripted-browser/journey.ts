@@ -205,7 +205,8 @@ function booleanValue(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
-function publicSafeToken(value: string | undefined, fallback: string): string {
+/** `value` lower-cased, with each run of other characters a `-`, cut to 80; else `fallback`. */
+export function publicSafeToken(value: string | undefined, fallback: string): string {
   const candidate = (value ?? fallback)
     .toLowerCase()
     .replace(/[^a-z0-9_.-]+/g, "-")

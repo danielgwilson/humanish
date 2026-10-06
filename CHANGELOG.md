@@ -12,14 +12,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - A scripted run now scrubs its known values (`E2B_API_KEY`, each `subject.env` value and the
   clone repository) from the step trace in `traces/<surface>.json` and `actor-<surface>.json`, and
-  from the app URL, scenario goal, title and step labels it records. Before, a known value in a
-  `goto` path, the app URL, a step label or a page error stayed in those files and in run.json,
-  review.md, events.ndjson and the Observer.
+  from the app URL, scenario goal, title and step labels it records. A step whose label or id holds
+  a known value is recorded, and its screenshot named, as `step-NN` by its position. Before, a
+  known value in a `goto` path, the app URL, a step label or a page error stayed in those files and
+  in run.json, review.md, events.ndjson and the Observer.
 - Each route now also scrubs a known value in its encoded forms: percent-encoded, JSON-escaped
   once or twice, base64, base64url and hex, as a page URL, a printed JSON body or a log line
-  carries it. A value that a URL path encodes only in part, a terminal value split across two
-  output chunks in an encoded form, and a terminal value that an escape sequence split, are found
-  too. The encoded span is replaced with `[REDACTED_SECRET]` and the rest
+  carries it. A value that a URL path encodes only in part, or that a terminal escape sequence
+  splits, is found too, also across two terminal output chunks. The encoded span is replaced with `[REDACTED_SECRET]` and the rest
   of the text is kept as written. Before, only the value as written was scrubbed, so a value with
   a space, a quote or a backslash could stay in run.json, actor.json, the terminal transcript and
   the Observer.
