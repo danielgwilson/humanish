@@ -18,7 +18,7 @@ import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
 import type { StudyDeps } from "../../study/study-deps.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
 // sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
@@ -74,18 +74,18 @@ export async function prepareScriptedRun(
   const failed = (
     code: NonNullable<ScriptedBrowserStudyResult["error"]>["code"],
     message: string,
-  ): ScriptedBrowserStudyResult => ({
-    ...studyResultIdentity("scripted", plan.studyId),
-    ok: false,
-    cwd,
-    actor: plan.actor,
-    appUrl: evidenceAppUrl,
-    dryRun,
-    runId: input.runId ?? "not-created",
-    sessions: [],
-    warnings,
-    error: { code, message },
-  });
+  ): ScriptedBrowserStudyResult =>
+    refusedResult(
+      "scripted",
+      { studyId: plan.studyId, cwd, warnings, error: { code, message } },
+      {
+        actor: plan.actor,
+        appUrl: evidenceAppUrl,
+        dryRun,
+        runId: input.runId ?? "not-created",
+        sessions: [],
+      },
+    );
 
   const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = clone
     ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }

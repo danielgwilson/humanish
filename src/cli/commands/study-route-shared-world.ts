@@ -25,7 +25,7 @@ import { writeRunFindings } from "../findings.js";
 import { formatConcurrentSharedWorldStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 import { participantList } from "../../study/study-fields.js";
 
 interface SharedWorldRouteArgs {
@@ -56,21 +56,24 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
     followDecision({ wantsMachine, detach: args.options.detach, serve: args.options.serve }).follow;
   const port = parseObserverPort(args.options.port ?? "0");
   const failConcurrent = (message: string, runId?: string): void => {
-    const result: ConcurrentSharedWorldStudyResult = {
-      ...studyResultIdentity("shared-world", args.config.id),
-      ok: false,
-      cwd: args.options.cwd,
-      actor: args.config.actor?.type ?? "",
-      topology: "shared-world",
-      topologyMode: "concurrent",
-      roleCount: participantList(args.config)?.length ?? 0,
-      concurrency: args.config.execution?.concurrency ?? 1,
-      dryRun,
-      runId: runId ?? args.options.runId ?? "not-created",
-      roles: [],
-      warnings: [],
-      error: { code: "HUMANISH_SHARED_WORLD_FAILED", message },
-    };
+    const result: ConcurrentSharedWorldStudyResult = refusedResult(
+      "shared-world",
+      {
+        studyId: args.config.id,
+        cwd: args.options.cwd,
+        error: { code: "HUMANISH_SHARED_WORLD_FAILED", message },
+      },
+      {
+        actor: args.config.actor?.type ?? "",
+        topology: "shared-world",
+        topologyMode: "concurrent",
+        roleCount: participantList(args.config)?.length ?? 0,
+        concurrency: args.config.execution?.concurrency ?? 1,
+        dryRun,
+        runId: runId ?? args.options.runId ?? "not-created",
+        roles: [],
+      },
+    );
     writeResult(args.command, args.io, result, formatConcurrentSharedWorldStudyHuman);
     args.io.setExitCode(2);
   };

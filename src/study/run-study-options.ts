@@ -10,7 +10,7 @@ import type { InternalRunStudyOptions, StudyOutcome, RunStudyOptions } from "../
 import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
 import { knownSecretValues, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
-import { studyResultIdentity } from "../run/study-result.js";
+import { refusedResult } from "../run/study-result.js";
 import { participantList } from "./study-fields.js";
 
 type Refusal = {
@@ -150,38 +150,34 @@ export function normalizeRunStudyOptions(
   return { ok: true, options: normalized, warnings, emit };
 }
 
-/** A refusal in the route's own result envelope, before any run exists. */
+/**
+ * A refusal in the route's own result envelope, before any run exists. Each route's own fields come
+ * after `error` here.
+ */
 export function optionRefusalOutcome(
   config: StudyConfig,
   route: StudyRoute,
   options: RunStudyOptions,
   refusal: Refusal,
 ): StudyOutcome {
-  const cwd = path.resolve(options.cwd);
-  const error = { code: refusal.code, message: refusal.message };
-  const actor = config.actor?.type ?? "";
-  const dryRun = resolveStudyDryRun(config, options.dryRun, true) ?? true;
-  const runId = options.runId ?? "not-created";
-  const common = { ok: false, cwd, actor, dryRun, runId, warnings: [], error };
+  const base = {
+    studyId: config.id,
+    cwd: path.resolve(options.cwd),
+    error: { code: refusal.code, message: refusal.message },
+  };
+  const common = {
+    actor: config.actor?.type ?? "",
+    dryRun: resolveStudyDryRun(config, options.dryRun, true) ?? true,
+    runId: options.runId ?? "not-created",
+  };
   switch (route) {
     case "preview":
-      return {
-        route: "preview",
-        result: {
-          ...studyResultIdentity("preview", config.id),
-          ok: false,
-          cwd,
-          warnings: [],
-          error,
-        },
-      };
+      return { route: "preview", result: refusedResult("preview", base, {}) };
     case "computer-use":
       return {
         route: "computer-use",
         result: {
-          ...studyResultIdentity("computer-use", config.id),
-          ...common,
-          ok: false,
+          ...refusedResult("computer-use", base, common),
           appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
           lanes: [],
         },
@@ -190,9 +186,7 @@ export function optionRefusalOutcome(
       return {
         route: "scripted",
         result: {
-          ...studyResultIdentity("scripted", config.id),
-          ...common,
-          ok: false,
+          ...refusedResult("scripted", base, common),
           appUrl: config.subject.appUrl ?? "",
           sessions: [],
         },
@@ -201,9 +195,7 @@ export function optionRefusalOutcome(
       return {
         route: "terminal",
         result: {
-          ...studyResultIdentity("terminal", config.id),
-          ...common,
-          ok: false,
+          ...refusedResult("terminal", base, common),
           product: config.subject.product?.name ?? "",
         },
       };
@@ -212,9 +204,7 @@ export function optionRefusalOutcome(
       return {
         route: "shared-world",
         result: {
-          ...studyResultIdentity("shared-world", config.id),
-          ...common,
-          ok: false,
+          ...refusedResult("shared-world", base, common),
           topology: "shared-world",
           topologyMode: "concurrent",
           roleCount: participantCount,

@@ -4,7 +4,11 @@
 import type { AdmittedPlan, RunStudyOptions } from "../run-study.js";
 import type { StudyPlan, PlanRefusal } from "../study/plan-types.js";
 import type { RunResult } from "../run/results.js";
-import { studyResultIdentity, type StudyResultIdentity } from "../run/study-result.js";
+import {
+  refusedResult,
+  studyResultIdentity,
+  type StudyResultIdentity,
+} from "../run/study-result.js";
 import { runDryRun } from "../run/dry-run.js";
 import path from "node:path";
 
@@ -22,13 +26,11 @@ export function previewStudyRefusal(
   studyId: string,
   refusal: Extract<PlanRefusal, { readonly route: "preview" }>,
 ): PreviewStudyResult {
-  return {
-    ...studyResultIdentity("preview", studyId),
-    ok: false,
-    cwd: path.resolve(cwd),
-    warnings: [],
-    error: { code: refusal.code, message: refusal.message },
-  };
+  return refusedResult(
+    "preview",
+    { studyId, cwd: path.resolve(cwd), error: { code: refusal.code, message: refusal.message } },
+    {},
+  );
 }
 
 /** runStudyWith's step for a preview plan: it has no local checks and takes no scorer, so it returns its run. */
