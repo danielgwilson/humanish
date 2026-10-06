@@ -36,7 +36,7 @@ import {
   type PlaneResults,
 } from "./types.js";
 import type { DesktopParticipantRun } from "../computer-use/types.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult, studyResultIdentity } from "../../run/study-result.js";
 import { plural } from "../../run/text.js";
 
 /** The results of a run whose plane did not run (a dry run) or has not reported yet. */
@@ -202,21 +202,21 @@ export function concurrentStudyFailure(envelope: {
   message: string,
   actorLabel?: string,
 ) => ConcurrentSharedWorldStudyResult {
-  return (code, message, actorLabel) => ({
-    ...studyResultIdentity("shared-world", envelope.studyId),
-    ok: false,
-    cwd: envelope.cwd,
-    actor: actorLabel ?? envelope.actor,
-    topology: "shared-world",
-    topologyMode: "concurrent",
-    roleCount: envelope.participantCount,
-    concurrency: envelope.concurrency,
-    dryRun: envelope.dryRun,
-    runId: envelope.runId ?? "not-created",
-    roles: [],
-    warnings: [],
-    error: { code, message },
-  });
+  return (code, message, actorLabel) =>
+    refusedResult(
+      "shared-world",
+      { studyId: envelope.studyId, cwd: envelope.cwd, error: { code, message } },
+      {
+        actor: actorLabel ?? envelope.actor,
+        topology: "shared-world",
+        topologyMode: "concurrent",
+        roleCount: envelope.participantCount,
+        concurrency: envelope.concurrency,
+        dryRun: envelope.dryRun,
+        runId: envelope.runId ?? "not-created",
+        roles: [],
+      },
+    );
 }
 
 /**

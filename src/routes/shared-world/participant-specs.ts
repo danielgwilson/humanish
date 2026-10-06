@@ -11,11 +11,11 @@ import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import { composeParticipantInstructions } from "../computer-use/participant-prompt.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
-import type {
-  CuaParticipantDeps,
-  DesktopParticipantRun,
-  ParticipantRunOutcome,
-} from "../computer-use/types.js";
+import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
+import {
+  desktopParticipantDeps,
+  type DesktopParticipantDeps,
+} from "../computer-use/participant-deps.js";
 import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
@@ -143,12 +143,6 @@ export function makeBlockedFollowerOutcome(
   };
 }
 
-/** The computer-use runner deps every participant shares, on either plane. */
-export type ParticipantRunDeps = Omit<
-  CuaParticipantDeps,
-  "signalProvisioned" | "appUrl" | "onObservedUrl"
->;
-
 /**
  * A live run publishes an in-progress bundle before its participants start, whether or not an
  * Observer is attached, and the participants' live traces rewrite it as they go, as on the
@@ -192,61 +186,56 @@ function participantStreams(
  * out of every actor sandbox: the subject env names' values, the GitHub token, and clone
  * or local-tree provisioning. The committed subject.envValues still reach it, non-secret by parse.
  * `scrubKnownValues` is the plane's scrub: the external-public plane also scrubs the latched lobby
- * code.
+ * code. A plane calls this once per run, since the deps carry the run's one budget.
  */
 export function participantRunDeps(
   ctx: PlaneContext,
   live: LiveParticipants,
   scrubKnownValues: (text: string) => string,
-): ParticipantRunDeps {
-  const { config, env, receiving, runBudget } = ctx;
-  return {
-    onTrace: (participantId, items, usage, metadata) =>
-      live.flush?.flush(participantId, items, usage, metadata),
-    residual: ctx.plan.residual,
-    studyId: ctx.plan.studyId,
-    caps: ctx.plan.caps,
-    subject: {
-      kind: "shared-app",
-      ...(config.subject.serve?.url === undefined ? {} : { serveUrl: config.subject.serve.url }),
+): DesktopParticipantDeps {
+  const { config, plan } = ctx;
+  return desktopParticipantDeps(
+    {
+      plan,
+      // A local-agent brain runs each participant on the operator's signed-in agent, as on
+      // computer use.
+      brain: plan.brain,
+      subject: {
+        kind: "shared-app",
+        ...(config.subject.serve?.url === undefined ? {} : { serveUrl: config.subject.serve.url }),
+      },
+      env: ctx.env,
+      openaiApiKey: ctx.openaiApiKey,
+      e2bApiKey: ctx.e2bApiKey,
+      timeoutMs: ctx.timeoutMs,
+      sandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
+      participantCount: plan.plane.participants.length,
+      artifactRoot: ctx.runPaths,
+      studyCwd: ctx.cwd,
+      redactScreenshots: ctx.redactScreenshots,
+      scrubKnownValues,
+      // A session that throws returns no trace; the run still records that it started.
+      runSession: (options) => {
+        ctx.run.participantStarted();
+        return ctx.runSession(options);
+      },
+      liveFlush: () => live.flush?.flush,
+      onStream: participantStreams(ctx.input.onStream, live),
+      // A participant visits the shared app and provisions no subject, so it reports no phase of
+      // its own.
+      reportSubjectPhase: defaultSubjectPhaseSink,
+      seams: ctx.deps,
+      prepareDesktop: ctx.input.prepareDesktop,
     },
-    env,
-    openaiApiKey: ctx.openaiApiKey,
-    e2bApiKey: ctx.e2bApiKey,
-    requestTimeoutMs: ctx.requestTimeoutMs,
-    sandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
-    timeoutMs: ctx.timeoutMs,
-    participantCount: ctx.plan.plane.participants.length,
-    artifactRoot: ctx.runPaths,
-    studyCwd: ctx.cwd,
-    redactScreenshots: ctx.redactScreenshots,
-    scrubKnownValues,
-    // A session that throws returns no trace; the run still records that it started.
-    runSession: (options) => {
-      ctx.run.participantStarted();
-      return ctx.runSession(options);
+    {
+      receiving: ctx.receiving,
+      // Concurrent participants are independent evidence: a requested-vs-verified screen
+      // mismatch is recorded as separate facts + a warning instead of failing the participant's
+      // device claim closed, so one participant's window-manager drift cannot abort the whole
+      // live multi-actor world (the single-participant/fan-out routes keep fail-closed).
+      screenMismatchPolicy: "record-evidence",
     },
-    // A local-agent brain runs each participant on the operator's signed-in agent, as on computer
-    // use.
-    brain: ctx.plan.brain,
-    ...(receiving ? { receiving } : {}),
-    now: ctx.now,
-    // The participant's desktop seams, and the caller's prepareDesktop with the participant as its
-    // target.
-    ...(ctx.deps.desktopModule === undefined ? {} : { desktopModule: ctx.deps.desktopModule }),
-    ...(ctx.deps.detachedTimers === undefined ? {} : { detachedTimers: ctx.deps.detachedTimers }),
-    ...(ctx.input.prepareDesktop === undefined ? {} : { prepareDesktop: ctx.input.prepareDesktop }),
-    onStream: participantStreams(ctx.input.onStream, live),
-    // A participant visits the shared app and provisions no subject, so it reports no phase of its
-    // own.
-    reportSubjectPhase: defaultSubjectPhaseSink,
-    ...(runBudget === undefined ? {} : { runBudget }),
-    // Concurrent participants are independent evidence: a requested-vs-verified screen
-    // mismatch is recorded as separate facts + a warning instead of failing the participant's
-    // device claim closed, so one participant's window-manager drift cannot abort the whole
-    // live multi-actor world (the single-participant/fan-out routes keep fail-closed).
-    screenMismatchPolicy: "record-evidence",
-  };
+  );
 }
 
 /**

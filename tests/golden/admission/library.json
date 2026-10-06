@@ -3498,7 +3498,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-          "message": "Subject env values missing for a live clone scripted-browser study: GITHUB_TOKEN."
+          "message": "subject.env declares GITHUB_TOKEN but the environment does not provide it (pass via --dotenv; values are never persisted)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

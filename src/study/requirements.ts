@@ -1,10 +1,14 @@
-// The keys and subject env a live plan's requirements list. Each route's preflight asks
-// missingKeys and missingSubjectEnv which names to refuse on, doctor and the TUI ask requiredKeys
-// and requiredSubjectEnv which names to report, and `run` asks keyNamesOf which key-source
-// lines to print, so the planner alone decides what a run needs. A route keeps its own error
-// codes, messages and check order. The terminal runtime key (`key-one-of`) stays with
-// buildRuntimeAuth at run time, which also picks its placement.
-import type { StudyPlan, Requirement } from "./plan-types.js";
+// The keys and subject env a live plan's requirements list, and the live checks that read them.
+// Each route lists the checks below (keysCheck, localAgentCheck, subjectEnvCheck,
+// unpricedCapCheck) in its own order, with its own error codes. Doctor and the TUI ask
+// requiredKeys and requiredSubjectEnv which names to report, and `run` asks keyNamesOf which
+// key-source lines to print, so the planner alone decides what a run needs. The terminal runtime
+// key (`key-one-of`) stays with buildRuntimeAuth at run time, which also picks its placement.
+import { detectLocalAgents } from "../actors/local-agent/cli.js";
+import { localAgentRefusal, type LocalAgentRefusal } from "../actors/local-agent/readiness.js";
+import { describeMissingKeys } from "../keys/key-resolution.js";
+import { MODEL_RATES, unpricedCapMessage } from "../run/pricing.js";
+import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
 const KEY_ORDER = ["OPENAI_API_KEY", "E2B_API_KEY"] as const;
@@ -13,7 +17,7 @@ const present = (env: Record<string, string | undefined>, name: string): boolean
   (env[name]?.trim() ?? "") !== "";
 
 /** The `key` requirements whose value `env` lacks, OPENAI_API_KEY before E2B_API_KEY. */
-export function missingKeys(
+function missingKeys(
   requirements: readonly Requirement[],
   env: Record<string, string | undefined>,
 ): string[] {
@@ -24,7 +28,7 @@ export function missingKeys(
 }
 
 /** The subject env names the requirements list and `env` lacks, in declaration order. */
-export function missingSubjectEnv(
+function missingSubjectEnv(
   requirements: readonly Requirement[],
   env: Record<string, string | undefined>,
 ): string[] {
@@ -75,4 +79,115 @@ export function keyNamesOf(plan: StudyPlan): ReadonlySet<string> {
   if (plan.analysis !== undefined && plan.analysis.config.provider !== "codex")
     names.add("OPENAI_API_KEY");
   return names;
+}
+
+/** A live check's refusal, in its route's error code. */
+export interface LiveRefusal<C extends string> {
+  readonly code: C;
+  readonly message: string;
+}
+
+/** One live check: its refusal, or undefined when this machine passes it. */
+export type LiveCheck<C extends string> = () =>
+  | LiveRefusal<C>
+  | undefined
+  | Promise<LiveRefusal<C> | undefined>;
+
+/**
+ * The first refusal of `checks`, run one at a time in the order given. Which check comes first
+ * decides which error a run with two problems reports, so each route keeps its own order.
+ */
+export async function firstLiveRefusal<C extends string>(
+  checks: readonly LiveCheck<C>[],
+): Promise<LiveRefusal<C> | undefined> {
+  for (const check of checks) {
+    const refusal = await check();
+    if (refusal !== undefined) return refusal;
+  }
+  return undefined;
+}
+
+/**
+ * Refuses a run whose environment lacks a provider key the requirements list. `need` writes the
+ * route's sentence for the missing names ("OPENAI_API_KEY and E2B_API_KEY"); the message goes on
+ * to say where discovery looked and what fills each key. With `suggestLocalAgent`, a missing
+ * OPENAI_API_KEY also names each coding agent signed in on this machine: someone new meets this
+ * refusal first, and an agent they already use runs the participants without a key.
+ */
+export async function keysCheck<C extends string>(args: {
+  readonly requirements: readonly Requirement[];
+  readonly env: Record<string, string | undefined>;
+  readonly code: C;
+  readonly need: (names: string) => string;
+  readonly suggestLocalAgent?: boolean;
+}): Promise<LiveRefusal<C> | undefined> {
+  const { env } = args;
+  const missing = missingKeys(args.requirements, env);
+  if (missing.length === 0) return undefined;
+  const suggestion =
+    args.suggestLocalAgent === true && missing.includes("OPENAI_API_KEY")
+      ? await signedInAgentSuggestion(env)
+      : "";
+  return {
+    code: args.code,
+    message: `${args.need(missing.join(" and "))} ${describeMissingKeys(missing, env)}${suggestion}`,
+  };
+}
+
+/** The sentence naming the coding agents signed in on this machine, or "" when none is. */
+async function signedInAgentSuggestion(env: Record<string, string | undefined>): Promise<string> {
+  const ready = (await detectLocalAgents({ env })).filter(
+    (agent) => agent.authStatus === "authenticated",
+  );
+  if (ready.length === 0) return "";
+  const labels = ready.map((agent) => agent.label).join(" and ");
+  return ` ${labels} reports authenticated on this machine. Set actor.type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
+}
+
+/**
+ * Refuses a local-agent brain whose CLI is missing, signed out, too old, or cannot honor the
+ * caps, before any sandbox is paid for. `codes` names the route's code for each kind of refusal.
+ */
+export async function localAgentCheck<C extends string>(args: {
+  readonly brain: Brain;
+  readonly env: Record<string, string | undefined>;
+  readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
+  readonly codes: Readonly<Record<LocalAgentRefusal["kind"], C>>;
+}): Promise<LiveRefusal<C> | undefined> {
+  const { brain, env, caps } = args;
+  if (brain.kind !== "local-agent") return undefined;
+  const refusal = await localAgentRefusal({ agent: brain.agent, env, caps });
+  return refusal === undefined
+    ? undefined
+    : { code: args.codes[refusal.kind], message: refusal.message };
+}
+
+/** Refuses a run whose environment lacks a subject env name the requirements list. */
+export function subjectEnvCheck<C extends string>(args: {
+  readonly requirements: readonly Requirement[];
+  readonly env: Record<string, string | undefined>;
+  readonly code: C;
+}): LiveRefusal<C> | undefined {
+  const unset = missingSubjectEnv(args.requirements, args.env);
+  if (unset.length === 0) return undefined;
+  return {
+    code: args.code,
+    message: `subject.env declares ${unset.join(", ")} but the environment does not provide ${unset.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
+  };
+}
+
+/**
+ * Refuses a maxUsd or maxTotalUsd cap on a model with no rate in src/run/pricing.ts. The loop
+ * could not measure spend against the cap, and running uncapped would drop the protection the
+ * cap promised; the operator picks a priced model or removes the cap.
+ */
+export function unpricedCapCheck<C extends string>(args: {
+  readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
+  readonly model: string;
+  readonly code: C;
+}): LiveRefusal<C> | undefined {
+  const { caps, model } = args;
+  if (caps.maxUsd === undefined && caps.maxTotalUsd === undefined) return undefined;
+  if (MODEL_RATES[model.trim().toLowerCase()]) return undefined;
+  return { code: args.code, message: unpricedCapMessage(model) };
 }

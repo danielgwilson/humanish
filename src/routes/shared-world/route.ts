@@ -34,20 +34,23 @@
 // gate; humanish cannot tell synthetic from real data, so it makes no claim about real data.
 
 import path from "node:path";
-import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
-import { scrubLiterals } from "../../evidence/redaction.js";
-import { describeMissingKeys } from "../../keys/key-resolution.js";
+import {
+  firstLiveRefusal,
+  keysCheck,
+  localAgentCheck,
+  subjectEnvCheck,
+} from "../../study/requirements.js";
 import { type RunScope } from "../../run/run.js";
+import { RunSecrets } from "../../run/secrets.js";
 import {
   admitRoute,
   completeRefusalAnalysis,
   type RefusedStudy,
   type RouteAdmission,
 } from "../../run/route-shell.js";
-import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
-import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
+import type { LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentStudyFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
@@ -134,39 +137,37 @@ async function admitSharedWorldRun(
   const admitted = { ok: true, admitted: undefined } as const;
   if (plan.dryRun) return admitted;
   const env = input.env ?? process.env;
-  const fail = (code: ConcurrentSharedWorldStudyErrorCode, message: string) =>
-    ({
-      ok: false,
-      result: sharedWorldFailure(plan, input)(
-        code,
-        message,
-        sharedWorldDescriptorOf(plan.actor).id,
-      ),
-    }) as const;
-  // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
-  // plane's lobby-code reader; a local-agent brain's participants run on the operator's signed-in
-  // agent instead.
-  const missing = missingKeys(plan.requirements, env);
-  if (missing.length > 0) {
-    return fail(
-      "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      `Live concurrent shared-world studies need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
-    );
-  }
-  if (plan.brain.kind === "local-agent") {
-    // A missing or signed-out agent found after the participants' desktops are paid for is the same
-    // news at the worst moment.
-    const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
-    if (refusal) return fail(LOCAL_AGENT_REFUSAL_CODES[refusal.kind], refusal.message);
-  }
-  const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
-  if (unsetSubjectEnv.length > 0) {
-    return fail(
-      "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING",
-      `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
-    );
-  }
-  return admitted;
+  const { requirements } = plan;
+  // The plan prices a cap before these, and its refusal wins over theirs.
+  const refusal = await firstLiveRefusal<ConcurrentSharedWorldStudyErrorCode>([
+    // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
+    // plane's lobby-code reader; a local-agent brain's participants run on the operator's
+    // signed-in agent instead. Only on the provisioned plane does a local agent remove the key,
+    // so only there does the refusal suggest one.
+    () =>
+      keysCheck({
+        requirements,
+        env,
+        code: "HUMANISH_SHARED_WORLD_KEYS_MISSING",
+        need: (names) =>
+          `Live concurrent shared-world studies need ${names} in the environment (values are never persisted).`,
+        suggestLocalAgent: plan.plane.kind === "provisioned",
+      }),
+    () =>
+      localAgentCheck({
+        brain: plan.brain,
+        env,
+        caps: plan.caps,
+        codes: LOCAL_AGENT_REFUSAL_CODES,
+      }),
+    () => subjectEnvCheck({ requirements, env, code: "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING" }),
+  ]);
+  if (refusal === undefined) return admitted;
+  const fail = sharedWorldFailure(plan, input);
+  return {
+    ok: false,
+    result: fail(refusal.code, refusal.message, sharedWorldDescriptorOf(plan.actor).id),
+  };
 }
 
 /** The route's envelope for a run that stops before its bundle. */
@@ -188,7 +189,6 @@ async function runPlanInScope(
   config: StudyConfig,
   scope: RunScope,
 ): Promise<ConcurrentSharedWorldStudyResult> {
-  const { dryRun } = plan;
   const requestedCwd = path.resolve(input.cwd);
   const deps = input.deps ?? {};
   const env: Record<string, string | undefined> = input.env ?? process.env;
@@ -196,9 +196,6 @@ async function runPlanInScope(
   const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
     plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
-  const { maxTotalUsd } = plan.caps;
-  const runBudget =
-    !dryRun && maxTotalUsd !== undefined ? makeCuaRunBudget(maxTotalUsd) : undefined;
 
   // The provisioned plane's subject; the external-public plane has none.
   const subject = plan.plane.kind === "provisioned" ? plan.plane.subject : undefined;
@@ -211,13 +208,12 @@ async function runPlanInScope(
 
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
-  const knownSecretValues = [
+  const secrets = new RunSecrets([
     openaiApiKey,
     e2bApiKey,
     ...subjectEnvNames.map((name) => env[name] ?? ""),
     ...checkpoints.flatMap((probe) => probe.redact ?? []),
-  ].filter((value) => value.length >= 4);
-  const scrubKnownValues = scrubLiterals(knownSecretValues);
+  ]);
 
   const redactRepoLabel =
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
@@ -234,7 +230,6 @@ async function runPlanInScope(
       env,
       descriptor,
       planeClass,
-      runBudget,
       runSession,
       serve,
       localTreeRoute,
@@ -243,8 +238,7 @@ async function runPlanInScope(
       checkpoints,
       openaiApiKey,
       e2bApiKey,
-      knownSecretValues,
-      scrubKnownValues,
+      secrets,
       publicRepo,
       hasGithubToken,
       fail,

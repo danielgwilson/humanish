@@ -27,7 +27,6 @@ import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaParticipantDeps,
   DesktopParticipantRun,
-  CuaRunBudget,
   ParticipantRunOutcome,
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
@@ -197,14 +196,11 @@ export interface PlaneContext {
   deps: StudyDeps;
   env: Record<string, string | undefined>;
   concurrency: number;
-  runBudget: CuaRunBudget | undefined;
   runSession: CuaParticipantDeps["runSession"];
   openaiApiKey: string;
   e2bApiKey: string;
+  /** `run.secrets.scrub`, which every plane step that writes text reads. */
   scrubKnownValues: (text: string) => string;
-  /** The values scrubKnownValues removes. Real email receiving adds its secrets before participants
-   *  start. */
-  knownSecretValues: readonly string[];
   cwd: string;
   run: StartedRun;
   runId: string;
