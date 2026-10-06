@@ -69,7 +69,8 @@ export function RunStatus({
         <div className="run-status-update" role="status" aria-live="off">
           {failed ? (
             <>
-              Updates unavailable · last received {ageLabel(connection.lastReceivedAt, now)}{" "}
+              {connection.serverStopped ? "Server stopped" : "Updates unavailable"} · last received{" "}
+              {ageLabel(connection.lastReceivedAt, now)}{" "}
               <button type="button" onClick={onRetry}>
                 Retry
               </button>

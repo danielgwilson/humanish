@@ -739,3 +739,30 @@ summary {
     min-height: 44px;
   }
 }
+/* A served page whose server stopped: one notice with the run id and both ways back. */
+.server-stopped {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-20);
+  border-bottom: 1px solid var(--accent-dim);
+  background: var(--panel);
+  color: var(--body-c);
+  font-size: var(--text-12);
+  line-height: 1.5;
+}
+.server-stopped h2 {
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: 550;
+}
+.server-stopped p {
+  margin: 0;
+  max-width: 80ch;
+}
+.server-stopped code {
+  font-family: var(--mono);
+  font-size: var(--text-11);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}

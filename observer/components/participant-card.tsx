@@ -45,7 +45,10 @@ export function ParticipantCard({
   updating = true,
   reviewOutcome,
   replay,
+  serverStopped = false,
 }: {
+  /** The serving process is gone; one page notice says so in place of a message per tile. */
+  serverStopped?: boolean;
   replay?: GridMoment | undefined;
   reviewOutcome?: string | undefined;
   stream: ObserverStream;
@@ -78,6 +81,12 @@ export function ParticipantCard({
     : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const capture = useDecodedImage(liveThumb ? null : keyframe);
+  const [previousStopped, setPreviousStopped] = useState(serverStopped);
+  if (previousStopped !== serverStopped) {
+    setPreviousStopped(serverStopped);
+    // Requests failed while no server answered; ask again once one does.
+    if (!serverStopped && capture.status === "error") capture.retry();
+  }
   useEffect(() => {
     if (!liveThumb || !liveUrl || !keyframe) return;
     // A live iframe hides the poster element. Read its raster dimensions anyway:
@@ -107,7 +116,10 @@ export function ParticipantCard({
     ? statusLabel
     : (notable ?? (signal.flagged ? signal.label : statusLabel));
   const detailsLabel = `Participant details: ${name}`;
-  const failed = keyframe !== null && capture.status === "error";
+  const captureFailed = keyframe !== null && capture.status === "error";
+  // Without a server every request fails, which says nothing about the recording. The page
+  // notice explains it once, so the tile shows no capture and no message of its own.
+  const failed = captureFailed && !serverStopped;
   const pending = keyframe !== null && capture.status === "loading" && !liveThumb;
   // Only a slow decode earns the loading bar and caption; a fast one keeps the previous capture and label.
   const slowLoad = useSettled(pending, LOADING_AFFORDANCE_DELAY_MS);
@@ -168,7 +180,11 @@ export function ParticipantCard({
                 <img
                   key={slot.key}
                   className={
-                    slot.pending ? "capture-pending" : failed ? "capture-unavailable" : "keyframe"
+                    slot.pending
+                      ? "capture-pending"
+                      : captureFailed
+                        ? "capture-unavailable"
+                        : "keyframe"
                   }
                   src={slot.href}
                   data-requested-src={keyframe}

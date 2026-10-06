@@ -16,6 +16,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   grid card has the same 44 px caption, so phone-sized and desktop cards in a row end at the same
   height.
 
+### Fixed
+
+- An open Observer page whose server stopped says so once, with the run id and both ways back:
+  `humanish observe --run <id>`, or the run's `observer/index.html` opened from disk. Its tiles no
+  longer report every capture as "Frame unavailable"; a missing frame on a running server still
+  does.
+
 ## 0.111.1: E2B URLs in study URLs, fan-out dry runs verify, zero-data-retention cache holds (2026-10-06)
 
 humanish 0.111.1 fixes a study URL refusal and two verify problems that an adopter met on 0.111.0,

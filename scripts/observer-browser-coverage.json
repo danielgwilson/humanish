@@ -156,6 +156,14 @@
       "goal": "Leaving Observer closes a pending real HTTP update and stops polling"
     },
     {
+      "id": "server-stopped-finished",
+      "goal": "A finished run's open page names its stopped server and both ways back, with no failed tiles"
+    },
+    {
+      "id": "server-stopped-live",
+      "goal": "A running run's open page on a phone says the run was still running when its server stopped"
+    },
+    {
       "id": "terminal-recording",
       "goal": "Screenshot-free terminal evidence stays useful without a fabricated player"
     },

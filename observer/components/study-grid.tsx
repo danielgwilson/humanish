@@ -65,7 +65,9 @@ export function StudyGrid({
   reviewing,
   page,
   onPageChange,
+  serverStopped = false,
 }: {
+  serverStopped?: boolean;
   tools?: ReactNode;
   reviewOutcomes?: { streamId: string; label: string }[] | undefined;
   /** What the run's analysis requests cost, from the companion analysis record. */
@@ -170,6 +172,7 @@ export function StudyGrid({
                 reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label
               }
               updating={updating}
+              serverStopped={serverStopped}
               liveThumb={liveThumbIds.has(stream.id)}
               pinned={pinnedIds.includes(stream.id)}
               compared={compareIds.includes(stream.id)}
