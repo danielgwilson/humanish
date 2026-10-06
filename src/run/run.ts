@@ -29,6 +29,7 @@ import {
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
 import { scrubRunSandboxIds, withPublicSandboxIds } from "./sandbox-ids.js";
+import { RunSecrets } from "./secrets.js";
 import {
   beginRunStatus,
   runStatusOutcome,
@@ -55,6 +56,8 @@ interface StartRunOptions {
   now?: (() => number) | undefined;
   /** Warnings about the study's own fields. Every bundle write records each as a warn event. */
   warnings?: readonly string[] | undefined;
+  /** The route's known values, created before the run so a refusal before it is scrubbed too. */
+  secrets?: RunSecrets | undefined;
 }
 
 /** How a run ended as an execution, as run.json records it: the result's ok and execution outcome. */
@@ -80,6 +83,8 @@ interface Run {
   readonly study?: RunStudyProvenance;
   /** Routes write their evidence files through these and hand them to participants. */
   readonly paths: PreparedRunArtifactPaths;
+  /** The literal values the route scrubs from this run's evidence; a value found later is added here. */
+  readonly secrets: RunSecrets;
   /**
    * Publish an in-progress bundle: run.json, review.json, review.md, events.ndjson and
    * observer/observer-data.json, plus the latest pointer until one pointer write has succeeded,
@@ -498,6 +503,7 @@ export async function runScope<T>(
       mode: options.mode,
       ...(options.study === undefined ? {} : { study: options.study }),
       paths,
+      secrets: options.secrets ?? new RunSecrets([]),
       participantStarted() {
         participantsRan = true;
       },

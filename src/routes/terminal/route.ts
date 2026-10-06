@@ -67,7 +67,7 @@ import {
   type TerminalProductStudyResult,
   type TerminalRunInput,
 } from "./types.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 /** A refused terminal study's result: the route's envelope, and the analysis record a refusal gets. */
 export function terminalStudyRefusal(
@@ -75,17 +75,20 @@ export function terminalStudyRefusal(
   refusal: TerminalRefusal,
 ): Promise<TerminalProductStudyResult> {
   const { config, dryRun } = options;
-  const refused: TerminalProductStudyResult = {
-    ...studyResultIdentity("terminal", config.id),
-    ok: false,
-    cwd: path.resolve(options.cwd),
-    actor: refusal.actor ?? config.actor?.type ?? "",
-    product: config.subject.product?.name ?? "",
-    dryRun,
-    runId: options.runId ?? "not-created",
-    warnings: [],
-    error: { code: refusal.code, message: refusal.message },
-  };
+  const refused: TerminalProductStudyResult = refusedResult(
+    "terminal",
+    {
+      studyId: config.id,
+      cwd: path.resolve(options.cwd),
+      error: { code: refusal.code, message: refusal.message },
+    },
+    {
+      actor: refusal.actor ?? config.actor?.type ?? "",
+      product: config.subject.product?.name ?? "",
+      dryRun,
+      runId: options.runId ?? "not-created",
+    },
+  );
   return completeRefusalAnalysis(refused, config, options);
 }
 
@@ -141,17 +144,17 @@ function terminalFailure(
   warnings: string[],
 ): RunLiveTerminalSessionArgs["failed"] {
   const cwd = path.resolve(input.cwd);
-  return (code, message) => ({
-    ...studyResultIdentity("terminal", plan.studyId),
-    ok: false,
-    cwd,
-    actor: plan.actor,
-    product: plan.product.name,
-    dryRun: plan.dryRun,
-    runId: input.runId ?? "not-created",
-    warnings,
-    error: { code, message },
-  });
+  return (code, message) =>
+    refusedResult(
+      "terminal",
+      { studyId: plan.studyId, cwd, warnings, error: { code, message } },
+      {
+        actor: plan.actor,
+        product: plan.product.name,
+        dryRun: plan.dryRun,
+        runId: input.runId ?? "not-created",
+      },
+    );
 }
 
 async function runTerminalPlanInScope(

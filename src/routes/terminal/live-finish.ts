@@ -58,7 +58,6 @@ export interface LiveFinishInputs {
   cwd: string;
   sanitize: (text: string) => string;
   nowIso: () => string;
-  knownSecretValues: string[];
   runtimeEnv: LiveSandboxInputs["runtimeEnv"];
   runtime: LiveSandboxInputs["runtime"];
   persona: ActorPersonaRef;
@@ -76,7 +75,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   normalizedTranscript: string;
   trace: ReturnType<typeof buildTerminalActorTrace>;
 } {
-  const { persona, sanitize, nowIso, runtimeEnv, runtime, knownSecretValues } = inputs;
+  const { persona, sanitize, nowIso, runtimeEnv, runtime } = inputs;
   const { product } = inputs.plan;
   const { session } = inputs;
   const { createdAt } = inputs.run;
@@ -84,7 +83,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
   // chunks before any transcript/trace/event artifact is persisted. Check both each stream and
   // the combined event order that the transcript uses; either view can assemble a split value.
-  scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
+  scrubSplitKnownValues(terminalEvents, inputs.run.secrets.values(), discardedPrefixes);
 
   // Build the actor trace first (the cost ledger reads its tokenUsage). A session past the cap
   // ends its transcript with what was not stored, and its trace says the same.

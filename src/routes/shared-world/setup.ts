@@ -11,6 +11,7 @@ import type {
 } from "../../study/types.js";
 import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
+import type { RunSecrets } from "../../run/secrets.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
@@ -73,8 +74,7 @@ interface AdmittedStudy {
   checkpoints: StudySubjectStateCheckpoint[];
   openaiApiKey: string;
   e2bApiKey: string;
-  knownSecretValues: string[];
-  scrubKnownValues: (text: string) => string;
+  secrets: RunSecrets;
   publicRepo: string;
   hasGithubToken: boolean;
   fail: (
@@ -140,6 +140,7 @@ function startConcurrentRun(
     warnings: plan.warnings,
     renderReview: renderConcurrentReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
+    secrets: study.secrets,
   });
 }
 
@@ -163,7 +164,7 @@ export async function prepareConcurrentRun(
 > {
   const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = study;
   const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = study;
-  const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = study;
+  const { openaiApiKey, e2bApiKey, secrets } = study;
   const { dryRun, concurrency } = plan;
   const cwd = await bindPhysicalProject(requestedCwd);
   const warnings: string[] = [];
@@ -183,7 +184,7 @@ export async function prepareConcurrentRun(
   // failure fails the run closed without sandbox cost. Dry-run packs nothing.
   const packed =
     localTreeRoute && !dryRun
-      ? await packSubjectTree(cwd, plan.residual, deps, scrubKnownValues)
+      ? await packSubjectTree(cwd, plan.residual, deps, secrets.scrub)
       : { ok: true as const, archive: undefined, buffer: undefined };
   if (!packed.ok) {
     return {
@@ -216,7 +217,7 @@ export async function prepareConcurrentRun(
 
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];
-  const actorSpecs = await buildParticipantSpecs(plan.plane.participants, cwd, scrubKnownValues);
+  const actorSpecs = await buildParticipantSpecs(plan.plane.participants, cwd, run.secrets.scrub);
   const results = emptyPlaneResults();
   const live: LiveParticipants = { streamUrls: [] };
 
@@ -232,7 +233,7 @@ export async function prepareConcurrentRun(
     env,
     participants: actorSpecs.map((spec) => spec.planned.id),
     runPaths,
-    knownSecretValues,
+    secrets: run.secrets,
     dryRun,
   });
   if (!email.ok) {
@@ -259,8 +260,7 @@ export async function prepareConcurrentRun(
     runSession,
     openaiApiKey,
     e2bApiKey,
-    scrubKnownValues,
-    knownSecretValues,
+    scrubKnownValues: run.secrets.scrub,
     cwd,
     run,
     runId,

@@ -40,8 +40,8 @@ import {
   localAgentCheck,
   subjectEnvCheck,
 } from "../../study/requirements.js";
-import { scrubLiterals } from "../../evidence/redaction.js";
 import { type RunScope } from "../../run/run.js";
+import { RunSecrets } from "../../run/secrets.js";
 import {
   admitRoute,
   completeRefusalAnalysis,
@@ -213,13 +213,12 @@ async function runPlanInScope(
 
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
-  const knownSecretValues = [
+  const secrets = new RunSecrets([
     openaiApiKey,
     e2bApiKey,
     ...subjectEnvNames.map((name) => env[name] ?? ""),
     ...checkpoints.flatMap((probe) => probe.redact ?? []),
-  ].filter((value) => value.length >= 4);
-  const scrubKnownValues = scrubLiterals(knownSecretValues);
+  ]);
 
   const redactRepoLabel =
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
@@ -245,8 +244,7 @@ async function runPlanInScope(
       checkpoints,
       openaiApiKey,
       e2bApiKey,
-      knownSecretValues,
-      scrubKnownValues,
+      secrets,
       publicRepo,
       hasGithubToken,
       fail,

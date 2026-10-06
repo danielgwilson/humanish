@@ -38,7 +38,7 @@ import { writeRunFindings } from "../findings.js";
 import { formatCuaStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 import { declaredParticipantCount } from "../../study/study-fields.js";
 
 interface ComputerUseRouteArgs {
@@ -117,17 +117,16 @@ function refuseCua(
   code: CuaActorStudyErrorCode,
   message: string,
 ): void {
-  const result: CuaActorStudyResult = {
-    ...studyResultIdentity("computer-use", args.config.id),
-    ok: false,
-    cwd: args.options.cwd,
-    actor: args.config.actor?.type ?? "",
-    appUrl: "",
-    dryRun,
-    runId: args.options.runId ?? "not-created",
-    warnings: [],
-    error: { code, message },
-  };
+  const result: CuaActorStudyResult = refusedResult(
+    "computer-use",
+    { studyId: args.config.id, cwd: args.options.cwd, error: { code, message } },
+    {
+      actor: args.config.actor?.type ?? "",
+      appUrl: "",
+      dryRun,
+      runId: args.options.runId ?? "not-created",
+    },
+  );
   writeResult(args.command, args.io, result, formatCuaStudyHuman);
   args.io.setExitCode(2);
 }

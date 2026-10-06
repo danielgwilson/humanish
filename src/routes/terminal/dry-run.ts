@@ -2,13 +2,14 @@
 // published through the run scope with no sandbox, key or spend. session.ts holds the live path.
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { digestText, redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
+import { RunSecrets } from "../../run/secrets.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { resolveTerminalPersona, terminalPersonaRef } from "./persona.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
@@ -34,7 +35,7 @@ export async function runDryTerminalStudy(args: {
 }): Promise<TerminalProductStudyResult> {
   const { plan, input, cwd, warnings, failed, scope } = args;
   const { product } = plan;
-  const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
+  const { evidenceMission, physicalCwd, persona, secrets } = await prepareDryPersona({
     plan,
     cwd,
     env: input.env ?? process.env,
@@ -50,6 +51,7 @@ export async function runDryTerminalStudy(args: {
     warnings: plan.warnings,
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: input.deps?.renderObserver },
+    secrets,
   });
   if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
@@ -128,17 +130,20 @@ async function prepareDryPersona(args: {
   cwd: string;
   env: Record<string, string | undefined>;
   warnings: string[];
-}): Promise<{ evidenceMission: string; physicalCwd: string; persona: ActorPersonaRef }> {
+}): Promise<{
+  evidenceMission: string;
+  physicalCwd: string;
+  persona: ActorPersonaRef;
+  secrets: RunSecrets;
+}> {
   const { plan, cwd, env, warnings } = args;
   const { product } = plan;
   const mission = plan.mission ?? defaultMission(product.name);
-  const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
-    .map((value) => value?.trim() ?? "")
-    .filter((value) => value.length >= 4);
-  const evidenceMission = participantAssignment(
-    { mission },
-    scrubLiterals(knownSecretValues),
-  ).mission;
+  // A dry run checks no key, so it scrubs every key the live run could read.
+  const secrets = new RunSecrets(
+    [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY].map((value) => value?.trim() ?? ""),
+  );
+  const evidenceMission = participantAssignment({ mission }, secrets.scrub).mission;
   const terminalPersona = await resolveTerminalPersona({ plan, cwd, warnings });
   // The composed prompt = mission + persona + public-surface manifest. Only the author mission
   // goes plaintext into evidence (it is public-safe committed study text); the full composed prompt
@@ -149,13 +154,9 @@ async function prepareDryPersona(args: {
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
   });
-  const persona = terminalPersonaRef(
-    terminalPersona,
-    digestText(composedPrompt),
-    scrubLiterals(knownSecretValues),
-  );
+  const persona = terminalPersonaRef(terminalPersona, digestText(composedPrompt), secrets.scrub);
   const { physicalCwd } = terminalPersona;
-  return { evidenceMission, physicalCwd, persona };
+  return { evidenceMission, physicalCwd, persona, secrets };
 }
 
 /** The declared runtime provenance as a dry-run event; nothing is observed without a sandbox. */
