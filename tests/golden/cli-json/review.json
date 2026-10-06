@@ -9,7 +9,7 @@
       "limitations": [],
       "message": "string",
       "model": "null",
-      "next": "null",
+      "next": "string",
       "path": "null",
       "provider": "null",
       "reason": "null",

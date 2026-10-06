@@ -141,7 +141,8 @@ async function signedInAgentSuggestion(env: Record<string, string | undefined>):
   );
   if (ready.length === 0) return "";
   const labels = ready.map((agent) => agent.label).join(" and ");
-  return ` ${labels} reports authenticated on this machine. Set actor.type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
+  const one = ready.length === 1;
+  return ` ${labels} ${one ? "reports" : "report"} authenticated on this machine. Set actor.type: local-agent to use ${one ? "it" : "one"} instead of a key.`;
 }
 
 /**

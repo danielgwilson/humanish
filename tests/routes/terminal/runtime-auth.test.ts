@@ -74,4 +74,22 @@ describe("runtime auth mode", () => {
     expect(resolved).toMatchObject({ ok: false, code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED" });
     expect(JSON.stringify(resolved)).not.toContain("synthetic-runtime-value");
   });
+
+  it.each([
+    [undefined, "`execution.runtimeAuth` is unset, so the default openai-egress keeps the key"],
+    ["openai-egress", "`execution.runtimeAuth: openai-egress` keeps the key"],
+    ["openai-env", "`execution.runtimeAuth: openai-env` passes the key"],
+  ] as const)(
+    "names the missing keys and where runtimeAuth %s puts one",
+    (runtimeAuth, placement) => {
+      const resolved = buildRuntimeAuth({ runtimeAuth, env: {} });
+      expect(resolved).toMatchObject({ ok: false, code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING" });
+      const message = resolved.ok ? "" : resolved.message;
+      expect(message).toContain(
+        "need CODEX_API_KEY or OPENAI_API_KEY in the environment, and neither is set.",
+      );
+      expect(message).toContain(placement);
+      expect(message).not.toContain("undefined");
+    },
+  );
 });

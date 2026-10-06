@@ -36,6 +36,8 @@ interface Case {
   readonly env: Record<string, string>;
   /** A `codex` on `PATH` that reports a ChatGPT sign-in. */
   readonly signedInCodex?: true;
+  /** A `claude` on `PATH` that reports a sign-in. */
+  readonly signedInClaude?: true;
 }
 
 const cases: Record<string, Case> = {
@@ -64,6 +66,13 @@ const cases: Record<string, Case> = {
     raw: lab("cuAppUrl", live),
     env: e2b,
     signedInCodex: true,
+  },
+  "computer use: a missing OpenAI key with two signed-in agents": {
+    route: "computer-use",
+    raw: lab("cuAppUrl", live),
+    env: e2b,
+    signedInCodex: true,
+    signedInClaude: true,
   },
   "shared world: an unpriced cap before keys": {
     route: "shared-world",
@@ -138,24 +147,31 @@ async function projectDir(): Promise<string> {
   return dir;
 }
 
-/** A directory for `PATH` and `HOME`, holding a signed-in `codex` when asked. */
-async function machineDir(signedInCodex: boolean): Promise<string> {
+/** A directory for `PATH` and `HOME`, holding a signed-in `codex` and `claude` when asked. */
+async function machineDir(testCase: Case): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-live-checks-bin-"));
   dirs.push(dir);
-  if (signedInCodex) {
-    const bin = path.join(dir, "codex");
-    await writeFile(
-      bin,
-      '#!/bin/sh\nif [ "$1" = "login" ]; then echo "Logged in using ChatGPT"; exit 0; fi\nexit 3\n',
+  const stub = async (name: string, script: string): Promise<void> => {
+    await writeFile(path.join(dir, name), `#!/bin/sh\n${script}exit 3\n`);
+    await chmod(path.join(dir, name), 0o755);
+  };
+  if (testCase.signedInCodex === true)
+    await stub("codex", 'if [ "$1" = "login" ]; then echo "Logged in using ChatGPT"; exit 0; fi\n');
+  if (testCase.signedInClaude === true)
+    await stub(
+      "claude",
+      [
+        'if [ "$1" = "auth" ]; then echo \'{"loggedIn": true}\'; exit 0; fi',
+        'if [ "$1" = "--version" ]; then echo "9.9.9 (Claude Code)"; exit 0; fi',
+        "",
+      ].join("\n"),
     );
-    await chmod(bin, 0o755);
-  }
   return dir;
 }
 
 async function refusalOf(testCase: Case): Promise<unknown> {
   const cwd = await projectDir();
-  const machine = await machineDir(testCase.signedInCodex === true);
+  const machine = await machineDir(testCase);
   const env = { ...testCase.env, PATH: machine, HOME: machine };
   const config: StudyConfig = libraryConfig(testCase.raw);
   const never = async (): Promise<never> => {
