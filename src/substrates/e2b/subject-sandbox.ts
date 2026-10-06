@@ -4,6 +4,7 @@
 // reading is one edit. What runs inside the sandbox (the caller's prepare hook, provisioning,
 // getHost) stays with each route.
 
+import { redactText } from "../../evidence/redaction.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import type { OwnedDesktopAllocation } from "../desktop-session.js";
@@ -21,7 +22,7 @@ export interface SubjectDesktopUsage {
 
 /** The run the subject sandbox reports to. */
 export interface SubjectSandboxRun {
-  /** The run's warnings. Release appends to it. */
+  /** The run's warnings. Acquisition and release append to it. */
   warnings: string[];
   scrub: (text: string) => string;
   now: () => number;
@@ -68,31 +69,47 @@ export class E2BSubjectSandbox {
    */
   async acquire(request: SubjectSandboxRequest): Promise<E2BDesktopSandbox> {
     const { envs } = request;
+    const { warnings, scrub } = this.run;
+    const timeoutMs =
+      request.sessionTimeoutMs +
+      SUBJECT_PROVISION_BUDGET_MS +
+      request.seed.reduce(
+        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+        0,
+      ) +
+      SANDBOX_TIMEOUT_BUFFER_MS;
     const subject = await acquireE2BDesktopSandbox({
       module: request.module,
       options: {
         apiKey: request.apiKey,
         requestTimeoutMs: request.requestTimeoutMs,
-        timeoutMs:
-          request.sessionTimeoutMs +
-          SUBJECT_PROVISION_BUDGET_MS +
-          request.seed.reduce(
-            (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-            0,
-          ) +
-          SANDBOX_TIMEOUT_BUFFER_MS,
+        timeoutMs,
         metadata: request.metadata,
         ...(Object.keys(envs).length > 0 ? { envs } : {}),
         dpi: 96,
         lifecycle: { onTimeout: "kill" },
       },
       template: request.template,
+      retry: {
+        // A failed first attempt may have allocated a sandbox whose id never reached this run;
+        // its own kill-on-timeout reclaims it.
+        onRetry: (reason) => {
+          warnings.push(
+            `Subject sandbox create retried once after a transient provider error (${redactText(scrub(reason))}). A sandbox the failed attempt may have allocated is reclaimed by its ${timeoutMs} ms timeout.`,
+          );
+        },
+      },
       receipt: { root: request.root, participantId: "subject" },
     });
     this.allocation = subject.allocation;
     this.sandboxId = subject.allocation.resourceId;
     this.createdAtMs = this.run.now();
-    this.resources = await observeDesktopResources(subject.sandbox);
+    const resources = await observeDesktopResources(subject.sandbox);
+    this.resources = resources;
+    if ("reason" in resources)
+      warnings.push(
+        `Subject sandbox resource size unavailable (${resources.reason}); its compute cost remains unpriced.`,
+      );
     return subject.sandbox;
   }
 

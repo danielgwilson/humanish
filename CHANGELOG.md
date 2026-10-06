@@ -22,9 +22,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   before any of them stops, as a computer-use study with more than one participant already does.
   Set `caps.maxTotalUsd` for one budget across the study. The lobby-code reads on the
   external-public plane are still not counted against either cap.
+- The subject sandbox of a scripted clone study and of a shared-world study on the provisioned
+  plane now warns when E2B does not report its size, as participant and terminal sandboxes do.
+  run.json already recorded the reason on the subject's cost line; the run's warnings now say
+  that the sandbox's compute cost is unpriced.
 
 ### Fixed
 
+- The subject sandbox of a scripted clone study and of a shared-world study on the provisioned
+  plane now warns when its create was retried after a transient E2B error, as participant and
+  terminal sandboxes do. The warning names the error and says that a sandbox the failed attempt
+  may have allocated is reclaimed by its timeout.
 - A scripted run now scrubs the value of `E2B_API_KEY` from its evidence, as the other routes do.
   Before, only pattern redaction could remove it, and that finds the key only in its `e2b_` form.
   Scripted runs also replace each known value with `[REDACTED_SECRET]`, the marker the other
