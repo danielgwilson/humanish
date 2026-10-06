@@ -377,10 +377,12 @@ describe("computer use and terminal scrub their known values from every run file
     );
   });
 
-  it("terminal: output that prints both keys, one percent-encoded, leaves no copy in any run file", async () => {
+  it("terminal: output that prints both keys, encoded and split across chunks, leaves no copy in any run file", async () => {
     const runtimeKey = opaque("runtime");
-    const e2b = spaced("e2b");
-    const values = [runtimeKey, e2b, encodeURIComponent(e2b)];
+    const e2b = `${spaced("e2b")} "quoted"`;
+    const encoded = encodeURIComponent(e2b);
+    const escaped = JSON.stringify(e2b).slice(1, -1);
+    const values = [runtimeKey, e2b, encoded, escaped];
     const config = terminalConfig({
       actor: {
         type: "codex-exec",
@@ -391,8 +393,12 @@ describe("computer use and terminal scrub their known values from every run file
     const run = {
       ...streamingRun((nonce) => [
         `key ${runtimeKey}\n`,
-        `see https://example.test/k/${encodeURIComponent(e2b)}\n`,
+        `see https://example.test/k/${encoded}\n`,
         `raw ${e2b}\n`,
+        `json ${JSON.stringify({ key: e2b })}\n`,
+        `split https://example.test/k/${encoded.slice(0, 12)}`,
+        `${encoded.slice(12)} and ${escaped.slice(0, 12)}`,
+        `${escaped.slice(12)}\n`,
         `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,
       ]),
       env: { OPENAI_API_KEY: runtimeKey, E2B_API_KEY: e2b },

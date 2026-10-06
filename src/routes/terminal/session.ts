@@ -94,7 +94,7 @@ export async function runLiveTerminalSession(
   const recorder = createTerminalRecorder({
     nowIso,
     sanitize,
-    knownSecretValues: run.secrets.values(),
+    knownSecretValues: run.secrets.forms(),
     verdictNonce,
   });
   const { version, model, modelSource, reasoningEffort } = plan.runtime;

@@ -30,7 +30,7 @@ function base64Middles(bytes: Buffer, encoding: "base64" | "base64url"): string[
 }
 
 /** A value as written, and percent-encoded, JSON-escaped, base64 at each byte offset, base64url and hex. */
-function encodedForms(value: string): string[] {
+export function encodedForms(value: string): string[] {
   const bytes = Buffer.from(value, "utf8");
   const encoded = [
     JSON.stringify(value).slice(1, -1),

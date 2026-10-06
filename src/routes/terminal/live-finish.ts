@@ -80,10 +80,11 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   const { session } = inputs;
   const { createdAt } = inputs.run;
   const { terminalEvents, commandLog, discardedPrefixes } = inputs.recorder;
-  // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
-  // chunks before any transcript/trace/event artifact is persisted. Check both each stream and
+  // Prefix reconciliation may cut through a known key. Scrub the known values, as written and in
+  // each encoded form, across the retained chunks before any transcript/trace/event artifact is
+  // persisted. Check both each stream and
   // the combined event order that the transcript uses; either view can assemble a split value.
-  scrubSplitKnownValues(terminalEvents, inputs.run.secrets.values(), discardedPrefixes);
+  scrubSplitKnownValues(terminalEvents, inputs.run.secrets.forms(), discardedPrefixes);
 
   // Build the actor trace first (the cost ledger reads its tokenUsage). A session past the cap
   // ends its transcript with what was not stored, and its trace says the same.

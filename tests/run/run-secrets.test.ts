@@ -46,6 +46,37 @@ describe("RunSecrets", () => {
     expect(secrets.scrub("100% of 50%25 stays")).toBe("100% of 50%25 stays");
   });
 
+  it("replaces a value's JSON-escaped and base64 forms, and keeps JSON text parseable", () => {
+    const quoted = ["synthetic", '"quoted"', "value"].join(" ");
+    const secrets = new RunSecrets([quoted]);
+    expect(secrets.scrub(`printed ${JSON.stringify({ token: quoted })}`)).toBe(
+      'printed {"token":"[REDACTED_SECRET]"}',
+    );
+    expect(secrets.scrub(`basic ${Buffer.from(quoted).toString("base64")}`)).toBe(
+      "basic [REDACTED_SECRET]",
+    );
+    const backslash = ["synthetic", "value", "\\"].join("-");
+    const json = JSON.stringify({ token: backslash, next: "kept" });
+    expect(JSON.parse(new RunSecrets([backslash]).scrub(json))).toEqual({
+      token: "[REDACTED_SECRET]",
+      next: "kept",
+    });
+  });
+
+  it("lists each value's forms longest first, for a scrub that matches across chunks", () => {
+    const spaced = ["synthetic", "known", "value"].join(" ");
+    const secrets = new RunSecrets([spaced]);
+    const forms = secrets.forms();
+    expect(secrets.values()).toEqual([spaced]);
+    expect(forms).toContain(spaced);
+    expect(forms).toContain(encodeURIComponent(spaced));
+    expect(forms.map((form) => form.length)).toEqual(
+      [...forms].map((form) => form.length).sort((left, right) => right - left),
+    );
+    secrets.add([value("address")]);
+    expect(forms).toContain(value("address"));
+  });
+
   it("leaves its values out of JSON and object spread", () => {
     const secrets = new RunSecrets([value("key")]);
     expect(JSON.stringify({ secrets })).not.toContain(value("key"));
