@@ -12,21 +12,11 @@ import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { loadE2BDesktopModule } from "../../substrates/e2b/sdk.js";
-import {
-  observeDesktopResources,
-  type DesktopResourceObservation,
-} from "../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
-import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
+import { E2BSubjectSandbox } from "../../substrates/e2b/subject-sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { StudyDeps } from "../../study/study-deps.js";
 import type { RunStudyHomes } from "../../study/run-study-homes.js";
-import {
-  e2bRequestTimeoutMs,
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
-} from "../../substrates/e2b/lifetime.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
+import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 
 function servePort(serveUrl: string): number {
   const url = new URL(serveUrl);
@@ -68,77 +58,52 @@ export interface ScriptedSubjectInputs {
   hasGithubToken: boolean;
   scrubKnownValues: (text: string) => string;
   now: () => number;
-  /** The run's warnings. Teardown appends to it. */
+  /** The run's warnings. The subject sandbox's release appends to it. */
   warnings: string[];
 }
 
 /** The subject sandbox and what provisioning it recorded. */
 export class ScriptedSubject {
-  sandboxId: string | undefined;
-  killed = false;
-  /** The scrubbed release warning when the subject's release is unconfirmed. */
-  releaseWarning: string | undefined;
+  readonly sandbox: E2BSubjectSandbox;
   commit: string | undefined;
   hostDigest: string | undefined;
   readonly stateStepRecords: RunSubjectStateStepRecord[] = [];
   private readonly inputs: ScriptedSubjectInputs;
-  private allocation: OwnedDesktopAllocation | undefined;
-  private createdAtMs: number | undefined;
-  private tornDownAtMs: number | undefined;
-  private resources: DesktopResourceObservation | undefined;
 
   constructor(inputs: ScriptedSubjectInputs) {
     this.inputs = inputs;
+    this.sandbox = new E2BSubjectSandbox({
+      warnings: inputs.warnings,
+      scrub: inputs.scrubKnownValues,
+      now: inputs.now,
+    });
   }
 
   /** Acquires, provisions and serves the subject. Returns the tokenless getHost URL to drive. */
   async provision(): Promise<string> {
     const { plan, clone, deps, prepareDesktop, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
-    const { subjectEnvNames, hasGithubToken, scrubKnownValues, now } = this.inputs;
+    const { subjectEnvNames, hasGithubToken, scrubKnownValues } = this.inputs;
     const requestTimeoutMs = e2bRequestTimeoutMs(env);
     const timers: DetachedTimers = deps.detachedTimers ?? {};
-    const subjectSandboxTimeoutMs =
-      timeoutMs +
-      SUBJECT_PROVISION_BUDGET_MS +
-      (clone.state?.seed ?? []).reduce(
-        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-        0,
-      ) +
-      SANDBOX_TIMEOUT_BUFFER_MS;
     const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     await validatePreparedRunArtifactPaths(runPaths);
-    // The receipt is on disk before any work on the sandbox, so `humanish reclaim` can kill
-    // it by exact id when this process dies mid-run; the finally block below only runs while
-    // the process is alive.
-    const subject = await acquireE2BDesktopSandbox({
+    const subjectDesktop = await this.sandbox.acquire({
       module: subjectModule,
-      options: {
-        apiKey: e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs: subjectSandboxTimeoutMs,
-        metadata: {
-          mode: "scripted-browser-lab",
-          tool: "humanish",
-          labId: plan.studyId,
-          kind: "subject",
-          actor: plan.actor,
-        },
-        ...(subjectEnvNames.length > 0
-          ? {
-              envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
-            }
-          : {}),
-        dpi: 96,
-        lifecycle: { onTimeout: "kill" },
+      apiKey: e2bApiKey,
+      requestTimeoutMs,
+      sessionTimeoutMs: timeoutMs,
+      seed: clone.state?.seed ?? [],
+      metadata: {
+        mode: "scripted-browser-lab",
+        tool: "humanish",
+        labId: plan.studyId,
+        kind: "subject",
+        actor: plan.actor,
       },
+      envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
       template: plan.residual.execution?.desktop?.template,
-      receipt: { root: runPaths, participantId: "subject" },
+      root: runPaths,
     });
-    const subjectDesktop = subject.sandbox;
-    this.allocation = subject.allocation;
-    this.sandboxId = subject.allocation.resourceId;
-    this.createdAtMs = now();
-    this.resources = await observeDesktopResources(subjectDesktop);
 
     if (prepareDesktop) {
       await prepareDesktop(subjectDesktop, { kind: "subject" });
@@ -176,44 +141,5 @@ export class ScriptedSubject {
     }
     this.hostDigest = hostOriginDigest(hostUrl);
     return hostUrl;
-  }
-
-  /** Releases the subject by exact id, when one was acquired. An unconfirmed release is reported. */
-  async teardown(): Promise<void> {
-    const { warnings, scrubKnownValues, now } = this.inputs;
-    if (this.allocation === undefined) return;
-    const released = await this.allocation.close();
-    const reading = readE2BRelease(released, {
-      label: "Subject sandbox",
-      scrub: scrubKnownValues,
-      costSpan: true,
-    });
-    this.killed = reading.released;
-    if (reading.warning) warnings.push(reading.warning);
-    if (!reading.released)
-      this.releaseWarning = reading.warning ?? "Subject sandbox release is unconfirmed.";
-    // Without a kill method, or in E2B debug mode, no kill reached E2B, so there is no teardown
-    // time to record.
-    if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
-      this.tornDownAtMs = now();
-  }
-
-  /** The subject desktop's billed span and size, when one was acquired. */
-  desktopUsage():
-    | {
-        durationMs: number | undefined;
-        observation: DesktopResourceObservation | undefined;
-        killed: boolean;
-      }
-    | undefined {
-    if (this.sandboxId === undefined) return undefined;
-    return {
-      durationMs:
-        this.createdAtMs === undefined || this.tornDownAtMs === undefined
-          ? undefined
-          : Math.max(0, this.tornDownAtMs - this.createdAtMs),
-      observation: this.resources,
-      killed: this.killed,
-    };
   }
 }

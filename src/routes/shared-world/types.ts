@@ -10,7 +10,7 @@ import type { AutomaticAnalysisResult } from "../../analysis/automatic-completio
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
-import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
+import type { SubjectDesktopUsage } from "../../substrates/e2b/subject-sandbox.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type {
@@ -164,13 +164,6 @@ export interface ConcurrentSharedWorldStudyResult
   observer?: ObserverResult;
   warnings: string[];
   error?: { code: ConcurrentSharedWorldStudyErrorCode; message: string };
-}
-
-/** The provisioned plane's own desktop, for the run's cost estimate. */
-export interface SubjectDesktopUsage {
-  durationMs: number | undefined;
-  observation: DesktopResourceObservation | undefined;
-  killed: boolean;
 }
 
 /** One actor's measured run (internal). */
