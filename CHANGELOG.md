@@ -8,51 +8,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.111.3: Shared-world feedback candidates, scripted E2B key scrubbed, subject sandbox warnings (2026-10-06)
 
-- A live scripted clone study whose environment lacks a `subject.env` value now refuses with the
-  message computer use and shared world give: it names each unset variable and says to pass it
-  with `--dotenv`. The code is still `HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING`.
-- A live shared-world study on the provisioned plane that lacks `OPENAI_API_KEY` now names each
-  coding agent signed in on this machine and suggests `actor.type: local-agent`, as computer use
-  does. A study on the external-public plane gets no suggestion, because its lobby-code reader
-  needs `OPENAI_API_KEY` whatever drives the participants.
-- A shared-world study that sets `caps.maxUsd` without `caps.maxTotalUsd` now warns that the cap
-  applies to each participant's model spend, so N participants may spend up to N times the cap
-  before any of them stops, as a computer-use study with more than one participant already does.
-  Set `caps.maxTotalUsd` for one budget across the study. The lobby-code reads on the
-  external-public plane are still not counted against either cap.
-- The subject sandbox of a scripted clone study and of a shared-world study on the provisioned
-  plane now warns when E2B does not report its size, as participant and terminal sandboxes do.
-  run.json already recorded the reason on the subject's cost line; the run's warnings now say
-  that the sandbox's compute cost is unpriced.
+humanish 0.111.3 gives shared-world runs feedback candidates and repairs seven places where one
+route's warnings, refusals, secret scrubbing or run directory checks differed from the other
+routes'. A shared-world participant who reports friction or gives up becomes a candidate that
+`humanish feedback` drafts, and each candidate from a run with several participants shows that
+participant's own instructions as `expected`. A scripted run scrubs the value of `E2B_API_KEY` from
+the errors and subject setup output it records, and writes `[REDACTED_SECRET]` where it wrote
+`[redacted]`. A shared-world study with `caps.maxUsd` and no `caps.maxTotalUsd` warns that the cap
+applies to each participant. The subject sandbox of a scripted clone study or a provisioned
+shared-world study warns when its create was retried or E2B reports no size. A scripted clone study
+missing a `subject.env` value, and a provisioned shared-world study missing `OPENAI_API_KEY`,
+refuse with the wording computer use gives. Computer-use and shared-world runs check the run
+directory again after a `prepareDesktop` hook and an Observer render.
 
-### Fixed
-
-- The subject sandbox of a scripted clone study and of a shared-world study on the provisioned
-  plane now warns when its create was retried after a transient E2B error, as participant and
-  terminal sandboxes do. The warning names the error and says that a sandbox the failed attempt
-  may have allocated is reclaimed by its timeout.
-- A scripted run now scrubs the value of `E2B_API_KEY` from its evidence, as the other routes do.
-  Before, only pattern redaction could remove it, and that finds the key only in its `e2b_` form.
-  Scripted runs also replace each known value with `[REDACTED_SECRET]`, the marker the other
-  routes use. A clone repository or subject env value that a scripted run wrote as `[redacted]`
-  now reads `[REDACTED_SECRET]`, and a value under four characters is no longer scrubbed, as on
-  the other routes.
-- Computer-use and shared-world runs now check the run directory again after a caller's
-  `prepareDesktop` hook returns and after an Observer renderer reports success, as scripted and
-  terminal runs do. A link or a swapped directory left in the run directory stops the run with an
-  error, before a participant's screen check or the subject's provisioning, and before the result
-  points at the run.
-- Shared-world runs now produce feedback candidates. A participant who reports friction or gives
-  up becomes a candidate that names it, built as on a computer-use run, so `humanish feedback`
-  drafts that report. Before, a shared-world run always recorded no candidates, and its feedback
-  draft summarized the run instead. A clean run still records none, and an adapter's
-  `deriveFeedback` candidates follow the participants' candidates.
-- A feedback candidate from a computer-use fan-out or shared-world participant now shows that
-  participant's own instructions as `expected`. Before, every candidate in the run showed the
-  first participant's instructions, so a draft from the second participant named the first
-  participant's persona and task.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.111.3)
 
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 
