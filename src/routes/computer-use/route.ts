@@ -35,7 +35,7 @@ import { finishCuaRun } from "./result.js";
 import { runStudyParticipants } from "./live-phase.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaStudy, startCuaRun } from "./setup.js";
 import { type ComputerUseRunInput, type CuaActorStudyResult } from "./types.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 /**
  * A refused computer-use study's result, at the refusal's stage: a before-scope refusal has its own
@@ -48,18 +48,21 @@ export async function computerUseStudyRefusal(
 ): Promise<CuaActorStudyResult> {
   const { config, dryRun } = options;
   if (refusal.stage === "before-scope")
-    return {
-      ...studyResultIdentity("computer-use", config.id),
-      ok: false,
-      cwd: path.resolve(options.cwd),
-      actor: config.actor?.type ?? "",
-      dryRun,
-      runId: options.runId ?? "not-created",
-      appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
-      lanes: [],
-      warnings: [],
-      error: { code: refusal.code, message: refusal.message },
-    };
+    return refusedResult(
+      "computer-use",
+      {
+        studyId: config.id,
+        cwd: path.resolve(options.cwd),
+        error: { code: refusal.code, message: refusal.message },
+      },
+      {
+        actor: config.actor?.type ?? "",
+        dryRun,
+        runId: options.runId ?? "not-created",
+        appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
+        lanes: [],
+      },
+    );
   // The other refusals come after the cwd checks, and the participant cap after the personas are read.
   return completeRefusalAnalysis(await refuseCuaStudy(options, refusal), config, options);
 }

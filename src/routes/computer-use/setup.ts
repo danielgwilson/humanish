@@ -49,7 +49,7 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
@@ -73,18 +73,21 @@ export async function refuseCuaStudy(
   // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
     await compileParticipantPersonas(projectRoot, studyPersonaIds(config));
-  return {
-    ...studyResultIdentity("computer-use", config.id),
-    ok: false,
-    cwd: projectRoot.physicalPath,
-    actor: refusal.actor ?? config.actor?.type ?? "",
-    appUrl: declaredAppUrl(config),
-    dryRun,
-    runId: options.runId ?? "not-created",
-    lanes: [],
-    warnings: [],
-    error: { code: refusal.code, message: refusal.message },
-  };
+  return refusedResult(
+    "computer-use",
+    {
+      studyId: config.id,
+      cwd: projectRoot.physicalPath,
+      error: { code: refusal.code, message: refusal.message },
+    },
+    {
+      actor: refusal.actor ?? config.actor?.type ?? "",
+      appUrl: declaredAppUrl(config),
+      dryRun,
+      runId: options.runId ?? "not-created",
+      lanes: [],
+    },
+  );
 }
 
 export type AdmittedCuaRun = Extract<
@@ -163,18 +166,18 @@ export async function admitCuaRun(
     code: CuaActorStudyErrorCode,
     message: string,
     actorLabel?: string,
-  ): CuaActorStudyResult => ({
-    ...studyResultIdentity("computer-use", plan.studyId),
-    ok: false,
-    cwd,
-    actor: actorLabel ?? plan.actor,
-    appUrl,
-    dryRun,
-    runId: input.runId ?? "not-created",
-    lanes: [],
-    warnings: [],
-    error: { code, message },
-  });
+  ): CuaActorStudyResult =>
+    refusedResult(
+      "computer-use",
+      { studyId: plan.studyId, cwd, error: { code, message } },
+      {
+        actor: actorLabel ?? plan.actor,
+        appUrl,
+        dryRun,
+        runId: input.runId ?? "not-created",
+        lanes: [],
+      },
+    );
   const refuse = (...args: Parameters<typeof fail>) => ({
     ok: false as const,
     result: fail(...args),

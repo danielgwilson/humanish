@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import type { PreviewStudyResult } from "../../routes/preview.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 import {
   type CliIo,
   formatRunHuman,
@@ -32,16 +32,18 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
     declaredParticipantCount(args.config) ?? 4,
   );
   if (participantCount === null) {
-    const result: PreviewStudyResult = {
-      ...studyResultIdentity("preview", args.config.id),
-      ok: false,
-      cwd: args.options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
-        message: "--count must be a positive integer.",
+    const result: PreviewStudyResult = refusedResult(
+      "preview",
+      {
+        studyId: args.config.id,
+        cwd: args.options.cwd,
+        error: {
+          code: "HUMANISH_INVALID_PARTICIPANT_COUNT",
+          message: "--count must be a positive integer.",
+        },
       },
-    };
+      {},
+    );
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
     return undefined;
