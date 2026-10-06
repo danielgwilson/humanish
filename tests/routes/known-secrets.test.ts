@@ -243,14 +243,14 @@ describe("scripted scrubs its known values with [REDACTED_SECRET]", () => {
 });
 
 describe("scripted scrubs its known values from the step trace", () => {
-  it("leaves no copy of the E2B key in any run file or file name when the app URL, a step URL, label, derived step id, goal and failed step hold it", async () => {
+  it("leaves no copy of the E2B key in any run file or file name when the app URL, scenario id, a step URL, label, derived step id, goal and failed step hold it", async () => {
     const e2b = opaque("e2b");
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "scenarios", "known-values.yaml"),
       [
         "schema: humanish.scenario.v1",
-        "id: known-values",
+        `id: values-${e2b}`,
         `title: Settings for ${e2b}`,
         `goal: Open the settings page for ${e2b}.`,
         "browser:",
@@ -412,6 +412,7 @@ describe("computer use and terminal scrub their known values from every run file
         `${pathEncoded.slice(12)}\n`,
         `${nested}\n`,
         `colored ${runtimeKey.slice(0, 8)}\x1b[31m${runtimeKey.slice(8)}\x1b[0m\n`,
+        `${JSON.stringify({ item: { aggregated_output: `${runtimeKey.slice(0, 8)}\x1b[31m${runtimeKey.slice(8)}` } })}\n`,
         `odd ${oddlyEncoded.slice(0, 10)}`,
         `${oddlyEncoded.slice(10)}\n`,
         `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,

@@ -41,7 +41,7 @@ export class RunSecrets {
     const literal = scrubLiterals(this.#forms, marker);
     this.scrub = (text) => {
       const scrubbed = literal(text);
-      return replaceSpans(scrubbed, viewSpans(scrubbed, this.#held), marker);
+      return replaceSpans(scrubbed, viewSpans(scrubbed, this.#forms), marker);
     };
   }
 
@@ -70,12 +70,12 @@ export class RunSecrets {
   }
 
   /**
-   * Where `text` holds a held value: each encoded form as written, and each value in the text's
+   * Where `text` holds a held value: each encoded form as written, and each form in the text's
    * view without terminal escape sequences and with percent escapes decoded. Sorted, with
    * overlapping spans merged. A scrub that replaces across chunk boundaries reads these.
    */
   spans(text: string): Array<[number, number]> {
-    const found: Array<[number, number]> = viewSpans(text, this.#held);
+    const found: Array<[number, number]> = viewSpans(text, this.#forms);
     for (const form of this.#forms)
       for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + form.length))
         found.push([at, at + form.length]);
@@ -83,11 +83,21 @@ export class RunSecrets {
   }
 }
 
-// What a terminal draws with (OSC, CSI and two-byte escape sequences) and what a URL encodes
-// with (runs of percent escapes). The view a value is looked for in drops the first and decodes
-// the second.
-const VIEW_SEQUENCE =
-  /\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[78=>]|(?:%[0-9A-Fa-f]{2})+/g;
+// What a terminal draws with (operating-system commands, control sequences and two-byte escapes,
+// as written or JSON-escaped, as a JSON event carries a command's colored output) and what a URL
+// encodes with (runs of percent escapes). The view a value is looked for in drops the first and
+// decodes the second.
+const VIEW_SEQUENCE = new RegExp(
+  [
+    "\\x1b\\][^\\x07]*(?:\\x07|\\x1b\\\\)",
+    "\\x1b\\[[0-?]*[ -/]*[@-~]",
+    "\\x1b[78=>]",
+    "\\\\u001b\\][^\\\\]*(?:\\\\u0007|\\\\u001b\\\\\\\\)",
+    "\\\\u001b\\[[0-?]*[ -/]*[@-~]",
+    "(?:%[0-9A-Fa-f]{2})+",
+  ].join("|"),
+  "g",
+);
 
 /**
  * Where a value is found in the text's view. A browser encodes a space or a quote in a URL path
@@ -96,7 +106,7 @@ const VIEW_SEQUENCE =
  * from, so the text keeps every other character as written.
  */
 function viewSpans(text: string, values: readonly string[]): Array<[number, number]> {
-  if (!text.includes("%") && !text.includes("\x1b")) return [];
+  if (!text.includes("%") && !text.includes("\x1b") && !text.includes("\\u001b")) return [];
   // The view, and for each of its characters the span of `text` it came from. A character decoded
   // from an escape run maps to the whole run.
   let view = "";

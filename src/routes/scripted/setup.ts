@@ -118,6 +118,9 @@ export async function prepareScriptedRun(
   // drive the browser and stay as written.
   const journey: BrowserPersonaJourney = {
     ...scenario.journey,
+    scenarioId: idHoldsKnownValue(scenario.journey.scenarioId, secrets)
+      ? "scenario"
+      : scenario.journey.scenarioId,
     goal: secrets.scrub(scenario.journey.goal),
     scenarioTitle: secrets.scrub(scenario.journey.scenarioTitle),
     steps: recordedStepIds(scenario.journey.steps, secrets),
@@ -192,6 +195,20 @@ export async function prepareScriptedRun(
 }
 
 /**
+ * Whether an id holds a known value as written or as the parser's id token of it, lower-cased with
+ * other characters as `-`, which the scrub would not find.
+ */
+function idHoldsKnownValue(id: string, secrets: RunSecrets): boolean {
+  return (
+    secrets.scrub(id) !== id ||
+    secrets.values().some((value) => {
+      const token = publicSafeToken(value, "");
+      return token.length > 0 && id.includes(token);
+    })
+  );
+}
+
+/**
  * The steps with their labels scrubbed and their ids safe to record. A step id names the step's
  * screenshot file and is recorded beside it, and the parser derives an omitted id from the label,
  * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose
@@ -201,15 +218,10 @@ function recordedStepIds(
   steps: readonly BrowserPersonaStepManifest[],
   secrets: RunSecrets,
 ): BrowserPersonaStepManifest[] {
-  const tokens = secrets.values().map((value) => publicSafeToken(value, ""));
   const taken = new Set(steps.map((step) => step.id));
   return steps.map((step, index) => {
     const label = secrets.scrub(step.label);
-    const holds =
-      label !== step.label ||
-      secrets.scrub(step.id) !== step.id ||
-      tokens.some((token) => token.length > 0 && step.id.includes(token));
-    if (!holds) return { ...step, label };
+    if (label === step.label && !idHoldsKnownValue(step.id, secrets)) return { ...step, label };
     const position = `step-${String(index + 1).padStart(2, "0")}`;
     let id = position;
     for (let suffix = 2; taken.has(id); suffix += 1) id = `${position}-${suffix}`;
