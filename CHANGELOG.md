@@ -8,20 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 
-- The Observer gives recordings more room. The focus view puts back, the participant pager, the
-  name, the status and the inspector toggle on one line, and moves the assigned task and
-  participant background into the Details tab, so the frame at 1600x1000 is 171 px taller. Every
-  grid card has the same 44 px caption, so phone-sized and desktop cards in a row end at the same
-  height.
+humanish 0.111.2 changes the Observer and nothing else. The focus view's heading line holds the
+Back button, the participant pager, the name, the status and the inspector toggle, and the assigned
+task and participant background move into the Details tab, so the frame at 1600x1000 is 171 px
+taller. Every grid card has a 44 px caption, so phone-sized and desktop cards in one row end at the
+same height. An open Observer page whose server stopped shows one notice with the run id and two
+ways back to the recording, where 0.111.1 showed "Frame unavailable" on every tile. The CLI, the
+library and the study routes are the same as in 0.111.1.
 
-### Fixed
-
-- An open Observer page whose server stopped says so once, with the run id and both ways back:
-  `humanish observe --run <id>`, or the run's `observer/index.html` opened from disk. Its tiles no
-  longer report every capture as "Frame unavailable"; a missing frame on a running server still
-  does.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.111.2)
 
 ## 0.111.1: E2B URLs in study URLs, fan-out dry runs verify, zero-data-retention cache holds (2026-10-06)
 
