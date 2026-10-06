@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A live scripted clone study whose environment lacks a `subject.env` value now refuses with the
+  message computer use and shared world give: it names each unset variable and says to pass it
+  with `--dotenv`. The code is still `HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING`.
+- A live shared-world study on the provisioned plane that lacks `OPENAI_API_KEY` now names each
+  coding agent signed in on this machine and suggests `actor.type: local-agent`, as computer use
+  does. A study on the external-public plane gets no suggestion, because its lobby-code reader
+  needs `OPENAI_API_KEY` whatever drives the participants.
 ### Fixed
 
 - A scripted run now scrubs the value of `E2B_API_KEY` from its evidence, as the other routes do.

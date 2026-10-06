@@ -34,7 +34,7 @@ import { prepareScriptedRun } from "./setup.js";
 import { ScriptedSubject } from "./subject.js";
 import { runScriptedSessions, writeSurfaceTraces } from "./surface-sessions.js";
 import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 /**
  * A refused scripted study's result, at the refusal's stage: a before-scope refusal has its own field
@@ -47,34 +47,33 @@ export async function scriptedStudyRefusal(
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const actorType = config.actor?.type ?? "";
+  const error = { code: refusal.code, message: refusal.message };
   if (refusal.beforeScope)
-    return {
-      ...studyResultIdentity("scripted", config.id),
-      ok: false,
-      cwd,
-      actor: actorType,
-      dryRun,
-      runId: options.runId ?? "not-created",
-      appUrl: config.subject.appUrl ?? "",
-      sessions: [],
-      warnings: [],
-      error: { code: refusal.code, message: refusal.message },
-    };
+    return refusedResult(
+      "scripted",
+      { studyId: config.id, cwd, error },
+      {
+        actor: actorType,
+        dryRun,
+        runId: options.runId ?? "not-created",
+        appUrl: config.subject.appUrl ?? "",
+        sessions: [],
+      },
+    );
   // The other refusals come after the output directory checks and carry the analysis record.
   const physicalCwd = await realpath(cwd);
   await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const refused: ScriptedBrowserStudyResult = {
-    ...studyResultIdentity("scripted", config.id),
-    ok: false,
-    cwd,
-    actor: refusal.actor ?? actorType,
-    appUrl: refusal.appUrl ?? config.subject.appUrl ?? "",
-    dryRun,
-    runId: options.runId ?? "not-created",
-    sessions: [],
-    warnings: [],
-    error: { code: refusal.code, message: refusal.message },
-  };
+  const refused: ScriptedBrowserStudyResult = refusedResult(
+    "scripted",
+    { studyId: config.id, cwd, error },
+    {
+      actor: refusal.actor ?? actorType,
+      appUrl: refusal.appUrl ?? config.subject.appUrl ?? "",
+      dryRun,
+      runId: options.runId ?? "not-created",
+      sessions: [],
+    },
+  );
   return completeRefusalAnalysis(refused, config, options);
 }
 

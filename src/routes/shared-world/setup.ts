@@ -65,7 +65,6 @@ interface AdmittedStudy {
   env: Record<string, string | undefined>;
   descriptor: CuaActorDescriptor;
   planeClass: ConcurrentSharedWorldPlaneClass;
-  runBudget: PlaneContext["runBudget"];
   runSession: PlaneContext["runSession"];
   serve: StudySubjectServe | undefined;
   localTreeRoute: boolean;
@@ -163,7 +162,7 @@ export async function prepareConcurrentRun(
     }
 > {
   const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = study;
-  const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = study;
+  const { runSession, localTreeRoute, subjectEnvNames, publicRepo } = study;
   const { openaiApiKey, e2bApiKey, secrets } = study;
   const { dryRun, concurrency } = plan;
   const cwd = await bindPhysicalProject(requestedCwd);
@@ -256,7 +255,6 @@ export async function prepareConcurrentRun(
     deps,
     env,
     concurrency,
-    runBudget,
     runSession,
     openaiApiKey,
     e2bApiKey,

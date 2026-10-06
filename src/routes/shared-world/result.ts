@@ -10,15 +10,11 @@ import {
   judgeExecution,
   sandboxCleanupFailure,
   OUTCOME_POLICIES,
-  participantHarnessFailed,
   resultOk,
   sharedWorldShortfall,
   type ExecutionFailure,
 } from "../../run/judge.js";
-import {
-  participantFactsOf,
-  unreleasedSandboxFailures,
-} from "../computer-use/participant-facts.js";
+import { participantExecutionFailures } from "../computer-use/participant-facts.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
   actorRunPassed,
@@ -40,7 +36,7 @@ import {
   type PlaneResults,
 } from "./types.js";
 import type { DesktopParticipantRun } from "../computer-use/types.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult, studyResultIdentity } from "../../run/study-result.js";
 import { plural } from "../../run/text.js";
 
 /** The results of a run whose plane did not run (a dry run) or has not reported yet. */
@@ -206,27 +202,26 @@ export function concurrentStudyFailure(envelope: {
   message: string,
   actorLabel?: string,
 ) => ConcurrentSharedWorldStudyResult {
-  return (code, message, actorLabel) => ({
-    ...studyResultIdentity("shared-world", envelope.studyId),
-    ok: false,
-    cwd: envelope.cwd,
-    actor: actorLabel ?? envelope.actor,
-    topology: "shared-world",
-    topologyMode: "concurrent",
-    roleCount: envelope.participantCount,
-    concurrency: envelope.concurrency,
-    dryRun: envelope.dryRun,
-    runId: envelope.runId ?? "not-created",
-    roles: [],
-    warnings: [],
-    error: { code, message },
-  });
+  return (code, message, actorLabel) =>
+    refusedResult(
+      "shared-world",
+      { studyId: envelope.studyId, cwd: envelope.cwd, error: { code, message } },
+      {
+        actor: actorLabel ?? envelope.actor,
+        topology: "shared-world",
+        topologyMode: "concurrent",
+        roleCount: envelope.participantCount,
+        concurrency: envelope.concurrency,
+        dryRun: envelope.dryRun,
+        runId: envelope.runId ?? "not-created",
+        roles: [],
+      },
+    );
 }
 
 /**
- * The run's execution failures before the Observer renders: a run error (the handoff, the plane),
- * each participant whose session failed in the harness, each provider whose cleanup is unconfirmed
- * or that reported a disallowed item after its last request, and each sandbox whose release is
+ * The run's execution failures before the Observer renders: a run error (the handoff, the plane)
+ * first, then the participants' failures, then the subject sandbox when its release is
  * unconfirmed. FinishedRun.renderObserver adds an Observer that did not render.
  */
 function sharedWorldExecutionFailures(args: {
@@ -238,33 +233,7 @@ function sharedWorldExecutionFailures(args: {
   const { runId, runError, actorResults, subject } = args;
   return [
     ...(runError === undefined ? [] : [{ kind: "run" as const, message: runError }]),
-    ...actorResults
-      .filter((result) => participantHarnessFailed(participantFactsOf(result.outcome)))
-      .map((result) => ({
-        kind: "harness" as const,
-        message: `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "harness error"}`,
-      })),
-    ...actorResults.flatMap((result) =>
-      result.outcome.providerCleanupError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-cleanup" as const,
-              message: `${result.spec.planned.id}: ${result.outcome.providerCleanupError}`,
-            },
-          ],
-    ),
-    ...actorResults.flatMap((result) =>
-      result.outcome.providerPolicyError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-policy" as const,
-              message: `${result.spec.planned.id}: ${result.outcome.providerPolicyError}`,
-            },
-          ],
-    ),
-    ...unreleasedSandboxFailures(
+    ...participantExecutionFailures(
       actorResults.map((result) => result.outcome),
       runId,
     ),
