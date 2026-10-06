@@ -15,6 +15,7 @@ import {
   type ExecutionFailure,
 } from "../../run/judge.js";
 import { participantExecutionFailures } from "../computer-use/participant-facts.js";
+import { participantCapWarning } from "../computer-use/participant-model.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
   actorRunPassed,
@@ -284,6 +285,12 @@ export async function finishConcurrentRun(
   for (const result of actorResults) {
     warnings.push(...result.outcome.warnings);
   }
+  const capWarning = participantCapWarning(
+    plan.caps,
+    participantCount,
+    "each participant's model spend",
+  );
+  if (capWarning !== undefined) warnings.push(capWarning);
 
   const bundleArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
     run,

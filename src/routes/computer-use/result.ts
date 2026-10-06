@@ -2,8 +2,6 @@ import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adap
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import { round6 } from "../../run/pricing.js";
-import type { ComputerUsePlan } from "../../study/plan-types.js";
 import {
   foldScorerFailures,
   judgeExecution,
@@ -12,6 +10,7 @@ import {
   type ExecutionOutcome,
 } from "../../run/judge.js";
 import { participantExecutionFailures, participantOutcomeOk } from "./participant-facts.js";
+import { participantCapWarning } from "./participant-model.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import { toParticipantResult } from "./participant-execution.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
@@ -234,21 +233,6 @@ function cuaStudyResult(args: {
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
-}
-
-/**
- * caps.maxUsd is enforced inside each participant's loop independently, so an
- * N-participant fan-out can spend up to N × maxUsd before any participant aborts, while the run cost summary reports the larger
- * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
- */
-function participantCapWarning(
-  caps: ComputerUsePlan["caps"],
-  participantCount: number,
-): string | undefined {
-  const capUsd = caps.maxUsd;
-  if (capUsd === undefined || participantCount <= 1) return undefined;
-  if (caps.maxTotalUsd !== undefined) return undefined;
-  return `caps.maxUsd ($${capUsd}) caps each participant, so ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (about $${round6(capUsd * participantCount)}) before any of them stops. Set caps.maxTotalUsd for one budget across the study.`;
 }
 
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */

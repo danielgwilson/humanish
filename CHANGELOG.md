@@ -17,6 +17,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   coding agent signed in on this machine and suggests `actor.type: local-agent`, as computer use
   does. A study on the external-public plane gets no suggestion, because its lobby-code reader
   needs `OPENAI_API_KEY` whatever drives the participants.
+- A shared-world study that sets `caps.maxUsd` without `caps.maxTotalUsd` now warns that the cap
+  applies to each participant's model spend, so N participants may spend up to N times the cap
+  before any of them stops, as a computer-use study with more than one participant already does.
+  Set `caps.maxTotalUsd` for one budget across the study. The lobby-code reads on the
+  external-public plane are still not counted against either cap.
 
 ### Fixed
 

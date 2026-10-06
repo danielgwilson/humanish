@@ -347,6 +347,24 @@ export function judgeParticipantSession(
   return { noEngagement, selfReportedBlocker, reportedFriction };
 }
 
+/**
+ * caps.maxUsd is enforced inside each participant's loop independently, so N participants can
+ * spend up to N × maxUsd before any of them stops, while the run cost summary reports the larger
+ * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
+ * `capped` names what the cap counts: shared world says model spend, because the external-public
+ * plane's lobby-code reads are not counted against it.
+ */
+export function participantCapWarning(
+  caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number },
+  participantCount: number,
+  capped = "each participant",
+): string | undefined {
+  const capUsd = caps.maxUsd;
+  if (capUsd === undefined || participantCount <= 1) return undefined;
+  if (caps.maxTotalUsd !== undefined) return undefined;
+  return `caps.maxUsd ($${capUsd}) caps ${capped}, so ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (about $${round6(capUsd * participantCount)}) before any of them stops. Set caps.maxTotalUsd for one budget across the study.`;
+}
+
 export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
   const participantEstimates = new Map<string, number>();
   return {
