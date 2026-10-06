@@ -142,7 +142,8 @@ async function admitSharedWorldRun(
   const refusal = await firstLiveRefusal<ConcurrentSharedWorldStudyErrorCode>([
     // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
     // plane's lobby-code reader; a local-agent brain's participants run on the operator's
-    // signed-in agent instead.
+    // signed-in agent instead. Only on the provisioned plane does a local agent remove the key,
+    // so only there does the refusal suggest one.
     () =>
       keysCheck({
         requirements,
@@ -150,6 +151,7 @@ async function admitSharedWorldRun(
         code: "HUMANISH_SHARED_WORLD_KEYS_MISSING",
         need: (names) =>
           `Live concurrent shared-world studies need ${names} in the environment (values are never persisted).`,
+        suggestLocalAgent: plan.plane.kind === "provisioned",
       }),
     () =>
       localAgentCheck({
