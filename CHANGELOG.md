@@ -17,6 +17,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   coding agent signed in on this machine and suggests `actor.type: local-agent`, as computer use
   does. A study on the external-public plane gets no suggestion, because its lobby-code reader
   needs `OPENAI_API_KEY` whatever drives the participants.
+
 ### Fixed
 
 - A scripted run now scrubs the value of `E2B_API_KEY` from its evidence, as the other routes do.
