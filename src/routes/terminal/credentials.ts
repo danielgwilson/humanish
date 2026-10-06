@@ -7,6 +7,20 @@ import type { StudyRuntimeAuth } from "../../study/types.js";
 import { TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA } from "./types.js";
 
 /**
+ * Where the study's runtime auth puts the key, as a sentence for the missing-key refusal. Typed
+ * `unknown` because a config that skipped the planner may hold a mode the type does not list.
+ */
+function keyPlacement(runtimeAuth: unknown): string {
+  if (runtimeAuth === undefined)
+    return ` \`execution.runtimeAuth\` is unset, so the default ${DEFAULT_RUNTIME_AUTH} keeps the key outside the sandbox in an E2B header transform.`;
+  if (runtimeAuth === "openai-egress")
+    return " `execution.runtimeAuth: openai-egress` keeps the key outside the sandbox in an E2B header transform.";
+  if (runtimeAuth === "openai-env")
+    return " `execution.runtimeAuth: openai-env` passes the key to the codex command only.";
+  return "";
+}
+
+/**
  * Resolve the runtime key on the host. openai-egress, the default, returns an inert command env
  * while retaining the actual value for the external transform and literal redaction; openai-env
  * passes it command-scoped. Only CODEX_API_KEY/OPENAI_API_KEY are accepted as sources. No other
@@ -64,7 +78,7 @@ export function buildRuntimeAuth(args: {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-      message: `Live terminal-product studies declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --dotenv; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`,
+      message: `Live terminal-product studies need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment, and neither is set.${keyPlacement(args.runtimeAuth)} Pass one with --dotenv; the value is never persisted.`,
     };
   }
   const keyValue = args.env[keyName] as string;

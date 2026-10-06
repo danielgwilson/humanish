@@ -282,7 +282,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-        "message": "Live terminal-product studies declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --dotenv; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+        "message": "Live terminal-product studies need CODEX_API_KEY or OPENAI_API_KEY in the environment, and neither is set. `execution.runtimeAuth: openai-env` passes the key to the codex command only. Pass one with --dotenv; the value is never persisted."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
