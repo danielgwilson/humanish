@@ -50,16 +50,22 @@ humanish feedback issue-url --run latest --repo owner/repo
 ### `list`
 
 Reads feedback candidates from the run bundle. Does not mutate. Candidates come
-from the computer-use route, when a participant reports friction or abandons the
-study goal, and from an adapter's `deriveFeedback` hook.
+from the computer-use and shared-world routes, when a participant reports
+friction or abandons the study goal, and from an adapter's `deriveFeedback` hook.
+Both routes build them with `participantFeedbackCandidates`
+(`src/routes/computer-use/participant-feedback.ts`): one candidate per reporting
+participant, named by its participant id, with no merging of reports that match.
+A shared-world candidate also cites the run's comms thread when the study
+captured one, since that thread belongs to the shared app. Adapter candidates
+follow the participant candidates.
 
 The list also shows any saved draft. An empty `candidates` array means no usable
 candidate was recorded; it does not mean a run-summary draft is unavailable.
 Listing does not create a draft or check public-sharing eligibility.
 
-For completed computer-use sessions, participant-reported friction comes from
-the redacted closing report, a completed debrief's `frictionReports`, and
-observed-report clauses in earlier messages.
+For completed computer-use and shared-world sessions, participant-reported
+friction comes from the redacted closing report, a completed debrief's
+`frictionReports`, and observed-report clauses in earlier messages.
 Matching `stopWhen` or ending a dwell window does not discard an earlier
 report or change the successful completion verdict. Exact repeated reports
 appear once in the participant's candidate. Harness notices, reasoning, and observed

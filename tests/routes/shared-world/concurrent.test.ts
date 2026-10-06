@@ -49,6 +49,7 @@ import type { BrowserScoringContext, RunAdapterScore, RunBundle } from "../../..
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
+import { renderIssueMarkdown } from "../../../src/feedback/feedback.js";
 import { sharedWorldEvidenceFindings } from "../../../src/verify/shared-world.js";
 import {
   LANE_SHAPE_VARIANTS,
@@ -985,9 +986,13 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
       E2B_API_KEY: "test-e2b-key",
       DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
     };
+    // Participant 2 reports friction, so its feedback candidate shows which evidence it cites.
+    const friction = "The confirmation email arrived, but its Verify link did nothing.";
     const deps: StudyDeps = {
       desktopModule: async () => module,
-      runSession: makeRunSession(state, makeRendezvous(3)),
+      runSession: makeRunSession(state, makeRendezvous(3), (index) =>
+        index === 1 ? { reason: friction } : undefined,
+      ),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       proberCadenceMs: 100_000,
     };
@@ -1034,6 +1039,13 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     expect(threadRaw).not.toContain("app.example.test/verify");
     expect(threadRaw).not.toContain("481920");
     expect(threadRaw).not.toContain("Confirm your email");
+
+    // The thread belongs to the shared app, so the reporting participant's candidate cites it too.
+    expect(bundle.feedbackCandidates).toHaveLength(1);
+    expect(bundle.feedbackCandidates[0].id).toBe("participant-report-persona-02");
+    expect(bundle.feedbackCandidates[0].evidence).toContainEqual(
+      expect.objectContaining({ path: "comms/thread.json", kind: "log" }),
+    );
 
     // The evidence artifact does not break bundle verification.
     const verify = await verifyRun(cwd, result.runId);
@@ -2718,6 +2730,138 @@ describe("concurrent shared-world run cost", () => {
     expect(row?.costs.runEstimatedUsd).toBe(bundle.cost.estimatedTotalUsd);
     expect(row?.warnings).not.toContain("RUN_COST_COMPLETENESS_UNKNOWN");
     expect(row?.warnings).not.toContain("RUN_COST_PARTIAL_OR_UNKNOWN");
+  });
+});
+
+// A participant's report becomes a feedback candidate on a shared-world run the way it does on a
+// computer-use fan-out: one candidate per reporting participant, each naming its participant.
+describe("shared-world feedback candidates from participant reports", () => {
+  const FRICTION = "Added the task. The Save button did nothing at first, so I pressed Enter.";
+  const ABANDONED = "I gave up: the board never showed the task I added.";
+
+  async function runWith(
+    override: Parameters<typeof makeRunSession>[2],
+    scorer?: BrowserScorer,
+  ): Promise<{ runId: string; bundle: RunBundle }> {
+    const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3), override);
+    const result = await runSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      env,
+      deps,
+      ...(scorer === undefined ? {} : { scorer }),
+    });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    return { runId: result.runId, bundle };
+  }
+
+  it("builds one candidate per participant who reported friction or gave up, and none for the clean one", async () => {
+    const { runId, bundle } = await runWith((index) =>
+      index === 0
+        ? { reason: FRICTION }
+        : index === 1
+          ? { status: "abandoned", completionReason: "gave_up", reason: ABANDONED }
+          : undefined,
+    );
+    expect(
+      bundle.feedbackCandidates.map((candidate) => ({
+        id: candidate.id,
+        stream: candidate.stream_id,
+        persona: candidate.persona_id,
+        actual: candidate.actual,
+        owner: candidate.failure_owner,
+      })),
+    ).toEqual([
+      {
+        id: "participant-report-persona-01",
+        stream: bundle.streams[0]!.id,
+        persona: "persona-1",
+        actual: FRICTION,
+        owner: "target-app",
+      },
+      {
+        id: "participant-report-persona-02",
+        stream: bundle.streams[1]!.id,
+        persona: "persona-2",
+        actual: ABANDONED,
+        owner: "target-app",
+      },
+    ]);
+    expect(bundle.feedbackCandidates.map((candidate) => candidate.summary)).toEqual([
+      "Participant persona-1 (persona-01) reported friction on the way through the study goal",
+      "Participant persona-2 (persona-02) stopped before completing the study goal",
+    ]);
+    for (const candidate of bundle.feedbackCandidates) {
+      expect(candidate.scenario_id).toBe(bundle.scenario.id);
+      expect(candidate.expected).toBe(bundle.scenario.goal);
+      expect(candidate.substrate).toBe("e2b-desktop");
+      expect(candidate.evidence.some((item) => item.kind === "trace")).toBe(true);
+    }
+    // Every evidence path the candidates cite exists in the run.
+    expect((await verifyRun(cwd, runId)).ok).toBe(true);
+  });
+
+  it("files nothing for a run whose participants all pass without a report", async () => {
+    const { bundle } = await runWith(undefined);
+    expect(bundle.feedbackCandidates).toEqual([]);
+  });
+
+  it("keeps a candidate for each participant reporting the same issue, as a computer-use fan-out does", async () => {
+    const { bundle } = await runWith((index) =>
+      index === 0 || index === 2 ? { reason: FRICTION } : undefined,
+    );
+    expect(bundle.feedbackCandidates.map((candidate) => [candidate.id, candidate.actual])).toEqual([
+      ["participant-report-persona-01", FRICTION],
+      ["participant-report-persona-03", FRICTION],
+    ]);
+  });
+
+  it("appends an adapter's deriveFeedback candidates after the participant reports", async () => {
+    const scorer: BrowserScorer = {
+      deriveFeedback: (ctx) => [
+        {
+          schema: "humanish.feedback-candidate.v1",
+          id: "adapter-board-readback",
+          run_id: ctx.runId,
+          adapter_id: CONCURRENT_ADAPTER_NAMESPACE,
+          scenario_id: ctx.studyId,
+          persona_id: "persona-1",
+          actor: "unknown",
+          substrate: "e2b-desktop",
+          failure_owner: "target-app",
+          summary: "The shared board kept one of the added tasks out of the list.",
+          expected: "Every added task is listed.",
+          actual: "The adapter read back fewer tasks than the participants added.",
+          evidence: [{ path: "review.md", kind: "review", note: "The run's review." }],
+          redaction: { status: "passed", notes: "Synthetic adapter feedback." },
+          idempotency_key: `${CONCURRENT_ADAPTER_NAMESPACE}:${ctx.runId}:board-readback`,
+          proposed_next_state: "study-quality-review",
+          acceptance_proof: [`humanish verify --run ${ctx.runId} --json`],
+          adapter: { namespace: CONCURRENT_ADAPTER_NAMESPACE, data: { readback: "short" } },
+        },
+      ],
+    };
+    const { bundle } = await runWith(
+      (index) => (index === 1 ? { reason: FRICTION } : undefined),
+      scorer,
+    );
+    expect(bundle.feedbackCandidates.map((candidate) => candidate.id)).toEqual([
+      "participant-report-persona-02",
+      "adapter-board-readback",
+    ]);
+  });
+
+  it("drafts a share-ready feedback issue from a participant's report", async () => {
+    const { runId } = await runWith((index) => (index === 0 ? { reason: FRICTION } : undefined));
+    const issue = await renderIssueMarkdown(cwd, runId, "example-org/collab-app");
+    expect(issue.error).toBeUndefined();
+    expect(issue.ok).toBe(true);
+    expect(issue.draft?.source_candidate_id).toBe("participant-report-persona-01");
+    expect(issue.draft?.actual).toBe(FRICTION);
+    expect(issue.issueMarkdown).toContain(FRICTION);
   });
 });
 

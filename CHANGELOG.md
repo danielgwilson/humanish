@@ -31,6 +31,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   routes use. A clone repository or subject env value that a scripted run wrote as `[redacted]`
   now reads `[REDACTED_SECRET]`, and a value under four characters is no longer scrubbed, as on
   the other routes.
+- Shared-world runs now produce feedback candidates. A participant who reports friction or gives
+  up becomes a candidate that names it, built as on a computer-use run, so `humanish feedback`
+  drafts that report. Before, a shared-world run always recorded no candidates, and its feedback
+  draft summarized the run instead. A clean run still records none, and an adapter's
+  `deriveFeedback` candidates follow the participants' candidates.
 
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 
