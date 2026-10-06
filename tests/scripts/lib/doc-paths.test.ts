@@ -26,7 +26,7 @@ const index = buildRepoIndex([
 const paths = (issues: { path: string }[]) => issues.map(({ path }) => path);
 
 describe("doc path check", () => {
-  it("selects current docs and evidence, and skips docs/history/", () => {
+  it("selects current docs and evidence, and skips docs/history/ and dated architecture results", () => {
     expect(
       [
         "README.md",
@@ -35,6 +35,8 @@ describe("doc path check", () => {
         "docs/contracts/core.md",
         "docs/status.md",
         "docs/evidence/computer-use/run.md",
+        "docs/evidence/architecture/README.md",
+        "docs/evidence/architecture/2026-10-06-0123abcd.md",
         "docs/history/goals/old/goal.md",
         "docs/history/plans/2026-06-01-plan.md",
         "docs/history/roadmap/v0.md",
@@ -50,6 +52,7 @@ describe("doc path check", () => {
       "docs/contracts/core.md",
       "docs/status.md",
       "docs/evidence/computer-use/run.md",
+      "docs/evidence/architecture/README.md",
       "site/content/docs/quickstart.mdx",
     ]);
     expect(
