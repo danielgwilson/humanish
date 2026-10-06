@@ -62,7 +62,27 @@ describe("shared-world email receiving setup failure", () => {
     expect(desktops).toBe(0);
     const runsRoot = path.join(cwd, ".humanish", "runs");
     const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+    // The refusal names the run it left behind, in the place the envelope gives runId.
     expect(result.runId).toBe(runId);
+    expect(Object.keys(result)).toEqual([
+      "schema",
+      "route",
+      "studyId",
+      "ok",
+      "cwd",
+      "actor",
+      "topology",
+      "topologyMode",
+      "roleCount",
+      "concurrency",
+      "dryRun",
+      "runId",
+      "roles",
+      "warnings",
+      "error",
+      "automaticAnalysisTrigger",
+      "automaticAnalysis",
+    ]);
     const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
     expect(status.state).toBe("finished");
     expect(status).not.toHaveProperty("outcome");
