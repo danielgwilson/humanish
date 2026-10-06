@@ -8,7 +8,8 @@ import path from "node:path";
 import { type RunScope } from "../../run/run.js";
 import type { RefusedStudy } from "../../run/route-shell.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
-import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
+import { RunSecrets } from "../../run/secrets.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
 import { buildRunSource, type RunRerunLineage } from "../../run/bundle.js";
@@ -48,7 +49,7 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
-import { studyResultIdentity } from "../../run/study-result.js";
+import { refusedResult } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
@@ -72,18 +73,21 @@ export async function refuseCuaStudy(
   // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
     await compileParticipantPersonas(projectRoot, studyPersonaIds(config));
-  return {
-    ...studyResultIdentity("computer-use", config.id),
-    ok: false,
-    cwd: projectRoot.physicalPath,
-    actor: refusal.actor ?? config.actor?.type ?? "",
-    appUrl: declaredAppUrl(config),
-    dryRun,
-    runId: options.runId ?? "not-created",
-    lanes: [],
-    warnings: [],
-    error: { code: refusal.code, message: refusal.message },
-  };
+  return refusedResult(
+    "computer-use",
+    {
+      studyId: config.id,
+      cwd: projectRoot.physicalPath,
+      error: { code: refusal.code, message: refusal.message },
+    },
+    {
+      actor: refusal.actor ?? config.actor?.type ?? "",
+      appUrl: declaredAppUrl(config),
+      dryRun,
+      runId: options.runId ?? "not-created",
+      lanes: [],
+    },
+  );
 }
 
 export type AdmittedCuaRun = Extract<
@@ -103,16 +107,12 @@ export interface CuaRunSetup {
   streams: ReturnType<typeof trackRuntimeStreams>;
   participantRuns: DesktopParticipantRun[];
   participantPlan: CuaParticipantPlan;
-  scrubKnownValues: (text: string) => string;
   bundleBase: CuaRunBundleBase;
 }
 
 /** What only runStudyParticipants reads. */
 export interface CuaParticipantsSetup {
   env: Record<string, string | undefined>;
-  /** The array scrubKnownValues reads at each call. Email receiving appends the values it
-   *  provisions before the participants run. */
-  knownSecretValues: string[];
   deps: Omit<CuaParticipantDeps, "signalProvisioned">;
   /** Filled by runStudyParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
@@ -166,18 +166,18 @@ export async function admitCuaRun(
     code: CuaActorStudyErrorCode,
     message: string,
     actorLabel?: string,
-  ): CuaActorStudyResult => ({
-    ...studyResultIdentity("computer-use", plan.studyId),
-    ok: false,
-    cwd,
-    actor: actorLabel ?? plan.actor,
-    appUrl,
-    dryRun,
-    runId: input.runId ?? "not-created",
-    lanes: [],
-    warnings: [],
-    error: { code, message },
-  });
+  ): CuaActorStudyResult =>
+    refusedResult(
+      "computer-use",
+      { studyId: plan.studyId, cwd, error: { code, message } },
+      {
+        actor: actorLabel ?? plan.actor,
+        appUrl,
+        dryRun,
+        runId: input.runId ?? "not-created",
+        lanes: [],
+      },
+    );
   const refuse = (...args: Parameters<typeof fail>) => ({
     ok: false as const,
     result: fail(...args),
@@ -237,13 +237,13 @@ export async function admitCuaRun(
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
   // Literal scrubber for every known provisioned value (no secret "shape" to pattern-match).
-  const knownSecretValues = [
+  // Dry and in-process runs scrub both keys too: a mission or persona can still quote them.
+  const secrets = new RunSecrets([
     openaiApiKey,
     e2bApiKey,
     ...subjectEnvNames.map((name) => env[name] ?? ""),
-  ].filter((value) => value.length >= 4);
-  const scrubKnownValues = scrubLiterals(knownSecretValues);
-  sanitizeParticipantRuns(participantRuns, scrubKnownValues);
+  ]);
+  sanitizeParticipantRuns(participantRuns, secrets.scrub);
 
   const redactRepoLabel =
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
@@ -278,7 +278,7 @@ export async function admitCuaRun(
     } catch (error) {
       return refuse(
         "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+        `local-tree packing failed: ${redactText(secrets.scrub(toErrorMessage(error)))}`,
         descriptor.id,
       );
     }
@@ -306,8 +306,7 @@ export async function admitCuaRun(
       participantCount,
       openaiApiKey,
       e2bApiKey,
-      knownSecretValues,
-      scrubKnownValues,
+      secrets,
       publicRepo,
       localTreeArchive,
       localTreeArchiveBuffer,
@@ -336,6 +335,7 @@ export async function startCuaRun(
     warnings: plan.warnings,
     renderReview: renderCuaReviewMarkdown,
     observer: { open: input.open === true, render: seams.renderObserver },
+    secrets: admitted.secrets,
   });
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
@@ -403,12 +403,10 @@ export async function startCuaRun(
       streams: admitted.streams,
       participantRuns,
       participantPlan,
-      scrubKnownValues: admitted.scrubKnownValues,
       bundleBase,
     },
     participants: {
       env: admitted.env,
-      knownSecretValues: admitted.knownSecretValues,
       deps,
       liveTrace,
       externalComms:
@@ -439,7 +437,7 @@ function cuaParticipantDeps(
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
   const { config, dryRun, seams, streams, env, runSession, participantCount } = admitted;
   const { localTreeArchiveBuffer } = admitted;
-  const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
+  const { openaiApiKey, e2bApiKey, secrets } = admitted;
   const { externalCommsConfig, externalCommsEmail } = admitted;
   const { appUrl } = admitted;
   const { runPaths, redactScreenshots, liveTrace } = run;
@@ -468,7 +466,7 @@ function cuaParticipantDeps(
     artifactRoot: runPaths,
     studyCwd: input.cwd,
     redactScreenshots,
-    scrubKnownValues,
+    scrubKnownValues: secrets.scrub,
     runSession,
     // The study-level ledger exists once per run, shared by every participant. Dry runs never
     // spend, so they carry none.
