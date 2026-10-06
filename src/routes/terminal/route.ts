@@ -120,13 +120,13 @@ export function admitTerminalPlan(
 }
 
 /** A live plan's local checks, made outside any run scope. */
-function admitTerminalRun(
+async function admitTerminalRun(
   plan: TerminalPlan,
   input: TerminalRunInput,
-): RouteAdmission<"terminal", AdmittedTerminalRun> {
+): Promise<RouteAdmission<"terminal", AdmittedTerminalRun>> {
   const warnings: string[] = [];
   if (plan.dryRun) return { ok: true, admitted: { plan, warnings } };
-  const checked = checkLiveTerminalMachine(plan, input, warnings);
+  const checked = await checkLiveTerminalMachine(plan, input, warnings);
   if (checked.ok) return { ok: true, admitted: { plan, warnings, runtimeEnv: checked.runtimeEnv } };
   return {
     ok: false,

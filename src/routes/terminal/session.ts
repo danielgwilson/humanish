@@ -1,8 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { missingKeys } from "../../study/requirements.js";
+import { keysCheck } from "../../study/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
@@ -24,13 +23,14 @@ import { finishLiveTerminalSession } from "./live-finish.js";
  * E2B_API_KEY. They read only the plan and the environment, so the CLI makes them before it loads
  * a declared scorer. Returns the runtime key's command-scoped placement, or the refusal.
  */
-export function checkLiveTerminalMachine(
+export async function checkLiveTerminalMachine(
   plan: LiveTerminalPlan,
   input: TerminalRunInput,
   warnings: string[],
-):
+): Promise<
   | { readonly ok: true; readonly runtimeEnv: LiveTerminalAuth }
-  | { readonly ok: false; readonly code: TerminalProductStudyErrorCode; readonly message: string } {
+  | { readonly ok: false; readonly code: TerminalProductStudyErrorCode; readonly message: string }
+> {
   const env = input.env ?? process.env;
   const { maxUsd } = plan.caps;
   // planTerminalStudy refuses a positive maxUsd without a costProbe, so one is present here.
@@ -45,13 +45,14 @@ export function checkLiveTerminalMachine(
   if (!runtimeEnv.ok) return runtimeEnv;
   // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
   // The runtime key above is the plan's `key-one-of`; E2B_API_KEY is its only `key`.
-  if (missingKeys(plan.requirements, env).length > 0) {
-    return {
-      ok: false,
-      code: "HUMANISH_TERMINAL_KEYS_MISSING",
-      message: `Live terminal-product studies need E2B_API_KEY in the environment (values are never persisted). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
-    };
-  }
+  const keys = await keysCheck({
+    requirements: plan.requirements,
+    env,
+    code: "HUMANISH_TERMINAL_KEYS_MISSING",
+    need: (names) =>
+      `Live terminal-product studies need ${names} in the environment (values are never persisted).`,
+  });
+  if (keys) return { ok: false, ...keys };
   return { ok: true, runtimeEnv };
 }
 

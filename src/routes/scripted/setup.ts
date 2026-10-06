@@ -3,7 +3,7 @@
 // (the evidence URL policy, the scrubber for clone values, the persona and the session budget).
 
 import { realpath } from "node:fs/promises";
-import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
+import { firstLiveRefusal, keysCheck, subjectEnvCheck } from "../../study/requirements.js";
 import path from "node:path";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
@@ -11,7 +11,6 @@ import type {
   BrowserPersonaJourney,
   ScriptedBrowserEvidenceUrlPolicy,
 } from "../../actors/scripted-browser/types.js";
-import { describeMissingKeys } from "../../keys/key-resolution.js";
 import type { ScriptedPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { evidenceAppUrlOf } from "./plan.js";
@@ -115,26 +114,26 @@ export async function prepareScriptedRun(
   const journey = scenario.journey;
 
   // The plan lists E2B_API_KEY and the subject env only for a live clone.
-  const missing = missingKeys(plan.requirements, env);
-  if (missing.length > 0) {
-    return {
-      ok: false,
-      result: failed(
-        "HUMANISH_SCRIPTED_KEYS_MISSING",
-        `Live clone scripted-browser studies require ${missing.join(" and ")} (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(missing, env)}`,
-      ),
-    };
-  }
-  const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
-  if (unsetSubjectEnv.length > 0) {
-    return {
-      ok: false,
-      result: failed(
-        "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-        `Subject env values missing for a live clone scripted-browser study: ${unsetSubjectEnv.join(", ")}.`,
-      ),
-    };
-  }
+  const { requirements } = plan;
+  const refusal = await firstLiveRefusal<Parameters<ScriptedRunSetup["failed"]>[0]>([
+    () =>
+      keysCheck({
+        requirements,
+        env,
+        code: "HUMANISH_SCRIPTED_KEYS_MISSING",
+        need: (names) =>
+          `Live clone scripted-browser studies require ${names} (dry-run remains $0 and does not provision a subject).`,
+      }),
+    () =>
+      subjectEnvCheck({
+        requirements,
+        env,
+        code: "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
+        message: (unset) =>
+          `Subject env values missing for a live clone scripted-browser study: ${unset.join(", ")}.`,
+      }),
+  ]);
+  if (refusal) return { ok: false, result: failed(refusal.code, refusal.message) };
 
   const surfaces = plan.surfaces;
   const timeoutMs = plan.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
