@@ -28,4 +28,10 @@ describe("RunSecrets", () => {
     expect(values).toEqual([value("key"), value("address")]);
     expect(scrub(`mail ${value("address")}`)).toBe("mail [REDACTED_SECRET]");
   });
+
+  it("leaves its values out of JSON and object spread", () => {
+    const secrets = new RunSecrets([value("key")]);
+    expect(JSON.stringify({ secrets })).not.toContain(value("key"));
+    expect(JSON.stringify({ ...secrets })).not.toContain(value("key"));
+  });
 });
