@@ -44,7 +44,6 @@ import {
   type RefusedStudy,
   type RouteAdmission,
 } from "../../run/route-shell.js";
-import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
@@ -188,7 +187,6 @@ async function runPlanInScope(
   config: StudyConfig,
   scope: RunScope,
 ): Promise<ConcurrentSharedWorldStudyResult> {
-  const { dryRun } = plan;
   const requestedCwd = path.resolve(input.cwd);
   const deps = input.deps ?? {};
   const env: Record<string, string | undefined> = input.env ?? process.env;
@@ -196,9 +194,6 @@ async function runPlanInScope(
   const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
     plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
-  const { maxTotalUsd } = plan.caps;
-  const runBudget =
-    !dryRun && maxTotalUsd !== undefined ? makeCuaRunBudget(maxTotalUsd) : undefined;
 
   // The provisioned plane's subject; the external-public plane has none.
   const subject = plan.plane.kind === "provisioned" ? plan.plane.subject : undefined;
@@ -234,7 +229,6 @@ async function runPlanInScope(
       env,
       descriptor,
       planeClass,
-      runBudget,
       runSession,
       serve,
       localTreeRoute,

@@ -43,7 +43,7 @@ function config(base: "sharedProvisioned" | "sharedExternal", actor?: Record<str
 /** The plane context fields participantRunDeps reads; the rest stay undefined. */
 function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
   return {
-    plan: { brain, plane: { participants: [{}, {}] } },
+    plan: { brain, caps: {}, plane: { participants: [{}, {}] } },
     input: {},
     config: { subject: {} },
     descriptor: { id: "local-agent" },

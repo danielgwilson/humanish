@@ -19,11 +19,8 @@ import { runCuaParticipant } from "../computer-use/participant-execution.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
-import {
-  makeBlockedFollowerOutcome,
-  withLobbyCodeMission,
-  type ParticipantRunDeps,
-} from "./participant-specs.js";
+import type { DesktopParticipantDeps } from "../computer-use/participant-deps.js";
+import { makeBlockedFollowerOutcome, withLobbyCodeMission } from "./participant-specs.js";
 import type { ActorRunResult, ExternalCommsWiring } from "./types.js";
 
 // The floor for the host-first handoff barrier deadline (ms). The host must surface a
@@ -93,7 +90,7 @@ class HandoffTimeoutError extends Error {
 
 /** What the host and follower participants need besides the handoff. */
 export interface HandoffParticipantDeps {
-  runDeps: ParticipantRunDeps;
+  runDeps: DesktopParticipantDeps;
   publicAppUrl: string;
   inbox: ExternalCommsWiring | undefined;
   now: () => number;
