@@ -13,6 +13,7 @@ import {
   type RunBundle,
   type RunCostSummary,
   type RunEvent,
+  type RunFeedbackCandidate,
   type RunSimulation,
 } from "../../run/bundle.js";
 import {
@@ -29,6 +30,7 @@ import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { participantFactsOf } from "../computer-use/participant-facts.js";
+import { participantFeedbackCandidates } from "../computer-use/participant-feedback.js";
 import {
   judgeSharedWorld,
   participantPassed,
@@ -452,6 +454,11 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   );
 
   const cost = concurrentCostSummary(args, inProgress);
+  const goal = redactText(
+    actorSpecs[0]?.evidenceInstructions ??
+      actorSpecs[0]?.instructions ??
+      "Concurrent shared-world interaction.",
+  );
   return {
     ...bundleHead(args.run, {
       ...receivingPublication(plan.residual, args.dryRun),
@@ -467,11 +474,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     scenario: {
       id: `concurrent-shared-world-${plan.studyId}`,
       title: plan.title ?? `Concurrent shared-world: ${plan.studyId}`,
-      goal: redactText(
-        actorSpecs[0]?.evidenceInstructions ??
-          actorSpecs[0]?.instructions ??
-          "Concurrent shared-world interaction.",
-      ),
+      goal,
       source: `study:${plan.studyId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
@@ -497,7 +500,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     },
     artifacts: bundleArtifacts(),
     review,
-    feedbackCandidates: [],
+    feedbackCandidates: sharedWorldFeedbackCandidates(args, goal),
     // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
     ...(plan.residual.execution?.desktop?.template === undefined
       ? {}
@@ -507,6 +510,42 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     sharedWorld,
     ...(cost === undefined ? {} : { cost }),
   };
+}
+
+/**
+ * What the participants reported, built by the same builder as a computer-use fan-out: one
+ * candidate per participant who reported friction or abandoned the goal, named by its participant
+ * id. Dry-run and in-progress bundles carry none: there is no participant yet to quote. The comms
+ * thread belongs to the one shared app, so each candidate cites it.
+ */
+function sharedWorldFeedbackCandidates(
+  args: ConcurrentBundleArgs,
+  goal: string,
+): RunFeedbackCandidate[] {
+  if (args.dryRun || args.inProgress === true) return [];
+  return participantFeedbackCandidates({
+    runId: args.run.runId,
+    scenarioId: `concurrent-shared-world-${args.plan.studyId}`,
+    adapterId: args.plan.studyId,
+    goal,
+    // planSharedWorldStudy refuses any target other than e2b-desktop on both planes.
+    substrate: "e2b-desktop",
+    participants: args.actorSpecs.map((spec, index) => {
+      const outcome = args.actorResults[index]?.outcome;
+      return {
+        participantId: spec.planned.id,
+        streamId: spec.streamId,
+        personaId: spec.persona.id,
+        ...(outcome?.session === undefined
+          ? {}
+          : { session: outcome.session, traceArtifactPath: spec.traceArtifactPath }),
+        screenshots: outcome?.screenshots ?? [],
+        ...(args.commsArtifactPath === undefined
+          ? {}
+          : { commsArtifactPath: args.commsArtifactPath }),
+      };
+    }),
+  });
 }
 
 /**

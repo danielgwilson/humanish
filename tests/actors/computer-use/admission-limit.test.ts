@@ -11,7 +11,7 @@ import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
 } from "../../../src/actors/computer-use/openai-provider.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
-import { participantFeedbackCandidates } from "../../../src/routes/computer-use/bundle-parts.js";
+import { participantFeedbackCandidates } from "../../../src/routes/computer-use/participant-feedback.js";
 import { estimateActorCost } from "../../../src/run/pricing.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { syntheticPng1x1 } from "../../image-fixtures.js";

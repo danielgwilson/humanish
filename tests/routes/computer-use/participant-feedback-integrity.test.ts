@@ -6,7 +6,7 @@ import {
   type CuaLoopResult,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import { participantFeedbackCandidates } from "../../../src/routes/computer-use/bundle-parts.js";
+import { participantFeedbackCandidates } from "../../../src/routes/computer-use/participant-feedback.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,

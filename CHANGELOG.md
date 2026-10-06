@@ -44,6 +44,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   terminal runs do. A link or a swapped directory left in the run directory stops the run with an
   error, before a participant's screen check or the subject's provisioning, and before the result
   points at the run.
+- Shared-world runs now produce feedback candidates. A participant who reports friction or gives
+  up becomes a candidate that names it, built as on a computer-use run, so `humanish feedback`
+  drafts that report. Before, a shared-world run always recorded no candidates, and its feedback
+  draft summarized the run instead. A clean run still records none, and an adapter's
+  `deriveFeedback` candidates follow the participants' candidates.
 
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 

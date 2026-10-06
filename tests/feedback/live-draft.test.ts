@@ -17,7 +17,7 @@ import {
   type ActorTrace,
 } from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { participantFeedbackCandidates } from "../../src/routes/computer-use/bundle-parts.js";
+import { participantFeedbackCandidates } from "../../src/routes/computer-use/participant-feedback.js";
 import { draftFeedback, listFeedback } from "../../src/feedback/feedback.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
