@@ -15,14 +15,12 @@
 // clone run records commit, env names, state provenance and a host digest, never the raw getHost
 // URL or a secret value.
 
-import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { ScriptedPlan } from "../../study/plan-types.js";
 import type { AdmittedPlan } from "../../run-study.js";
-import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { type RunScope } from "../../run/run.js";
 import { admitRoute, completeRefusalAnalysis, type RefusedStudy } from "../../run/route-shell.js";
@@ -104,31 +102,20 @@ async function runScriptedPlanInScope(
   const { dryRun } = plan;
   const { setup } = prepared;
 
-  const started = await scope.startRun({
+  const started = await scope.startRun(plan, input, {
     cwd: setup.physicalCwd,
-    runId: input.runId,
-    mintRunId: makeScriptedRunId,
-    mode: dryRun ? "dry-run" : "live",
-    study: plan.study,
-    warnings: plan.warnings,
+    prefix: "scripted",
     // Only a clone subject is served from a sandbox; an app-url run drives a local browser.
     sandboxes: setup.clone ? undefined : "none",
     renderReview: renderScriptedReviewMarkdown,
-    observer: { open: input.open === true, render: setup.deps.renderObserver },
     secrets: setup.secrets,
   });
   if (!started.ok) {
     return setup.failed(started.code, started.message);
   }
   const { run } = started;
-  const { createdAt, paths: runPaths } = run;
+  const { paths: runPaths, source } = run;
   const artifactRoot = runPaths.physicalRunRoot;
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd: setup.physicalCwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
 
   const scriptedSubject = setup.clone
     ? new ScriptedSubject({
@@ -203,9 +190,4 @@ async function runScriptedPlanInScope(
     subjectEnvNames: setup.subjectEnvNames,
     scriptedSubject,
   });
-}
-
-function makeScriptedRunId(): string {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `scripted-${stamp}-${randomBytes(4).toString("hex")}`;
 }

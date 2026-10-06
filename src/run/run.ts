@@ -3,12 +3,14 @@
 // their own evidence files; this module owns when the run starts, how it is published, and how it
 // is closed on every exit.
 
+import { randomBytes } from "node:crypto";
 import { redactText } from "../evidence/redaction.js";
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import {
   RUN_BUNDLE_FILE,
   PUBLIC_TARGET_CWD,
+  buildRunSource,
   type RunBundle,
   type RunEvent,
   type RunOutcome,
@@ -56,6 +58,41 @@ interface StartRunOptions {
   now?: (() => number) | undefined;
   /** Warnings about the study's own fields. Every bundle write records each as a warn event. */
   warnings?: readonly string[] | undefined;
+  /** The route's known values, created before the run so a refusal before it is scrubbed too. */
+  secrets?: RunSecrets | undefined;
+}
+
+/** The prefix of the run ids each recorded route mints. Preview mints its own `dryrun-` ids. */
+type RunIdPrefix = "cua" | "concurrent-shared-world" | "scripted" | "terminal";
+
+/** What a recorded route's plan holds for its run's start. */
+interface StartRunPlan {
+  readonly dryRun: boolean;
+  readonly study?: RunStudyProvenance | undefined;
+  readonly warnings?: readonly string[] | undefined;
+}
+
+/** What a recorded route's input holds for its run's start. */
+interface StartRunInput {
+  /** Caller-supplied id (`--run-id`, library `runId`); one is minted from the prefix when absent. */
+  readonly runId?: string | undefined;
+  /** Open the Observer page once it renders. */
+  readonly open?: boolean | undefined;
+  /** `renderObserver` is the seam FinishedRun.renderObserver calls. */
+  readonly deps?: { readonly renderObserver?: typeof renderObserver | undefined } | undefined;
+}
+
+/** What a recorded route passes to startRun besides its plan and input. */
+interface RouteRunOptions {
+  /** Project directory, in the form the route resolved it. */
+  cwd: string;
+  prefix: RunIdPrefix;
+  /** review.md for the published bundle. */
+  renderReview: (bundle: RunBundle) => string;
+  /** `none` when the route creates no sandbox for this run; status.json records it for reclaim. */
+  sandboxes?: "none" | undefined;
+  /** Clock for `createdAt` and the latest pointer. The minted id reads the wall clock. */
+  now?: (() => number) | undefined;
   /** The route's known values, created before the run so a refusal before it is scrubbed too. */
   secrets?: RunSecrets | undefined;
 }
@@ -114,11 +151,29 @@ interface Run {
   finish(bundle: RunBundle, outcome: FinishOutcome): Promise<FinishedRun>;
 }
 
+/** A recorded route's run, with the source its bundle records. */
+interface RecordedRun extends Run {
+  /** The package and the project's git state, captured once the run exists, at its createdAt. */
+  readonly source: RunBundle["source"];
+}
+
 export interface RunScope {
+  /**
+   * Start a recorded route's run from its plan and input: the input's run id or one minted from
+   * `prefix`, the plan's mode, study and warnings, and an Observer that opens when the input says
+   * `open` and renders through the input's `deps.renderObserver`. Then capture the run's source.
+   * The run starts as the form below does.
+   */
+  startRun(
+    plan: StartRunPlan,
+    input: StartRunInput,
+    options: RouteRunOptions,
+  ): Promise<{ ok: true; run: RecordedRun } | RunIdInUse>;
   /**
    * Create `.humanish/runs/<id>` exclusively, begin status.json and wait for its first write, so
    * a run that got past this point has a status record before any sandbox exists. An id whose
-   * directory exists is refused before any write. A scope starts at most one run.
+   * directory exists is refused before any write. A scope starts at most one run. Preview calls
+   * this form, since it builds its source before the run and mints its own id.
    */
   startRun(options: StartRunOptions): Promise<{ ok: true; run: Run } | RunIdInUse>;
 }
@@ -435,7 +490,7 @@ export async function runScope<T>(
   };
   const refuse = (message: string) => Promise.reject(new RunLifecycleError(message));
 
-  const startRun = (options: StartRunOptions): ReturnType<RunScope["startRun"]> => {
+  const startRunWith = (options: StartRunOptions): Promise<{ ok: true; run: Run } | RunIdInUse> => {
     if (closed) return refuse("The run scope has closed.");
     if (started) return refuse("A run scope starts one run.");
     started = true;
@@ -471,6 +526,18 @@ export async function runScope<T>(
       })(),
     );
   };
+
+  function startRun(options: StartRunOptions): Promise<{ ok: true; run: Run } | RunIdInUse>;
+  function startRun(
+    plan: StartRunPlan,
+    input: StartRunInput,
+    route: RouteRunOptions,
+  ): Promise<{ ok: true; run: RecordedRun } | RunIdInUse>;
+  function startRun(
+    ...args: [StartRunOptions] | [StartRunPlan, StartRunInput, RouteRunOptions]
+  ): Promise<{ ok: true; run: Run | RecordedRun } | RunIdInUse> {
+    return args.length === 1 ? startRunWith(args[0]) : startRecordedRun(startRunWith, ...args);
+  }
 
   const openRun = (
     options: StartRunOptions,
@@ -544,4 +611,40 @@ export async function runScope<T>(
     }
   }
   return { result: outcome.result, finished };
+}
+
+/** Start a recorded route's run through `start`, the scope's own form, then capture its source. */
+async function startRecordedRun(
+  start: (options: StartRunOptions) => Promise<{ ok: true; run: Run } | RunIdInUse>,
+  plan: StartRunPlan,
+  input: StartRunInput,
+  route: RouteRunOptions,
+): Promise<{ ok: true; run: RecordedRun } | RunIdInUse> {
+  const started = await start({
+    cwd: route.cwd,
+    runId: input.runId,
+    mintRunId: () => mintRunId(route.prefix),
+    mode: plan.dryRun ? "dry-run" : "live",
+    study: plan.study,
+    warnings: plan.warnings,
+    sandboxes: route.sandboxes,
+    renderReview: route.renderReview,
+    observer: { open: input.open === true, render: input.deps?.renderObserver },
+    now: route.now,
+    secrets: route.secrets,
+  });
+  if (!started.ok) return started;
+  const source = await buildRunSource({
+    cwd: route.cwd,
+    capturedAt: started.run.createdAt,
+    humanishSource: "present",
+    packageName: "humanish",
+  });
+  return { ok: true, run: { ...started.run, source } };
+}
+
+/** `<prefix>-<wall-clock time, with : and . as ->-<8 hex>`. */
+function mintRunId(prefix: RunIdPrefix): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${prefix}-${stamp}-${randomBytes(4).toString("hex")}`;
 }
