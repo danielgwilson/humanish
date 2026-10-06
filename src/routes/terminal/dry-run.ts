@@ -5,7 +5,7 @@ import type { ActorPersonaRef } from "../../actors/contract.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
-import { buildRunSource, type RunEvent } from "../../run/bundle.js";
+import { type RunEvent } from "../../run/bundle.js";
 import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
@@ -13,7 +13,7 @@ import { RunSecrets } from "../../run/secrets.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { resolveTerminalPersona, terminalPersonaRef } from "./persona.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
-import { defaultMission, makeTerminalRunId } from "./session.js";
+import { defaultMission } from "./session.js";
 import {
   type RunLiveTerminalSessionArgs,
   type TerminalProductStudyResult,
@@ -42,26 +42,15 @@ export async function runDryTerminalStudy(args: {
     warnings,
   });
 
-  const started = await scope.startRun({
+  const started = await scope.startRun(plan, input, {
     cwd: physicalCwd,
-    runId: input.runId,
-    mintRunId: makeTerminalRunId,
-    mode: "dry-run",
-    study: plan.study,
-    warnings: plan.warnings,
+    prefix: "terminal",
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: input.open === true, render: input.deps?.renderObserver },
     secrets,
   });
   if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
-  const { runId, createdAt } = run;
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd: physicalCwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
+  const { runId, createdAt, source } = run;
 
   const policies = plan.residual.policies;
   const judgment = judgeTerminal({ dryRun: true, participant: undefined });
