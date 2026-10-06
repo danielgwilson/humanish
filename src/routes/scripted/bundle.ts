@@ -7,7 +7,7 @@ import { reviewOutcome } from "../../run/display.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
 import { redactText } from "../../evidence/redaction.js";
-import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
+import type { SubjectDesktopUsage } from "../../substrates/e2b/subject-sandbox.js";
 import {
   buildRunCostSummary,
   desktopSpanToMinutes,
@@ -49,11 +49,7 @@ interface ScriptedBundleArgs {
   source: RunBundle["source"];
   subject?: RunSubjectProvenance;
   /** The provisioned clone's desktop; absent when no sandbox was created. */
-  subjectDesktop?: {
-    durationMs: number | undefined;
-    observation: DesktopResourceObservation | undefined;
-    killed: boolean;
-  };
+  subjectDesktop?: SubjectDesktopUsage;
   surfaces: readonly BrowserSurface[];
   /** The run's verdict (judgeScripted). */
   verdict: ReviewSummary["verdict"];
@@ -191,15 +187,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
 }
 
 /** No model runs on this route; the only spend is a provisioned clone's desktop. */
-function scriptedCost(
-  subjectDesktop:
-    | {
-        durationMs: number | undefined;
-        observation: DesktopResourceObservation | undefined;
-        killed: boolean;
-      }
-    | undefined,
-) {
+function scriptedCost(subjectDesktop: SubjectDesktopUsage | undefined) {
   if (subjectDesktop === undefined) return spendFreeCostSummary();
   return buildRunCostSummary({
     participants: [],
