@@ -18,6 +18,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   does. A study on the external-public plane gets no suggestion, because its lobby-code reader
   needs `OPENAI_API_KEY` whatever drives the participants.
 
+### Fixed
+
+- A scripted run now scrubs the value of `E2B_API_KEY` from its evidence, as the other routes do.
+  Before, only pattern redaction could remove it, and that finds the key only in its `e2b_` form.
+  Scripted runs also replace each known value with `[REDACTED_SECRET]`, the marker the other
+  routes use. A clone repository or subject env value that a scripted run wrote as `[redacted]`
+  now reads `[REDACTED_SECRET]`, and a value under four characters is no longer scrubbed, as on
+  the other routes.
+
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 
 humanish 0.111.2 changes the Observer and nothing else. The focus view's heading line holds the

@@ -183,8 +183,9 @@ describe("terminal scrubs its known values with [REDACTED_SECRET]", () => {
   });
 });
 
-describe("scripted scrubs its known values with [redacted]", () => {
-  it("scrubs the clone repo and every non-empty subject env value from a live run's session error", async () => {
+describe("scripted scrubs its known values with [REDACTED_SECRET]", () => {
+  it("scrubs the E2B key, the clone repo and the subject env from a live run's session error, and leaves a value under four characters", async () => {
+    const e2b = opaque("e2b");
     const password = opaque("password");
     const repo = "example-org/example-app";
     const config = parsed({
@@ -204,20 +205,22 @@ describe("scripted scrubs its known values with [redacted]", () => {
       cwd,
       config,
       dryRun: false,
-      env: { E2B_API_KEY: opaque("e2b"), APP_PASSWORD: password, APP_PIN: SHORT },
+      env: { E2B_API_KEY: e2b, APP_PASSWORD: password, APP_PIN: SHORT },
       deps: {
         desktopModule: async () => subjectModule(),
         browserCommand: "/synthetic/browser",
         detachedTimers: { now: () => 0, sleep: async () => undefined },
         runScriptedSession: async () => {
-          throw new Error(`session failed on ${repo} with ${password} and ${SHORT}`);
+          throw new Error(`session failed on ${repo} with ${password}, ${e2b} and ${SHORT}`);
         },
       },
     });
     expect(result.ok).toBe(false);
     const { text } = await runBundle(result.runId);
-    expect(text).not.toContain(password);
-    expect(text).toContain("session failed on [redacted] with [redacted] and [redacted]");
+    for (const value of [password, e2b]) expect(text).not.toContain(value);
+    expect(text).toContain(
+      `session failed on [REDACTED_SECRET] with [REDACTED_SECRET], [REDACTED_SECRET] and ${SHORT}`,
+    );
   });
 });
 

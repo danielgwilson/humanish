@@ -1,6 +1,6 @@
 // What a scripted run needs before it starts: the checks the plan cannot make (the scenario file,
 // the E2B key and subject env of a live clone, a browser to launch) and the values the run reads
-// (the evidence URL policy, the scrubber for clone values, the persona and the session budget).
+// (the evidence URL policy, the run's known secrets, the persona and the session budget).
 
 import { realpath } from "node:fs/promises";
 import { firstLiveRefusal, keysCheck, subjectEnvCheck } from "../../study/requirements.js";
@@ -95,10 +95,11 @@ export async function prepareScriptedRun(
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
   const redactRepoLabel = plan.residual.policies?.redactRepos ?? hasGithubToken;
-  const secrets = new RunSecrets(
-    [...(clone ? [clone.repo] : []), ...subjectEnvNames.map((name) => env[name] ?? "")],
-    { marker: "[redacted]", minLength: 1 },
-  );
+  const secrets = new RunSecrets([
+    e2bApiKey,
+    ...(clone ? [clone.repo] : []),
+    ...subjectEnvNames.map((name) => env[name] ?? ""),
+  ]);
 
   // A clone's URL is replaced by its getHost URL once it is served.
   let appUrl = plan.subject.kind === "clone" ? plan.subject.serve.url : plan.subject.appUrl;
