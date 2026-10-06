@@ -8,38 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
-- `humanish review` and `humanish analyze show` on a dry run now name the command that starts a
-  live run, in `next` and on a `next:` line: `run` with the run's own study when its file sets
-  `mode: live`, else `run try-live` when the project has that starter study, else `run` with the
-  run's own study after setting `mode: live` in its file, else `study list`. Before, `next` was
-  null and the output named no command.
+humanish 0.111.4 scrubs a run's known values from more of its evidence and fixes three messages.
+Every route now also finds a known value, such as a provider key or a `subject.env` value, in its
+encoded forms: percent-encoded, JSON-escaped, base64, base64url and hex, and where a terminal color
+code or an output chunk boundary splits it. A scripted run scrubs its known values from the step
+trace in `traces/<surface>.json` and `actor-<surface>.json`, and from the app URL, scenario goal,
+title and step labels it records. Two places keep a known value: a scenario file name, and the
+path of a computer-use `subject.appUrl`. `humanish review` on a dry run names the command that
+starts a live run, so `next` in `review --json` holds a string where it held null. A terminal
+refusal for a missing runtime key no longer reads `runtimeAuth "undefined"`, and a refusal that
+names two signed-in coding agents reads "report".
 
-### Fixed
-
-- A live terminal study missing its runtime key now refuses with a message that names
-  `CODEX_API_KEY` and `OPENAI_API_KEY` and says where the study's `execution.runtimeAuth` puts the
-  key. Before, a study that left `execution.runtimeAuth` unset read `declare runtimeAuth
-"undefined"`. The code `HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING` and the exit status are
-  unchanged.
-- A refusal that names two signed-in coding agents now reads "Codex and Claude Code report
-  authenticated", where it read "reports".
-- A scripted run now scrubs its known values (`E2B_API_KEY`, each `subject.env` value and the
-  clone repository) from the step trace in `traces/<surface>.json` and `actor-<surface>.json`, and
-  from the app URL, scenario goal, title and step labels it records. A step whose label or id holds
-  a known value is recorded, and its screenshot named, as `step-NN` by its position, and a
-  scenario id that holds one is recorded as `scenario`. Before, a
-  known value in a `goto` path, the app URL, a step label or a page error stayed in those files and
-  in run.json, review.md, events.ndjson and the Observer.
-- Each route now also scrubs a known value in its encoded forms: percent-encoded, JSON-escaped
-  once or twice (also with non-ASCII characters as `\u` escapes), base64, base64url and hex, as a page URL, a printed JSON body or a log line
-  carries it. A value that a URL path encodes only in part, or that a terminal escape sequence
-  splits (as written or JSON-escaped in a codex event), is found too, also across two terminal
-  output chunks. The encoded span is replaced with `[REDACTED_SECRET]` and the rest
-  of the text is kept as written. Before, only the value as written was scrubbed, so a value with
-  a space, a quote or a backslash could stay in run.json, actor.json, the terminal transcript and
-  the Observer.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.111.4)
 
 ## 0.111.3: Shared-world feedback candidates, scripted E2B key scrubbed, subject sandbox warnings (2026-10-06)
 
