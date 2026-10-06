@@ -26,8 +26,7 @@ import {
   loadCuaParticipants,
   sanitizeParticipantRuns,
 } from "./participant-runs.js";
-import { makeCuaRunBudget } from "./participant-model.js";
-import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
+import { desktopParticipantDeps } from "./participant-deps.js";
 import { liveCuaRejection } from "./preflight.js";
 import { cuaDescriptorOf, declaredAppUrl, plannedAppUrl, type ComputerUseRefusal } from "./plan.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
@@ -424,7 +423,7 @@ export async function startCuaRun(
   };
 }
 
-/** The participant deps every participant reads: the route, keys, timeouts, scrubber, budget and seams. */
+/** The participant deps every participant reads, with computer use's own overrides. */
 function cuaParticipantDeps(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
@@ -435,59 +434,40 @@ function cuaParticipantDeps(
     liveTrace: CuaParticipantsSetup["liveTrace"];
   },
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
-  const { config, dryRun, seams, streams, env, runSession, participantCount } = admitted;
-  const { localTreeArchiveBuffer } = admitted;
-  const { openaiApiKey, e2bApiKey, secrets } = admitted;
-  const { externalCommsConfig, externalCommsEmail } = admitted;
-  const { appUrl } = admitted;
-  const { runPaths, redactScreenshots, liveTrace } = run;
-  const createDesktop = input.localVm?.desktop;
-  const timeoutMs = plan.sessionBudgetMs;
-  const requestTimeoutMs = e2bRequestTimeoutMs(env);
-  return {
-    ...(createDesktop === undefined ? {} : { createDesktop }),
-    onTrace: (participantId, items, usage, metadata) =>
-      liveTrace.flush?.(participantId, items, usage, metadata),
-    ...callerDriving(input, config),
-    residual: plan.residual,
-    studyId: plan.studyId,
-    caps: plan.caps,
-    appUrl,
-    brain: plan.runner.brain,
-    subject: plan.runner.subject,
-    ...(localTreeArchiveBuffer === undefined ? {} : { localTreeArchiveBuffer }),
-    env,
-    openaiApiKey,
-    e2bApiKey,
-    requestTimeoutMs,
-    sandboxMs: plan.sandboxMs,
-    timeoutMs,
-    participantCount,
-    artifactRoot: runPaths,
-    studyCwd: input.cwd,
-    redactScreenshots,
-    scrubKnownValues: secrets.scrub,
-    runSession,
-    // The study-level ledger exists once per run, shared by every participant. Dry runs never
-    // spend, so they carry none.
-    ...(dryRun || plan.caps.maxTotalUsd === undefined
-      ? {}
-      : { runBudget: makeCuaRunBudget(plan.caps.maxTotalUsd) }),
-    ...(externalCommsConfig === undefined || externalCommsEmail === undefined
-      ? {}
-      : {
-          externalComms: {
-            email: externalCommsEmail,
-            inboxUrl: externalInboxUrl(externalCommsConfig),
-          },
-        }),
-    now: seams.now ?? Date.now,
-    ...(seams.desktopModule === undefined ? {} : { desktopModule: seams.desktopModule }),
-    ...(input.prepareDesktop === undefined ? {} : { prepareDesktop: input.prepareDesktop }),
-    ...(seams.detachedTimers === undefined ? {} : { detachedTimers: seams.detachedTimers }),
-    onStream: streams.onStream,
-    reportSubjectPhase: subjectPhaseReporter(input),
-  };
+  const { config, seams, env, externalCommsConfig, externalCommsEmail } = admitted;
+  const deps = desktopParticipantDeps(
+    {
+      plan,
+      brain: plan.runner.brain,
+      subject: plan.runner.subject,
+      env,
+      openaiApiKey: admitted.openaiApiKey,
+      e2bApiKey: admitted.e2bApiKey,
+      timeoutMs: plan.sessionBudgetMs,
+      sandboxMs: plan.sandboxMs,
+      participantCount: admitted.participantCount,
+      artifactRoot: run.runPaths,
+      studyCwd: input.cwd,
+      redactScreenshots: run.redactScreenshots,
+      scrubKnownValues: admitted.secrets.scrub,
+      runSession: admitted.runSession,
+      liveFlush: () => run.liveTrace.flush,
+      onStream: admitted.streams.onStream,
+      reportSubjectPhase: subjectPhaseReporter(input),
+      seams,
+      prepareDesktop: input.prepareDesktop,
+    },
+    {
+      createDesktop: input.localVm?.desktop,
+      ...callerDriving(input, config),
+      localTreeArchiveBuffer: admitted.localTreeArchiveBuffer,
+      externalComms:
+        externalCommsConfig === undefined || externalCommsEmail === undefined
+          ? undefined
+          : { email: externalCommsEmail, inboxUrl: externalInboxUrl(externalCommsConfig) },
+    },
+  );
+  return { ...deps, appUrl: admitted.appUrl };
 }
 
 /** The caller's createProvider and inProcess executor, with the run's config bound. */
