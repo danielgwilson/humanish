@@ -16,11 +16,13 @@ import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./t
 /**
  * Per-chunk sanitization cannot recognize a value split across deliveries. Redact those complete
  * known values before persistence without collapsing events or changing stdout/stderr ordering.
- * Work backwards through matches so edits to later text leave earlier offsets valid.
+ * `spansOf` finds them in the joined text: RunSecrets.spans, which also finds a value in an
+ * encoded form or split by a terminal escape sequence. Work backwards through the spans so edits
+ * to later text leave earlier offsets valid.
  */
 export function scrubSplitKnownValues(
   events: TerminalEventRecord[],
-  knownValues: readonly string[],
+  spansOf: (text: string) => ReadonlyArray<readonly [number, number]>,
   discardedPrefixes: Record<"stdout" | "stderr" | "combined", string>,
 ): void {
   for (const order of ["stdout", "stderr", "combined"] as const) {
@@ -29,36 +31,29 @@ export function scrubSplitKnownValues(
     // A virtual final chunk makes a key crossing the capture cap recognizable. Edits to retained
     // events redact evidence; the raw overlap and this virtual chunk are never persisted.
     if (discardedPrefixes[order]) chunks.push({ chunk: discardedPrefixes[order] });
-    for (const value of knownValues) {
-      if (!value) continue;
-      let offset = 0;
-      const starts = chunks.map((event) => {
-        const start = offset;
-        offset += event.chunk.length;
-        return start;
-      });
-      const text = chunks.map((event) => event.chunk).join("");
-      const matches: number[] = [];
-      for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + value.length))
-        matches.push(at);
-      for (const at of matches.reverse()) {
-        let first = 0;
-        while (first + 1 < starts.length && (starts[first + 1] ?? Infinity) <= at) first += 1;
-        let last = first;
-        while (last + 1 < starts.length && (starts[last + 1] ?? Infinity) < at + value.length)
-          last += 1;
-        const firstChunk = chunks[first];
-        const lastChunk = chunks[last];
-        if (!firstChunk || !lastChunk) continue;
-        const before = firstChunk.chunk.slice(0, at - (starts[first] ?? 0));
-        const after = lastChunk.chunk.slice(at + value.length - (starts[last] ?? 0));
-        firstChunk.chunk = `${before}[REDACTED_SECRET]${first === last ? after : ""}`;
-        for (let index = first + 1; index < last; index += 1) {
-          const middle = chunks[index];
-          if (middle) middle.chunk = "";
-        }
-        if (first !== last) lastChunk.chunk = after;
+    let offset = 0;
+    const starts = chunks.map((event) => {
+      const start = offset;
+      offset += event.chunk.length;
+      return start;
+    });
+    const text = chunks.map((event) => event.chunk).join("");
+    for (const [at, end] of [...spansOf(text)].reverse()) {
+      let first = 0;
+      while (first + 1 < starts.length && (starts[first + 1] ?? Infinity) <= at) first += 1;
+      let last = first;
+      while (last + 1 < starts.length && (starts[last + 1] ?? Infinity) < end) last += 1;
+      const firstChunk = chunks[first];
+      const lastChunk = chunks[last];
+      if (!firstChunk || !lastChunk) continue;
+      const before = firstChunk.chunk.slice(0, at - (starts[first] ?? 0));
+      const after = lastChunk.chunk.slice(end - (starts[last] ?? 0));
+      firstChunk.chunk = `${before}[REDACTED_SECRET]${first === last ? after : ""}`;
+      for (let index = first + 1; index < last; index += 1) {
+        const middle = chunks[index];
+        if (middle) middle.chunk = "";
       }
+      if (first !== last) lastChunk.chunk = after;
     }
   }
 }

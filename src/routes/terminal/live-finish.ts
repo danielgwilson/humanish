@@ -80,16 +80,23 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   const { session } = inputs;
   const { createdAt } = inputs.run;
   const { terminalEvents, commandLog, discardedPrefixes } = inputs.recorder;
-  // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
-  // chunks before any transcript/trace/event artifact is persisted. Check both each stream and
+  // Prefix reconciliation may cut through a known key. Scrub the known values, as written and in
+  // each encoded form, across the retained chunks before any transcript/trace/event artifact is
+  // persisted. Check both each stream and
   // the combined event order that the transcript uses; either view can assemble a split value.
-  scrubSplitKnownValues(terminalEvents, inputs.run.secrets.values(), discardedPrefixes);
+  scrubSplitKnownValues(
+    terminalEvents,
+    (text) => inputs.run.secrets.spans(text),
+    discardedPrefixes,
+  );
 
   // Build the actor trace first (the cost ledger reads its tokenUsage). A session past the cap
   // ends its transcript with what was not stored, and its trace says the same.
   const cut = inputs.recorder.transcriptCut();
-  const normalizedTranscript = `${normalizeLocalActorTranscript(
-    terminalEvents.map((e) => e.chunk).join(""),
+  // Normalizing removes terminal escape sequences, which rejoins a value one of them split, so the
+  // transcript is sanitized again after it.
+  const normalizedTranscript = `${sanitize(
+    normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join("")),
   )}${cut ? `\n[humanish] ${cut.notice}` : ""}`;
   // Parsed from the full stream: usage records arrive once per turn, and the tail
   // would drop all but the last. Records past the cap were kept as they arrived.

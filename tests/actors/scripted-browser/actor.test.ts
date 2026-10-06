@@ -37,6 +37,7 @@ import {
 } from "../../../src/actors/scripted-browser/types.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../../src/actors/scripted-browser/journey.js";
 import { resolveBrowserCommand } from "../../../src/actors/scripted-browser/browser-command.js";
+import { RunSecrets } from "../../../src/run/secrets.js";
 import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 
@@ -558,6 +559,36 @@ describe("runScriptedBrowserSession (completion semantics through the real step 
       expect(nativeText).toContain("[provisioned-subject]");
       expect(nativeText).not.toContain("127.0.0.1");
       expect(nativeText).not.toContain("localhost");
+    });
+  });
+
+  it("scrubs a known value from the trace and capture, including where the step URL percent-encodes it", async () => {
+    const known = ["synthetic", "known value", "do not leak"].join(" ");
+    const journey = demoJourney();
+    journey.steps = [{ ...journey.steps[0]!, path: `/settings/${known}` }];
+    await withHttpServer(async (appUrl) => {
+      const { browser, state } = makeFakeBrowser();
+      const result = await runScriptedBrowserSession({
+        appUrl,
+        journey,
+        surface,
+        persona,
+        timeoutMs: 10_000,
+        artifactRoot,
+        launchBrowser: async () => browser,
+        scrubKnownValues: new RunSecrets([known]).scrub,
+      });
+
+      expect(state.url).toBe(`${appUrl}settings/${encodeURIComponent(known)}`);
+      expect(result.capture.steps[0]?.url).toBe(`${appUrl}settings/[REDACTED_SECRET]`);
+      const persisted = [
+        await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"),
+        JSON.stringify(result),
+      ];
+      for (const text of persisted) {
+        expect(text).not.toContain(known);
+        expect(text).not.toContain(encodeURIComponent(known));
+      }
     });
   });
 

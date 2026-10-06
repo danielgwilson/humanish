@@ -29,24 +29,36 @@ function base64Middles(bytes: Buffer, encoding: "base64" | "base64url"): string[
   });
 }
 
-/** A value as written, and percent-encoded, JSON-escaped, base64 at each byte offset, base64url and hex. */
-function encodedForms(value: string): string[] {
+/**
+ * A value as written, and percent-encoded, JSON-escaped once (also with non-ASCII characters as
+ * `\u` escapes) and twice, base64 at each byte offset, base64url and hex. Twice, because a JSON event can carry a command's JSON output as a string. An
+ * escaped form is searched for at any length, as the value is: it holds a backslash or a `%`, so it
+ * is not ordinary text.
+ */
+export function encodedForms(value: string): string[] {
   const bytes = Buffer.from(value, "utf8");
-  const encoded = [
-    JSON.stringify(value).slice(1, -1),
+  const json = JSON.stringify(value).slice(1, -1);
+  // A serializer that writes ASCII only, such as Python's json.dumps, spells é as \u00e9.
+  const asciiJson = json.replace(
+    /[^\x00-\x7f]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+  const escaped = [json, asciiJson, JSON.stringify(json).slice(1, -1)];
+  // The encoders throw on a lone surrogate. Such a value is still found as written. encodeURI
+  // keeps a `/` or a `:` as written, as a URL path does.
+  try {
+    escaped.push(encodeURIComponent(value), encodeURI(value));
+  } catch {
+    // no percent-encoded form
+  }
+  const binary = [
     bytes.toString("base64"),
     bytes.toString("base64url"),
     bytes.toString("hex"),
     ...base64Middles(bytes, "base64"),
     ...base64Middles(bytes, "base64url"),
   ];
-  // encodeURIComponent throws on a lone surrogate. Such a value is still found as written.
-  try {
-    encoded.push(encodeURIComponent(value));
-  } catch {
-    // no percent-encoded form
-  }
-  return [value, ...encoded.filter((form) => form.length >= MIN_ENCODED_FORM)];
+  return [value, ...escaped, ...binary.filter((form) => form.length >= MIN_ENCODED_FORM)];
 }
 
 /** Every occurrence of every form, outside the markers, merged where they overlap or touch. */
