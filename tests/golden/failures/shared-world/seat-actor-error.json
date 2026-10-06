@@ -126,6 +126,7 @@
       ]
     },
     "warnings": [
+      "Subject sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
