@@ -1,9 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { missingKeys } from "../../study/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
-import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { digestText, redactText } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { buildRunSource } from "../../run/bundle.js";
+import { RunSecrets } from "../../run/secrets.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
 import { resolveTerminalPersona, terminalPersonaRef } from "./persona.js";
@@ -74,7 +75,7 @@ export async function runLiveTerminalSession(
 
   const prepared = await prepareLivePrompt({ plan, cwd, runtimeEnv, env, warnings });
   const { mission, physicalCwd, persona, composedPrompt, verdictNonce } = prepared;
-  const { knownSecretValues, sanitize } = prepared;
+  const { secrets, sanitize } = prepared;
 
   const started = await scope.startRun({
     cwd: physicalCwd,
@@ -87,6 +88,7 @@ export async function runLiveTerminalSession(
     renderReview: renderTerminalReviewMarkdown,
     observer: { open: input.open === true, render: deps.renderObserver },
     now,
+    secrets,
   });
   if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
@@ -101,7 +103,12 @@ export async function runLiveTerminalSession(
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
-  const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues, verdictNonce });
+  const recorder = createTerminalRecorder({
+    nowIso,
+    sanitize,
+    knownSecretValues: run.secrets.values(),
+    verdictNonce,
+  });
   const { version, model, modelSource, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
     ...(version === undefined ? {} : { version }),
@@ -157,7 +164,6 @@ export async function runLiveTerminalSession(
     cwd,
     sanitize,
     nowIso,
-    knownSecretValues,
     runtimeEnv,
     runtime,
     persona,
@@ -203,19 +209,16 @@ async function prepareLivePrompt(args: {
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
   // the second pass for secret-shaped content. Applied pre-truncation so a cut can never split a
   // value past the scrubber.
-  const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter(
-    (v) => v.length >= 4,
-  );
-  const scrubKnownValues = scrubLiterals(knownSecretValues);
-  const sanitize = (text: string): string => redactText(scrubKnownValues(text));
-  const persona = terminalPersonaRef(terminalPersona, promptDigest, scrubKnownValues);
+  const secrets = new RunSecrets([runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""]);
+  const sanitize = (text: string): string => redactText(secrets.scrub(text));
+  const persona = terminalPersonaRef(terminalPersona, promptDigest, secrets.scrub);
   return {
     mission,
     physicalCwd: terminalPersona.physicalCwd,
     persona,
     composedPrompt,
     verdictNonce,
-    knownSecretValues,
+    secrets,
     sanitize,
   };
 }

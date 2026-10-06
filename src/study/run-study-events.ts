@@ -2,7 +2,8 @@
 // warning. normalizeRunStudyOptions (run-study-options.ts) builds the emitter and hands it to the
 // route hook bags it maps; the event values are built here.
 
-import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import { RunSecrets } from "../run/secrets.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
 import type { InternalRunStudyOptions } from "../run-study.js";
@@ -56,30 +57,26 @@ export type StudyEvent =
  * analysis API key. A callback can hold any of them, and its warning is appended after the route
  * sanitized its own.
  */
-export function knownSecretValues(
+export function knownSecrets(
   config: StudyConfig,
   options: InternalRunStudyOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
-): string[] {
+): RunSecrets {
   const sources = [forwardedEnv, options.env, process.env];
   const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
-  const values = new Set<string>();
-  const add = (value: string | undefined): void => {
-    const trimmed = value?.trim() ?? "";
-    if (trimmed.length >= 4) values.add(trimmed);
-  };
-  for (const env of sources) for (const name of names) add(env?.[name]);
-  return [...values];
+  const secrets = new RunSecrets([]);
+  for (const env of sources) for (const name of names) secrets.add([env?.[name]?.trim() ?? ""]);
+  return secrets;
 }
 
 /**
  * The emitter the route hook bags call, or undefined without onEvent. It calls onEvent and never
- * waits for it: a throw or a rejected promise becomes a run warning, scrubbed of `secretValues`.
+ * waits for it: a throw or a rejected promise becomes a run warning, scrubbed of `secrets`.
  */
 export function studyEventEmitter(
   onEvent: ((event: StudyEvent) => void | Promise<void>) | undefined,
   warnings: string[],
-  secretValues: () => string[],
+  secrets: () => RunSecrets,
 ): ((event: StudyEvent) => void) | undefined {
   if (onEvent === undefined) return undefined;
   return (event: StudyEvent): void => {
@@ -90,8 +87,7 @@ export function studyEventEmitter(
       let detail: string;
       try {
         // Read here, not up front: a run with no failing callback never touches the env.
-        const scrub = scrubLiterals(secretValues());
-        detail = redactText(scrub(toErrorMessage(error)));
+        detail = redactText(secrets().scrub(toErrorMessage(error)));
       } catch {
         detail = "the thrown value has no message";
       }
