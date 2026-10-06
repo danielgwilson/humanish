@@ -267,7 +267,7 @@ class FactReader {
     return { target, symbols: unique(symbols) };
   }
 
-  /** The module a `vi.mock("../src/x.js")` or `vi.mock(import("../src/x.js"))` call replaces. */
+  /** The module a `vi.mock` or `vi.doMock` call replaces, named by a string or an `import()`. */
   private mockTarget(path: string, call: CallExpression): string | undefined {
     const callee = call.expression;
     if (!isPropertyAccessExpression(callee) || !isIdentifier(callee.expression)) return undefined;
