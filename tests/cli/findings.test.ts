@@ -186,7 +186,7 @@ describe("a ready analysis", () => {
 
 describe("a run without findings", () => {
   const cases: Array<[string, LoadedAnalysis, string | undefined, string, string | null]> = [
-    ["a dry run", none(), "dry-run", "dry_run", null],
+    ["a dry run with no live study to name", none(), "dry-run", "dry_run", "humanish study list"],
     [
       "a running automatic analysis",
       none(job("running")),
@@ -249,6 +249,30 @@ describe("a run without findings", () => {
       expect(lines.slice(1)).toEqual(next === null ? [] : [`next: ${next}`]);
     },
   );
+
+  it.each([
+    [
+      "its own study, whose file runs live",
+      { run: "try-live", id: "try-live" },
+      "Findings come from live runs: the next command runs try-live live.",
+    ],
+    [
+      "a study it ran by path",
+      { run: "studies/checkout.yaml", id: "checkout" },
+      "Findings come from live runs: the next command runs checkout live.",
+    ],
+    [
+      "its own study once its file is set live",
+      { run: "cua-browser", id: "cua-browser", setLiveIn: "humanish/studies/cua-browser.yaml" },
+      "Findings come from live runs: set mode: live in humanish/studies/cua-browser.yaml, then run the next command.",
+    ],
+  ])("names the live run after a dry run of %s", (_name, liveStudy, tail) => {
+    const view = analysisFindings({ ...source(none(), "dry-run"), liveStudy });
+    expect(view).toMatchObject({ state: "dry_run", next: `humanish run ${liveStudy.run}` });
+    expect(view.message).toBe(
+      `This is a dry run: no participant used the product, so there is nothing to analyze. ${tail}`,
+    );
+  });
 
   it("names the failed attempt's code and retries with the same analyst", () => {
     const failed: AnalysisArtifact = {

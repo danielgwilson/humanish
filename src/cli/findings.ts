@@ -13,6 +13,7 @@ import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { resolvePhysicalCwd, runIdOf } from "../run/paths.js";
 import { studyProvenanceOf, type RunStudyProvenance } from "../run/study-provenance.js";
 import { resolveStudyManifest } from "../study/discover.js";
+import { routeOf } from "../study/routing.js";
 import { plural } from "../run/text.js";
 import { shellQuote } from "../substrates/shell.js";
 import { analysisOutcomeText, type CliIo, wantsJson } from "./io.js";
@@ -74,7 +75,10 @@ export interface AnalysisFindings {
   /** The stable code behind a state other than ready, when one is recorded. */
   reason: string | null;
   message: string;
-  /** The command that gets findings for this run, or null when none can. */
+  /**
+   * The command that gets findings for this run, or for a dry run the command that starts a live
+   * one. Null when none can.
+   */
   next: string | null;
   analysisId: string | null;
   status: AnalysisArtifact["status"] | null;
@@ -107,6 +111,18 @@ interface FindingsSource {
    * false`, read when the view is built. Undefined when it does not, or cannot be read.
    */
   analysisOffIn?: string;
+  /** For a dry run, the study a live run can start from, read when the view is built. */
+  liveStudy?: LiveStudy;
+}
+
+/** A study `run` can start live after a dry run. */
+interface LiveStudy {
+  /** The study argument for `run`: its id, or its path when the run named it by path. */
+  run: string;
+  /** Its id, for the message. */
+  id: string;
+  /** The study file to set `mode: live` in first, when the file still starts as a dry run. */
+  setLiveIn?: string;
 }
 
 /** ` --cwd <dir>`, or "" when `cwd` is the current directory. */
@@ -210,16 +226,35 @@ function withoutFindings(
   };
 }
 
-/** The findings view of a run's selected analysis, or why it has none. */
-export function analysisFindings(source: FindingsSource): AnalysisFindings {
-  if (source.mode !== undefined && source.mode !== "live")
+/** A dry run's view: nothing to analyze, and the command that starts a live run. */
+function dryRunFindings(source: FindingsSource): AnalysisFindings {
+  const opening =
+    "This is a dry run: no participant used the product, so there is nothing to analyze.";
+  const live = source.liveStudy;
+  if (live === undefined)
     return withoutFindings(
       source,
       "dry_run",
       null,
-      "This is a dry run: no participant used the product, so there is nothing to analyze. Findings come from live runs.",
-      null,
+      `${opening} Findings come from live runs. The next command lists this project's studies; a study with mode: live runs participants.`,
+      cli(`study list${source.cwdFlag}`),
     );
+  const howLive =
+    live.setLiveIn === undefined
+      ? `the next command runs ${live.id} live.`
+      : `set mode: live in ${live.setLiveIn}, then run the next command.`;
+  return withoutFindings(
+    source,
+    "dry_run",
+    null,
+    `${opening} Findings come from live runs: ${howLive}`,
+    cli(`run ${live.run}${source.cwdFlag}`),
+  );
+}
+
+/** The findings view of a run's selected analysis, or why it has none. */
+export function analysisFindings(source: FindingsSource): AnalysisFindings {
+  if (source.mode !== undefined && source.mode !== "live") return dryRunFindings(source);
   const loaded = projectShareCheckedAnalysis(source.loaded);
   const analysis = loaded.analysis;
   if (analysis?.result && (loaded.state === "ready" || loaded.state === "stale")) {
@@ -341,6 +376,36 @@ async function studyAnalysisOff(
 }
 
 /**
+ * The study a live run can start from after a dry run: the run's own study when its file runs
+ * live, else the starter study try-live when this project has one that runs live, else the run's
+ * own study once its file is set live. A preview study only dry-runs. Undefined when none applies.
+ */
+async function liveStudyAfterDryRun(
+  cwd: string,
+  study: RunStudyProvenance | undefined,
+): Promise<LiveStudy | undefined> {
+  const resolve = async (ref: string) => {
+    const resolved = await resolveStudyManifest(cwd, ref).catch(() => null);
+    return resolved?.ok ? resolved.config : undefined;
+  };
+  const ownConfig =
+    study === undefined
+      ? undefined
+      : await resolve(study.path ?? study.id).then((config) =>
+          config?.id === study.id ? config : undefined,
+        );
+  const own =
+    study === undefined
+      ? undefined
+      : { run: study.origin === "explicit" ? (study.path ?? study.id) : study.id, id: study.id };
+  if (own !== undefined && ownConfig?.mode === "live") return own;
+  if ((await resolve("try-live"))?.mode === "live") return { run: "try-live", id: "try-live" };
+  if (own !== undefined && ownConfig !== undefined && study?.path !== undefined)
+    return routeOf(ownConfig) === "preview" ? undefined : { ...own, setLiveIn: study.path };
+  return undefined;
+}
+
+/**
  * The run's bundle mode and its selected analysis: `analysisId`, or the version `analyze show`
  * defaults to. Null when the run is missing or its storage is unsafe.
  */
@@ -353,17 +418,19 @@ export async function readRunAnalysis(
   const prepared = await resolveRunPath(physical, run).catch(() => null);
   if (!prepared) return null;
   const bundle = await loadRunBundlePrepared(physical, prepared).catch(() => null);
-  const analysisOffIn =
-    bundle?.bundle.mode === "live"
-      ? await studyAnalysisOff(physical, studyProvenanceOf(bundle.bundle))
-      : undefined;
+  const mode = bundle?.bundle.mode;
+  const study = bundle === null ? undefined : studyProvenanceOf(bundle.bundle);
+  const analysisOffIn = mode === "live" ? await studyAnalysisOff(physical, study) : undefined;
+  const liveStudy =
+    mode !== undefined && mode !== "live" ? await liveStudyAfterDryRun(physical, study) : undefined;
   return {
     runId: runIdOf(prepared),
-    mode: bundle?.bundle.mode,
+    mode,
     runRoot: prepared.relativeRunRoot,
     loaded: await loadAnalysis(prepared, analysisId),
     cwdFlag: cwdFlag(cwd),
     ...(analysisOffIn === undefined ? {} : { analysisOffIn }),
+    ...(liveStudy === undefined ? {} : { liveStudy }),
   };
 }
 

@@ -135,15 +135,37 @@ describe("humanish review on an analyzed live run", () => {
     ]);
   });
 
-  it("says a dry run has nothing to analyze", async () => {
+  it("says a dry run has nothing to analyze and names the starter live study", async () => {
     const cwd = await makeTestTempDir("humanish-review-dry-");
     await runCli(["init", "--yes", "--cwd", cwd]);
     await runCli(["run", "first-run", "--cwd", cwd]);
     const human = await runCli(["review", "--cwd", cwd]);
     expect(human.exitCode).toBe(0);
     expect(human.output).toMatch(/\nfindings: none\. This is a dry run: .+\n/);
+    expect(human.output).toContain(`\nnext: humanish run try-live --cwd ${cwd}\n`);
     const json = JSON.parse((await runCli(["review", "--cwd", cwd, "--json"])).output);
-    expect(json.analysis).toMatchObject({ state: "dry_run", next: null, findings: [] });
+    expect(json.analysis).toMatchObject({
+      state: "dry_run",
+      next: `humanish run try-live --cwd ${cwd}`,
+      findings: [],
+    });
+  });
+
+  it("after a dry run of a study that starts as one, says to set it live", async () => {
+    const cwd = await makeTestTempDir("humanish-review-dry-");
+    await runCli(["init", "--yes", "--cwd", cwd]);
+    const tryLive = path.join(cwd, "humanish", "studies", "try-live.yaml");
+    await writeFile(
+      tryLive,
+      (await readFile(tryLive, "utf8")).replace(/^mode: live\b/m, "mode: dry-run"),
+    );
+    await runCli(["run", "cua-browser", "--cwd", cwd]);
+    const json = JSON.parse((await runCli(["review", "--cwd", cwd, "--json"])).output);
+    expect(json.analysis).toMatchObject({
+      state: "dry_run",
+      next: `humanish run cua-browser --cwd ${cwd}`,
+    });
+    expect(json.analysis.message).toContain("set mode: live in humanish/studies/cua-browser.yaml");
   });
 });
 
