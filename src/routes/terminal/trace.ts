@@ -20,7 +20,7 @@ import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./t
  */
 export function scrubSplitKnownValues(
   events: TerminalEventRecord[],
-  knownValues: string[],
+  knownValues: readonly string[],
   discardedPrefixes: Record<"stdout" | "stderr" | "combined", string>,
 ): void {
   for (const order of ["stdout", "stderr", "combined"] as const) {

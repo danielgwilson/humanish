@@ -1,13 +1,17 @@
 import type { Brain, ComputerUsePlan } from "../../study/plan-types.js";
 import { pricedModel } from "../../study/plan-base.js";
-import { missingKeys, missingSubjectEnv } from "../../study/requirements.js";
+import {
+  firstLiveRefusal,
+  keysCheck,
+  localAgentCheck,
+  subjectEnvCheck,
+  unpricedCapCheck,
+  type LiveRefusal,
+} from "../../study/requirements.js";
 import type { StudyCommsExternal } from "../../study/types.js";
-import { detectLocalAgents } from "../../actors/local-agent/cli.js";
-import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
-import { describeMissingKeys } from "../../keys/key-resolution.js";
+import type { LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { catchTokenOf, catchTokenRefusal } from "../../comms/external-evidence.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
-import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
 import type { CuaActorStudyErrorCode } from "./types.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
@@ -34,71 +38,47 @@ export async function liveCuaRejection(args: {
   externalCommsConfig: StudyCommsExternal | undefined;
 }): Promise<{ code: CuaActorStudyErrorCode; message: string } | undefined> {
   const { caps, brain, env, requirements, externalCommsConfig } = args;
-  // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the
-  // caller's provider needs none) and E2B_API_KEY only when this run creates hosted desktops.
-  const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
-  const missing = missingKeys(requirements, env);
-  if (missing.length > 0) {
-    // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
-    // right there, say so here rather than making them go and find an API key; that detour is
-    // where most people trying humanish stop.
-    const suggestion = missing.includes("OPENAI_API_KEY")
-      ? await (async () => {
-          const ready = (await detectLocalAgents({ env })).filter(
-            (agent) => agent.authStatus === "authenticated",
-          );
-          return ready.length === 0
-            ? ""
-            : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine` +
-                `. Set actor.type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
-        })()
-      : "";
-    return {
-      code: "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      message: `Live computer-use studies need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
-    };
-  }
-  // A caller's createProvider makes the brain `caller`, so only the study's own local agent is checked.
-  if (localAgent) {
-    // Refuse here, before a sandbox exists. "codex is not installed" discovered after the
-    // machine is paid for is the same information delivered at the worst possible moment.
-    const refusal = await localAgentRefusal({ agent: localAgent, env, caps });
-    if (refusal) return { code: LOCAL_AGENT_REFUSAL_CODES[refusal.kind], message: refusal.message };
-  }
-  const unsetSubjectEnv = missingSubjectEnv(requirements, env);
-  if (unsetSubjectEnv.length > 0) {
-    return {
-      code: "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING",
-      message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
-    };
-  }
-  // Fail-closed cap: a maxUsd cap needs a measurable per-turn estimate.
-  // If the operator set caps.maxUsd but src/run/pricing.ts has no rate for the resolved
-  // model, the loop could not enforce the cap, and silently running uncapped would break the
-  // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run
-  // uncapped: an unenforceable cap is more dangerous than none. The operator picks a priced model
-  // or removes the cap; a source checkout can also add a rate to src/run/pricing.ts.
-  if (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined) {
-    const model = pricedModel(brain);
-    const capModelId = model.trim().toLowerCase();
-    if (!MODEL_RATES[capModelId]) {
-      return {
+  return firstLiveRefusal<CuaActorStudyErrorCode>([
+    // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the
+    // caller's provider needs none) and E2B_API_KEY only when this run creates hosted desktops.
+    () =>
+      keysCheck({
+        requirements,
+        env,
+        code: "HUMANISH_COMPUTER_USE_KEYS_MISSING",
+        need: (names) =>
+          `Live computer-use studies need ${names} in the environment (values are never persisted).`,
+        suggestLocalAgent: true,
+      }),
+    // A caller's createProvider makes the brain `caller`, so only the study's own local agent is
+    // checked.
+    () => localAgentCheck({ brain, env, caps, codes: LOCAL_AGENT_REFUSAL_CODES }),
+    () => subjectEnvCheck({ requirements, env, code: "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING" }),
+    () =>
+      unpricedCapCheck({
+        caps,
+        model: pricedModel(brain),
         code: "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
-        message: unpricedCapMessage(model),
-      };
-    }
-  }
-  // Adopter-hosted comms catch: fail closed before any sandbox is created, because a comms study
-  // whose catch is unreachable collects nothing while every participant still spends. The probe asserts
-  // humanish's own service marker in /health, so an adopter's proxy answering 200 for everything cannot
-  // pass for a catch.
-  const tokenRefusal =
-    externalCommsConfig === undefined
-      ? undefined
-      : catchTokenRefusal(catchTokenOf(externalCommsConfig, env));
+      }),
+    () => externalCatchCheck(externalCommsConfig, env),
+  ]);
+}
+
+/**
+ * Adopter-hosted comms catch: refused before any sandbox is created, because a comms study whose
+ * catch is unreachable collects nothing while every participant still spends. The probe asserts
+ * humanish's own service marker in /health, so an adopter's proxy answering 200 for everything
+ * cannot pass for a catch.
+ */
+async function externalCatchCheck(
+  externalCommsConfig: StudyCommsExternal | undefined,
+  env: Record<string, string | undefined>,
+): Promise<LiveRefusal<CuaActorStudyErrorCode> | undefined> {
+  if (externalCommsConfig === undefined) return undefined;
+  const tokenRefusal = catchTokenRefusal(catchTokenOf(externalCommsConfig, env));
   if (tokenRefusal !== undefined)
     return { code: "HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID", message: tokenRefusal };
-  if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
+  if (!(await externalCatchHealthy(externalCommsConfig))) {
     return {
       code: "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE",
       message:

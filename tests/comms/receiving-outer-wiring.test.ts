@@ -211,9 +211,12 @@ describe("configured receiving through exported study runners", () => {
     },
   );
 
-  it("cua-clone scrubs an address the receiving setup registered from a participant's error", async () => {
-    await expectRouteProof("cua-clone", false, true);
-  });
+  it.each(["cua-clone", "concurrent-provisioned", "concurrent-external"] as const)(
+    "%s scrubs an address the receiving setup registered from a participant's error",
+    async (route) => {
+      await expectRouteProof(route, false, true);
+    },
+  );
 
   async function expectRouteProof(
     route: Route,

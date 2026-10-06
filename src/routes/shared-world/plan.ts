@@ -36,7 +36,7 @@ import {
   receivingEmailValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
-import { MODEL_RATES, unpricedCapMessage } from "../../run/pricing.js";
+import { unpricedCapCheck } from "../../study/requirements.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
 /** The error a shared-world study returns before a run starts. */
@@ -113,12 +113,15 @@ export function planSharedWorldStudy(
   if (config.actor?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
 
-  const caps = config.caps;
-  if (!input.dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
-    const model = (config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
-    if (!MODEL_RATES[model])
-      return refuse("HUMANISH_SHARED_WORLD_UNPRICED_CAP", unpricedCapMessage(model), actor);
-  }
+  // A live cap is priced here, at plan time, so its refusal wins over the route's key checks.
+  const unpriced = input.dryRun
+    ? undefined
+    : unpricedCapCheck({
+        caps: config.caps ?? {},
+        model: (config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase(),
+        code: "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
+      });
+  if (unpriced) return refuse(unpriced.code, unpriced.message, actor);
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return refuse(invalid, receivingReason, actor);
   // The parser requires one owner/repo slug; without it the route would clone nothing and fail

@@ -305,7 +305,7 @@ export async function finishCuaRun(
   ran: Extract<Awaited<ReturnType<typeof runStudyParticipants>>, { ok: true }>,
 ): Promise<CuaActorStudyResult> {
   const { plan, input, cwd, streams, descriptor, run } = setup;
-  const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
+  const { participantRuns, participantPlan, bundleBase } = setup;
   const { rerunLineage, publicRepo, subjectArgs } = finish;
   const { dryRun } = plan;
   const appUrl = plannedAppUrl(plan.runner.subject);
@@ -352,7 +352,7 @@ export async function finishCuaRun(
       dryRun,
       participantCount,
     },
-    sanitize: (text) => redactText(scrubKnownValues(text)),
+    sanitize: (text) => redactText(run.secrets.scrub(text)),
     warnings: adapterWarnings,
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
