@@ -49,6 +49,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   drafts that report. Before, a shared-world run always recorded no candidates, and its feedback
   draft summarized the run instead. A clean run still records none, and an adapter's
   `deriveFeedback` candidates follow the participants' candidates.
+- A feedback candidate from a computer-use fan-out or shared-world participant now shows that
+  participant's own instructions as `expected`. Before, every candidate in the run showed the
+  first participant's instructions, so a draft from the second participant named the first
+  participant's persona and task.
 
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 

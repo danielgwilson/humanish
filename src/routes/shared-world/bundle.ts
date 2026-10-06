@@ -454,11 +454,6 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   );
 
   const cost = concurrentCostSummary(args, inProgress);
-  const goal = redactText(
-    actorSpecs[0]?.evidenceInstructions ??
-      actorSpecs[0]?.instructions ??
-      "Concurrent shared-world interaction.",
-  );
   return {
     ...bundleHead(args.run, {
       ...receivingPublication(plan.residual, args.dryRun),
@@ -474,7 +469,11 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     scenario: {
       id: `concurrent-shared-world-${plan.studyId}`,
       title: plan.title ?? `Concurrent shared-world: ${plan.studyId}`,
-      goal,
+      goal: redactText(
+        actorSpecs[0]?.evidenceInstructions ??
+          actorSpecs[0]?.instructions ??
+          "Concurrent shared-world interaction.",
+      ),
       source: `study:${plan.studyId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
@@ -500,7 +499,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     },
     artifacts: bundleArtifacts(),
     review,
-    feedbackCandidates: sharedWorldFeedbackCandidates(args, goal),
+    feedbackCandidates: sharedWorldFeedbackCandidates(args),
     // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
     ...(plan.residual.execution?.desktop?.template === undefined
       ? {}
@@ -515,19 +514,16 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 /**
  * What the participants reported, built by the same builder as a computer-use fan-out: one
  * candidate per participant who reported friction or abandoned the goal, named by its participant
- * id. Dry-run and in-progress bundles carry none: there is no participant yet to quote. The comms
- * thread belongs to the one shared app, so each candidate cites it.
+ * id, with that participant's own instructions as `expected`. Dry-run and in-progress bundles
+ * carry none: there is no participant yet to quote. The comms thread belongs to the one shared
+ * app, so each candidate cites it.
  */
-function sharedWorldFeedbackCandidates(
-  args: ConcurrentBundleArgs,
-  goal: string,
-): RunFeedbackCandidate[] {
+function sharedWorldFeedbackCandidates(args: ConcurrentBundleArgs): RunFeedbackCandidate[] {
   if (args.dryRun || args.inProgress === true) return [];
   return participantFeedbackCandidates({
     runId: args.run.runId,
     scenarioId: `concurrent-shared-world-${args.plan.studyId}`,
     adapterId: args.plan.studyId,
-    goal,
     // planSharedWorldStudy refuses any target other than e2b-desktop on both planes.
     substrate: "e2b-desktop",
     participants: args.actorSpecs.map((spec, index) => {
@@ -536,6 +532,7 @@ function sharedWorldFeedbackCandidates(
         participantId: spec.planned.id,
         streamId: spec.streamId,
         personaId: spec.persona.id,
+        goal: redactText(spec.evidenceInstructions ?? spec.instructions),
         ...(outcome?.session === undefined
           ? {}
           : { session: outcome.session, traceArtifactPath: spec.traceArtifactPath }),

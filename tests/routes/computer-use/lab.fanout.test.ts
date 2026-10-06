@@ -1720,6 +1720,38 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     });
   });
 
+  it("expects each reporting participant's own instructions in its feedback candidate", async () => {
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [
+        { id: "participant-1", persona: "first-time-visitor", instruction: "Save a draft note." },
+        { id: "participant-2", persona: "power-user", instruction: "Archive the oldest note." },
+      ],
+    });
+    const outcome = await runStudyWith(
+      config,
+      { cwd, env: FANOUT_ENV },
+      {
+        ...passingSeams(makeFanoutModule()),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, provider: scriptedEnding("blocker") }),
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    // Which participant's instruction each candidate's expected text quotes.
+    const quoted = (expected: string) =>
+      ["Save a draft note.", "Archive the oldest note."].filter((text) => expected.includes(text));
+    expect(
+      bundle.feedbackCandidates.map((candidate) => [candidate.id, quoted(candidate.expected)]),
+    ).toEqual([
+      ["participant-report-participant-1", ["Save a draft note."]],
+      ["participant-report-participant-2", ["Archive the oldest note."]],
+    ]);
+  });
+
   // The scorer folds into the judged verdict last, and can only make it stricter: a failing
   // score turns a pass into a fail, a passing score cannot lift a blocked run, and a failing score
   // leaves a blocked run blocked with the scorer's failure as a gap.

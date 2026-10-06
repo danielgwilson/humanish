@@ -24,14 +24,15 @@ export function participantFeedbackCandidates(args: {
   runId: string;
   scenarioId: string;
   adapterId: string;
-  /** The already-redacted study goal (what bundle.scenario.goal carries). */
-  goal: string;
   substrate: RunFeedbackCandidate["substrate"];
   participants: Array<{
     /** The participant's plan id; it names the candidate and its idempotency key. */
     participantId: string;
     streamId: string;
     personaId: string;
+    /** The participant's own already-redacted instructions, which the candidate's `expected`
+     *  quotes. Participants of one study get different instructions, each naming its persona. */
+    goal: string;
     session?: CuaLoopResult;
     traceArtifactPath?: string;
     screenshots: string[];
@@ -65,7 +66,7 @@ export function participantFeedbackCandidates(args: {
       // not a participant report.
       failure_owner: "target-app",
       summary,
-      expected: args.goal,
+      expected: participant.goal,
       actual: redactText(friction ?? session.reason),
       evidence: [
         ...(participant.traceArtifactPath === undefined

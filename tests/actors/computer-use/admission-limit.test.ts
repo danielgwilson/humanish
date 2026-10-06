@@ -188,13 +188,13 @@ describe("explicit adapter admission limits", () => {
               runId: "admission-fixture",
               scenarioId: "save",
               adapterId: "fixture",
-              goal: "Save the item.",
               substrate: "e2b-desktop",
               participants: [
                 {
                   participantId: "lane-1",
                   streamId: "stream-1",
                   personaId: persona.id,
+                  goal: "Save the item.",
                   session: result,
                   traceArtifactPath: "actors/stream-1.json",
                   screenshots: [],
