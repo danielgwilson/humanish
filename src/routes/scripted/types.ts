@@ -7,7 +7,7 @@ import type { ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import type { StudyDeps } from "../../study/study-deps.js";
 import type { RunStudyHomes } from "../../study/run-study-homes.js";
-import { type StudyResultIdentity } from "../../run/study-result.js";
+import { type StudyResultErrorCode, type StudyResultIdentity } from "../../run/study-result.js";
 
 /** What a scripted run takes besides its plan. The plan carries the config, dry run and study. */
 export interface ScriptedRunInput {
@@ -61,11 +61,7 @@ export interface ScriptedBrowserStudyResult
   warnings: string[];
   error?: {
     code:
-      | "HUMANISH_STUDY_ANALYSIS_INVALID"
-      | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
-      | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
-      | "HUMANISH_STUDY_V2_UNSUPPORTED"
-      | "HUMANISH_STUDY_INVALID"
+      | StudyResultErrorCode
       | "HUMANISH_SCRIPTED_FAILED"
       | "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED"
       | "HUMANISH_SCRIPTED_SCENARIO_INVALID"
@@ -73,8 +69,7 @@ export interface ScriptedBrowserStudyResult
       | "HUMANISH_SCRIPTED_BROWSER_MISSING"
       | "HUMANISH_SCRIPTED_KEYS_MISSING"
       | "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING"
-      | "HUMANISH_SCRIPTED_GETHOST_UNAVAILABLE"
-      | "HUMANISH_RUN_ID_IN_USE";
+      | "HUMANISH_SCRIPTED_GETHOST_UNAVAILABLE";
     message: string;
   };
 }

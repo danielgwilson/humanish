@@ -18,7 +18,7 @@ import {
   type RunFeedbackCandidate,
   type RunScorerProvenance,
 } from "../../run/bundle.js";
-import { type StudyResultIdentity } from "../../run/study-result.js";
+import { type StudyResultErrorCode, type StudyResultIdentity } from "../../run/study-result.js";
 
 /** Provider-neutral metadata constant: the route's non-secret tag (mirrors CUA_ACTOR_STUDY_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA = {
@@ -211,11 +211,7 @@ export interface TerminalProductStudyResult
   warnings: string[];
   error?: {
     code:
-      | "HUMANISH_STUDY_ANALYSIS_INVALID"
-      | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
-      | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
-      | "HUMANISH_STUDY_V2_UNSUPPORTED"
-      | "HUMANISH_STUDY_INVALID"
+      | StudyResultErrorCode
       | "HUMANISH_TERMINAL_FAILED"
       | "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED"
       | "HUMANISH_TERMINAL_SUBJECT_INVALID"
@@ -227,8 +223,7 @@ export interface TerminalProductStudyResult
       | "HUMANISH_TERMINAL_UNPRICED_CAP"
       | "HUMANISH_TERMINAL_CAPS_EXCEEDED"
       | "HUMANISH_TERMINAL_CREDENTIAL_DENIED"
-      | "HUMANISH_TERMINAL_CLEANUP_UNPROVEN"
-      | "HUMANISH_RUN_ID_IN_USE";
+      | "HUMANISH_TERMINAL_CLEANUP_UNPROVEN";
     message: string;
   };
 }

@@ -31,7 +31,7 @@ import type {
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
 import type { SharedWorldPlan } from "../../study/plan-types.js";
-import { type StudyResultIdentity } from "../../run/study-result.js";
+import { type StudyResultErrorCode, type StudyResultIdentity } from "../../run/study-result.js";
 
 export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
   mode: "concurrent-shared-world-lab",
@@ -79,11 +79,7 @@ export interface SharedWorldRunInput {
 }
 
 export type ConcurrentSharedWorldStudyErrorCode =
-  | "HUMANISH_STUDY_ANALYSIS_INVALID"
-  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
-  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
-  | "HUMANISH_STUDY_V2_UNSUPPORTED"
-  | "HUMANISH_STUDY_INVALID"
+  | StudyResultErrorCode
   | "HUMANISH_SHARED_WORLD_FAILED"
   | "HUMANISH_SHARED_WORLD_ACTOR_UNSUPPORTED"
   | "HUMANISH_SHARED_WORLD_INVALID"
@@ -97,7 +93,6 @@ export type ConcurrentSharedWorldStudyErrorCode =
   | "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING"
   | "HUMANISH_SHARED_WORLD_GETHOST_UNAVAILABLE"
   | "HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT"
-  | "HUMANISH_RUN_ID_IN_USE"
   /** A declared adopter-hosted comms catch did not answer as a humanish catch. Fail closed
    *  before any actor spend, since the funnel would silently collect nothing. */
   | "HUMANISH_SHARED_WORLD_COMMS_CATCH_UNREACHABLE"
