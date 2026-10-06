@@ -48,6 +48,9 @@ export function buildRepoIndex(paths: Iterable<string>): RepoIndex {
 // docs/history/ holds dated goal packets, plans and the roadmap, which may name files that have
 // since moved. docs/evidence/ holds the dated study records current pages cite, so it is checked.
 const HISTORY_DIRECTORIES = ["docs/history/"];
+// A dated `pnpm arch:bench` result lists the src/ modules of the commit it measured, which later
+// commits move and delete. The `README.md` beside the results is checked.
+const DATED_ARCHITECTURE_RESULT = /^docs\/evidence\/architecture\/\d{4}-\d{2}-\d{2}-[\w-]+\.md$/;
 const ROOT_GUIDES = new Set([
   "README.md",
   "AGENTS.md",
@@ -59,6 +62,7 @@ const ROOT_GUIDES = new Set([
 export function isCheckedDoc(path: string): boolean {
   if (ROOT_GUIDES.has(path)) return true;
   if (path.startsWith("docs/") && path.endsWith(".md")) {
+    if (DATED_ARCHITECTURE_RESULT.test(path)) return false;
     return !HISTORY_DIRECTORIES.some((directory) => path.startsWith(directory));
   }
   return path.startsWith("site/content/") && path.endsWith(".mdx");
