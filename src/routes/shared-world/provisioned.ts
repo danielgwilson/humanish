@@ -29,11 +29,9 @@ import { phaseEvent } from "../../study/run-study-events.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import {
-  observeDesktopResources,
-  type DesktopResourceObservation,
-} from "../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
-import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
+  E2BSubjectSandbox,
+  type SubjectDesktopUsage,
+} from "../../substrates/e2b/subject-sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
 import { defaultPackLocalTree } from "../computer-use/local-tree-pack.js";
@@ -57,11 +55,6 @@ import {
   servePort,
 } from "./provenance.js";
 import {
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
-} from "../../substrates/e2b/lifetime.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-import {
   resolveActorEntryUrl,
   participantRunDeps,
   startParticipantFlush,
@@ -69,7 +62,6 @@ import {
 import {
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   type ActorRunResult,
-  type SubjectDesktopUsage,
   type LiveParticipants,
   type PlaneContext,
 } from "./types.js";
@@ -130,17 +122,10 @@ class ObserverGateError extends Error {
 class SubjectPlane {
   commsInboxUrl: string | undefined;
   subjectCommit: string | undefined;
-  subjectSandboxId: string | undefined;
-  subjectKilled = false;
-  subjectReleaseWarning: string | undefined;
+  readonly subject: E2BSubjectSandbox;
   getHostUrl: string | undefined;
-  // The subject desktop's host-side span and size, priced in the run's cost estimate.
-  private subjectCreatedAtMs: number | undefined;
-  private subjectTornDownAtMs: number | undefined;
-  private subjectResources: DesktopResourceObservation | undefined;
   private readonly ctx: PlaneContext;
   private readonly setup: ProvisionedPlaneSetup;
-  private subjectAllocation: OwnedDesktopAllocation | undefined;
   private subjectDesktop: E2BDesktopSandbox | undefined;
   private subjectShell: Shell | undefined;
   // The in-sandbox email catch on the one subject sandbox; drained at teardown. Undefined
@@ -162,6 +147,11 @@ class SubjectPlane {
   constructor(ctx: PlaneContext, setup: ProvisionedPlaneSetup) {
     this.ctx = ctx;
     this.setup = setup;
+    this.subject = new E2BSubjectSandbox({
+      warnings: ctx.warnings,
+      scrub: ctx.scrubKnownValues,
+      now: ctx.now,
+    });
     this.disposeSignal = new Promise<void>((resolve) => {
       this.releaseDispose = resolve;
     });
@@ -192,49 +182,29 @@ class SubjectPlane {
     // The one subject sandbox: headless service host (no GUI participant). The subject env is
     // provisioned here; the actor sandboxes get none of it. A custom desktop template (image) is
     // honored on both the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
-    // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
-    // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
-    const subject = await acquireE2BDesktopSandbox({
+    // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default.
+    this.subjectDesktop = await this.subject.acquire({
       module: subjectModule,
-      options: {
-        apiKey: this.ctx.e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs:
-          timeoutMs +
-          SUBJECT_PROVISION_BUDGET_MS +
-          (planeStateOf(plan)?.seed ?? []).reduce(
-            (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-            0,
-          ) +
-          SANDBOX_TIMEOUT_BUFFER_MS,
-        metadata: {
-          ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
-          labId: plan.studyId,
-          topology: "shared-world",
-          topologyMode: "concurrent",
-          kind: "subject",
-          participantCount: String(plan.plane.participants.length),
-        },
-        ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
-          ? {
-              envs: {
-                ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
-                ...commsEnv,
-              },
-            }
-          : {}),
-        dpi: 96,
-        lifecycle: { onTimeout: "kill" },
+      apiKey: this.ctx.e2bApiKey,
+      requestTimeoutMs,
+      sessionTimeoutMs: timeoutMs,
+      seed: planeStateOf(plan)?.seed ?? [],
+      metadata: {
+        ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
+        labId: plan.studyId,
+        topology: "shared-world",
+        topologyMode: "concurrent",
+        kind: "subject",
+        participantCount: String(plan.plane.participants.length),
+      },
+      envs: {
+        ...Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])),
+        ...commsEnv,
       },
       template: plan.residual.execution?.desktop?.template,
-      receipt: { root: this.ctx.runPaths, participantId: "subject" },
+      root: this.ctx.runPaths,
     });
-    this.subjectDesktop = subject.sandbox;
     this.subjectShell = e2bShell(this.subjectDesktop);
-    this.subjectAllocation = subject.allocation;
-    this.subjectSandboxId = subject.allocation.resourceId;
-    this.subjectCreatedAtMs = this.ctx.now();
-    this.subjectResources = await observeDesktopResources(this.subjectDesktop);
 
     await this.ctx.input.prepareDesktop?.(this.subjectDesktop, { kind: "subject" });
   }
@@ -417,7 +387,6 @@ class SubjectPlane {
    * Returns the comms thread's path when the drain wrote one.
    */
   async teardown(): Promise<string | undefined> {
-    const { warnings, scrubKnownValues } = this.ctx;
     this.proberDisposed = true;
     this.releaseDispose();
     if (this.proberLoop) {
@@ -441,35 +410,8 @@ class SubjectPlane {
         this.deployedComms,
       );
     }
-    if (this.subjectAllocation !== undefined) {
-      const released = await this.subjectAllocation.close();
-      const reading = readE2BRelease(released, {
-        label: "Subject sandbox",
-        scrub: scrubKnownValues,
-        costSpan: true,
-      });
-      this.subjectKilled = reading.released;
-      if (reading.warning) warnings.push(reading.warning);
-      if (!reading.released)
-        this.subjectReleaseWarning = reading.warning ?? "Subject sandbox release is unconfirmed.";
-      // Without a kill method, or in E2B debug mode, no kill reached E2B, so there is no teardown
-      // time to record.
-      if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
-        this.subjectTornDownAtMs = this.ctx.now();
-    }
+    await this.subject.release();
     return commsArtifactPath;
-  }
-
-  desktopUsage(): SubjectDesktopUsage | undefined {
-    if (this.subjectSandboxId === undefined) return undefined;
-    return {
-      durationMs:
-        this.subjectCreatedAtMs === undefined || this.subjectTornDownAtMs === undefined
-          ? undefined
-          : Math.max(0, this.subjectTornDownAtMs - this.subjectCreatedAtMs),
-      observation: this.subjectResources,
-      killed: this.subjectKilled,
-    };
   }
 }
 
@@ -596,10 +538,10 @@ export async function runProvisionedPlane(
     actorResults,
     runError,
     subjectCommit: plane.subjectCommit,
-    subjectSandboxId: plane.subjectSandboxId,
-    subjectKilled: plane.subjectKilled,
-    subjectReleaseWarning: plane.subjectReleaseWarning,
-    subjectDesktop: plane.desktopUsage(),
+    subjectSandboxId: plane.subject.sandboxId,
+    subjectKilled: plane.subject.killed,
+    subjectReleaseWarning: plane.subject.releaseWarning,
+    subjectDesktop: plane.subject.desktopUsage(),
     getHostUrl: plane.getHostUrl,
     commsArtifactPath,
   };

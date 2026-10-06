@@ -166,7 +166,7 @@ async function runScriptedPlanInScope(
       // harness around it failed. Redacted at this boundary before persisting anywhere.
       sessionError = redactText(run.secrets.scrub(toErrorMessage(error)));
     } finally {
-      await scriptedSubject?.teardown();
+      await scriptedSubject?.sandbox.release();
     }
 
     await writeSurfaceTraces(runPaths, sessionResults);

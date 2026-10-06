@@ -18,6 +18,7 @@ import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { buildScriptedStudyBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";
+import type { E2BSubjectSandbox } from "../../substrates/e2b/subject-sandbox.js";
 import { type ScriptedBrowserStudyResult } from "./types.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 // Finishing a scripted-browser run: the subject's provenance, the bundle, the Observer and the
@@ -65,7 +66,7 @@ export function scriptedExecutionFailures(args: {
   sessionError: string | undefined;
   expected: number;
   sessionResults: readonly Pick<ScriptedBrowserSessionResult, "completionReason" | "reason">[];
-  subject: Pick<ScriptedSubject, "sandboxId" | "killed" | "releaseWarning"> | undefined;
+  subject: Pick<E2BSubjectSandbox, "sandboxId" | "killed" | "releaseWarning"> | undefined;
 }): ExecutionFailure[] {
   const { sessionError, sessionResults } = args;
   const harnessErrorSession = sessionResults.find(
@@ -104,11 +105,11 @@ export async function finishScriptedRun(
   const { actor, dryRun } = plan;
   const { runId, paths: runPaths } = run;
   const subjectCommit = scriptedSubject?.commit;
-  const subjectSandboxId = scriptedSubject?.sandboxId;
-  const subjectKilled = scriptedSubject?.killed ?? false;
+  const subjectSandboxId = scriptedSubject?.sandbox.sandboxId;
+  const subjectKilled = scriptedSubject?.sandbox.killed ?? false;
   const hostDigest = scriptedSubject?.hostDigest;
   const stateStepRecords = scriptedSubject?.stateStepRecords ?? [];
-  const subjectDesktop = scriptedSubject?.desktopUsage();
+  const subjectDesktop = scriptedSubject?.sandbox.desktopUsage();
 
   const screenshotsBySurface = new Map<string, string[]>();
   for (const result of sessionResults) {
@@ -172,7 +173,7 @@ export async function finishScriptedRun(
       sessionError,
       expected: surfaces.length,
       sessionResults,
-      subject: scriptedSubject,
+      subject: scriptedSubject?.sandbox,
     }),
     policy,
   );
