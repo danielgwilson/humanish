@@ -49,6 +49,7 @@
       ]
     },
     "warnings": [
+      "Subject sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],

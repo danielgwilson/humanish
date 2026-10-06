@@ -331,12 +331,15 @@ describe.each(ROUTES)("the $name subject sandbox", (route) => {
     expect(run.subjectKilled).toBe(true);
   });
 
-  it("retries one transient create error and receipts only the sandbox it got", async () => {
+  it("retries one transient create error, warns once and receipts only the sandbox it got", async () => {
     const fake = subjectModule({
       firstCreateError: new Error("2: [unavailable] synthetic envd not routable yet"),
     });
     const run = await route.run(cwd, fake.module);
 
+    expect(run.warnings.filter((warning) => warning.includes("retried"))).toEqual([
+      `Subject sandbox create retried once after a transient provider error (2: [unavailable] synthetic envd not routable yet). A sandbox the failed attempt may have allocated is reclaimed by its ${route.sessionTimeoutMs + SUBJECT_ROOM_MS} ms timeout.`,
+    ]);
     expect(fake.attempts).toHaveLength(2);
     expect(fake.attempts[1]?.options).toBe(fake.attempts[0]?.options);
     const receipts = parseSandboxReceipts(await runFile(run.runId, SANDBOX_RECEIPTS_ARTIFACT));
@@ -345,7 +348,7 @@ describe.each(ROUTES)("the $name subject sandbox", (route) => {
     expect(run.subjectKilled).toBe(true);
   });
 
-  it("prices its measured size over the span from create to release", async () => {
+  it("prices its measured size over the span from create to release, with no size warning", async () => {
     let clock = Date.parse("2026-10-06T00:00:00.000Z");
     const fake = subjectModule({
       resources: { cpuCount: 4, memoryMB: 4096 },
@@ -355,6 +358,7 @@ describe.each(ROUTES)("the $name subject sandbox", (route) => {
     });
     const run = await route.run(cwd, fake.module, () => clock);
 
+    expect(run.warnings.filter((warning) => warning.includes("resource size"))).toEqual([]);
     const lines = await subjectCostLines(run.runId);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
@@ -369,10 +373,13 @@ describe.each(ROUTES)("the $name subject sandbox", (route) => {
     });
   });
 
-  it("records why its size is unknown and leaves that line unpriced", async () => {
+  it("warns and records why its size is unknown, and leaves that line unpriced", async () => {
     const fake = subjectModule();
     const run = await route.run(cwd, fake.module);
 
+    expect(run.warnings).toContain(
+      "Subject sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
+    );
     const lines = await subjectCostLines(run.runId);
     expect(lines).toHaveLength(1);
     expect(lines[0]?.estimatedCostUsd).toBeNull();
