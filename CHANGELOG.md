@@ -18,7 +18,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   known value in a `goto` path, the app URL, a step label or a page error stayed in those files and
   in run.json, review.md, events.ndjson and the Observer.
 - Each route now also scrubs a known value in its encoded forms: percent-encoded, JSON-escaped
-  once or twice, base64, base64url and hex, as a page URL, a printed JSON body or a log line
+  once or twice (also with non-ASCII characters as `\u` escapes), base64, base64url and hex, as a page URL, a printed JSON body or a log line
   carries it. A value that a URL path encodes only in part, or that a terminal escape sequence
   splits (as written or JSON-escaped in a codex event), is found too, also across two terminal
   output chunks. The encoded span is replaced with `[REDACTED_SECRET]` and the rest

@@ -70,6 +70,13 @@ describe("RunSecrets", () => {
     expect(secrets.spans(`at ${split}`)).toEqual([[3, 3 + split.length]]);
   });
 
+  it("replaces a value that an ASCII-only JSON serializer prints with \\u escapes", () => {
+    const accented = ["synthetic", "caf\u00e9", "value"].join("-");
+    const ascii = JSON.stringify({ key: accented }).replace("\u00e9", "\\u00e9");
+    expect(ascii).toContain("\\u00e9");
+    expect(new RunSecrets([accented]).scrub(ascii)).toBe('{"key":"[REDACTED_SECRET]"}');
+  });
+
   it("replaces the JSON-escaped form of a value as short as the floor", () => {
     const short = ["q", '"', "z", "7"].join("");
     expect(new RunSecrets([short]).scrub(JSON.stringify({ key: short }))).toBe(
