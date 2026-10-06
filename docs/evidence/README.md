@@ -8,6 +8,10 @@ where a later record differs, the later one holds.
 
 - [Taskly efficacy benchmark](benchmark/README.md): `pnpm bench`, its scores and every dated result
 
+## Architecture benchmark
+
+- [Architecture benchmark](architecture/README.md): `pnpm arch:bench`, its depth, seam, test-surface and locality numbers, and every dated result
+
 ## Computer use, participants and analysis
 
 - 2026-10-01: [Codex CLI 0.159.3 qualification](computer-use/codex-cli-0.159.3-qualification-2026-10-01.md)

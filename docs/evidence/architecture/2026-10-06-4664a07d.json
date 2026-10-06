@@ -1,0 +1,1082 @@
+{
+  "schema": "humanish.arch-bench.v1",
+  "createdAt": "2026-10-06T22:19:53.691Z",
+  "source": {
+    "head": "4664a07d",
+    "dirty": false,
+    "typescript": "7.0.2"
+  },
+  "options": {
+    "maxLines": 40
+  },
+  "totals": {
+    "srcFiles": 431,
+    "srcCodeLines": 88897,
+    "testFiles": 513,
+    "testCodeLines": 124620
+  },
+  "folders": [
+    {
+      "folder": "routes",
+      "files": 85,
+      "codeLines": 15229,
+      "interfaceSymbols": 43,
+      "linesPerSymbol": 354,
+      "filesImportedFromOutside": 19,
+      "importingFolders": 4
+    },
+    {
+      "folder": "actors",
+      "files": 61,
+      "codeLines": 13828,
+      "interfaceSymbols": 130,
+      "linesPerSymbol": 106,
+      "filesImportedFromOutside": 34,
+      "importingFolders": 12
+    },
+    {
+      "folder": "study",
+      "files": 52,
+      "codeLines": 10965,
+      "interfaceSymbols": 149,
+      "linesPerSymbol": 74,
+      "filesImportedFromOutside": 35,
+      "importingFolders": 10
+    },
+    {
+      "folder": "run",
+      "files": 52,
+      "codeLines": 9744,
+      "interfaceSymbols": 244,
+      "linesPerSymbol": 40,
+      "filesImportedFromOutside": 45,
+      "importingFolders": 14
+    },
+    {
+      "folder": "cli",
+      "files": 37,
+      "codeLines": 7579,
+      "interfaceSymbols": 13,
+      "linesPerSymbol": 583,
+      "filesImportedFromOutside": 4,
+      "importingFolders": 9
+    },
+    {
+      "folder": "comms",
+      "files": 24,
+      "codeLines": 5501,
+      "interfaceSymbols": 41,
+      "linesPerSymbol": 134,
+      "filesImportedFromOutside": 15,
+      "importingFolders": 8
+    },
+    {
+      "folder": "analysis",
+      "files": 19,
+      "codeLines": 5206,
+      "interfaceSymbols": 42,
+      "linesPerSymbol": 124,
+      "filesImportedFromOutside": 13,
+      "importingFolders": 8
+    },
+    {
+      "folder": "substrates",
+      "files": 26,
+      "codeLines": 4876,
+      "interfaceSymbols": 79,
+      "linesPerSymbol": 62,
+      "filesImportedFromOutside": 22,
+      "importingFolders": 9
+    },
+    {
+      "folder": "observer",
+      "files": 13,
+      "codeLines": 3013,
+      "interfaceSymbols": 28,
+      "linesPerSymbol": 108,
+      "filesImportedFromOutside": 9,
+      "importingFolders": 8
+    },
+    {
+      "folder": "guest",
+      "files": 11,
+      "codeLines": 2725,
+      "interfaceSymbols": 8,
+      "linesPerSymbol": 341,
+      "filesImportedFromOutside": 6,
+      "importingFolders": 3
+    },
+    {
+      "folder": "verify",
+      "files": 10,
+      "codeLines": 2422,
+      "interfaceSymbols": 7,
+      "linesPerSymbol": 346,
+      "filesImportedFromOutside": 3,
+      "importingFolders": 6
+    },
+    {
+      "folder": "feedback",
+      "files": 5,
+      "codeLines": 2048,
+      "interfaceSymbols": 10,
+      "linesPerSymbol": 205,
+      "filesImportedFromOutside": 3,
+      "importingFolders": 2
+    },
+    {
+      "folder": "evidence",
+      "files": 10,
+      "codeLines": 1559,
+      "interfaceSymbols": 45,
+      "linesPerSymbol": 35,
+      "filesImportedFromOutside": 10,
+      "importingFolders": 14
+    },
+    {
+      "folder": "browser-control",
+      "files": 5,
+      "codeLines": 1243,
+      "interfaceSymbols": 11,
+      "linesPerSymbol": 113,
+      "filesImportedFromOutside": 3,
+      "importingFolders": 2
+    },
+    {
+      "folder": "subject",
+      "files": 9,
+      "codeLines": 1199,
+      "interfaceSymbols": 15,
+      "linesPerSymbol": 80,
+      "filesImportedFromOutside": 7,
+      "importingFolders": 3
+    },
+    {
+      "folder": "(root)",
+      "files": 6,
+      "codeLines": 800,
+      "interfaceSymbols": 6,
+      "linesPerSymbol": 133,
+      "filesImportedFromOutside": 1,
+      "importingFolders": 4
+    },
+    {
+      "folder": "keys",
+      "files": 2,
+      "codeLines": 511,
+      "interfaceSymbols": 15,
+      "linesPerSymbol": 34,
+      "filesImportedFromOutside": 2,
+      "importingFolders": 4
+    },
+    {
+      "folder": "tui",
+      "files": 4,
+      "codeLines": 449,
+      "interfaceSymbols": 12,
+      "linesPerSymbol": 37,
+      "filesImportedFromOutside": 4,
+      "importingFolders": 1
+    }
+  ],
+  "deletionCandidates": [
+    {
+      "path": "src/guest-runtime-revision.ts",
+      "codeLines": 1,
+      "importer": "src/guest-runtime-main.ts",
+      "testImporters": 0
+    },
+    {
+      "path": "src/actors/computer-use/loop/output-limit.ts",
+      "codeLines": 26,
+      "importer": "src/actors/computer-use/loop.ts",
+      "testImporters": 0
+    },
+    {
+      "path": "src/analysis/image-tokens.ts",
+      "codeLines": 28,
+      "importer": "src/analysis/execute.ts",
+      "testImporters": 1
+    },
+    {
+      "path": "src/actors/scripted-browser/launch-env.ts",
+      "codeLines": 30,
+      "importer": "src/actors/scripted-browser/actor.ts",
+      "testImporters": 1
+    },
+    {
+      "path": "src/substrates/local/runtime-release.ts",
+      "codeLines": 31,
+      "importer": "src/substrates/local/runtime.ts",
+      "testImporters": 0
+    },
+    {
+      "path": "src/routes/computer-use/in-process-desktop.ts",
+      "codeLines": 33,
+      "importer": "src/routes/computer-use/participant-execution.ts",
+      "testImporters": 1
+    },
+    {
+      "path": "src/comms/thread-evidence.ts",
+      "codeLines": 35,
+      "importer": "src/comms/sandbox-catch.ts",
+      "testImporters": 2
+    },
+    {
+      "path": "src/routes/computer-use/external-comms.ts",
+      "codeLines": 36,
+      "importer": "src/routes/computer-use/live-phase.ts",
+      "testImporters": 0
+    },
+    {
+      "path": "src/verify/context-growth.ts",
+      "codeLines": 40,
+      "importer": "src/verify/verify.ts",
+      "testImporters": 1
+    }
+  ],
+  "testSurface": {
+    "srcModules": 431,
+    "testImportedModules": 297,
+    "share": 0.6890951276102089,
+    "testFiles": 513,
+    "testFilesMockingSrc": 34,
+    "srcMockCalls": 59,
+    "folders": [
+      {
+        "folder": "routes",
+        "testImported": 45,
+        "pastInterface": [
+          "src/routes/computer-use/e2b-desktop/desktop.ts",
+          "src/routes/computer-use/e2b-desktop/state.ts",
+          "src/routes/computer-use/fanout-bundle.ts",
+          "src/routes/computer-use/in-process-desktop.ts",
+          "src/routes/computer-use/live-flush.ts",
+          "src/routes/computer-use/local-tree-pack.ts",
+          "src/routes/computer-use/participant-desktop.ts",
+          "src/routes/computer-use/participant-execution.ts",
+          "src/routes/computer-use/participant-facts.ts",
+          "src/routes/computer-use/participant-feedback.ts",
+          "src/routes/computer-use/participant-model.ts",
+          "src/routes/computer-use/participant-prompt.ts",
+          "src/routes/computer-use/participant-runs.ts",
+          "src/routes/computer-use/preflight.ts",
+          "src/routes/computer-use/rerun-selection.ts",
+          "src/routes/computer-use/self-report.ts",
+          "src/routes/computer-use/single-bundle.ts",
+          "src/routes/scripted/result.ts",
+          "src/routes/shared-world/lobby-code.ts",
+          "src/routes/shared-world/participant-specs.ts",
+          "src/routes/terminal/bundle.ts",
+          "src/routes/terminal/credentials.ts",
+          "src/routes/terminal/dry-run.ts",
+          "src/routes/terminal/lifetime.ts",
+          "src/routes/terminal/participant-text.ts",
+          "src/routes/terminal/recorder.ts",
+          "src/routes/terminal/token-usage.ts"
+        ]
+      },
+      {
+        "folder": "actors",
+        "testImported": 46,
+        "pastInterface": [
+          "src/actors/affordance.ts",
+          "src/actors/codex/app-server-actor-trace.ts",
+          "src/actors/codex/app-server.ts",
+          "src/actors/codex/protocol-contract.ts",
+          "src/actors/codex/restricted-launch.ts",
+          "src/actors/codex/restricted-participant-policy.ts",
+          "src/actors/codex/restricted-transport.ts",
+          "src/actors/codex/restricted-turn.ts",
+          "src/actors/computer-use/loop/actions.ts",
+          "src/actors/computer-use/loop/ending.ts",
+          "src/actors/computer-use/loop/trace.ts",
+          "src/actors/computer-use/openai-context.ts",
+          "src/actors/computer-use/openai-wire.ts",
+          "src/actors/computer-use/provider-error.ts",
+          "src/actors/scripted-browser/launch-env.ts"
+        ]
+      },
+      {
+        "folder": "cli",
+        "testImported": 18,
+        "pastInterface": [
+          "src/cli/commands/analysis-signals.ts",
+          "src/cli/commands/run-signals.ts",
+          "src/cli/commands/study-format.ts",
+          "src/cli/commands/study-route-open.ts",
+          "src/cli/commands/study-route-run.ts",
+          "src/cli/commands/study-route-shared-world.ts",
+          "src/cli/commands/tui.ts",
+          "src/cli/findings.ts",
+          "src/cli/io.ts",
+          "src/cli/observer-follow.ts",
+          "src/cli/orientation.ts",
+          "src/cli/product-sentence.ts",
+          "src/cli/secret-prompt.ts",
+          "src/cli/telemetry.ts"
+        ]
+      },
+      {
+        "folder": "comms",
+        "testImported": 21,
+        "pastInterface": [
+          "src/comms/agentmail.ts",
+          "src/comms/email-catch.ts",
+          "src/comms/extract.ts",
+          "src/comms/images.ts",
+          "src/comms/receiving-render.ts",
+          "src/comms/sandbox-catch-script.ts",
+          "src/comms/thread-evidence.ts"
+        ]
+      },
+      {
+        "folder": "study",
+        "testImported": 35,
+        "pastInterface": [
+          "src/study/agents-section.ts",
+          "src/study/init-templates.ts",
+          "src/study/keys.ts",
+          "src/study/local-browser-host.ts",
+          "src/study/migrate/convert.ts",
+          "src/study/migrate/v2.ts"
+        ]
+      },
+      {
+        "folder": "analysis",
+        "testImported": 18,
+        "pastInterface": [
+          "src/analysis/codex-config.ts",
+          "src/analysis/diagnostics.ts",
+          "src/analysis/execute.ts",
+          "src/analysis/image-tokens.ts",
+          "src/analysis/provider.ts"
+        ]
+      },
+      {
+        "folder": "guest",
+        "testImported": 9,
+        "pastInterface": [
+          "src/guest/browser-tools.ts",
+          "src/guest/chromium-text.ts",
+          "src/guest/desktop-executor.ts",
+          "src/guest/desktop-native.ts"
+        ]
+      },
+      {
+        "folder": "observer",
+        "testImported": 12,
+        "pastInterface": [
+          "src/observer/library.ts",
+          "src/observer/pinned-files.ts",
+          "src/observer/run-inventory.ts"
+        ]
+      },
+      {
+        "folder": "feedback",
+        "testImported": 5,
+        "pastInterface": [
+          "src/feedback/draft.ts",
+          "src/feedback/export-bundle.ts"
+        ]
+      },
+      {
+        "folder": "run",
+        "testImported": 38,
+        "pastInterface": [
+          "src/run/dry-run-inputs.ts",
+          "src/run/git-state.ts"
+        ]
+      },
+      {
+        "folder": "subject",
+        "testImported": 5,
+        "pastInterface": [
+          "src/subject/runtime.ts",
+          "src/subject/serve.ts"
+        ]
+      },
+      {
+        "folder": "substrates",
+        "testImported": 22,
+        "pastInterface": [
+          "src/substrates/e2b/cdp-probe.ts",
+          "src/substrates/e2b/desktop-screenshot-cleanup.ts"
+        ]
+      },
+      {
+        "folder": "verify",
+        "testImported": 4,
+        "pastInterface": [
+          "src/verify/context-growth.ts",
+          "src/verify/shared-world.ts"
+        ]
+      },
+      {
+        "folder": "browser-control",
+        "testImported": 4,
+        "pastInterface": [
+          "src/browser-control/transport.ts"
+        ]
+      },
+      {
+        "folder": "(root)",
+        "testImported": 2,
+        "pastInterface": []
+      },
+      {
+        "folder": "evidence",
+        "testImported": 8,
+        "pastInterface": []
+      },
+      {
+        "folder": "keys",
+        "testImported": 2,
+        "pastInterface": []
+      },
+      {
+        "folder": "tui",
+        "testImported": 3,
+        "pastInterface": []
+      }
+    ]
+  },
+  "seams": [
+    {
+      "id": "src/routes/computer-use/participant-deps.ts#DesktopParticipantDeps",
+      "name": "DesktopParticipantDeps",
+      "path": "src/routes/computer-use/participant-deps.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 34,
+      "functionMembers": 13,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 0,
+      "testFiles": 0,
+      "verdict": "one-adapter"
+    },
+    {
+      "id": "src/routes/shared-world/handoff.ts#HandoffParticipantDeps",
+      "name": "HandoffParticipantDeps",
+      "path": "src/routes/shared-world/handoff.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 4,
+      "functionMembers": 1,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 0,
+      "testFiles": 0,
+      "verdict": "one-adapter"
+    },
+    {
+      "id": "src/run/run.ts#RunScope",
+      "name": "RunScope",
+      "path": "src/run/run.ts",
+      "reasons": [
+        "parameter"
+      ],
+      "callable": false,
+      "members": 1,
+      "functionMembers": 1,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 0,
+      "testFiles": 0,
+      "verdict": "one-adapter"
+    },
+    {
+      "id": "src/analysis/provider.ts#AnalysisProvider",
+      "name": "AnalysisProvider",
+      "path": "src/analysis/provider.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": true,
+      "members": 0,
+      "functionMembers": 0,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 8,
+      "testFiles": 2,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/comms/receiving-types.ts#ReceivingAdapter",
+      "name": "ReceivingAdapter",
+      "path": "src/comms/receiving-types.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 9,
+      "functionMembers": 4,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 3,
+      "testFiles": 3,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/keys/key-resolution.ts#KeyResolutionDeps",
+      "name": "KeyResolutionDeps",
+      "path": "src/keys/key-resolution.ts",
+      "reasons": [
+        "name",
+        "parameter"
+      ],
+      "callable": false,
+      "members": 2,
+      "functionMembers": 1,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 15,
+      "testFiles": 9,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/substrates/e2b/sdk.ts#E2BDesktopSandbox",
+      "name": "E2BDesktopSandbox",
+      "path": "src/substrates/e2b/sdk.ts",
+      "reasons": [
+        "parameter"
+      ],
+      "callable": false,
+      "members": 20,
+      "functionMembers": 16,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 33,
+      "testFiles": 26,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/substrates/shell.ts#Shell",
+      "name": "Shell",
+      "path": "src/substrates/shell.ts",
+      "reasons": [
+        "parameter"
+      ],
+      "callable": false,
+      "members": 3,
+      "functionMembers": 3,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 1,
+      "testFiles": 1,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/tui/contract.ts#TuiModule",
+      "name": "TuiModule",
+      "path": "src/tui/contract.ts",
+      "reasons": [
+        "parameter"
+      ],
+      "callable": false,
+      "members": 1,
+      "functionMembers": 1,
+      "srcImplementations": 1,
+      "srcFiles": 1,
+      "testImplementations": 7,
+      "testFiles": 1,
+      "verdict": "production-and-test"
+    },
+    {
+      "id": "src/actors/computer-use/loop/debrief.ts#DebriefingProvider",
+      "name": "DebriefingProvider",
+      "path": "src/actors/computer-use/loop/debrief.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 15,
+      "functionMembers": 3,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 0,
+      "testFiles": 0,
+      "verdict": "none"
+    },
+    {
+      "id": "src/analysis/automatic.ts#AutomaticAnalysisDeps",
+      "name": "AutomaticAnalysisDeps",
+      "path": "src/analysis/automatic.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 11,
+      "functionMembers": 5,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 49,
+      "testFiles": 9,
+      "verdict": "none"
+    },
+    {
+      "id": "src/cli/telemetry.ts#SendDeps",
+      "name": "SendDeps",
+      "path": "src/cli/telemetry.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 2,
+      "functionMembers": 2,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 8,
+      "testFiles": 3,
+      "verdict": "none"
+    },
+    {
+      "id": "src/feedback/export.ts#ExportDeps",
+      "name": "ExportDeps",
+      "path": "src/feedback/export.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 2,
+      "functionMembers": 2,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 16,
+      "testFiles": 2,
+      "verdict": "none"
+    },
+    {
+      "id": "src/routes/computer-use/in-process-desktop.ts#InProcessDesktopDeps",
+      "name": "InProcessDesktopDeps",
+      "path": "src/routes/computer-use/in-process-desktop.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 2,
+      "functionMembers": 1,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 0,
+      "testFiles": 0,
+      "verdict": "none"
+    },
+    {
+      "id": "src/study/study-deps.ts#StudyDeps",
+      "name": "StudyDeps",
+      "path": "src/study/study-deps.ts",
+      "reasons": [
+        "name",
+        "parameter"
+      ],
+      "callable": false,
+      "members": 15,
+      "functionMembers": 10,
+      "srcImplementations": 0,
+      "srcFiles": 0,
+      "testImplementations": 283,
+      "testFiles": 42,
+      "verdict": "none"
+    },
+    {
+      "id": "src/actors/computer-use/loop/types.ts#CuaExecutor",
+      "name": "CuaExecutor",
+      "path": "src/actors/computer-use/loop/types.ts",
+      "reasons": [
+        "name",
+        "parameter"
+      ],
+      "callable": false,
+      "members": 4,
+      "functionMembers": 2,
+      "srcImplementations": 2,
+      "srcFiles": 2,
+      "testImplementations": 96,
+      "testFiles": 44,
+      "verdict": "two-or-more"
+    },
+    {
+      "id": "src/actors/computer-use/loop/types.ts#CuaProvider",
+      "name": "CuaProvider",
+      "path": "src/actors/computer-use/loop/types.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 15,
+      "functionMembers": 3,
+      "srcImplementations": 4,
+      "srcFiles": 4,
+      "testImplementations": 87,
+      "testFiles": 34,
+      "verdict": "two-or-more"
+    },
+    {
+      "id": "src/analysis/service.ts#AnalyzeDeps",
+      "name": "AnalyzeDeps",
+      "path": "src/analysis/service.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 10,
+      "functionMembers": 5,
+      "srcImplementations": 2,
+      "srcFiles": 2,
+      "testImplementations": 57,
+      "testFiles": 7,
+      "verdict": "two-or-more"
+    },
+    {
+      "id": "src/routes/computer-use/types.ts#CuaParticipantDeps",
+      "name": "CuaParticipantDeps",
+      "path": "src/routes/computer-use/types.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 37,
+      "functionMembers": 15,
+      "srcImplementations": 5,
+      "srcFiles": 3,
+      "testImplementations": 5,
+      "testFiles": 5,
+      "verdict": "two-or-more"
+    },
+    {
+      "id": "src/routes/computer-use/types.ts#E2BDesktopDeps",
+      "name": "E2BDesktopDeps",
+      "path": "src/routes/computer-use/types.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 22,
+      "functionMembers": 6,
+      "srcImplementations": 5,
+      "srcFiles": 3,
+      "testImplementations": 2,
+      "testFiles": 2,
+      "verdict": "two-or-more"
+    },
+    {
+      "id": "src/routes/computer-use/types.ts#ParticipantModelDeps",
+      "name": "ParticipantModelDeps",
+      "path": "src/routes/computer-use/types.ts",
+      "reasons": [
+        "name"
+      ],
+      "callable": false,
+      "members": 15,
+      "functionMembers": 6,
+      "srcImplementations": 5,
+      "srcFiles": 3,
+      "testImplementations": 2,
+      "testFiles": 2,
+      "verdict": "two-or-more"
+    }
+  ],
+  "history": {
+    "ref": "origin/main",
+    "refCommit": "eb74165f",
+    "since": "2026-09-29",
+    "locality": {
+      "commits": 710,
+      "structural": 113,
+      "all": {
+        "commits": 518,
+        "mean": 2.7393822393822393,
+        "max": 14,
+        "distribution": {
+          "1": 203,
+          "2": 113,
+          "3": 68,
+          "4": 52,
+          "5": 32,
+          "6": 10,
+          "7": 13,
+          "8": 7,
+          "9": 7,
+          "10": 5,
+          "11": 2,
+          "12": 3,
+          "13": 2,
+          "14": 1
+        }
+      },
+      "behavior": {
+        "commits": 405,
+        "mean": 2.582716049382716,
+        "max": 14,
+        "distribution": {
+          "1": 151,
+          "2": 100,
+          "3": 61,
+          "4": 38,
+          "5": 24,
+          "6": 9,
+          "7": 10,
+          "8": 3,
+          "9": 5,
+          "10": 2,
+          "13": 1,
+          "14": 1
+        }
+      }
+    },
+    "routes": {
+      "touchingOne": 286,
+      "touchingTwoOrMore": {
+        "commits": 152,
+        "mean": 3.1578947368421053,
+        "max": 5,
+        "distribution": {
+          "2": 61,
+          "3": 20,
+          "4": 57,
+          "5": 14
+        }
+      },
+      "baseline": {
+        "replayBase": "151eafea",
+        "commits": 34,
+        "whenLanded": {
+          "commits": 34,
+          "mean": 3.088235294117647,
+          "max": 5,
+          "distribution": {
+            "2": 13,
+            "3": 8,
+            "4": 10,
+            "5": 3
+          }
+        },
+        "replayed": {
+          "commits": 34,
+          "mean": 2.3529411764705883,
+          "max": 5,
+          "distribution": {
+            "0": 3,
+            "1": 8,
+            "2": 8,
+            "3": 5,
+            "4": 9,
+            "5": 1
+          }
+        },
+        "perCommit": [
+          {
+            "pr": 1595,
+            "commit": "56387adb",
+            "replayed": 5,
+            "landed": 5
+          },
+          {
+            "pr": 984,
+            "commit": "862c1112",
+            "replayed": 0,
+            "landed": 2
+          },
+          {
+            "pr": 960,
+            "commit": "266713f8",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1556,
+            "commit": "8be10e9b",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1205,
+            "commit": "378af4bf",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1392,
+            "commit": "54279452",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1546,
+            "commit": "8df8a19f",
+            "replayed": 1,
+            "landed": 3
+          },
+          {
+            "pr": 1306,
+            "commit": "2b9c8527",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1280,
+            "commit": "f7f3055c",
+            "replayed": 2,
+            "landed": 5
+          },
+          {
+            "pr": 1269,
+            "commit": "84c79a75",
+            "replayed": 1,
+            "landed": 5
+          },
+          {
+            "pr": 1342,
+            "commit": "9b26f92a",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1317,
+            "commit": "f375b28b",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1278,
+            "commit": "9bf6b6b2",
+            "replayed": 1,
+            "landed": 2
+          },
+          {
+            "pr": 1348,
+            "commit": "edd7e44b",
+            "replayed": 3,
+            "landed": 3
+          },
+          {
+            "pr": 1215,
+            "commit": "e6c9f051",
+            "replayed": 2,
+            "landed": 3
+          },
+          {
+            "pr": 1343,
+            "commit": "5bd0e247",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1513,
+            "commit": "387694db",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1564,
+            "commit": "1f31aea6",
+            "replayed": 3,
+            "landed": 3
+          },
+          {
+            "pr": 1548,
+            "commit": "d54705b2",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1533,
+            "commit": "b5e89325",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1473,
+            "commit": "200f7834",
+            "replayed": 1,
+            "landed": 3
+          },
+          {
+            "pr": 1465,
+            "commit": "ecadd876",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1350,
+            "commit": "541a63c8",
+            "replayed": 1,
+            "landed": 2
+          },
+          {
+            "pr": 1329,
+            "commit": "8983abb7",
+            "replayed": 3,
+            "landed": 3
+          },
+          {
+            "pr": 1252,
+            "commit": "8c7e31f0",
+            "replayed": 3,
+            "landed": 3
+          },
+          {
+            "pr": 1188,
+            "commit": "54845e17",
+            "replayed": 4,
+            "landed": 4
+          },
+          {
+            "pr": 1041,
+            "commit": "7873b160",
+            "replayed": 1,
+            "landed": 4
+          },
+          {
+            "pr": 1039,
+            "commit": "f4244fe0",
+            "replayed": 1,
+            "landed": 2
+          },
+          {
+            "pr": 1030,
+            "commit": "f514ba6a",
+            "replayed": 0,
+            "landed": 2
+          },
+          {
+            "pr": 975,
+            "commit": "6858d468",
+            "replayed": 3,
+            "landed": 3
+          },
+          {
+            "pr": 969,
+            "commit": "2a9127a3",
+            "replayed": 0,
+            "landed": 2
+          },
+          {
+            "pr": 964,
+            "commit": "8d395fb7",
+            "replayed": 2,
+            "landed": 2
+          },
+          {
+            "pr": 1358,
+            "commit": "838f7341",
+            "replayed": 1,
+            "landed": 2
+          },
+          {
+            "pr": 1574,
+            "commit": "fc304f3d",
+            "replayed": 4,
+            "landed": 4
+          }
+        ]
+      }
+    }
+  }
+}
