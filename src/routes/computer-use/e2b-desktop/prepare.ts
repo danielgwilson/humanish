@@ -2,6 +2,7 @@
 // provision the subject. Each step fills the participant's state; a step that cannot proceed throws.
 
 import { redactText } from "../../../evidence/redaction.js";
+import { validatePreparedRunArtifactPaths } from "../../../run/paths.js";
 import { provisionCloneSubject } from "../../../subject/clone.js";
 import { provisionDesktopCli } from "../../../subject/desktop-cli.js";
 import { provisionLocalTreeSubject } from "../../../subject/local-tree.js";
@@ -106,10 +107,16 @@ export async function acquireParticipantDesktop(
     );
   }
 
-  await deps.prepareDesktop?.(desktop, {
-    kind: "participant",
-    participant: { id: spec.planned.id, index: spec.planned.index, count: deps.participantCount },
-  });
+  if (deps.prepareDesktop) {
+    await deps.prepareDesktop(desktop, {
+      kind: "participant",
+      participant: { id: spec.planned.id, index: spec.planned.index, count: deps.participantCount },
+    });
+    // The caller's hook runs with this process's file access, so the run directory is checked
+    // again before more evidence goes into it.
+    if ("physicalRunRoot" in deps.artifactRoot)
+      await validatePreparedRunArtifactPaths(deps.artifactRoot);
+  }
 
   if (deps.receiving) {
     state.receivingInboxUrl = await attachReceivingInbox(
