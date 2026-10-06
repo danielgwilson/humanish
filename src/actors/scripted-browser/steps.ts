@@ -253,6 +253,27 @@ export function buildBlockedBrowserPersonaSteps(args: {
   }));
 }
 
+/** A step as the trace records it: its label, reason, URL and assertion reasons scrubbed. */
+export function scrubRecordedStep(
+  step: BrowserPersonaStepCapture,
+  scrub: (text: string) => string,
+): BrowserPersonaStepCapture {
+  return {
+    ...step,
+    ...(step.assertions === undefined
+      ? {}
+      : {
+          assertions: step.assertions.map((assertion) => ({
+            ...assertion,
+            reason: scrub(assertion.reason),
+          })),
+        }),
+    label: scrub(step.label),
+    reason: scrub(step.reason),
+    url: scrub(step.url),
+  };
+}
+
 export function screenshotPathForBrowserStep(
   surface: BrowserSurface,
   step: BrowserPersonaStepManifest | undefined,

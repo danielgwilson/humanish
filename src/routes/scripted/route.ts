@@ -149,6 +149,7 @@ async function runScriptedPlanInScope(
           persona: setup.persona,
           timeoutMs: setup.timeoutMs,
           artifactRoot,
+          scrubKnownValues: run.secrets.scrub,
         },
         {
           surfaces: setup.surfaces,

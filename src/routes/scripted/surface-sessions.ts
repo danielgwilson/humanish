@@ -27,6 +27,7 @@ export function runScriptedSessions(
       | "persona"
       | "timeoutMs"
       | "artifactRoot"
+      | "scrubKnownValues"
     >
   >,
   run: {
@@ -39,6 +40,7 @@ export function runScriptedSessions(
   },
 ): Promise<ScriptedBrowserSessionResult[]> {
   const { appUrl, evidenceAppUrl, urlPolicy, journey, persona, timeoutMs, artifactRoot } = session;
+  const { scrubKnownValues } = session;
   const { surfaces, deps, browserCommand, runPaths, onSessionStart } = run;
   const runSession = deps.runScriptedSession;
   return Promise.all(
@@ -53,6 +55,7 @@ export function runScriptedSessions(
         persona,
         timeoutMs,
         artifactRoot,
+        scrubKnownValues,
         ...(browserCommand === undefined ? {} : { browserCommand }),
         ...(deps.launchBrowser === undefined ? {} : { launchBrowser: deps.launchBrowser }),
         ...(deps.now === undefined ? {} : { now: deps.now }),

@@ -111,7 +111,14 @@ export async function prepareScriptedRun(
       result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", scenario.message),
     };
   }
-  const journey = scenario.journey;
+  // The goal, title and step labels are recorded; a step's path, selector, value and expected text
+  // drive the browser and stay as written.
+  const journey: BrowserPersonaJourney = {
+    ...scenario.journey,
+    goal: secrets.scrub(scenario.journey.goal),
+    scenarioTitle: secrets.scrub(scenario.journey.scenarioTitle),
+    steps: scenario.journey.steps.map((step) => ({ ...step, label: secrets.scrub(step.label) })),
+  };
 
   // The plan lists E2B_API_KEY and the subject env only for a live clone.
   const { requirements } = plan;

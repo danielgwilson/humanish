@@ -19,7 +19,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "../../evidence/browser-hygiene.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, scrubDecodedToo } from "../../evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -48,6 +48,7 @@ import {
   probeAppUrl,
   sanitizeBrowserEvidenceUrl,
   screenshotPathForBrowserStep,
+  scrubRecordedStep,
   surfaceScreenshotPath,
   tracePathForBrowserSurface,
 } from "./steps.js";
@@ -119,6 +120,11 @@ export interface ScriptedBrowserSessionOptions {
   /** DI seam; production default is launchPlaywrightChromium. */
   launchBrowser?: (args: ScriptedBrowserLaunchArgs) => Promise<ScriptedBrowserLike>;
   now?: () => number;
+  /**
+   * The run's scrub of its known secret values. Each URL and text the session records passes
+   * through it, percent-decoded too, before the trace is written or the capture returned.
+   */
+  scrubKnownValues?: (text: string) => string;
 }
 
 export interface ScriptedBrowserSessionResult extends ActorSessionResult {
@@ -189,6 +195,10 @@ export async function runScriptedBrowserSessionInPreparedRoot(
     options.browserCommand ?? (options.launchBrowser ? "injected-browser" : "");
   const evidenceAppUrl = options.evidenceAppUrl ?? options.appUrl;
   const urlPolicy = options.urlPolicy ?? LOOPBACK_EVIDENCE_URL_POLICY;
+  const scrub =
+    options.scrubKnownValues === undefined
+      ? (text: string) => text
+      : scrubDecodedToo(options.scrubKnownValues);
 
   const finish = async (args: {
     capture: BrowserSurfaceCapture;
@@ -198,6 +208,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
     reason: string;
   }): Promise<ScriptedBrowserSessionResult> => {
     const completedAtMs = now();
+    const reason = scrub(args.reason);
     const trace = await projectScriptedActorTrace({
       artifactRoot: preparedArtifactRoot,
       capture: args.capture,
@@ -207,14 +218,14 @@ export async function runScriptedBrowserSessionInPreparedRoot(
       executedSteps: args.executedSteps,
       journey: options.journey,
       persona: options.persona,
-      reason: args.reason,
+      reason,
       startedAt,
       status: args.status,
     });
     return {
       status: args.status,
       completionReason: args.completionReason,
-      reason: args.reason,
+      reason,
       capture: args.capture,
       trace,
     };
@@ -233,6 +244,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
       evidenceAppUrl,
       journey: options.journey,
       reason,
+      scrub,
       surface: options.surface,
       urlPolicy,
     });
@@ -258,6 +270,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
     browserCommand,
     evidenceAppUrl,
     journey: options.journey,
+    scrub,
     surface: options.surface,
     timeoutMs: options.timeoutMs,
     urlPolicy,
@@ -302,6 +315,7 @@ async function runScriptedJourney(args: {
   browserCommand: string;
   evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
+  scrub: (text: string) => string;
   surface: BrowserSurface;
   timeoutMs: number;
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
@@ -388,39 +402,38 @@ async function runScriptedJourney(args: {
     await args.browser.close().catch(() => undefined);
   }
 
+  const recordedSteps = steps.map((step) => scrubRecordedStep(step, args.scrub));
   const completedAt = new Date().toISOString();
   const durationMs = Date.now() - started;
   const ok =
     !timedOut &&
     httpProbe.ok &&
-    steps.length === args.journey.steps.length &&
-    steps.every((step) => step.status === "passed");
-  const reason = ok
-    ? `${args.surface.label} completed ${steps.length}/${steps.length} scripted browser steps from ${args.evidenceAppUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
-    : `${args.surface.label} scripted browser journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
-  const scriptedScreenshotPath = surfaceScreenshotPath(steps);
+    recordedSteps.length === args.journey.steps.length &&
+    recordedSteps.every((step) => step.status === "passed");
+  const reason = args.scrub(
+    ok
+      ? `${args.surface.label} completed ${recordedSteps.length}/${recordedSteps.length} scripted browser steps from ${args.evidenceAppUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
+      : `${args.surface.label} scripted browser journey blocked: ${recordedSteps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`,
+  );
+  const scriptedScreenshotPath = surfaceScreenshotPath(recordedSteps);
 
-  await writeContainedOutputFile(
+  await writeBrowserTrace(
     args.artifactRoot,
     tracePath,
-    `${JSON.stringify(
-      buildBrowserTrace({
-        appUrl: args.evidenceAppUrl,
-        browserCommand: path.basename(args.browserCommand || "injected-browser"),
-        browserJourney: args.journey,
-        capturedAt: completedAt,
-        durationMs,
-        ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-        ok,
-        reason,
-        ...(scriptedScreenshotPath === undefined ? {} : { screenshotPath: scriptedScreenshotPath }),
-        steps,
-        surface: args.surface,
-      }),
-      null,
-      2,
-    )}\n`,
-    "utf8",
+    {
+      appUrl: args.evidenceAppUrl,
+      browserCommand: path.basename(args.browserCommand || "injected-browser"),
+      browserJourney: args.journey,
+      capturedAt: completedAt,
+      durationMs,
+      ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
+      ok,
+      reason,
+      ...(scriptedScreenshotPath === undefined ? {} : { screenshotPath: scriptedScreenshotPath }),
+      steps: recordedSteps,
+      surface: args.surface,
+    },
+    args.scrub,
   );
 
   return {
@@ -431,7 +444,7 @@ async function runScriptedJourney(args: {
       ok,
       reason,
       ...(scriptedScreenshotPath === undefined ? {} : { screenshotPath: scriptedScreenshotPath }),
-      steps,
+      steps: recordedSteps,
       surface: args.surface,
       tracePath,
     },
@@ -478,53 +491,77 @@ async function persistScriptedFailureCapture(args: {
   evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
   reason: string;
+  scrub: (text: string) => string;
   surface: BrowserSurface;
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
 }): Promise<BrowserSurfaceCapture> {
   const capturedAt = new Date().toISOString();
   const tracePath = tracePathForBrowserSurface(args.surface);
+  const reason = args.scrub(args.reason);
   const blockedSteps = buildBlockedBrowserPersonaSteps({
     browserJourney: args.journey,
     currentUrl: args.appUrl,
-    reason: args.reason,
+    reason,
     surface: args.surface,
     timestamp: capturedAt,
     urlPolicy: args.urlPolicy,
-  });
+  }).map((step) => scrubRecordedStep(step, args.scrub));
   // Pre-actuation failure: no screenshots were written, so the surface omits the
   // screenshot reference and the failure itself stands as the evidence.
   const screenshotPath = surfaceScreenshotPath(blockedSteps);
-  await writeContainedOutputFile(
+  await writeBrowserTrace(
     args.artifactRoot,
     tracePath,
-    `${JSON.stringify(
-      buildBrowserTrace({
-        appUrl: args.evidenceAppUrl,
-        browserCommand: path.basename(args.browserCommand || "injected-browser"),
-        browserJourney: args.journey,
-        capturedAt,
-        durationMs: 0,
-        ok: false,
-        reason: args.reason,
-        ...(screenshotPath === undefined ? {} : { screenshotPath }),
-        steps: blockedSteps,
-        surface: args.surface,
-      }),
-      null,
-      2,
-    )}\n`,
-    "utf8",
+    {
+      appUrl: args.evidenceAppUrl,
+      browserCommand: path.basename(args.browserCommand || "injected-browser"),
+      browserJourney: args.journey,
+      capturedAt,
+      durationMs: 0,
+      ok: false,
+      reason,
+      ...(screenshotPath === undefined ? {} : { screenshotPath }),
+      steps: blockedSteps,
+      surface: args.surface,
+    },
+    args.scrub,
   );
   return {
     capturedAt,
     durationMs: 0,
     ok: false,
-    reason: args.reason,
+    reason,
     ...(screenshotPath === undefined ? {} : { screenshotPath }),
     steps: blockedSteps,
     surface: args.surface,
     tracePath,
   };
+}
+
+/**
+ * Writes one surface's native trace. Its steps and reason arrive scrubbed; the app URL and the
+ * scenario title pass through the same scrub here.
+ */
+async function writeBrowserTrace(
+  artifactRoot: PreparedOutputRoot,
+  tracePath: string,
+  trace: Parameters<typeof buildBrowserTrace>[0],
+  scrub: (text: string) => string,
+): Promise<void> {
+  const recorded = buildBrowserTrace({
+    ...trace,
+    appUrl: scrub(trace.appUrl),
+    browserJourney: {
+      ...trace.browserJourney,
+      scenarioTitle: scrub(trace.browserJourney.scenarioTitle),
+    },
+  });
+  await writeContainedOutputFile(
+    artifactRoot,
+    tracePath,
+    `${JSON.stringify(recorded, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 /** Project one surface capture into humanish.actor-trace.v1. screenshotRefs are attached only

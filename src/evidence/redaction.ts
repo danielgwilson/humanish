@@ -698,6 +698,28 @@ export function scrubLiterals(
 }
 
 /**
+ * Extends a literal scrub to values a URL carries percent-encoded. A value with a character a URL
+ * path encodes, such as a space or a quote, reaches a page URL as `%20` or `%22`, where the literal
+ * never matches. Each run of escapes is decoded for a second pass, and the decoded text is
+ * returned only when that pass removed a value.
+ */
+export function scrubDecodedToo(scrub: (text: string) => string): (text: string) => string {
+  return (text) => {
+    const scrubbed = scrub(text);
+    const decoded = scrubbed.replace(/(?:%[0-9A-Fa-f]{2})+/g, (escapes) => {
+      try {
+        return decodeURIComponent(escapes);
+      } catch {
+        return escapes;
+      }
+    });
+    if (decoded === scrubbed) return scrubbed;
+    const decodedScrubbed = scrub(decoded);
+    return decodedScrubbed === decoded ? scrubbed : decodedScrubbed;
+  };
+}
+
+/**
  * Coerce an unknown thrown value to its message string. Prefer this over the
  * inline `error instanceof Error ? error.message : String(error)` so error
  * stringification stays uniform. Note: this does not redact; sites that emit

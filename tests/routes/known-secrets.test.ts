@@ -3,15 +3,24 @@
 // values are scrubbed, the marker that replaces them and the shortest value scrubbed, through one
 // evidence file each. Every value is built at run time.
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type {
+  ScriptedBrowserLike,
+  ScriptedLocatorLike,
+  ScriptedPageLike,
+} from "../../src/actors/scripted-browser/types.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { parseStudy } from "../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
+import { syntheticPng1x1 } from "../image-fixtures.js";
+import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
@@ -223,6 +232,131 @@ describe("scripted scrubs its known values with [REDACTED_SECRET]", () => {
     );
   });
 });
+
+describe("scripted scrubs its known values from the step trace", () => {
+  it("leaves no copy of the E2B key in any run file when a step URL, label, goal and failed step hold it", async () => {
+    const e2b = opaque("e2b");
+    await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish", "scenarios", "known-values.yaml"),
+      [
+        "schema: humanish.scenario.v1",
+        "id: known-values",
+        `title: Settings for ${e2b}`,
+        `goal: Open the settings page for ${e2b}.`,
+        "browser:",
+        "  startPath: /",
+        "  steps:",
+        "    - id: step-01-load",
+        `      label: Open settings for ${e2b}`,
+        "      action: goto",
+        `      path: /settings/${e2b}`,
+        "    - id: step-02-confirm",
+        "      label: Confirm the greeting",
+        "      action: waitForText",
+        "      expect:",
+        `        text: Welcome ${e2b}`,
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await withLoopbackApp((appUrl) =>
+      runScripted({
+        cwd,
+        config: parsed({
+          schema: STUDY_SCHEMA,
+          id: "known-secrets-scripted-trace",
+          title: "Known secrets in a scripted step trace",
+          route: "scripted",
+          mode: "live",
+          subject: { source: "app-url", appUrl },
+          actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+          scenario: "known-values",
+          execution: { target: "local", timeoutMs: 30_000 },
+          review: { analysis: false },
+        }),
+        dryRun: false,
+        env: { E2B_API_KEY: e2b },
+        deps: { launchBrowser: async () => urlRecordingBrowser() },
+      }),
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.sessions.map((session) => session.completionReason)).toEqual(["step_failed"]);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const files = await runFiles(runDir);
+    expect(files).toContain("traces/desktop.json");
+    const holding: string[] = [];
+    for (const file of files) {
+      if ((await readFile(path.join(runDir, file))).includes(e2b)) holding.push(file);
+    }
+    expect(holding).toEqual([]);
+    const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
+    expect(trace.steps[0].url).toMatch(
+      /^http:\/\/127\.0\.0\.1:\d+\/settings\/\[REDACTED_SECRET\]$/,
+    );
+    expect(trace.steps[0].label).toBe("Open settings for [REDACTED_SECRET]");
+    expect(trace.steps[1].reason).toContain("Welcome [REDACTED_SECRET]");
+  });
+});
+
+/** Every file under `root`, as a path relative to it. */
+async function runFiles(root: string): Promise<string[]> {
+  const entries = await readdir(root, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)))
+    .sort();
+}
+
+/** Serves a page on a loopback port for the session's reachability probe. */
+async function withLoopbackApp<T>(run: (appUrl: string) => Promise<T>): Promise<T> {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<main>landing page</main>");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    return await run(`http://127.0.0.1:${port}/`);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+/** A browser whose page reports the URL each goto asked for, and whose body never changes. */
+function urlRecordingBrowser(): ScriptedBrowserLike {
+  const png = syntheticPng1x1();
+  const state = { url: "about:blank", body: "landing page" };
+  const locator: ScriptedLocatorLike = {
+    first: () => locator,
+    fill: async () => undefined,
+    click: async () => undefined,
+    press: async () => undefined,
+    count: async () => 1,
+    waitFor: async () => undefined,
+    isVisible: async () => true,
+  };
+  const page: ScriptedPageLike = {
+    goto: async (url) => {
+      state.url = url;
+      return undefined;
+    },
+    locator: () => locator,
+    keyboard: { press: async () => undefined },
+    waitForTimeout: async () => undefined,
+    waitForFunction: async (expression) => {
+      if (evaluatePagePredicate(expression, state.body)) return undefined;
+      throw new Error(`Timeout waiting for ${expression}`);
+    },
+    screenshot: async ({ path: screenshotPath }) => {
+      if (screenshotPath) await writeFile(screenshotPath, png);
+      return png;
+    },
+    url: () => state.url,
+    evaluate: async <T>() => state.body as unknown as T,
+  };
+  return { newContext: async () => ({ newPage: async () => page }), close: async () => undefined };
+}
 
 /** The committed demo scenario, copied so the run binds to the real file. */
 async function writeScenario(root: string): Promise<void> {
