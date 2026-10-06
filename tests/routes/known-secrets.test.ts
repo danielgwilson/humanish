@@ -243,7 +243,7 @@ describe("scripted scrubs its known values with [REDACTED_SECRET]", () => {
 });
 
 describe("scripted scrubs its known values from the step trace", () => {
-  it("leaves no copy of the E2B key in any run file when a step URL, label, goal and failed step hold it", async () => {
+  it("leaves no copy of the E2B key in any run file when the app URL, a step URL, label, goal and failed step hold it", async () => {
     const e2b = opaque("e2b");
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(
@@ -278,7 +278,7 @@ describe("scripted scrubs its known values from the step trace", () => {
           title: "Known secrets in a scripted step trace",
           route: "scripted",
           mode: "live",
-          subject: { source: "app-url", appUrl },
+          subject: { source: "app-url", appUrl: `${appUrl}app/${e2b}/` },
           actor: { type: "scripted-browser", persona: "synthetic-new-user" },
           scenario: "known-values",
           execution: { target: "local", timeoutMs: 30_000 },
@@ -379,10 +379,13 @@ describe("computer use and terminal scrub their known values from every run file
 
   it("terminal: output that prints both keys, encoded and split across chunks, leaves no copy in any run file", async () => {
     const runtimeKey = opaque("runtime");
-    const e2b = `${spaced("e2b")} "quoted"`;
+    const e2b = `${spaced("e2b")}/"quoted"`;
     const encoded = encodeURIComponent(e2b);
+    const pathEncoded = encodeURI(e2b);
     const escaped = JSON.stringify(e2b).slice(1, -1);
-    const values = [runtimeKey, e2b, encoded, escaped];
+    const nested = JSON.stringify({ item: { aggregated_output: JSON.stringify({ key: e2b }) } });
+    const escapedTwice = JSON.stringify(escaped).slice(1, -1);
+    const values = [runtimeKey, e2b, encoded, pathEncoded, escaped, escapedTwice];
     const config = terminalConfig({
       actor: {
         type: "codex-exec",
@@ -398,7 +401,9 @@ describe("computer use and terminal scrub their known values from every run file
         `json ${JSON.stringify({ key: e2b })}\n`,
         `split https://example.test/k/${encoded.slice(0, 12)}`,
         `${encoded.slice(12)} and ${escaped.slice(0, 12)}`,
-        `${escaped.slice(12)}\n`,
+        `${escaped.slice(12)} and https://example.test/${pathEncoded.slice(0, 12)}`,
+        `${pathEncoded.slice(12)}\n`,
+        `${nested}\n`,
         `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,
       ]),
       env: { OPENAI_API_KEY: runtimeKey, E2B_API_KEY: e2b },

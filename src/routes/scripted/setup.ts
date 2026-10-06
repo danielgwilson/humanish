@@ -70,7 +70,16 @@ export async function prepareScriptedRun(
   const deps = input.deps ?? {};
   const warnings: string[] = [];
   const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
-  const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
+  const subjectEnvNames = [...(clone?.env ?? [])];
+  const env = input.env ?? process.env;
+  const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
+  const secrets = new RunSecrets([
+    e2bApiKey,
+    ...(clone ? [clone.repo] : []),
+    ...subjectEnvNames.map((name) => env[name] ?? ""),
+  ]);
+  // An app-url run records the URL it was given, in the bundle and every summary.
+  const evidenceAppUrl = secrets.scrub(evidenceAppUrlOf(plan.subject));
   const failed = (
     code: NonNullable<ScriptedBrowserStudyResult["error"]>["code"],
     message: string,
@@ -90,16 +99,8 @@ export async function prepareScriptedRun(
   const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = clone
     ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }
     : { kind: "loopback" };
-  const subjectEnvNames = [...(clone?.env ?? [])];
-  const env = input.env ?? process.env;
-  const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
   const redactRepoLabel = plan.residual.policies?.redactRepos ?? hasGithubToken;
-  const secrets = new RunSecrets([
-    e2bApiKey,
-    ...(clone ? [clone.repo] : []),
-    ...subjectEnvNames.map((name) => env[name] ?? ""),
-  ]);
 
   // A clone's URL is replaced by its getHost URL once it is served.
   let appUrl = plan.subject.kind === "clone" ? plan.subject.serve.url : plan.subject.appUrl;
