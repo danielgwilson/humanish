@@ -73,7 +73,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`."
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
     }
   },
   "shared world external plane: a missing OpenAI key with a signed-in agent": {
@@ -101,7 +101,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-      "message": "Subject env values missing for a live clone scripted-browser study: GITHUB_TOKEN."
+      "message": "subject.env declares GITHUB_TOKEN but the environment does not provide it (pass via --dotenv; values are never persisted)."
     }
   },
   "terminal: the runtime key before E2B": {

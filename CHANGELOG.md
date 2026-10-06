@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A live scripted clone study whose environment lacks a `subject.env` value now refuses with the
+  message computer use and shared world give: it names each unset variable and says to pass it
+  with `--dotenv`. The code is still `HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING`.
+- A live shared-world study on the provisioned plane that lacks `OPENAI_API_KEY` now names each
+  coding agent signed in on this machine and suggests `actor.type: local-agent`, as computer use
+  does. A study on the external-public plane gets no suggestion, because its lobby-code reader
+  needs `OPENAI_API_KEY` whatever drives the participants.
+
 ## 0.111.2: A taller Observer frame, even grid cards, a notice when the server stops (2026-10-06)
 
 humanish 0.111.2 changes the Observer and nothing else. The focus view's heading line holds the

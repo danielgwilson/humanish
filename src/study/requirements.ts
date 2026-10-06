@@ -162,24 +162,17 @@ export async function localAgentCheck<C extends string>(args: {
     : { code: args.codes[refusal.kind], message: refusal.message };
 }
 
-/**
- * Refuses a run whose environment lacks a subject env name the requirements list. `message`
- * writes a route's own text for the unset names; without it the refusal says to pass them with
- * --dotenv.
- */
+/** Refuses a run whose environment lacks a subject env name the requirements list. */
 export function subjectEnvCheck<C extends string>(args: {
   readonly requirements: readonly Requirement[];
   readonly env: Record<string, string | undefined>;
   readonly code: C;
-  readonly message?: (unset: readonly string[]) => string;
 }): LiveRefusal<C> | undefined {
   const unset = missingSubjectEnv(args.requirements, args.env);
   if (unset.length === 0) return undefined;
   return {
     code: args.code,
-    message:
-      args.message?.(unset) ??
-      `subject.env declares ${unset.join(", ")} but the environment does not provide ${unset.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
+    message: `subject.env declares ${unset.join(", ")} but the environment does not provide ${unset.length === 1 ? "it" : "them"} (pass via --dotenv; values are never persisted).`,
   };
 }
 
