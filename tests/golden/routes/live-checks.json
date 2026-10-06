@@ -1,0 +1,121 @@
+{
+  "computer use: keys before the local agent": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
+      "message": "Live computer-use studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    }
+  },
+  "computer use: the local agent before subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_AGENT_MISSING",
+      "message": "actor.type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actor.type: openai-computer-use instead."
+    }
+  },
+  "computer use: subject env before an unpriced cap": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING",
+      "message": "subject.env declares DATABASE_URL but the environment does not provide it (pass via --dotenv; values are never persisted)."
+    }
+  },
+  "computer use: an unpriced cap before the external catch": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
+      "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+    }
+  },
+  "computer use: a missing OpenAI key with a signed-in agent": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
+      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
+    }
+  },
+  "shared world: an unpriced cap before keys": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
+      "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"unpriced-model\", so it cannot enforce the cap and refuses to start. Priced models: computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+    }
+  },
+  "shared world: keys before the local agent": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
+      "message": "Live concurrent shared-world studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    }
+  },
+  "shared world: the local agent before subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_AGENT_MISSING",
+      "message": "actor.type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actor.type: openai-computer-use instead."
+    }
+  },
+  "shared world: keys before subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    }
+  },
+  "shared world: subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_SUBJECT_ENV_MISSING",
+      "message": "subject.env declares DATABASE_URL but the environment does not provide it (pass via --dotenv; values are never persisted)."
+    }
+  },
+  "shared world: a missing OpenAI key with a signed-in agent": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`."
+    }
+  },
+  "shared world external plane: a missing OpenAI key with a signed-in agent": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`."
+    }
+  },
+  "scripted: the scenario before keys": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
+      "message": "scenario \"no-such-scenario\" was not found (looked for humanish/scenarios/no-such-scenario.yaml, humanish/scenarios/no-such-scenario.yml)."
+    }
+  },
+  "scripted: keys before subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
+      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    }
+  },
+  "scripted: subject env": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
+      "message": "Subject env values missing for a live clone scripted-browser study: GITHUB_TOKEN."
+    }
+  },
+  "terminal: the runtime key before E2B": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
+      "message": "Live terminal-product studies declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --dotenv; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+    }
+  },
+  "terminal: E2B": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_TERMINAL_KEYS_MISSING",
+      "message": "Live terminal-product studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    }
+  }
+}
