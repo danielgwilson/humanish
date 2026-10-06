@@ -8,16 +8,10 @@ import {
   foldScorerFailures,
   judgeExecution,
   OUTCOME_POLICIES,
-  participantHarnessFailed,
   resultOk,
-  type ExecutionFailure,
   type ExecutionOutcome,
 } from "../../run/judge.js";
-import {
-  participantFactsOf,
-  participantOutcomeOk,
-  unreleasedSandboxFailures,
-} from "./participant-facts.js";
+import { participantExecutionFailures, participantOutcomeOk } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import { toParticipantResult } from "./participant-execution.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
@@ -243,47 +237,6 @@ function cuaStudyResult(args: {
 }
 
 /**
- * The run's execution failures before the Observer renders: each participant whose session failed
- * in the harness, each provider whose cleanup is unconfirmed or that reported a disallowed item
- * after its last request, and each sandbox whose release is unconfirmed. FinishedRun.renderObserver
- * adds an Observer that did not render.
- */
-function computerUseExecutionFailures(
-  outcomes: readonly ParticipantRunOutcome[] | undefined,
-  runId: string,
-): ExecutionFailure[] {
-  return [
-    ...(outcomes ?? [])
-      .filter((outcome) => participantHarnessFailed(participantFactsOf(outcome)))
-      .map((outcome) => ({
-        kind: "harness" as const,
-        message: `${outcome.spec.planned.id}: ${outcome.sessionError ?? outcome.session?.reason ?? "harness error"}`,
-      })),
-    ...(outcomes ?? []).flatMap((outcome) =>
-      outcome.providerCleanupError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-cleanup" as const,
-              message: `${outcome.spec.planned.id}: ${outcome.providerCleanupError}`,
-            },
-          ],
-    ),
-    ...(outcomes ?? []).flatMap((outcome) =>
-      outcome.providerPolicyError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-policy" as const,
-              message: `${outcome.spec.planned.id}: ${outcome.providerPolicyError}`,
-            },
-          ],
-    ),
-    ...unreleasedSandboxFailures(outcomes, runId),
-  ];
-}
-
-/**
  * caps.maxUsd is enforced inside each participant's loop independently, so an
  * N-participant fan-out can spend up to N × maxUsd before any participant aborts, while the run cost summary reports the larger
  * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
@@ -361,7 +314,8 @@ export async function finishCuaRun(
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
   const policy = OUTCOME_POLICIES["computer-use"];
-  const execution = judgeExecution(computerUseExecutionFailures(outcomes, runId), policy);
+  // FinishedRun.renderObserver adds an Observer that did not render.
+  const execution = judgeExecution(participantExecutionFailures(outcomes, runId), policy);
   const finished = await run.finish(bundle, {
     ok: resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy }),
     execution,

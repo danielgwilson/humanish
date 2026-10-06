@@ -10,15 +10,11 @@ import {
   judgeExecution,
   sandboxCleanupFailure,
   OUTCOME_POLICIES,
-  participantHarnessFailed,
   resultOk,
   sharedWorldShortfall,
   type ExecutionFailure,
 } from "../../run/judge.js";
-import {
-  participantFactsOf,
-  unreleasedSandboxFailures,
-} from "../computer-use/participant-facts.js";
+import { participantExecutionFailures } from "../computer-use/participant-facts.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
   actorRunPassed,
@@ -224,9 +220,8 @@ export function concurrentStudyFailure(envelope: {
 }
 
 /**
- * The run's execution failures before the Observer renders: a run error (the handoff, the plane),
- * each participant whose session failed in the harness, each provider whose cleanup is unconfirmed
- * or that reported a disallowed item after its last request, and each sandbox whose release is
+ * The run's execution failures before the Observer renders: a run error (the handoff, the plane)
+ * first, then the participants' failures, then the subject sandbox when its release is
  * unconfirmed. FinishedRun.renderObserver adds an Observer that did not render.
  */
 function sharedWorldExecutionFailures(args: {
@@ -238,33 +233,7 @@ function sharedWorldExecutionFailures(args: {
   const { runId, runError, actorResults, subject } = args;
   return [
     ...(runError === undefined ? [] : [{ kind: "run" as const, message: runError }]),
-    ...actorResults
-      .filter((result) => participantHarnessFailed(participantFactsOf(result.outcome)))
-      .map((result) => ({
-        kind: "harness" as const,
-        message: `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "harness error"}`,
-      })),
-    ...actorResults.flatMap((result) =>
-      result.outcome.providerCleanupError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-cleanup" as const,
-              message: `${result.spec.planned.id}: ${result.outcome.providerCleanupError}`,
-            },
-          ],
-    ),
-    ...actorResults.flatMap((result) =>
-      result.outcome.providerPolicyError === undefined
-        ? []
-        : [
-            {
-              kind: "provider-policy" as const,
-              message: `${result.spec.planned.id}: ${result.outcome.providerPolicyError}`,
-            },
-          ],
-    ),
-    ...unreleasedSandboxFailures(
+    ...participantExecutionFailures(
       actorResults.map((result) => result.outcome),
       runId,
     ),

@@ -3,6 +3,7 @@
 // so they sit in a file that imports only the judge and the types.
 
 import {
+  participantHarnessFailed,
   participantPassed,
   sandboxCleanupFailure,
   type ExecutionFailure,
@@ -33,11 +34,55 @@ export function participantOutcomeOk(
 }
 
 /**
+ * The execution failures a run's participants caused, by kind: each session that failed in the
+ * harness, each provider whose cleanup is unconfirmed, each provider that reported a disallowed
+ * item after its last request, then each desktop not confirmed released. Participants keep their
+ * order within each kind.
+ */
+export function participantExecutionFailures(
+  outcomes: readonly ParticipantRunOutcome[] | undefined,
+  runId: string,
+): ExecutionFailure[] {
+  const all = outcomes ?? [];
+  const named = (outcome: ParticipantRunOutcome, text: string) =>
+    `${outcome.spec.planned.id}: ${text}`;
+  return [
+    ...all
+      .filter((outcome) => participantHarnessFailed(participantFactsOf(outcome)))
+      .map((outcome) => ({
+        kind: "harness" as const,
+        message: named(outcome, outcome.sessionError ?? outcome.session?.reason ?? "harness error"),
+      })),
+    ...all.flatMap((outcome) =>
+      outcome.providerCleanupError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-cleanup" as const,
+              message: named(outcome, outcome.providerCleanupError),
+            },
+          ],
+    ),
+    ...all.flatMap((outcome) =>
+      outcome.providerPolicyError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-policy" as const,
+              message: named(outcome, outcome.providerPolicyError),
+            },
+          ],
+    ),
+    ...unreleasedSandboxFailures(all, runId),
+  ];
+}
+
+/**
  * One sandbox-cleanup failure per participant desktop not confirmed released: an E2B sandbox that
  * was not killed, or a desktop whose release says why (a local VM names its container). A
  * participant that never acquired a desktop (skipped, in-process) adds none.
  */
-export function unreleasedSandboxFailures(
+function unreleasedSandboxFailures(
   outcomes: readonly ParticipantRunOutcome[] | undefined,
   runId: string,
 ): ExecutionFailure[] {
