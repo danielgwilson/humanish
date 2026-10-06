@@ -686,13 +686,15 @@ function blurPass(
 }
 
 /**
- * Replace each literal value with [REDACTED_SECRET]. For values that have no secret shape to
+ * Replace each literal value with `marker`. For values that have no secret shape to
  * pattern-match, such as provisioned keys and subject env values. `values` is read on each call,
  * so a value registered later is scrubbed too.
  */
-export function scrubLiterals(values: readonly string[]): (text: string) => string {
-  return (text) =>
-    values.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+export function scrubLiterals(
+  values: readonly string[],
+  marker = "[REDACTED_SECRET]",
+): (text: string) => string {
+  return (text) => values.reduce((current, value) => current.split(value).join(marker), text);
 }
 
 /**
