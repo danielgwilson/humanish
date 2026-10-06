@@ -19,7 +19,7 @@ import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
 export async function runStudyParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
   const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, bundleBase } = setup;
-  const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;
+  const { env, deps, liveTrace, externalComms, inProgress, fail } = participants;
   const { dryRun } = plan;
   const inProcess = plan.runner.desktop === "in-process";
   const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
@@ -81,11 +81,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
         env,
         participants: participantRuns.map((spec) => spec.planned.id),
         runPaths,
-        registerSecrets: (values) => {
-          for (const value of values)
-            if (value.length >= 4 && !knownSecretValues.includes(value))
-              knownSecretValues.push(value);
-        },
+        registerSecrets: (values) => run.secrets.add(values),
       });
       if (receiving) deps.receiving = receiving;
     } catch {
@@ -143,7 +139,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
           runPaths,
           participantRuns: participantRuns,
           outcomes,
-          knownSecretValues,
+          knownSecretValues: run.secrets.values(),
         })
       : [];
 

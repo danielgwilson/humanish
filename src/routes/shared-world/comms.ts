@@ -22,6 +22,7 @@ import type { CommsAddress } from "../../comms/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { StudyCommsEmail, StudyConfig } from "../../study/types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
+import type { RunSecrets } from "../../run/secrets.js";
 import type { Shell } from "../../substrates/shell.js";
 import type {
   ConcurrentSharedWorldPlaneClass,
@@ -191,7 +192,7 @@ export async function drainExternalComms(
     email: comms.email,
     env: ctx.env,
     runPaths: ctx.runPaths,
-    knownSecretValues: ctx.knownSecretValues,
+    knownSecretValues: ctx.run.secrets.values(),
   });
   ctx.warnings.push(...warnings);
   return path;
@@ -222,12 +223,12 @@ export async function prepareEmailReceiving(args: {
   env: Record<string, string | undefined>;
   participants: string[];
   runPaths: PlaneContext["runPaths"];
-  knownSecretValues: string[];
+  secrets: RunSecrets;
   dryRun: boolean;
 }): Promise<
   { ok: true; receiving: CommsReceivingRun | undefined } | { ok: false; message: string }
 > {
-  const { source, knownSecretValues } = args;
+  const { source, secrets } = args;
   if (args.dryRun || source.comms?.email?.kind !== "real")
     return { ok: true, receiving: undefined };
   try {
@@ -238,11 +239,7 @@ export async function prepareEmailReceiving(args: {
       env: args.env,
       participants: args.participants,
       runPaths: args.runPaths,
-      registerSecrets: (values) => {
-        for (const value of values)
-          if (value.length >= 4 && !knownSecretValues.includes(value))
-            knownSecretValues.push(value);
-      },
+      registerSecrets: (values) => secrets.add(values),
     });
     return { ok: true, receiving };
   } catch {

@@ -9,7 +9,7 @@ import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions, StudyOutcome, RunStudyOptions } from "../run-study.js";
 import { resolveStudyDryRun, type StudyRoute } from "./plan.js";
 import type { StudyConfig } from "./types.js";
-import { knownSecretValues, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
+import { knownSecrets, studyEventEmitter, type StudyEvent } from "./run-study-events.js";
 import { studyResultIdentity } from "../run/study-result.js";
 import { participantList } from "./study-fields.js";
 
@@ -140,7 +140,7 @@ export function normalizeRunStudyOptions(
   // does to its own object afterwards.
   const forwardedEnv = env === undefined ? undefined : { ...env };
   const emit = studyEventEmitter(onEvent, warnings, () =>
-    knownSecretValues(config, options, forwardedEnv),
+    knownSecrets(config, options, forwardedEnv),
   );
 
   // Every route reads its typed options directly, and onEvent reaches it as `emit`. unsupportedOption

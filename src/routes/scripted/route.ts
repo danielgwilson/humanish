@@ -116,6 +116,7 @@ async function runScriptedPlanInScope(
     sandboxes: setup.clone ? undefined : "none",
     renderReview: renderScriptedReviewMarkdown,
     observer: { open: input.open === true, render: setup.deps.renderObserver },
+    secrets: setup.secrets,
   });
   if (!started.ok) {
     return setup.failed(started.code, started.message);
@@ -142,7 +143,7 @@ async function runScriptedPlanInScope(
         timeoutMs: setup.timeoutMs,
         subjectEnvNames: setup.subjectEnvNames,
         hasGithubToken: setup.hasGithubToken,
-        scrubKnownValues: setup.scrubKnownValues,
+        scrubKnownValues: run.secrets.scrub,
         now: setup.deps.now ?? Date.now,
         warnings: setup.warnings,
       })
@@ -177,7 +178,7 @@ async function runScriptedPlanInScope(
       }
       // The session itself maps launch failures to harness_error; reaching here means the
       // harness around it failed. Redacted at this boundary before persisting anywhere.
-      sessionError = redactText(setup.scrubKnownValues(toErrorMessage(error)));
+      sessionError = redactText(run.secrets.scrub(toErrorMessage(error)));
     } finally {
       await scriptedSubject?.teardown();
     }
