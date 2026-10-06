@@ -124,14 +124,7 @@ export async function prepareScriptedRun(
         need: (names) =>
           `Live clone scripted-browser studies require ${names} (dry-run remains $0 and does not provision a subject).`,
       }),
-    () =>
-      subjectEnvCheck({
-        requirements,
-        env,
-        code: "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING",
-        message: (unset) =>
-          `Subject env values missing for a live clone scripted-browser study: ${unset.join(", ")}.`,
-      }),
+    () => subjectEnvCheck({ requirements, env, code: "HUMANISH_SCRIPTED_SUBJECT_ENV_MISSING" }),
   ]);
   if (refusal) return { ok: false, result: failed(refusal.code, refusal.message) };
 
