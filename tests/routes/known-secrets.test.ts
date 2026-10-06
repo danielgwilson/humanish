@@ -404,6 +404,7 @@ describe("computer use and terminal scrub their known values from every run file
         `${escaped.slice(12)} and https://example.test/${pathEncoded.slice(0, 12)}`,
         `${pathEncoded.slice(12)}\n`,
         `${nested}\n`,
+        `colored ${runtimeKey.slice(0, 8)}\x1b[31m${runtimeKey.slice(8)}\x1b[0m\n`,
         `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonce}\n`,
       ]),
       env: { OPENAI_API_KEY: runtimeKey, E2B_API_KEY: e2b },

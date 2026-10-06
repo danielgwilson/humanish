@@ -63,6 +63,13 @@ describe("RunSecrets", () => {
     });
   });
 
+  it("replaces the JSON-escaped form of a value as short as the floor", () => {
+    const short = ["q", '"', "z", "7"].join("");
+    expect(new RunSecrets([short]).scrub(JSON.stringify({ key: short }))).toBe(
+      '{"key":"[REDACTED_SECRET]"}',
+    );
+  });
+
   it("lists each value's forms longest first, for a scrub that matches across chunks", () => {
     const spaced = ["synthetic", "known", "value"].join(" ");
     const secrets = new RunSecrets([spaced]);

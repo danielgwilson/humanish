@@ -89,8 +89,10 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   // Build the actor trace first (the cost ledger reads its tokenUsage). A session past the cap
   // ends its transcript with what was not stored, and its trace says the same.
   const cut = inputs.recorder.transcriptCut();
-  const normalizedTranscript = `${normalizeLocalActorTranscript(
-    terminalEvents.map((e) => e.chunk).join(""),
+  // Normalizing removes terminal escape sequences, which rejoins a value one of them split, so the
+  // transcript is sanitized again after it.
+  const normalizedTranscript = `${sanitize(
+    normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join("")),
   )}${cut ? `\n[humanish] ${cut.notice}` : ""}`;
   // Parsed from the full stream: usage records arrive once per turn, and the tail
   // would drop all but the last. Records past the cap were kept as they arrived.
