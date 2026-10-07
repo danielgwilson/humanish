@@ -87,3 +87,63 @@ describe("an OpenAI conversation carried on the client", () => {
     expect(input).toContain('"call_id":"call_1"');
   });
 });
+
+describe("a rejection of server-side state", () => {
+  it("switches a zero-data-retention rejection to explicit context and records why", () => {
+    const conversation = start();
+    exchange(conversation, 1);
+    const second = conversation.request(turnRequest());
+    expect((second.body() as unknown as Body).previous_response_id).toBe("resp_1");
+
+    expect(conversation.switchToExplicitContext("zero_data_retention")).toBe(true);
+    const retried = second.body() as unknown as Body;
+    expect(retried.previous_response_id).toBeUndefined();
+    expect(retried.store).toBe(false);
+    expect(JSON.stringify(retried.input)).toContain("turn-1 said");
+    second.accept(reply(2));
+
+    expect(conversation.record()).toEqual({
+      mode: "explicit_context",
+      explicitReason: "zdr_rejection",
+      rejection: "zero_data_retention",
+      switchedAt: "2026-10-07T00:00:00.000Z",
+      switchedAtRequest: 2,
+      summarizedTurns: 0,
+      requests: [
+        { mode: "threaded" },
+        {
+          mode: "explicit_context",
+          carriedExchanges: 1,
+          carriedScreenshots: 1,
+          estimatedInputTokens: expect.any(Number),
+        },
+      ],
+    });
+  });
+
+  it("switches a stored-item rejection the same way, and has nothing to switch to after", () => {
+    const conversation = start();
+    exchange(conversation, 1);
+    exchange(conversation, 2);
+    const third = conversation.request(turnRequest());
+    expect(conversation.switchToExplicitContext("stored_item")).toBe(true);
+    const retried = third.body() as unknown as Body;
+    expect(retried.previous_response_id).toBeUndefined();
+    expect(JSON.stringify(retried.input)).toContain("turn-1 said");
+    third.accept(reply(3));
+
+    // Already carrying the conversation, a second rejection stands.
+    expect(conversation.switchToExplicitContext("stored_item")).toBe(false);
+    expect(conversation.record()).toMatchObject({
+      mode: "explicit_context",
+      explicitReason: "zdr_rejection",
+      rejection: "stored_item",
+      switchedAtRequest: 3,
+      requests: [
+        { mode: "threaded" },
+        { mode: "threaded" },
+        { mode: "explicit_context", carriedExchanges: 2 },
+      ],
+    });
+  });
+});

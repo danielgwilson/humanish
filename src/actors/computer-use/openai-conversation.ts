@@ -1,7 +1,7 @@
 import type { CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import type { ActorConversation } from "../contract.js";
-import { CarriedConversation } from "./openai-context.js";
+import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   buildCallOutput,
   buildContinuationRequest,
@@ -45,6 +45,9 @@ export interface ConversationRequest {
   accept(reply: unknown): CuaTurn;
 }
 
+/** Which answer told the provider that the organization keeps no server-side conversation. */
+type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
+
 /** The closing report's output limit: its own cap, or the declared limit when that is lower. */
 const CLOSING_OUTPUT_LIMIT = 1024;
 
@@ -59,10 +62,12 @@ export class OpenAiConversation {
   private mode: ActorConversation["mode"];
   /** Undefined once the account or model rejected reasoning summaries. */
   private reasoningSummary: OpenAiReasoningSummary | undefined;
+  private readonly evidence: ConversationRecord;
 
   constructor(private readonly settings: OpenAiConversationSettings) {
     this.mode = settings.zeroDataRetention ? "explicit_context" : "threaded";
     this.reasoningSummary = settings.reasoningSummary;
+    this.evidence = new ConversationRecord(settings.zeroDataRetention, settings.now);
   }
 
   /**
@@ -75,6 +80,23 @@ export class OpenAiConversation {
       body: () => (closing ? this.closingBody(req, sent) : this.turnBody(req, sent)),
       accept: (reply) => this.accept(reply, closing, sent),
     };
+  }
+
+  /**
+   * The organization rejected server-side state: carry the conversation on the client from the
+   * request being sent, and record which answer made the switch. False when the conversation is
+   * already carried, so the rejection stands.
+   */
+  switchToExplicitContext(rejection: ZdrRejection): boolean {
+    if (this.mode === "explicit_context") return false;
+    this.evidence.switched(rejection);
+    this.mode = "explicit_context";
+    return true;
+  }
+
+  /** The trace's account of how the conversation was carried (ActorConversation). */
+  record(): ActorConversation {
+    return this.evidence.snapshot(this.mode);
   }
 
   /**
@@ -158,6 +180,7 @@ export class OpenAiConversation {
    * (outputLimitRetry); its actions never run, so no call output is owed for them.
    */
   private accept(reply: unknown, closing: boolean, sent: readonly unknown[]): CuaTurn {
+    if (!closing) this.evidence.requested(this.mode, this.carried, sent);
     const parsed = parseOpenAiResponse(reply);
     if (!closing && parsed.turn.interruption === "output_limit") return parsed.turn;
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
@@ -165,5 +188,66 @@ export class OpenAiConversation {
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
     return parsed.turn;
+  }
+}
+
+/** The trace's account of how a session carried its conversation (ActorConversation). */
+class ConversationRecord {
+  private explicitReason: ActorConversation["explicitReason"];
+  private rejection: ActorConversation["rejection"];
+  private switchedAt: string | undefined;
+  private switchedAtRequest: number | undefined;
+  private summarizedTurns = 0;
+  private readonly requests: ActorConversation["requests"] = [];
+
+  constructor(
+    configured: boolean,
+    private readonly now: () => number,
+  ) {
+    if (configured) this.explicitReason = "configured";
+  }
+
+  /** The organization rejected server-side state, so the request being sent is explicit_context. */
+  switched(rejection: ZdrRejection): void {
+    this.explicitReason = "zdr_rejection";
+    this.rejection = rejection;
+    this.switchedAt = new Date(this.now()).toISOString();
+    // Counted like requests[], which includes replies set aside at their output limit.
+    this.switchedAtRequest = this.requests.length + 1;
+  }
+
+  /** A participant request went out with `sent` after `conversation`. */
+  requested(
+    mode: ActorConversation["mode"],
+    conversation: CarriedConversation,
+    sent: readonly unknown[],
+  ): void {
+    if (mode !== "explicit_context") {
+      this.requests.push({ mode: "threaded" });
+      return;
+    }
+    const carried = conversation.size();
+    // Only summaries a request carried count; the conversation also trims after the last reply.
+    this.summarizedTurns = carried.notedTurns;
+    this.requests.push({
+      mode: "explicit_context",
+      carriedExchanges: carried.exchanges,
+      carriedScreenshots: carried.screenshots,
+      estimatedInputTokens: carried.estimatedTokens + estimateTokens(sent),
+    });
+  }
+
+  snapshot(mode: ActorConversation["mode"]): ActorConversation {
+    return {
+      mode,
+      ...(this.explicitReason === undefined ? {} : { explicitReason: this.explicitReason }),
+      ...(this.rejection === undefined ? {} : { rejection: this.rejection }),
+      ...(this.switchedAt === undefined ? {} : { switchedAt: this.switchedAt }),
+      ...(this.switchedAtRequest === undefined
+        ? {}
+        : { switchedAtRequest: this.switchedAtRequest }),
+      summarizedTurns: this.summarizedTurns,
+      requests: this.requests.map((request) => ({ ...request })),
+    };
   }
 }
