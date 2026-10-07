@@ -287,12 +287,13 @@ describe("bounded study analysis run", () => {
     const sent = JSON.parse(body.input[0].content[0].text);
     expect(sent.participants).toEqual(packet.participants);
     expect(artifact.participants).toEqual(packet.participants);
-    expect(artifact.promptVersion).toBe("study-evidence-7");
+    expect(artifact.promptVersion).toBe("study-evidence-8");
     expect(body.instructions).toContain(
       "every evidenceIds entry must be unique, exist in the packet, and have exactly that participant's streamId",
     );
     expect(body.instructions).toContain("inputsObserved=false means the task was never measured");
     expect(body.instructions).toContain("Null fields are unavailable information");
+    expect(body.instructions).toContain('begin "Impression (kind):"');
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
