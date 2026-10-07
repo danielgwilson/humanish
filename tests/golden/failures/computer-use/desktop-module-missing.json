@@ -328,7 +328,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
-        "summary": "The computer-use run failed before a terminal session verdict: Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
+        "summary": "First time visitor did not finish a session: Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
         "streamIds": [
           "stream-001"
         ],

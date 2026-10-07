@@ -1004,7 +1004,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Participant mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Mobile newcomer used the app and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],
@@ -1021,7 +1021,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Participant small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Small skimmer used the app and reported reaching the goal.",
         "streamIds": [
           "stream-002"
         ],
@@ -1038,7 +1038,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Participant desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Desktop power used the app and reported reaching the goal.",
         "streamIds": [
           "stream-003"
         ],
@@ -1055,7 +1055,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Participant wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Wide researcher used the app and reported reaching the goal.",
         "streamIds": [
           "stream-004"
         ],

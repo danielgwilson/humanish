@@ -793,6 +793,27 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(bundle.review.summary).toContain("4 participants took part");
   });
 
+  it("summarizes each participant by name and how the session ended", async () => {
+    const handle = makeFanoutModule({ measuredChrome: true });
+    const outcome = await runStudyWith(
+      fanoutConfig({ concurrency: 1 }),
+      { cwd, env: FANOUT_ENV },
+      {
+        ...passingSeams(handle, { now: () => 1_000_000 }),
+        analysis: { run: automaticAnalysisBoundary() },
+      },
+    );
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    for (const simulation of bundle.simulations) {
+      expect(simulation.summary).not.toMatch(HARNESS_WORDS);
+    }
+    expect(bundle.simulations[0]?.summary).toContain("Mobile newcomer");
+  });
+
   // createProvider receives each participant's id, 0-based index and the run's participant count,
   // matching the golden plan.
   it("hands createProvider each participant's ref with the golden's values", async () => {

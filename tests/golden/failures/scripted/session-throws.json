@@ -266,7 +266,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "session exploded with [REDACTED_SECRET]",
-        "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+        "summary": "The run failed before the script finished: session exploded with [REDACTED_SECRET]",
         "streamIds": [
           "scripted-desktop-stream"
         ],

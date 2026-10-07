@@ -298,7 +298,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Computer-use actor (openai-computer-use) against http://127.0.0.1:3000/; no session ran.",
+        "summary": "First time visitor would use http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-001"
         ],

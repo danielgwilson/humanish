@@ -417,7 +417,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Reached the goal via getState().",
-        "summary": "Computer-use actor (openai-computer-use) drove the subject app in process, with no desktop; goal_satisfied.",
+        "summary": "Pixel pat used the app in process, with no desktop, and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],

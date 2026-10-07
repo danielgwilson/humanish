@@ -248,7 +248,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the scenario was pinned without launching a browser or touching the subject app.",
-        "summary": "Scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/; no session ran.",
+        "summary": "Scenario scripted-first-run would replay in the desktop browser against http://127.0.0.1:5173/; no browser ran.",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -265,7 +265,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the scenario was pinned without launching a browser or touching the subject app.",
-        "summary": "Scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/; no session ran.",
+        "summary": "Scenario scripted-first-run would replay in the mobile browser against http://127.0.0.1:5173/; no browser ran.",
         "streamIds": [
           "scripted-mobile-stream"
         ],

@@ -7810,4 +7810,37 @@ describe("computer-use captions and summaries", () => {
       expect(bundle.review.summary).toContain("1 participant");
     },
   );
+
+  it("summarizes the participant by name and how the session ended", async () => {
+    const sandbox: FakeSandbox = makeFakeSandbox({
+      commandHandler: measuredChromeDesktop(() => sandbox.screen),
+    });
+    const { module } = makeFakeModule(sandbox);
+    let clock = 0;
+    const outcome = await runStudyWith(
+      cuaConfig(),
+      {
+        cwd: goldenCwd,
+        dryRun: false,
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+      },
+      {
+        analysis: { run: automaticAnalysisBoundary() },
+        desktopModule: async () => module,
+        now: () => (clock += 30_000),
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    );
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.simulations[0]?.summary).not.toMatch(HARNESS_WORDS);
+    expect(bundle.simulations[0]?.summary).toContain("First time visitor");
+  });
 });

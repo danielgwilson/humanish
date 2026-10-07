@@ -283,7 +283,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
-        "summary": "The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+        "summary": "The run failed before the script finished: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
         "streamIds": [
           "scripted-desktop-stream"
         ],

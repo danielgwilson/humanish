@@ -12,11 +12,11 @@ import {
   type ParticipantIds,
 } from "../../run/participant-records.js";
 import { participantCaption } from "../../run/participant-caption.js";
+import { sessionEndingInWords } from "../../run/outcomes.js";
 import type { RunStream } from "../../run/streams.js";
 
 /** What each surface's records read from the bundle arguments. */
 export interface ScriptedSurfaceContext {
-  actorId: string;
   appUrl: string;
   createdAt: string;
   journey: BrowserPersonaJourney;
@@ -74,10 +74,10 @@ export function scriptedSurfaceRecords(
     progress: 100,
     currentStep: reason,
     summary: result
-      ? `Scripted-browser actor (${context.actorId}) replayed ${context.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
+      ? `Scenario ${context.journey.scenarioId} ran in the ${surface.id} browser and ${sessionEndingInWords(result.trace)}.`
       : context.sessionError !== undefined
-        ? `The scripted run failed before a terminal session verdict: ${context.sessionError}`
-        : `Scripted-browser actor (${context.actorId}) against ${context.appUrl}; no session ran.`,
+        ? `The run failed before the script finished: ${context.sessionError}`
+        : `Scenario ${context.journey.scenarioId} would replay in the ${surface.id} browser against ${context.appUrl}; no browser ran.`,
     startedAt: context.createdAt,
     updatedAt: result?.capture.capturedAt ?? context.createdAt,
   });

@@ -453,7 +453,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a browser on a local VM; goal_satisfied.",
+        "summary": "Cua operator used the app in a browser on a local VM, and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],

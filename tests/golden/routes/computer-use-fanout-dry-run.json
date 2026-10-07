@@ -430,7 +430,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Participant mobile-newcomer (first-time-visitor/mobile) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
+        "summary": "Mobile newcomer would use http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -447,7 +447,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Participant small-skimmer (impatient-skimmer/small-mobile) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
+        "summary": "Small skimmer would use http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -464,7 +464,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Participant desktop-power (power-user/desktop) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
+        "summary": "Desktop power would use http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -481,7 +481,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Participant wide-researcher (comparison-shopper/wide) for openai-computer-use against http://127.0.0.1:3000/; no session ran.",
+        "summary": "Wide researcher would use http://127.0.0.1:3000/; no session ran.",
         "streamIds": [
           "stream-004"
         ],

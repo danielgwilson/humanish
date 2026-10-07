@@ -342,7 +342,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "provider exploded mid-session",
-        "summary": "The computer-use run failed before a terminal session verdict: provider exploded mid-session",
+        "summary": "First time visitor did not finish a session: provider exploded mid-session",
         "streamIds": [
           "stream-001"
         ],

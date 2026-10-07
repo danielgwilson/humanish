@@ -467,7 +467,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "summary": "First time visitor used the app in a hosted desktop browser, and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],

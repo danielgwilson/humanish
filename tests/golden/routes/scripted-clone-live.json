@@ -335,7 +335,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
-        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; goal_satisfied.",
+        "summary": "Scenario scripted-first-run ran in the desktop browser and reached the goal.",
         "streamIds": [
           "scripted-desktop-stream"
         ],

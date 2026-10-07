@@ -1581,6 +1581,26 @@ describe("scripted-browser run directory goldens", () => {
     );
   });
 
+  it("summarizes each surface by how its script ended", async () => {
+    await withHttpServer(async (appUrl) => {
+      const outcome = await runStudyWith(
+        scriptedConfig({ appUrl, count: 1, mode: "live" }),
+        { cwd },
+        {
+          analysis: { run: automaticAnalysisBoundary() },
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        },
+      );
+      const runId = outcome.result.runId;
+      if (!runId) throw new Error("the run wrote no bundle");
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      expect(bundle.simulations[0]?.summary).not.toMatch(HARNESS_WORDS);
+      expect(bundle.simulations[0]?.summary).toContain("scripted-first-run");
+    });
+  });
+
   it("captions each surface by its persona and a phone, without the study id", async () => {
     const outcome = await runStudyWith(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
     const runId = outcome.result.runId;

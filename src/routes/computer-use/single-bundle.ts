@@ -23,6 +23,7 @@ import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
   formatRunTaskFunnel,
+  sessionEndingInWords,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import { participantCaption } from "../../run/participant-caption.js";
@@ -137,6 +138,10 @@ type ParticipantView = ReturnType<typeof participantView>;
 
 function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantView): RunSimulation {
   const { publicAppUrl, status, reason } = view;
+  const name = participantCaption({
+    id: args.participantId ?? "lane-01",
+    personaId: args.persona.id,
+  });
   return participantRecord(SINGLE, 1, {
     personaId: args.persona.id,
     scenarioId: `cua-${args.studyId}`,
@@ -146,12 +151,12 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
     progress: args.inProgress === true ? 20 : 100,
     currentStep: reason,
     summary: args.session
-      ? `Computer-use actor (${args.actorId}) drove the subject app ${browserPlace(args)}; ${args.session.completionReason}.`
+      ? `${name} used the app ${browserPlace(args)}, and ${sessionEndingInWords(args.session.trace)}.`
       : args.inProgress === true
-        ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
+        ? `${name} is using the app ${browserPlace(args)}.`
         : args.sessionError !== undefined
-          ? `The computer-use run failed before a terminal session verdict: ${args.sessionError}`
-          : `Computer-use actor (${args.actorId}) against ${publicAppUrl}; no session ran.`,
+          ? `${name} did not finish a session: ${args.sessionError}`
+          : `${name} would use ${publicAppUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });

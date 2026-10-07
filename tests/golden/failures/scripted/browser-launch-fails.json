@@ -360,7 +360,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Scripted browser launch failed: chromium executable missing",
-        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; harness_error.",
+        "summary": "Scenario scripted-first-run ran in the desktop browser and was lost to a harness failure.",
         "streamIds": [
           "scripted-desktop-stream"
         ],
