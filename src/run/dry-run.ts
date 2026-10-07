@@ -28,15 +28,8 @@ import {
 } from "./participant-records.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunInputs } from "./dry-run-inputs.js";
-import {
-  judgeExecution,
-  judgePreview,
-  OUTCOME_POLICIES,
-  resultOk,
-  type Verdict,
-  verdictText,
-} from "./judge.js";
-import { reviewOutcome } from "./display.js";
+import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk, type Verdict } from "./judge.js";
+import { renderReviewMarkdown } from "./review-markdown.js";
 import { cli } from "../cli/invocation.js";
 
 /**
@@ -105,7 +98,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     mode: options.dryRun ? "dry-run" : "live",
     study: options.study,
     warnings: options.warnings,
-    renderReview: renderReviewMarkdown,
+    renderReview: renderPreviewReview,
     // The run starts at the time its id and source were stamped with.
     now: () => Date.parse(createdAt),
     ...(options.observer === undefined ? {} : { observer: { open: options.observer.open } }),
@@ -216,28 +209,17 @@ function createReviewSummary(verdict: Verdict): ReviewSummary {
 }
 
 /** The preview's review.md. */
-function renderReviewMarkdown(bundle: RunBundle): string {
-  return `# humanish Run Review
-
-Run: ${bundle.runId}
-
-Mode: ${bundle.mode}
-
-Verdict: ${verdictText(bundle.review.verdict, bundle.mode)}
-
-Outcome: ${reviewOutcome(bundle)}
-
-${bundle.review.summary}
-
-## Public-Safety
-
-- Redaction: ${bundle.redaction.status}
-- Notes: ${bundle.redaction.notes}
-
-## Gaps
-
-${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
-`;
+function renderPreviewReview(bundle: RunBundle): string {
+  return renderReviewMarkdown(
+    bundle,
+    [
+      "## Public-Safety",
+      "",
+      `- Redaction: ${bundle.redaction.status}`,
+      `- Notes: ${bundle.redaction.notes}`,
+    ],
+    { style: "preview" },
+  );
 }
 
 /**

@@ -1,3 +1,4 @@
+import { judgeParticipantRecords } from "../../run/judge.js";
 // One scripted-browser surface's simulation and stream in the run bundle.
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
@@ -41,15 +42,27 @@ export function scriptedSurfaceRecords(
 ): { simulation: RunSimulation; stream: RunStream } {
   const ids = scriptedSurfaceIds(surface.id);
   const lastScreenshot = screenshots.at(-1);
-  const status = result
-    ? result.status
-    : context.sessionError !== undefined
-      ? ("failed" as const)
-      : ("contract_proof_only" as const);
-  const reason =
-    result?.reason ??
-    context.sessionError ??
-    "Dry run: the scenario was pinned without launching a browser or touching the subject app.";
+  const { status, reason } = judgeParticipantRecords(
+    [
+      {
+        ...(result === undefined
+          ? {}
+          : {
+              status: result.status,
+              completionReason: result.completionReason,
+              reason: result.reason,
+            }),
+        ...(context.sessionError === undefined ? {} : { sessionError: context.sessionError }),
+        skipped: false,
+        noEngagement: false,
+        selfReportedBlocker: false,
+      },
+    ],
+    {
+      contractReason:
+        "Dry run: the scenario was pinned without launching a browser or touching the subject app.",
+    },
+  ).participants[0]!;
 
   const simulation = participantRecord(ids, index + 1, {
     personaId: context.persona.id,
