@@ -8,6 +8,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Participant captions and run summaries are in plain words. A participant is captioned by its roster id in words, plus "phone" or "tablet" when it is not on a desktop ("Lobby host, phone"); a numbered id such as `lane-01` takes the persona's name instead, and the study id is no longer repeated. The Observer and the TUI show the same caption, including for runs an earlier release recorded. Every route's summary says how many participants took part, how many reached the goal and that the gaps list the rest, without "swarm", "plane", "run gate", "credibility checks" or `goal_satisfied`. The taxonomy (`actorType`, `surface`, `caseGroup`), attribution limits, topology and concurrency details stay in the bundle data and in `review.md`'s detail lines.
+
 ### Fixed
 
 - Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
