@@ -1666,6 +1666,10 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
       "2/3 actors reached a terminal, engaged passed session",
     );
 
+    expect(result.roles[1]?.error?.message).toBe(
+      "Participant ended with failed: failed (actor_error)",
+    );
+
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;

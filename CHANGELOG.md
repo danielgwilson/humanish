@@ -8,6 +8,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
+
 ## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
 humanish 0.111.4 scrubs a run's known values from more of its evidence and fixes three messages.

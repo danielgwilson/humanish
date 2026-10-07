@@ -7,6 +7,7 @@ import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../obse
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import {
   foldScorerFailures,
+  judgeParticipantRecords,
   judgeExecution,
   sandboxCleanupFailure,
   OUTCOME_POLICIES,
@@ -15,7 +16,10 @@ import {
   type ExecutionFailure,
 } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import { participantExecutionFailures } from "../computer-use/participant-facts.js";
+import {
+  participantExecutionFailures,
+  participantFactsOf,
+} from "../computer-use/participant-facts.js";
 import { participantCapWarning } from "../computer-use/participant-model.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
@@ -101,15 +105,10 @@ function concurrentParticipantResults(
         : {
             error: {
               code: "HUMANISH_SHARED_WORLD_FAILED" as const,
-              message:
-                result.outcome.sessionError ??
-                (result.outcome.noEngagement
-                  ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-                  : result.outcome.selfReportedBlocker
-                    ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
-                    : session?.completionReason === "harness_error"
-                      ? `Participant ended with a harness error: ${session.reason}`
-                      : "Actor did not produce a terminal session."),
+              message: judgeParticipantRecords([participantFactsOf(result.outcome)], {
+                sessionLabel: "Participant",
+                missingSessionMessage: "Actor did not produce a terminal session.",
+              }).participants[0]!.notPassedMessage,
             },
           }),
     };

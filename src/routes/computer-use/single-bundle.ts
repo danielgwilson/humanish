@@ -1,7 +1,7 @@
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
-import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
+import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -17,16 +17,8 @@ import {
   type RunProviderResource,
   type RunSimulation,
 } from "../../run/bundle.js";
-import {
-  type RunDesktopGeometry,
-  type RunSimulationStatus,
-  type RunStream,
-} from "../../run/streams.js";
-import {
-  aggregateTaskFunnels,
-  tallyParticipantOutcomes,
-  withCuaReviewProvenance,
-} from "../../run/outcomes.js";
+import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
+import { aggregateTaskFunnels, withCuaReviewProvenance } from "../../run/outcomes.js";
 import {
   describeSubjectState,
   phaseEventIdSuffix,
@@ -34,7 +26,7 @@ import {
   subjectProvenanceMessage,
 } from "./bundle-parts.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
-import { participantStatus as participantStatusFor, type Verdict } from "../../run/judge.js";
+import { judgeParticipantRecords, type Verdict } from "../../run/judge.js";
 import { buildRunCostSummary, type DesktopUsage } from "../../run/cost-summary.js";
 import {
   participantEvent,
@@ -85,20 +77,25 @@ function runCost(args: SingleParticipantBundleArgs): ReturnType<typeof buildRunC
 
 /** The participant's status, reason, last frame, geometry and screenshot mode, shared by its records. */
 function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string) {
-  const status: RunSimulationStatus =
-    args.inProgress === true
-      ? "running"
-      : args.session
-        ? args.session.status
-        : args.sessionError !== undefined
-          ? "failed"
-          : "contract_proof_only";
-  const reason =
-    args.inProgress === true
-      ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
-      : (args.session?.reason ??
-        args.sessionError ??
-        "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
+  const judgment = judgeParticipantRecords([
+    {
+      ...(args.session === undefined
+        ? {}
+        : {
+            status: args.session.status,
+            completionReason: args.session.completionReason,
+            reason: args.session.reason,
+          }),
+      ...(args.sessionError === undefined ? {} : { sessionError: args.sessionError }),
+      inProgress: args.inProgress === true,
+      skipped: false,
+      noEngagement: args.credibility?.noEngagement === true,
+      selfReportedBlocker: args.credibility?.selfReportedBlocker === true,
+      reportedFriction: args.credibility?.reportedFriction === true,
+    },
+  ]);
+  const participant = judgment.participants[0]!;
+  const { status, reason } = participant;
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
   const desktopGeometry =
     args.desktopRoute === false
@@ -117,6 +114,8 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
       : (args.captureRedaction ?? "raw");
   return {
     publicAppUrl,
+    participant,
+    tally: judgment.tally,
     status,
     reason,
     lastScreenshot,
@@ -152,12 +151,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
 
 function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView): RunStream {
   const { publicAppUrl, status, reason, lastScreenshot, desktopGeometry, screenshotMode } = view;
-  // The judge's status for a finished session, as the review counts it, so the Observer shows
-  // the participant the way the verdict judged it.
-  const judged =
-    args.session === undefined || args.inProgress === true
-      ? undefined
-      : participantStatusFor(args.session.status, args.credibility);
+  const judged = args.session === undefined ? undefined : view.participant.judgedStatus;
   return participantStream(
     SINGLE,
     {
@@ -332,32 +326,23 @@ function singleReview(
     args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
       ? aggregateTaskFunnels([args.session.trace.taskFunnel])
       : undefined;
-  // What happened to the participant, as the route judged it: the same rule the fan-out roll-up
-  // applies (participantStatus in src/run/judge.ts). Reading the actor's own status instead would write up
-  // a run the route refused as "not a credible pass" as verdict pass, 1/1 reached the goal, and
-  // every projection of the bundle (Observer tally, `runs`, the status index) would repeat it.
-  const participantStatus: ActorStatus | undefined =
-    args.session === undefined
-      ? undefined
-      : participantStatusFor(args.session.status, args.credibility);
   const credibilityNote =
-    args.session === undefined || participantStatus === args.session.status
+    args.inProgress === true || args.session?.status !== "passed"
       ? undefined
       : args.credibility?.noEngagement === true
         ? "Not counted as a pass: the participant took no actions and said nothing."
-        : "Not counted as a pass: the participant's final message described a blocker.";
+        : args.credibility?.selfReportedBlocker === true
+          ? "Not counted as a pass: the participant's final message described a blocker."
+          : undefined;
   const review: ReviewSummary = withCuaReviewProvenance(
     {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
       // One participant is still a study with a denominator of one, and saying so keeps a
       // single-participant result from being read as though it generalized.
-      ...(participantStatus !== undefined && args.inProgress !== true
+      ...(args.session !== undefined && args.inProgress !== true
         ? {
-            participants: tallyParticipantOutcomes(
-              [participantStatus],
-              [args.credibility?.reportedFriction === true],
-            ),
+            participants: view.tally,
           }
         : {}),
       ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),

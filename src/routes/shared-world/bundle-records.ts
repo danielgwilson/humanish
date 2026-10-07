@@ -9,10 +9,9 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
-import { judgedStatus } from "../../run/judge.js";
+import type { judgeParticipantRecords } from "../../run/judge.js";
 import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import { participantFactsOf } from "../computer-use/participant-facts.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantTaxonomyLabel } from "./participant-specs.js";
@@ -21,6 +20,7 @@ import type { ConcurrentBundleArgs } from "./types.js";
 /** What every participant's records share. */
 export interface SharedWorldRecordContext {
   args: ConcurrentBundleArgs;
+  participants: ReturnType<typeof judgeParticipantRecords>["participants"];
   external: boolean;
   inProgress: boolean;
   /** The public-safe plane label: never the raw getHost URL or public origin. */
@@ -31,6 +31,7 @@ export interface SharedWorldRecordContext {
 
 interface ParticipantView {
   taxonomy: string;
+  judgment: SharedWorldRecordContext["participants"][number];
   outcome: ParticipantRunOutcome | undefined;
   session: ParticipantRunOutcome["session"];
   screenshots: string[];
@@ -47,7 +48,7 @@ function participantView(
   spec: DesktopParticipantRun,
   index: number,
 ): ParticipantView {
-  const { args, external, inProgress } = ctx;
+  const { args, external } = ctx;
   const taxonomy = participantTaxonomyLabel(spec.planned.labels);
   const result = args.actorResults[index];
   const outcome = result?.outcome;
@@ -59,19 +60,8 @@ function participantView(
   const route = external
     ? "[external-public-plane]"
     : publicSafeRouteLabel(args.plan.plane.participants[index]?.entry);
-  const status: RunSimulationStatus = session
-    ? session.status
-    : outcome?.sessionError !== undefined
-      ? "failed"
-      : inProgress
-        ? "running"
-        : "contract_proof_only";
-  const reason =
-    session?.reason ??
-    outcome?.sessionError ??
-    (inProgress
-      ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
-      : "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
+  const judgment = ctx.participants[index]!;
+  const { status, reason } = judgment;
   const traceScreenshotMode = session?.trace.redaction.screenshots;
   // Include `declared` on the no-outcome fallback too (dry-run, skipped participant): otherwise an
   // absent `declared` means either "the preset rendered faithfully" or "there was no live
@@ -98,6 +88,7 @@ function participantView(
         : "raw";
   return {
     taxonomy,
+    judgment,
     outcome,
     session,
     screenshots,
@@ -146,9 +137,7 @@ function sharedWorldStream(
 ): RunStream {
   const { args } = ctx;
   const { taxonomy, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
-  // The judge's status for the participant, so the Observer shows it the way the verdict judged it.
-  const judged =
-    view.outcome === undefined ? undefined : judgedStatus(participantFactsOf(view.outcome));
+  const judged = view.judgment.judgedStatus;
   return participantStream(spec, {
     ...(spec.evidenceAssignment === undefined
       ? {}

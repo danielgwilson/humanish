@@ -17,14 +17,13 @@ import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
   formatRunTaskFunnel,
-  tallyParticipantOutcomes,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
 import { providerResourcesForOutcome, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
 import { participantFactsOf } from "./participant-facts.js";
-import { participantPassed, participantStatus } from "../../run/judge.js";
+import { judgeParticipantRecords } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatParticipantPlanEntry } from "./participant-runs.js";
 import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
@@ -52,13 +51,17 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
   return events;
 }
 
-function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSummary {
+function fanoutReview(
+  args: CuaFanoutBundleArgs,
+  streams: RunStream[],
+  judgment: ReturnType<typeof judgeParticipantRecords>,
+): ReviewSummary {
   const { specs, outcomes } = args;
   // The judge's verdict: live fan-out must prove every participant (judgeParticipants).
   const verdict = args.verdict;
 
-  const passedParticipants = (outcomes ?? []).filter((outcome) =>
-    participantPassed(participantFactsOf(outcome)),
+  const passedParticipants = judgment.participants.filter(
+    (participant) => participant.judgedStatus === "passed",
   ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
@@ -66,25 +69,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
     (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
       outcome?.session?.status !== undefined,
   );
-  const participants =
-    terminalOutcomes.length > 0
-      ? tallyParticipantOutcomes(
-          // A no-engagement participant is not one who reached the goal. It said "done" having
-          // taken zero actions and said nothing, and `passedParticipants` above already refuses to
-          // count it, but `reachedGoal` was reading the trace status directly, so one run could be both
-          // "not a passed participant" and "1/1 reached the goal". The headline number a researcher reads
-          // first was the dishonest one. Found by a provider bug that ended a study on turn one.
-          terminalOutcomes.map((outcome) =>
-            participantStatus(outcome.session.status, {
-              noEngagement: outcome.noEngagement === true,
-              selfReportedBlocker: outcome.selfReportedBlocker === true,
-            }),
-          ),
-          // A participant who reached the goal and told you the road there was broken is the most
-          // useful result a study produces; reporting only the outcome would bury it.
-          terminalOutcomes.map((outcome) => outcome.reportedFriction === true),
-        )
-      : undefined;
+  const participants = judgment.tally.total > 0 ? judgment.tally : undefined;
   // The study funnel: per-task completion rates across every session that measured one. This is
   // "where did people get stuck" as data, next to who got stuck (participants) above.
   const participantFunnels = (outcomes ?? [])
@@ -117,22 +102,9 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           ? ["Live fan-out session is still running."]
           : args.dryRun
             ? ["Live fan-out session not yet run (dry run only)."]
-            : specs
-                .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
-                .filter(
-                  ({ outcome }) =>
-                    outcome === undefined ||
-                    outcome.skippedReason !== undefined ||
-                    outcome.sessionError !== undefined ||
-                    outcome.noEngagement ||
-                    outcome.selfReportedBlocker ||
-                    outcome.session === undefined ||
-                    outcome.session.status !== "passed",
-                )
-                .map(
-                  ({ spec, outcome }) =>
-                    `${spec.planned.id}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`,
-                ),
+            : judgment.participants.flatMap((participant) =>
+                participant.gapLine === undefined ? [] : [participant.gapLine],
+              ),
     },
     streams,
   );
@@ -224,6 +196,17 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
   const events = fanoutPlanEvents(args);
+  const judgment = judgeParticipantRecords(
+    specs.map((spec, index) => ({
+      ...participantFactsOf(outcomes?.[index]),
+      id: spec.planned.id,
+      inProgress: args.inProgress === true && outcomes?.[index] === undefined,
+    })),
+    {
+      runningReason:
+        "Live computer-use participant is running; stream auth URL is available only through the attached Observer server.",
+    },
+  );
 
   let eventSeq = 2;
   const nextEventId = (suffix: string): string =>
@@ -240,7 +223,11 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   }
 
   specs.forEach((spec, index) => {
-    const records = fanoutParticipantRecords({ args, nextEventId }, spec, index);
+    const records = fanoutParticipantRecords(
+      { args, nextEventId, participants: judgment.participants },
+      spec,
+      index,
+    );
     simulations.push(records.simulation);
     streams.push(records.stream);
     events.push(...records.events);
@@ -256,7 +243,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     });
   }
 
-  const review = fanoutReview(args, streams);
+  const review = fanoutReview(args, streams, judgment);
 
   const anyRaw = (outcomes ?? []).some(
     (outcome) => outcome.session?.trace.redaction.screenshots === "raw",
