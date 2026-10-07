@@ -6,7 +6,12 @@ import {
   unsetUserKey,
   userKeyStorePath,
 } from "../../keys/key-resolution.js";
-import { askForMissingKeys, formatKeyStatus, keyStatus } from "../../keys/key-status.js";
+import {
+  askForMissingKeys,
+  formatKeyStatus,
+  keyStatus,
+  otherStoredKeys,
+} from "../../keys/key-status.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../study/init.js";
 import {
@@ -234,6 +239,8 @@ interface KeysResult {
   names: string[];
   /** `status`: every provider key, with the source that supplies it or the command that adds it. */
   keys?: Array<{ name: string; use: string; source: string | null; hint?: string }>;
+  /** `status`: names in the user store that humanish does not use. */
+  otherStored?: string[];
   message: string;
 }
 
@@ -265,6 +272,7 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
 /** `humanish keys` and `humanish keys status`: each provider key's source, never a value. */
 async function writeKeyStatus(command: Command, io: CliIo): Promise<void> {
   const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+  const others = otherStoredKeys(process.env);
   const missing = rows.filter((row) => row.source === null).length;
   const result: KeysResult = {
     schema: KEYS_RESULT_SCHEMA,
@@ -278,12 +286,13 @@ async function writeKeyStatus(command: Command, io: CliIo): Promise<void> {
       source,
       ...(source === null ? { hint } : {}),
     })),
+    ...(others.length > 0 ? { otherStored: others } : {}),
     message:
       missing === 0
         ? "Every provider key is set."
         : `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing.`,
   };
-  writeResult(command, io, result, () => formatKeyStatus(rows));
+  writeResult(command, io, result, () => formatKeyStatus(rows, others));
   io.setExitCode(0);
 }
 

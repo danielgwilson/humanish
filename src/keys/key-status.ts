@@ -3,6 +3,7 @@
 
 import { cli } from "../cli/invocation.js";
 import {
+  listUserKeys,
   probeKeySources,
   setUserKey,
   type KeyResolutionDeps,
@@ -42,11 +43,24 @@ export async function keyStatus(args: {
   return probes.map((probe, index) => ({ ...probe, use: STATUS_KEYS[index]!.use }));
 }
 
-export function formatKeyStatus(rows: readonly KeyStatusRow[]): string {
+/** Names in the user store that the status does not list, such as ANTHROPIC_API_KEY. */
+export function otherStoredKeys(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): string[] {
+  const listed = new Set<string>(STATUS_KEYS.map((key) => key.name));
+  return listUserKeys(env, deps).filter((name) => !listed.has(name));
+}
+
+export function formatKeyStatus(
+  rows: readonly KeyStatusRow[],
+  otherStored: readonly string[] = [],
+): string {
   const lines = rows.map(
     (row) =>
       `${row.name} (${row.use}): ${row.source === null ? `missing; ${row.hint}` : `set, from ${row.source}`}`,
   );
+  if (otherStored.length > 0)
+    lines.push(
+      `Also in the user store: ${otherStored.join(", ")}. humanish does not use ${otherStored.length === 1 ? "it" : "them"} today.`,
+    );
   const missing = rows.some((row) => row.source === null);
   lines.push(
     "",

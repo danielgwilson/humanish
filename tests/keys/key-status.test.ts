@@ -4,7 +4,12 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { askForMissingKeys, formatKeyStatus, keyStatus } from "../../src/keys/key-status.js";
+import {
+  askForMissingKeys,
+  formatKeyStatus,
+  keyStatus,
+  otherStoredKeys,
+} from "../../src/keys/key-status.js";
 
 describe("humanish keys status", () => {
   let cwd: string;
@@ -49,6 +54,19 @@ describe("humanish keys status", () => {
     expect(text).toContain("~/.config/humanish/keys.env");
     expect(text).toContain("humanish keys set github");
     expect(text).toContain("humanish keys set agentmail");
+    expect(text).not.toContain("synthetic-");
+  });
+
+  it("names a stored key humanish does not use, so it does not look lost", async () => {
+    await mkdir(path.join(home, ".config", "humanish"), { recursive: true });
+    await writeFile(
+      path.join(home, ".config", "humanish", "keys.env"),
+      "OPENAI_API_KEY=synthetic-openai-value\nANTHROPIC_API_KEY=synthetic-anthropic-value\n",
+    );
+    const others = otherStoredKeys({}, deps());
+    expect(others).toEqual(["ANTHROPIC_API_KEY"]);
+    const text = formatKeyStatus(await keyStatus({ cwd, env: {}, deps: deps() }), others);
+    expect(text).toContain("ANTHROPIC_API_KEY");
     expect(text).not.toContain("synthetic-");
   });
 
