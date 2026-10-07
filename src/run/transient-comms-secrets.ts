@@ -101,14 +101,15 @@ const markers = (text: string): number => text.split(REDACTED).length - 1;
 /**
  * A scrub for text a model writes: each scope value as written and in its encoded forms
  * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Text that
- * holds a value is returned decoded with each value replaced. Text without one keeps its original
- * spelling and gets the literal scrub, so an exact quote that holds an escape still matches its
- * evidence. Outside a scope it changes nothing.
+ * holds an encoded value is returned decoded with each value replaced. Text without one keeps its
+ * original spelling, so an exact quote that holds an escape still matches its evidence. Either way
+ * the literal scrub runs last, because the encoded scrub leaves text inside marker-shaped spans
+ * alone and a model can write a value there. Outside a scope it changes nothing.
  */
 export function transientCommsKnownValueScrub(): (text: string) => string {
   const encoded = transientCommsEncodedScrub();
   return (text) => {
     const found = encoded(text);
-    return markers(found) > markers(decodeEscapes(text)) ? found : scrubTransientCommsText(text);
+    return scrubTransientCommsText(markers(found) > markers(decodeEscapes(text)) ? found : text);
   };
 }

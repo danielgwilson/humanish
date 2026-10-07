@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
+  transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 
@@ -83,6 +84,19 @@ describe("transient run narration secrets", () => {
       expect(() => scrubTransientCommsText("earlier-canary")).toThrow(
         /^TRANSIENT_NARRATION_SECRET_LIMIT$/,
       );
+    });
+  });
+
+  it("removes a literal value even when the text also holds an encoded one", async () => {
+    const code = "743921";
+    const hex = Buffer.from(code).toString("hex");
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([code]);
+      const scrub = transientCommsKnownValueScrub();
+      for (const text of [`${code} [REDACTED_${code}]`, `${hex} then ${code}`]) {
+        expect(scrub(text)).not.toContain(code);
+        expect(scrub(text)).toContain("[REDACTED_SECRET]");
+      }
     });
   });
 });
