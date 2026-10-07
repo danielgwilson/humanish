@@ -108,31 +108,84 @@ describe("humanish export", () => {
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 
+  const notesFile = (text: string) => ({
+    schema: "humanish.run-notes.v1",
+    runId: RUN,
+    notes: [
+      {
+        id: "note-export",
+        atMs: 1000,
+        participant: null,
+        nearest: null,
+        text,
+        author: "you",
+        createdAt: "2026-05-01T10:00:00.000Z",
+        editedAt: null,
+      },
+    ],
+  });
+  const notesSlot = (html: string): unknown =>
+    JSON.parse(
+      /<script id="run-notes" type="application\/json">([\s\S]*?)<\/script>/.exec(html)?.[1] ??
+        "null",
+    );
+  // Concatenated so this file never holds a secret-shaped literal.
+  const secret = "sk-" + "syntheticvalue1234567890abcdef";
+
   it("carries the run's reviewer notes read-only", async () => {
-    const notes = {
-      schema: "humanish.run-notes.v1",
-      runId: RUN,
-      notes: [
-        {
-          id: "note-export",
-          atMs: 1000,
-          participant: null,
-          nearest: null,
-          text: "Exported note.",
-          author: "you",
-          createdAt: "2026-05-01T10:00:00.000Z",
-          editedAt: null,
-        },
-      ],
-    };
+    const notes = notesFile("Exported note.");
     await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notes));
 
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
 
     const html = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="run-notes" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
-    expect(JSON.parse(slot?.[1] ?? "null")).toEqual({ notes, write: null });
+    expect(notesSlot(html)).toEqual({ notes, write: null });
+  });
+
+  // The verify stand-in answers share_ready as a verify that ran before notes.json changed would.
+  it("refuses notes that look like a secret when they are read for the export, after verify", async () => {
+    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notesFile(`Key ${secret}`)));
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED" },
+      shareSafety: { status: "blocked", reasons: [{ code: "PUBLIC_SAFETY_FINDINGS" }] },
+    });
+    await expect(readFile(path.join(cwd, ".humanish", "exports", `${RUN}.html`))).rejects.toThrow(
+      /ENOENT/,
+    );
+  });
+
+  it("marks a local-only export whose notes look like a secret, with the notes it checked", async () => {
+    const notes = notesFile(`Key ${secret}`);
+    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notes));
+
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { localOnly: true },
+      { verify: verified("share_ready") },
+    );
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(result).toMatchObject({ watermarked: true, shareSafety: { status: "blocked" } });
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(html).toContain("humanish-local-only");
+    expect(notesSlot(html)).toEqual({ notes, write: null });
+  });
+
+  it("exports no notes from a notes.json it cannot read and says so", async () => {
+    await writeFile(path.join(runDir, "notes.json"), Buffer.alloc(9 * 1024 * 1024, 0x20));
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(notesSlot(html)).toEqual({ notes: null, write: null });
+    expect(result.warnings.some((warning) => warning.includes("notes.json"))).toBe(true);
   });
 
   it("renders old recordings with the current packaged UI without changing the source", async () => {

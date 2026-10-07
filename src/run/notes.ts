@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { ActorTraceItem } from "../actors/contract.js";
+import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
 import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
@@ -214,6 +215,35 @@ export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<
   const parsed = read.state === "read" ? decodeRunNotes(read.bytes, runIdOf(prepared)) : null;
   if (parsed === null) throw new Error("HUMANISH_NOTES_UNREADABLE");
   return parsed;
+}
+
+/** What verify's text scan finds in shared notes: a secret-shaped value, or text it cannot read. */
+type NotesFinding = "sensitive" | "opaque";
+
+/**
+ * The run's notes as a caller is about to share them, read once within the size limit, with what
+ * verify's text scan finds in that snapshot as it would be shared. The caller shares this snapshot
+ * only, so a notes.json changed after verify ran cannot go out unchecked. `unreadable`: there is a
+ * notes.json and it cannot be read; `notes` is then null.
+ */
+export async function readNotesForSharing(prepared: PreparedRunArtifactPaths): Promise<{
+  notes: RunNotes | null;
+  unreadable: boolean;
+  finding: NotesFinding | null;
+}> {
+  let notes: RunNotes | null;
+  try {
+    notes = await readRunNotes(prepared);
+  } catch {
+    return { notes: null, unreadable: true, finding: null };
+  }
+  if (notes === null) return { notes, unreadable: false, finding: null };
+  const scan = scanEncodedTextCached(JSON.stringify(notes));
+  return {
+    notes,
+    unreadable: false,
+    finding: scan.sensitive ? "sensitive" : scan.opaque ? "opaque" : null,
+  };
 }
 
 /** The run's notes for a page or a draft: null when it has none or they cannot be read. */

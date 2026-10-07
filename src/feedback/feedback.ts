@@ -18,7 +18,8 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
-import { readableRunNotes } from "../run/notes.js";
+import { readNotesForSharing } from "../run/notes.js";
+import { cli } from "../cli/invocation.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import {
   buildAnalysisDraft,
@@ -173,6 +174,15 @@ async function draftFeedbackBound(
     };
   }
 
+  // The notes the draft includes are this snapshot, checked here: notes.json can change after
+  // verify read it.
+  const shared = await readNotesForSharing(context.preparedRunPaths);
+  if (shared.finding !== null)
+    return {
+      context,
+      result: notesRefusal(cwd, runInput, context.storedRunId, verified, shared.finding),
+    };
+
   const candidates = summarizeCandidates(context.loaded.bundle);
   if (
     options.candidate !== undefined &&
@@ -202,12 +212,7 @@ async function draftFeedbackBound(
     ? await buildAnalysisDraft(context, options)
     : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
   const draft =
-    built &&
-    withReviewerNotes(
-      built,
-      await readableRunNotes(context.preparedRunPaths),
-      path.dirname(context.loaded.bundlePath),
-    );
+    built && withReviewerNotes(built, shared.notes, path.dirname(context.loaded.bundlePath));
   if (!draft)
     return {
       context,
@@ -236,6 +241,43 @@ async function draftFeedbackBound(
       draftPath,
       draft,
       candidates,
+    },
+  };
+}
+
+/** The refusal of a draft whose reviewer notes, as read for it, hold what verify's scan flags. */
+function notesRefusal(
+  cwd: string,
+  runInput: string,
+  runId: string,
+  verified: VerifyResult,
+  finding: "sensitive" | "opaque",
+): FeedbackResult {
+  return {
+    schema: FEEDBACK_RESULT_SCHEMA,
+    ok: false,
+    cwd,
+    run: runInput,
+    shareSafety: {
+      status: "blocked",
+      reasons: [
+        ...verified.shareSafety.reasons,
+        finding === "sensitive"
+          ? {
+              code: "PUBLIC_SAFETY_FINDINGS",
+              message:
+                "The reviewer notes the draft would include match secret, token or local-path patterns.",
+            }
+          : {
+              code: "UNSCANNED_ARTIFACT",
+              message:
+                "The reviewer notes the draft would include hold encoded text the scan cannot read.",
+            },
+      ],
+    },
+    error: {
+      code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
+      message: `The run's reviewer notes hold text that looks like a secret, a token or a local path, so no draft was written. Run \`${cli(`verify --run ${runId}`)}\` and fix notes.json.`,
     },
   };
 }
