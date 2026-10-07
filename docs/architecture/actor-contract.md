@@ -350,10 +350,14 @@ this paragraph is the record of that decision.
 
 `ComputerUseProvider.debrief` is an optional read-only request after a structured
 `stopWhen` or dwell stop. It returns a `ComputerUseTurn` with `closingReport` containing
-`summary` and `frictionReports`; an empty friction list is valid. The loop rejects
+`summary`, `frictionReports` and `impressions`; an empty friction or impressions list is valid,
+and a report without `impressions` (an older provider) is still accepted. The loop rejects
 actions, pending safety checks, and invalid report shapes. It redacts accepted
 reports, records them in `ActorTrace.debrief`, and projects one readable message
-without invoking action or communication callbacks.
+without invoking action or communication callbacks. Each impression becomes its own message
+and goes to `ActorTrace.impressions`; a session without them records why in the same field.
+A turn that ends the session itself may carry `closingReport` too, and the loop keeps its
+impressions the same way without a second request.
 
 This request uses the final observation and retained provider history. It does
 not expose the hidden stop criterion or change the original task outcome. It is

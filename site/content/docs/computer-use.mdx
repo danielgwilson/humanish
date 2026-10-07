@@ -256,7 +256,11 @@ model budgets; an in-flight request can cross a threshold.
 The trace's `debrief` records `completed`, `skipped`, or `failed`, a reason, and
 usage availability. An accepted typed report contains `summary` and
 `frictionReports`. An empty friction list means the participant reported none;
-a missing or failed report does not. The report preserves the original stop
+a missing or failed report does not. The same request asks for up to six
+impressions: what looked unclear, unfinished or untrustworthy, what the
+participant liked or missed, and where the screen differs from how the persona
+does the same task in its own work or life. The trace's `impressions` holds
+them, or says why none were collected. The report preserves the original stop
 reason and task outcomes. Natural endings and budget/error exits do not request
 this extra report. See [reading outcomes](/docs/read-results#separate-a-finding-from-a-broken-run).
 

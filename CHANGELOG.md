@@ -25,6 +25,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   opens it; `review` and `analyze show` print them after the findings, and `review --json` carries
   them as `analysis.designFindings`. The analysis prompt is now `study-evidence-7`. Analyses
   written before it keep showing their findings by title, with no design section.
+- Computer-use participants now give impressions at the end of a session: up to six first-person
+  notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
+  and did not find, and where the screen differs from how their persona does the same task in
+  their own work or life. The OpenAI closing report and the Codex participant's final account
+  ask for them. The trace's `impressions` keeps them, each recorded as a message the analysis can
+  quote and cite, or says why none were collected, for example when an OpenAI or Claude
+  participant ends the session itself. The Observer shows them under "What they said at the end",
+  grouped by kind. An analysis can cite an impression as a participant statement, and an
+  impression with a capture of that screen as a design finding. A feedback draft for a finding
+  that cites one quotes it. The analysis prompt is now `study-evidence-8`.
 
 ### Changed
 
