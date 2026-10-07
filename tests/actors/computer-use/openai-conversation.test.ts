@@ -210,3 +210,59 @@ describe("a closing report", () => {
     expect(carried.serverHoldsSession).toBe(false);
   });
 });
+
+describe("an impressions request", () => {
+  it.each([true, false])(
+    "carries and records the next turn's context after a long session with explicit context %s",
+    (explicit) => {
+      const conversation = start(explicit);
+      const continued = start(explicit);
+      const req = turnRequest(screen(1920, 1080));
+      for (let n = 1; n <= 30; n += 1) {
+        const response = reply(n);
+        if (n === 30) response.output = (response.output as unknown[]).slice(0, 1);
+        for (const session of [conversation, continued]) {
+          session.request(req).accept(response);
+        }
+      }
+
+      const next = { ...req, contextHint: "Return only impressions." };
+      const impressions = conversation.request(next, "impressions");
+      const turn = continued.request(next);
+      const body = impressions.body() as unknown as Body;
+      expect(body.input).toEqual(turn.body().input);
+      expect(impressions.body()).toMatchObject({
+        ...turn.body(),
+        tool_choice: "none",
+        max_output_tokens: 3072,
+        text: { format: { name: "participant_impressions" } },
+      });
+      if (explicit) {
+        expect(body.previous_response_id).toBeUndefined();
+        expect(body.store).toBe(false);
+        expect(JSON.stringify(body.input)).toContain("turn-1 said");
+        expect(JSON.stringify(body.input)).toContain("turn-30 said");
+      } else {
+        expect(body.previous_response_id).toBe("resp_30");
+      }
+
+      const response = { id: "resp_impressions", status: "completed", output: [] };
+      turn.accept(response);
+      impressions.accept(response);
+      const record = conversation.record();
+      expect(record.requests).toHaveLength(31);
+      expect(record.requests.slice(0, 30)).toEqual(continued.record().requests.slice(0, 30));
+      expect(record.requests[30]).toEqual({
+        ...continued.record().requests[30],
+        kind: "impressions",
+      });
+      expect(record.summarizedTurns).toBe(continued.record().summarizedTurns);
+      if (explicit) {
+        expect(record.summarizedTurns).toBeGreaterThan(0);
+        expect(record.requests[30]!.carriedExchanges).toBeGreaterThan(2);
+        expect(record.requests[30]!.carriedScreenshots).toBeGreaterThan(0);
+        expect(record.requests[30]!.estimatedInputTokens).toBeLessThan(CONTEXT_TOKEN_BUDGET);
+      }
+    },
+  );
+});

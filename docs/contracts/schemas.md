@@ -1008,9 +1008,12 @@ Core-owned fields:
   `cacheWriteInput`. `summarizedTurns` counts the earlier exchanges the latest
   `explicit_context` request no longer carried whole: lines of the note, or
   only counted once the note reached its cap.
-  `requests[]` has one entry per participant request: its `mode` and, in
+  `requests[]` has one entry per participant turn or impressions request: its `mode` and, in
   `explicit_context`, `carriedExchanges`, `carriedScreenshots` and
-  `estimatedInputTokens`. Billed input per request is in `tokenUsage.turns`. A
+  `estimatedInputTokens`. The impressions-only request has `kind: impressions`;
+  the optional `kind` field is absent on participant turns and in older bundles.
+  Impressions carry the context the next turn would carry, with the same budget
+  and summarization of older turns. Billed input per request is in `tokenUsage.turns`. A
   participant that ran in `explicit_context` gets a run warning. Absent on other
   providers and on earlier bundles
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which kind of route this

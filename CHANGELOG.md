@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+OpenAI computer-use traces now list the impressions-only request in `conversation.requests`,
+marked with `kind: impressions`. In explicit-context mode its record includes the carried
+exchanges, screenshots and estimated input tokens, using the same context budget and summaries
+as a participant turn.
+
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
 humanish 0.113.0 asks computer-use participants what they thought at the end of a session, warns
