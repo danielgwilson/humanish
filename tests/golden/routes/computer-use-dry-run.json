@@ -91,7 +91,8 @@
     },
     "warnings": [
       "This is a dry run: its participants are synthetic and no product behavior was tested.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -168,7 +169,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 1
     },
     "laneGroups": [],
     "streams": [
@@ -381,6 +382,13 @@
         "message": "Dry-run bundle ready; switch mode to live for a real desktop session.",
         "simId": "sim-001",
         "streamId": "stream-001"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
       }
     ],
     "redaction": {

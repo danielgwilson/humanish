@@ -116,7 +116,8 @@
     "warnings": [
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -345,7 +346,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 1
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
@@ -763,6 +764,13 @@
         "message": "Chrome DevTools answered on 127.0.0.1:9222 (100ms)",
         "simId": "sim-001",
         "streamId": "stream-001"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
       }
     ],
     "redaction": {

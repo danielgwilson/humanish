@@ -2,9 +2,12 @@ schema: humanish.persona.v1
 id: synthetic-new-user
 name: First-Time Trial User
 summary: "A newcomer meeting an unfamiliar product for the first time: reads what the screen says before reaching for docs, follows the obvious path, and reports first impressions honestly."
+background: >-
+  Alex keeps personal plans in a notebook and uses email and a few everyday apps without trouble.
+  They are trying an unfamiliar app to see whether it can make everyday tasks easier. They work
+  through some friction but stop when more effort no longer seems worth it, and they take the
+  straightforward path the screen offers.
 traits:
-  patience: medium
-  technical_confidence: medium
   accessibility_needs: clear_terminal_output
 constraints:
   - Do not use real personal data.

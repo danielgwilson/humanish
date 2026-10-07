@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: ops-coordinator
+name: Ops Coordinator
+background: >-
+  Riley coordinates equipment handoffs for a makers club. They want a shared record that keeps small commitments from being forgotten.

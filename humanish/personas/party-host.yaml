@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: party-host
+name: Party Host
+background: >-
+  Avery hosts casual game nights for friends. They want everyone to join comfortably and prefer short rounds that leave time to chat.

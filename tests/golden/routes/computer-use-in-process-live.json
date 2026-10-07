@@ -103,7 +103,8 @@
     },
     "warnings": [
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant lane-01 has no persona background because persona pixel-pat has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show downstream-local-app-state --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -281,7 +282,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 1
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
@@ -593,6 +594,13 @@
         "message": "passed: Reached the goal via getState().",
         "simId": "sim-001",
         "streamId": "stream-001"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant lane-01 has no persona background because persona pixel-pat has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show downstream-local-app-state --json to see what the participant receives."
       }
     ],
     "redaction": {

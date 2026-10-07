@@ -1,3 +1,4 @@
+import { personaBackgroundWarnings } from "./warnings.js";
 import { studyPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
 import { personaBrief, PersonaConfigError } from "./persona.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
@@ -317,7 +318,11 @@ export async function inspectStudyManifest(
     config: resolved.config,
     origin: resolved.origin,
     path: resolved.path,
-    warnings: [...resolved.warnings, ...personaResolution.warnings],
+    warnings: [
+      ...resolved.warnings,
+      ...personaResolution.warnings,
+      ...personaBackgroundWarnings(resolved.config, personaResolution.personas),
+    ],
   };
 }
 

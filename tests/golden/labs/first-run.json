@@ -35,7 +35,7 @@
     "id": "synthetic-new-user",
     "name": "First-Time Trial User",
     "source": "humanish/personas/synthetic-new-user.yaml",
-    "sourceDigest": "3a75b4a3cfca"
+    "sourceDigest": "c2a0b77b29b1"
   },
   "scenario": {
     "id": "first-run-smoke",

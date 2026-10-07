@@ -251,7 +251,11 @@
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant mobile-newcomer has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant small-skimmer has no persona background because persona impatient-skimmer has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant desktop-power has no persona background because persona power-user has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant wide-researcher has no persona background because persona comparison-shopper has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -915,7 +919,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 4
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
@@ -2205,6 +2209,34 @@
         "message": "Participant wide-researcher: Chrome DevTools answered on 127.0.0.1:9222 (100ms)",
         "simId": "sim-004",
         "streamId": "stream-004"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant mobile-newcomer has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-002",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant small-skimmer has no persona background because persona impatient-skimmer has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-003",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant desktop-power has no persona background because persona power-user has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-004",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant wide-researcher has no persona background because persona comparison-shopper has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
       }
     ],
     "redaction": {
