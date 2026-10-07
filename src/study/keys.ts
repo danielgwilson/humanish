@@ -138,7 +138,9 @@ export const EXECUTION = {
   timeoutMs: true,
   completionTimeoutMs: true,
   egressAllow: true,
-  terminal: { stdin: true, transport: true } satisfies Keys<Field<Execution, "terminal">>,
+  terminal: { stdin: true, transport: true, doNotTrack: true } satisfies Keys<
+    Field<Execution, "terminal">
+  >,
   desktop: {
     template: true,
     browser: true,

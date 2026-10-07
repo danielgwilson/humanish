@@ -99,6 +99,7 @@ export async function runLiveTerminalSession(
   });
   const { version, model, modelSource, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
+    doNotTrack: plan.runtime.doNotTrack,
     ...(version === undefined ? {} : { version }),
     model: sanitize(model),
     modelSource,

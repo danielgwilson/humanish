@@ -425,6 +425,8 @@ export interface StudyExecutionTerminal {
   transport?: StudyTerminalTransport;
   /** Operator stdin posture. Default "disabled". */
   stdin?: StudyTerminalStdin;
+  /** Send DO_NOT_TRACK=1 to participant commands by default; false leaves it unset. */
+  doNotTrack?: boolean;
 }
 
 /**

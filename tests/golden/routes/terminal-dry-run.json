@@ -337,7 +337,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.runtime.declared",
-        "message": "{\"schema\":\"humanish.actor-runtime.v1\",\"package\":\"@openai/codex\",\"requestedVersion\":\"latest\",\"versionStatus\":\"unobserved\",\"requestedModel\":\"gpt-5.6-sol\",\"modelStatus\":\"humanish_default\",\"usageGranularity\":\"runtime_turn\"}"
+        "message": "{\"schema\":\"humanish.actor-runtime.v1\",\"package\":\"@openai/codex\",\"doNotTrack\":true,\"requestedVersion\":\"latest\",\"versionStatus\":\"unobserved\",\"requestedModel\":\"gpt-5.6-sol\",\"modelStatus\":\"humanish_default\",\"usageGranularity\":\"runtime_turn\"}"
       }
     ],
     "redaction": {
