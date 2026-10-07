@@ -40,7 +40,7 @@ humanish [options] [command]
 - [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
 - [humanish reclaim](#humanish-reclaim): Stop or check an interrupted run's sandboxes.
-- [humanish keys](#humanish-keys): Store and manage your provider keys.
+- [humanish keys](#humanish-keys): Check and store your provider keys.
 - [humanish telemetry](#humanish-telemetry): Show or change anonymous usage collection.
 - [humanish tui](#humanish-tui): Browse studies and runs in a terminal UI for people.
 
@@ -715,7 +715,7 @@ humanish reclaim [options]
 
 ## humanish keys
 
-Manage the humanish user-level key store used by provider-key discovery.
+Show which provider keys are set and where each comes from, and manage the humanish user key store that provider-key discovery reads.
 
 ```text
 humanish keys [options] [command]
@@ -725,17 +725,30 @@ humanish keys [options] [command]
 | --- | --- |
 | `-h, --help` | Show help for this command. |
 
-### humanish keys set
+### humanish keys status
 
-Store one provider key in the user store (0600), prompted with hidden input.
+Show each provider key humanish uses: where it comes from, or the command that adds it. Values are never printed.
 
 ```text
-humanish keys set [options] <vendor-or-name>
+humanish keys status [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish keys set
+
+Store one provider key in the user store (0600), prompted with hidden input. With no key named, ask for each missing key in turn.
+
+```text
+humanish keys set [options] [vendor-or-name]
 ```
 
 | Argument | Description |
 | --- | --- |
-| `vendor-or-name` | A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. |
+| `vendor-or-name` | A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn. |
 
 | Option | Description |
 | --- | --- |

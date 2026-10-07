@@ -330,7 +330,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
     .description(
-      "Show which provider keys are set and where each comes from, and manage the humanish user-level key store used by provider-key discovery.",
+      "Show which provider keys are set and where each comes from, and manage the humanish user key store that provider-key discovery reads.",
     )
     .summary("Check and store your provider keys.");
 
@@ -370,7 +370,9 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
       "[vendor-or-name]",
       "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn.",
     )
-    .description("Store one provider key in the user store (0600), prompted with hidden input.")
+    .description(
+      "Store one provider key in the user store (0600), prompted with hidden input. With no key named, ask for each missing key in turn.",
+    )
     .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
