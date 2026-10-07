@@ -1780,6 +1780,33 @@ describe("provider-key discovery at the CLI seam", () => {
     expect(envelope.action).toBe("list");
     expect(Array.isArray(envelope.names)).toBe(true);
   });
+
+  it("`humanish keys` with no subcommand reports each provider key instead of usage", async () => {
+    // Strict keys: only process env is read, so the result does not depend on this machine's stores.
+    const saved = process.env.HUMANISH_STRICT_KEYS;
+    process.env.HUMANISH_STRICT_KEYS = "1";
+    try {
+      const json = await runCli(["keys", "--json"]);
+      const envelope = JSON.parse(json.stdout) as {
+        action: string;
+        keys: Array<{ name: string; source: string | null }>;
+      };
+      expect(envelope.action).toBe("status");
+      expect(envelope.keys.map((key) => key.name)).toEqual([
+        "E2B_API_KEY",
+        "OPENAI_API_KEY",
+        "GH_TOKEN",
+        "AGENTMAIL_API_KEY",
+      ]);
+      const human = await runCli(["keys"]);
+      expect(human.exitCode).toBe(0);
+      expect(human.stdout).toMatch(/^AGENTMAIL_API_KEY .*: (missing|set)/m);
+      expect(human.stdout).not.toContain("Usage:");
+    } finally {
+      if (saved === undefined) delete process.env.HUMANISH_STRICT_KEYS;
+      else process.env.HUMANISH_STRICT_KEYS = saved;
+    }
+  });
 });
 
 describe("study provenance survives the whole CLI path", () => {

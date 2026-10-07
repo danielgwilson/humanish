@@ -6,6 +6,7 @@ import {
   unsetUserKey,
   userKeyStorePath,
 } from "../../keys/key-resolution.js";
+import { formatKeyStatus, keyStatus } from "../../keys/key-status.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../study/init.js";
 import {
@@ -225,11 +226,14 @@ const KEYS_RESULT_SCHEMA = "humanish.keys-result.v1";
 interface KeysResult {
   schema: typeof KEYS_RESULT_SCHEMA;
   ok: boolean;
-  action: "set" | "unset" | "list";
+  action: "status" | "set" | "unset" | "list";
   /** The user store path (with values never included anywhere in this envelope). */
   store: string;
-  /** `list`: the names present in the store. `set`/`unset`: the affected name. */
+  /** `list`: the names present in the store. `set`/`unset`: the affected names. `status`: the
+   *  names that are set. */
   names: string[];
+  /** `status`: every provider key, with the source that supplies it or the command that adds it. */
+  keys?: Array<{ name: string; use: string; source: string | null; hint?: string }>;
   message: string;
 }
 
@@ -261,8 +265,40 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
 export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
-    .description("Manage the humanish user-level key store used by provider-key discovery.")
-    .summary("Store and manage your provider keys.");
+    .description(
+      "Show which provider keys are set and where each comes from, and manage the humanish user-level key store used by provider-key discovery.",
+    )
+    .summary("Check and store your provider keys.");
+
+  keys
+    .command("status", { isDefault: true })
+    .description(
+      "Show each provider key humanish uses: where it comes from, or the command that adds it. Values are never printed.",
+    )
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (_options: { json?: boolean }, command) => {
+      const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+      const missing = rows.filter((row) => row.source === null).length;
+      const result: KeysResult = {
+        schema: KEYS_RESULT_SCHEMA,
+        ok: true,
+        action: "status",
+        store: userKeyStorePath(process.env),
+        names: rows.filter((row) => row.source !== null).map((row) => row.name),
+        keys: rows.map(({ name, use, source, hint }) => ({
+          name,
+          use,
+          source,
+          ...(source === null ? { hint } : {}),
+        })),
+        message:
+          missing === 0
+            ? "Every provider key is set."
+            : `${plural(missing, "provider key")} missing.`,
+      };
+      writeResult(command, io, result, () => formatKeyStatus(rows));
+      io.setExitCode(0);
+    });
 
   keys
     .command("set")
