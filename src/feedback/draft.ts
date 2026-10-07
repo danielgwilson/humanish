@@ -6,6 +6,8 @@ import path from "node:path";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { hashAnalysisValue } from "../analysis/validation.js";
+import type { ParticipantImpression } from "../actors/contract.js";
+import type { AnalysisEvidence } from "../analysis/types.js";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {
   formatParticipantOutcomes,
@@ -239,6 +241,10 @@ export async function buildAnalysisDraft(
         (item) =>
           `${item.basis}: ${item.claim}${item.limitation ? ` Limitation: ${item.limitation}` : ""}`,
       ),
+      ...citedImpressions(bundle, evidence).map(
+        ({ streamId, kind, text }) =>
+          `Participant ${streamId} said at the end (${kind.replaceAll("_", " ")}): ${text}`,
+      ),
       `Next check: ${finding.nextStep}`,
       correction
         ? `Human review: ${correction.status}. ${correction.reason}`
@@ -291,6 +297,28 @@ export async function buildAnalysisDraft(
       feedbackProofCommands(bundle.runId).observe,
     ],
   };
+}
+
+/**
+ * The participant impressions among a finding's cited evidence. Only an impression whose text the
+ * cited entry carries whole is quoted, so the draft repeats nothing the analysis share check did
+ * not read.
+ */
+function citedImpressions(
+  bundle: RunBundle,
+  evidence: readonly AnalysisEvidence[],
+): Array<ParticipantImpression & { streamId: string }> {
+  return evidence.flatMap((item) => {
+    const impressions = bundle.streams.find((stream) => stream.id === item.streamId)?.actor
+      ?.impressions;
+    const impression =
+      impressions?.status === "collected"
+        ? impressions.items.find((entry) => entry.messageId === item.eventId)
+        : undefined;
+    return impression === undefined || !item.text.includes(impression.text)
+      ? []
+      : [{ streamId: item.streamId, kind: impression.kind, text: impression.text }];
+  });
 }
 
 export function isUsableFeedbackCandidate(candidate: unknown): candidate is RunFeedbackCandidate {
