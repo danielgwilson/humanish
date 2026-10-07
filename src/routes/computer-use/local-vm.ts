@@ -19,7 +19,8 @@ import {
   localBrowserUnsupportedReason,
 } from "../../substrates/local/runtime-config.js";
 import { localRuntimeCapacity, prepareLocalRuntime } from "../../substrates/local/runtime.js";
-import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
+import { dockerCommandLine, usesLima } from "../../substrates/local/runtime-host.js";
+import { outOfMemoryMessage } from "../../substrates/local/capacity.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { withCloseReport } from "./participant-model.js";
@@ -172,6 +173,11 @@ function createLocalParticipantDesktop(
               "Desktop video/audio recording could not be retained. Screenshots and participant evidence remain available.",
             );
           }
+        }
+        // Asked before close, which removes the container; the answer comes from Docker's events.
+        if ((await session.killedForMemory?.()) === true) {
+          evidence.failureCode = "HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY";
+          evidence.desktopFailure = outOfMemoryMessage(usesLima() ? "lima-vm" : "linux-host");
         }
         try {
           evidence.released = (await session.close()).status === "released";

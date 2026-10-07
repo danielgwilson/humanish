@@ -264,6 +264,8 @@ export type CuaActorStudyErrorCode =
   // A local study runs more desktops at once than the Mac's Lima VM holds. Refused before any
   // desktop, sandbox or model call; the message says how to run it.
   | "HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED"
+  // Docker killed a local participant's desktop container for memory mid-session.
+  | "HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY"
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,9 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { localCapacity } from "../../../src/substrates/local/capacity.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { captureStderr } from "../../helpers/run-golden.js";
+import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
+import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
+import type { CuaExecutor } from "../../../src/actors/computer-use/loop.js";
 
 const GiB = 1024 ** 3;
 const seams = vi.hoisted(() => ({
@@ -109,5 +112,59 @@ describe("local desktop admission", () => {
     expect(outcome.result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED");
     expect(seams.createDesktop).toHaveBeenCalled();
     expect(stderr.text()).toContain("this machine holds 2");
+  });
+});
+
+describe("a local desktop killed for memory", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-oom-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("says in the participant's outcome, the review and the run's error that memory ran out", async () => {
+    seams.capacity.mockResolvedValue(localCapacity("lima-vm", { memoryBytes: 13 * GiB, cpus: 8 }));
+    seams.prepareRuntime.mockResolvedValue({ image: "synthetic", runtimeRevision: "synthetic" });
+    seams.createDesktop.mockImplementation(async () => ({
+      ...ownDesktopAllocation({
+        resourceId: "d".repeat(12),
+        release: async () => ({ status: "released", reason: "terminated" }),
+      }).open({ stallRecovery: "fail_closed" } as unknown as CuaExecutor),
+      finishRecording: async () => {
+        throw new Error("This fake desktop records nothing.");
+      },
+      killedForMemory: async () => true,
+    }));
+    const stderr = captureStderr();
+    const outcome = await runStudyWith(
+      localStudy({ concurrency: 1 }),
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key" } },
+      {
+        // The browser closed under the participant: the desktop's transport failed mid-session.
+        runSession: async () => {
+          throw new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
+        },
+      },
+    ).finally(stderr.stop);
+
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY");
+    expect(outcome.result.error?.message).toContain("ran out of memory");
+    const result = outcome.result as {
+      lanes?: { error?: { code: string; message: string } }[];
+      participants?: { error?: { code: string; message: string } }[];
+    };
+    const participant = (result.participants ?? result.lanes)?.[0];
+    expect(participant?.error).toMatchObject({
+      code: "HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY",
+      message: expect.stringContaining("ran out of memory"),
+    });
+    const review = await readFile(
+      path.join(cwd, ".humanish", "runs", outcome.result.runId!, "review.md"),
+      "utf8",
+    );
+    expect(review).toContain("ran out of memory");
   });
 });

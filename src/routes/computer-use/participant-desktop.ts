@@ -15,6 +15,12 @@ export type ParticipantDesktopEvidence = {
   /** The substrate confirmed the desktop was released (an E2B kill or a local VM shutdown). The participant
    *  outcome records it as `killed`. */
   released: boolean;
+  /**
+   * Why the desktop itself ended the session, in words a person reads, when the substrate knows:
+   * a local desktop Docker killed for memory. It replaces the session's error for a participant
+   * who did not pass.
+   */
+  desktopFailure?: string;
 } & Pick<
   ParticipantRunOutcome,
   | "sandboxId"

@@ -142,6 +142,13 @@ export async function runCuaParticipant(
       });
     }
   }
+  const { released, desktopFailure, ...desktopEvidence } = desktop.snapshot();
+  // A desktop that died under the participant explains the failure better than the transport
+  // error the session saw. A session that passed keeps its result.
+  if (desktopFailure !== undefined) {
+    if (session?.status === "passed") warnings.push(desktopFailure);
+    else sessionError = desktopFailure;
+  }
   if (session) await recordParticipantTrace(spec, deps, session, warnings);
   const { noEngagement, selfReportedBlocker, reportedFriction } = judgeParticipantSession(
     session,
@@ -157,7 +164,6 @@ export async function runCuaParticipant(
     providerPolicyError !== undefined ||
     session?.completionReason === "harness_error";
 
-  const { released, ...desktopEvidence } = desktop.snapshot();
   return {
     spec,
     ...(session ? { session } : {}),

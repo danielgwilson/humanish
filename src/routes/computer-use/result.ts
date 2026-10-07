@@ -174,11 +174,10 @@ function cuaStudyResult(args: {
       };
     }
     const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
-    const geometryFailure = (outcomes ?? []).find(
-      (outcome) => outcome.failureCode === "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY",
-    );
+    // A participant whose desktop failed for a known cause gives the run that cause's code.
+    const codedFailure = (outcomes ?? []).find((outcome) => outcome.failureCode !== undefined);
     const code: CuaActorStudyErrorCode =
-      geometryFailure?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED";
+      codedFailure?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED";
     return {
       code,
       message: observer.ok

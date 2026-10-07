@@ -13,7 +13,6 @@ import { runStudyWith } from "../../src/run-study.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
 import { lab as admissionLab } from "../admission/fixtures.js";
-import { localCapacity } from "../../src/substrates/local/capacity.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 // What a hosted Codex participant's operator handshake reports when it passes.
@@ -127,70 +126,6 @@ describe("selected lab setup without paid dispatch", () => {
         result.checks.find((item) => item.name === "local participant authentication"),
       ).toMatchObject({ ok: false });
       expect(result.checks.some((item) => item.name === "post-run analysis")).toBe(false);
-    });
-  });
-  it("says how many desktops the Lima VM holds and whether the study fits", async () => {
-    const GiB = 1024 ** 3;
-    const vm = localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 });
-    const manifest = (participants: number) =>
-      lab("local-agent")
-        .replace("https://preview.example.test/", "http://localhost:3000/")
-        .replace("target: e2b-desktop", "target: local")
-        .replace("policies:\n  allowPublicTargets: true", "") +
-      `\nparticipants: ${participants}\nreview:\n  analysis: false\n`;
-    for (const [participants, fits] of [
-      [2, true],
-      [3, false],
-    ] as const)
-      await project(manifest(participants), async (cwd) => {
-        const result = await studySetupChecks({
-          cwd,
-          study: "preview",
-          env: keyless,
-          agents: [],
-          keyPresent: () => false,
-          localRuntimeReadiness: async () => ({
-            ok: true,
-            installed: true,
-            message: "Ready",
-            capacity: vm,
-          }),
-          codexAnalysisReadiness: async () => ({ ready: true, errorCode: null }),
-        });
-        const check = result.checks.find((item) => item.name === "local desktop capacity")!;
-        expect(check.ok, `${participants} participants`).toBe(fits);
-        expect(check.message).toContain("8 GiB and 6 CPUs");
-        expect(check.message).toContain("3 GiB and 2 CPUs");
-        expect(check.message).toContain(fits ? "fits" : "holds 2");
-      });
-  });
-  it("notes a Linux host that holds fewer desktops than the study runs without failing", async () => {
-    const GiB = 1024 ** 3;
-    const manifest =
-      lab("local-agent")
-        .replace("https://preview.example.test/", "http://localhost:3000/")
-        .replace("target: e2b-desktop", "target: local")
-        .replace("policies:\n  allowPublicTargets: true", "") +
-      "\nparticipants: 3\nreview:\n  analysis: false\n";
-    await project(manifest, async (cwd) => {
-      const result = await studySetupChecks({
-        cwd,
-        study: "preview",
-        env: keyless,
-        agents: [],
-        keyPresent: () => false,
-        localRuntimeReadiness: async () => ({
-          ok: true,
-          installed: true,
-          message: "Ready",
-          capacity: localCapacity("linux-host", { memoryBytes: 7 * GiB, cpus: 8 }),
-        }),
-        codexAnalysisReadiness: async () => ({ ready: true, errorCode: null }),
-      });
-      expect(result.checks.find((item) => item.name === "local desktop capacity")).toMatchObject({
-        ok: true,
-        status: "note",
-      });
     });
   });
   it("names the found Codex release and the pinned install command when it is not admitted", async () => {

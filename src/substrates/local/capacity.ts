@@ -12,7 +12,7 @@ const GiB = 1024 ** 3;
 export const DESKTOP_RESERVATION = { memoryGiB: 3, cpus: 2 } as const;
 
 /** Memory the runtime host keeps for its own Linux, Docker daemon and SSH before any desktop. */
-export const HOST_RESERVED_MEMORY_GIB = 1;
+const HOST_RESERVED_MEMORY_GIB = 1;
 
 /** The VM setup creates holds this many desktops, unless half the Mac is smaller. */
 const DEFAULT_VM_DESKTOPS = 4;
@@ -76,7 +76,7 @@ export function localCapacity(
 }
 
 /** The memory and CPUs a VM needs to hold `desktops` desktops. */
-export function vmSizeFor(desktops: number): VmSize {
+function vmSizeFor(desktops: number): VmSize {
   return {
     memoryGiB: HOST_RESERVED_MEMORY_GIB + desktops * DESKTOP_RESERVATION.memoryGiB,
     cpus: desktops * DESKTOP_RESERVATION.cpus,
@@ -114,7 +114,7 @@ export function vmSizeProblem(size: VmSize, mac: MachineSize): string | undefine
 }
 
 /** "2 desktops fit", "1 desktop fits". */
-export function desktopsFit(count: number, future = false): string {
+function desktopsFit(count: number, future = false): string {
   return `${plural(count, "desktop")} ${future ? "will fit" : count === 1 ? "fits" : "fit"}`;
 }
 
@@ -175,4 +175,13 @@ export function capacityShortfall(
       ...steps.map((step, index) => `${index + 1}. ${step}`),
     ].join("\n"),
   };
+}
+
+/** What a participant whose desktop Docker killed for memory is told, with what to change. */
+export function outOfMemoryMessage(host: LocalCapacity["host"]): string {
+  const shared =
+    host === "lima-vm"
+      ? `all desktops share the humanish Lima VM's memory. Run fewer participants at once with \`execution.concurrency\`, give the VM more memory with ${cli("runtime setup --memory <GiB>")}, or run on cloud desktops (\`subject.source: local-tree\` with \`execution.target: e2b-desktop\`).`
+      : `all desktops share this machine's memory. Run fewer participants at once with \`execution.concurrency\`, close other memory-heavy programs, or run on cloud desktops (\`subject.source: local-tree\` with \`execution.target: e2b-desktop\`).`;
+  return `The participant's desktop ran out of memory: Docker killed its container (OOMKilled), so its browser closed mid-session. Each desktop may use ${DESKTOP_RESERVATION.memoryGiB} GiB, and ${shared}`;
 }
