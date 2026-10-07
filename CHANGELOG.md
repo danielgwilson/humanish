@@ -44,6 +44,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
   remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
   their estimate and cap, and state that those analyses are excluded from recall.
+- `verify` and bundle export also read percent escapes as UTF-8, and the known-value scrub finds a
+  percent-encoded value with non-ASCII characters. Each escape was read as one character, so
+  `caf%C3%A9` read as `cafÃ©`, and a percent-encoded redirect holding a password that starts
+  `Voilà` graded a run share-ready. The byte-by-byte reading is still scanned too: read as UTF-8,
+  `%E2%80%80` is a space that can end a match the byte reading keeps whole (#1645).
 
 ### Changed
 

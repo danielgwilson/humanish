@@ -33,6 +33,19 @@ describe("scrubSecretValues", () => {
     expect(text).toContain("[REDACTED_SECRET]");
   });
 
+  it("removes a percent-encoded value with non-ASCII characters", () => {
+    const value = `tango-${"é"}-lima-${"à"}`;
+    const text = scrubSecretValues([value])(`refused ${encodeURIComponent(value)} here`);
+    expect(text).toBe("refused [REDACTED_SECRET] here");
+  });
+
+  it("removes a value whose own characters are UTF-8 bytes read one by one", () => {
+    const value = `tango-${"\u00c3\u00a9"}-lima`;
+    expect(scrubSecretValues([value])("refused tango-%C3%A9-lima here")).toBe(
+      "refused [REDACTED_SECRET] here",
+    );
+  });
+
   it("leaves the marker intact when a value is part of it", () => {
     expect(scrubSecretValues(["SECRET", "tango-lima"])("refused tango-lima")).toBe(
       "refused [REDACTED_SECRET]",
