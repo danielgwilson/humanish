@@ -6,7 +6,7 @@ import {
   unsetUserKey,
   userKeyStorePath,
 } from "../../keys/key-resolution.js";
-import { formatKeyStatus, keyStatus } from "../../keys/key-status.js";
+import { askForMissingKeys, formatKeyStatus, keyStatus } from "../../keys/key-status.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../study/init.js";
 import {
@@ -262,6 +262,70 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
   return (await promptSecret(promptLabel, process.stdin, process.stderr)) || null;
 }
 
+/** "A", "A and B", "A, B and C". */
+function listNames(names: readonly string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/**
+ * `humanish keys set` with no key named. On a terminal it asks for each missing provider key in
+ * turn; without one there is no one to ask, so it refuses and names the --stdin form.
+ */
+async function setMissingKeys(command: Command, io: CliIo, useStdin: boolean): Promise<void> {
+  const store = userKeyStorePath(process.env);
+  const finish = (ok: boolean, names: string[], message: string): void => {
+    const result: KeysResult = {
+      schema: KEYS_RESULT_SCHEMA,
+      ok,
+      action: "set",
+      store,
+      names,
+      message,
+    };
+    writeResult(command, io, result, formatKeysHuman);
+    io.setExitCode(ok ? 0 : 2);
+  };
+  if (useStdin || process.stdin.isTTY !== true || process.stderr.isTTY !== true) {
+    finish(
+      false,
+      [],
+      `missing required argument 'vendor-or-name'. Without a terminal humanish cannot ask for each key, so name the key and pipe its value, for example: printf '%s' "$E2B_API_KEY" | ${cli("keys set e2b --stdin")}`,
+    );
+    return;
+  }
+  const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+  const missing = rows.filter((row) => row.source === null).length;
+  if (missing === 0) {
+    finish(
+      true,
+      [],
+      `Every provider key is already set, so there is nothing to ask for. Replace one with \`${cli("keys set <vendor>")}\`.`,
+    );
+    return;
+  }
+  io.writeErr(
+    `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing. Paste each one when asked, or press Enter to skip it.\n`,
+  );
+  const outcome = await askForMissingKeys({
+    rows,
+    env: process.env,
+    prompt: (label) => promptSecret(label, process.stdin, process.stderr),
+  });
+  const sentences = [
+    outcome.stored.length > 0
+      ? `Stored ${listNames(outcome.stored)} (0600).`
+      : "Nothing was stored.",
+    ...(outcome.skipped.length > 0 ? [`Skipped ${listNames(outcome.skipped)}.`] : []),
+    ...(outcome.rejected ?? []).map((entry) => `${entry.name} was not stored: ${entry.message}`),
+    ...(outcome.stoppedAt === undefined
+      ? []
+      : [`Stopped at ${outcome.stoppedAt}; the keys after it were not asked for.`]),
+    `\`${cli("keys")}\` shows where each key comes from.`,
+  ];
+  // A cancel is the person's choice, so only a value the store refused fails the command.
+  finish(outcome.rejected === undefined, outcome.stored, sentences.join(" "));
+}
+
 export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
@@ -294,7 +358,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
         message:
           missing === 0
             ? "Every provider key is set."
-            : `${plural(missing, "provider key")} missing.`,
+            : `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing.`,
       };
       writeResult(command, io, result, () => formatKeyStatus(rows));
       io.setExitCode(0);
@@ -303,67 +367,77 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
   keys
     .command("set")
     .argument(
-      "<vendor-or-name>",
-      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME.",
+      "[vendor-or-name]",
+      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn.",
     )
     .description("Store one provider key in the user store (0600), prompted with hidden input.")
     .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (vendorOrName: string, options: { stdin?: boolean; json?: boolean }, command) => {
-      const name = resolveKeyName(vendorOrName);
-      const storePath = userKeyStorePath(process.env);
-      if (name === null) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [],
-          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-        return;
-      }
-      const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
-      if (value === null) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [name],
-          message: "No value provided; nothing written.",
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-        return;
-      }
-      try {
-        const written = setUserKey(name, value, process.env);
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: true,
-          action: "set",
-          store: written.path,
-          names: [name],
-          message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`,
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(0);
-      } catch (error) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [name],
-          message: error instanceof Error ? error.message : "Failed to write the key store.",
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-      }
-    });
+    .action(
+      async (
+        vendorOrName: string | undefined,
+        options: { stdin?: boolean; json?: boolean },
+        command,
+      ) => {
+        if (vendorOrName === undefined) {
+          await setMissingKeys(command, io, options.stdin === true);
+          return;
+        }
+        const name = resolveKeyName(vendorOrName);
+        const storePath = userKeyStorePath(process.env);
+        if (name === null) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [],
+            message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+          return;
+        }
+        const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
+        if (value === null) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [name],
+            message: "No value provided; nothing written.",
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+          return;
+        }
+        try {
+          const written = setUserKey(name, value, process.env);
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: true,
+            action: "set",
+            store: written.path,
+            names: [name],
+            message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`,
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(0);
+        } catch (error) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [name],
+            message: error instanceof Error ? error.message : "Failed to write the key store.",
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+        }
+      },
+    );
 
   keys
     .command("unset")

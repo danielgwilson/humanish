@@ -1807,6 +1807,15 @@ describe("provider-key discovery at the CLI seam", () => {
       else process.env.HUMANISH_STRICT_KEYS = saved;
     }
   });
+
+  it("`humanish keys set` with no key and no terminal refuses and points at --stdin", async () => {
+    // The test runner's stdin is not a terminal, so there is no one to ask.
+    const result = await runCli(["keys", "set"]);
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("missing required argument 'vendor-or-name'");
+    expect(result.stderr).toContain("keys set e2b --stdin");
+    expect(result.stdout).toBe("");
+  });
 });
 
 describe("study provenance survives the whole CLI path", () => {

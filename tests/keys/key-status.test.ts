@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { formatKeyStatus, keyStatus } from "../../src/keys/key-status.js";
+import { askForMissingKeys, formatKeyStatus, keyStatus } from "../../src/keys/key-status.js";
 
 describe("humanish keys status", () => {
   let cwd: string;
@@ -72,5 +72,57 @@ describe("humanish keys status", () => {
       ["AGENTMAIL_API_KEY", ".humanish/local/provider.env"],
     ]);
     expect(formatKeyStatus(rows)).not.toContain("synthetic-");
+  });
+
+  it("asks for each missing key in turn, stores the answers and skips a key on Enter", async () => {
+    const env: NodeJS.ProcessEnv = { OPENAI_API_KEY: "synthetic-env-value" };
+    const answers: Record<string, string | null> = {
+      E2B_API_KEY: "synthetic-e2b-entered",
+      GH_TOKEN: "",
+      AGENTMAIL_API_KEY: "synthetic-agentmail-entered",
+    };
+    const asked: string[] = [];
+
+    const outcome = await askForMissingKeys({
+      rows: await keyStatus({ cwd, env, deps: deps() }),
+      env,
+      deps: deps(),
+      prompt: async (label) => {
+        const name = label.split(" ")[0]!;
+        asked.push(name);
+        return answers[name] ?? null;
+      },
+    });
+
+    expect(asked).toEqual(["E2B_API_KEY", "GH_TOKEN", "AGENTMAIL_API_KEY"]);
+    expect(outcome).toEqual({
+      stored: ["E2B_API_KEY", "AGENTMAIL_API_KEY"],
+      skipped: ["GH_TOKEN"],
+    });
+    const after = await keyStatus({ cwd, env, deps: deps() });
+    expect(after.map((row) => [row.name, row.source])).toEqual([
+      ["E2B_API_KEY", "~/.config/humanish/keys.env"],
+      ["OPENAI_API_KEY", "process env"],
+      ["GH_TOKEN", null],
+      ["AGENTMAIL_API_KEY", "~/.config/humanish/keys.env"],
+    ]);
+  });
+
+  it("stops at a cancelled prompt and keeps the keys stored before it", async () => {
+    const env: NodeJS.ProcessEnv = {};
+    const asked: string[] = [];
+
+    const outcome = await askForMissingKeys({
+      rows: await keyStatus({ cwd, env, deps: deps() }),
+      env,
+      deps: deps(),
+      prompt: async (label) => {
+        asked.push(label.split(" ")[0]!);
+        return asked.length === 1 ? "synthetic-e2b-entered" : null;
+      },
+    });
+
+    expect(asked).toEqual(["E2B_API_KEY", "OPENAI_API_KEY"]);
+    expect(outcome).toEqual({ stored: ["E2B_API_KEY"], skipped: [], stoppedAt: "OPENAI_API_KEY" });
   });
 });
