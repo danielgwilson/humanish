@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import { CONTEXT_TOKEN_BUDGET } from "../../../src/actors/computer-use/openai-context.js";
 import { OpenAiConversation } from "../../../src/actors/computer-use/openai-conversation.js";
 
 // The conversation a participant has with the OpenAI computer-use model: what each request
@@ -144,6 +145,33 @@ describe("a rejection of server-side state", () => {
         { mode: "threaded" },
         { mode: "explicit_context", carriedExchanges: 2 },
       ],
+    });
+  });
+});
+
+describe("the record of a request", () => {
+  it("counts what the request carried when accepting its reply cuts the history", () => {
+    const conversation = start(true);
+    const large = turnRequest(screen(4000, 4000));
+    const screenshots = (body: Body): number =>
+      JSON.stringify(body.input).split("data:image/png").length - 1;
+
+    const bodies = [1, 2, 3, 4].map((n) => exchange(conversation, n, large));
+    // Request 4 carried the opening screen and three exchanges past the budget. Accepting its
+    // reply cut the history, and the record still counts what request 4 sent.
+    expect(screenshots(bodies[3]!)).toBe(4);
+    const fourth = conversation.record();
+    expect(fourth.summarizedTurns).toBe(0);
+    expect(fourth.requests[3]).toMatchObject({ carriedExchanges: 3, carriedScreenshots: 3 });
+    expect(fourth.requests[3]!.estimatedInputTokens).toBeGreaterThan(CONTEXT_TOKEN_BUDGET);
+
+    // Request 5 carries the cut history: no opening screen, and turn 1 as a line of a note.
+    const fifth = exchange(conversation, 5, large);
+    expect(screenshots(fifth)).toBe(3);
+    expect(conversation.record()).toMatchObject({ summarizedTurns: 1 });
+    expect(conversation.record().requests[4]).toMatchObject({
+      carriedExchanges: 3,
+      carriedScreenshots: 2,
     });
   });
 });
