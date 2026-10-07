@@ -1029,7 +1029,7 @@ function renderScreen(args: {
           new Map(
             [...liveDetails.entries()]
               .map(([runId, value]): [string, string] | null => {
-                const who = value.participants[0]?.personaId ?? value.participants[0]?.label;
+                const who = value.participants[0]?.label;
                 return who === undefined ? null : [runId, who];
               })
               .filter((entry): entry is [string, string] => entry !== null),

@@ -149,7 +149,7 @@ function headline(run: RunIndexEntry, participant: RunParticipant | undefined): 
   if (run.liveness === "running") {
     // Until the run has written a participant record there is nobody to name, and "starting…" is
     // the true thing to say rather than a sentence with a hole where the person goes.
-    const who = participant?.personaId ?? participant?.label;
+    const who = participant?.label;
     return who === undefined ? "starting…" : `${who} is working`;
   }
   const display = runDisplay(run);

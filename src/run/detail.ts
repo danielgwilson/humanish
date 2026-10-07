@@ -16,6 +16,7 @@ import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { savedCaption } from "./participant-caption.js";
 import { readContainedRegularFile } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
@@ -33,7 +34,7 @@ interface RunThought {
 export interface RunParticipant {
   /** Stream id: stable within a run, and what distinguishes participants of one study. */
   id: string;
-  /** What to call them on screen: the participant's own label, else the persona id. */
+  /** What to call them on screen: the caption the Observer shows, else the persona id. */
   label: string;
   /** The persona id, when the trace recorded one. */
   personaId?: string;
@@ -89,6 +90,7 @@ interface ActorTraceFacts {
 interface StreamFacts {
   id?: string;
   label?: string;
+  laneId?: string;
   status?: string;
   actor?: ActorTraceFacts;
   liveActor?: ActorTraceFacts;
@@ -130,7 +132,14 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
   const thoughts = (trace.items ?? []).filter((item) => item?.kind === "reasoning").length;
   return {
     id,
-    label: stream.label ?? personaId ?? id,
+    label:
+      stream.label === undefined
+        ? (personaId ?? id)
+        : savedCaption({
+            label: stream.label,
+            ...(stream.laneId === undefined ? {} : { laneId: stream.laneId }),
+            ...(personaId === undefined ? {} : { personaId }),
+          }),
     ...(personaId === undefined ? {} : { personaId }),
     traits: Array.isArray(trace.persona?.traitsApplied) ? trace.persona.traitsApplied : [],
     ...(status === undefined ? {} : { status }),

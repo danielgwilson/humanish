@@ -83,19 +83,17 @@ export function ParticipantStub({
           <img
             className="stub-keyframe"
             src={keyframe}
-            alt={`Keyframe from lane ${stream.label}`}
+            alt={`Keyframe from ${participantLabels(data.streams).get(stream.id) ?? stream.label}`}
           />
         </div>
       ) : null}
       <div className="kv">
         <span className="k">Persona</span>
-        <span className="v">
-          {participantLabels(data.streams).get(stream.id) ?? stream.sim.personaId}
-        </span>
+        <span className="v">{stream.sim.personaId}</span>
         <span className="k">Scenario</span>
         <span className="v">{data.run.scenario.title}</span>
         <span className="k">Participant</span>
-        <span className="v">{stream.label}</span>
+        <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.label}</span>
         <span className="k">Kind</span>
         <span className="v">{stream.kindLabel}</span>
         <span className="k">{updating ? "Status" : "Status at capture"}</span>

@@ -38,7 +38,7 @@ const LIVE_DETAIL: RunDetail = {
   participants: [
     {
       id: "stream-001",
-      label: "CUA browser — signup flow",
+      label: "Synthetic new user",
       personaId: "synthetic-new-user",
       traits: ["patience:medium", "skill:medium", "accessibility:clear_terminal_output"],
       status: "running",
@@ -137,7 +137,7 @@ async function openLiveRun(
   // Past the Start action to the newest run, which is the live one.
   for (let index = 0; index < 4; index += 1) {
     const frame = await surface.press(KEY.down);
-    if (/❯[^\n]*(starting|synthetic-new-user|CUA browser)/.test(frame)) break;
+    if (/❯[^\n]*(starting|Synthetic new user)/.test(frame)) break;
   }
   // Wait for the detail-bearing frame: entering the run screen renders its own facts first and the
   // participants a moment later, so matching the status line alone captures the frame before the

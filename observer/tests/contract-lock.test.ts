@@ -110,21 +110,28 @@ async function runtimeFiles(directory: string): Promise<string[]> {
   ).flat();
 }
 
-// The one CLI module the app may bundle: the run cost every surface shows. It must keep only type
-// imports, which the test below checks, so no CLI code comes with it.
-const SHARED_CLI_MODULE = path.join(CLI_ROOT, "run", "run-cost.ts");
+// The CLI modules the app may bundle: the run cost and the participant caption every surface
+// shows. Each must keep only type imports, which the test below checks, so no CLI code comes with
+// them.
+const SHARED_CLI_MODULES = [
+  path.join(CLI_ROOT, "run", "run-cost.ts"),
+  path.join(CLI_ROOT, "run", "participant-caption.ts"),
+];
 
 function runtimeCliEdges(file: string, source: string): string[] {
   return runtimeEdges(file, source)
     .filter(({ target }) => target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`))
-    .filter(({ target }) => target?.replace(/\.js$/, ".ts") !== SHARED_CLI_MODULE)
+    .filter(({ target }) => !SHARED_CLI_MODULES.includes(target?.replace(/\.js$/, ".ts") ?? ""))
     .map(({ edge }) => edge);
 }
 
-it("the shared run-cost module carries only type imports into the artifact", async () => {
-  const edges = runtimeEdges(SHARED_CLI_MODULE, await readFile(SHARED_CLI_MODULE, "utf8"));
-  expect(edges.map(({ edge }) => edge)).toEqual([]);
-});
+it.each(SHARED_CLI_MODULES.map((module) => [path.basename(module), module] as const))(
+  "the shared module %s carries only type imports into the artifact",
+  async (_name, module) => {
+    const edges = runtimeEdges(module, await readFile(module, "utf8"));
+    expect(edges.map(({ edge }) => edge)).toEqual([]);
+  },
+);
 
 it("Observer runtime modules never import CLI values", async () => {
   const files = [
