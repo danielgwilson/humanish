@@ -298,6 +298,10 @@
         },
         {
           "mode": "threaded"
+        },
+        {
+          "mode": "threaded",
+          "kind": "impressions"
         }
       ]
     },
@@ -439,6 +443,10 @@
         },
         {
           "mode": "threaded"
+        },
+        {
+          "mode": "threaded",
+          "kind": "impressions"
         }
       ]
     },
@@ -580,6 +588,10 @@
         },
         {
           "mode": "threaded"
+        },
+        {
+          "mode": "threaded",
+          "kind": "impressions"
         }
       ]
     },
@@ -721,6 +733,10 @@
         },
         {
           "mode": "threaded"
+        },
+        {
+          "mode": "threaded",
+          "kind": "impressions"
         }
       ]
     },
@@ -1224,6 +1240,10 @@
               },
               {
                 "mode": "threaded"
+              },
+              {
+                "mode": "threaded",
+                "kind": "impressions"
               }
             ]
           },
@@ -1461,6 +1481,10 @@
               },
               {
                 "mode": "threaded"
+              },
+              {
+                "mode": "threaded",
+                "kind": "impressions"
               }
             ]
           },
@@ -1693,6 +1717,10 @@
               },
               {
                 "mode": "threaded"
+              },
+              {
+                "mode": "threaded",
+                "kind": "impressions"
               }
             ]
           },
@@ -1925,6 +1953,10 @@
               },
               {
                 "mode": "threaded"
+              },
+              {
+                "mode": "threaded",
+                "kind": "impressions"
               }
             ]
           },

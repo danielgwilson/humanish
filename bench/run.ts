@@ -8,6 +8,7 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
+import { analyzeWithinBudget } from "./lib/analyze.js";
 import { readJson, readRunBundle, runCosts } from "./lib/bundle.js";
 import {
   interruptActive,
@@ -18,7 +19,6 @@ import {
 } from "./lib/humanish-cli.js";
 import {
   BRAINS,
-  canStartAnalysis,
   canStartParticipant,
   capThatFits,
   isBrainId,
@@ -32,6 +32,7 @@ import {
 import { REPO_ROOT, fixtureDigests, studyId, writeProject } from "./lib/project.js";
 import {
   MANIFEST_SCHEMA,
+  analysisRefusalLines,
   buildResult,
   summaryMarkdown,
   type Manifest,
@@ -51,7 +52,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
   --participant-cap <usd>  the study's caps.maxUsd for a priced participant (default 0.6)
-  --analysis-max-usd <usd> humanish analyze --max-cost per run (default 1.75)
+  --analysis-max-usd <usd> per-run cap override (default: admission estimate plus 10%, within budget)
   --no-analysis            skip the analysis step
   --work-dir <dir>         where the throwaway project and bundles go (default: a new temp dir)
   --out <dir>              where the results JSON and summary go (default: the work dir)
@@ -59,7 +60,6 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
 `;
 
 const RUN_TIMEOUT_MS = 40 * 60_000;
-const ANALYSIS_TIMEOUT_MS = 12 * 60_000;
 const SHORT_TIMEOUT_MS = 5 * 60_000;
 /** Desktop starts closer together than this have failed in bursts on E2B. */
 const START_SPACING_MS = 40_000;
@@ -85,7 +85,7 @@ const { values } = parseArgs({
     dotenv: { type: "string" },
     cli: { type: "string", default: path.join(REPO_ROOT, "dist", "cli.js") },
     "participant-cap": { type: "string", default: "0.6" },
-    "analysis-max-usd": { type: "string", default: "1.75" },
+    "analysis-max-usd": { type: "string" },
     "no-analysis": { type: "boolean", default: false },
     "work-dir": { type: "string" },
     out: { type: "string" },
@@ -108,6 +108,7 @@ function writeResults(projectDir: string, manifest: Manifest, outDir: string): v
   const mdPath = path.join(outDir, `${stem}.md`);
   writeFileSync(mdPath, summaryMarkdown(result, `${stem}.json`));
   for (const brain of result.brains) {
+    for (const line of analysisRefusalLines(brain)) process.stdout.write(`${brain.brain} ${line}\n`);
     const report = brain.summary.report.recall.total;
     const analysis = brain.summary.analysis.recall.total;
     process.stdout.write(
@@ -186,7 +187,10 @@ for (const brain of brains) {
 const budget: BudgetSettings = {
   maxUsdPerBrain: positiveNumber(values["max-usd"], "--max-usd"),
   participantCapUsd: positiveNumber(values["participant-cap"], "--participant-cap"),
-  analysisMaxUsd: positiveNumber(values["analysis-max-usd"], "--analysis-max-usd"),
+  analysisMaxUsd: values["analysis-max-usd"] === undefined
+    ? Math.min(1000, positiveNumber(values["max-usd"], "--max-usd"))
+    : positiveNumber(values["analysis-max-usd"], "--analysis-max-usd"),
+  analysisAutoCap: values["analysis-max-usd"] === undefined,
   worstCaseDesktopMinutes,
   analysis: !values["no-analysis"],
 };
@@ -250,47 +254,6 @@ let lastStart = 0;
 const runsRoot = path.join(projectDir, ".humanish", "runs");
 const runDirectories = (): Set<string> =>
   new Set(existsSync(runsRoot) ? readdirSync(runsRoot).filter((name) => name !== "latest.json") : []);
-
-/**
- * Analyze one run when its admission estimate still fits under the cap. A dispatched request with
- * no recorded estimate is charged its whole limit.
- */
-async function analyzeWithinBudget(
-  runId: string,
-  spentUsd: number,
-): Promise<{ analysis: RunRecord["analysis"]; chargeUsd: number }> {
-  const args = ["analyze", "--run", runId, "--cwd", projectDir, "--max-cost", String(budget.analysisMaxUsd), "--json"];
-  const admission = await runCli(cliPath, [...args, "--dry-run"], { logFile, timeoutMs: SHORT_TIMEOUT_MS });
-  const admissionUsd = numberField(objectField(admission.json, "admission"), "estimatedCostUsd");
-  const base = { analysisId: null, estimatedUsd: null, admissionUsd };
-  if (admission.json?.ok !== true) {
-    return {
-      analysis: { ...base, state: "refused", error: stringField(objectField(admission.json, "error"), "code") },
-      chargeUsd: 0,
-    };
-  }
-  if (!canStartAnalysis(spentUsd, budget, admissionUsd ?? budget.analysisMaxUsd)) {
-    return { analysis: { ...base, state: "skipped_budget", error: null }, chargeUsd: 0 };
-  }
-  const result = await runCli(cliPath, args, {
-    logFile,
-    timeoutMs: ANALYSIS_TIMEOUT_MS,
-    nodeArgs: analyzeNodeArgs,
-  });
-  const usage = objectField(result.json, "usage");
-  const estimated = numberField(usage, "estimatedCostUsd");
-  const dispatched = usage?.dispatched === true;
-  return {
-    analysis: {
-      ...base,
-      state: result.json?.ok === true ? "complete" : dispatched ? "failed" : "refused",
-      analysisId: stringField(result.json, "analysisId"),
-      estimatedUsd: estimated,
-      error: stringField(objectField(result.json, "error"), "code"),
-    },
-    chargeUsd: estimated ?? (dispatched ? budget.analysisMaxUsd : 0),
-  };
-}
 
 for (const planned of planRuns(brains, runsPerArm)) {
   const brain = BRAINS[planned.brain];
@@ -375,7 +338,9 @@ for (const planned of planRuns(brains, runsPerArm)) {
   else if (!budget.analysis) record.analysis.state = "skipped_disabled";
   else if (interrupted) record.analysis.state = "not_run";
   else {
-    const { analysis, chargeUsd } = await analyzeWithinBudget(record.runId, afterRun);
+    const { analysis, chargeUsd } = await analyzeWithinBudget({
+      runId: record.runId, spentUsd: afterRun, budget, cliPath, projectDir, logFile, analyzeNodeArgs,
+    });
     record.analysis = analysis;
     spent[planned.brain] = round(afterRun + chargeUsd);
   }
