@@ -27,7 +27,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "openai",
       "participants": [
         {
@@ -79,7 +79,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       "result": null,
       "error": "analysis_api_key_missing"
@@ -90,7 +90,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235,
+        "estimatedAdmissionUsd": 0.26844,
         "status": "failed"
       }
     ]
@@ -113,7 +113,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "openai",
       "participants": [
         {
@@ -165,7 +165,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       "result": {
         "summary": "The participant encountered an obstacle.",
@@ -187,6 +187,9 @@
             ],
             "limitations": []
           }
+        ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
         ],
         "findings": [
           {
@@ -214,12 +217,12 @@
               }
             ],
             "nextStep": "Check the create interaction.",
-            "priorityReason": "The obstacle affected the assigned task."
+            "priorityReason": "The obstacle affected the assigned task.",
+            "headline": "The participant could not create an item.",
+            "experience": "They were trying to add an item. The create step did not finish, and they said they could not create it."
           }
         ],
-        "limitations": [
-          "Synthetic fixture; no real product behavior is measured."
-        ],
+        "designFindings": [],
         "concernReviews": []
       },
       "error": null
@@ -229,7 +232,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "5124bcde249c2f05"
+        "bodySha256": "63a36a9752c690c0"
       }
     ],
     "progress": [
@@ -237,25 +240,25 @@
         "phase": "admitted",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       {
         "phase": "requesting",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       {
         "phase": "validating",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       {
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235,
+        "estimatedAdmissionUsd": 0.26844,
         "status": "complete"
       }
     ]
@@ -278,7 +281,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "openai",
       "participants": [
         {
@@ -330,7 +333,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.250235
+        "estimatedAdmissionUsd": 0.26844
       },
       "result": null,
       "error": "analysis_cancelled"
@@ -341,7 +344,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.250235,
+        "estimatedAdmissionUsd": 0.26844,
         "status": "cancelled"
       }
     ]
@@ -375,7 +378,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "codex",
       "participants": [
         {
@@ -450,6 +453,9 @@
             "limitations": []
           }
         ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
+        ],
         "findings": [
           {
             "id": "finding-1",
@@ -476,12 +482,12 @@
               }
             ],
             "nextStep": "Check the create interaction.",
-            "priorityReason": "The obstacle affected the assigned task."
+            "priorityReason": "The obstacle affected the assigned task.",
+            "headline": "The participant could not create an item.",
+            "experience": "They were trying to add an item. The create step did not finish, and they said they could not create it."
           }
         ],
-        "limitations": [
-          "Synthetic fixture; no real product behavior is measured."
-        ],
+        "designFindings": [],
         "concernReviews": []
       },
       "error": null
@@ -491,7 +497,7 @@
         "model": "gpt-6-astra",
         "maxOutputTokens": null,
         "images": 0,
-        "bodySha256": "b276c6cdb50e16b0"
+        "bodySha256": "f84b2a9772fbdaac"
       }
     ],
     "progress": [
@@ -551,7 +557,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "codex",
       "participants": [
         {
@@ -626,6 +632,9 @@
             "limitations": []
           }
         ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
+        ],
         "findings": [
           {
             "id": "finding-1",
@@ -652,12 +661,12 @@
               }
             ],
             "nextStep": "Check the create interaction.",
-            "priorityReason": "The obstacle affected the assigned task."
+            "priorityReason": "The obstacle affected the assigned task.",
+            "headline": "The participant could not create an item.",
+            "experience": "They were trying to add an item. The create step did not finish, and they said they could not create it."
           }
         ],
-        "limitations": [
-          "Synthetic fixture; no real product behavior is measured."
-        ],
+        "designFindings": [],
         "concernReviews": []
       },
       "error": null
@@ -720,7 +729,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-6",
+      "promptVersion": "study-evidence-7",
       "provider": "codex",
       "participants": [
         {

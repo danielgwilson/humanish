@@ -27,6 +27,75 @@ describe("study analysis validation", () => {
     legacy.result!.concernReviews = [];
     expect(validateAnalysisArtifact(legacy)).toEqual(legacy);
   });
+  it("loads an artifact written before headlines and design findings, and requires them in new responses", () => {
+    const legacy = syntheticArtifact();
+    for (const finding of legacy.result!.findings) {
+      delete finding.headline;
+      delete finding.experience;
+    }
+    delete legacy.result!.designFindings;
+    legacy.promptVersion = "study-evidence-6";
+    expect(validateAnalysisArtifact(legacy)).toEqual(legacy);
+    expect(analysisResponseSchema.safeParse(legacy.result).success).toBe(false);
+    legacy.promptVersion = "study-evidence-7";
+    expect(() => validateAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
+    const current = syntheticArtifact();
+    current.promptVersion = "study-evidence-7";
+    expect(validateAnalysisArtifact(current)).toEqual(current);
+    expect(analysisResponseSchema.safeParse(current.result).success).toBe(true);
+  });
+  it("rejects a design finding that cites no capture", () => {
+    const input = syntheticInput();
+    const result = syntheticResult(input);
+    result.designFindings![0]!.evidenceIds = ["e000002"];
+    expect(checkAnalysisResult(input, result)).toEqual({
+      ok: false,
+      errors: ["ANALYSIS_DESIGN_WITHOUT_CAPTURE"],
+    });
+  });
+  it.each(["not-cited", "not-included", "repeated"])(
+    "rejects a design finding whose seen-by list has a %s participant",
+    (kind) => {
+      const input = syntheticInput();
+      input.participants.push({
+        ...input.participants[0]!,
+        streamId: "participant-b",
+        label: "Participant B",
+      });
+      input.coverage.includedStreamIds.push("participant-b");
+      input.evidence.push({ ...input.evidence[1]!, id: "e000003", streamId: "participant-b" });
+      input.coverage.evidenceCount++;
+      input.inputDigest = digestAnalysisInput(input);
+      const result = syntheticResult(input);
+      expect(checkAnalysisResult(input, result).ok).toBe(true);
+      result.designFindings![0]!.seenByStreamIds.push(
+        kind === "not-cited"
+          ? "participant-b"
+          : kind === "not-included"
+            ? "participant-z"
+            : "participant-a",
+      );
+      expect(checkAnalysisResult(input, result)).toEqual({
+        ok: false,
+        errors: ["ANALYSIS_DESIGN_MEMBERSHIP_INVALID"],
+      });
+    },
+  );
+  it("rejects duplicate design finding IDs and unknown design evidence", () => {
+    const input = syntheticInput();
+    const result = syntheticResult(input);
+    result.designFindings!.push({ ...result.designFindings![0]! });
+    expect(checkAnalysisResult(input, result)).toEqual({
+      ok: false,
+      errors: ["ANALYSIS_DESIGN_FINDING_ID_DUPLICATE"],
+    });
+    const unknown = syntheticResult(input);
+    unknown.designFindings![0]!.evidenceIds.push("unselected");
+    expect(checkAnalysisResult(input, unknown)).toEqual({
+      ok: false,
+      errors: ["ANALYSIS_DESIGN_REFERENCE_INVALID"],
+    });
+  });
   it("allows finding concern reviews to cite an exposed participant's counterexample", () => {
     const input = syntheticInput();
     input.participants.push({

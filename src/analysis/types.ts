@@ -108,6 +108,11 @@ export interface AnalysisObservation {
 interface AnalysisFinding {
   id: string;
   title: string;
+  /** One plain sentence for a reader who did not watch the session. Absent in older reports. */
+  headline?: string;
+  /** One to three plain sentences: what the person tried, what got in the way, how it seemed to
+   * feel. Absent in older reports. */
+  experience?: string;
   summary: string;
   impact: "blocked_task" | "friction" | "recovery" | "uncertain";
   affectedStreamIds: string[];
@@ -118,6 +123,22 @@ interface AnalysisFinding {
   observations: AnalysisObservation[];
   nextStep: string;
   priorityReason: string;
+}
+/** A problem a product designer would see in the cited captures, whether or not a participant
+ * mentioned it. It cites at least one capture. */
+interface AnalysisDesignFinding {
+  id: string;
+  headline: string;
+  /** The screen, in plain words. */
+  screen: string;
+  notice: string;
+  whyItMatters: string;
+  suggestion: string;
+  severity: "minor" | "moderate" | "major";
+  confidence: "low" | "medium" | "high";
+  /** Participants whose cited evidence shows the problem. */
+  seenByStreamIds: string[];
+  evidenceIds: string[];
 }
 /** Evidence-grounded disposition of a material concern, not model reasoning. */
 interface AnalysisConcernReview extends AnalysisObservation {
@@ -132,6 +153,8 @@ export interface AnalysisResult {
   concernReviews?: AnalysisConcernReview[];
   /** Highest priority first; counts are derived from distinct stream sets. */
   findings: AnalysisFinding[];
+  /** Absent in older reports. New analyses supply it, empty when the captures show no problem. */
+  designFindings?: AnalysisDesignFinding[];
   limitations: string[];
 }
 interface OpenAIAnalysisConfig {

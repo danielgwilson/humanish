@@ -115,7 +115,8 @@ const analysisResultSchema = z
   })
   .strict();
 
-/** Historical artifacts may omit concernReviews; every new provider response must supply it. */
+/** Historical artifacts may omit concernReviews, headlines, experiences and designFindings; every
+ * new provider response must supply them. */
 export const analysisResponseSchema = analysisResultSchema
   .extend({
     findings: z
@@ -129,9 +130,17 @@ export const analysisResponseSchema = analysisResultSchema
 export const analysisResultJsonSchema = z.toJSONSchema(analysisResponseSchema);
 const normalizedResult = ({
   concernReviews,
+  designFindings,
+  findings,
   ...result
 }: z.infer<typeof analysisResultSchema>): AnalysisResult => ({
   ...result,
+  findings: findings.map(({ headline, experience, ...finding }) => ({
+    ...finding,
+    ...(headline === undefined ? {} : { headline }),
+    ...(experience === undefined ? {} : { experience }),
+  })),
+  ...(designFindings === undefined ? {} : { designFindings }),
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
 
@@ -551,13 +560,18 @@ export function validateAnalysisArtifact(value: unknown): AnalysisArtifact {
   )
     throw new Error("ANALYSIS_STATUS_INVALID");
   if (artifact.result !== null) {
-    // Concern accounting became required with revision 5. Keep the boundary stable
-    // when the prompt version advances; a later prompt must not regain legacy omissions.
-    const revision = /^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1];
+    // Concern accounting became required with revision 5, and headlines, experiences and design
+    // findings with revision 7. Keep each boundary stable when the prompt version advances; a later
+    // prompt must not regain legacy omissions.
+    const revision = Number(/^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1] ?? 0);
+    const result = artifact.result;
     if (
-      revision !== undefined &&
-      Number(revision) >= 5 &&
-      artifact.result.concernReviews === undefined
+      (revision >= 5 && result.concernReviews === undefined) ||
+      (revision >= 7 &&
+        (result.designFindings === undefined ||
+          result.findings.some(
+            (finding) => finding.headline === undefined || finding.experience === undefined,
+          )))
     )
       throw new Error("ANALYSIS_RESULT_SCHEMA_INVALID");
     validateAnalysisResult({ ...artifact, images: [] }, artifact.result);

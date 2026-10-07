@@ -71,6 +71,9 @@ export function syntheticInput(): AnalysisInput {
 export function syntheticResult(input = syntheticInput()): AnalysisResult {
   const first = input.coverage.includedStreamIds[0]!;
   const firstEvidence = input.evidence.find((entry) => entry.streamId === first)!;
+  const firstCapture = input.evidence.find(
+    (entry) => entry.streamId === first && entry.capture !== null,
+  );
   return {
     summary: "The participant encountered an obstacle.",
     concernReviews: [],
@@ -92,6 +95,9 @@ export function syntheticResult(input = syntheticInput()): AnalysisResult {
       {
         id: "finding-1",
         title: "Item creation was blocked",
+        headline: "The participant could not create an item.",
+        experience:
+          "They were trying to add an item. The create step did not finish, and they said they could not create it.",
         summary: "The participant could not create an item.",
         impact: "blocked_task",
         affectedStreamIds: [first],
@@ -111,6 +117,22 @@ export function syntheticResult(input = syntheticInput()): AnalysisResult {
         priorityReason: "The obstacle affected the assigned task.",
       },
     ],
+    designFindings: firstCapture
+      ? [
+          {
+            id: "D1",
+            headline: "The create button is hard to find.",
+            screen: "Item list",
+            notice: "The create button is small and sits apart from the list it adds to.",
+            whyItMatters: "A person adding an item may not see where to start.",
+            suggestion: "Put the create button above the list and give it a text label.",
+            severity: "moderate",
+            confidence: "medium",
+            seenByStreamIds: [first],
+            evidenceIds: [firstCapture.id],
+          },
+        ]
+      : [],
     limitations: ["Synthetic fixture; no real product behavior is measured."],
   };
 }
