@@ -8,4 +8,4 @@ run ~$1.20 est.
 
 ❯ Run again
 
-↑↓ move  ⏎ select  esc back  ? keys  q quit
+↑↓  ⏎ select  esc back  ? shortcuts  q quit

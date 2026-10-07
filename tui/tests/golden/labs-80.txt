@@ -13,4 +13,4 @@ human(ish)                                      acme-app · 1 participant workin
 
 ▸ Can a first-time visitor finish signing up unaided?
 
-↑↓ move  ⏎ open  ? keys  q quit
+↑↓ move  ⏎ open  ? shortcuts  q quit

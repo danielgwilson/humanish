@@ -4,7 +4,7 @@ import React from "react";
 import { PALETTE } from "../palette.js";
 
 /**
- * The keys, on demand.
+ * The keyboard shortcuts, on demand.
  *
  * Held back through rev 8 on the grounds that a surface needing a help screen has already failed.
  * That is a good principle and it was applied too literally: a person who cannot remember whether
@@ -24,14 +24,21 @@ export function HelpScreen({
     ["⏎  ·  →", "open what the cursor is on, or run the action it names"],
     ["esc  ·  ←", "back; it cancels an armed confirmation first"],
     ["g  ·  G", "jump to the top, jump to the bottom"],
-    ...(connections ? [["c", "connections and provider key setup"] as [string, string]] : []),
-    ["?", "these keys"],
+    ...(connections
+      ? [
+          ["c", "keys and accounts: provider key setup and the email connection"] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ["?", "these shortcuts"],
     ["q", "quit; a run you started keeps going without this window"],
   ];
   return (
     <Box flexDirection="column" width={columns}>
       <Text color={PALETTE.accent} bold>
-        Keys
+        Keyboard shortcuts
       </Text>
       <Box marginTop={1} flexDirection="column">
         {rows.map(([keys, means]) => (

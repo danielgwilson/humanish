@@ -13,4 +13,4 @@ cost not recorded
 ❯ Stop this run
   Open in Observer
 
-↑↓ move  ⏎ select  esc back  ? keys  q quit
+↑↓ move  ⏎ select  esc back  ? shortcuts  q quit
