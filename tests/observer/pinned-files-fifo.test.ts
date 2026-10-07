@@ -30,7 +30,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 describe("a served file swapped for a FIFO", () => {
   it("is refused without waiting for a writer", async () => {
     const dir = await makeTestTempDir("humanish-pinned-fifo-");
-    const file = path.join(dir, "notes.json");
+    const file = path.join(dir, "served.json");
     await writeFile(file, "{}");
     const root = await pinDirectory(dir);
     swap.target = file;

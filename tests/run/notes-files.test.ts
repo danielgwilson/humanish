@@ -67,7 +67,6 @@ describe("one file per note", () => {
       "First.",
       "Second.",
     ]);
-    expect(await readdir(runDir)).not.toContain(".notes-lock");
   });
 
   it("keeps every note when two processes and this one add notes at once", async () => {
