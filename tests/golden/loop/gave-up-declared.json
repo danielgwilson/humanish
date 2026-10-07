@@ -102,6 +102,10 @@
         "shortcutTotal": 0
       },
       "declaredOutcome": "not_reached",
+      "impressions": {
+        "status": "not_collected",
+        "reason": "the participant ended the session without a structured closing account"
+      },
       "taskFunnel": {
         "schema": "humanish.task-funnel.v1",
         "total": 1,

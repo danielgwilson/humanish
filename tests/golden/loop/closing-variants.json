@@ -107,6 +107,10 @@
           },
           "messageId": "message-004"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant's closing account did not include impressions"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 15,
@@ -151,7 +155,7 @@
       ["onTrace",2,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
       ["executor.observe",4],
       ["onObservedUrl",null],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",5,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
     ]
   },
@@ -237,6 +241,10 @@
           "trigger": "stop_when",
           "status": "skipped",
           "reason": "this provider does not support read-only closing reports"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: this provider does not support read-only closing reports"
         },
         "tokenUsage": {
           "input": 10,
@@ -360,6 +368,10 @@
           "reason": "the closing response requested actions or safety checks; none were executed and its report was not accepted",
           "usageReported": true
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: the closing response requested actions or safety checks; none were executed and its report was not accepted"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 15,
@@ -398,7 +410,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
     ]
   },
@@ -487,6 +499,10 @@
           "reason": "the closing response did not contain a valid structured participant report",
           "usageReported": true
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: the closing response did not contain a valid structured participant report"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 15,
@@ -525,7 +541,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
     ]
   },
@@ -629,6 +645,10 @@
           },
           "messageId": "message-003"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant's closing account did not include impressions"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 5,
@@ -666,7 +686,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",4,{"input":30,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20}]},{}]
     ]
   },
@@ -754,6 +774,10 @@
           "status": "skipped",
           "reason": "the adapter reported a local admission limit before provider dispatch; no closing request was sent"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: the adapter reported a local admission limit before provider dispatch; no closing request was sent"
+        },
         "tokenUsage": {
           "input": 10,
           "output": 5,
@@ -788,7 +812,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
     ]
   },
@@ -877,6 +901,10 @@
           "reason": "provider unavailable; closing request usage is unreported",
           "usageReported": false
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: provider unavailable; closing request usage is unreported"
+        },
         "tokenUsage": {
           "input": 10,
           "output": 5,
@@ -911,7 +939,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
     ]
   },
@@ -1000,6 +1028,10 @@
           "reason": "closing report deadline reached; closing request usage is unreported",
           "usageReported": false
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: closing report deadline reached; closing request usage is unreported"
+        },
         "tokenUsage": {
           "input": 10,
           "output": 5,
@@ -1034,7 +1066,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
     ]
   },
@@ -1120,6 +1152,10 @@
           "trigger": "stop_when",
           "status": "skipped",
           "reason": "the estimated model budget was reached"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: the estimated model budget was reached"
         },
         "tokenUsage": {
           "input": 10,
@@ -1241,6 +1277,10 @@
           "status": "skipped",
           "reason": "remaining model budget could not be established"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: remaining model budget could not be established"
+        },
         "tokenUsage": {
           "input": 10,
           "output": 5,
@@ -1360,6 +1400,10 @@
           "trigger": "stop_when",
           "status": "skipped",
           "reason": "remaining model budget is unknown because an earlier participant turn did not report complete usage"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: remaining model budget is unknown because an earlier participant turn did not report complete usage"
         },
         "interactionUsageIncomplete": true,
         "capabilities": {
@@ -1497,6 +1541,10 @@
           },
           "messageId": "message-004"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant's closing account did not include impressions"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 15,
@@ -1539,7 +1587,7 @@
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
       ["estimateTurnCostUsd",{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},0.5],
       ["overRunBudget",{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},null],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["overRunBudget",{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},"spent"],
       ["estimateTurnCostUsd",{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},1.5],
       ["onTrace",5,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
@@ -1658,6 +1706,10 @@
           "reason": "Participant provider: invalid_response; closing request usage is reported",
           "usageReported": true
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: Participant provider: invalid_response; closing request usage is reported"
+        },
         "tokenUsage": {
           "input": 14,
           "output": 7,
@@ -1696,7 +1748,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}}],"historyTurnsOmitted":0}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",3,{"input":14,"output":7,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":4,"output":2}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}},{"ordinal":2,"kind":"debrief","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"errorCode":"invalid_response","usage":{"input":4,"output":2}}],"historyTurnsOmitted":0}]
     ]
   },
@@ -1821,6 +1873,10 @@
           "reason": "Participant provider: cleanup_unconfirmed; closing request usage is unreported",
           "usageReported": false
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report failed: Participant provider: cleanup_unconfirmed; closing request usage is unreported"
+        },
         "tokenUsage": {
           "input": 14,
           "output": 5,
@@ -1858,7 +1914,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}}],"historyTurnsOmitted":0}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",4,{"input":14,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":4}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}},{"ordinal":2,"kind":"debrief","dispatched":true,"usageComplete":false,"cleanup":"unconfirmed","profileVerified":false,"errorCode":"cleanup_unconfirmed","usage":{"input":4}}],"historyTurnsOmitted":0}]
     ]
   },
@@ -1989,6 +2045,10 @@
           },
           "messageId": "message-003"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant's closing account did not include impressions"
+        },
         "tokenUsage": {
           "input": 30,
           "output": 15,
@@ -2027,7 +2087,7 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}}],"historyTurnsOmitted":0}],
-      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
       ["onTrace",4,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":10,"output":5}},{"ordinal":2,"kind":"debrief","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":false,"usage":{"input":20,"output":10}}],"historyTurnsOmitted":0}]
     ]
   }

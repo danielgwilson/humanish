@@ -1,9 +1,10 @@
 import { ComputerUseProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
 import { advanceBackstop, startBackstop, type BackstopStep } from "./loop/backstop.js";
-import { requestDebrief } from "./loop/debrief.js";
+import { requestDebrief, validClosingReport } from "./loop/debrief.js";
 import * as stops from "./loop/ending.js";
 import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
+import { notCollected, recordImpressions } from "./loop/impressions.js";
 import { DesktopObserver } from "./loop/observation.js";
 import { retryAfterOutputLimit } from "./loop/output-limit.js";
 import { requestTurn } from "./loop/provider-call.js";
@@ -39,6 +40,7 @@ export type {
 export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
 export { validClosingReport } from "./loop/debrief.js";
+export { IMPRESSIONS_ASK } from "./loop/impressions.js";
 
 // The computer-use (CUA) loop: drive a model over a desktop turn by turn, observe the screen, act,
 // and stop at a natural endpoint or an unambiguous friction signal. The model sits behind the
@@ -175,6 +177,9 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );
+      session.impressions = validClosingReport(turn.closingReport)
+        ? recordImpressions(session, turn.closingReport)
+        : notCollected("the participant ended the session without a structured closing account");
       await observer.observeFinalTasks(turnNumber);
       return ended;
     }

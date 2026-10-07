@@ -22,6 +22,15 @@ const closing = JSON.parse(
     "utf8",
   ),
 );
+const withImpressions = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../fixtures/openai-closing-report/typed-closing-report-impressions.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const request: CuaTurnRequest = {
   instructions: "Use the synthetic task list.",
   observation: { screenshot: Buffer.from("synthetic-frame"), stateSignature: "saved" },
@@ -104,7 +113,29 @@ describe("captured OpenAI closing-report contract", () => {
           strict: true,
           schema: {
             additionalProperties: false,
-            required: ["summary", "frictionReports"],
+            required: ["summary", "frictionReports", "impressions"],
+            properties: {
+              impressions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["kind", "text"],
+                  properties: {
+                    kind: {
+                      enum: [
+                        "unclear",
+                        "unfinished",
+                        "untrustworthy",
+                        "liked",
+                        "missing",
+                        "unlike_my_work",
+                      ],
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -170,5 +201,40 @@ describe("captured OpenAI closing-report contract", () => {
     });
     await provider.nextTurn(request, signal);
     expect(provider.debrief).toBeUndefined();
+  });
+});
+
+describe("impressions in the captured OpenAI closing report", () => {
+  it("keeps the participant's typed impressions from a closing reply", async () => {
+    const h = harness(withImpressions);
+    await h.provider.nextTurn(request, signal);
+    const result = await h.provider.debrief!(request, signal);
+    expect(result.closingReport?.impressions).toEqual([
+      {
+        kind: "unclear",
+        text: "The Save button looked the same as the task text, so I could not tell it was a button at first.",
+      },
+      {
+        kind: "unlike_my_work",
+        text: "On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared, so I could not check what I had changed.",
+      },
+    ]);
+  });
+
+  it.each([
+    ["seven impressions", Array(7).fill({ kind: "liked", text: "The list was easy to scan." })],
+    ["an unknown kind", [{ kind: "annoying", text: "The list was slow." }]],
+    ["an empty text", [{ kind: "liked", text: " " }]],
+    ["a text over 500 characters", [{ kind: "missing", text: "x".repeat(501) }]],
+    ["an extra key", [{ kind: "liked", text: "Fast.", screen: "list" }]],
+  ])("rejects a report with %s while retaining usage", async (_name, impressions) => {
+    const invalid = structuredClone(withImpressions);
+    const report = JSON.parse(invalid.output[0].content[0].text);
+    invalid.output[0].content[0].text = JSON.stringify({ ...report, impressions });
+    const h = harness(invalid);
+    await h.provider.nextTurn(request, signal);
+    const result = await h.provider.debrief!(request, signal);
+    expect(result.closingReport).toBeUndefined();
+    expect(result.usage).toMatchObject({ input: 13543, output: 221 });
   });
 });

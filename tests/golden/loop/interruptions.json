@@ -82,6 +82,10 @@
             "at": "1970-01-01T00:00:08.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 50,
           "output": 60,
@@ -200,6 +204,10 @@
             "at": "1970-01-01T00:00:08.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 50,
           "output": 60,
@@ -318,6 +326,10 @@
             "at": "1970-01-01T00:00:08.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 50,
           "output": 60,
@@ -436,6 +448,10 @@
             "at": "1970-01-01T00:00:08.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 50,
           "output": 60,
@@ -545,6 +561,10 @@
             "at": "1970-01-01T00:00:07.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 900,
           "output": 100,

@@ -12,6 +12,7 @@ import {
 } from "../../../src/routes/computer-use/self-report.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import type { ParticipantImpression } from "../../../src/actors/contract.js";
 
 const report = "The Save button did nothing. I used Enter and finished the task.";
 const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
@@ -401,5 +402,137 @@ describe("read-only participant debrief", () => {
       stopCause: "usage_unreported",
       interactionUsageIncomplete: true,
     });
+  });
+});
+
+describe("participant impressions at the end of a session", () => {
+  const unclear =
+    "The Save button looked the same as the task text, so I could not tell it was a button at first.";
+  const unlike =
+    "On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared.";
+  const impressions = [
+    { kind: "unclear" as const, text: unclear },
+    { kind: "unlike_my_work" as const, text: unlike },
+  ];
+  const withImpressions = (list: ParticipantImpression[] = impressions) =>
+    closing({
+      closingReport: { summary: "I renamed the item.", frictionReports: [], impressions: list },
+    });
+
+  it("asks for each kind of impression, including how the persona does the same task", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    await s.run();
+    const hint = String(s.debrief.mock.calls[0]?.[0].contextHint);
+    for (const kind of [
+      "unclear",
+      "unfinished",
+      "untrustworthy",
+      "liked",
+      "missing",
+      "unlike_my_work",
+    ])
+      expect(hint).toContain(kind);
+    expect(hint).toContain("own work or life");
+  });
+
+  it("records the closing account's impressions as quotable participant statements", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    const { trace } = await s.run();
+    expect(trace.impressions).toEqual({
+      status: "collected",
+      items: [
+        { kind: "unclear", text: unclear, messageId: expect.any(String) },
+        { kind: "unlike_my_work", text: unlike, messageId: expect.any(String) },
+      ],
+    });
+    const items = trace.impressions?.status === "collected" ? trace.impressions.items : [];
+    for (const impression of items) {
+      const message = trace.items.find((item) => item.id === impression.messageId);
+      expect(message?.kind).toBe("message");
+      expect(message?.text).toContain(impression.text);
+    }
+    expect(trace.items.find((item) => item.id === items[1]?.messageId)?.text).toContain(
+      "unlike my work",
+    );
+    expect(trace.counts.messages).toBe(3);
+    expect(trace.debrief?.report).toEqual({ summary: "I renamed the item.", frictionReports: [] });
+  });
+
+  it("keeps impressions out of the participant's reported friction", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    expect(resolveSelfReportedFriction(await s.run())).toBeUndefined();
+  });
+
+  it("records an empty list when the participant had no impressions", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions([]));
+    expect((await s.run()).trace.impressions).toEqual({ status: "collected", items: [] });
+  });
+
+  it("redacts impressions like the rest of the closing account", async () => {
+    const s = setup({ scrubText: (text) => text.replaceAll("opaque-private-value", "[scrubbed]") });
+    s.debrief.mockResolvedValue(
+      withImpressions([{ kind: "missing", text: "I expected opaque-private-value on the list." }]),
+    );
+    const { trace } = await s.run();
+    expect(JSON.stringify(trace)).not.toContain("opaque-private-value");
+    expect(trace.impressions).toMatchObject({
+      items: [{ kind: "missing", text: "I expected [scrubbed] on the list." }],
+    });
+  });
+
+  it("keeps the impressions in a participant's own final account", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue(withImpressions());
+    const { trace } = await s.run();
+    expect(trace.debrief).toBeUndefined();
+    expect(trace.impressions).toMatchObject({
+      status: "collected",
+      items: [{ kind: "unclear" }, { kind: "unlike_my_work" }],
+    });
+  });
+
+  const withoutReport = (): CuaTurn => {
+    const { closingReport: _report, ...turn } = closing();
+    return turn;
+  };
+
+  it.each([
+    [
+      "the provider has no closing report",
+      (s: ReturnType<typeof setup>) => delete s.provider.debrief,
+      /closing report was skipped: this provider does not support/,
+    ],
+    [
+      "the closing report failed",
+      (s: ReturnType<typeof setup>) => s.debrief.mockRejectedValue(new Error("network down")),
+      /closing report failed: network down/,
+    ],
+    [
+      "the closing report has no impressions",
+      () => undefined,
+      /closing account did not include impressions/,
+    ],
+    [
+      "the participant ended without a structured account",
+      (s: ReturnType<typeof setup>) => s.nextTurn.mockResolvedValue(withoutReport()),
+      /ended the session without a structured closing account/,
+    ],
+    [
+      "the session stopped before a closing account",
+      (s: ReturnType<typeof setup>) => s.nextTurn.mockRejectedValue(new Error("provider down")),
+      /stopped before a closing account/,
+    ],
+  ])("says why impressions were not collected when %s", async (_name, arrange, reason) => {
+    const s = setup();
+    arrange(s);
+    const { trace } = await s.run();
+    expect(trace.impressions?.status).toBe("not_collected");
+    expect(trace.impressions?.status === "not_collected" && trace.impressions.reason).toMatch(
+      reason,
+    );
   });
 });

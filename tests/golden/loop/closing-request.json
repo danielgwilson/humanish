@@ -107,6 +107,10 @@
         },
         "messageId": "message-004"
       },
+      "impressions": {
+        "status": "not_collected",
+        "reason": "the participant's closing account did not include impressions"
+      },
       "taskFunnel": {
         "schema": "humanish.task-funnel.v1",
         "total": 1,
@@ -162,7 +166,7 @@
     ["onObservedUrl",null],
     ["onTrace",1,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}],
     ["estimateTurnCostUsd",{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},0.015],
-    ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+    ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"1","text":"saved"},"previousResponseId":"previous","contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
     ["estimateTurnCostUsd",{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},0.045],
     ["onTrace",5,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
   ]

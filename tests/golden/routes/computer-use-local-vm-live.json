@@ -222,6 +222,10 @@
       "total": 1,
       "shortcutTotal": 0
     },
+    "impressions": {
+      "status": "not_collected",
+      "reason": "the participant ended the session without a structured closing account"
+    },
     "capabilities": {
       "headless": true,
       "structuredTrace": true,
@@ -596,6 +600,10 @@
             },
             "total": 1,
             "shortcutTotal": 0
+          },
+          "impressions": {
+            "status": "not_collected",
+            "reason": "the participant ended the session without a structured closing account"
           },
           "capabilities": {
             "headless": true,

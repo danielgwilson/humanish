@@ -372,7 +372,44 @@ export function validActorProviderRequests(value: unknown): value is ActorProvid
 export interface ParticipantClosingReport {
   summary: string;
   frictionReports: string[];
+  /** Absent when the provider did not ask for impressions; empty when the participant had none. */
+  impressions?: ParticipantImpression[];
 }
+
+/**
+ * What a participant can say about the product at the end of a session, beyond friction.
+ * `unlike_my_work` compares the screen with how the persona does the same task in its own work or
+ * life.
+ */
+export const PARTICIPANT_IMPRESSION_KINDS = [
+  "unclear",
+  "unfinished",
+  "untrustworthy",
+  "liked",
+  "missing",
+  "unlike_my_work",
+] as const;
+type ParticipantImpressionKind = (typeof PARTICIPANT_IMPRESSION_KINDS)[number];
+
+/** One first-person impression about something the participant saw in the session. */
+export interface ParticipantImpression {
+  kind: ParticipantImpressionKind;
+  text: string;
+}
+
+/** An impression as the trace keeps it, with the message that quotes it. */
+interface RecordedImpression extends ParticipantImpression {
+  /** The trace message carrying the impression, which the analysis quotes and cites. */
+  messageId: string;
+}
+
+/**
+ * The impressions a session collected, or why it collected none. An empty `items` list means the
+ * participant had none to give.
+ */
+export type ParticipantImpressions =
+  | { status: "collected"; items: RecordedImpression[] }
+  | { status: "not_collected"; reason: string };
 
 /** Runtime declarations and executable-version observations; not provider request attestation. */
 export interface ActorRuntimeProvenance {
@@ -506,10 +543,16 @@ export interface ActorTrace {
     reason: string;
     /** Absent if no request was made; false means token accounting is incomplete. */
     usageReported?: boolean;
-    report?: ParticipantClosingReport;
+    /** The report's impressions are kept in `impressions`, with the messages that quote them. */
+    report?: Omit<ParticipantClosingReport, "impressions">;
     /** Links the readable projection so it is not heuristically classified a second time. */
     messageId?: string;
   };
+  /**
+   * What the participant said about the product at the end of a computer-use session, or why
+   * nothing was collected. Absent on other routes and on older traces.
+   */
+  impressions?: ParticipantImpressions;
   items: ActorTraceItem[];
   tokenUsage?: ActorTokenUsage;
   /** A stalled or adapter-reported ambiguous interaction may have additional unreported usage.

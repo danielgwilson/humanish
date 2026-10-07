@@ -124,6 +124,10 @@
           "shortcutTotal": 0
         },
         "declaredOutcome": "reached",
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "tokenUsage": {
           "input": 20,
           "output": 4,
@@ -231,6 +235,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "interactionUsageIncomplete": true,
         "capabilities": {
           "headless": true,
@@ -338,6 +346,10 @@
             "at": "1970-01-01T00:00:07.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "interactionUsageIncomplete": true,
         "capabilities": {
           "headless": true,
@@ -492,6 +504,10 @@
           },
           "total": 1,
           "shortcutTotal": 0
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
         },
         "interactionUsageIncomplete": true,
         "tokenUsage": {

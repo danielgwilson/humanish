@@ -1,5 +1,10 @@
-import type { ActorTrace, ParticipantClosingReport } from "../../contract.js";
+import {
+  PARTICIPANT_IMPRESSION_KINDS,
+  type ActorTrace,
+  type ParticipantClosingReport,
+} from "../../contract.js";
 import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
+import { IMPRESSIONS_ASK, recordImpressions } from "./impressions.js";
 import type { DebriefTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
 import { CuaDeadlineError, raceSessionDeadline, requestScope } from "./race.js";
@@ -23,15 +28,17 @@ export interface DebriefContext {
 }
 
 const DEBRIEF_REQUEST_CAP_MS = 30_000;
-const DEBRIEF_HINT =
-  "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.";
+const DEBRIEF_HINT = `The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.`;
 
-/** Runtime validation is also required for third-party provider ports. */
+/**
+ * Runtime validation is also required for third-party provider ports. A report without
+ * impressions stays valid: older providers and stored traces do not have them.
+ */
 export function validClosingReport(value: unknown): value is ParticipantClosingReport {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const report = value as Record<string, unknown>;
   return (
-    Object.keys(report).length === 2 &&
+    Object.keys(report).every((key) => REPORT_KEYS.includes(key)) &&
     typeof report.summary === "string" &&
     report.summary.trim().length > 0 &&
     report.summary.length <= 4_000 &&
@@ -39,7 +46,28 @@ export function validClosingReport(value: unknown): value is ParticipantClosingR
     report.frictionReports.length <= 8 &&
     report.frictionReports.every(
       (item: unknown) => typeof item === "string" && item.trim().length > 0 && item.length <= 2_000,
-    )
+    ) &&
+    (report.impressions === undefined || validImpressions(report.impressions))
+  );
+}
+
+const REPORT_KEYS = ["summary", "frictionReports", "impressions"];
+
+function validImpressions(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= 6 &&
+    value.every((item: unknown) => {
+      if (item === null || typeof item !== "object" || Array.isArray(item)) return false;
+      const { kind, text, ...rest } = item as Record<string, unknown>;
+      return (
+        Object.keys(rest).length === 0 &&
+        PARTICIPANT_IMPRESSION_KINDS.some((known) => known === kind) &&
+        typeof text === "string" &&
+        text.trim().length > 0 &&
+        text.length <= 500
+      );
+    })
   );
 }
 
@@ -238,7 +266,7 @@ function acceptDebriefTurn(session: LoopSession, turn: CuaTurn, record: RecordDe
       usageReported,
     );
   }
-  const report: ParticipantClosingReport = {
+  const report: Debrief["report"] = {
     summary: session.redactNarration(turn.closingReport.summary.trim()),
     frictionReports: [
       ...new Set(
@@ -252,6 +280,7 @@ function acceptDebriefTurn(session: LoopSession, turn: CuaTurn, record: RecordDe
     text: [report.summary, ...report.frictionReports].join("\n\n"),
   }));
   session.trace.bump("messages");
+  session.impressions = recordImpressions(session, turn.closingReport);
   const debrief = record(
     "completed",
     "one read-only report; no additional desktop actions; original stop and task outcomes preserved",

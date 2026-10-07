@@ -1,4 +1,9 @@
-import type { ActorStopCause, ActorTraceItem, ParticipantDeclaredOutcome } from "../../contract.js";
+import type {
+  ActorStopCause,
+  ActorTraceItem,
+  ParticipantDeclaredOutcome,
+  ParticipantImpressions,
+} from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
@@ -106,6 +111,8 @@ export class LoopSession {
   declaredOutcome: ParticipantDeclaredOutcome | undefined;
   /** Set by a structured stop; the debrief follows it even if the session then failed. */
   debriefTrigger: DebriefTrigger | undefined;
+  /** Set by the participant's own final account or by its closing report. */
+  impressions: ParticipantImpressions | undefined;
   private stopCause: ActorStopCause | undefined;
   private readonly scrubText: (text: string) => string;
 

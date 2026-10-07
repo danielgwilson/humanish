@@ -1,6 +1,6 @@
 import type { CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import type { ActorConversation } from "../contract.js";
+import { PARTICIPANT_IMPRESSION_KINDS, type ActorConversation } from "../contract.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   buildCallOutput,
@@ -183,10 +183,22 @@ export class OpenAiConversation {
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["summary", "frictionReports"],
+            required: ["summary", "frictionReports", "impressions"],
             properties: {
               summary: { type: "string" },
               frictionReports: { type: "array", items: { type: "string" } },
+              impressions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["kind", "text"],
+                  properties: {
+                    kind: { type: "string", enum: [...PARTICIPANT_IMPRESSION_KINDS] },
+                    text: { type: "string" },
+                  },
+                },
+              },
             },
           },
         },

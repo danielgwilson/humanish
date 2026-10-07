@@ -135,6 +135,10 @@
         "total": 3,
         "shortcutTotal": 0
       },
+      "impressions": {
+        "status": "not_collected",
+        "reason": "the participant ended the session without a structured closing account"
+      },
       "tokenUsage": {
         "input": 350,
         "output": 60,

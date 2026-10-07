@@ -42,6 +42,10 @@
           "noProgressTurns": 0
         },
         "items": [],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -135,6 +139,10 @@
           "total": 1,
           "shortcutTotal": 0
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -205,6 +213,10 @@
           "noProgressTurns": 0
         },
         "items": [],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -279,6 +291,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -367,6 +383,10 @@
             "at": "1970-01-01T00:00:06.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -467,6 +487,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 5,
           "output": 1,
@@ -568,6 +592,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -646,6 +674,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 100,
           "output": 50,
@@ -737,6 +769,10 @@
             "at": "1970-01-01T00:00:03.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "tokenUsage": {
           "input": 100,
           "output": 50,
@@ -864,6 +900,10 @@
           },
           "total": 1,
           "shortcutTotal": 0
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
         },
         "interactionUsageIncomplete": true,
         "tokenUsage": {

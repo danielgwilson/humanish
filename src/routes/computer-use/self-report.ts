@@ -278,8 +278,19 @@ export function resolveSelfReportedFriction(
   // Friction stays a read of the narrative even when the outcome was declared: a participant who
   // reached the goal and described what was hard on the way has reported friction.
   if (session.trace.declaredOutcome === "blocked") return session.reason;
+  // Impressions are opinions about the product, not reports of what went wrong in the session.
+  const impressions = new Set(
+    session.trace.impressions?.status === "collected"
+      ? session.trace.impressions.items.map((item) => item.messageId)
+      : [],
+  );
   const messages = session.trace.items
-    .filter((item) => item.kind === "message" && item.id !== session.trace.debrief?.messageId)
+    .filter(
+      (item) =>
+        item.kind === "message" &&
+        item.id !== session.trace.debrief?.messageId &&
+        !impressions.has(item.id),
+    )
     .map((item) => item.text?.trim() ?? "")
     .filter((text) => text.length > 0);
   // A custom session may keep its closing report only in reason even when earlier messages exist.
