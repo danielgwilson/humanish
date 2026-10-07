@@ -19,6 +19,8 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
 import type { ReviewSummary } from "./bundle.js";
+import { tallyParticipantOutcomes } from "./outcomes.js";
+import type { RunSimulationStatus } from "./streams.js";
 import { cli } from "../cli/invocation.js";
 
 export type Verdict = ReviewSummary["verdict"];
@@ -81,6 +83,87 @@ export interface ParticipantFacts {
   noEngagement: boolean;
   /** selfReportedBlocker held for its session. */
   selfReportedBlocker: boolean;
+}
+
+/** The participant facts its bundle and result can name. */
+export interface ParticipantRecordFacts extends ParticipantFacts {
+  id?: string;
+  reason?: string;
+  skippedReason?: string;
+  reportedFriction?: boolean;
+  inProgress?: boolean;
+}
+
+/** Judge participant evidence for the bundle and the result in the same order. */
+export function judgeParticipantRecords(
+  participants: readonly ParticipantRecordFacts[],
+  wording: {
+    sessionLabel?: string;
+    missingSessionMessage?: string;
+    runningReason?: string;
+    contractReason?: string;
+  } = {},
+) {
+  const records = participants.map((participant) => {
+    const status: RunSimulationStatus = participant.inProgress
+      ? "running"
+      : participant.skipped
+        ? "blocked"
+        : (participant.status ??
+          (participant.sessionError === undefined ? "contract_proof_only" : "failed"));
+    const judged = participant.inProgress ? undefined : judgedStatus(participant);
+    return {
+      status,
+      judgedStatus: judged,
+      reason: participant.inProgress
+        ? (wording.runningReason ??
+          "Live computer-use session is running; stream auth URL is available only through the attached Observer server.")
+        : (participant.skippedReason ??
+          participant.reason ??
+          participant.sessionError ??
+          wording.contractReason ??
+          "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."),
+      notPassedMessage: participantNotPassedMessage(participant, wording),
+      gapLine:
+        participant.inProgress || judged === "passed"
+          ? undefined
+          : `${participant.id ?? "Participant"}: ${participant.skippedReason ?? participant.sessionError ?? participant.reason ?? "did not pass"}`,
+    };
+  });
+  const terminal = records.filter(
+    (_, index) => participants[index]!.status !== undefined && !participants[index]!.inProgress,
+  );
+  return {
+    participants: records,
+    tally: tallyParticipantOutcomes(
+      terminal.map((participant) => participant.judgedStatus!),
+      participants
+        .filter((participant) => participant.status !== undefined && !participant.inProgress)
+        .map((participant) => participant.reportedFriction === true),
+    ),
+  };
+}
+
+function participantNotPassedMessage(
+  participant: ParticipantRecordFacts,
+  wording: { sessionLabel?: string; missingSessionMessage?: string },
+): string {
+  const label = wording.sessionLabel ?? "Computer-use session";
+  if (participant.sessionError !== undefined) return participant.sessionError;
+  if (participant.skippedReason !== undefined) return participant.skippedReason;
+  if (participant.noEngagement)
+    return "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied.";
+  if (participant.selfReportedBlocker)
+    return "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass.";
+  if (participant.completionReason === "harness_error")
+    return `${label} ended with a harness error: ${participant.reason}`;
+  if (participant.status === undefined && wording.missingSessionMessage !== undefined)
+    return wording.missingSessionMessage;
+  if (participant.status !== "passed")
+    return `${label} ended with ${participant.status ?? "unknown"}: ${participant.reason ?? "no terminal reason"}`;
+  return (
+    wording.missingSessionMessage ?? "The computer-use run did not produce a terminal session."
+  );
 }
 
 /**

@@ -7,13 +7,8 @@ import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import {
-  judgeOneParticipant,
-  judgeParticipants,
-  type Judgment,
-  verdictText,
-} from "../../run/judge.js";
-import { reviewOutcome } from "../../run/display.js";
+import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
+import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { providerResourcesForOutcome } from "./bundle-parts.js";
@@ -210,14 +205,7 @@ function singleParticipantArgs(
 export function renderCuaReviewMarkdown(bundle: RunBundle): string {
   const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
   const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
-    `- summary: ${bundle.review.summary}`,
+  return renderReviewMarkdown(bundle, [
     ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace
       ? [
@@ -232,9 +220,5 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
           )}`,
         ]
       : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
+  ]);
 }
