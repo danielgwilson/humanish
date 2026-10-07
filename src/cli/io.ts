@@ -460,12 +460,8 @@ export function analysisOutcomeText(analysis: { state: string; reason: string | 
 }
 
 /** What a refused analysis would cost and the command that runs it with a cap that admits it. */
-export function refusedAnalysisText(
-  cost: RefusedAnalysisCost,
-  runId: string,
-  cwdFlag = "",
-): string {
-  return `${costRefusalText(cost)} To run it, raise the cap: ${cli(`analyze --run ${runId}${cwdFlag} --max-cost ${admittingMaxCost(cost)}`)}`;
+function refusedAnalysisText(cost: RefusedAnalysisCost, runId: string): string {
+  return `${costRefusalText(cost)} To run it, raise the cap: ${cli(`analyze --run ${runId} --max-cost ${admittingMaxCost(cost)}`)}`;
 }
 
 /** Preserve the run's own result while making requested post-processing failures machine-visible. */

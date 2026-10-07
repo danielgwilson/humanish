@@ -410,7 +410,7 @@ describe("bounded study analysis run", () => {
     },
   );
 
-  it("admits without a provider call and refuses a budget below its conservative estimate", async () => {
+  it("admits without a provider call and refuses a budget below its expected cost", async () => {
     const packet = input();
     const admission = estimateAnalysisAdmission(packet, config);
     expect(admission.allowed).toBe(true);

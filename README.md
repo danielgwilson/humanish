@@ -219,7 +219,7 @@ The OpenAI API default stays unchanged. See the [analysis contract](docs/contrac
 coverage limits, estimated cost controls, corrections and sharing behavior.
 
 Supported live studies generate findings automatically after participants finish,
-using a separate $3 admission estimate limit with `gpt-6-astra` and high reasoning.
+using a separate $3 cap on the expected cost with `gpt-6-astra` and high reasoning.
 This is additional to participant execution costs, and is not a hard provider
 billing cap. To disable the extra request:
 

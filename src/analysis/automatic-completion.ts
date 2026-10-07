@@ -133,7 +133,7 @@ export async function completeAutomaticAnalysis<
  * admission margin, is over the default cap. The author did not ask for it, so the refusal does not fail the run;
  * `humanish analyze --max-cost` can still run it.
  */
-export function defaultAnalysisOverBudget(result: AutomaticAnalysisResult): boolean {
+function defaultAnalysisOverBudget(result: AutomaticAnalysisResult): boolean {
   const value = result.automaticAnalysis;
   return (
     result.automaticAnalysisTrigger === "default" &&
