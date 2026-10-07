@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command, type ParseOptionsResult } from "commander";
+import { Command, Help, type ParseOptionsResult } from "commander";
 import { redactText } from "../evidence/redaction.js";
 import { PortInUseError } from "../observer/listen.js";
 import {
@@ -408,6 +408,15 @@ export function createProgram(
     // each subcommand when it is created.
     .helpOption("-h, --help", "Show help for this command.")
     .helpCommand("help [command]", "Show help for a command.")
+    // `help <command>` and `<command> help` keep working; a command's listing names only the
+    // commands that do something, so `help` is left out of every Commands section.
+    .configureHelp({
+      visibleCommands(this: Help, command: Command): Command[] {
+        return Help.prototype.visibleCommands
+          .call(this, command)
+          .filter((child) => child.name() !== "help");
+      },
+    })
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({

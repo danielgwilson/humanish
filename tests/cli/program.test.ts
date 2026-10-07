@@ -1,4 +1,4 @@
-import { CommanderError } from "commander";
+import { CommanderError, type Command } from "commander";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
@@ -299,6 +299,36 @@ describe("humanish CLI scaffold", () => {
     expect(rows.map((row) => row.trim().split(" ")[0])).toEqual(visible);
     expect(visible).not.toContain("codex");
     expect(program.commands.map((command) => command.name())).toContain("codex");
+  });
+
+  it("lists no help command in any command's help, and `help <command>` still works", async () => {
+    const groups: Command[] = [];
+    const walk = (command: Command): void => {
+      if (command.commands.length > 0) groups.push(command);
+      for (const child of command.commands) walk(child);
+    };
+    walk(createProgram());
+    expect(groups.length).toBeGreaterThan(5);
+    for (const group of groups) expect(group.helpInformation()).not.toMatch(/^\s+help\b/m);
+
+    // Help for a subcommand exits from that subcommand, so every command gets the override.
+    const helpFor = async (args: string[]): Promise<string> => {
+      const out: string[] = [];
+      const program = createProgram({
+        writeOut: (text) => out.push(text),
+        writeErr: (text) => out.push(text),
+        setExitCode: () => {},
+      });
+      const all = (command: Command): Command[] => [command, ...command.commands.flatMap(all)];
+      for (const command of all(program)) command.exitOverride();
+      await program.parseAsync(["node", "humanish", ...args], { from: "node" }).catch((error) => {
+        if (!(error instanceof CommanderError && error.code.startsWith("commander.help")))
+          throw error;
+      });
+      return out.join("");
+    };
+    expect(await helpFor(["help", "keys"])).toContain("Usage: humanish keys");
+    expect(await helpFor(["keys", "help", "set"])).toContain("Usage: humanish keys set");
   });
 
   it.each([["--version"], ["-v"]])("reports the package version for %s", async (flag) => {
