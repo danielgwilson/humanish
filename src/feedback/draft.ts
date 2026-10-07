@@ -193,7 +193,8 @@ export async function buildAnalysisDraft(
   const root = path.dirname(context.loaded.bundlePath);
   const evidenceIds = new Set(finding.observations.flatMap((item) => item.evidenceIds));
   const evidence = analysis.evidence.filter((item) => evidenceIds.has(item.id));
-  const claim = correction?.status === "amended" ? correction.replacementClaim! : finding.title;
+  const amended = correction?.status === "amended";
+  const claim = amended ? correction.replacementClaim! : (finding.headline ?? finding.title);
   const firstLine = claim.trim().split(/\r?\n/)[0] || `Reviewed finding ${finding.id}`;
   const summary =
     Array.from(firstLine).length > 160
@@ -219,10 +220,19 @@ export async function buildAnalysisDraft(
     expected:
       "Review the cited behavior against the participant assignment and confirm the expected product behavior.",
     actual: [
+      // The plain account leads; an amendment makes it stale, so the draft says so in its place.
+      ...(finding.headline === undefined
+        ? []
+        : amended
+          ? [
+              "This finding was corrected in human review. The reviewer's claim above replaces its original headline and account.",
+              "",
+            ]
+          : finding.experience === undefined
+            ? []
+            : [finding.experience, ""]),
       "Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
-      correction?.status === "amended"
-        ? `Amended claim: ${claim}. Original analysis: ${finding.summary}`
-        : finding.summary,
+      amended ? `Amended claim: ${claim}. Original analysis: ${finding.summary}` : finding.summary,
       `Impact: ${finding.impact}. ${finding.affectedStreamIds.length} affected / ${finding.exposedStreamIds.length} observed exposed participants. ${finding.exposureReason}`,
       `Recovery: ${finding.recovery}. Confidence: ${finding.confidence}.`,
       ...finding.observations.map(
