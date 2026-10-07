@@ -50,6 +50,7 @@ import type { ScriptedBrowserSessionResult } from "../../../src/actors/scripted-
 import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { runAdmitted, runComputerUse, runScripted } from "../../helpers/route-run.js";
 
@@ -1578,6 +1579,20 @@ describe("scripted-browser run directory goldens", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/scripted-dry-run.json",
     );
+  });
+
+  it("captions each surface by its persona and a phone, without the study id", async () => {
+    const outcome = await runStudyWith(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.streams.map((stream) => stream.label)).toEqual([
+      "Synthetic new user",
+      "Synthetic new user, phone",
+    ]);
+    expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
   });
 
   it("live journey that passes on a fake browser", async () => {

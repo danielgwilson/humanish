@@ -129,7 +129,8 @@ function participantCompletionLine(
 /** "; the gaps list the other 2", or "all 3" when nobody passed. Empty when the gaps list nobody. */
 export function gapsListClause(listed: number, total: number): string {
   if (listed <= 0) return "";
-  return `; the gaps list ${listed === total ? `all ${total}` : `the other ${listed}`}`;
+  if (listed < total) return `; the gaps list the other ${listed}`;
+  return total === 1 ? "; the gaps say why" : `; the gaps list all ${total}`;
 }
 
 /** One line a stakeholder can read, with the denominator attached to every number. */

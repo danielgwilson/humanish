@@ -11,6 +11,7 @@ import {
   participantStream,
   type ParticipantIds,
 } from "../../run/participant-records.js";
+import { participantCaption } from "../../run/participant-caption.js";
 import type { RunStream } from "../../run/streams.js";
 
 /** What each surface's records read from the bundle arguments. */
@@ -83,7 +84,10 @@ export function scriptedSurfaceRecords(
 
   const stream = participantStream(ids, {
     kind: "browser",
-    label: `${surface.label} · ${context.studyId}`,
+    label: participantCaption({
+      personaId: context.persona.id,
+      device: { name: surface.id, preset: { isMobile: surface.viewport.isMobile } },
+    }),
     status,
     transport: "snapshot",
     updatedAt: result?.capture.capturedAt ?? context.createdAt,

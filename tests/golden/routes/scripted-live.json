@@ -282,10 +282,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "pass",
-    "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
+    "summary": "Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 1/1 passed it.",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 4 step actions, 4 raw screenshots\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 1/1 passed it.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 4 step actions, 4 raw screenshots\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -358,7 +358,7 @@
         "id": "scripted-desktop-stream",
         "simId": "scripted-desktop",
         "kind": "browser",
-        "label": "Desktop browser surface · scripted-routing-proof",
+        "label": "Synthetic new user",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -573,7 +573,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "pass",
-      "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
+      "summary": "Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 1/1 passed it.",
       "gaps": []
     },
     "feedbackCandidates": [],
