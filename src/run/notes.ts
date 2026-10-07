@@ -87,7 +87,7 @@ export function formatRunTime(ms: number): string {
 }
 
 /** The run clock: the first and last timed capture or desktop video moment, in epoch ms. */
-export function runClock(bundle: RunBundle): { startMs: number; endMs: number } | null {
+function runClock(bundle: RunBundle): { startMs: number; endMs: number } | null {
   const moments = bundle.streams.flatMap((stream) => [
     ...(captureTimes(stream) ?? []),
     ...recordingMoments(stream),
@@ -215,6 +215,11 @@ export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<
   }
   if (parsed === null) throw new Error("HUMANISH_NOTES_UNREADABLE");
   return parsed;
+}
+
+/** The run's notes for a page or a draft: null when it has none or they cannot be read. */
+export function readableRunNotes(prepared: PreparedRunArtifactPaths): Promise<RunNotes | null> {
+  return readRunNotes(prepared).catch(() => null);
 }
 
 /**

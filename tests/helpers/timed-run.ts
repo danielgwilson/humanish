@@ -13,7 +13,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 
 /** The first capture of the run: the run clock's 00:00. */
-export const TIMED_RUN_START = Date.parse("2026-05-01T10:00:00.000Z");
+const TIMED_RUN_START = Date.parse("2026-05-01T10:00:00.000Z");
 
 const at = (seconds: number): string => new Date(TIMED_RUN_START + seconds * 1000).toISOString();
 

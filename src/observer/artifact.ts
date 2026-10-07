@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { projectShareCheckedAnalysis, analysisSharingProblems } from "../analysis/sharing.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
+import type { RunNotes } from "../run/notes.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
 
 const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
@@ -171,10 +172,20 @@ function renderExportAssets(assets: ObserverExportAssets): string {
     .join("");
 }
 
+/**
+ * What the run-notes slot holds: the run's notes, and the token a loopback server accepts for
+ * adding one. A page without the token shows the notes read-only.
+ */
+interface RunNotesSlot {
+  notes: RunNotes | null;
+  write: { token: string } | null;
+}
+
 function renderObserverAppHtml(
   data: ObserverData,
   snapshot: boolean,
   analysis: LoadedAnalysis,
+  notes: RunNotesSlot,
   assets: ObserverExportAssets,
 ): string {
   const artifact = loadObserverArtifact();
@@ -197,6 +208,10 @@ function renderObserverAppHtml(
       () =>
         `<script id="study-analysis" type="application/json">${escapeJsonScript(analysis)}</script>`,
     )
+    .replace(
+      /<script id="run-notes" type="application\/json">[\s\S]*?<\/script>/,
+      () => `<script id="run-notes" type="application/json">${escapeJsonScript(notes)}</script>`,
+    )
     .replace("</body>", () => `${renderExportAssets(assets)}</body>`)
     .replace(
       /<title>[^<]*<\/title>/,
@@ -210,6 +225,10 @@ export function renderObserverHtml(
   options: {
     snapshot?: boolean;
     analysis?: LoadedAnalysis;
+    /** The run's reviewer notes, shown read-only unless `notesToken` is set. */
+    notes?: RunNotes | null;
+    /** The serving process's token for adding a note. Only a loopback server's page carries it. */
+    notesToken?: string;
     assets?: ObserverExportAssets;
   } = {},
 ): string {
@@ -249,10 +268,16 @@ export function renderObserverHtml(
       },
     };
   }
+  // A snapshot is a file anyone may open later, so it never carries a server's token.
+  const write =
+    options.notesToken !== undefined && options.snapshot !== true
+      ? { token: options.notesToken }
+      : null;
   return renderObserverAppHtml(
     withObserverEndings(data),
     options.snapshot === true,
     projectShareCheckedAnalysis(analysis),
+    { notes: options.notes ?? null, write },
     options.assets ?? {},
   );
 }

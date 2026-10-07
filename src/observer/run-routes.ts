@@ -18,6 +18,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import { parseRunNotes, RUN_NOTES_FILE, type RunNotes } from "../run/notes.js";
 import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
@@ -54,7 +55,7 @@ export interface ObserverRuntimeStreamUrl {
 }
 
 /** The run's artifact paths, only when they are still the pinned directory being served. */
-async function servedRunPaths(runRoot: PinnedDirectory): Promise<PreparedRunArtifactPaths> {
+export async function servedRunPaths(runRoot: PinnedDirectory): Promise<PreparedRunArtifactPaths> {
   const runId = path.basename(runRoot.physicalPath);
   const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
   const prepared = await bindExistingRunArtifactPaths(cwd, runId);
@@ -100,13 +101,29 @@ async function readServedAnalysisSpend(
   }
 }
 
-/** internal: consumed by src/observer/serve.ts */
+/** The run's reviewer notes as served, or null when it has none or they cannot be read. */
+async function readServedNotes(runRoot: PinnedDirectory): Promise<RunNotes | null> {
+  try {
+    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, RUN_NOTES_FILE));
+    return bytes === null
+      ? null
+      : parseRunNotes(JSON.parse(bytes.toString("utf8")), path.basename(runRoot.physicalPath));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * internal: consumed by src/observer/serve.ts. `notesToken` goes into the run's Observer page so
+ * it can add notes; a server passes it only for a run it takes notes for.
+ */
 export async function serveRunPath(
   runRoot: PinnedDirectory,
   relativePath: string,
   response: ServerResponse,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
   request?: Pick<IncomingMessage, "method" | "headers">,
+  notesToken?: string,
 ): Promise<void> {
   const root = runRoot.physicalPath;
   const filePath = path.resolve(root, relativePath === "" ? "observer/index.html" : relativePath);
@@ -140,10 +157,15 @@ export async function serveRunPath(
       return;
     }
     const analysis = await readObserverAnalysis(runRoot);
+    const notes = await readServedNotes(runRoot);
     writeResponse(
       response,
       200,
-      renderObserverHtml(observerData, { analysis }),
+      renderObserverHtml(observerData, {
+        analysis,
+        notes,
+        ...(notesToken === undefined ? {} : { notesToken }),
+      }),
       "text/html; charset=utf-8",
     );
     return;

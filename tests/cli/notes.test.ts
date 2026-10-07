@@ -1,4 +1,6 @@
 // `humanish notes` lists a run's reviewer notes and adds one at a moment of the run clock.
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { Command, CommanderError } from "commander";
 import { describe, expect, it } from "vitest";
 
@@ -69,6 +71,12 @@ describe("humanish notes", () => {
       ok: true,
       notes: [{ atMs: 151_000, text: "They looked for the save button here." }],
     });
+    // The saved Observer page is rendered again and shows the note.
+    const page = await readFile(
+      path.join(cwd, ".humanish", "runs", RUN, "observer", "index.html"),
+      "utf8",
+    );
+    expect(page).toContain("They looked for the save button here.");
   });
 
   it("lists notes in run clock order with time, participant and author", async () => {

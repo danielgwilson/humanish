@@ -106,7 +106,13 @@ async function handleNotes(
   options: NotesOptions,
   command: Command,
 ): Promise<void> {
-  const base = { schema: NOTES_RESULT_SCHEMA, cwd: options.cwd, run, notes: [], warnings: [] };
+  const base: Pick<NotesResult, "schema" | "cwd" | "run" | "notes" | "warnings"> = {
+    schema: NOTES_RESULT_SCHEMA,
+    cwd: options.cwd,
+    run,
+    notes: [],
+    warnings: [],
+  };
   const fail = (code: NonNullable<NotesResult["error"]>["code"], message: string): void => {
     writeResult(command, io, { ...base, ok: false, error: { code, message } }, formatNotesHuman);
     io.setExitCode(2);
