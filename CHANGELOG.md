@@ -10,6 +10,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
 - Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
   an unfinished bundle without usable status reads as interrupted, and a recorded final outcome
   wins over a stale status record. Fresh live snapshots still read as running. Invalid cost

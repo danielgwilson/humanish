@@ -1,3 +1,4 @@
+import { judgeParticipantRecords } from "../../run/judge.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
@@ -11,7 +12,7 @@ import {
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
-import { participantOutcomeOk } from "./participant-facts.js";
+import { participantOutcomeOk, participantFactsOf } from "./participant-facts.js";
 import {
   closeParticipantModel,
   judgeParticipantSession,
@@ -360,17 +361,8 @@ export function toParticipantResult(
       : {
           error: {
             code: outcome.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED",
-            message:
-              outcome.sessionError ??
-              (outcome.noEngagement
-                ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-                : outcome.selfReportedBlocker
-                  ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
-                  : session?.completionReason === "harness_error"
-                    ? `Computer-use session ended with a harness error: ${session.reason}`
-                    : session?.status !== "passed"
-                      ? `Computer-use session ended with ${session?.status ?? "unknown"}: ${session?.reason ?? "no terminal reason"}`
-                      : "The computer-use run did not produce a terminal session."),
+            message: judgeParticipantRecords([participantFactsOf(outcome)]).participants[0]!
+              .notPassedMessage,
           },
         }),
   };

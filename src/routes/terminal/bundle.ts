@@ -13,8 +13,8 @@ import {
   bundleHead,
   type BundleRun,
 } from "../../run/bundle.js";
-import { type Verdict, verdictText } from "../../run/judge.js";
-import { reviewOutcome } from "../../run/display.js";
+import { type Verdict } from "../../run/judge.js";
+import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
   participantEvent,
@@ -411,21 +411,14 @@ export function renderTerminalReviewMarkdown(bundle: RunBundle, status?: unknown
     (event) => event.type === "terminal-lab.credentials.declared",
   );
   const caps = bundle.events.find((event) => event.type === "terminal-lab.caps.declared");
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle, status)}`,
-    `- summary: ${bundle.review.summary}`,
-    `- mission: ${bundle.scenario.goal}`,
-    ...(subject ? [`- subject: ${subject.message}`] : []),
-    ...(credentials ? [`- credentials: ${credentials.message}`] : []),
-    ...(caps ? [`- caps: ${caps.message}`] : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
+  return renderReviewMarkdown(
+    bundle,
+    [
+      `- mission: ${bundle.scenario.goal}`,
+      ...(subject ? [`- subject: ${subject.message}`] : []),
+      ...(credentials ? [`- credentials: ${credentials.message}`] : []),
+      ...(caps ? [`- caps: ${caps.message}`] : []),
+    ],
+    { status },
+  );
 }
