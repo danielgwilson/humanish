@@ -51,6 +51,8 @@ export interface DoctorResult {
   schema: typeof DOCTOR_SCHEMA;
   ok: boolean;
   cwd: string;
+  /** The step to take first, such as preparing a local study's runtime. */
+  next?: string;
   checks: Array<{
     name: string;
     ok: boolean;
@@ -206,6 +208,7 @@ export async function doctor(
     schema: DOCTOR_SCHEMA,
     ok: checks.every((check) => check.ok),
     cwd,
+    ...(setup?.next === undefined ? {} : { next: setup.next }),
     checks: withStatus(checks),
   };
 }

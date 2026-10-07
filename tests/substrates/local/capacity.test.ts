@@ -4,7 +4,7 @@ import { defaultVmSize, localCapacity } from "../../../src/substrates/local/capa
 const GiB = 1024 ** 3;
 
 describe("local desktop capacity", () => {
-  it("holds two desktops in the 8 GiB, 6 CPU Lima VM that setup used to create", () => {
+  it("holds two desktops in an 8 GiB, 6 CPU Lima VM", () => {
     expect(localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 }).desktops).toBe(2);
   });
   it("holds four desktops in a 13 GiB, 8 CPU Lima VM", () => {

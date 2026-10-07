@@ -3,6 +3,7 @@
   "shape": {
     "checks": [
       {
+        "checked?": "boolean",
         "message": "string",
         "name": "string",
         "ok": "boolean"
@@ -33,7 +34,8 @@
     "checks": [
       "study file",
       "route",
-      "reachability"
+      "reachability",
+      "this machine"
     ]
   }
 }
