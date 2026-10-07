@@ -15,9 +15,9 @@ import path from "node:path";
 import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
-import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { savedCaption } from "./participant-caption.js";
-import { streamParticipantIdOf } from "./participant-records.js";
+import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
 import type { RunStream } from "./streams.js";
 import { readContainedRegularFile } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
@@ -89,7 +89,7 @@ interface ActorTraceFacts {
   items?: { kind?: string; title?: string; text?: string; at?: string; lifecycle?: string }[];
 }
 
-interface StreamFacts extends Pick<RunStream, "laneId"> {
+interface StreamFacts extends Pick<RunStream, "laneId">, Partial<Pick<RunStream, "simId">> {
   id?: string;
   label?: string;
   status?: string;
@@ -121,12 +121,16 @@ function latestThought(trace: ActorTraceFacts): RunThought | undefined {
   return undefined;
 }
 
-function participantFrom(stream: StreamFacts, index: number): RunParticipant {
+function participantFrom(
+  stream: StreamFacts,
+  index: number,
+  savedPersonaId?: string,
+): RunParticipant {
   // A live run's flush wins over the finished trace: while both exist, the live one is the newer
   // account of what is happening.
   const trace = stream.liveActor ?? stream.actor ?? {};
   const id = stream.id ?? `stream-${index + 1}`;
-  const personaId = trace.persona?.id;
+  const personaId = trace.persona?.id ?? savedPersonaId;
   const participantId = streamParticipantIdOf(stream);
   // Computed once: calling it twice to test-then-use reads as though the two could differ.
   const thought = latestThought(trace);
@@ -195,14 +199,18 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
   const runPaths = await resolveRunPath(cwd, runId).catch(() => null);
   if (runPaths === null) return null;
 
-  let bundle: { streams?: StreamFacts[]; runId?: string };
+  type BundleFacts = Partial<Pick<RunBundle, "simulations">> & {
+    streams?: StreamFacts[];
+    runId?: string;
+  };
+  let bundle: BundleFacts;
   try {
     // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
     const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw.toString("utf8"));
     if (parsed === null || typeof parsed !== "object") return null;
-    bundle = parsed as { streams?: StreamFacts[]; runId?: string };
+    bundle = parsed as BundleFacts;
   } catch {
     // Absent or torn: the run has not written one yet, or is writing it now.
     return null;
@@ -216,7 +224,9 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     ...(automaticAnalysis === undefined ? {} : { automaticAnalysis }),
     schema: RUN_DETAIL_SCHEMA,
     runId: bundle.runId ?? runId,
-    participants: streams.map(participantFrom),
+    participants: streams.map((stream, index) =>
+      participantFrom(stream, index, recordedPersonaId(bundle, stream)),
+    ),
     ...(isPathInside(cwd, observerAbsolute)
       ? { observerPath: path.relative(cwd, observerAbsolute) }
       : { observerPath: observerAbsolute }),

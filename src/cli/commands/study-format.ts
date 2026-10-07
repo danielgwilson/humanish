@@ -1,3 +1,4 @@
+import { participantCaption } from "../../run/participant-caption.js";
 import type { CliError, HumanOutput } from "../io.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-use/diagnostics.js";
 import type { CuaActorStudyResult } from "../../routes/computer-use/types.js";
@@ -55,19 +56,21 @@ export function formatConcurrentSharedWorldStudyHuman(
     ...runHeader(result, "shared-world"),
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
-    `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
+    `participants: ${result.roleCount}, up to ${result.concurrency} at once`,
     ...(result.host ? [`host: ${result.host}`] : []),
     ...(result.subject?.commit
-      ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`]
+      ? [`app: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`]
       : []),
     ...(result.overlapProven === undefined
       ? []
       : [
-          `overlap: ${result.overlapProven ? "proven" : "not observed"} (this run only; no scale or adoption claim)`,
+          result.overlapProven
+            ? "Participants used the app at the same time (observed in this run only)."
+            : "Participants were not observed using the app at the same time.",
         ]),
     ...result.roles.map(
       (participant) =>
-        `persona ${participant.id} (${participant.persona}): ${participantStatus(participant.status)}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.ok ? "" : ", not ok"}`,
+        `${participantCaption({ id: participant.id, personaId: participant.persona })}: ${participantStatus(participant.status)}${participant.ok ? "" : ", not ok"}`,
     ),
     ...(result.subjectSandbox
       ? [

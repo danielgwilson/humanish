@@ -63,6 +63,7 @@ import { fullScreenXwininfo } from "../../helpers/full-screen-xwininfo.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { runAdmitted, runSharedWorld } from "../../helpers/route-run.js";
+import { formatConcurrentSharedWorldStudyHuman } from "../../../src/cli/commands/study-format.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 
 // ---------------------------------------------------------------------------
@@ -1397,7 +1398,12 @@ describe("what a reader sees for each participant and for the run", () => {
       const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
       const result = await runSharedWorld({ cwd, config: parseExternal(), dryRun, env, deps });
       const bundle = await readBundle(result.runId);
-      for (const text of [...bundle.streams.map((stream) => stream.label), bundle.review.summary])
+      const output = formatConcurrentSharedWorldStudyHuman(result);
+      for (const text of [
+        ...bundle.streams.map((stream) => stream.label),
+        bundle.review.summary,
+        typeof output === "string" ? output : output.stdout,
+      ])
         expect(text).not.toMatch(HARNESS_WORDS);
     },
   );
@@ -1455,7 +1461,12 @@ describe("what a reader sees for each participant and for the run", () => {
   ] as const)(
     "shows no taxonomy or harness words in the Observer for a %s run",
     async (_mode, dryRun) => {
-      const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
+      const session = makeExternalRunSession({ seen: [] });
+      const { env, deps } = makeExternalSeams(async (options) => {
+        const result = await session(options);
+        const reason = "The participant reached the lobby.";
+        return { ...result, reason, trace: { ...result.trace, reason } };
+      });
       const result = await runSharedWorld({ cwd, config: taxonomyConfig(), dryRun, env, deps });
       const file = path.join(
         cwd,
@@ -1465,19 +1476,16 @@ describe("what a reader sees for each participant and for the run", () => {
         "observer",
         "observer-data.json",
       );
-      const observerData = JSON.parse(await readFile(file, "utf8")) as {
-        run: { persona: { name: string } };
-        streams: { sim: { summary: string }; ui?: { intent?: string } }[];
-      };
+      const observerData: unknown = JSON.parse(await readFile(file, "utf8"));
       const shown = stringsIn(observerData);
-      expect(shown.filter((text) => /\b(type|surface|case):|swarm|coherently/i.test(text))).toEqual(
+      expect(shown.filter((text) => /\b(type|surface|case):/i.test(text))).toEqual([]);
+      // These machine values remain part of the evidence contract, including when a
+      // disclosure lists an attribution code. All other string content is scanned.
+      const machineValues =
+        /external-public-plane|event-001-plane|concurrent-shared-world\.plane\.provenance|concurrent-shared-world\.session\.goal_satisfied|^goal_satisfied$/g;
+      expect(shown.filter((text) => HARNESS_WORDS.test(text.replace(machineValues, "")))).toEqual(
         [],
       );
-      expect(observerData.run.persona.name).not.toMatch(HARNESS_WORDS);
-      for (const stream of observerData.streams) {
-        expect(stream.sim.summary).not.toMatch(HARNESS_WORDS);
-        expect(stream.ui?.intent ?? "").not.toMatch(HARNESS_WORDS);
-      }
     },
   );
 
