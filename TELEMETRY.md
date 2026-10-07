@@ -112,3 +112,24 @@ humanish-specific configuration. The opt-out is stored under your user config
 
 Telemetry never blocks, slows, or fails a command: it is fire-and-forget, bounded
 by a two-second timeout, and every error inside it is swallowed.
+
+## The update check
+
+A command run at a terminal also checks, at most once a day, whether a newer
+humanish is published. This is a separate request and sends no event. A
+background process asks the npm registry for
+`https://registry.npmjs.org/-/package/humanish/dist-tags` with a plain `GET`
+whose only header is `Accept`. It carries no machine id, installed version,
+command or path; the registry sees the request's source address, as it does for
+any `npm install`. The answer is cached next to the telemetry state, in
+`~/.config/humanish/update-check.json`, and a later command prints one line on
+stderr when your version is older. The check never delays or fails a command.
+
+It is skipped without a terminal, in CI, for `--json` output, for a study
+participant, and when any of these is set:
+
+```bash
+DO_NOT_TRACK=1
+HUMANISH_TELEMETRY_DISABLED=1
+HUMANISH_NO_UPDATE_CHECK=1
+```

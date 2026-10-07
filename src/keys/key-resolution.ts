@@ -313,6 +313,8 @@ export function missingKeyHint(name: string): string {
       return `run \`${cli("keys set openai")}\``;
     case "ANTHROPIC_API_KEY":
       return `run \`${cli("keys set anthropic")}\``;
+    case "AGENTMAIL_API_KEY":
+      return `run \`${cli("keys set agentmail")}\``;
     default:
       return `run \`${cli(`keys set ${name}`)}\``;
   }

@@ -10,6 +10,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- `humanish keys` with no subcommand, or `humanish keys status`, lists the provider keys humanish
+  uses (`E2B_API_KEY`, `OPENAI_API_KEY`, `GH_TOKEN`, `AGENTMAIL_API_KEY`), each with the source
+  that supplies it (environment, project file, user store, `gh auth token`, `e2b auth login`) or
+  the command that adds it. It never prints a value. It used to print the usage block.
+
+- `humanish keys set` with no vendor, run at a terminal, asks for each missing provider key in
+  turn with hidden input. Press Enter to skip a key, or Ctrl+C to stop and keep the keys already
+  stored. Without a terminal it still needs a vendor, and its error now names the `--stdin` form.
+
+- humanish tells you when a newer version is out. At most once a day, after a command run at a
+  terminal, one line on stderr names your version, the latest one and `npx humanish@latest`. The
+  registry request runs in a background process, carries no identifying data and never delays or
+  fails a command. It is off in CI, without a terminal, for `--json` output, and with
+  `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1` or `HUMANISH_NO_UPDATE_CHECK=1`.
+  `humanish doctor` shows the version the last check found.
+
 - `humanish study check` and `humanish run` warn when computer-use or shared-world
   missions script UI steps or participants lack a persona background. Mission
   warnings quote the matched lines and suggest a situation-style brief. Runs keep
@@ -52,6 +68,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   now show participant names in the Observer and TUI, including dry runs without actor traces.
 
 ### Changed
+
+- `help` is no longer listed under Commands in any command's help. `humanish help <command>` and
+  `humanish <command> help` still work.
+
+- The TUI footer says `? shortcuts` where it said `? keys`, and `c keys and accounts` where it
+  said `c connections`. On a narrow terminal the legend drops the word "move" so it stays on one
+  line.
+
+- A missing `AGENTMAIL_API_KEY` now points at `humanish keys set agentmail`.
 
 - OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,
   or the study's `actor.maxOutputTokens` when that is lower. They used at most 1024, which a

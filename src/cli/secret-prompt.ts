@@ -1,7 +1,11 @@
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 
-/** Host-owned entry: no secret crosses the TUI view contract or reaches a writable terminal. */
+/**
+ * Host-owned entry: no secret crosses the TUI view contract or reaches a writable terminal.
+ * Resolves to the trimmed line, an empty string when Enter was pressed alone, or null when the
+ * person cancelled or there is no terminal.
+ */
 export async function promptSecret(
   label: string,
   stdin: NodeJS.ReadStream,
@@ -30,7 +34,7 @@ export async function promptSecret(
       stdout.write("\n");
       resolve(value);
     };
-    reader.once("line", (line) => finish(line.trim() || null));
+    reader.once("line", (line) => finish(line.trim()));
     reader.once("SIGINT", () => finish(null));
     reader.once("close", () => finish(null));
     reader.once("error", () => finish(null));

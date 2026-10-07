@@ -12,4 +12,4 @@ Runs
   ⠋ starting…                  30:00 of ~2:00
   ✓ 08-19 10:02 · 2/2 reached the goal · run…
 
-↑↓ move  ⏎ start  esc back  ? keys  q quit
+↑↓  ⏎ start  esc back  ? shortcuts  q quit

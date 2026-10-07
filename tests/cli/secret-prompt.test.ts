@@ -59,6 +59,13 @@ describe("host-owned secret prompt", () => {
       expect(t.input.isRaw).toBe(false);
     }
   });
+  it("returns an empty string for Enter alone, so a caller can tell a skip from a cancel", async () => {
+    const t = terminal();
+    const pending = promptSecret("Key", t.input, t.output);
+    t.input.emit("data", "\r");
+    expect(await pending).toBe("");
+    expect(t.input.isRaw).toBe(false);
+  });
   it("does not consume non-terminal input", async () => {
     const t = terminal();
     t.input.isTTY = false;

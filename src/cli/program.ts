@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command, type ParseOptionsResult } from "commander";
+import { Command, Help, type ParseOptionsResult } from "commander";
 import { redactText } from "../evidence/redaction.js";
 import { PortInUseError } from "../observer/listen.js";
 import {
@@ -15,6 +15,7 @@ import {
   writeTelemetryState,
   isOwnCheckoutRun,
 } from "./telemetry.js";
+import { checkForUpdate, startRefreshWorker } from "./update-check.js";
 import { registerAnalyzeCommand } from "./commands/analyze.js";
 import { registerCodexCommands } from "./commands/codex.js";
 import { registerCommsCommands } from "./commands/comms.js";
@@ -151,6 +152,30 @@ async function recordCommandTelemetry(
 }
 
 /**
+ * After a command, one line on stderr when a newer humanish is published. It reads only the cache;
+ * the registry request runs detached (see update-check.ts), so nothing here waits on the network.
+ */
+function noticeNewerVersion(command: Command, io: CliIo): void {
+  try {
+    const notice = checkForUpdate({
+      installed: CLI_VERSION,
+      env: process.env,
+      terminal: process.stderr.isTTY === true,
+      json: wantsJson(command),
+      ownCheckout: isOwnCheckoutRun(process.cwd(), dirname(fileURLToPath(import.meta.url)), (p) =>
+        readFileSync(p, "utf8"),
+      ),
+      now: Date.now(),
+      startRefresh: startRefreshWorker,
+      ...io.updateCheck,
+    });
+    if (notice !== undefined) io.writeErr(`${notice}\n`);
+  } catch {
+    // An update notice is never a reason for a command to fail.
+  }
+}
+
+/**
  * HUMANISH_DEBUG_HANDLES=1: after a command's handler settles, name what is still keeping the
  * process alive. A live terminal run wrote its result 64 s in and the CLI stayed up for
  * sixteen more minutes; nothing in the bundle could say what held it, and an in-process probe of
@@ -227,6 +252,7 @@ class HumanishCommand extends Command {
       const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
         void recordCommandTelemetry(this, ok, Date.now() - startedAt, lastExitCode);
+        noticeNewerVersion(this, cliIo);
         reportActiveHandles(this, cliIo);
       };
       try {
@@ -408,6 +434,15 @@ export function createProgram(
     // each subcommand when it is created.
     .helpOption("-h, --help", "Show help for this command.")
     .helpCommand("help [command]", "Show help for a command.")
+    // `help <command>` and `<command> help` keep working; a command's listing names only the
+    // commands that do something, so `help` is left out of every Commands section.
+    .configureHelp({
+      visibleCommands(this: Help, command: Command): Command[] {
+        return Help.prototype.visibleCommands
+          .call(this, command)
+          .filter((child) => child.name() !== "help");
+      },
+    })
     .showHelpAfterError()
     .option("--json", "Print machine-readable JSON responses where supported.")
     .configureOutput({

@@ -9,6 +9,7 @@ import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
 import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
+import type { UpdateCheckContext } from "./update-check.js";
 import { warnAndQueue, withQueuedWarnings } from "./deprecations.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
@@ -24,6 +25,9 @@ export interface CliIo {
   setExitCode(code: number): void;
   // Injectable for hermetic CLI tests; defaults to discoverProviderKeys.
   keyDiscovery?: typeof discoverProviderKeys;
+  // Injectable for hermetic CLI tests; each field replaces what the update check reads from this
+  // process (its version, env, terminal, clock and the background request).
+  updateCheck?: Partial<UpdateCheckContext>;
 }
 
 // One text per shared flag, so the same flag reads the same on every command.

@@ -702,8 +702,14 @@ export function App({
           ? "↑↓ move  ⏎ select  esc back  q quit"
           : showHelp
             ? "any key returns   q quit"
-            : keyHints(screen, data, selected, confirming, initialized) +
-              (options.capabilities.comms ? "   c connections" : "")
+            : keyHints(
+                screen,
+                data,
+                selected,
+                confirming,
+                contentWidth(size.columns),
+                initialized,
+              ) + (options.capabilities.comms ? "   c keys and accounts" : "")
       }
     >
       {body}
@@ -759,26 +765,44 @@ function keyHints(
   data: ProjectData | undefined,
   selected: number,
   confirming: "live" | undefined,
+  width: number,
   initialized?: boolean,
 ): string {
-  const move = "↑↓ move";
+  // A legend that wraps leaves a lone "quit" on its own line. The arrows read as movement without
+  // the word, so a narrow terminal drops it first.
+  const full = legendFor(screen, data, selected, confirming, "↑↓ move", initialized);
+  return [...full].length <= width
+    ? full
+    : legendFor(screen, data, selected, confirming, "↑↓", initialized);
+}
+
+function legendFor(
+  screen: ReturnType<typeof currentScreen>,
+  data: ProjectData | undefined,
+  selected: number,
+  confirming: "live" | undefined,
+  move: string,
+  initialized?: boolean,
+): string {
   switch (screen.name) {
     case "studies":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
       // teaches the wrong model of the surface.
-      if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? keys  q quit`;
+      if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? shortcuts  q quit`;
       // An empty screen with one action still has that action; a legend that omits it makes the
       // row look decorative.
-      return initialized === false ? "⏎ set up humanish here  ? keys  q quit" : "? keys  q quit";
+      return initialized === false
+        ? "⏎ set up humanish here  ? shortcuts  q quit"
+        : "? shortcuts  q quit";
     case "study": {
       if (confirming !== undefined) return "⏎ confirm  esc cancel";
       const item =
         data === undefined ? undefined : itemsForStudy(data, screen.studyKey).items[selected];
       const enter = item?.kind === "start" ? "⏎ start" : "⏎ open";
-      return `${move}  ${enter}  esc back  ? keys  q quit`;
+      return `${move}  ${enter}  esc back  ? shortcuts  q quit`;
     }
     case "all-runs":
-      return `${move}  ⏎ open  esc back  ? keys  q quit`;
+      return `${move}  ⏎ open  esc back  ? shortcuts  q quit`;
     default: {
       // Only when the card actually has actions: an empty legend beats one promising a key that
       // does nothing on a run still in flight.
@@ -788,8 +812,8 @@ function keyHints(
           : data.runsById.get(screen.name === "run" ? screen.runId : "");
       const hasActions = run !== undefined && runActions(run, undefined).length > 0;
       return hasActions
-        ? `${move}  ⏎ select  esc back  ? keys  q quit`
-        : "esc back  ? keys  q quit";
+        ? `${move}  ⏎ select  esc back  ? shortcuts  q quit`
+        : "esc back  ? shortcuts  q quit";
     }
   }
 }

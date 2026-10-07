@@ -92,7 +92,7 @@ class Terminal:
 try:
     t = Terminal()
     try:
-        t.wait('c connections')
+        t.wait('c keys and accounts')
         t.send(b'c', 'Add API key')
         t.send(b'\r', 'AgentMail API key (input hidden; Ctrl+C cancels):')
         t.send(b'\x1b[200~'+canary.encode()+b'\x1b[201~\r', 'Provider authentication: passed')
@@ -122,13 +122,13 @@ try:
         t.wait('permissions: unknown')
         assert len(auth_requests()) == 3
         t.send(b'\x1b', 'Provider authentication: rejected')
-        t.send(b'\x1b', 'c connections')
+        t.send(b'\x1b', 'c keys and accounts')
         os.write(t.master, b'q')
         assert t.process.wait(timeout=5) == 0
     finally: t.close()
     t = Terminal(45)
     try:
-        t.wait('c connections')
+        t.wait('c keys and accounts')
         t.send(b'c', 'Replace stored key')
         t.wait('saved key')
         t.wait('Provider authentication: not checked')

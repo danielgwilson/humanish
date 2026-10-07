@@ -6,6 +6,12 @@ import {
   unsetUserKey,
   userKeyStorePath,
 } from "../../keys/key-resolution.js";
+import {
+  askForMissingKeys,
+  formatKeyStatus,
+  keyStatus,
+  otherStoredKeys,
+} from "../../keys/key-status.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../study/init.js";
 import {
@@ -225,11 +231,16 @@ const KEYS_RESULT_SCHEMA = "humanish.keys-result.v1";
 interface KeysResult {
   schema: typeof KEYS_RESULT_SCHEMA;
   ok: boolean;
-  action: "set" | "unset" | "list";
+  action: "status" | "set" | "unset" | "list";
   /** The user store path (with values never included anywhere in this envelope). */
   store: string;
-  /** `list`: the names present in the store. `set`/`unset`: the affected name. */
+  /** `list`: the names present in the store. `set`/`unset`: the affected names. `status`: the
+   *  names that are set. */
   names: string[];
+  /** `status`: every provider key, with the source that supplies it or the command that adds it. */
+  keys?: Array<{ name: string; use: string; source: string | null; hint?: string }>;
+  /** `status`: names in the user store that humanish does not use. */
+  otherStored?: string[];
   message: string;
 }
 
@@ -254,79 +265,193 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
     const text = Buffer.concat(chunks).toString("utf8").trim();
     return text.length > 0 ? text : null;
   }
-  return promptSecret(promptLabel, process.stdin, process.stderr);
+  // An empty line is no value here: only the walk over missing keys reads it as "skip".
+  return (await promptSecret(promptLabel, process.stdin, process.stderr)) || null;
+}
+
+/** `humanish keys` and `humanish keys status`: each provider key's source, never a value. */
+async function writeKeyStatus(command: Command, io: CliIo): Promise<void> {
+  const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+  const others = otherStoredKeys(process.env);
+  const missing = rows.filter((row) => row.source === null).length;
+  const result: KeysResult = {
+    schema: KEYS_RESULT_SCHEMA,
+    ok: true,
+    action: "status",
+    store: userKeyStorePath(process.env),
+    names: rows.filter((row) => row.source !== null).map((row) => row.name),
+    keys: rows.map(({ name, use, source, hint }) => ({
+      name,
+      use,
+      source,
+      ...(source === null ? { hint } : {}),
+    })),
+    ...(others.length > 0 ? { otherStored: others } : {}),
+    message:
+      missing === 0
+        ? "Every provider key is set."
+        : `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing.`,
+  };
+  writeResult(command, io, result, () => formatKeyStatus(rows, others));
+  io.setExitCode(0);
+}
+
+/** "A", "A and B", "A, B and C". */
+function listNames(names: readonly string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/**
+ * `humanish keys set` with no key named. On a terminal it asks for each missing provider key in
+ * turn; without one there is no one to ask, so it refuses and names the --stdin form.
+ */
+async function setMissingKeys(command: Command, io: CliIo, useStdin: boolean): Promise<void> {
+  const store = userKeyStorePath(process.env);
+  const finish = (ok: boolean, names: string[], message: string): void => {
+    const result: KeysResult = {
+      schema: KEYS_RESULT_SCHEMA,
+      ok,
+      action: "set",
+      store,
+      names,
+      message,
+    };
+    writeResult(command, io, result, formatKeysHuman);
+    io.setExitCode(ok ? 0 : 2);
+  };
+  if (useStdin || process.stdin.isTTY !== true || process.stderr.isTTY !== true) {
+    finish(
+      false,
+      [],
+      `missing required argument 'vendor-or-name'. Without a terminal humanish cannot ask for each key, so name the key and pipe its value, for example: printf '%s' "$E2B_API_KEY" | ${cli("keys set e2b --stdin")}`,
+    );
+    return;
+  }
+  const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+  const missing = rows.filter((row) => row.source === null).length;
+  if (missing === 0) {
+    finish(
+      true,
+      [],
+      `Every provider key is already set, so there is nothing to ask for. Replace one with \`${cli("keys set <vendor>")}\`.`,
+    );
+    return;
+  }
+  io.writeErr(
+    `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing. Paste each one when asked, or press Enter to skip it.\n`,
+  );
+  const outcome = await askForMissingKeys({
+    rows,
+    env: process.env,
+    prompt: (label) => promptSecret(label, process.stdin, process.stderr),
+  });
+  const sentences = [
+    outcome.stored.length > 0
+      ? `Stored ${listNames(outcome.stored)} (0600).`
+      : "Nothing was stored.",
+    ...(outcome.skipped.length > 0 ? [`Skipped ${listNames(outcome.skipped)}.`] : []),
+    ...(outcome.rejected ?? []).map((entry) => `${entry.name} was not stored: ${entry.message}`),
+    ...(outcome.stoppedAt === undefined
+      ? []
+      : [`Stopped at ${outcome.stoppedAt}; the keys after it were not asked for.`]),
+    `\`${cli("keys")}\` shows where each key comes from.`,
+  ];
+  // A cancel is the person's choice, so only a value the store refused fails the command.
+  finish(outcome.rejected === undefined, outcome.stored, sentences.join(" "));
 }
 
 export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
-    .description("Manage the humanish user-level key store used by provider-key discovery.")
-    .summary("Store and manage your provider keys.");
+    .description(
+      "Show which provider keys are set and where each comes from, and manage the humanish user key store that provider-key discovery reads.",
+    )
+    .summary("Check and store your provider keys.");
+
+  keys
+    .command("status", { isDefault: true })
+    .description(
+      "Show each provider key humanish uses: where it comes from, or the command that adds it. Values are never printed.",
+    )
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (_options: { json?: boolean }, command) => writeKeyStatus(command, io));
 
   keys
     .command("set")
     .argument(
-      "<vendor-or-name>",
-      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME.",
+      "[vendor-or-name]",
+      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn.",
     )
-    .description("Store one provider key in the user store (0600), prompted with hidden input.")
+    .description(
+      "Store one provider key in the user store (0600), prompted with hidden input. With no key named, ask for each missing key in turn.",
+    )
     .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (vendorOrName: string, options: { stdin?: boolean; json?: boolean }, command) => {
-      const name = resolveKeyName(vendorOrName);
-      const storePath = userKeyStorePath(process.env);
-      if (name === null) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [],
-          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-        return;
-      }
-      const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
-      if (value === null) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [name],
-          message: "No value provided; nothing written.",
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-        return;
-      }
-      try {
-        const written = setUserKey(name, value, process.env);
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: true,
-          action: "set",
-          store: written.path,
-          names: [name],
-          message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`,
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(0);
-      } catch (error) {
-        const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA,
-          ok: false,
-          action: "set",
-          store: storePath,
-          names: [name],
-          message: error instanceof Error ? error.message : "Failed to write the key store.",
-        };
-        writeResult(command, io, result, formatKeysHuman);
-        io.setExitCode(2);
-      }
-    });
+    .action(
+      async (
+        vendorOrName: string | undefined,
+        options: { stdin?: boolean; json?: boolean },
+        command,
+      ) => {
+        if (vendorOrName === undefined) {
+          await setMissingKeys(command, io, options.stdin === true);
+          return;
+        }
+        const name = resolveKeyName(vendorOrName);
+        const storePath = userKeyStorePath(process.env);
+        if (name === null) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [],
+            message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+          return;
+        }
+        const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
+        if (value === null) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [name],
+            message: "No value provided; nothing written.",
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+          return;
+        }
+        try {
+          const written = setUserKey(name, value, process.env);
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: true,
+            action: "set",
+            store: written.path,
+            names: [name],
+            message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`,
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(0);
+        } catch (error) {
+          const result: KeysResult = {
+            schema: KEYS_RESULT_SCHEMA,
+            ok: false,
+            action: "set",
+            store: storePath,
+            names: [name],
+            message: error instanceof Error ? error.message : "Failed to write the key store.",
+          };
+          writeResult(command, io, result, formatKeysHuman);
+          io.setExitCode(2);
+        }
+      },
+    );
 
   keys
     .command("unset")

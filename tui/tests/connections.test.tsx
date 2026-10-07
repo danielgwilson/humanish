@@ -166,6 +166,23 @@ function readable(frame: string, columns: number): void {
   expect(lines.length).toBeLessThanOrEqual(24);
 }
 
+describe("the footer", () => {
+  it("names the shortcut screen and what the connections screen holds", async () => {
+    const surface = await renderToText(<App options={options()} onKeyEntry={vi.fn()} />, {
+      columns: 80,
+      until: (frame) => frame.includes("q quit"),
+    });
+    try {
+      // `? keys` read as API keys, which live behind `c`.
+      expect(surface.last).toContain("? shortcuts");
+      expect(surface.last).toContain("c keys and accounts");
+      expect(surface.last).not.toContain("? keys");
+    } finally {
+      surface.unmount();
+    }
+  });
+});
+
 describe("Connections", () => {
   it.each([80, 45])(
     "is discoverable, readable and returns to the prior screen at %i columns",
@@ -173,7 +190,7 @@ describe("Connections", () => {
       const keyEntry = vi.fn();
       const surface = await renderToText(<App options={options()} onKeyEntry={keyEntry} />, {
         columns,
-        until: (frame) => frame.includes("c connections"),
+        until: (frame) => frame.includes("c keys and accounts"),
       });
       try {
         const frame = await surface.press("c", (frame) => frame.includes("Add API key"));

@@ -6,6 +6,8 @@
         "src/index.ts",
         // Packaged into the guest runtime and started there by path.
         "src/guest-media-worker.ts",
+        // Started by path, detached, by the update check.
+        "src/cli/update-check-worker.ts",
         "scripts/**/*.{mjs,ts}",
         "runtime/**/*.mjs",
         // Served to the browser by bench and fixture labs.
