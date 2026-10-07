@@ -377,7 +377,7 @@ async function storeAgentmailKey(session: TuiSession): Promise<string> {
   const { cwd, runtime, sessionEnv } = session;
   // startTui has unmounted: only the host reads the credential, then remounts the view.
   const value = await runtime.promptSecret("AgentMail API key", runtime.stdin, runtime.stdout);
-  if (value === null) return "Key entry cancelled. Nothing was changed.";
+  if (value === null || value === "") return "Key entry cancelled. Nothing was changed.";
   try {
     setUserKey("AGENTMAIL_API_KEY", value, sessionEnv);
     // Refresh only a value filled implicitly by discovery; explicit env/file wins.

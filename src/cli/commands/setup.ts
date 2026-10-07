@@ -254,7 +254,8 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
     const text = Buffer.concat(chunks).toString("utf8").trim();
     return text.length > 0 ? text : null;
   }
-  return promptSecret(promptLabel, process.stdin, process.stderr);
+  // An empty line is no value here: only the walk over missing keys reads it as "skip".
+  return (await promptSecret(promptLabel, process.stdin, process.stderr)) || null;
 }
 
 export function registerKeysCommand(parent: Command, io: CliIo): void {
