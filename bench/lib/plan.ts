@@ -57,8 +57,10 @@ export interface BudgetSettings {
   maxUsdPerBrain: number;
   /** The study's `caps.maxUsd`: participant model spend, checked between turns. */
   participantCapUsd: number;
-  /** `humanish analyze --max-cost`: the analysis is refused when its admission estimate is higher. */
+  /** Fixed `humanish analyze --max-cost`, or the upper limit when analysisAutoCap is enabled. */
   analysisMaxUsd: number;
+  /** Derive each run's cap from admission, within analysisMaxUsd and the remaining budget. */
+  analysisAutoCap?: boolean;
   /** Desktop minutes the CLI plans as its worst case for one run (`plan.worstCaseSandboxMinutes`). */
   worstCaseDesktopMinutes: number;
   analysis: boolean;

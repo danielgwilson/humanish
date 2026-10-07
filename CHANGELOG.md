@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
+  remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
+  their estimate and cap, and state that those analyses are excluded from recall.
+
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
 humanish 0.113.0 asks computer-use participants what they thought at the end of a session, warns
