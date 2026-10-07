@@ -3,8 +3,6 @@
 // first timed capture or desktop video of any participant, which is the Observer's study clock.
 
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, rmdir } from "node:fs/promises";
-import path from "node:path";
 
 import type { ActorTraceItem } from "../actors/contract.js";
 import { redactText } from "../evidence/redaction.js";
@@ -12,24 +10,17 @@ import type { RunBundle } from "./bundle.js";
 import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
 import { readBoundedFileResult } from "./evidence-files.js";
 import { loadRunBundlePrepared } from "./locate.js";
-import {
-  physicalCwdOf,
-  runIdOf,
-  validatePreparedRunRootIdentity,
-  type PreparedRunArtifactPaths,
-} from "./paths.js";
+import { withNotesLock, type NotesLockHooks } from "./notes-lock.js";
+import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStream } from "./streams.js";
 import { transientCommsKnownValueScrub } from "./transient-comms-secrets.js";
-import { isNodeError, isRecord } from "./type-guards.js";
+import { isRecord } from "./type-guards.js";
 
 export const RUN_NOTES_SCHEMA = "humanish.run-notes.v1";
 export const RUN_NOTES_FILE = "notes.json";
 const DEFAULT_AUTHOR = "you";
 export const MAX_NOTE_TEXT = 2000;
 const MAX_RUN_NOTES = 500;
-const NOTES_LOCK = ".notes-lock";
-// Saving a note takes milliseconds, so a lock this old was left by a process that stopped.
-const STALE_LOCK_MS = 30_000;
 
 export interface RunNote {
   id: string;
@@ -230,43 +221,6 @@ export function readableRunNotes(prepared: PreparedRunArtifactPaths): Promise<Ru
   return readRunNotes(prepared).catch(() => null);
 }
 
-/**
- * Runs `action` holding the run's notes lock, a directory only one writer can create, or returns
- * "busy" after about two seconds of waiting. The CLI and an Observer server can add notes to the
- * same run at once, and each rewrites the whole file.
- */
-async function withNotesLock<T>(
-  prepared: PreparedRunArtifactPaths,
-  action: () => Promise<T>,
-): Promise<T | "busy"> {
-  await validatePreparedRunRootIdentity(prepared);
-  const target = path.join(prepared.physicalRunRoot, NOTES_LOCK);
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      await mkdir(target, { mode: 0o700 });
-      break;
-    } catch (error) {
-      if (!isNodeError(error) || error.code !== "EEXIST") throw error;
-      const held = await lstat(target).catch(() => null);
-      if (held?.isDirectory() && Date.now() - held.mtimeMs > STALE_LOCK_MS) {
-        await rmdir(target).catch(() => undefined);
-        continue;
-      }
-      if (attempt >= 100) return "busy";
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  }
-  const identity = await lstat(target, { bigint: true });
-  try {
-    return await action();
-  } finally {
-    // Remove only the empty directory this call created.
-    const current = await lstat(target, { bigint: true }).catch(() => null);
-    if (current?.isDirectory() && current.ino === identity.ino && current.dev === identity.dev)
-      await rmdir(target).catch(() => undefined);
-  }
-}
-
 const UNREADABLE_MESSAGE = (runId: string): string =>
   `The notes.json in run ${runId} is not a notes file humanish can read, so no note was added and the file was left as it is. Move it out of the run directory to start a new one.`;
 
@@ -296,9 +250,16 @@ function noteTextProblem(text: string): string | null {
   return null;
 }
 
+/** Internal fault-injection seam for tests. */
+export interface RunNoteHooks extends NotesLockHooks {
+  /** Runs holding the lock, after the existing notes are read and before the file is written. */
+  beforeWrite?: () => Promise<void>;
+}
+
 export async function addRunNote(
   prepared: PreparedRunArtifactPaths,
   input: RunNoteInput,
+  hooks: RunNoteHooks = {},
 ): Promise<AddRunNoteResult> {
   const text = scrubNoteText(input.text);
   const problem = noteTextProblem(text);
@@ -350,43 +311,48 @@ export async function addRunNote(
     createdAt: new Date().toISOString(),
     editedAt: null,
   };
-  const saved = await withNotesLock(prepared, async (): Promise<AddRunNoteResult> => {
-    let existing: RunNotes | null;
-    try {
-      existing = await readRunNotes(prepared);
-    } catch {
-      return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
-    }
-    if ((existing?.notes.length ?? 0) >= MAX_RUN_NOTES)
-      return refuse(
-        "HUMANISH_NOTES_FULL",
-        `Run ${bundle.runId} already has ${MAX_RUN_NOTES} notes, the most one run keeps.`,
-      );
-    const notes: RunNotes = {
-      schema: RUN_NOTES_SCHEMA,
-      runId: bundle.runId,
-      notes: [...(existing?.notes ?? []), note],
-    };
-    try {
-      await writeContainedOutputFile(
-        prepared,
-        RUN_NOTES_FILE,
-        `${JSON.stringify(notes, null, 2)}\n`,
-      );
-    } catch {
-      return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
-    }
-    return {
-      ok: true,
-      note,
-      notes,
-      scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim(),
-    };
-  });
+  const saved = await withNotesLock(
+    prepared,
+    async (): Promise<AddRunNoteResult> => {
+      let existing: RunNotes | null;
+      try {
+        existing = await readRunNotes(prepared);
+      } catch {
+        return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
+      }
+      if ((existing?.notes.length ?? 0) >= MAX_RUN_NOTES)
+        return refuse(
+          "HUMANISH_NOTES_FULL",
+          `Run ${bundle.runId} already has ${MAX_RUN_NOTES} notes, the most one run keeps.`,
+        );
+      const notes: RunNotes = {
+        schema: RUN_NOTES_SCHEMA,
+        runId: bundle.runId,
+        notes: [...(existing?.notes ?? []), note],
+      };
+      await hooks.beforeWrite?.();
+      try {
+        await writeContainedOutputFile(
+          prepared,
+          RUN_NOTES_FILE,
+          `${JSON.stringify(notes, null, 2)}\n`,
+        );
+      } catch {
+        return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
+      }
+      return {
+        ok: true,
+        note,
+        notes,
+        scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim(),
+      };
+    },
+    hooks,
+  );
   return saved === "busy"
     ? refuse(
         "HUMANISH_NOTES_BUSY",
-        `Another note is being saved to run ${bundle.runId}. Add this one again in a moment.`,
+        `Another writer holds the notes lock of run ${bundle.runId}, so the note was not saved. Add it again in a moment. If no humanish process is adding a note to this run, remove the folders .notes-lock and .notes-lock-reclaim from the run directory, then add the note again.`,
       )
     : saved;
 }

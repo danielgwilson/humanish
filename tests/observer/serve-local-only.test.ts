@@ -1,7 +1,7 @@
 // serve never hands out a run's local-only files: sandbox-receipts.ndjson, which holds the raw
-// sandbox ids, and status.json, which holds the recording pid. A share_ready run keeps both, since
+// sandbox ids, status.json, which holds the recording pid, and a notes lock's owner.json. A share_ready run keeps both, since
 // verify exempts the receipts from the raw-id check, so --safe admission alone would serve them.
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -32,6 +32,12 @@ async function shareReadyRunWithReceipts(): Promise<string> {
   await writeFile(
     path.join(runRoot, "status.json"),
     `${JSON.stringify({ schema: "humanish.run-status.v1", runId: RUN, state: "finished", pid: 4242 })}\n`,
+  );
+  // A notes writer's lock names its process; one a stopped writer left behind stays local too.
+  await mkdir(path.join(runRoot, ".notes-lock"));
+  await writeFile(
+    path.join(runRoot, ".notes-lock", "owner.json"),
+    JSON.stringify({ id: "hold-1", pid: 4242, host: "host-digest" }),
   );
   expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
   return cwd;
@@ -72,6 +78,7 @@ describe.each(modes)("%s on a share_ready run", (_label, overrides) => {
       "%73andbox-receipts.ndjson",
       "observer/../sandbox-receipts.ndjson",
       "status.json",
+      ".notes-lock/owner.json",
     ]) {
       const response = await get(file);
       expect(response, file).toEqual(missing);
