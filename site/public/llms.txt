@@ -74,6 +74,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish analyze list`: List immutable analysis versions, including failed attempts.
 - `humanish analyze show`: Print a run's analysis findings with the evidence each one cites. --json prints the validated analysis record and its correction history. Defaults to the latest usable version.
 - `humanish analyze correct`: Append a human review note bound to one exact finding version; original claims remain intact.
+- `humanish notes`: List the reviewer notes on a run, or add one at a moment of its recording. A note's time counts from the run's first timed capture, as the Observer's study timeline shows it.
 - `humanish feedback`: Draft public-safe feedback issues from a run. humanish never calls the GitHub API.
 - `humanish feedback list`: List recorded feedback candidates and any saved draft.
 - `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
