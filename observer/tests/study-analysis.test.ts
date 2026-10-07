@@ -547,7 +547,14 @@ describe("plain headlines and design findings", () => {
     "unknown evidence",
     "a duplicate ID",
     "an uncited participant",
+    "a participant cited only without a capture",
     "an unknown severity",
+    "an empty headline",
+    "an empty screen",
+    "an empty notice",
+    "an empty reason",
+    "an empty suggestion",
+    "a headline over 240 characters",
   ])("refuses a design finding with %s", (kind) => {
     const saved = fixtures.plainFindingsFixture(data);
     const [minor, major] = saved.analysis!.result!.designFindings!;
@@ -556,7 +563,60 @@ describe("plain headlines and design findings", () => {
     if (kind === "unknown evidence") minor!.evidenceIds.push("missing");
     if (kind === "a duplicate ID") major!.id = minor!.id;
     if (kind === "an uncited participant") minor!.seenByStreamIds.push("lane-1");
+    if (kind === "a participant cited only without a capture") {
+      saved.analysis!.evidence.find((e) => e.id === "lane-1/lane-1-final")!.capture = null;
+      minor!.evidenceIds.push("lane-1/lane-1-final");
+      minor!.seenByStreamIds.push("lane-1");
+    }
     if (kind === "an unknown severity") Object.assign(minor!, { severity: "critical" });
+    if (kind === "an empty headline") minor!.headline = "";
+    if (kind === "an empty screen") minor!.screen = "";
+    if (kind === "an empty notice") minor!.notice = "";
+    if (kind === "an empty reason") minor!.whyItMatters = "";
+    if (kind === "an empty suggestion") minor!.suggestion = "";
+    if (kind === "a headline over 240 characters") minor!.headline = "x".repeat(241);
     expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
   });
+
+  it.each([
+    ["empty", "", ""],
+    ["over its limit", "x".repeat(241), "x".repeat(1201)],
+  ])("refuses a finding whose headline or experience is %s", (_kind, headline, experience) => {
+    const long = fixtures.plainFindingsFixture(data);
+    long.analysis!.result!.findings[0]!.headline = headline;
+    expect(parseStudyAnalysis(long, data).state).toBe("invalid");
+    const account = fixtures.plainFindingsFixture(data);
+    account.analysis!.result!.findings[0]!.experience = experience;
+    expect(parseStudyAnalysis(account, data).state).toBe("invalid");
+  });
+
+  /** A current analysis as the producer writes it at `promptVersion`. */
+  const atRevision = (promptVersion: string) => {
+    const saved = fixtures.plainFindingsFixture(data);
+    saved.analysis!.promptVersion = promptVersion;
+    saved.analysis!.result!.concernReviews = [];
+    return saved;
+  };
+
+  it("admits a study-evidence-7 analysis that carries every required field", () => {
+    expect(parseStudyAnalysis(atRevision("study-evidence-7"), data).state).toBe("ready");
+    expect(parseStudyAnalysis(atRevision("study-evidence-8"), data).state).toBe("ready");
+  });
+
+  it.each(["headline", "experience", "designFindings", "concernReviews"] as const)(
+    "refuses a study-evidence-7 analysis without %s, and admits an older one",
+    (field) => {
+      const strip = (saved: LoadedAnalysis) => {
+        const result = saved.analysis!.result!;
+        if (field === "designFindings" || field === "concernReviews") delete result[field];
+        else for (const finding of result.findings) delete finding[field];
+        return saved;
+      };
+      expect(parseStudyAnalysis(strip(atRevision("study-evidence-7")), data).state).toBe("invalid");
+      const older = strip(
+        atRevision(field === "concernReviews" ? "study-evidence-4" : "study-evidence-6"),
+      );
+      expect(parseStudyAnalysis(older, data).state).toBe("ready");
+    },
+  );
 });

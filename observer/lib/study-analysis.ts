@@ -106,13 +106,19 @@ const participant = (v: unknown) =>
   ids(v.evidenceIds) &&
   list(v.feedback, quote) &&
   list(v.limitations, text);
-const optionalText = (v: unknown) => v === undefined || text(v);
+// Generated text with the producer's bounds (src/analysis/validation.ts): non-empty, at most
+// `max` characters and no control characters.
+const bounded = (v: unknown, max: number) =>
+  typeof v === "string" &&
+  v.length > 0 &&
+  v.length <= max &&
+  !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
 const finding = (v: unknown) =>
   object(v) &&
   id(v.id) &&
   strings(v, ["title", "summary", "exposureReason", "nextStep", "priorityReason"]) &&
-  optionalText(v.headline) &&
-  optionalText(v.experience) &&
+  (v.headline === undefined || bounded(v.headline, 240)) &&
+  (v.experience === undefined || bounded(v.experience, 1200)) &&
   enumeration(v.impact, ["blocked_task", "friction", "recovery", "uncertain"]) &&
   enumeration(v.recovery, ["recovered", "not_observed", "unknown"]) &&
   enumeration(v.confidence, ["low", "medium", "high"]) &&
@@ -122,11 +128,16 @@ const finding = (v: unknown) =>
 const designFinding = (v: unknown) =>
   object(v) &&
   id(v.id) &&
-  strings(v, ["headline", "screen", "notice", "whyItMatters", "suggestion"]) &&
+  bounded(v.headline, 240) &&
+  bounded(v.screen, 240) &&
+  bounded(v.notice, 1500) &&
+  bounded(v.whyItMatters, 1000) &&
+  bounded(v.suggestion, 1000) &&
   enumeration(v.severity, ["major", "moderate", "minor"]) &&
   enumeration(v.confidence, ["low", "medium", "high"]) &&
   ids(v.seenByStreamIds) &&
-  ids(v.evidenceIds);
+  ids(v.evidenceIds) &&
+  (v.evidenceIds as string[]).length <= 100;
 const correction = (v: unknown): v is AnalysisCorrection =>
   object(v) &&
   v.schema === "humanish.study-analysis-correction.v1" &&
@@ -329,17 +340,28 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
       )
         return invalid();
     }
+    // The producer's revision boundaries: concern reviews are required from study-evidence-5, and
+    // headlines, experiences and design findings from study-evidence-7.
+    const revision = Number(/^study-evidence-(\d+)$/.exec(analysis.promptVersion)?.[1] ?? 0);
+    if (
+      (revision >= 5 && result.concernReviews === undefined) ||
+      (revision >= 7 &&
+        (result.designFindings === undefined ||
+          result.findings.some((f) => f.headline === undefined || f.experience === undefined)))
+    )
+      return invalid();
     const design = result.designFindings ?? [];
     if (new Set(design.map((d) => d.id)).size !== design.length) return invalid();
     for (const d of design) {
       const refs = d.evidenceIds.map((key) => evidence.get(key));
-      const cited = new Set(refs.map((ref) => ref?.streamId));
+      // Seen by means a cited capture of that participant shows the problem.
+      const captured = new Set(refs.flatMap((ref) => (ref?.capture ? [ref.streamId] : [])));
       if (
         !refs.length ||
         refs.some((ref) => !ref) ||
-        !refs.some((ref) => ref?.capture) ||
+        !captured.size ||
         !d.seenByStreamIds.length ||
-        d.seenByStreamIds.some((s) => !included.includes(s) || !cited.has(s))
+        d.seenByStreamIds.some((s) => !included.includes(s) || !captured.has(s))
       )
         return invalid();
     }
