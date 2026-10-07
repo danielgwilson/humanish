@@ -325,6 +325,13 @@ function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
       ...value.exposedStreamIds,
       ...value.observations.flatMap((item) => [item.basis, ...item.evidenceIds]),
     ]),
+    ...(result.designFindings ?? []).flatMap((value) => [
+      value.id,
+      value.severity,
+      value.confidence,
+      ...value.seenByStreamIds,
+      ...value.evidenceIds,
+    ]),
     ...(result.concernReviews ?? []).flatMap((value) => [
       value.basis,
       value.disposition,

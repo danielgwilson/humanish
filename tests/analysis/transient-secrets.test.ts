@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -13,7 +14,12 @@ import { runAnalysis } from "../../src/analysis/execute.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeAnalysis } from "../../src/analysis/store.js";
 import type { AnalysisConfig, AnalysisInput, AnalysisResult } from "../../src/analysis/types.js";
-import { validateAnalysisResult, validateAnalysisArtifact } from "../../src/analysis/validation.js";
+import {
+  digestAnalysisInput,
+  validateAnalysisResult,
+  validateAnalysisArtifact,
+} from "../../src/analysis/validation.js";
+import { syntheticPng1x1 } from "../image-fixtures.js";
 import { syntheticResult } from "./fixtures.js";
 
 // Transport shape and usage derive from the retained live response fixture; only its answer is synthetic.
@@ -70,6 +76,40 @@ function addNarrativeCanaries(answer: AnalysisResult): AnalysisResult {
     },
   ];
   return answer;
+}
+
+/** The packet with one retained capture, so a design finding can cite it. */
+function withCapture(input: AnalysisInput): AnalysisInput {
+  const value = structuredClone(input);
+  const bytes = syntheticPng1x1();
+  const streamId = value.coverage.includedStreamIds[0]!;
+  value.evidence.unshift({
+    id: "capture-evidence",
+    streamId,
+    eventId: "screenshot-1",
+    kind: "screenshot",
+    text: "Captured account page.",
+    quoteEligible: false,
+    at: null,
+    elapsedMs: 0,
+    frame: 0,
+    capture: {
+      eventId: "screenshot-1",
+      path: "screenshots/account.png",
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      mimeType: "image/png",
+    },
+  });
+  value.images = [
+    {
+      evidenceId: "capture-evidence",
+      dataUrl: `data:image/png;base64,${bytes.toString("base64")}`,
+    },
+  ];
+  value.coverage.evidenceCount = value.evidence.length;
+  value.coverage.captureCount = 1;
+  value.inputDigest = digestAnalysisInput(value);
+  return value;
 }
 
 describe("analysis scrubbing in the originating run scope", () => {
@@ -173,6 +213,42 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
+  it("scrubs echoed OTPs and links from headlines, experiences and design findings", async () => {
+    const packet = withCapture(input);
+    const answer = syntheticResult(packet);
+    const append = (value: string) => `${value} ${OTP} ${LINK}`;
+    const finding = answer.findings[0]!;
+    finding.headline = append(finding.headline!);
+    finding.experience = append(finding.experience!);
+    const design = answer.designFindings![0]!;
+    for (const field of ["headline", "screen", "notice", "whyItMatters", "suggestion"] as const)
+      design[field] = append(design[field]);
+    expect(validateAnalysisResult(packet, answer)).toEqual(answer);
+    const artifact = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([OTP, LINK]);
+      return runAnalysis(packet, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+    });
+    expect(artifact).toMatchObject({ status: "complete", error: null });
+    const prose = JSON.stringify(artifact.result);
+    expect(prose).not.toContain(OTP);
+    expect(prose).not.toContain("https://example.test");
+    expect(prose.match(/\[REDACTED_SECRET\]/g)).toHaveLength(14);
+    expect(artifact.result?.findings[0]?.headline).toBe(
+      "The participant could not create an item. [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+    expect(artifact.result?.designFindings).toMatchObject([
+      {
+        id: design.id,
+        severity: design.severity,
+        confidence: design.confidence,
+        seenByStreamIds: design.seenByStreamIds,
+        evidenceIds: design.evidenceIds,
+        screen: "Item list [REDACTED_SECRET] [REDACTED_SECRET]",
+      },
+    ]);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
   it("isolates secrets across overlapping provider requests", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -255,6 +331,25 @@ describe("analysis scrubbing in the originating run scope", () => {
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([secret]);
       return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+    });
+    expect(artifact).toMatchObject({
+      status: "failed",
+      result: null,
+      error: "analysis_validation_failed_scrub_rejected",
+      usage: { dispatched: true, usageComplete: true },
+    });
+    expect(JSON.stringify(artifact)).not.toContain(secret);
+  });
+
+  it("refuses a secret echoed as an otherwise valid design finding ID", async () => {
+    const secret = "synthetic-management-key-canary";
+    const packet = withCapture(input);
+    const answer = syntheticResult(packet);
+    answer.designFindings![0]!.id = secret;
+    expect(validateAnalysisResult(packet, answer)).toEqual(answer);
+    const artifact = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([secret]);
+      return runAnalysis(packet, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
     expect(artifact).toMatchObject({
       status: "failed",
