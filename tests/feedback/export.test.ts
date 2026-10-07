@@ -108,6 +108,33 @@ describe("humanish export", () => {
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 
+  it("carries the run's reviewer notes read-only", async () => {
+    const notes = {
+      schema: "humanish.run-notes.v1",
+      runId: RUN,
+      notes: [
+        {
+          id: "note-export",
+          atMs: 1000,
+          participant: null,
+          nearest: null,
+          text: "Exported note.",
+          author: "you",
+          createdAt: "2026-05-01T10:00:00.000Z",
+          editedAt: null,
+        },
+      ],
+    };
+    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notes));
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    const slot = /<script id="run-notes" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+    expect(JSON.parse(slot?.[1] ?? "null")).toEqual({ notes, write: null });
+  });
+
   it("renders old recordings with the current packaged UI without changing the source", async () => {
     const index = path.join(runDir, "observer", "index.html");
     const oldHtml = (await readFile(index, "utf8")).replace(

@@ -21,6 +21,7 @@ import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadAnalysis } from "../analysis/load.js";
+import { readableRunNotes, type RunNotes } from "../run/notes.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedFile } from "../run/evidence-files.js";
@@ -201,7 +202,7 @@ export async function exportRun(
   const watermarked = !shareReady || omittedRecording;
   const output = renderExportHtml(
     inlined,
-    analysis,
+    { analysis, notes: await readableRunNotes(runPaths) },
     assets,
     verified,
     watermarked,
@@ -544,7 +545,7 @@ async function recheckAnalysis(
 /** The portable Observer HTML, with the local-only banner when the export is watermarked. */
 function renderExportHtml(
   inlined: Record<string, unknown>,
-  analysis: AnalysisState,
+  review: { analysis: AnalysisState; notes: RunNotes | null },
   assets: ObserverExportAssets,
   verified: VerifyResult,
   watermarked: boolean,
@@ -552,7 +553,7 @@ function renderExportHtml(
 ): string {
   const output = renderObserverHtml(inlined as unknown as ObserverData, {
     snapshot: true,
-    analysis,
+    ...review,
     assets,
   });
   if (!watermarked) return output;
