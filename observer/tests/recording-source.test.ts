@@ -15,6 +15,11 @@ describe("recording return navigation", () => {
       recordingSource(recordingState({ ...concerns, runId: "other" }), "study", [], true),
     ).toEqual(fallback);
   });
+  it("preserves a design capture return only while that study has design findings", () => {
+    const design = { runId: "study", kind: "design" as const };
+    expect(recordingSource(recordingState(design), "study", [], false, true)).toEqual(design);
+    expect(recordingSource(recordingState(design), "study", [], true)).toEqual(fallback);
+  });
   it("uses Participants for copied links, foreign studies, and removed findings", () => {
     expect(recordingSource(null, "study", ["F1"])).toEqual(fallback);
     expect(

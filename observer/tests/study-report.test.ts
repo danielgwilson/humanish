@@ -135,6 +135,7 @@ describe("study report evidence navigation", () => {
         concernsOpen: true,
         onFinding: () => undefined,
         onOpen: () => undefined,
+        onOpenDesign: () => undefined,
       }),
     );
     expect(html).toContain("Concerns considered (1)");
@@ -156,6 +157,7 @@ describe("study report evidence navigation", () => {
           findingId: "F1",
           onFinding: () => undefined,
           onOpen: () => undefined,
+          onOpenDesign: () => undefined,
         }),
       );
       expect(html).toContain("Visual observation");

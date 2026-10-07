@@ -19,6 +19,8 @@ export interface StudyReport {
     outcomes: { label: string; count: number }[];
   };
   findings: StudyFinding[];
+  /** Most severe first. Absent for an analysis written before design findings. */
+  designFindings?: StudyDesignFinding[];
   outcomes: { streamId: string; label: string }[];
   participants?: ParticipantAnalysis[];
   concernReviews?: {
@@ -60,6 +62,13 @@ export interface ParticipantAnalysis {
 interface StudyFinding {
   id: string;
   title: string;
+  /** The plain headline, or the reviewer's claim when an amendment replaced it. Absent in older
+   * analyses, which lead with the title. */
+  headline?: string;
+  /** The plain account of the experience. Absent in older analyses and after an amendment. */
+  experience?: string;
+  /** The headline is a reviewer's amended claim. */
+  corrected?: boolean;
   shortTitle?: string;
   impact: string;
   summary: string;
@@ -93,6 +102,24 @@ interface StudyFinding {
     observationCount?: number;
   }[];
 }
+
+export type DesignSeverity = "major" | "moderate" | "minor";
+export interface StudyDesignFinding {
+  id: string;
+  headline: string;
+  screen: string;
+  notice: string;
+  whyItMatters: string;
+  suggestion: string;
+  severity: DesignSeverity;
+  confidence: string;
+  seenByStreamIds: string[];
+  /** The cited captures, in citation order. */
+  moments: { streamId: string; eventId: string }[];
+}
+
+/** What a finding leads with: its plain headline when it has one. */
+export const findingHeading = (finding: StudyFinding): string => finding.headline ?? finding.title;
 
 /** Select only from cited entries. A capture cited as visual evidence is preferable
  * to an inherited context image. Broader direct observation coverage breaks ties;
@@ -164,6 +191,17 @@ export function reportProblem(data: ObserverData, report: StudyReport): string |
       !finding.moments.some((moment) => moment.eventId === finding.leadEventId)
     )
       return "The selected evidence is unavailable.";
+    if (
+      report.state !== "stale" &&
+      finding.moments.some((moment) => !resolveReportMoment(data, moment.streamId, moment.eventId))
+    )
+      return "Some report evidence is unavailable in this study.";
+  }
+  const design = report.designFindings ?? [];
+  if (new Set(design.map((finding) => finding.id)).size !== design.length)
+    return "Design finding identifiers are duplicated.";
+  for (const finding of design) {
+    if (!finding.moments.length) return "A design finding has no capture.";
     if (
       report.state !== "stale" &&
       finding.moments.some((moment) => !resolveReportMoment(data, moment.streamId, moment.eventId))

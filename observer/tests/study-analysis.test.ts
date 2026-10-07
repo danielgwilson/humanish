@@ -480,3 +480,83 @@ describe("bounded optional analysis fetch", () => {
     expect(cancelled).toBe(true);
   });
 });
+
+describe("plain headlines and design findings", () => {
+  const amendment = (findingId: string) => ({
+    schema: "humanish.study-analysis-correction.v1" as const,
+    id: "correction-1",
+    analysisId: "synthetic-analysis-1",
+    analysisSha256: "c".repeat(64),
+    findingId,
+    findingSha256: "d".repeat(64),
+    createdAt: "2026-10-07T00:00:00.000Z",
+    status: "amended" as const,
+    reason: "The capture shows the form was sent.",
+    replacementClaim: "The form was sent, but its confirmation appeared late.",
+  });
+
+  it("projects each finding's headline and experience and orders design findings by severity", () => {
+    const selected = parseStudyAnalysis(fixtures.plainFindingsFixture(data), data);
+    expect(selected.state).toBe("ready");
+    const report = projectStudyAnalysis(selected, data)!;
+    expect(report.findings[0]).toMatchObject({
+      title: "A recorded action needs investigation",
+      headline: "One participant could not tell whether their form was sent.",
+      experience: expect.stringMatching(/^They filled in the fictional form/),
+    });
+    expect(report.findings[0]!.corrected).toBeUndefined();
+    expect(report.designFindings?.map((finding) => [finding.id, finding.severity])).toEqual([
+      ["D2", "major"],
+      ["D1", "minor"],
+    ]);
+    expect(report.designFindings![0]).toMatchObject({
+      headline: "The Submit button is cut off at the bottom of the window.",
+      screen: "Form page",
+      seenByStreamIds: ["lane-1"],
+      moments: [{ streamId: "lane-1", eventId: "lane-1-frame-3" }],
+    });
+    expect(reportProblem(data, report)).toBeNull();
+  });
+
+  it("shows the reviewer's claim in place of an amended finding's headline and experience", () => {
+    const saved = fixtures.plainFindingsFixture(data);
+    saved.corrections = [amendment("F1")];
+    const report = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    expect(report.findings[0]).toMatchObject({
+      headline: "The form was sent, but its confirmation appeared late.",
+      corrected: true,
+    });
+    expect(report.findings[0]!.experience).toBeUndefined();
+    expect(report.findings[1]).toMatchObject({
+      headline: "A participant said the second step's wording was unclear.",
+    });
+  });
+
+  it("projects an analysis written before headlines and design findings as before", () => {
+    const saved = fixture();
+    saved.corrections = [amendment("F1")];
+    const report = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    expect(report.findings[0]!.title).toBe("A recorded action needs investigation");
+    expect(report.findings[0]!.headline).toBeUndefined();
+    expect(report.findings[0]!.experience).toBeUndefined();
+    expect(report.designFindings).toBeUndefined();
+  });
+
+  it.each([
+    "no capture",
+    "unknown evidence",
+    "a duplicate ID",
+    "an uncited participant",
+    "an unknown severity",
+  ])("refuses a design finding with %s", (kind) => {
+    const saved = fixtures.plainFindingsFixture(data);
+    const [minor, major] = saved.analysis!.result!.designFindings!;
+    if (kind === "no capture")
+      saved.analysis!.evidence.find((e) => e.id === minor!.evidenceIds[0])!.capture = null;
+    if (kind === "unknown evidence") minor!.evidenceIds.push("missing");
+    if (kind === "a duplicate ID") major!.id = minor!.id;
+    if (kind === "an uncited participant") minor!.seenByStreamIds.push("lane-1");
+    if (kind === "an unknown severity") Object.assign(minor!, { severity: "critical" });
+    expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+  });
+});

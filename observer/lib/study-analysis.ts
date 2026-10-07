@@ -106,16 +106,27 @@ const participant = (v: unknown) =>
   ids(v.evidenceIds) &&
   list(v.feedback, quote) &&
   list(v.limitations, text);
+const optionalText = (v: unknown) => v === undefined || text(v);
 const finding = (v: unknown) =>
   object(v) &&
   id(v.id) &&
   strings(v, ["title", "summary", "exposureReason", "nextStep", "priorityReason"]) &&
+  optionalText(v.headline) &&
+  optionalText(v.experience) &&
   enumeration(v.impact, ["blocked_task", "friction", "recovery", "uncertain"]) &&
   enumeration(v.recovery, ["recovered", "not_observed", "unknown"]) &&
   enumeration(v.confidence, ["low", "medium", "high"]) &&
   ids(v.affectedStreamIds) &&
   ids(v.exposedStreamIds) &&
   list(v.observations, observation);
+const designFinding = (v: unknown) =>
+  object(v) &&
+  id(v.id) &&
+  strings(v, ["headline", "screen", "notice", "whyItMatters", "suggestion"]) &&
+  enumeration(v.severity, ["major", "moderate", "minor"]) &&
+  enumeration(v.confidence, ["low", "medium", "high"]) &&
+  ids(v.seenByStreamIds) &&
+  ids(v.evidenceIds);
 const correction = (v: unknown): v is AnalysisCorrection =>
   object(v) &&
   v.schema === "humanish.study-analysis-correction.v1" &&
@@ -239,6 +250,8 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
         text(a.result.summary) &&
         list(a.result.participants, participant) &&
         list(a.result.findings, finding, 100) &&
+        (a.result.designFindings === undefined ||
+          list(a.result.designFindings, designFinding, 40)) &&
         list(a.result.limitations, text) &&
         (a.result.concernReviews === undefined || list(a.result.concernReviews, concernReview, 60)))
     )
@@ -313,6 +326,20 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
         f.observations.some(
           (o) => !o.evidenceIds.length || o.evidenceIds.some((key) => !evidence.has(key)),
         )
+      )
+        return invalid();
+    }
+    const design = result.designFindings ?? [];
+    if (new Set(design.map((d) => d.id)).size !== design.length) return invalid();
+    for (const d of design) {
+      const refs = d.evidenceIds.map((key) => evidence.get(key));
+      const cited = new Set(refs.map((ref) => ref?.streamId));
+      if (
+        !refs.length ||
+        refs.some((ref) => !ref) ||
+        !refs.some((ref) => ref?.capture) ||
+        !d.seenByStreamIds.length ||
+        d.seenByStreamIds.some((s) => !included.includes(s) || !cited.has(s))
       )
         return invalid();
     }
@@ -411,6 +438,20 @@ const impact = {
   uncertain: "Uncertain",
 };
 const outcomeLabel = (outcome: string) => outcome.charAt(0).toUpperCase() + outcome.slice(1);
+const severityRank = { major: 0, moderate: 1, minor: 2 };
+
+/** A reviewer's amendment replaces the plain headline and experience, which describe the old claim. */
+function plainLead(
+  finding: { headline?: string; experience?: string },
+  amendment: AnalysisCorrection | undefined,
+): { headline?: string; experience?: string; corrected?: true } {
+  if (finding.headline === undefined) return {};
+  if (amendment?.replacementClaim) return { headline: amendment.replacementClaim, corrected: true };
+  return {
+    headline: finding.headline,
+    ...(finding.experience === undefined ? {} : { experience: finding.experience }),
+  };
+}
 export function projectStudyAnalysis(
   loaded: LoadedAnalysis,
   data: ObserverData,
@@ -509,9 +550,11 @@ export function projectStudyAnalysis(
                 eventId: evidence.get(q.evidenceId)!.eventId,
               })),
           );
+        const latest = loaded.corrections.filter((c) => c.findingId === f.id).at(-1);
         return {
           id: f.id,
           title: f.title,
+          ...plainLead(f, latest?.status === "amended" ? latest : undefined),
           impact: impact[f.impact],
           summary: f.summary,
           scope: `${f.affectedStreamIds.length} of ${f.exposedStreamIds.length} exposed participants affected`,
@@ -547,6 +590,19 @@ export function projectStudyAnalysis(
             })),
         };
       }) ?? [],
+    ...(result?.designFindings === undefined
+      ? {}
+      : {
+          designFindings: [...result.designFindings]
+            .sort((x, y) => severityRank[x.severity] - severityRank[y.severity])
+            .map(({ evidenceIds, ...d }) => ({
+              ...d,
+              moments: evidenceIds.flatMap((key) => {
+                const e = evidence.get(key);
+                return e?.capture ? [{ streamId: e.streamId, eventId: e.eventId }] : [];
+              }),
+            })),
+        }),
     outcomes:
       loaded.state === "ready"
         ? (result?.participants.map((p) => ({

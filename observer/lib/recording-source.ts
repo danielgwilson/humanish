@@ -3,6 +3,7 @@ export type RecordingSource =
   | { runId: string; kind: "participants" }
   | { runId: string; kind: "finding"; findingId: string }
   | { runId: string; kind: "concerns" }
+  | { runId: string; kind: "design" }
   | { runId: string; kind: "comparison"; hash: string };
 
 export function recordingSource(
@@ -10,6 +11,7 @@ export function recordingSource(
   runId: string,
   findingIds: string[] = [],
   hasConcerns = false,
+  hasDesign = false,
 ): RecordingSource {
   const fallback: RecordingSource = { runId, kind: "participants" };
   if (!state || typeof state !== "object") return fallback;
@@ -18,6 +20,7 @@ export function recordingSource(
   const source = value as Record<string, unknown>;
   if (source.runId !== runId) return fallback;
   if (source.kind === "concerns" && hasConcerns) return { runId, kind: "concerns" };
+  if (source.kind === "design" && hasDesign) return { runId, kind: "design" };
   if (
     source.kind === "finding" &&
     typeof source.findingId === "string" &&

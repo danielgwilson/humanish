@@ -231,6 +231,7 @@ describe("automatic analysis within the existing study shell", () => {
         findingId=""
         onFinding={() => {}}
         onOpen={() => {}}
+        onOpenDesign={() => {}}
       />,
     );
     expect(container.textContent?.match(/Report available · limitations/g)).toHaveLength(1);
@@ -250,6 +251,7 @@ describe("automatic analysis within the existing study shell", () => {
           findingId=""
           onFinding={() => {}}
           onOpen={() => {}}
+          onOpenDesign={() => {}}
         />,
       );
       expect(container.textContent?.match(/Report available · limitations/g)).toHaveLength(1);

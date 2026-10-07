@@ -12,6 +12,7 @@ import {
   fixture,
   screenshot,
   START,
+  plainFindingsFixture,
   reviewPolishFixture,
 } from "./observer-browser-fixtures.mjs";
 
@@ -4030,6 +4031,90 @@ try {
           keyboardFocusRestored: true,
         };
         await snap("concern-return-and-finding");
+      },
+    );
+  for (const phone of [false, true])
+    await runCase(
+      `analysis-plain-findings-${phone ? "phone" : "desktop"}`,
+      {
+        phone,
+        touch: phone,
+        prepare() {
+          analysis = plainFindingsFixture(data);
+        },
+      },
+      async ({ page, record, snap }) => {
+        const [f1] = analysis.analysis.result.findings;
+        await page.getByRole("link", { name: /^Findings/ }).click();
+        const trigger = page.locator('[data-finding="F1"]');
+        const heading = await trigger.locator("strong").innerText();
+        assert.equal(heading, f1.headline, "A finding did not lead with its headline");
+        await snap("plain-headlines");
+        await trigger.focus();
+        await page.keyboard.press("Enter");
+        const experience = page.locator('[data-finding-row="F1"] .report-experience');
+        await experience.waitFor();
+        assert.equal(await experience.innerText(), f1.experience);
+        const evidence = page.locator('[data-finding-row="F1"] details.finding-evidence');
+        assert.equal(await evidence.getAttribute("open"), null, "The evidence began expanded");
+        assert.equal(
+          await evidence.locator(".report-claim").isVisible(),
+          false,
+          "The evidence summary is visible while its disclosure is closed",
+        );
+        await snap("headline-and-experience");
+        const disclosure = evidence.locator("> summary");
+        assert.equal(await disclosure.innerText(), `Evidence: ${f1.title}`);
+        await disclosure.focus();
+        await page.keyboard.press("Enter");
+        await page.locator('[data-finding-row="F1"] details.finding-evidence[open]').waitFor();
+        await until(
+          async () =>
+            page
+              .locator(".finding-panel")
+              .first()
+              .evaluate((element) => element.clientHeight >= element.scrollHeight - 1),
+          "Opened evidence remains clipped",
+        );
+        assert.equal(await evidence.locator(".report-claim").innerText(), f1.summary);
+        await snap("evidence-opened");
+        const design = page.locator(".report-design");
+        await design.scrollIntoViewIfNeeded();
+        assert.deepEqual(
+          await design
+            .locator("[data-design-finding]")
+            .evaluateAll((items) => items.map((item) => item.getAttribute("data-design-finding"))),
+          ["D2", "D1"],
+          "Design findings are not ordered by severity",
+        );
+        const major = design.locator('[data-design-finding="D2"]');
+        const capture = major.locator("button.design-capture");
+        await capture.scrollIntoViewIfNeeded();
+        assertFullFrames(await inspectImages(capture.locator("img")));
+        if (phone) assert((await capture.boundingBox()).height >= 44);
+        const width = await pageWidth(page);
+        assert(width.page <= width.viewport + 1, "Design findings overflow the page");
+        await snap("design-findings");
+        await capture.click();
+        await page.locator(".player").waitFor();
+        assert.equal(new URL(page.url()).hash, "#/lane/lane-1/f/3");
+        await page.reload();
+        const back = page.getByRole("button", { name: "Back to design findings", exact: true });
+        await back.waitFor();
+        await snap("design-capture-opened");
+        await back.click();
+        await until(
+          async () => page.evaluate(() => document.activeElement?.id === "design-findings-heading"),
+          "Design return lost keyboard focus",
+        );
+        record.checks = {
+          headlineLeads: heading,
+          evidenceCollapsedByDefault: true,
+          designOrder: ["D2", "D1"],
+          designCapture: "lane-1-frame-3",
+          reloadReturn: "design",
+          pageWidth: width,
+        };
       },
     );
 
