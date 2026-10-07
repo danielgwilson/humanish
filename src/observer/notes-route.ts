@@ -16,6 +16,7 @@ import {
 } from "../run/notes.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
+import { cli } from "../cli/invocation.js";
 import { hostAllowed } from "./http.js";
 
 export const NOTES_PATH = "/api/notes";
@@ -164,7 +165,7 @@ export function createNotesWriter(options: NotesWriterOptions): NotesWriter {
           response,
           403,
           "HUMANISH_NOTES_EXPOSED",
-          "This Observer is shared beyond this machine, so it does not take notes. Add notes from an Observer served on 127.0.0.1, or with `humanish notes <run> --add`.",
+          `This Observer is shared beyond this machine, so it does not take notes. Add notes from an Observer served on 127.0.0.1, or with \`${cli("notes <run> --add")}\`.`,
         );
       const host = request.headers.host?.trim().toLowerCase();
       if (

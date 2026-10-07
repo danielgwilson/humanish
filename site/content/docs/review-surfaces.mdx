@@ -178,6 +178,31 @@ be used as a shared clock. Another run can be loaded from the available library
 as recorded evidence. The address retains the chosen runs, participants, clock
 and cursor so reopening it restores the comparison.
 
+### Add reviewer notes
+
+Pause the study timeline on a moment and choose **Add a note at 02:31** in the
+bottom dock to write what you saw there. A note added while a participant is open
+belongs to that participant; one added from the grid belongs to the whole study.
+Each note is a mark on the study timeline. **Findings** lists the notes under
+**Reviewer notes**, each marked **Human**, and a note's time opens that moment.
+
+The notes are saved in the run directory as `notes.json`. A note's time counts from
+the study timeline's 00:00: the first timed capture or desktop video of any
+participant. From a terminal or an agent, `humanish notes <run>` lists the notes and
+`humanish notes <run> --add --at 02:31 --participant <id> "text"` adds one; leave out
+`--participant` for a note on the whole study.
+
+Only an Observer that `humanish observe`, `watch` or `run --open` serves on 127.0.0.1
+takes notes. The server accepts a note from the page it rendered: the page carries a
+token that changes each time the server starts, and the request must come from that
+page's own address. An Observer shared with `--expose`, a saved `observer/index.html`
+opened from disk and an exported page show the notes and offer no way to add one.
+
+Text that looks like a secret or a local path is replaced before a note is saved.
+`humanish verify` reads `notes.json` like the rest of the run, so a secret-shaped
+value in a note keeps the run from `share_ready`. Feedback drafts include the notes
+under **Reviewer notes**, apart from what participants said.
+
 ### What the viewer keeps out
 
 Only the attached process can grant a desktop iframe its own origin for provider

@@ -3,17 +3,21 @@
 This checks the **built Observer renderer** in Chromium against synthetic
 recordings and a controlled local HTTP snapshot endpoint. It covers cropping,
 phone overflow, live/replay navigation, polling failure and recovery, stream
-allocation, long recordings, saved moments, comparison clocks, zoom, native
+allocation, long recordings, saved moments, reviewer notes, comparison clocks, zoom, native
 permission failures, keyboard navigation, local storage and offline rendering.
-The finite ledger contains 64 local Chromium cases. It does not substitute for actual provider
+The finite ledger contains 73 local Chromium cases. It does not substitute for actual provider
 connection/cleanup, CLI/TUI attachment, or export integration acceptance.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter humanish-observer build
+pnpm build
 pnpm exec playwright-core install chromium
 node scripts/observer-browser-proof.mjs
 ```
+
+The `reviewer-notes` case starts the loopback Observer server from the root build's `dist/`,
+which `pnpm build` writes, and adds a note through it; every other case uses the controlled
+endpoint.
 
 The browser installation uses the repository's resolved `playwright-core`
 version. On Linux CI, use `pnpm exec playwright-core install --with-deps chromium`.
@@ -37,7 +41,7 @@ node scripts/observer-browser-proof.mjs --artifact observer/dist/index.html --ca
 `scripts/observer-browser-coverage.json` is the declared coverage ledger. Every
 local case must produce one result; errors fail the command while retaining
 evidence. `localCasesPass` describes only the selected cases and
-`localCoverageComplete` requires all 64 cases to pass in the same invocation.
+`localCoverageComplete` requires all 73 cases to pass in the same invocation.
 `coverageComplete` remains false while the manifest lists externally required acceptance.
 Do not describe a local green report as complete Observer release acceptance.
 

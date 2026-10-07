@@ -93,7 +93,14 @@ export function runClock(bundle: RunBundle): { startMs: number; endMs: number } 
     ...recordingMoments(stream),
   ]);
   if (moments.length === 0) return null;
-  return { startMs: Math.min(...moments), endMs: Math.max(...moments) };
+  // A loop, since spreading a long recording's capture times into Math.min can overflow the stack.
+  let startMs = Infinity;
+  let endMs = -Infinity;
+  for (const moment of moments) {
+    startMs = Math.min(startMs, moment);
+    endMs = Math.max(endMs, moment);
+  }
+  return { startMs, endMs };
 }
 
 function traceItems(stream: RunStream): ActorTraceItem[] {

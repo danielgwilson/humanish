@@ -8,6 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Reviewer notes. Pause the study timeline in an Observer served on 127.0.0.1 and choose
+  **Add a note at 02:31** to write what you saw at that moment, for the open participant or
+  the whole study. Notes show as marks on the study timeline and in a **Reviewer notes** list
+  in **Findings**, marked as written by a person, and reloading the Observer shows them at the
+  same moment. They are saved in the run directory as `notes.json`
+  (`humanish.run-notes.v1`). `humanish notes <run>` lists them and
+  `humanish notes <run> --add --at <mm:ss> [--participant <id>] "text"` adds one; `--json`
+  works for both. The server takes a note only with the token in the page it rendered and from
+  that page's own address, and an Observer shared with `--expose` takes none. Text that looks
+  like a secret or a local path is replaced before it is saved, `verify` scans `notes.json`
+  like other run text, and feedback drafts include the notes under **Reviewer notes**.
+
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
 humanish 0.113.0 asks computer-use participants what they thought at the end of a session, warns

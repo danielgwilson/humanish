@@ -576,6 +576,47 @@ updatedAt: "<ISO timestamp>"
 
 The latest pointer may move. Run bundle directories should not.
 
+## Reviewer notes
+
+`notes.json` in the run directory holds the notes a person added while reviewing the
+run, written by `humanish notes --add` and by an Observer served on loopback. It is
+absent until the first note.
+
+```json
+{
+  "schema": "humanish.run-notes.v1",
+  "runId": "example-2026-06-02t10-00-00-000z-proof",
+  "notes": [
+    {
+      "id": "note-00000000-0000-4000-8000-000000000001",
+      "atMs": 151000,
+      "participant": "stream-001",
+      "nearest": { "participant": "stream-001", "itemId": "turn-07-call-01" },
+      "text": "They looked for the save button here.",
+      "author": "you",
+      "createdAt": "2026-06-02T10:30:00.000Z",
+      "editedAt": null
+    }
+  ]
+}
+```
+
+- `atMs`: milliseconds from the run clock's start, the earliest timed capture or
+  desktop video of any participant. The Observer's study timeline shows that moment as
+  00:00. A participant's captures count only when every one is stamped and the stamps
+  never go back.
+- `participant`: the stream id the note belongs to, or `null` for the whole run.
+- `nearest`: the latest stamped trace item, a capture or an event, at or before the
+  moment, among the note's participant or every participant; `null` when there is none.
+- `text`: 1 to 2000 characters, after the run's known values, secret-shaped values and
+  local paths are replaced.
+- `author`: `"you"` in this version.
+- `createdAt`, `editedAt`: ISO-8601. Notes cannot be edited yet, so `editedAt` is `null`.
+
+A run holds at most 500 notes. `verify` scans `notes.json` with every other run file,
+so a secret-shaped value in it keeps the run from `share_ready`. A bundle export copies
+it; an HTML export carries the notes read-only.
+
 ## Verify Result Share Safety
 
 `humanish.verify-result.v1` includes a machine-readable `shareSafety` block in
