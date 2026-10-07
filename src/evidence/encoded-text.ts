@@ -49,6 +49,39 @@ function codePoint(value: number, original: string): string {
     : original;
 }
 
+// The length of the UTF-8 sequence a lead byte starts, or 0 for a byte that starts none.
+function sequenceLength(lead: number): number {
+  if (lead < 0x80) return 1;
+  if (lead >= 0xc2 && lead <= 0xdf) return 2;
+  if (lead >= 0xe0 && lead <= 0xef) return 3;
+  if (lead >= 0xf0 && lead <= 0xf4) return 4;
+  return 0;
+}
+
+/**
+ * A run of percent escapes read as UTF-8, as a browser reads a URL. A byte that starts no valid
+ * sequence stands for itself, the character with that code, so `%E9` alone still reads as `é`.
+ */
+function decodePercentRun(run: string): string {
+  const bytes = Buffer.from(run.replace(/%/g, ""), "hex");
+  let text = "";
+  for (let at = 0; at < bytes.length;) {
+    const length = sequenceLength(bytes[at]!);
+    const sequence = length > 0 ? bytes.subarray(at, at + length) : undefined;
+    const decoded = sequence?.length === length ? sequence.toString("utf8") : undefined;
+    // Node writes U+FFFD for an overlong form, a surrogate half or a bad continuation byte, so a
+    // sequence counts only when its decoded character encodes back to the same bytes.
+    if (decoded !== undefined && Buffer.from(decoded, "utf8").equals(sequence!)) {
+      text += decoded;
+      at += length;
+    } else {
+      text += String.fromCharCode(bytes[at]!);
+      at += 1;
+    }
+  }
+  return text;
+}
+
 /** Undoes JSON and JS escapes, percent-encoding and HTML character references, one pass each. */
 export function decodeEscapes(text: string): string {
   return text
@@ -59,7 +92,7 @@ export function decodeEscapes(text: string): string {
       codePoint(Number.parseInt(hex, 16), match),
     )
     .replace(/\\\//g, "/")
-    .replace(/%([0-9a-f]{2})/gi, (match, hex: string) => codePoint(Number.parseInt(hex, 16), match))
+    .replace(/(?:%[0-9a-f]{2})+/gi, decodePercentRun)
     .replace(/&#x([0-9a-f]{1,6});?/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
     )
@@ -316,7 +349,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 3;
+const ENCODED_SCAN_VERSION = 4;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();

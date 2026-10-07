@@ -20,6 +20,21 @@ describe("decodeEscapes", () => {
     expect(decodeEscapes("\\u0073\\x6b\\/%2D&#115;&#x6B;&lowbar;&amp;")).toBe("sk/-sk_&");
   });
 
+  it("reads a run of percent escapes as UTF-8", () => {
+    expect(decodeEscapes("caf%C3%A9 %e2%82%ac %F0%9F%98%80")).toBe("café € 😀");
+    expect(decodeEscapes("voil%C3%A0%2Fsecret")).toBe("voilà/secret");
+  });
+
+  it("keeps a byte that starts no valid UTF-8 sequence as one character", () => {
+    // A lone byte, a cut-short sequence, an overlong `/` and a surrogate half.
+    expect(decodeEscapes("%E9t%E9")).toBe("\u00e9t\u00e9");
+    expect(decodeEscapes("%C3")).toBe("\u00c3");
+    expect(decodeEscapes("%E2%82x")).toBe("\u00e2\u0082x");
+    expect(decodeEscapes("%C0%AF")).toBe("\u00c0\u00af");
+    expect(decodeEscapes("%ED%A0%80")).toBe("\u00ed\u00a0\u0080");
+    expect(decodeEscapes("%FF%C3%A9")).toBe("\u00ffé");
+  });
+
   it("leaves text without escapes and unknown references alone", () => {
     expect(decodeEscapes("plain text &unknown; 100%")).toBe("plain text &unknown; 100%");
   });
