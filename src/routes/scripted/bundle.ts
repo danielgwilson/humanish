@@ -239,7 +239,7 @@ function buildScriptedReview(args: {
   };
 }
 
-export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
+export function renderScriptedReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const subject = bundle.events.find((event) => event.type === "scripted-lab.subject.declared");
   const spend = bundle.events.find((event) => event.type === "scripted-lab.spend");
   const traces = bundle.streams
@@ -253,7 +253,7 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
     `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
+    `- outcome: ${reviewOutcome(bundle, status)}`,
     `- summary: ${bundle.review.summary}`,
     `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
     ...(subject ? [`- subject: ${subject.message}`] : []),

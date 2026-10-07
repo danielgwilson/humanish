@@ -207,7 +207,7 @@ function singleParticipantArgs(
 }
 
 /** The run's review.md: title, run, mode, gate, summary, subject, actor evidence and gaps. */
-export function renderCuaReviewMarkdown(bundle: RunBundle): string {
+export function renderCuaReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
   const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
   return [
@@ -216,7 +216,7 @@ export function renderCuaReviewMarkdown(bundle: RunBundle): string {
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
     `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
+    `- outcome: ${reviewOutcome(bundle, status)}`,
     `- summary: ${bundle.review.summary}`,
     ...(provenance ? [`- subject: ${provenance.message}`] : []),
     ...(trace

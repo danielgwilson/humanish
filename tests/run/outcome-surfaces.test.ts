@@ -8,6 +8,7 @@ import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { listRuns } from "../../src/run/stored-runs.js";
 import {
   outcomeCases,
@@ -55,6 +56,7 @@ interface Surfaces {
   states: Record<string, string>;
   /** The served Observer's process status for the run. */
   runtime: string | undefined;
+  liveness: string;
 }
 
 async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surfaces> {
@@ -73,7 +75,15 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
   states["stats pass count"] = stats.studies[0]?.passed === 1 ? "passed" : "not passed";
 
   const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
-  states["Observer data"] = ofObserverData(buildObserverData(bundle));
+  states["Observer data"] = ofObserverData(
+    buildObserverData(
+      bundle,
+      undefined,
+      await readFile(path.join(runDir, "status.json"), "utf8")
+        .then((raw) => JSON.parse(raw) as unknown)
+        .catch(() => undefined),
+    ),
+  );
   if (outcome.routeWritten) {
     const written = JSON.parse(
       await readFile(path.join(runDir, "observer", "observer-data.json"), "utf8"),
@@ -115,7 +125,12 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
       )
     ).json()) as ObserverData;
     states["served Observer"] = ofObserverData(served);
-    return { states, runtime: served.runtime?.state };
+    const verified = await verifyRun(cwd, runId);
+    return {
+      states,
+      runtime: served.runtime?.state,
+      liveness: verified.unfinished?.liveness ?? "finished",
+    };
   } finally {
     await started.server.close();
   }
@@ -207,4 +222,14 @@ it("prints a review headline for every case but the one verify refuses", () => {
 
 it("shows the interrupted run as interrupted in the served Observer's process status", () => {
   expect(shown.get("synthetic/interrupted")!.runtime).toBe("interrupted");
+});
+
+it("verify agrees on missing status, fresh status and a finished bundle with stale status", () => {
+  expect(shown.get("synthetic/no-outcome-missing")!.liveness).toBe("interrupted");
+  expect(shown.get("synthetic/no-outcome-fresh")!.liveness).toBe("running");
+  expect(shown.get("synthetic/between-writes")!.liveness).toBe("finished");
+});
+
+it("shows a finished bundle as finished in the served Observer's process status", () => {
+  expect(shown.get("synthetic/between-writes")!.runtime).toBe("finished");
 });

@@ -255,6 +255,8 @@ describe("runtime desktop iframe authority", () => {
 
   it("keeps history's outcome while adding the current runtime state for running filters", async () => {
     const { runRoot, server, bundle } = await fixture();
+    delete bundle.outcome;
+    await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
     const now = new Date().toISOString();
     await writeFile(
       path.join(runRoot, "status.json"),

@@ -113,7 +113,7 @@ it("observe follows selected-run evidence and lifecycle over protected HTTP, the
     const updated = await getData();
     expect(updated.streams[0]?.label).toBe("Updated saved capture");
     expect(updated.streams[0]?.embed?.runtimeDesktop).toBeUndefined();
-    expect(updated.runtime?.state).toBe("running");
+    expect(updated.runtime?.state).toBe("finished");
     const history = (await (await fetch(new URL("/_humanish/history.json", url))).json()) as {
       runs: Array<{ runId: string }>;
     };

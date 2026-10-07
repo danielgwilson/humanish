@@ -405,7 +405,7 @@ function describeCaps(caps: StudyCaps | undefined): string {
   return parts.length > 0 ? parts.join(", ") : "empty";
 }
 
-export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
+export function renderTerminalReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const subject = bundle.events.find((event) => event.type === "terminal-lab.subject.declared");
   const credentials = bundle.events.find(
     (event) => event.type === "terminal-lab.credentials.declared",
@@ -417,7 +417,7 @@ export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
     `- run: ${bundle.runId}`,
     `- mode: ${bundle.mode}`,
     `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
+    `- outcome: ${reviewOutcome(bundle, status)}`,
     `- summary: ${bundle.review.summary}`,
     `- mission: ${bundle.scenario.goal}`,
     ...(subject ? [`- subject: ${subject.message}`] : []),

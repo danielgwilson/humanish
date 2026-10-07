@@ -596,7 +596,7 @@ function declaredStateDigest(state: StudySubjectState | undefined): string {
   );
 }
 
-export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
+export function renderConcurrentReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const plane = bundle.events.find(
     (event) => event.type === "concurrent-shared-world.plane.provenance",
   );
@@ -613,7 +613,7 @@ export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
     `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
     `- personas: ${sw?.roleCount ?? 0}`,
     `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
+    `- outcome: ${reviewOutcome(bundle, status)}`,
     `- summary: ${bundle.review.summary}`,
     ...(plane ? [`- plane: ${plane.message}`] : []),
     ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),

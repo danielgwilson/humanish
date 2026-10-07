@@ -216,7 +216,7 @@ function createReviewSummary(verdict: Verdict): ReviewSummary {
 }
 
 /** The preview's review.md. */
-function renderReviewMarkdown(bundle: RunBundle): string {
+function renderReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   return `# humanish Run Review
 
 Run: ${bundle.runId}
@@ -225,7 +225,7 @@ Mode: ${bundle.mode}
 
 Verdict: ${verdictText(bundle.review.verdict, bundle.mode)}
 
-Outcome: ${reviewOutcome(bundle)}
+Outcome: ${reviewOutcome(bundle, status)}
 
 ${bundle.review.summary}
 

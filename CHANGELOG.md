@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
+  an unfinished bundle without usable status reads as interrupted, and a recorded final outcome
+  wins over a stale status record. Fresh live snapshots still read as running. Invalid cost
+  estimates stay unknown across cost displays and statistics.
+
 ## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
 humanish 0.111.4 scrubs a run's known values from more of its evidence and fixes three messages.
