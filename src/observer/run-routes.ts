@@ -18,6 +18,16 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import {
+  decodeRunNote,
+  listNoteEntries,
+  MAX_NOTE_FILE_BYTES,
+  noteListing,
+  RUN_NOTES_DIR,
+  runNoteFile,
+  type RunNote,
+  type RunNotes,
+} from "../run/note-files.js";
 import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
@@ -54,7 +64,7 @@ export interface ObserverRuntimeStreamUrl {
 }
 
 /** The run's artifact paths, only when they are still the pinned directory being served. */
-async function servedRunPaths(runRoot: PinnedDirectory): Promise<PreparedRunArtifactPaths> {
+export async function servedRunPaths(runRoot: PinnedDirectory): Promise<PreparedRunArtifactPaths> {
   const runId = path.basename(runRoot.physicalPath);
   const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
   const prepared = await bindExistingRunArtifactPaths(cwd, runId);
@@ -100,13 +110,47 @@ async function readServedAnalysisSpend(
   }
 }
 
-/** internal: consumed by src/observer/serve.ts */
+/**
+ * The run's reviewer notes as served: notes/ listed, and each note file read within
+ * MAX_NOTE_FILE_BYTES through the root's checks, so a --safe root's admission and hash checks
+ * apply to every note. A file that is not a readable note of the run is skipped and counted.
+ */
+async function readServedNotes(runRoot: PinnedDirectory): Promise<RunNotes> {
+  const runId = path.basename(runRoot.physicalPath);
+  let listing;
+  try {
+    await assertPinnedDirectory(runRoot);
+    listing = await listNoteEntries(path.join(runRoot.physicalPath, RUN_NOTES_DIR));
+  } catch {
+    return { runId, notes: [], skipped: [`${RUN_NOTES_DIR} is not a plain folder.`] };
+  }
+  if (listing === null) return { runId, notes: [], skipped: [] };
+  const { ids, skipped } = noteListing(listing);
+  const notes: RunNote[] = [];
+  for (const id of ids) {
+    const bytes = await readContainedFile(
+      runRoot,
+      path.join(runRoot.physicalPath, runNoteFile(id)),
+      { maxBytes: MAX_NOTE_FILE_BYTES },
+    );
+    const note = bytes === null ? null : decodeRunNote(bytes, runId, id);
+    if (note === null) skipped.push(`${runNoteFile(id)} was skipped.`);
+    else notes.push(note);
+  }
+  return { runId, notes, skipped };
+}
+
+/**
+ * internal: consumed by src/observer/serve.ts. `notesToken` goes into the run's Observer page so
+ * it can add notes; a server passes it only for a run it takes notes for.
+ */
 export async function serveRunPath(
   runRoot: PinnedDirectory,
   relativePath: string,
   response: ServerResponse,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
   request?: Pick<IncomingMessage, "method" | "headers">,
+  notesToken?: string,
 ): Promise<void> {
   const root = runRoot.physicalPath;
   const filePath = path.resolve(root, relativePath === "" ? "observer/index.html" : relativePath);
@@ -140,10 +184,15 @@ export async function serveRunPath(
       return;
     }
     const analysis = await readObserverAnalysis(runRoot);
+    const notes = await readServedNotes(runRoot);
     writeResponse(
       response,
       200,
-      renderObserverHtml(observerData, { analysis }),
+      renderObserverHtml(observerData, {
+        analysis,
+        notes,
+        ...(notesToken === undefined ? {} : { notesToken }),
+      }),
       "text/html; charset=utf-8",
     );
     return;
@@ -174,7 +223,10 @@ export async function serveRunPath(
     return;
   }
 
-  if (path.extname(filePath).toLowerCase() === ".mp4") {
+  // Every file under notes/ is read within the note limit, whatever its name, so media handling
+  // never streams one.
+  const notePath = derivedRoot === RUN_NOTES_DIR;
+  if (!notePath && path.extname(filePath).toLowerCase() === ".mp4") {
     await serveContainedMedia(runRoot, filePath, response, request);
     return;
   }
@@ -184,7 +236,11 @@ export async function serveRunPath(
     return;
   }
   try {
-    const body = await readContainedFile(runRoot, filePath);
+    const body = await readContainedFile(
+      runRoot,
+      filePath,
+      notePath ? { maxBytes: MAX_NOTE_FILE_BYTES } : {},
+    );
     if (!body) {
       writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
       return;

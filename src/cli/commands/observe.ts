@@ -233,7 +233,7 @@ async function observeRun(
     ...(openResult.command ? { openCommand: openResult.command } : {}),
     warnings: [
       ...rendered.warnings,
-      "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
+      "Observer is served over loopback http on 127.0.0.1; only this run's bundle directory is exposed, and the one change the page can make is adding a reviewer note.",
       ...(openResult.warning ? [openResult.warning] : []),
     ],
   };

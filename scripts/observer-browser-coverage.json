@@ -53,6 +53,10 @@
       "goal": "Arrow seek leaves the desktop and shows the addressed recording"
     },
     { "id": "live-refresh", "goal": "Reload preserves the explicit intent to watch live" },
+    {
+      "id": "reviewer-notes",
+      "goal": "Pause the study timeline, add a note on the loopback server from the root build, reload and see its marker and listed note at the same moment; a request without the page token is refused"
+    },
     { "id": "paused-growth", "goal": "A paused newest frame stays paused when evidence grows" },
     { "id": "same-lane-route", "goal": "Same-participant links select the actual visible moment" },
     {

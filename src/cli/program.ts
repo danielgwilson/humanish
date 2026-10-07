@@ -22,6 +22,7 @@ import { registerCommsCommands } from "./commands/comms.js";
 import { registerFeedbackCommands } from "./commands/feedback.js";
 import { registerStudyCommands } from "./commands/study.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
+import { registerNotesCommand } from "./commands/notes.js";
 import { registerObserveCommand } from "./commands/observe.js";
 import {
   registerCleanupCommand,
@@ -482,6 +483,7 @@ export function createProgram(
   registerVerifyCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
   registerAnalyzeCommand(program, cliIo);
+  registerNotesCommand(program, cliIo);
   registerFeedbackCommands(program, cliIo);
   registerExportCommand(program, cliIo);
   registerRunsCommand(program, cliIo);

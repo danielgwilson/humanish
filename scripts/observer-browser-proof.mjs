@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
@@ -95,6 +96,8 @@ let serverStopped = false;
 let pollCount = 0;
 let exerciseDesktopIsolation = false;
 const requests = [];
+// Origins a case may reach besides the controlled server: the loopback Observer it starts itself.
+const caseOrigins = new Set();
 const images = new Map();
 const imageModes = new Map();
 const server = createServer((request, response) => {
@@ -814,7 +817,8 @@ async function runCase(id, options, action) {
   const unexpectedNetwork = [];
   await context.route("**/*", (route) => {
     const target = new URL(route.request().url());
-    if (target.origin === origin || target.protocol === "file:") return route.continue();
+    if (target.origin === origin || caseOrigins.has(target.origin) || target.protocol === "file:")
+      return route.continue();
     unexpectedNetwork.push(`${target.protocol}//${target.host}${target.pathname}`);
     return route.abort();
   });
@@ -2711,6 +2715,145 @@ try {
       await page.evaluate(() => JSON.parse(localStorage.getItem("humanish-observer-moments"))),
       [],
     );
+  });
+  await runCase("reviewer-notes", {}, async ({ page, record, snap }) => {
+    // The loopback server from the root build renders the page, checks its token and origin,
+    // writes the note to notes/<id>.json and renders the reloaded page from it.
+    const { renderObserver, serveObserver } = await import("../dist/observer/render.js");
+    const { runDryRun } = await import("../dist/run/dry-run.js");
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-notes-proof-"));
+    let server;
+    try {
+      await cp(path.join(root, "fixtures", "minimal-app"), cwd, { recursive: true });
+      const runId = "synthetic-notes-study";
+      assert.equal((await runDryRun({ cwd, dryRun: true, runId })).ok, true);
+      const runDir = path.join(cwd, ".humanish", "runs", runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      const captures = [0, 30, 95].map((seconds, index) => ({
+        id: `capture-${index}`,
+        kind: "screenshot",
+        lifecycle: "completed",
+        title: `Capture ${index + 1}`,
+        at: new Date(START + seconds * 1000).toISOString(),
+        screenshotRef: { path: `screenshots/capture-${index}.png`, redaction: "none" },
+      }));
+      bundle.streams[0].actor = {
+        schema: "humanish.actor-trace.v1",
+        provider: "openai-responses-cu",
+        protocol: "cua-loop",
+        lane: "computer-use",
+        persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
+        redaction: { status: "passed", screenshots: "raw", notes: "synthetic proof trace" },
+        startedAt: captures[0].at,
+        completedAt: captures[2].at,
+        durationMs: 95_000,
+        status: "passed",
+        completionReason: "goal_satisfied",
+        reason: "model reported a natural endpoint with no further action",
+        ids: {},
+        counts: { turns: 3, actions: 0, screenshots: 3 },
+        items: captures,
+        capabilities: {
+          headless: true,
+          structuredTrace: true,
+          lanes: ["computer-use"],
+          producesScreenshots: true,
+          byoModel: false,
+          preGrantableApprovals: false,
+          inProcessTools: false,
+          license: "proprietary",
+        },
+      };
+      await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle, null, 2));
+      await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+      for (const [index, capture] of captures.entries())
+        await writeFile(
+          path.join(runDir, capture.screenshotRef.path),
+          screenshot(1200, 750, index),
+        );
+      const rendered = await renderObserver(cwd, runId, { open: false });
+      assert.equal(rendered.ok, true, "The synthetic notes study must render");
+      server = await serveObserver(rendered, { open: false, scope: "run" });
+      caseOrigins.add(new URL(server.url).origin);
+
+      await page.goto(server.url);
+      await page.getByRole("region", { name: "Study grid" }).waitFor();
+      const study = page.getByRole("slider", { name: "Seek study recording" });
+      await study.focus();
+      await page.keyboard.press("Home");
+      await page.keyboard.press("ArrowRight");
+      await page.getByRole("button", { name: "Add a note at 00:30", exact: true }).click();
+      await page.locator("textarea[name=note]").fill("The second capture is where they hesitated.");
+      await snap("note-composer");
+      await page.getByRole("button", { name: "Save note", exact: true }).click();
+      await page.getByText("Note saved at 00:30.", { exact: true }).waitFor();
+      await page.keyboard.press("Escape");
+      const marker = page.locator(".study-playback .scrub-note");
+      await marker.waitFor();
+      const before = await marker.evaluate((element) => element.style.left);
+      await snap("note-marked");
+      const storedNotes = async () =>
+        Promise.all(
+          (await readdir(path.join(runDir, "notes"))).map(async (name) =>
+            JSON.parse(await readFile(path.join(runDir, "notes", name), "utf8")),
+          ),
+        );
+      const stored = await storedNotes();
+      assert.deepEqual(
+        stored.map((note) => [note.schema, note.atMs, note.participant, note.author]),
+        [["humanish.run-note.v1", 30_000, null, "you"]],
+        "notes/ must hold one note file at the paused moment",
+      );
+
+      await page.reload();
+      await page.getByRole("region", { name: "Study grid" }).waitFor();
+      await marker.waitFor();
+      assert.equal(await marker.count(), 1, "The reloaded page must mark the saved note");
+      assert.equal(await marker.evaluate((element) => element.style.left), before);
+      await snap("note-after-reload");
+      await page.getByRole("link", { name: /^Findings/ }).click();
+      const list = page.getByRole("region", { name: /^Reviewer notes/ });
+      await list.getByText("The second capture is where they hesitated.").waitFor();
+      assert.match(await list.locator("li").first().innerText(), /00:30[\s\S]*Human[\s\S]*you/);
+      assert.equal(
+        await page.getByRole("link", { name: /^Findings/ }).getAttribute("aria-current"),
+        "page",
+      );
+      await wait(200);
+      await snap("note-listed");
+      await list.getByRole("button", { name: "Open 00:30 on the study timeline" }).click();
+      await page.getByRole("region", { name: "Study grid" }).waitFor();
+      assert.equal(await study.inputValue(), "30000", "Opening a note must seek its moment");
+
+      // The page's own origin without the token is refused, and nothing is written.
+      record.checks.withoutToken = await page.evaluate(async (run) => {
+        const response = await fetch("/api/notes", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ runId: run, atMs: 0, participant: null, text: "No token." }),
+        });
+        return response.status;
+      }, runId);
+      assert.equal(record.checks.withoutToken, 403);
+      const after = await storedNotes();
+      assert.equal(after.length, 1, "A refused request must not add a note");
+      record.checks.notes = after.map((note) => ({ atMs: note.atMs, text: note.text }));
+
+      // At phone width the dock keeps the composer as an icon button named with its time.
+      await page.setViewportSize({ width: 390, height: 844 });
+      const phoneAdd = page.getByRole("button", { name: "Add a note at 00:30", exact: true });
+      await phoneAdd.waitFor();
+      record.checks.phone = { width: await pageWidth(page), add: await phoneAdd.boundingBox() };
+      assert(record.checks.phone.width.page <= record.checks.phone.width.viewport + 1);
+      assert(record.checks.phone.add.width >= 44 && record.checks.phone.add.height >= 44);
+      await snap("phone-dock");
+    } finally {
+      if (server) {
+        caseOrigins.delete(new URL(server.url).origin);
+        await server.close();
+      }
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
   const comparePrepare = () => {
     for (const [lane, times] of [

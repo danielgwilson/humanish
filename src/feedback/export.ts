@@ -21,6 +21,8 @@ import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadAnalysis } from "../analysis/load.js";
+import { readNotesForSharing, type RunNotes } from "../run/notes.js";
+import { cli } from "../cli/invocation.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedFile } from "../run/evidence-files.js";
@@ -198,10 +200,20 @@ export async function exportRun(
     );
   if (analysisCheck === "downgraded") shareReady = false;
   warnings.push(...analysis.warnings);
+  const notes = await checkedNotes(runPaths, verified, inlined, options, warnings);
+  if (notes.check === "blocked")
+    return exportFailure(
+      cwd,
+      runInput,
+      "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
+      `The run's reviewer notes hold text that looks like a secret, a token or a local path, which verify may not have seen if a note was added or changed after it ran. Run \`${cli(`verify --run ${runId}`)}\`, fix the note files in notes/, and export again.`,
+      verified.shareSafety,
+    );
+  if (notes.check === "downgraded") shareReady = false;
   const watermarked = !shareReady || omittedRecording;
   const output = renderExportHtml(
     inlined,
-    analysis,
+    { analysis, notes: notes.notes },
     assets,
     verified,
     watermarked,
@@ -541,10 +553,53 @@ async function recheckAnalysis(
   return "downgraded";
 }
 
+/**
+ * The run's notes for the export, read once within the notes size limit. That snapshot is scanned
+ * as verify scans run text and is the one rendered, so a note added or changed after verify ran cannot
+ * reach the file unchecked. A finding blocks the export, or downgrades it under --local-only.
+ */
+async function checkedNotes(
+  runPaths: RunPaths,
+  verified: VerifyResult,
+  inlined: Record<string, unknown>,
+  options: ExportOptions,
+  warnings: string[],
+): Promise<{ notes: RunNotes; check: "ok" | "blocked" | "downgraded" }> {
+  const { notes, finding } = await readNotesForSharing(runPaths);
+  for (const skipped of notes.skipped) warnings.push(`Reviewer notes: ${skipped}`);
+  if (finding === null) return { notes, check: "ok" };
+  verified.shareSafety = {
+    status:
+      finding === "sensitive" || verified.shareSafety.status === "blocked"
+        ? "blocked"
+        : "local_only",
+    reasons: [
+      ...verified.shareSafety.reasons,
+      finding === "sensitive"
+        ? {
+            code: "PUBLIC_SAFETY_FINDINGS",
+            message:
+              "The reviewer notes being exported match secret, token or local-path patterns.",
+          }
+        : {
+            code: "UNSCANNED_ARTIFACT",
+            message: "The reviewer notes being exported hold encoded text the scan cannot read.",
+          },
+    ],
+  };
+  if (options.localOnly !== true) return { notes, check: "blocked" };
+  (inlined.publicSafety as Record<string, unknown>).share = {
+    status: verified.shareSafety.status,
+    verifiedAt: new Date().toISOString(),
+    reasons: verified.shareSafety.reasons.map((reason) => reason.code),
+  };
+  return { notes, check: "downgraded" };
+}
+
 /** The portable Observer HTML, with the local-only banner when the export is watermarked. */
 function renderExportHtml(
   inlined: Record<string, unknown>,
-  analysis: AnalysisState,
+  review: { analysis: AnalysisState; notes: RunNotes },
   assets: ObserverExportAssets,
   verified: VerifyResult,
   watermarked: boolean,
@@ -552,7 +607,7 @@ function renderExportHtml(
 ): string {
   const output = renderObserverHtml(inlined as unknown as ObserverData, {
     snapshot: true,
-    analysis,
+    ...review,
     assets,
   });
   if (!watermarked) return output;
