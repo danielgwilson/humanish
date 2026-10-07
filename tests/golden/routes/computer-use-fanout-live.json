@@ -330,7 +330,8 @@
       "reasonings": 0,
       "messages": 1,
       "idleTurns": 0,
-      "noProgressTurns": 0
+      "noProgressTurns": 0,
+      "debriefCalls": 1
     },
     "items": [
       {
@@ -373,6 +374,15 @@
         "title": "message turn 2",
         "text": "Done.",
         "at": "[ts]"
+      },
+      {
+        "id": "notice-005",
+        "kind": "notice",
+        "lifecycle": "completed",
+        "status": "warn",
+        "title": "participant impressions request failed",
+        "text": "the reply did not contain valid impressions",
+        "at": "[ts]"
       }
     ],
     "affordanceUse": {
@@ -383,9 +393,15 @@
       "total": 1,
       "shortcutTotal": 0
     },
+    "debrief": {
+      "trigger": "participant_end",
+      "status": "failed",
+      "reason": "the reply did not contain valid impressions",
+      "usageReported": false
+    },
     "impressions": {
       "status": "not_collected",
-      "reason": "the participant ended the session without a structured closing account"
+      "reason": "the impressions request failed: the reply did not contain valid impressions"
     },
     "capabilities": {
       "headless": true,
@@ -455,7 +471,8 @@
       "reasonings": 0,
       "messages": 1,
       "idleTurns": 0,
-      "noProgressTurns": 0
+      "noProgressTurns": 0,
+      "debriefCalls": 1
     },
     "items": [
       {
@@ -498,6 +515,15 @@
         "title": "message turn 2",
         "text": "Done.",
         "at": "[ts]"
+      },
+      {
+        "id": "notice-005",
+        "kind": "notice",
+        "lifecycle": "completed",
+        "status": "warn",
+        "title": "participant impressions request failed",
+        "text": "the reply did not contain valid impressions",
+        "at": "[ts]"
       }
     ],
     "affordanceUse": {
@@ -508,9 +534,15 @@
       "total": 1,
       "shortcutTotal": 0
     },
+    "debrief": {
+      "trigger": "participant_end",
+      "status": "failed",
+      "reason": "the reply did not contain valid impressions",
+      "usageReported": false
+    },
     "impressions": {
       "status": "not_collected",
-      "reason": "the participant ended the session without a structured closing account"
+      "reason": "the impressions request failed: the reply did not contain valid impressions"
     },
     "capabilities": {
       "headless": true,
@@ -580,7 +612,8 @@
       "reasonings": 0,
       "messages": 1,
       "idleTurns": 0,
-      "noProgressTurns": 0
+      "noProgressTurns": 0,
+      "debriefCalls": 1
     },
     "items": [
       {
@@ -623,6 +656,15 @@
         "title": "message turn 2",
         "text": "Done.",
         "at": "[ts]"
+      },
+      {
+        "id": "notice-005",
+        "kind": "notice",
+        "lifecycle": "completed",
+        "status": "warn",
+        "title": "participant impressions request failed",
+        "text": "the reply did not contain valid impressions",
+        "at": "[ts]"
       }
     ],
     "affordanceUse": {
@@ -633,9 +675,15 @@
       "total": 1,
       "shortcutTotal": 0
     },
+    "debrief": {
+      "trigger": "participant_end",
+      "status": "failed",
+      "reason": "the reply did not contain valid impressions",
+      "usageReported": false
+    },
     "impressions": {
       "status": "not_collected",
-      "reason": "the participant ended the session without a structured closing account"
+      "reason": "the impressions request failed: the reply did not contain valid impressions"
     },
     "capabilities": {
       "headless": true,
@@ -705,7 +753,8 @@
       "reasonings": 0,
       "messages": 1,
       "idleTurns": 0,
-      "noProgressTurns": 0
+      "noProgressTurns": 0,
+      "debriefCalls": 1
     },
     "items": [
       {
@@ -748,6 +797,15 @@
         "title": "message turn 2",
         "text": "Done.",
         "at": "[ts]"
+      },
+      {
+        "id": "notice-005",
+        "kind": "notice",
+        "lifecycle": "completed",
+        "status": "warn",
+        "title": "participant impressions request failed",
+        "text": "the reply did not contain valid impressions",
+        "at": "[ts]"
       }
     ],
     "affordanceUse": {
@@ -758,9 +816,15 @@
       "total": 1,
       "shortcutTotal": 0
     },
+    "debrief": {
+      "trigger": "participant_end",
+      "status": "failed",
+      "reason": "the reply did not contain valid impressions",
+      "usageReported": false
+    },
     "impressions": {
       "status": "not_collected",
-      "reason": "the participant ended the session without a structured closing account"
+      "reason": "the impressions request failed: the reply did not contain valid impressions"
     },
     "capabilities": {
       "headless": true,
@@ -960,7 +1024,7 @@
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 5 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1192,7 +1256,8 @@
             "reasonings": 0,
             "messages": 1,
             "idleTurns": 0,
-            "noProgressTurns": 0
+            "noProgressTurns": 0,
+            "debriefCalls": 1
           },
           "items": [
             {
@@ -1235,6 +1300,15 @@
               "title": "message turn 2",
               "text": "Done.",
               "at": "[ts]"
+            },
+            {
+              "id": "notice-005",
+              "kind": "notice",
+              "lifecycle": "completed",
+              "status": "warn",
+              "title": "participant impressions request failed",
+              "text": "the reply did not contain valid impressions",
+              "at": "[ts]"
             }
           ],
           "affordanceUse": {
@@ -1245,9 +1319,15 @@
             "total": 1,
             "shortcutTotal": 0
           },
+          "debrief": {
+            "trigger": "participant_end",
+            "status": "failed",
+            "reason": "the reply did not contain valid impressions",
+            "usageReported": false
+          },
           "impressions": {
             "status": "not_collected",
-            "reason": "the participant ended the session without a structured closing account"
+            "reason": "the impressions request failed: the reply did not contain valid impressions"
           },
           "capabilities": {
             "headless": true,
@@ -1413,7 +1493,8 @@
             "reasonings": 0,
             "messages": 1,
             "idleTurns": 0,
-            "noProgressTurns": 0
+            "noProgressTurns": 0,
+            "debriefCalls": 1
           },
           "items": [
             {
@@ -1456,6 +1537,15 @@
               "title": "message turn 2",
               "text": "Done.",
               "at": "[ts]"
+            },
+            {
+              "id": "notice-005",
+              "kind": "notice",
+              "lifecycle": "completed",
+              "status": "warn",
+              "title": "participant impressions request failed",
+              "text": "the reply did not contain valid impressions",
+              "at": "[ts]"
             }
           ],
           "affordanceUse": {
@@ -1466,9 +1556,15 @@
             "total": 1,
             "shortcutTotal": 0
           },
+          "debrief": {
+            "trigger": "participant_end",
+            "status": "failed",
+            "reason": "the reply did not contain valid impressions",
+            "usageReported": false
+          },
           "impressions": {
             "status": "not_collected",
-            "reason": "the participant ended the session without a structured closing account"
+            "reason": "the impressions request failed: the reply did not contain valid impressions"
           },
           "capabilities": {
             "headless": true,
@@ -1629,7 +1725,8 @@
             "reasonings": 0,
             "messages": 1,
             "idleTurns": 0,
-            "noProgressTurns": 0
+            "noProgressTurns": 0,
+            "debriefCalls": 1
           },
           "items": [
             {
@@ -1672,6 +1769,15 @@
               "title": "message turn 2",
               "text": "Done.",
               "at": "[ts]"
+            },
+            {
+              "id": "notice-005",
+              "kind": "notice",
+              "lifecycle": "completed",
+              "status": "warn",
+              "title": "participant impressions request failed",
+              "text": "the reply did not contain valid impressions",
+              "at": "[ts]"
             }
           ],
           "affordanceUse": {
@@ -1682,9 +1788,15 @@
             "total": 1,
             "shortcutTotal": 0
           },
+          "debrief": {
+            "trigger": "participant_end",
+            "status": "failed",
+            "reason": "the reply did not contain valid impressions",
+            "usageReported": false
+          },
           "impressions": {
             "status": "not_collected",
-            "reason": "the participant ended the session without a structured closing account"
+            "reason": "the impressions request failed: the reply did not contain valid impressions"
           },
           "capabilities": {
             "headless": true,
@@ -1845,7 +1957,8 @@
             "reasonings": 0,
             "messages": 1,
             "idleTurns": 0,
-            "noProgressTurns": 0
+            "noProgressTurns": 0,
+            "debriefCalls": 1
           },
           "items": [
             {
@@ -1888,6 +2001,15 @@
               "title": "message turn 2",
               "text": "Done.",
               "at": "[ts]"
+            },
+            {
+              "id": "notice-005",
+              "kind": "notice",
+              "lifecycle": "completed",
+              "status": "warn",
+              "title": "participant impressions request failed",
+              "text": "the reply did not contain valid impressions",
+              "at": "[ts]"
             }
           ],
           "affordanceUse": {
@@ -1898,9 +2020,15 @@
             "total": 1,
             "shortcutTotal": 0
           },
+          "debrief": {
+            "trigger": "participant_end",
+            "status": "failed",
+            "reason": "the reply did not contain valid impressions",
+            "usageReported": false
+          },
           "impressions": {
             "status": "not_collected",
-            "reason": "the participant ended the session without a structured closing account"
+            "reason": "the impressions request failed: the reply did not contain valid impressions"
           },
           "capabilities": {
             "headless": true,
@@ -2195,8 +2323,24 @@
         {
           "kind": "model-tokens",
           "laneId": "mobile-newcomer",
+          "modelId": "gpt-5.6-sol",
+          "estimatedCostUsd": null,
+          "reason": "closing_usage_unreported",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "mobile-newcomer",
           "estimatedCostUsd": null,
           "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "small-skimmer",
+          "modelId": "gpt-5.6-sol",
+          "estimatedCostUsd": null,
+          "reason": "closing_usage_unreported",
           "ratesAsOf": null
         },
         {
@@ -2209,8 +2353,24 @@
         {
           "kind": "model-tokens",
           "laneId": "desktop-power",
+          "modelId": "gpt-5.6-sol",
+          "estimatedCostUsd": null,
+          "reason": "closing_usage_unreported",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "desktop-power",
           "estimatedCostUsd": null,
           "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "wide-researcher",
+          "modelId": "gpt-5.6-sol",
+          "estimatedCostUsd": null,
+          "reason": "closing_usage_unreported",
           "ratesAsOf": null
         },
         {

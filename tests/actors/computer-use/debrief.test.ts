@@ -9,7 +9,9 @@ import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
+  sessionEnding,
 } from "../../../src/routes/computer-use/self-report.js";
+import { hollowCompletion } from "../../../src/run/judge.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import type { ParticipantImpression } from "../../../src/actors/contract.js";
@@ -223,11 +225,51 @@ describe("read-only participant debrief", () => {
     expect(s.debrief).not.toHaveBeenCalled();
   });
 
-  it("does not request a second report after a natural ending", async () => {
-    const s = setup();
-    s.nextTurn.mockResolvedValue(closing());
-    expect((await s.run()).trace.debrief).toBeUndefined();
+  it("asks only for impressions after a natural ending, and changes nothing else", async () => {
+    const ending = (s: ReturnType<typeof setup>) => {
+      s.nextTurn.mockResolvedValue({
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        message: report,
+        usage: { input: 20, output: 10 },
+      });
+      return s;
+    };
+    const before = await ending(setup()).run();
+    const s = ending(setup());
+    const ask = vi.fn<NonNullable<CuaProvider["requestImpressions"]>>(async () => ({
+      actions: [],
+      pendingSafetyChecks: [],
+      done: true,
+      usage: { input: 30, output: 8 },
+      impressions: [{ kind: "liked", text: "Pressing Enter saved the name at once." }],
+    }));
+    s.provider.requestImpressions = ask;
+    const after = await s.run();
+
     expect(s.debrief).not.toHaveBeenCalled();
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(ask.mock.calls[0]?.[0].contextHint).toContain("Return only impressions");
+    expect(after.trace.impressions).toMatchObject({
+      status: "collected",
+      items: [{ kind: "liked", text: "Pressing Enter saved the name at once." }],
+    });
+    expect(after.trace.debrief).toEqual({
+      trigger: "participant_end",
+      status: "completed",
+      reason: expect.any(String),
+      usageReported: true,
+    });
+    expect(after.trace.tokenUsage).toMatchObject({ input: 50, output: 18 });
+    // The participant's own ending is what it was without the request.
+    expect(before.trace.debrief).toBeUndefined();
+    for (const run of [before, after]) expect(run.status).toBe("passed");
+    expect(after.reason).toBe(before.reason);
+    expect(after.completionReason).toBe(before.completionReason);
+    expect(after.trace.declaredOutcome).toBe(before.trace.declaredOutcome);
+    expect(resolveSelfReportedFriction(after)).toBe(resolveSelfReportedFriction(before));
+    expect(sessionEnding(after)).toEqual(sessionEnding(before));
   });
 
   it("skips providers without the optional contract", async () => {
@@ -456,7 +498,8 @@ describe("participant impressions at the end of a session", () => {
     expect(trace.items.find((item) => item.id === items[1]?.messageId)?.text).toContain(
       "unlike my work",
     );
-    expect(trace.counts.messages).toBe(3);
+    // Impressions answer the harness's question, so they do not count as the participant speaking.
+    expect(trace.counts.messages).toBe(1);
     expect(trace.debrief?.report).toEqual({ summary: "I renamed the item.", frictionReports: [] });
   });
 
@@ -534,5 +577,109 @@ describe("participant impressions at the end of a session", () => {
     expect(trace.impressions?.status === "not_collected" && trace.impressions.reason).toMatch(
       reason,
     );
+  });
+});
+
+describe("impressions after the participant ends the session itself", () => {
+  const ended: CuaTurn = {
+    actions: [],
+    pendingSafetyChecks: [],
+    done: true,
+    message: report,
+    usage: { input: 20, output: 10 },
+  };
+  const run = async (
+    ask: NonNullable<CuaProvider["requestImpressions"]>,
+    overrides: Partial<LoopRunOptions> = {},
+  ) => {
+    const s = setup(overrides);
+    s.nextTurn.mockResolvedValue(ended);
+    s.provider.requestImpressions = vi.fn(ask);
+    return s.run();
+  };
+  const without = async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue(ended);
+    return s.run();
+  };
+
+  it.each([
+    [
+      "fails",
+      async () => {
+        throw new Error("network down");
+      },
+      /impressions request failed: network down/,
+    ],
+    [
+      "times out",
+      (_req: unknown, signal: AbortSignal) =>
+        new Promise<CuaTurn>((_resolve, reject) =>
+          signal.addEventListener("abort", () => reject(new Error("aborted"))),
+        ),
+      /impressions request failed: impressions request deadline reached/,
+    ],
+    [
+      "is cut off",
+      async (): Promise<CuaTurn> => ({
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        interruption: "output_limit",
+        usage: { input: 30, output: 3072 },
+      }),
+      /impressions request failed: the reply was cut off by the output limit/,
+    ],
+  ] as const)(
+    "records not_collected with the reason when the request %s, and changes nothing else",
+    async (_name, ask, reason) => {
+      const before = await without();
+      const after = await run(ask as NonNullable<CuaProvider["requestImpressions"]>, {
+        turnTimeoutMs: 5,
+      });
+      expect(after.trace.impressions?.status).toBe("not_collected");
+      expect(
+        after.trace.impressions?.status === "not_collected" && after.trace.impressions.reason,
+      ).toMatch(reason);
+      expect(after.trace.debrief).toMatchObject({ trigger: "participant_end", status: "failed" });
+      expect(after.trace.debrief?.report).toBeUndefined();
+      expect(after.status).toBe(before.status);
+      expect(after.reason).toBe(before.reason);
+      expect(resolveSelfReportedFriction(after)).toBe(resolveSelfReportedFriction(before));
+      expect(sessionEnding(after)).toEqual(sessionEnding(before));
+    },
+  );
+
+  it("keeps a participant that acted on nothing and said nothing a hollow completion", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue({ actions: [], pendingSafetyChecks: [], done: true });
+    s.provider.requestImpressions = vi.fn(async () => ({
+      actions: [],
+      pendingSafetyChecks: [],
+      done: true,
+      usage: { input: 30, output: 8 },
+      impressions: [{ kind: "unfinished" as const, text: "The page was blank." }],
+    }));
+    const result = await s.run();
+    expect(result.trace.impressions).toMatchObject({ status: "collected" });
+    expect(hollowCompletion(sessionEnding(result))).toBe(true);
+  });
+
+  it("does not ask a participant whose own final account carried impressions", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue({
+      ...ended,
+      closingReport: {
+        summary: "I renamed it.",
+        frictionReports: [],
+        impressions: [{ kind: "liked", text: "Enter saved it." }],
+      },
+    });
+    const ask = vi.fn<NonNullable<CuaProvider["requestImpressions"]>>();
+    s.provider.requestImpressions = ask;
+    const result = await s.run();
+    expect(ask).not.toHaveBeenCalled();
+    expect(result.trace.debrief).toBeUndefined();
+    expect(result.trace.impressions).toMatchObject({ status: "collected" });
   });
 });

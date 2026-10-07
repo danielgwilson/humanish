@@ -29,15 +29,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
   and did not find, and where the screen differs from how their persona does the same task in
   their own work or life. The OpenAI closing report and the Codex participant's final account
-  ask for them. The trace's `impressions` keeps them, each recorded as a message the analysis can
-  quote and cite, or says why none were collected, for example when an OpenAI or Claude
-  participant ends the session itself. The Observer shows them under "What they said at the end",
+  ask for them. When an OpenAI participant ends the session itself, one more request asks for its
+  impressions only; it adds one model request per participant and leaves the participant's
+  summary, reason and outcome as they were. The trace's `impressions` keeps them, each recorded
+  as a message the analysis can quote and cite, or says why none were collected, for example
+  when a Claude local-agent participant ends the session itself or the request fails. The Observer shows them under "What they said at the end",
   grouped by kind. An analysis can cite an impression as a participant statement, and an
   impression with a capture of that screen as a design finding. A feedback draft for a finding
   that cites one quotes it. The analysis prompt is now `study-evidence-8`.
 
 ### Changed
 
+- OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,
+  or the study's `actor.maxOutputTokens` when that is lower. They used at most 1024, which a
+  closing report with impressions could exceed, losing the whole report.
 - Terminal study participants and product setup commands now send `DO_NOT_TRACK=1` by default so synthetic usage can be excluded by CLIs that honor it. Set `execution.terminal.doNotTrack: false` when studying the product's telemetry behavior. Dry and live run bundles record the resolved setting.
 - Participant captions and run summaries are in plain words. A participant is captioned by its roster id in words, plus "phone" or "tablet" when it is not on a desktop ("Lobby host, phone"); a numbered id such as `lane-01` takes the persona's name instead, and the study id is no longer repeated. The Observer and the TUI show the same caption, including for runs an earlier release recorded. Every route's summary says how many participants took part, how many reached the goal and that the gaps list the rest, without "swarm", "plane", "run gate", "credibility checks" or `goal_satisfied`. Each participant's own summary says how its session ended in words, a shared-world run is named "3 participants in one shared app", and a failed shared-world run says how many participants passed instead of "did not run coherently". The taxonomy (`actorType`, `surface`, `caseGroup`), attribution limits, topology and concurrency details stay in the bundle data and in `review.md`'s detail lines.
 

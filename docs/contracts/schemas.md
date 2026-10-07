@@ -1020,17 +1020,23 @@ Core-owned fields:
   `kind` (`unclear`, `unfinished`, `untrustworthy`, `liked`, `missing`,
   `unlike_my_work`), a redacted first-person `text` of at most 500 characters
   and the `messageId` of the trace `message` that quotes it as
-  `Impression (<kind>): <text>`. Up to six come from the closing account: a
-  completed debrief's report, or the participant's own final account when its
-  provider writes a structured one (the Codex participant). An empty `items`
+  `Impression (<kind>): <text>`. They are not counted in `counts.messages`. Up
+  to six come from the closing account: a completed debrief's report, the
+  participant's own final account when its provider writes a structured one
+  (the Codex participant), or, when the participant ended the session itself
+  without them, one impressions-only request (OpenAI computer-use, threaded or
+  `explicit_context`). That request is recorded as `debrief` with `trigger:
+participant_end` and never has a `report` or `messageId`; it leaves the
+  participant's `reason`, outcome and friction as they were. An empty `items`
   list means the participant named none. `status: not_collected` carries a
-  `reason`: the closing report was skipped or failed, the participant ended the
-  session without a structured closing account (OpenAI computer-use and the
-  Claude local agent), the closing account had no impressions, or the session
-  stopped before a closing account. Every computer-use loop trace records one;
-  absent on other routes and on earlier bundles. `debrief.report` keeps only
-  `summary` and `frictionReports`. Impression messages do not count as
-  participant-reported friction
+  `reason`: the closing report or impressions request was skipped or failed
+  (including a reply cut off by the output limit), the participant ended the
+  session without a structured closing account and its provider cannot ask for
+  impressions (the Claude local agent), the closing account had no
+  impressions, or the session stopped before a closing account. Every
+  computer-use loop trace records one; absent on other routes and on earlier
+  bundles. `debrief.report` keeps only `summary` and `frictionReports`.
+  Impression messages do not count as participant-reported friction
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
   cost estimate for this participant (see Run Cost Summary And Estimated Actor Cost).
   It is deliberately a different field from `tokenUsage.costUsd`: a bare

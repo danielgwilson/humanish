@@ -1,0 +1,33 @@
+{
+  "id": "fixture-impressions-only",
+  "status": "completed",
+  "output": [
+    {
+      "id": "fixture-impressions-only-item-0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"impressions\":[{\"kind\":\"unclear\",\"text\":\"The Save button looked the same as the task text, so I could not tell it was a button at first.\"},{\"kind\":\"unlike_my_work\",\"text\":\"On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared, so I could not check what I had changed.\"}]}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 13543,
+    "input_tokens_details": {
+      "cache_write_tokens": 13468,
+      "cached_tokens": 0
+    },
+    "output_tokens": 221,
+    "output_tokens_details": {
+      "reasoning_tokens": 127
+    },
+    "total_tokens": 13764
+  }
+}

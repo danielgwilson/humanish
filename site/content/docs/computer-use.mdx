@@ -261,8 +261,11 @@ impressions: what looked unclear, unfinished or untrustworthy, what the
 participant liked or missed, and where the screen differs from how the persona
 does the same task in its own work or life. The trace's `impressions` holds
 them, or says why none were collected. The report preserves the original stop
-reason and task outcomes. Natural endings and budget/error exits do not request
-this extra report. See [reading outcomes](/docs/read-results#separate-a-finding-from-a-broken-run).
+reason and task outcomes. Budget and error exits do not request this extra
+report. When an OpenAI participant ends the session itself, the loop makes one
+request that asks only for its impressions; the participant's own summary,
+reason and outcome stay as it gave them, and the request's usage counts toward
+the study's cost. See [reading outcomes](/docs/read-results#separate-a-finding-from-a-broken-run).
 
 ## Model selection and spend
 

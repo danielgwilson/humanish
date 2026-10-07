@@ -7190,8 +7190,9 @@ describe("runCuaActorLab cost estimates", () => {
     expect(est.placeholder).toBeUndefined();
     expect(est.modelId).toBe("gpt-5.6-sol");
     expect(est.breakdown.longContextTurns).toBe(1);
-    // The trace records the per-request usage ledger the tiering priced from.
-    expect(bundle.streams[0].actor.tokenUsage.turns).toHaveLength(2);
+    // The trace records the per-request usage ledger the tiering priced from: the interaction,
+    // the final reply and the impressions-only request after it.
+    expect(bundle.streams[0].actor.tokenUsage.turns).toHaveLength(3);
 
     const cost = bundle.cost;
     expect(cost.schema).toBe("humanish.run-cost-summary.v1");

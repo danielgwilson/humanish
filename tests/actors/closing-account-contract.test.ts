@@ -129,12 +129,21 @@ const fixture = (name: string): unknown =>
     ),
   );
 
-/** The captured Responses shapes: a computer call, then the strict closing report. */
-function openAi(zeroDataRetention: boolean): Promise<ActorTrace> {
+/**
+ * The captured Responses shapes. After a stop: a computer call, then the strict closing report.
+ * When the participant ends the session itself: its final answer, then the impressions-only reply.
+ */
+function openAi(zeroDataRetention: boolean, endsItself = false): Promise<ActorTrace> {
   const fetchFn: FetchLike = async (_url, init) => {
     const body = JSON.parse(init.body) as { tool_choice?: string };
     const value = fixture(
-      body.tool_choice === "none" ? "typed-closing-report-impressions" : "pending-computer-call",
+      body.tool_choice === "none"
+        ? endsItself
+          ? "impressions-only"
+          : "typed-closing-report-impressions"
+        : endsItself
+          ? "typed-closing-report"
+          : "pending-computer-call",
     );
     return {
       ok: true,
@@ -251,10 +260,12 @@ const LOCAL_AGENT_BRAINS = {
  */
 const BRAINS: Record<ActorId, Record<string, ClosingCase>> = {
   "openai-computer-use": {
-    threaded: { collects: () => openAi(false) },
-    "explicit_context, which keeps no session for a closing report": {
+    "threaded, after a stop": { collects: () => openAi(false) },
+    "threaded, ending the session itself": { collects: () => openAi(false, true) },
+    "explicit_context, after a stop, which keeps no session for a closing report": {
       notCollected: () => openAi(true),
     },
+    "explicit_context, ending the session itself": { collects: () => openAi(true, true) },
   },
   "local-agent": {
     ...LOCAL_AGENT_BRAINS,

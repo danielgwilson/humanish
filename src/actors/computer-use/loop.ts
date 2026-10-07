@@ -39,7 +39,7 @@ export type {
 } from "./loop/types.js";
 export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
-export { validClosingReport } from "./loop/debrief.js";
+export { validClosingReport, validImpressionsReply } from "./loop/debrief.js";
 export { IMPRESSIONS_ASK } from "./loop/impressions.js";
 
 // The computer-use (CUA) loop: drive a model over a desktop turn by turn, observe the screen, act,
@@ -177,11 +177,18 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );
-      session.impressions = validClosingReport(turn.closingReport)
-        ? recordImpressions(session, turn.closingReport)
-        : notCollected("the participant ended the session without a structured closing account");
+      const report = validClosingReport(turn.closingReport) ? turn.closingReport : undefined;
+      // A provider that can ask for impressions alone does so after the session, like a debrief.
+      if (report?.impressions !== undefined || session.provider.requestImpressions === undefined) {
+        session.impressions =
+          report === undefined
+            ? notCollected("the participant ended the session without a structured closing account")
+            : recordImpressions(session, report.impressions);
+      }
       await observer.observeFinalTasks(turnNumber);
-      return ended;
+      return session.impressions === undefined
+        ? { ...ended, debriefTrigger: { kind: "participant_end", observation } }
+        : ended;
     }
 
     const batch = await runActionBatch(session, turn.actions, turn.shortenedWaits);

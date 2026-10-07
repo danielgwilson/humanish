@@ -536,9 +536,13 @@ export interface ActorTrace {
    * each fixed a false refusal and each left the next shape unhandled.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
-  /** Closing report after a harness-owned stop. Does not change task outcomes or permit actions. */
+  /**
+   * The read-only closing request: a closing report after a harness-owned stop (`stop_when`,
+   * `dwell`), or impressions only after the participant ended the session itself
+   * (`participant_end`, never with `report`). Does not change task outcomes or permit actions.
+   */
   debrief?: {
-    trigger: "stop_when" | "dwell";
+    trigger: "stop_when" | "dwell" | "participant_end";
     status: "completed" | "skipped" | "failed";
     reason: string;
     /** Absent if no request was made; false means token accounting is incomplete. */
