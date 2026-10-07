@@ -1,7 +1,6 @@
 import { lstat, readdir, rmdir, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { decodeEscapes } from "../evidence/encoded-text.js";
 import { redactText } from "../evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -11,10 +10,7 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
-import {
-  scrubTransientCommsText,
-  transientCommsEncodedScrub,
-} from "../run/transient-comms-secrets.js";
+import { transientCommsKnownValueScrub } from "../run/transient-comms-secrets.js";
 import { ANALYSIS_ID_PATTERN } from "./types.js";
 
 // A rejected analyst response is kept for diagnosis under .humanish/analysis-diagnostics/<run>/,
@@ -49,22 +45,16 @@ export interface AnalysisDiagnosticsHooks {
 }
 
 const REDACTED = "[REDACTED_SECRET]";
-const markers = (text: string): number => text.split(REDACTED).length - 1;
 
 /**
- * Scrub every string, key and scalar in the output. The encoded scrub finds a known value written
- * percent-encoded, escaped or base64-encoded and returns decoded text; a string where it finds
- * nothing keeps its original spelling, so an escape in a rejected quote stays visible, and still
- * gets the literal scrub. A number or boolean equal to a known value becomes the marker.
+ * Scrub every string, key and scalar in the output. The known-value scrub finds a value written
+ * percent-encoded, escaped or base64-encoded; a string where it finds nothing keeps its original
+ * spelling, so an escape in a rejected quote stays visible. A number or boolean equal to a known
+ * value becomes the marker.
  */
 function scrubber(): (value: unknown) => unknown {
-  const encoded = transientCommsEncodedScrub();
-  const text = (value: string): string => {
-    const found = encoded(value);
-    return redactText(
-      markers(found) > markers(decodeEscapes(value)) ? found : scrubTransientCommsText(value),
-    );
-  };
+  const known = transientCommsKnownValueScrub();
+  const text = (value: string): string => redactText(known(value));
   const scrub = (value: unknown): unknown => {
     if (typeof value === "string") return text(value);
     if (typeof value === "number" || typeof value === "boolean")

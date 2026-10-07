@@ -8,6 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Each analysis finding now leads with a plain headline and a short account of what the person
+  tried, what got in their way and how it seemed to feel, written for someone who did not watch
+  the session. `humanish review`, `humanish analyze show`, the end of a live run, the Observer and
+  analysis feedback drafts show the headline first. The finding's title, summary and observations
+  stay underneath as its evidence; in the Observer they are one disclosure away. When a reviewer
+  amends a finding with `analyze correct`, the amended claim takes the headline's place and the
+  finding says it was corrected.
+- Analyses now report design findings: problems a product designer would notice in the captures,
+  such as a primary button cut off at the bottom of the window or a control with a misleading
+  label, whether or not a participant mentioned them. Each names the screen, what a designer
+  notices, why it matters and one suggestion, has a severity (major, moderate or minor), and cites
+  at least one capture. The Observer lists them by severity with each capture as a thumbnail that
+  opens it; `review` and `analyze show` print them after the findings, and `review --json` carries
+  them as `analysis.designFindings`. The analysis prompt is now `study-evidence-7`. Analyses
+  written before it keep showing their findings by title, with no design section.
+
 ### Changed
 
 - Terminal study participants and product setup commands now send `DO_NOT_TRACK=1` by default so synthetic usage can be excluded by CLIs that honor it. Set `execution.terminal.doNotTrack: false` when studying the product's telemetry behavior. Dry and live run bundles record the resolved setting.
@@ -15,6 +33,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- Analysis text no longer keeps a run's received one-time codes or links when the model writes
+  them encoded. Every generated field is checked for each value as written and as percent-encoded,
+  JSON-escaped, base64 or hex text, and an analysis that puts one in a finding ID or reference is
+  refused. Before, only the value as written was removed.
+- A design finding can name a participant as having seen the problem only when it cites one of
+  that participant's captures, and the Observer now refuses a saved analysis that lacks the
+  headlines or design findings its prompt version requires.
 - Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
 - Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
   an unfinished bundle without usable status reads as interrupted, and a recorded final outcome

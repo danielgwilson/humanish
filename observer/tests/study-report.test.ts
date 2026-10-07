@@ -65,6 +65,12 @@ const report: StudyReport = {
   ],
 };
 
+const handlers = {
+  onFinding: () => undefined,
+  onOpen: () => undefined,
+  onOpenDesign: () => undefined,
+};
+
 describe("study report evidence navigation", () => {
   it("prefers a directly observed capture cited across observations, without using the latest frame", () => {
     const moments = [
@@ -133,8 +139,7 @@ describe("study report evidence navigation", () => {
         report: value,
         findingId: "",
         concernsOpen: true,
-        onFinding: () => undefined,
-        onOpen: () => undefined,
+        ...handlers,
       }),
     );
     expect(html).toContain("Concerns considered (1)");
@@ -154,8 +159,7 @@ describe("study report evidence navigation", () => {
           data,
           report: value,
           findingId: "F1",
-          onFinding: () => undefined,
-          onOpen: () => undefined,
+          ...handlers,
         }),
       );
       expect(html).toContain("Visual observation");

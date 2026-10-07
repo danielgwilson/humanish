@@ -20,6 +20,7 @@ import { Select } from "./components/ui/select";
 import { Drawer } from "./components/ui/drawer";
 import { StudyReport } from "./components/study-report";
 import {
+  findingHeading,
   reportFindingId,
   reportHash,
   resolveReportMoment,
@@ -95,14 +96,19 @@ export function App({
   const [concernsOpen, setConcernsOpen] = useState(false);
   const reportIds = useRef<string[]>([]);
   reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
-  const hasConcerns = useRef(false);
-  hasConcerns.current = report?.concernReviews !== undefined;
+  // The report sections a recording can return to.
+  const returnSections = useRef({ concerns: false, design: false });
+  returnSections.current = {
+    concerns: report?.concernReviews !== undefined,
+    design: !!report?.designFindings?.length,
+  };
   const readSource = () =>
     recordingSource(
       window.history.state,
       currentRunId.current,
       reportIds.current,
-      hasConcerns.current,
+      returnSections.current.concerns,
+      returnSections.current.design,
     );
   const [source, setSource] = useState<RecordingSource>(readSource);
   const reportActive = hasFindingsView && reportRoute !== null;
@@ -232,7 +238,9 @@ export function App({
   const libraryAsDrawer = phone;
   const findingsView =
     reportActive ||
-    (!!selected && !!report && (source.kind === "finding" || source.kind === "concerns"));
+    (!!selected &&
+      !!report &&
+      (source.kind === "finding" || source.kind === "concerns" || source.kind === "design"));
   const contentRef = useRef<HTMLElement>(null);
 
   const scrollPositions = useRef(new Map<string, number>());
@@ -293,6 +301,9 @@ export function App({
       setConcernsOpen(true);
       openReport();
       focus(() => document.querySelector<HTMLElement>(".report-concerns > summary"));
+    } else if (source.kind === "design") {
+      openReport();
+      focus(() => document.getElementById("design-findings-heading"));
     } else if (source.kind === "comparison") {
       pushHash(source.hash);
       setComparison(true);
@@ -621,6 +632,10 @@ export function App({
       }
     />
   );
+  const sourceFinding =
+    source.kind === "finding"
+      ? report?.findings.find((finding) => finding.id === source.findingId)
+      : undefined;
   const recordingNavigation = selected ? (
     <>
       <button
@@ -629,29 +644,30 @@ export function App({
         data-return-kind={source.kind}
         aria-label={
           source.kind === "finding"
-            ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}`
+            ? `Back to finding: ${sourceFinding ? findingHeading(sourceFinding) : source.findingId}`
             : source.kind === "concerns"
               ? "Back to concerns considered"
-              : source.kind === "comparison"
-                ? "Back to comparison"
-                : "Back to participants"
+              : source.kind === "design"
+                ? "Back to design findings"
+                : source.kind === "comparison"
+                  ? "Back to comparison"
+                  : "Back to participants"
         }
-        title={
-          source.kind === "finding"
-            ? report?.findings.find((finding) => finding.id === source.findingId)?.title
-            : undefined
-        }
+        title={sourceFinding ? findingHeading(sourceFinding) : undefined}
         onClick={returnToSource}
       >
         ←{" "}
         {source.kind === "finding"
-          ? (report?.findings.find((finding) => finding.id === source.findingId)?.title ??
-            "Back to finding")
+          ? sourceFinding
+            ? findingHeading(sourceFinding)
+            : "Back to finding"
           : source.kind === "concerns"
             ? "Back to concerns considered"
-            : source.kind === "comparison"
-              ? "Back to comparison"
-              : "Back to participants"}
+            : source.kind === "design"
+              ? "Back to design findings"
+              : source.kind === "comparison"
+                ? "Back to comparison"
+                : "Back to participants"}
       </button>
       <ParticipantPager data={data} selected={selected} onStep={stepParticipant} />
     </>
@@ -939,6 +955,9 @@ export function App({
                         ? { runId: data.run.runId, kind: "finding", findingId }
                         : { runId: data.run.runId, kind: "concerns" },
                     )
+                  }
+                  onOpenDesign={(id, frame, eventId) =>
+                    openParticipant(id, frame, eventId, { runId: data.run.runId, kind: "design" })
                   }
                 />
               ) : (

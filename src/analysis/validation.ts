@@ -40,6 +40,21 @@ const observationSchema = z
   })
   .strict();
 
+const designFindingSchema = z
+  .object({
+    id,
+    headline: label,
+    screen: label,
+    notice: text(1500).min(1),
+    whyItMatters: text(1000).min(1),
+    suggestion: text(1000).min(1),
+    severity: z.enum(["minor", "moderate", "major"]),
+    confidence: z.enum(["low", "medium", "high"]),
+    seenByStreamIds: sourceIds.min(1),
+    evidenceIds: refs,
+  })
+  .strict();
+
 const analysisResultSchema = z
   .object({
     summary: text(4000).min(1),
@@ -67,6 +82,8 @@ const analysisResultSchema = z
           .object({
             id,
             title: label,
+            headline: label.optional(),
+            experience: text(1200).min(1).optional(),
             summary: text(4000).min(1),
             impact: z.enum(["blocked_task", "friction", "recovery", "uncertain"]),
             affectedStreamIds: sourceIds.min(1),
@@ -81,6 +98,7 @@ const analysisResultSchema = z
           .strict(),
       )
       .max(100),
+    designFindings: z.array(designFindingSchema).max(40).optional(),
     concernReviews: z
       .array(
         observationSchema
@@ -97,16 +115,32 @@ const analysisResultSchema = z
   })
   .strict();
 
-/** Historical artifacts may omit concernReviews; every new provider response must supply it. */
-export const analysisResponseSchema = analysisResultSchema.required({
-  concernReviews: true,
-});
+/** Historical artifacts may omit concernReviews, headlines, experiences and designFindings; every
+ * new provider response must supply them. */
+export const analysisResponseSchema = analysisResultSchema
+  .extend({
+    findings: z
+      .array(
+        analysisResultSchema.shape.findings.element.required({ headline: true, experience: true }),
+      )
+      .max(100),
+    designFindings: z.array(designFindingSchema).max(40),
+  })
+  .required({ concernReviews: true });
 export const analysisResultJsonSchema = z.toJSONSchema(analysisResponseSchema);
 const normalizedResult = ({
   concernReviews,
+  designFindings,
+  findings,
   ...result
 }: z.infer<typeof analysisResultSchema>): AnalysisResult => ({
   ...result,
+  findings: findings.map(({ headline, experience, ...finding }) => ({
+    ...finding,
+    ...(headline === undefined ? {} : { headline }),
+    ...(experience === undefined ? {} : { experience }),
+  })),
+  ...(designFindings === undefined ? {} : { designFindings }),
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
 
@@ -417,6 +451,23 @@ export function checkAnalysisResult(
     if (finding.affectedStreamIds.some((stream) => !citedStreams.has(stream)))
       errors.add("ANALYSIS_AFFECTED_WITHOUT_EVIDENCE");
   }
+  const designFindings = result.designFindings ?? [];
+  if (!distinct(designFindings.map((finding) => finding.id)))
+    errors.add("ANALYSIS_DESIGN_FINDING_ID_DUPLICATE");
+  for (const finding of designFindings) {
+    const refs = finding.evidenceIds.map((ref) => evidence.get(ref));
+    if (!distinct(finding.evidenceIds) || refs.some((ref) => !ref || !included.has(ref.streamId)))
+      errors.add("ANALYSIS_DESIGN_REFERENCE_INVALID");
+    if (!refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined))
+      errors.add("ANALYSIS_DESIGN_WITHOUT_CAPTURE");
+    // Seen by means a cited capture of that participant shows the problem.
+    const captured = new Set(refs.flatMap((ref) => (ref?.capture ? [ref.streamId] : [])));
+    if (
+      !distinct(finding.seenByStreamIds) ||
+      finding.seenByStreamIds.some((stream) => !included.has(stream) || !captured.has(stream))
+    )
+      errors.add("ANALYSIS_DESIGN_MEMBERSHIP_INVALID");
+  }
   for (const review of result.concernReviews ?? []) {
     const citedStreams = checkObservation(review);
     const finding = result.findings.find((item) => item.id === review.findingId);
@@ -510,13 +561,18 @@ export function validateAnalysisArtifact(value: unknown): AnalysisArtifact {
   )
     throw new Error("ANALYSIS_STATUS_INVALID");
   if (artifact.result !== null) {
-    // Concern accounting became required with revision 5. Keep the boundary stable
-    // when the prompt version advances; a later prompt must not regain legacy omissions.
-    const revision = /^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1];
+    // Concern accounting became required with revision 5, and headlines, experiences and design
+    // findings with revision 7. Keep each boundary stable when the prompt version advances; a later
+    // prompt must not regain legacy omissions.
+    const revision = Number(/^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1] ?? 0);
+    const result = artifact.result;
     if (
-      revision !== undefined &&
-      Number(revision) >= 5 &&
-      artifact.result.concernReviews === undefined
+      (revision >= 5 && result.concernReviews === undefined) ||
+      (revision >= 7 &&
+        (result.designFindings === undefined ||
+          result.findings.some(
+            (finding) => finding.headline === undefined || finding.experience === undefined,
+          )))
     )
       throw new Error("ANALYSIS_RESULT_SCHEMA_INVALID");
     validateAnalysisResult({ ...artifact, images: [] }, artifact.result);

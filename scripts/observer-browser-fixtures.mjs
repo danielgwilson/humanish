@@ -414,6 +414,48 @@ export function analysisFixture(
   };
 }
 
+/** A current analysis: each finding has a plain headline and experience, and the result has
+ * design findings that cite captures. The design claims describe generated pixels only. */
+export function plainFindingsFixture(data) {
+  const analysis = analysisFixture(data);
+  const result = analysis.analysis.result;
+  const [first, second] = result.findings;
+  first.headline = "One participant could not tell whether their form was sent.";
+  first.experience =
+    "They filled in the fictional form and pressed Submit. Nothing on the screen changed, so they pressed it twice more and said it felt like the page had frozen.";
+  second.headline = "A participant said the second step's wording was unclear.";
+  second.experience =
+    "They were trying to reach the summary screen. They said they read the step label twice before choosing.";
+  const [one, two] = data.streams;
+  result.designFindings = [
+    {
+      id: "D1",
+      headline: "Small helper text under the form fields is hard to read.",
+      screen: "Form page",
+      notice: "The helper text under each field is pale and much smaller than the labels.",
+      whyItMatters: "People can miss the formatting rule and fail validation.",
+      suggestion: "Raise the helper text to body size and darken it.",
+      severity: "minor",
+      confidence: "medium",
+      seenByStreamIds: [two.id],
+      evidenceIds: [`${two.id}/${two.id}-frame-2`],
+    },
+    {
+      id: "D2",
+      headline: "The Submit button is cut off at the bottom of the window.",
+      screen: "Form page",
+      notice: "Only the top half of the primary button is visible without scrolling.",
+      whyItMatters: "A person may not see that the form has a next step.",
+      suggestion: "Keep the primary action inside the first screen, or pin it to the bottom.",
+      severity: "major",
+      confidence: "high",
+      seenByStreamIds: [one.id],
+      evidenceIds: [`${one.id}/${one.id}-frame-3`],
+    },
+  ];
+  return analysis;
+}
+
 /** Review presentation fixture: setup, issue, and later context remain separate
  * citations. The image markers prove capture identity, not an actual app defect. */
 export function reviewPolishFixture(data) {

@@ -5,12 +5,14 @@ import { participantLabels } from "@/lib/participant-label";
 import { formatElapsed } from "@/lib/player-model";
 import {
   basisLabel,
+  findingHeading,
   reportProblem,
   resolveReportMoment,
   representativeReportMoment,
   type StudyReport as ReportData,
 } from "@/lib/study-report";
 import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
+import { StudyReportDesign } from "./study-report-design";
 import { StudyReportOverview } from "./study-report-overview";
 import {
   ANALYSIS_ADMISSION_EXCEEDED_DETAIL,
@@ -27,6 +29,7 @@ export function StudyReport({
   findingId,
   onFinding,
   onOpen,
+  onOpenDesign,
   concernsOpen,
   onConcernsOpen,
 }: {
@@ -43,6 +46,8 @@ export function StudyReport({
     eventId: string | undefined,
     findingId: string,
   ) => void;
+  /** Opens a capture a design finding cites. */
+  onOpenDesign: (streamId: string, frame: number | null, eventId: string | undefined) => void;
   concernsOpen?: boolean;
   onConcernsOpen?: (open: boolean) => void;
 }) {
@@ -184,6 +189,62 @@ export function StudyReport({
               : moment.resolved?.at
                 ? new Date(moment.resolved.at).toLocaleTimeString()
                 : "Time unavailable";
+          // The title, summary, assessment and observations: the evidence under a plain headline.
+          const evidence = (
+            <>
+              <p className="report-claim">{finding.summary}</p>
+              {assessment ? (
+                <dl className="report-assessment" aria-label="Finding assessment">
+                  <div>
+                    <dt>Confidence</dt>
+                    <dd>{assessment.confidence}</dd>
+                  </div>
+                  <div>
+                    <dt>Recovery</dt>
+                    <dd>{assessment.recovery}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              {firstLimit ? (
+                <p className="report-scope">
+                  <Info size={14} aria-hidden="true" />
+                  <span>{firstLimit}</span>
+                </p>
+              ) : null}
+              {assessment ? (
+                <details className="report-limits">
+                  <summary>
+                    Exposure
+                    {assessment.limitations.length > 1
+                      ? ` and ${assessment.limitations.length - 1} more evidence ${assessment.limitations.length === 2 ? "limit" : "limits"}`
+                      : " details"}
+                  </summary>
+                  <p>{assessment.exposureReason}</p>
+                  {assessment.limitations.length > 1 ? (
+                    <ul>
+                      {assessment.limitations.slice(1).map((limit, index) => (
+                        <li key={index}>{limit}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </details>
+              ) : null}
+              {finding.observations?.length ? (
+                <details className="report-observations">
+                  <summary>Observation details ({finding.observations.length})</summary>
+                  {finding.observations.map((observation, index) => (
+                    <div key={index}>
+                      <span className="observation-basis">{basisLabel[observation.basis]}</span>
+                      <p>{observation.claim}</p>
+                      {observation.limitation ? (
+                        <p className="observation-limit">{observation.limitation}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </details>
+              ) : null}
+            </>
+          );
           return (
             <Accordion.Item
               key={finding.id}
@@ -196,7 +257,7 @@ export function StudyReport({
                   <span className="report-rank">{String(index + 1).padStart(2, "0")}</span>
                   <span className="finding-row-title">
                     <span className="finding-row-heading">
-                      <strong>{finding.title}</strong>
+                      <strong>{findingHeading(finding)}</strong>
                       <span className="report-impact">{finding.impact}</span>
                       {disposition ? (
                         <span className="finding-disposition" data-disposition={disposition}>
@@ -219,59 +280,23 @@ export function StudyReport({
               <Accordion.Panel className="finding-panel">
                 <div className="report-detail">
                   <div className="finding-interpretation">
-                    <p className="report-claim">{finding.summary}</p>
-                    {assessment ? (
-                      <dl className="report-assessment" aria-label="Finding assessment">
-                        <div>
-                          <dt>Confidence</dt>
-                          <dd>{assessment.confidence}</dd>
-                        </div>
-                        <div>
-                          <dt>Recovery</dt>
-                          <dd>{assessment.recovery}</dd>
-                        </div>
-                      </dl>
-                    ) : null}
-                    {firstLimit ? (
-                      <p className="report-scope">
-                        <Info size={14} aria-hidden="true" />
-                        <span>{firstLimit}</span>
-                      </p>
-                    ) : null}
-                    {assessment ? (
-                      <details className="report-limits">
-                        <summary>
-                          Exposure
-                          {assessment.limitations.length > 1
-                            ? ` and ${assessment.limitations.length - 1} more evidence ${assessment.limitations.length === 2 ? "limit" : "limits"}`
-                            : " details"}
-                        </summary>
-                        <p>{assessment.exposureReason}</p>
-                        {assessment.limitations.length > 1 ? (
-                          <ul>
-                            {assessment.limitations.slice(1).map((limit, index) => (
-                              <li key={index}>{limit}</li>
-                            ))}
-                          </ul>
+                    {finding.headline === undefined ? (
+                      evidence
+                    ) : (
+                      <>
+                        {finding.corrected || finding.experience ? (
+                          <p className="report-experience">
+                            {finding.corrected
+                              ? "Corrected in human review. The reviewer's claim replaces the original headline and account."
+                              : finding.experience}
+                          </p>
                         ) : null}
-                      </details>
-                    ) : null}
-                    {finding.observations?.length ? (
-                      <details className="report-observations">
-                        <summary>Observation details ({finding.observations.length})</summary>
-                        {finding.observations.map((observation, index) => (
-                          <div key={index}>
-                            <span className="observation-basis">
-                              {basisLabel[observation.basis]}
-                            </span>
-                            <p>{observation.claim}</p>
-                            {observation.limitation ? (
-                              <p className="observation-limit">{observation.limitation}</p>
-                            ) : null}
-                          </div>
-                        ))}
-                      </details>
-                    ) : null}
+                        <details className="finding-evidence">
+                          <summary>Evidence: {finding.title}</summary>
+                          {evidence}
+                        </details>
+                      </>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -390,6 +415,9 @@ export function StudyReport({
           );
         })}
       </Accordion.Root>
+      {report.designFindings !== undefined ? (
+        <StudyReportDesign data={data} findings={report.designFindings} onOpen={onOpenDesign} />
+      ) : null}
       {report.concernReviews !== undefined ? (
         <details
           className="report-concerns"

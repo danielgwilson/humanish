@@ -3,7 +3,7 @@ import { highDetailImageTokens } from "./image-tokens.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { scrubTransientCommsText } from "../run/transient-comms-secrets.js";
+import { transientCommsKnownValueScrub } from "../run/transient-comms-secrets.js";
 import {
   ANALYSIS_ID_PATTERN,
   ANALYSIS_SCHEMA,
@@ -38,7 +38,7 @@ import {
   protocolIncompatibilityMessage,
 } from "../actors/codex/protocol-compat.js";
 
-export const ANALYSIS_PROMPT_VERSION = "study-evidence-6";
+export const ANALYSIS_PROMPT_VERSION = "study-evidence-7";
 const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
   "gpt-6-astra",
   "gpt-5.5",
@@ -84,7 +84,11 @@ Harness records describe the machinery running the study. Provisioning, runtime 
 
 For each finding, consolidate repeated observations into one bounded problem or recovery. Each observation states one claim, labels its basis (visual, action, participant_statement, inference), cites supporting evidence, and declares its limitation. High confidence does not turn an inference into an observation. Show which distinct participants were affected and which were demonstrably exposed to the relevant interaction. Affected IDs must be a subset of exposed IDs, and both sets must be within included participants. Explain exposure; never automatically use the full panel as a denominator. Each affected participant must have supporting observation evidence.
 
-Keep every field as qualified as its evidence. This includes headlines, summaries, outcomes, impact, exposure, recovery, confidence and the premises of proposed next checks. A cautious observation cannot support an unqualified headline. When a useful concern is established only as participant feedback, say it was reported wherever the concern is summarized. A dispatched action establishes an attempt; its success needs resulting evidence. Use recovered only when the improvement is supported for the participants being grouped. If recovery differs across participants, describe those differences and use unknown for the combined recovery instead of erasing an unresolved case. Keep distinct problems separate, especially an unresolved result and a different problem that was corrected. Reversible exploration and unmeasured pauses are not automatically product defects.
+Keep every evidence field as qualified as its evidence. This includes titles, summaries, outcomes, impact, exposure, recovery, confidence and the premises of proposed next checks. A cautious observation cannot support an unqualified title. When a useful concern is established only as participant feedback, say it was reported wherever the concern is summarized. A dispatched action establishes an attempt; its success needs resulting evidence. Use recovered only when the improvement is supported for the participants being grouped. If recovery differs across participants, describe those differences and use unknown for the combined recovery instead of erasing an unresolved case. Keep distinct problems separate, especially an unresolved result and a different problem that was corrected. Reversible exploration and unmeasured pauses are not automatically product defects.
+
+Write for the person who will act on the report: a designer, product manager or developer who did not watch the session and does not know this tool's vocabulary. Give every finding a headline and an experience. The headline is one plain sentence about what happened to the people involved, as a colleague would say it out loud. The experience is one to three plain sentences: what the person was trying to do, what got in their way, and how it seemed to feel, using the participant's own words where a quote exists. Do not use participant stream IDs, evidence IDs, or this report's evidence vocabulary (exposure, exposed, stream, capture, corroborated, established, basis, provenance) in the headline or experience. Plain is not unqualified: a concern known only from what participants said reads as something they said ("Two players said they lost track of which control had focus"), and a cause the evidence does not show is not stated as fact. The title, summary and observations keep their current precision underneath.
+
+Separately, review the supplied captures as an experienced product designer would and report designFindings: problems a designer would notice in what the screens show, whether or not any participant mentioned them. Look at the size of text and controls (too small to read or to hit comfortably at this window size), layout and density (spread too wide or packed too tight for the task), visual hierarchy, legibility and contrast, wording and labels, consistency between screens, feedback after actions, and anything that makes the product look unfinished or untrustworthy. Judge the screens as the participants' personas would meet them: who they are and what they came to do. Each design finding names the screen in plain words, says what a designer notices, why it matters to a person using the product, and one concrete suggestion. Each must cite at least one supplied capture that shows the problem, and seenByStreamIds lists only participants whose cited captures show it. Rate severity by the effect on a person using the product: major when it misleads or blocks, moderate when it slows or confuses, minor when it is polish. Report only what the captures show; no capture, no design finding. Use D1, D2, and so on as IDs. An empty designFindings array is correct when the captures show no design problem worth a designer's time. Write design findings in the same plain register as headlines.
 
 Order findings by observed task impact, replication among exposed participants, and recovery. Preserve severity and confidence as separate fields. Do not compute a numeric frustration score or universal priority score. Use F1, F2, and so on as local finding IDs. Explain ordering with concrete evidence. Provide a short, testable next check for each finding. Say when recovery was not observed rather than claiming it was impossible. Keep titles and summaries concise and specific. The overall summary must be grounded in participant reviews and observations, including successful outcomes and evidence limits.`;
 
@@ -295,9 +299,10 @@ export type AnalysisDispatchContext = Pick<
   "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion"
 >;
 
-/** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. */
+/** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. A
+ * known value is found as written and in its encoded forms. */
 function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
-  const scrub = scrubTransientCommsText;
+  const scrub = transientCommsKnownValueScrub();
   const observation = <T extends AnalysisObservation>(value: T): T => ({
     ...value,
     claim: scrub(value.claim),
@@ -320,6 +325,13 @@ function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
       ...value.affectedStreamIds,
       ...value.exposedStreamIds,
       ...value.observations.flatMap((item) => [item.basis, ...item.evidenceIds]),
+    ]),
+    ...(result.designFindings ?? []).flatMap((value) => [
+      value.id,
+      value.severity,
+      value.confidence,
+      ...value.seenByStreamIds,
+      ...value.evidenceIds,
     ]),
     ...(result.concernReviews ?? []).flatMap((value) => [
       value.basis,
@@ -345,12 +357,26 @@ function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
     findings: result.findings.map((value) => ({
       ...value,
       title: scrub(value.title),
+      ...(value.headline === undefined ? {} : { headline: scrub(value.headline) }),
+      ...(value.experience === undefined ? {} : { experience: scrub(value.experience) }),
       summary: scrub(value.summary),
       exposureReason: scrub(value.exposureReason),
       nextStep: scrub(value.nextStep),
       priorityReason: scrub(value.priorityReason),
       observations: value.observations.map(observation),
     })),
+    ...(result.designFindings === undefined
+      ? {}
+      : {
+          designFindings: result.designFindings.map((value) => ({
+            ...value,
+            headline: scrub(value.headline),
+            screen: scrub(value.screen),
+            notice: scrub(value.notice),
+            whyItMatters: scrub(value.whyItMatters),
+            suggestion: scrub(value.suggestion),
+          })),
+        }),
     ...(result.concernReviews === undefined
       ? {}
       : {
@@ -364,6 +390,10 @@ function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
 
 const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
   ANALYSIS_RESULT_SCHEMA_INVALID: "analysis_validation_failed_schema_invalid",
+  ANALYSIS_DESIGN_FINDING_ID_DUPLICATE: "analysis_validation_failed_design_finding_id_duplicate",
+  ANALYSIS_DESIGN_REFERENCE_INVALID: "analysis_validation_failed_design_reference_invalid",
+  ANALYSIS_DESIGN_WITHOUT_CAPTURE: "analysis_validation_failed_design_without_capture",
+  ANALYSIS_DESIGN_MEMBERSHIP_INVALID: "analysis_validation_failed_design_membership_invalid",
   ANALYSIS_INPUT_DUPLICATES: "analysis_validation_failed_input_duplicates",
   ANALYSIS_PARTICIPANT_COVERAGE_INVALID: "analysis_validation_failed_participant_coverage_invalid",
   ANALYSIS_PARTICIPANT_REFERENCE_INVALID:

@@ -23,6 +23,10 @@ import { type RunBundle } from "../../src/run/bundle.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
 import { computeStats } from "../../src/run/stats.js";
+import {
+  registerTransientCommsSecrets,
+  withTransientCommsSecrets,
+} from "../../src/run/transient-comms-secrets.js";
 import { runAutomaticAnalysis, readAutomaticAnalysis } from "../../src/analysis/automatic.js";
 
 const config: AnalysisConfig = {
@@ -576,6 +580,72 @@ describe("ordinary study analysis flow", () => {
     expect((await draftFeedback(cwd, "analysis-flow", options)).ok).toBe(false);
     expect((await showAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(2);
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
+  it("leads an analysis feedback draft with the headline and experience, the evidence below", async () => {
+    const artifact = syntheticArtifact(input);
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    const options = { analysis: artifact.id, finding: "finding-1" };
+    const draft = (await draftFeedback(cwd, "analysis-flow", options)).draft!;
+    expect(draft.summary).toBe("The participant could not create an item.");
+    expect(draft.actual.split("\n").slice(0, 3)).toEqual([
+      "They were trying to add an item. The create step did not finish, and they said they could not create it.",
+      "",
+      "Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
+    ]);
+    expect(draft.actual).toContain("\nNext check: Check the create interaction.\n");
+
+    await correctAnalysis(cwd, "analysis-flow", {
+      analysisId: artifact.id,
+      findingId: "finding-1",
+      status: "amended",
+      reason: "The claim was too broad.",
+      replacementClaim: "Creation stalled once.",
+    });
+    const amended = (await draftFeedback(cwd, "analysis-flow", options)).draft!;
+    expect(amended.summary).toBe("Creation stalled once.");
+    expect(amended.actual.split("\n")[0]).toBe(
+      "This finding was corrected in human review. The reviewer's claim above replaces its original headline and account.",
+    );
+    expect(amended.actual).not.toContain("They were trying to add an item.");
+  });
+
+  it.each([
+    ["claim", "Use 743921 to sign in."],
+    ["claim", `Use ${Buffer.from("743921").toString("hex")} to sign in.`],
+    ["reason", `The page showed ${Buffer.from("743921").toString("base64")}.`],
+  ])("refuses a correction whose %s holds a known value: %s", async (field, text) => {
+    const artifact = syntheticArtifact(input);
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets(["743921"]);
+      await expect(
+        correctAnalysis(cwd, "analysis-flow", {
+          analysisId: artifact.id,
+          findingId: "finding-1",
+          status: "amended",
+          reason: field === "reason" ? text : "The claim was too broad.",
+          replacementClaim: field === "claim" ? text : "Creation stalled once.",
+        }),
+      ).rejects.toThrow("ANALYSIS_CORRECTION_TEXT_UNSAFE");
+    });
+    expect((await showAnalysis(cwd, "analysis-flow")).corrections).toEqual([]);
+  });
+
+  it("drafts feedback from an analysis written before headlines by its title and summary", async () => {
+    const artifact = syntheticArtifact(input);
+    delete artifact.result!.findings[0]!.headline;
+    delete artifact.result!.findings[0]!.experience;
+    delete artifact.result!.designFindings;
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    const draft = (
+      await draftFeedback(cwd, "analysis-flow", { analysis: artifact.id, finding: "finding-1" })
+    ).draft!;
+    expect(draft.summary).toBe("Item creation was blocked");
+    expect(draft.actual.split("\n").slice(0, 2)).toEqual([
+      "Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
+      "The participant could not create an item.",
+    ]);
   });
 
   it("retains paid accounting even when changed source prevents publication", async () => {

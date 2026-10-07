@@ -242,6 +242,35 @@ describe("explicit Codex account analysis", () => {
     });
   });
 
+  it("scrubs a known value's hex form from account-generated prose and refuses it as an ID", async () => {
+    const input = packet(),
+      answer = syntheticResult(input),
+      otp = "743921",
+      hex = Buffer.from(otp).toString("hex");
+    answer.findings[0]!.experience += ` ${hex}`;
+    const run = provider(input);
+    run.mockResolvedValue({
+      status: "completed",
+      output: answer,
+      usage: null,
+      usageComplete: false,
+      dispatched: true,
+      errorCode: null,
+    });
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([otp]);
+      const artifact = await runAnalysis(input, config(), { codexProvider: run });
+      expect(artifact.result?.findings[0]?.experience).toMatch(/\[REDACTED_SECRET\]$/);
+      expect(JSON.stringify(artifact)).not.toContain(hex);
+      answer.findings[0]!.id = hex;
+      answer.concernReviews = [];
+      expect(await runAnalysis(input, config(), { codexProvider: run })).toMatchObject({
+        result: null,
+        error: "analysis_validation_failed_scrub_rejected",
+      });
+    });
+  });
+
   it("retains only a safe stage code when response validation throws unexpectedly", async () => {
     const canary = "synthetic-unexpected-validation-secret";
     const output = Object.defineProperty({}, "summary", {

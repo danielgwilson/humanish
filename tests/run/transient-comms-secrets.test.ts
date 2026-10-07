@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
+  transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 
@@ -83,6 +84,32 @@ describe("transient run narration secrets", () => {
       expect(() => scrubTransientCommsText("earlier-canary")).toThrow(
         /^TRANSIENT_NARRATION_SECRET_LIMIT$/,
       );
+    });
+  });
+
+  it("removes a literal value even when the text also holds an encoded one", async () => {
+    const code = "743921";
+    const hex = Buffer.from(code).toString("hex");
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([code]);
+      const scrub = transientCommsKnownValueScrub();
+      for (const text of [`${code} [REDACTED_${code}]`, `${hex} then ${code}`]) {
+        expect(scrub(text)).not.toContain(code);
+        expect(scrub(text)).toContain("[REDACTED_SECRET]");
+      }
+    });
+  });
+
+  it("removes a value that holds an escape before decoding another value's encoded form", async () => {
+    const code = "743921";
+    const token = "pass%41word";
+    const hex = Buffer.from(code).toString("hex");
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([code, token]);
+      const scrubbed = transientCommsKnownValueScrub()(`${token} and ${hex}`);
+      expect(scrubbed).not.toContain(token);
+      expect(scrubbed).not.toContain("passAword");
+      expect(scrubbed).not.toContain(hex);
     });
   });
 });

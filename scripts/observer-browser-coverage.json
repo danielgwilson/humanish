@@ -232,6 +232,14 @@
       "goal": "Keep concern decisions, evidence links and return navigation usable at 390px without changing the shell"
     },
     {
+      "id": "analysis-plain-findings-desktop",
+      "goal": "Lead each finding with its headline and experience, keep its evidence one disclosure away, and open a design finding's capture and return by keyboard"
+    },
+    {
+      "id": "analysis-plain-findings-phone",
+      "goal": "Keep headlines, the evidence disclosure and severity-grouped design findings with their captures usable at 390px"
+    },
+    {
       "id": "analysis-attribution",
       "goal": "Cited statements keep speakers, observation basis, disposition and participant interpretation distinct from original feedback"
     },

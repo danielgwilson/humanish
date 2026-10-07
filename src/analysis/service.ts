@@ -9,6 +9,7 @@ import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../evidence/redaction.js";
+import { transientCommsKnownValueScrub } from "../run/transient-comms-secrets.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import {
@@ -575,7 +576,12 @@ export async function correctAnalysis(
     const finding = analysis?.result?.findings.find((item) => item.id === options.findingId);
     if (loaded.state !== "ready" || !analysis || !finding)
       throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
-    if (containsSensitive(options.reason) || containsSensitive(options.replacementClaim ?? ""))
+    // A reviewer's claim replaces the finding's headline in every view, so it gets the same known
+    // value check as generated text: as written and encoded. Only a caller inside the run's secret
+    // scope holds those values; a separate `analyze correct` has only the pattern check.
+    const known = transientCommsKnownValueScrub();
+    const unsafe = (text: string) => containsSensitive(text) || known(text) !== text;
+    if (unsafe(options.reason) || unsafe(options.replacementClaim ?? ""))
       throw new Error("ANALYSIS_CORRECTION_TEXT_UNSAFE");
     const correction: AnalysisCorrection = {
       schema: ANALYSIS_CORRECTION_SCHEMA,

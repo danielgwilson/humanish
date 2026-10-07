@@ -93,9 +93,11 @@ describe("humanish review on an analyzed live run", () => {
         ),
       ),
     );
-    const f1 = lines.indexOf("finding-1 Item creation was blocked");
+    const f1 = lines.indexOf("finding-1 The participant could not create an item.");
     expect(f1).toBeGreaterThan(0);
-    expect(lines.slice(f1 + 1, f1 + 6)).toEqual([
+    expect(lines.slice(f1 + 1, f1 + 8)).toEqual([
+      "   They were trying to add an item. The create step did not finish, and they said they could not create it.",
+      "   evidence: Item creation was blocked",
       "   impact: blocked task · confidence: medium · recovery: no recovery observed",
       "   The participant could not create an item.",
       "   affected: 1 of 1 exposed participant",
@@ -103,6 +105,8 @@ describe("humanish review on an analyzed live run", () => {
       "   - UI journey: 1 item with no frame",
       "   next step: Check the create interaction.",
     ]);
+    // The dry-run bundle retains no capture, so the design review has nothing to cite.
+    expect(lines.indexOf("design findings: none in the reviewed captures")).toBeGreaterThan(f1);
     expect(
       lines.indexOf(`analysis: .humanish/runs/${RUN}/analysis/${analysisId}/analysis.json`),
     ).toBeLessThan(lines.indexOf(`review: .humanish/runs/${RUN}/review.json`));
@@ -120,6 +124,9 @@ describe("humanish review on an analyzed live run", () => {
       findings: [
         {
           id: "finding-1",
+          headline: "The participant could not create an item.",
+          experience:
+            "They were trying to add an item. The create step did not finish, and they said they could not create it.",
           title: "Item creation was blocked",
           impact: "blocked_task",
           confidence: "medium",
@@ -129,6 +136,7 @@ describe("humanish review on an analyzed live run", () => {
           correction: null,
         },
       ],
+      designFindings: [],
     });
     expect(result.analysis.findings[0].evidence).toEqual([
       expect.objectContaining({ id: "e000001", bases: ["inference"], frame: null, capture: null }),
@@ -226,7 +234,7 @@ describe("humanish analyze show", () => {
         new RegExp(`^findings: 1 from analysis ${outcome.result!.analysisId} \\(partial, `),
       ),
     ]);
-    expect(human.output).toContain("\nfinding-1 Item creation was blocked\n");
+    expect(human.output).toContain("\nfinding-1 The participant could not create an item.\n");
     expect(human.output).not.toContain("{");
 
     const json = await runCli(["analyze", "show", "--run", RUN, "--cwd", cwd, "--json"]);
@@ -278,7 +286,8 @@ describe("the end of a live run", () => {
     await writeRunFindings(new Command(), io, cwd, result);
     expect(out.join("").split("\n")).toEqual([
       "findings: 1",
-      "- finding-1 blocked task, medium confidence, no recovery observed: Item creation was blocked",
+      "- finding-1 The participant could not create an item. (blocked task, medium confidence, no recovery observed)",
+      "design findings: none",
       `all findings: humanish review --run ${RUN} --cwd ${cwd}`,
       "",
     ]);

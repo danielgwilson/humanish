@@ -22,6 +22,7 @@ import { cli } from "./invocation.js";
 export const ANALYSIS_FINDINGS_SCHEMA = "humanish.analysis-findings.v1";
 
 type Finding = NonNullable<AnalysisArtifact["result"]>["findings"][number];
+type DesignFinding = NonNullable<NonNullable<AnalysisArtifact["result"]>["designFindings"]>[number];
 
 /** `ready` and `stale` carry findings; every other state carries none and says why in `message`. */
 type FindingsState =
@@ -34,12 +35,10 @@ type FindingsState =
   | "dry_run"
   | "unavailable";
 
-interface FindingEvidence {
+interface CitedEvidence {
   id: string;
   streamId: string;
   kind: string;
-  /** How the finding's observations used this item: visual, action, participant_statement, inference. */
-  bases: string[];
   /** Index of the latest retained capture at this item, from 0; null before any capture. */
   frame: number | null;
   /** Time since the first retained capture, not a video offset. */
@@ -49,8 +48,20 @@ interface FindingEvidence {
   capture: string | null;
 }
 
+interface FindingEvidence extends CitedEvidence {
+  /** How the finding's observations used this item: visual, action, participant_statement, inference. */
+  bases: string[];
+}
+
 interface FindingView {
   id: string;
+  /**
+   * One plain sentence about what happened, and one to three about what the person tried and what
+   * got in the way. Null in analyses written before them. An amended finding keeps the original
+   * text here; `correction.replacementClaim` replaces both.
+   */
+  headline: string | null;
+  experience: string | null;
   title: string;
   summary: string;
   impact: Finding["impact"];
@@ -66,6 +77,20 @@ interface FindingView {
     reason: string;
     replacementClaim: string | null;
   } | null;
+}
+
+interface DesignFindingView {
+  id: string;
+  headline: string;
+  screen: string;
+  notice: string;
+  whyItMatters: string;
+  suggestion: string;
+  severity: DesignFinding["severity"];
+  confidence: DesignFinding["confidence"];
+  seenBy: { streamId: string; label: string }[];
+  /** Each cited item once; at least one has a capture. */
+  evidence: CitedEvidence[];
 }
 
 export interface AnalysisFindings {
@@ -93,6 +118,11 @@ export interface AnalysisFindings {
   summary: string | null;
   /** Highest priority first, as the analysis ranked them. */
   findings: FindingView[];
+  /**
+   * Problems a designer would see in the captures, most severe first. Null when the view carries
+   * no analysis result, or the analysis was written before design findings.
+   */
+  designFindings: DesignFindingView[] | null;
   limitations: string[];
   warnings: string[];
 }
@@ -138,6 +168,30 @@ function analyzeCommand(source: FindingsSource, provider: string | undefined): s
     : `${run} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
 }
 
+/** The cited items the analysis evidence resolves, each once, in citation order. */
+function citedEvidence(
+  ids: Iterable<string>,
+  analysis: AnalysisArtifact,
+  runRoot: string,
+): CitedEvidence[] {
+  const byId = new Map(analysis.evidence.map((entry) => [entry.id, entry]));
+  return [...new Set(ids)].flatMap((id) => {
+    const entry = byId.get(id);
+    if (!entry) return [];
+    return [
+      {
+        id,
+        streamId: entry.streamId,
+        kind: entry.kind,
+        frame: entry.frame,
+        elapsedMs: entry.elapsedMs,
+        at: entry.at,
+        capture: entry.capture ? path.join(runRoot, entry.capture.path) : null,
+      },
+    ];
+  });
+}
+
 function evidenceOf(finding: Finding, analysis: AnalysisArtifact, runRoot: string) {
   const bases = new Map<string, Set<string>>();
   for (const observation of finding.observations)
@@ -146,23 +200,48 @@ function evidenceOf(finding: Finding, analysis: AnalysisArtifact, runRoot: strin
       set.add(observation.basis);
       bases.set(id, set);
     }
-  const byId = new Map(analysis.evidence.map((entry) => [entry.id, entry]));
-  return [...bases].flatMap(([id, used]): FindingEvidence[] => {
-    const entry = byId.get(id);
-    if (!entry) return [];
-    return [
-      {
-        id,
-        streamId: entry.streamId,
-        kind: entry.kind,
-        bases: [...used],
-        frame: entry.frame,
-        elapsedMs: entry.elapsedMs,
-        at: entry.at,
-        capture: entry.capture ? path.join(runRoot, entry.capture.path) : null,
-      },
-    ];
-  });
+  return citedEvidence(bases.keys(), analysis, runRoot).map(
+    ({ id, streamId, kind, ...entry }): FindingEvidence => ({
+      id,
+      streamId,
+      kind,
+      bases: [...bases.get(id)!],
+      ...entry,
+    }),
+  );
+}
+
+const SEVERITY_RANK: Record<DesignFinding["severity"], number> = {
+  major: 0,
+  moderate: 1,
+  minor: 2,
+};
+
+/** Most severe first; equal severity keeps the analysis order. */
+function designFindingViews(
+  analysis: AnalysisArtifact,
+  runRoot: string,
+): DesignFindingView[] | null {
+  const designFindings = analysis.result?.designFindings;
+  if (designFindings === undefined) return null;
+  const labels = new Map(analysis.participants.map((p) => [p.streamId, p.label]));
+  return [...designFindings]
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
+    .map((finding) => ({
+      id: finding.id,
+      headline: finding.headline,
+      screen: finding.screen,
+      notice: finding.notice,
+      whyItMatters: finding.whyItMatters,
+      suggestion: finding.suggestion,
+      severity: finding.severity,
+      confidence: finding.confidence,
+      seenBy: finding.seenByStreamIds.map((streamId) => ({
+        streamId,
+        label: labels.get(streamId) ?? streamId,
+      })),
+      evidence: citedEvidence(finding.evidenceIds, analysis, runRoot),
+    }));
 }
 
 function findingView(
@@ -174,6 +253,8 @@ function findingView(
   const correction = loaded.corrections.filter((entry) => entry.findingId === finding.id).at(-1);
   return {
     id: finding.id,
+    headline: finding.headline ?? null,
+    experience: finding.experience ?? null,
     title: finding.title,
     summary: finding.summary,
     impact: finding.impact,
@@ -221,6 +302,7 @@ function withoutFindings(
     path: null,
     summary: null,
     findings: [],
+    designFindings: null,
     limitations: [],
     warnings: source.loaded.warnings,
   };
@@ -281,6 +363,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       findings: result.findings.map((finding) =>
         findingView(finding, { ...loaded, analysis }, source.runRoot),
       ),
+      designFindings: designFindingViews(analysis, source.runRoot),
       limitations: result.limitations,
       warnings: loaded.warnings,
     };
@@ -509,22 +592,52 @@ function momentsText(evidence: FindingEvidence[]): string {
   return parts.join(", ");
 }
 
-function findingLines(finding: FindingView, runRoot: string): string[] {
-  const cited = [...new Set(finding.evidence.map((entry) => entry.streamId))];
-  const labels = new Map(finding.affected.map((p) => [p.streamId, p.label]));
-  const affectedIds = finding.affected.map((p) => p.streamId);
-  const streams = [...affectedIds, ...cited.filter((id) => !labels.has(id))];
-  const captures = [
+/** The capture files, relative to the run directory, in frame order. */
+function captureFiles(evidence: CitedEvidence[], runRoot: string): string[] {
+  return [
     ...new Set(
-      finding.evidence
+      evidence
         .filter((entry) => entry.capture !== null)
         .sort((a, b) => (a.frame ?? 0) - (b.frame ?? 0))
         .map((entry) => (runRoot ? path.relative(runRoot, entry.capture!) : entry.capture!)),
     ),
   ];
+}
+
+/**
+ * What a reader sees first: the headline, or the reviewer's claim when a review amended the finding,
+ * since the headline and experience describe the claim it replaced. Null before headlines existed.
+ */
+function leadOf(finding: FindingView): { headline: string; corrected: boolean } | null {
+  const amended = finding.correction?.status === "amended" ? finding.correction : null;
+  if (finding.headline === null) return null;
+  return amended?.replacementClaim
+    ? { headline: amended.replacementClaim, corrected: true }
+    : { headline: finding.headline, corrected: false };
+}
+
+function findingLines(finding: FindingView, runRoot: string): string[] {
+  const cited = [...new Set(finding.evidence.map((entry) => entry.streamId))];
+  const labels = new Map(finding.affected.map((p) => [p.streamId, p.label]));
+  const affectedIds = finding.affected.map((p) => p.streamId);
+  const streams = [...affectedIds, ...cited.filter((id) => !labels.has(id))];
+  const captures = captureFiles(finding.evidence, runRoot);
   const correction = finding.correction;
+  const lead = leadOf(finding);
   return [
-    `${finding.id} ${finding.title}`,
+    ...(lead === null
+      ? [`${finding.id} ${finding.title}`]
+      : [
+          `${finding.id} ${lead.headline}`,
+          ...(lead.corrected
+            ? [
+                "   Corrected in human review. The reviewer's claim replaces the original headline and account.",
+              ]
+            : finding.experience === null
+              ? []
+              : [`   ${finding.experience}`]),
+          `   evidence: ${finding.title}`,
+        ]),
     `   impact: ${IMPACT_TEXT[finding.impact]} · confidence: ${finding.confidence} · recovery: ${RECOVERY_TEXT[finding.recovery]}`,
     `   ${finding.summary}`,
     `   affected: ${finding.affected.length} of ${plural(finding.exposedCount, "exposed participant")}`,
@@ -543,6 +656,34 @@ function findingLines(finding: FindingView, runRoot: string): string[] {
   ];
 }
 
+function designFindingLines(finding: DesignFindingView, runRoot: string): string[] {
+  const captures = captureFiles(finding.evidence, runRoot);
+  return [
+    `${finding.id} ${finding.severity}: ${finding.headline}`,
+    `   screen: ${finding.screen}`,
+    `   notice: ${finding.notice}`,
+    `   why it matters: ${finding.whyItMatters}`,
+    `   suggestion: ${finding.suggestion}`,
+    `   seen by: ${finding.seenBy.map((p) => p.label).join(", ")} · confidence: ${finding.confidence}`,
+    ...(captures.length === 0 ? [] : [`   captures: ${captures.join(", ")}`]),
+  ];
+}
+
+/** Nothing for an analysis written before design findings. */
+function designSection(view: AnalysisFindings): string[] {
+  const design = view.designFindings;
+  if (design === null) return [];
+  if (design.length === 0) return ["", "design findings: none in the reviewed captures"];
+  return [
+    "",
+    `design findings: ${design.length}, most severe first`,
+    ...design.flatMap((finding, index) => [
+      ...(index === 0 ? [] : [""]),
+      ...designFindingLines(finding, view.runPath ?? ""),
+    ]),
+  ];
+}
+
 /** The full findings block: the analysis, every finding with its evidence, and its limitations. */
 export function formatFindings(view: AnalysisFindings): string[] {
   if (view.state !== "ready" && view.state !== "stale")
@@ -555,6 +696,7 @@ export function formatFindings(view: AnalysisFindings): string[] {
     ...(view.state === "stale" ? [`warning: ${view.message}`, `next: ${view.next}`] : []),
     ...(view.summary ? [view.summary] : []),
     ...view.findings.flatMap((finding) => ["", ...findingLines(finding, view.runPath ?? "")]),
+    ...designSection(view),
     ...(view.limitations.length === 0
       ? []
       : ["", "limitations:", ...view.limitations.map((limitation) => `- ${limitation}`)]),
@@ -573,15 +715,29 @@ export function formatFindingsSummary(
   if (view.state !== "ready" && view.state !== "stale")
     return [`findings: ${view.message}`, ...(view.next ? [`next: ${view.next}`] : [])];
   const shown = view.findings.slice(0, limit);
+  const design = view.designFindings;
   return [
     `findings: ${view.findings.length === 0 ? "none" : view.findings.length}${view.state === "stale" ? " (stale)" : ""}`,
-    ...shown.map(
-      (finding) =>
-        `- ${finding.id} ${IMPACT_TEXT[finding.impact]}, ${finding.confidence} confidence, ${RECOVERY_TEXT[finding.recovery]}: ${finding.title}`,
-    ),
+    ...shown.map((finding) => {
+      const qualities = `${IMPACT_TEXT[finding.impact]}, ${finding.confidence} confidence, ${RECOVERY_TEXT[finding.recovery]}`;
+      const lead = leadOf(finding);
+      if (lead === null) return `- ${finding.id} ${qualities}: ${finding.title}`;
+      return `- ${finding.id} ${lead.headline} (${lead.corrected ? "corrected in human review" : qualities})`;
+    }),
     ...(view.findings.length > limit
       ? [`- and ${plural(view.findings.length - limit, "more finding")}`]
       : []),
+    ...(design === null
+      ? []
+      : [
+          `design findings: ${design.length === 0 ? "none" : design.length}`,
+          ...design
+            .slice(0, limit)
+            .map((finding) => `- ${finding.id} ${finding.severity}: ${finding.headline}`),
+          ...(design.length > limit
+            ? [`- and ${plural(design.length - limit, "more design finding")}`]
+            : []),
+        ]),
     `all findings: ${fullCommand}`,
   ];
 }

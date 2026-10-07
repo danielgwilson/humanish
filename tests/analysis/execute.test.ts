@@ -102,6 +102,9 @@ function result(): AnalysisResult {
       {
         id: "F1",
         title: "Participant reported a saving blocker",
+        headline: "The participant said they could not save their task.",
+        experience:
+          "They were trying to save a task. They said it would not save, and nothing recorded shows whether it did.",
         summary: "The participant reported being unable to save the task.",
         impact: "uncertain",
         affectedStreamIds: ["participant-1"],
@@ -121,6 +124,7 @@ function result(): AnalysisResult {
         priorityReason: "The report concerns the assigned task, with limited corroboration.",
       },
     ],
+    designFindings: [],
     limitations: ["No captured visual state."],
   };
 }
@@ -173,6 +177,26 @@ describe("bounded study analysis run", () => {
     });
     expect(h.fetchFn).toHaveBeenCalledTimes(1);
   });
+  it.each(["headline", "experience", "designFindings"] as const)(
+    "retains paid usage when a response omits the required %s",
+    async (field) => {
+      const answer = result();
+      if (field === "designFindings") delete answer.designFindings;
+      else delete answer.findings[0]![field];
+      const h = transport(answer);
+      const artifact = await runAnalysis(input(), config, {
+        apiKey: "synthetic-key",
+        fetch: h.fetchFn,
+      });
+      expect(artifact).toMatchObject({
+        status: "failed",
+        result: null,
+        error: "analysis_validation_failed_schema_invalid",
+        usage: { dispatched: true, usageComplete: true },
+      });
+      expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+    },
+  );
   it.each(["gpt-5.6-sol", "gpt-6-astra"])(
     "validates and accounts for %s without changing the participant's recorded outcome",
     async (model) => {
@@ -263,7 +287,7 @@ describe("bounded study analysis run", () => {
     const sent = JSON.parse(body.input[0].content[0].text);
     expect(sent.participants).toEqual(packet.participants);
     expect(artifact.participants).toEqual(packet.participants);
-    expect(artifact.promptVersion).toBe("study-evidence-6");
+    expect(artifact.promptVersion).toBe("study-evidence-7");
     expect(body.instructions).toContain(
       "every evidenceIds entry must be unique, exist in the packet, and have exactly that participant's streamId",
     );
