@@ -3,8 +3,11 @@ import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
 import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
   MAX_ANALYSIS_OUTPUT_TOKENS,
+  analysisCostRange,
   isSupportedAnalysisModel,
 } from "./execute.js";
+import { ADMISSION_MARGIN } from "./admission.js";
+import { plural } from "../run/text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { AnalysisConfig } from "./types.js";
 
@@ -151,30 +154,52 @@ export interface AutomaticAnalysisBudget {
   model: string;
   maxCostUsd: number | null;
   trigger: "default" | "explicit";
+  /** The participants the expected cost range is for. */
+  participants?: number;
+  /** The expected cost, from a run that keeps no evidence to one at the evidence limits. */
+  expectedCostUsd?: { low: number; high: number };
 }
 
-/** Metadata only: resolving the future live-run budget never reads keys or dispatches. */
+/** Metadata only: resolving the future live-run budget never reads keys or dispatches. With a
+ * participant count it also gives the expected cost range for that many participants. */
 export function automaticAnalysisBudget(
   raw: unknown,
   route: StudyRoute,
+  participants?: number,
 ): AutomaticAnalysisBudget | undefined {
   // The synthetic preview has no participants, so nothing is analyzed after it.
   if (route === "preview") return undefined;
   const resolved = resolveAutomaticAnalysis(raw);
-  return resolved.ok && resolved.config
-    ? {
-        ...(resolved.config.provider === "codex"
-          ? { provider: "codex" as const, billing: "account-unknown" as const }
-          : {}),
-        model: resolved.config.model,
-        maxCostUsd: resolved.config.maxCostUsd,
-        trigger: raw === undefined ? "default" : "explicit",
-      }
-    : undefined;
+  if (!resolved.ok || !resolved.config) return undefined;
+  const { config } = resolved;
+  const range =
+    participants === undefined || config.provider === "codex"
+      ? undefined
+      : analysisCostRange(
+          resolved.preferLargerOutput
+            ? { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS }
+            : config,
+          participants,
+        );
+  return {
+    ...(config.provider === "codex"
+      ? { provider: "codex" as const, billing: "account-unknown" as const }
+      : {}),
+    model: config.model,
+    maxCostUsd: config.maxCostUsd,
+    trigger: raw === undefined ? "default" : "explicit",
+    ...(range === undefined || participants === undefined
+      ? {}
+      : { participants, expectedCostUsd: range }),
+  };
 }
 
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
-  return `After live runs: ${budget.trigger} analysis · ${budget.model} · refused before it starts if its estimate is over $${budget.maxCostUsd}; this is not a billing cap. Set review.analysis: false to disable.`;
+  const range =
+    budget.expectedCostUsd === undefined || budget.participants === undefined
+      ? ""
+      : ` · expected $${budget.expectedCostUsd.low.toFixed(2)} to $${budget.expectedCostUsd.high.toFixed(2)} for ${plural(budget.participants, "participant")}, depending on how much evidence the run keeps`;
+  return `After live runs: ${budget.trigger} analysis · ${budget.model}${range} · refused before it starts if the expected cost plus a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin is over $${budget.maxCostUsd}; this is not a billing cap. Set review.analysis: false to disable.`;
 }

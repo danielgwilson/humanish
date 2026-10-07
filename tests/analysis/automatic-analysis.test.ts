@@ -282,7 +282,7 @@ describe("automatic analysis admission and producer boundary", () => {
       );
       const preflight = await runStudyPreflight({ cwd, study: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
-      expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use"));
+      expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use", 1));
       expect((await readStudySummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
       let stdout = "";
       const program = createProgram({
@@ -295,8 +295,12 @@ describe("automatic analysis admission and producer boundary", () => {
       await program.parseAsync(["node", "humanish", "study", "check", "budget", "--cwd", cwd]);
       if (setting === false) expect(stdout).not.toContain("After live runs:");
       else {
+        const { low, high } = preflight.analysis!.expectedCostUsd!;
         expect(stdout).toContain(
-          `refused before it starts if its estimate is over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
+          `expected $${low.toFixed(2)} to $${high.toFixed(2)} for 1 participant`,
+        );
+        expect(stdout).toContain(
+          `refused before it starts if the expected cost plus a 10% margin is over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
         );
       }
     },
@@ -729,8 +733,8 @@ describe("automatic analysis admission and producer boundary", () => {
         "--run-id",
         "taken-run",
       ]);
-      expect(stderr).toContain(
-        "default analysis · gpt-6-astra · refused before it starts if its estimate is over $3; this is not a billing cap",
+      expect(stderr).toMatch(
+        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over \$3; this is not a billing cap/,
       );
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({

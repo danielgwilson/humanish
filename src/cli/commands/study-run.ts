@@ -11,6 +11,7 @@ import type { StudyResolveFailure } from "../../study/discover.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import { keyNamesOf } from "../../study/requirements.js";
 import { type StudyRoute, routeOf } from "../../study/plan.js";
+import { computerUseParticipantCount } from "../../study/routing.js";
 import type { StudyConfig } from "../../study/types.js";
 import type { RunStudyProvenance } from "../../run/study-provenance.js";
 import type { RunResult } from "../../run/results.js";
@@ -160,7 +161,11 @@ export async function runStudyCommand(args: {
             `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is code that humanish loaded and ran in this process. Review it as you would any code you run.\n`,
           );
         }
-        const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
+        const analysisBudget = automaticAnalysisBudget(
+          config.review?.analysis,
+          route,
+          computerUseParticipantCount(config),
+        );
         if (analysisBudget && resolveStudyDryRun(config, args.options.dryRun, true) === false) {
           args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
         }

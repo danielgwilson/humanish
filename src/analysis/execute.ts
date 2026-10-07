@@ -1,5 +1,5 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
-import { highDetailImageTokens } from "./image-tokens.js";
+import { HIGH_DETAIL_IMAGE_TOKEN_CEILING, highDetailImageTokens } from "./image-tokens.js";
 import { estimateAnalysisCost } from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
@@ -279,6 +279,39 @@ export function estimateAnalysisAdmission(
     maxCostUsd: config.maxCostUsd,
     ratesAsOf: rate.asOf,
   };
+}
+
+/** Structure each evidence entry adds to the packet: ids, kind, timestamps and flags. The largest
+ * retained packet averaged 200 bytes. */
+const ENTRY_STRUCTURE_BYTES = 256;
+
+/**
+ * The expected cost of an analysis for this many participants before any evidence exists: from a
+ * packet with no evidence to one at the evidence limits with every capture at the image-token
+ * ceiling. Undefined for Codex and for a model without rates.
+ */
+export function analysisCostRange(
+  config: AnalysisConfig,
+  participants: number,
+): { low: number; high: number } | undefined {
+  if (config.provider === "codex") return undefined;
+  const rate = MODEL_RATES[config.model];
+  if (!rate || rate.placeholder) return undefined;
+  const prompt =
+    Buffer.byteLength(instructions(config)) +
+    Buffer.byteLength(JSON.stringify(analysisResultJsonSchema));
+  const size = {
+    participants: Math.min(participants, EVIDENCE_LIMITS.participants),
+    outputAllowance: config.maxOutputTokens,
+  };
+  const low = estimateAnalysisCost(rate, { ...size, textBytes: prompt, imageTokens: 0 });
+  const high = estimateAnalysisCost(rate, {
+    ...size,
+    textBytes:
+      prompt + EVIDENCE_LIMITS.textBytes + EVIDENCE_LIMITS.evidence * ENTRY_STRUCTURE_BYTES,
+    imageTokens: EVIDENCE_LIMITS.captures * HIGH_DETAIL_IMAGE_TOKEN_CEILING,
+  });
+  return { low: low.expectedCostUsd, high: high.expectedCostUsd };
 }
 
 /** Only for an omitted output limit. Preserve the established allowance when

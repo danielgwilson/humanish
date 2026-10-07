@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
+import {
+  automaticAnalysisBudget,
+  resolveAutomaticAnalysis,
+} from "../../src/analysis/automatic-config.js";
 import {
   estimateAnalysisAdmission,
   preferLargerAnalysisOutput,
@@ -221,5 +224,24 @@ describe("analysis admission estimate", () => {
     expect(estimateAnalysisAdmission(input, denied).allowed).toBe(false);
     const explicit = { ...base, maxOutputTokens: 8192 };
     expect(preferLargerAnalysisOutput(input, explicit)).toEqual(explicit);
+  });
+
+  it("gives study check a range that brackets a 6-participant study's packets", () => {
+    const range = automaticAnalysisBudget(undefined, "computer-use", 6)?.expectedCostUsd;
+    const config = { ...defaultConfig(), maxCostUsd: 1000 };
+    const expected = (shape: PacketShape) =>
+      estimateAnalysisAdmission(packet(shape), preferLargerAnalysisOutput(packet(shape), config))
+        .estimatedCostUsd!;
+    const smallest = expected({ participants: 6, entries: 6, textBytes: 60, captures: 0 });
+    // The packet limits: 800 entries, 160 KiB of text and 40 captures.
+    const largest = expected({
+      participants: 6,
+      entries: 800,
+      textBytes: 160 * 1024 - 6 * 200,
+      captures: 40,
+    });
+    expect(range!.low).toBeLessThanOrEqual(smallest);
+    expect(range!.high).toBeGreaterThanOrEqual(largest);
+    expect(range!.high).toBeLessThan(largest * 1.5);
   });
 });
