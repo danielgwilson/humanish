@@ -110,8 +110,8 @@ Later participant actions and observations do not use this startup wait.
   reach its selected app port, its assigned captured inbox when declared, and public destinations over ordinary TCP/UDP.
   Other private host/LAN destinations and cloud metadata are blocked.
 - Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
-  enclosing limit is 3 GiB and 2 CPUs per desktop, which sets how many participants
-  run at once; see [How many participants fit](#how-many-participants-fit).
+  enclosing limit is 3 GiB and 2 CPUs per desktop; the memory limit sets how many
+  participants run at once. See [How many participants fit](#how-many-participants-fit).
 - Typing works only while the study's original tab is the browser's only tab. With a
   second tab open, every `type` action is refused before any text is sent, and the
   participant is told to switch to the other tab, close it and type again. Clicks, keys
@@ -134,16 +134,18 @@ rules. An unconfirmed release is reported as such.
 
 ## How many participants fit
 
-Each participant desktop reserves 3 GiB of memory and 2 CPUs. On a Mac the desktops
-run in the humanish Lima VM, which keeps 1 GiB for itself, so a VM holds
-`(memory - 1 GiB) / 3 GiB` desktops or `CPUs / 2`, whichever is fewer. On Linux the
-desktops use this machine directly, with 1 GiB kept for the system.
+Each participant desktop reserves 3 GiB of memory and is given 2 CPUs. On a Mac the
+desktops run in the humanish Lima VM, which keeps 1 GiB for itself, so a VM holds
+`(memory - 1 GiB) / 3 GiB` desktops. Memory sets the limit because a desktop that runs
+out of memory is killed; desktops that share fewer CPUs than 2 each only run slower, and
+`runtime status` says when they will. On Linux the desktops use this machine directly,
+with 1 GiB kept for the system.
 
-| Lima VM            | Desktops at once |
-| ------------------ | ---------------- |
-| 8 GiB, 4 or 6 CPUs | 2                |
-| 10 GiB, 6 CPUs     | 3                |
-| 13 GiB, 8 CPUs     | 4                |
+| Lima VM memory | Desktops at once |
+| -------------- | ---------------- |
+| 8 GiB          | 2                |
+| 10 GiB         | 3                |
+| 13 GiB         | 4                |
 
 `humanish runtime status` prints the VM's size, the per-desktop reservation and how
 many desktops fit; `--json` returns them as `capacity`. `humanish doctor --study <study>`

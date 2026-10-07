@@ -10,8 +10,14 @@ describe("local desktop capacity", () => {
   it("holds four desktops in a 13 GiB, 8 CPU Lima VM", () => {
     expect(localCapacity("lima-vm", { memoryBytes: 13 * GiB, cpus: 8 }).desktops).toBe(4);
   });
-  it("counts CPUs as well as memory on a Linux host", () => {
-    expect(localCapacity("linux-host", { memoryBytes: 31 * GiB, cpus: 4 }).desktops).toBe(2);
+  it("counts memory only, and notes when desktops will share CPUs", () => {
+    // A CPU quota throttles a desktop; running out of memory kills it.
+    const capacity = localCapacity("linux-host", { memoryBytes: 31 * GiB, cpus: 4 });
+    expect(capacity.desktops).toBe(10);
+    expect(capacity.sharesCpus).toBe(true);
+    expect(
+      localCapacity("linux-host", { memoryBytes: 7 * GiB, cpus: 8 }).sharesCpus,
+    ).toBeUndefined();
   });
   it("holds no desktop when the memory left after the host's own share is under one desktop", () => {
     expect(localCapacity("lima-vm", { memoryBytes: 3.5 * GiB, cpus: 4 }).desktops).toBe(0);

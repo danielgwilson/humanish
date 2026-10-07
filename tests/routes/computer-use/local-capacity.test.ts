@@ -68,12 +68,12 @@ describe("local desktop admission", () => {
     // How many it needs, how many fit and why.
     expect(message).toContain("3 participant desktops at once");
     expect(message).toContain("holds 2");
-    expect(message).toContain("8 GiB and 6 CPUs");
-    expect(message).toContain("3 GiB and 2 CPUs");
+    expect(message).toContain("it has 8 GiB");
+    expect(message).toContain("each desktop reserves 3 GiB");
     // What to do, cloud desktops first.
     expect(message).toContain("source: local-tree");
     expect(message).toContain("target: e2b-desktop");
-    expect(message).toContain("runtime setup --memory 10 --cpus 6");
+    expect(message).toContain("runtime setup --memory 10");
     expect(message).toContain("concurrency: 2");
     expect(message.indexOf("e2b-desktop")).toBeLessThan(message.indexOf("runtime setup"));
     expect(seams.prepareRuntime).not.toHaveBeenCalled();

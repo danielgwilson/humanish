@@ -29,10 +29,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   refused before any desktop or model call with `HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED`.
   The message says how many it runs, how many fit and why, then what to do: run it on cloud
   desktops (`subject.source: local-tree` with `execution.target: e2b-desktop`), give the VM more
-  room with `runtime setup --memory --cpus`, or lower `execution.concurrency`. On Linux the same
+  room with `runtime setup --memory`, or lower `execution.concurrency`. Memory sets the limit:
+  desktops that share fewer than 2 CPUs each only run slower, and `runtime status` says so. On Linux the same
   shortfall prints a warning and the run starts.
 - `humanish runtime status` (and `--json`, as `capacity`) reports the VM's or this machine's
-  memory and CPUs, each desktop's 3 GiB and 2 CPUs, and how many desktops fit. `humanish doctor
+  memory and CPUs, each desktop's 3 GiB, and how many desktops fit. `humanish doctor
 --study` on a local study adds a local desktop capacity row that says whether the study fits.
 - When Docker kills a local participant's desktop for memory, the participant's error, the run's
   error and `review.md` say the desktop ran out of memory and what to change, with the code

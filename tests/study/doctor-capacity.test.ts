@@ -62,8 +62,8 @@ describe("doctor's local desktop capacity", () => {
     ] as const) {
       const check = await capacityRow(participants, vm);
       expect(check?.ok, `${participants} participants`).toBe(fits);
-      expect(check?.message).toContain("8 GiB and 6 CPUs");
-      expect(check?.message).toContain("3 GiB and 2 CPUs");
+      expect(check?.message).toMatch(/8 GiB/);
+      expect(check?.message).toContain("reserves 3 GiB");
       expect(check?.message).toContain(fits ? "fits" : "holds 2");
     }
   });

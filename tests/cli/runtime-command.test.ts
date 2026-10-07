@@ -79,7 +79,7 @@ describe("humanish runtime", () => {
     expect(JSON.parse(json.stdout)).toMatchObject({ capacity });
     const human = await runCli(["runtime", "status"]);
     expect(human.stdout).toContain("8 GiB");
-    expect(human.stdout).toContain("3 GiB and 2 CPUs");
+    expect(human.stdout).toContain("reserves 3 GiB");
     expect(human.stdout).toContain("2 desktops fit");
   });
 });

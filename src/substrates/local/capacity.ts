@@ -39,13 +39,21 @@ export interface LocalCapacity {
   readonly reservedMemoryGiB: number;
   readonly perDesktop: { readonly memoryGiB: number; readonly cpus: number };
   readonly desktops: number;
+  /**
+   * More desktops fit by memory than by CPUs at 2 each, so busy desktops share CPU time and run
+   * slower. A CPU quota throttles; it does not kill, so CPUs never lower `desktops`.
+   */
+  readonly sharesCpus?: true;
   /** No humanish Lima VM exists yet: the size is the one setup would create. */
   readonly planned?: true;
   /** The Mac's own memory and CPUs, which a Lima VM cannot exceed. */
   readonly machine?: { readonly memoryGiB: number; readonly cpus: number };
 }
 
-/** Desktops that fit in a host of this size, after the host's own memory, by memory and by CPUs. */
+/**
+ * Desktops that fit in a host of this size, after the host's own memory. Memory decides: a desktop
+ * past it is killed, while one past the CPUs only runs slower.
+ */
 export function localCapacity(
   host: LocalCapacity["host"],
   size: MachineSize,
@@ -62,7 +70,8 @@ export function localCapacity(
     cpus: size.cpus,
     reservedMemoryGiB: HOST_RESERVED_MEMORY_GIB,
     perDesktop: { ...DESKTOP_RESERVATION },
-    desktops: Math.max(0, Math.min(byMemory, byCpus)),
+    desktops: Math.max(0, byMemory),
+    ...(byMemory > byCpus ? { sharesCpus: true as const } : {}),
     ...(more.planned ? { planned: true as const } : {}),
     ...(more.machine === undefined
       ? {}
@@ -120,14 +129,17 @@ function desktopsFit(count: number, future = false): string {
 
 /** The capacity in a sentence or two: the host's size, what each desktop takes and how many fit. */
 export function describeCapacity(capacity: LocalCapacity): string {
-  const each = `each participant desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs`;
+  const each = `each participant desktop reserves ${capacity.perDesktop.memoryGiB} GiB`;
+  const cpus = capacity.sharesCpus
+    ? ` The desktops share ${capacity.cpus} CPUs, so they run slower when all of them are busy.`
+    : "";
   const size = `${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs`;
   if (capacity.host === "linux-host")
-    return `This machine has ${size}. After ${capacity.reservedMemoryGiB} GiB for the system, ${each}, so ${desktopsFit(capacity.desktops)} at once.`;
+    return `This machine has ${size}. After ${capacity.reservedMemoryGiB} GiB for the system, ${each}, so ${desktopsFit(capacity.desktops)} at once.${cpus}`;
   const vm = capacity.planned
     ? `Setup will create the humanish Lima VM with ${size}.`
     : `The humanish Lima VM has ${size}.`;
-  return `${vm} It keeps ${capacity.reservedMemoryGiB} GiB for itself and ${each}, so ${desktopsFit(capacity.desktops, capacity.planned)} at once. To change its size, run ${cli("runtime setup --memory <GiB> --cpus <n>")}.`;
+  return `${vm} It keeps ${capacity.reservedMemoryGiB} GiB for itself and ${each}, so ${desktopsFit(capacity.desktops, capacity.planned)} at once.${cpus} To change its size, run ${cli("runtime setup --memory <GiB> --cpus <n>")}.`;
 }
 
 /**
@@ -146,7 +158,7 @@ export function capacityShortfall(
       : capacity.planned
         ? "the humanish Lima VM that setup creates"
         : "the humanish Lima VM";
-  const holds = `${host} holds ${fits}: it has ${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs, keeps ${capacity.reservedMemoryGiB} GiB for ${capacity.host === "lima-vm" ? "itself" : "the system"}, and each desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs.`;
+  const holds = `${host} holds ${fits}: it has ${capacity.memoryGiB} GiB, keeps ${capacity.reservedMemoryGiB} GiB for ${capacity.host === "lima-vm" ? "itself" : "the system"}, and each desktop reserves ${capacity.perDesktop.memoryGiB} GiB.`;
   const runs = `This study runs ${plural(needed, "participant desktop")} at once, and ${holds}`;
   const cloud = [
     "Run it on cloud desktops, which have no local memory limit. In the study file, set these two fields, add `subject.serve` with the command that starts your app, and provide E2B_API_KEY:",
@@ -163,16 +175,12 @@ export function capacityShortfall(
     return {
       warning: `${runs} The run starts anyway because free memory on Linux varies, but a desktop that runs out of memory is killed and its participant fails. To avoid that, run it on cloud desktops (\`subject.source: local-tree\` and \`execution.target: e2b-desktop\`, with a \`subject.serve\` command)${fits === 0 ? "" : `, or set \`execution.concurrency: ${fits}\``}.`,
     };
-  const wanted = vmSizeFor(needed);
-  const size = {
-    memoryGiB: Math.max(wanted.memoryGiB, Math.ceil(capacity.memoryGiB)),
-    cpus: Math.max(wanted.cpus, capacity.cpus),
-  };
+  const memoryGiB = Math.max(vmSizeFor(needed).memoryGiB, Math.ceil(capacity.memoryGiB));
   const machine = capacity.machine;
   const bigger =
-    machine !== undefined && (size.memoryGiB > machine.memoryGiB || size.cpus > machine.cpus)
-      ? `This Mac has ${machine.memoryGiB} GiB and ${machine.cpus} CPUs, too few for a VM that holds ${needed} desktops.`
-      : `Give the VM room for ${needed} desktops: ${cli(`runtime setup --memory ${size.memoryGiB} --cpus ${size.cpus}`)}`;
+    machine !== undefined && memoryGiB > machine.memoryGiB
+      ? `This Mac has ${machine.memoryGiB} GiB, too little for a VM that holds ${needed} desktops.`
+      : `Give the VM room for ${needed} desktops: ${cli(`runtime setup --memory ${memoryGiB}`)}`;
   const steps = [cloud.join("\n"), bigger, ...fewer];
   return {
     refusal: [
