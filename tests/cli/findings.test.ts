@@ -173,7 +173,7 @@ describe("a ready analysis", () => {
     // The headline and experience describe the claim the reviewer replaced.
     const f1 = lines.indexOf("finding-1 Creation stalled once.");
     expect(lines[f1 + 1]).toBe(
-      "   Corrected in human review: the reviewer's claim replaces the original headline and account.",
+      "   Corrected in human review. The reviewer's claim replaces the original headline and account.",
     );
     expect(lines).not.toContain("finding-1 The participant could not create an item.");
     expect(lines.join("\n")).not.toContain("They were trying to add an item.");
@@ -182,6 +182,27 @@ describe("a ready analysis", () => {
     );
   });
 
+  it("marks findings stale when the run changed after the analysis, and names the command to redo it", () => {
+    const loaded: LoadedAnalysis = {
+      state: "stale",
+      analysis: syntheticArtifact(),
+      corrections: [],
+      warnings: ["ANALYSIS_SOURCE_CHANGED"],
+    };
+    const view = analysisFindings(source(loaded));
+    expect(view).toMatchObject({
+      state: "stale",
+      reason: "ANALYSIS_SOURCE_CHANGED",
+      next: "humanish analyze --run synthetic-study --max-cost 3",
+    });
+    expect(view.findings).toHaveLength(1);
+    expect(formatFindingsSummary(view, "humanish review --run synthetic-study")[0]).toBe(
+      "findings: 1 (stale)",
+    );
+  });
+});
+
+describe("headlines and design findings", () => {
   it("leads each finding with its headline and experience, with its title and evidence beneath", () => {
     const view = analysisFindings(source(ready(syntheticArtifact())));
     expect(view.findings[0]).toMatchObject({
@@ -263,6 +284,15 @@ describe("a ready analysis", () => {
     ]);
   });
 
+  it("prints a headline without an experience line when the experience is missing", () => {
+    const analysis = syntheticArtifact();
+    delete analysis.result!.findings[0]!.experience;
+    const lines = formatFindings(analysisFindings(source(ready(analysis))));
+    const f1 = lines.indexOf("finding-1 The participant could not create an item.");
+    expect(lines[f1 + 1]).toBe("   evidence: Item creation was blocked");
+    expect(lines).not.toContain("   null");
+  });
+
   it("says when the design review found nothing in the captures", () => {
     const analysis = syntheticArtifact();
     analysis.result!.designFindings = [];
@@ -292,25 +322,6 @@ describe("a ready analysis", () => {
       "- finding-1 blocked task, medium confidence, no recovery observed: Item creation was blocked",
       "all findings: humanish review",
     ]);
-  });
-
-  it("marks findings stale when the run changed after the analysis, and names the command to redo it", () => {
-    const loaded: LoadedAnalysis = {
-      state: "stale",
-      analysis: syntheticArtifact(),
-      corrections: [],
-      warnings: ["ANALYSIS_SOURCE_CHANGED"],
-    };
-    const view = analysisFindings(source(loaded));
-    expect(view).toMatchObject({
-      state: "stale",
-      reason: "ANALYSIS_SOURCE_CHANGED",
-      next: "humanish analyze --run synthetic-study --max-cost 3",
-    });
-    expect(view.findings).toHaveLength(1);
-    expect(formatFindingsSummary(view, "humanish review --run synthetic-study")[0]).toBe(
-      "findings: 1 (stale)",
-    );
   });
 });
 

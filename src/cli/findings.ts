@@ -629,9 +629,13 @@ function findingLines(finding: FindingView, runRoot: string): string[] {
       ? [`${finding.id} ${finding.title}`]
       : [
           `${finding.id} ${lead.headline}`,
-          lead.corrected
-            ? "   Corrected in human review: the reviewer's claim replaces the original headline and account."
-            : `   ${finding.experience}`,
+          ...(lead.corrected
+            ? [
+                "   Corrected in human review. The reviewer's claim replaces the original headline and account.",
+              ]
+            : finding.experience === null
+              ? []
+              : [`   ${finding.experience}`]),
           `   evidence: ${finding.title}`,
         ]),
     `   impact: ${IMPACT_TEXT[finding.impact]} · confidence: ${finding.confidence} · recovery: ${RECOVERY_TEXT[finding.recovery]}`,

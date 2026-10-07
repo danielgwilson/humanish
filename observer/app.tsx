@@ -96,17 +96,19 @@ export function App({
   const [concernsOpen, setConcernsOpen] = useState(false);
   const reportIds = useRef<string[]>([]);
   reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
-  const hasConcerns = useRef(false);
-  hasConcerns.current = report?.concernReviews !== undefined;
-  const hasDesign = useRef(false);
-  hasDesign.current = !!report?.designFindings?.length;
+  // The report sections a recording can return to.
+  const returnSections = useRef({ concerns: false, design: false });
+  returnSections.current = {
+    concerns: report?.concernReviews !== undefined,
+    design: !!report?.designFindings?.length,
+  };
   const readSource = () =>
     recordingSource(
       window.history.state,
       currentRunId.current,
       reportIds.current,
-      hasConcerns.current,
-      hasDesign.current,
+      returnSections.current.concerns,
+      returnSections.current.design,
     );
   const [source, setSource] = useState<RecordingSource>(readSource);
   const reportActive = hasFindingsView && reportRoute !== null;
