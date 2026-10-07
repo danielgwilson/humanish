@@ -42,6 +42,7 @@ const STORE_STATUS: Record<RunNoteErrorCode, number> = {
   HUMANISH_INVALID_RUN_BUNDLE: 409,
   HUMANISH_NOTES_UNREADABLE: 409,
   HUMANISH_NOTES_FULL: 409,
+  HUMANISH_NOTE_ID_TAKEN: 409,
 };
 
 export interface NotesWriterOptions {

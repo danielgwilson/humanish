@@ -223,7 +223,10 @@ export async function serveRunPath(
     return;
   }
 
-  if (path.extname(filePath).toLowerCase() === ".mp4") {
+  // Every file under notes/ is read within the note limit, whatever its name, so media handling
+  // never streams one.
+  const notePath = derivedRoot === RUN_NOTES_DIR;
+  if (!notePath && path.extname(filePath).toLowerCase() === ".mp4") {
     await serveContainedMedia(runRoot, filePath, response, request);
     return;
   }
@@ -233,11 +236,10 @@ export async function serveRunPath(
     return;
   }
   try {
-    // A note file is served within the limit its readers keep.
     const body = await readContainedFile(
       runRoot,
       filePath,
-      derivedRoot === RUN_NOTES_DIR ? { maxBytes: MAX_NOTE_FILE_BYTES } : {},
+      notePath ? { maxBytes: MAX_NOTE_FILE_BYTES } : {},
     );
     if (!body) {
       writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");

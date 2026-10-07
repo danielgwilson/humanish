@@ -617,14 +617,21 @@ Each note a person adds while reviewing a run is its own file in the run directo
 - `author`: `"you"` in this version.
 - `createdAt`, `editedAt`: ISO-8601. Notes cannot be edited yet, so `editedAt` is `null`.
 
-A note file is written once, through a temporary file and a rename inside `notes/`, and never
-rewritten. Adding a note reads no other note, so notes added at the same time from any process
-are all kept, and there is no lock. Readers list at most 1000 entries of `notes/` and read at
-most 500 notes, each within 16 KiB and refused before reading past that; any other entry, or a
-file that is not a note of the run, is skipped and named. A run takes no note past 500.
+A note file is written once and never rewritten: its bytes go to a temporary file inside
+`notes/`, which `link` gives the note's name only when no file has that name, and a taken name
+gets a new id. Adding a note reads no other note, so notes added at the same time from any
+process are all kept, and there is no lock. Readers list at most 1000 entries of `notes/` and
+read at most 500 notes, each within 16 KiB and refused before reading past that; any other
+entry, or a file that is not a note of the run, is skipped and named. The Observer servers serve
+any file under `notes/` only within 16 KiB. A run takes no note past 500.
 `verify` scans the note files with every other run file, so a secret-shaped value in a note
 keeps the run from `share_ready`. A bundle export copies them; an HTML export carries the notes
 read-only after checking the set it read.
+
+Threat model: forged web requests are refused, whether from a page on another site or through a
+name rebound to 127.0.0.1, by the token, Origin and Host checks on `POST /api/notes`. A local
+process with write access to the run directory is out of scope: it already has the user's
+privileges and can change any file in the run.
 
 ## Verify Result Share Safety
 

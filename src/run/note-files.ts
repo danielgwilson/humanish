@@ -1,6 +1,7 @@
 // Reviewer notes on disk: one file per note, notes/<id>.json (humanish.run-note.v1) in the run
-// directory. A note is written once, through a temporary file and a rename, and never rewritten,
-// so a writer never reads or replaces another writer's note and no lock is needed. An id starts
+// directory. A note is written once, to a temporary file that link(2) gives its name only when
+// nothing holds that name, and is never rewritten, so a writer never reads or replaces another
+// writer's note and no lock is needed. An id starts
 // with its creation time, so the files sort in the order they were added, and ends in random
 // bits. Readers list notes/ and read each file within MAX_NOTE_FILE_BYTES, skipping and naming
 // anything that is not a readable note of the run.

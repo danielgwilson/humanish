@@ -70,7 +70,7 @@ describe("reviewer notes in the Observer page", () => {
     ).toEqual({ notes: slotted, write: null });
   });
 
-  it("serves the page without a note file over 16 KiB, and never reads it, page or raw", async () => {
+  it("serves no file under notes/ over 16 KiB, note or media, and never reads it", async () => {
     const { cwd, runDir, note } = await notedRun();
     const oversized = 17 * 1024;
     const big = noteId(1);
@@ -79,20 +79,26 @@ describe("reviewer notes in the Observer page", () => {
       open: false,
       scope: "run",
     });
+    // Written after the saved page is rendered: verify refuses unregistered media in a run.
+    await writeFile(path.join(runDir, "notes", "large.mp4"), Buffer.alloc(oversized, 0x20));
     try {
       let page = "";
       let raw = 0;
+      let media = 0;
       const read = await bytesReadDuring(async () => {
         const response = await fetch(new URL("/observer/index.html", server.url));
         expect(response.status).toBe(200);
         page = await response.text();
         raw = (await fetch(new URL(`/notes/${big}.json`, server.url))).status;
+        // Media under notes/ gets the note limit too, before any media handling.
+        media = (await fetch(new URL("/notes/large.mp4", server.url))).status;
       });
 
       expect(notesSlot(page)).toMatchObject({
-        notes: { runId: RUN, notes: [note], skipped: 1 },
+        notes: { runId: RUN, notes: [note], skipped: 2 },
       });
       expect(raw).toBe(404);
+      expect(media).toBe(404);
       expect(read).toBeLessThan(oversized);
       const small = await fetch(new URL(`/notes/${note.id}.json`, server.url));
       expect(small.status).toBe(200);

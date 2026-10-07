@@ -5,7 +5,7 @@
 import type { ActorTraceItem } from "../actors/contract.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
-import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
+import { writeNewContainedOutputFile } from "./contained-output.js";
 import { loadRunBundlePrepared } from "./locate.js";
 import {
   countRunNotes,
@@ -21,6 +21,7 @@ import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.
 import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStream } from "./streams.js";
 import { transientCommsKnownValueScrub } from "./transient-comms-secrets.js";
+import { isNodeError } from "./type-guards.js";
 
 export {
   MAX_NOTE_TEXT,
@@ -31,6 +32,8 @@ export {
 } from "./note-files.js";
 
 const DEFAULT_AUTHOR = "you";
+/** New ids a note tries when the one before was taken. */
+const PUBLISH_ATTEMPTS = 5;
 
 export interface RunNoteInput {
   atMs: number;
@@ -45,7 +48,8 @@ export type RunNoteErrorCode =
   | "HUMANISH_NOTE_UNKNOWN_PARTICIPANT"
   | "HUMANISH_NOTE_OUTSIDE_RUN"
   | "HUMANISH_NOTES_UNREADABLE"
-  | "HUMANISH_NOTES_FULL";
+  | "HUMANISH_NOTES_FULL"
+  | "HUMANISH_NOTE_ID_TAKEN";
 
 export type AddRunNoteResult =
   /** `scrubbed`: redaction replaced part of the text before it was written. */
@@ -198,8 +202,8 @@ function noteTextProblem(text: string): string | null {
 }
 
 /**
- * Adds a note as a new file, notes/<id>.json. It reads no other note and rewrites nothing, so
- * notes added at the same time, from any process, are all kept.
+ * Adds a note as a new file, notes/<id>.json, published under a name nothing holds. It reads no
+ * other note and replaces nothing, so notes added at the same time, from any process, are all kept.
  */
 export async function addRunNote(
   prepared: PreparedRunArtifactPaths,
@@ -241,8 +245,7 @@ export async function addRunNote(
     (stream) => participant === null || stream.id === participant,
   );
   const now = new Date();
-  const note: RunNote = {
-    id: newRunNoteId(now),
+  const fields: Omit<RunNote, "id"> = {
     atMs,
     participant,
     nearest: nearestItem(streams, clock.startMs + atMs),
@@ -251,11 +254,6 @@ export async function addRunNote(
     createdAt: now.toISOString(),
     editedAt: null,
   };
-  const unusable = (): AddRunNoteResult =>
-    refuse(
-      "HUMANISH_NOTES_UNREADABLE",
-      `The notes folder in run ${bundle.runId} is not a plain folder inside the run, so no note was added. Move it out of the run directory and add the note again.`,
-    );
   try {
     // A count of the files notes/ lists; no note is read.
     if ((await countRunNotes(prepared)) >= MAX_RUN_NOTES)
@@ -263,16 +261,29 @@ export async function addRunNote(
         "HUMANISH_NOTES_FULL",
         `Run ${bundle.runId} already has ${MAX_RUN_NOTES} notes, the most one run keeps.`,
       );
-    // The 48 random bits make a taken id unlikely; one that is taken is never written over.
-    if (!(await containedPathAbsent(prepared, runNoteFile(note.id))))
-      throw new Error("The new note's id is taken.");
-    await writeContainedOutputFile(
-      prepared,
-      runNoteFile(note.id),
-      encodeRunNote(note, bundle.runId),
-    );
+    // The note appears only under a name nothing holds; a taken name gets a new id.
+    for (let attempt = 0; attempt < PUBLISH_ATTEMPTS; attempt += 1) {
+      const note: RunNote = { id: newRunNoteId(now), ...fields };
+      try {
+        await writeNewContainedOutputFile(
+          prepared,
+          runNoteFile(note.id),
+          encodeRunNote(note, bundle.runId),
+        );
+      } catch (error) {
+        if (isNodeError(error) && error.code === "EEXIST") continue;
+        throw error;
+      }
+      return { ok: true, note, scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim() };
+    }
   } catch {
-    return unusable();
+    return refuse(
+      "HUMANISH_NOTES_UNREADABLE",
+      `The notes folder in run ${bundle.runId} is not a plain folder inside the run, so no note was added. Move it out of the run directory and add the note again.`,
+    );
   }
-  return { ok: true, note, scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim() };
+  return refuse(
+    "HUMANISH_NOTE_ID_TAKEN",
+    `Each new id humanish chose for the note was already taken in run ${bundle.runId}'s notes folder, so no note was added. Something else is writing files there; add the note again.`,
+  );
 }
