@@ -29,14 +29,24 @@ interface PinnedFileIdentity {
   readonly ino: bigint;
 }
 
+/**
+ * The file's bytes, or null when it cannot be read under the root's checks. With `maxBytes`, a
+ * file larger than that is refused from its opened size and the read stops there, so a large file
+ * is never held in memory.
+ */
 export async function readContainedFile(
   root: PinnedDirectory,
   filePathInput: string,
+  options: { maxBytes?: number } = {},
 ): Promise<Buffer | null> {
   const opened = await openContainedFile(root, filePathInput);
   if (!opened) return null;
   try {
-    const body = await opened.handle.readFile();
+    const body =
+      options.maxBytes === undefined
+        ? await opened.handle.readFile()
+        : await readAtMost(opened.handle, opened.size, options.maxBytes);
+    if (body === null) return null;
     // A write that landed during the read changed the file's mtime and ctime.
     if (
       root.admitsFile !== undefined &&
@@ -103,6 +113,26 @@ export async function openContainedFile(
   } catch {
     if (handle) await handle.close().catch(() => undefined);
     return null;
+  }
+}
+
+/** At most `maxBytes` from the start of an opened file, or null when it holds more. */
+async function readAtMost(
+  handle: FileHandle,
+  size: number,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  if (size > maxBytes) return null;
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const chunk = Buffer.alloc(Math.min(64 * 1024, maxBytes + 1 - total));
+    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
+    if (bytesRead === 0) return Buffer.concat(chunks, total);
+    total += bytesRead;
+    // The file grew past the limit after it was opened.
+    if (total > maxBytes) return null;
+    chunks.push(chunk.subarray(0, bytesRead));
   }
 }
 

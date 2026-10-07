@@ -9,11 +9,8 @@ import path from "node:path";
 import type { ActorTraceItem } from "../actors/contract.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
-import {
-  containedPathAbsent,
-  readContainedRegularFile,
-  writeContainedOutputFile,
-} from "./contained-output.js";
+import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
+import { readBoundedFileResult } from "./evidence-files.js";
 import { loadRunBundlePrepared } from "./locate.js";
 import {
   physicalCwdOf,
@@ -173,7 +170,7 @@ function isRunNote(value: unknown): value is RunNote {
 }
 
 /** A notes file for `runId`, or null when the value is not one. Unknown fields are dropped. */
-export function parseRunNotes(value: unknown, runId: string): RunNotes | null {
+function parseRunNotes(value: unknown, runId: string): RunNotes | null {
   if (
     !isRecord(value) ||
     value.schema !== RUN_NOTES_SCHEMA ||
@@ -204,22 +201,26 @@ export function parseRunNotes(value: unknown, runId: string): RunNotes | null {
 }
 
 /** The bytes a notes.json may hold: 500 notes at the longest text, with room for JSON escapes. */
-const MAX_NOTES_BYTES = 8 * 1024 * 1024;
+export const MAX_NOTES_BYTES = 8 * 1024 * 1024;
+
+/** The notes in bytes read from a run's notes.json, or null when they are not a notes file. */
+export function decodeRunNotes(bytes: Buffer, runId: string): RunNotes | null {
+  try {
+    return parseRunNotes(JSON.parse(bytes.toString("utf8")), runId);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The run's notes, or null when it has no notes.json. Throws HUMANISH_NOTES_UNREADABLE when a
- * notes.json is there but cannot be read safely or is not a notes file for this run.
+ * notes.json is there but cannot be read safely, is over MAX_NOTES_BYTES or is not a notes file for
+ * this run. The read stops at the limit, before anything is decoded.
  */
 export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<RunNotes | null> {
   if (await containedPathAbsent(prepared, RUN_NOTES_FILE)) return null;
-  const bytes = await readContainedRegularFile(prepared, RUN_NOTES_FILE);
-  let parsed: RunNotes | null = null;
-  try {
-    if (bytes !== null && bytes.length <= MAX_NOTES_BYTES)
-      parsed = parseRunNotes(JSON.parse(bytes.toString("utf8")), runIdOf(prepared));
-  } catch {
-    parsed = null;
-  }
+  const read = await readBoundedFileResult(prepared, RUN_NOTES_FILE, MAX_NOTES_BYTES);
+  const parsed = read.state === "read" ? decodeRunNotes(read.bytes, runIdOf(prepared)) : null;
   if (parsed === null) throw new Error("HUMANISH_NOTES_UNREADABLE");
   return parsed;
 }

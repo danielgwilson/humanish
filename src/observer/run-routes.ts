@@ -18,7 +18,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
-import { parseRunNotes, RUN_NOTES_FILE, type RunNotes } from "../run/notes.js";
+import { decodeRunNotes, MAX_NOTES_BYTES, RUN_NOTES_FILE, type RunNotes } from "../run/notes.js";
 import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
@@ -104,10 +104,13 @@ async function readServedAnalysisSpend(
 /** The run's reviewer notes as served, or null when it has none or they cannot be read. */
 async function readServedNotes(runRoot: PinnedDirectory): Promise<RunNotes | null> {
   try {
-    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, RUN_NOTES_FILE));
-    return bytes === null
-      ? null
-      : parseRunNotes(JSON.parse(bytes.toString("utf8")), path.basename(runRoot.physicalPath));
+    // The admission and hash checks of a --safe root apply to these bytes as to any other file.
+    const bytes = await readContainedFile(
+      runRoot,
+      path.join(runRoot.physicalPath, RUN_NOTES_FILE),
+      { maxBytes: MAX_NOTES_BYTES },
+    );
+    return bytes === null ? null : decodeRunNotes(bytes, path.basename(runRoot.physicalPath));
   } catch {
     return null;
   }

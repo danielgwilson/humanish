@@ -1,15 +1,16 @@
 // The Observer page carries a run's reviewer notes in its run-notes slot, and a token for adding
 // one only when a loopback server asks for it.
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { renderObserverHtml } from "../../src/observer/artifact.js";
 import { buildObserverData } from "../../src/observer/data.js";
-import { renderObserver } from "../../src/observer/render.js";
+import { renderObserver, serveObserver } from "../../src/observer/render.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { addRunNote, type RunNotes } from "../../src/run/notes.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
+import { bytesReadDuring } from "../helpers/bytes-read.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { writeTimedRun } from "../helpers/timed-run.js";
 
@@ -57,5 +58,28 @@ describe("reviewer notes in the Observer page", () => {
     expect(
       notesSlot(renderObserverHtml(data, { notes, notesToken: token, snapshot: true })),
     ).toEqual({ notes, write: null });
+  });
+
+  it("serves the page without notes over 8 MiB and never reads them whole", async () => {
+    const { cwd, runDir } = await notedRun();
+    const oversized = 9 * 1024 * 1024;
+    await writeFile(path.join(runDir, "notes.json"), Buffer.alloc(oversized, 0x20));
+    const server = await serveObserver(await renderObserver(cwd, RUN, { open: false }), {
+      open: false,
+      scope: "run",
+    });
+    try {
+      let page = "";
+      const read = await bytesReadDuring(async () => {
+        const response = await fetch(new URL("/observer/index.html", server.url));
+        expect(response.status).toBe(200);
+        page = await response.text();
+      });
+
+      expect(notesSlot(page)).toMatchObject({ notes: null });
+      expect(read).toBeLessThan(oversized);
+    } finally {
+      await server.close();
+    }
   });
 });

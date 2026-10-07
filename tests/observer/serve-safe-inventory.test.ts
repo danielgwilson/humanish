@@ -196,6 +196,43 @@ describe("a change that lands after the admission walk", () => {
     expect(forget).toHaveBeenCalledTimes(1);
   });
 
+  it("does not show reviewer notes whose bytes changed after admission", async () => {
+    const { cwd, runRoot } = await admittedRun();
+    const notes = (text: string) =>
+      JSON.stringify({
+        schema: "humanish.run-notes.v1",
+        runId: RUN,
+        notes: [
+          {
+            id: "note-admitted",
+            atMs: 0,
+            participant: null,
+            nearest: null,
+            text,
+            author: "you",
+            createdAt: "2026-05-01T10:00:00.000Z",
+            editedAt: null,
+          },
+        ],
+      });
+    await writeFile(path.join(runRoot, "notes.json"), notes("Admitted note."));
+    const original = await createShareSafetyAdmission(cwd).admit(RUN);
+    await writeFile(path.join(runRoot, "notes.json"), notes(`Changed ${SECRET}`));
+    const inventory = await readRunInventory(runRoot);
+    if (!original || !inventory) throw new Error("run was not admitted");
+    const base = await startHandler(cwd, async () => ({
+      inventory,
+      hashes: original.hashes,
+      forget: vi.fn(),
+    }));
+
+    const page = await get(base, runPath("observer/index.html"));
+
+    expect(page.status).toBe(200);
+    expect(page.body.includes(SECRET)).toBe(false);
+    expect(page.body).toContain('<script id="run-notes" type="application/json">{"notes":null');
+  });
+
   it("verifies the run again after a hash mismatch", async () => {
     const { cwd } = await admittedRun();
     const verify = vi.fn(verifyRun);
