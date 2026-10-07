@@ -140,7 +140,13 @@ export function capacityShortfall(
 ): { refusal: string } | { warning: string } | undefined {
   const fits = capacity.desktops;
   if (needed <= fits) return undefined;
-  const holds = `${capacity.host === "lima-vm" ? "the humanish Lima VM" : "this machine"} holds ${fits}: it has ${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs, keeps ${capacity.reservedMemoryGiB} GiB for ${capacity.host === "lima-vm" ? "itself" : "the system"}, and each desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs.`;
+  const host =
+    capacity.host === "linux-host"
+      ? "this machine"
+      : capacity.planned
+        ? "the humanish Lima VM that setup creates"
+        : "the humanish Lima VM";
+  const holds = `${host} holds ${fits}: it has ${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs, keeps ${capacity.reservedMemoryGiB} GiB for ${capacity.host === "lima-vm" ? "itself" : "the system"}, and each desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs.`;
   const runs = `This study runs ${plural(needed, "participant desktop")} at once, and ${holds}`;
   const cloud = [
     "Run it on cloud desktops, which have no local memory limit. In the study file, set these two fields, add `subject.serve` with the command that starts your app, and provide E2B_API_KEY:",
