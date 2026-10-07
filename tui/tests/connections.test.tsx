@@ -166,8 +166,8 @@ function readable(frame: string, columns: number): void {
   expect(lines.length).toBeLessThanOrEqual(24);
 }
 
-describe("Connections", () => {
-  it("names the shortcut screen and what the connections screen holds in the footer", async () => {
+describe("the footer", () => {
+  it("names the shortcut screen and what the connections screen holds", async () => {
     const surface = await renderToText(<App options={options()} onKeyEntry={vi.fn()} />, {
       columns: 80,
       until: (frame) => frame.includes("q quit"),
@@ -181,6 +181,9 @@ describe("Connections", () => {
       surface.unmount();
     }
   });
+});
+
+describe("Connections", () => {
   it.each([80, 45])(
     "is discoverable, readable and returns to the prior screen at %i columns",
     async (columns) => {

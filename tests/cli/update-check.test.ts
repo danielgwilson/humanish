@@ -91,8 +91,8 @@ describe("the update notice", () => {
   it("records the registry's latest version with a GET that carries no identifying data", async () => {
     const cachePath = path.join(configHome, "humanish", "update-check.json");
     const requests: Array<{ url: string; init: RequestInit | undefined }> = [];
-    const fetchFn = async (url: string | URL | Request, init?: RequestInit) => {
-      requests.push({ url: String(url), init });
+    const fetchFn = async (url: string, init?: RequestInit) => {
+      requests.push({ url, init });
       // The shape registry.npmjs.org returned for this endpoint on 2026-10-07.
       return Response.json({ latest: "0.112.0" });
     };

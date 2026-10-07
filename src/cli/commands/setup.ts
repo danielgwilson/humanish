@@ -262,6 +262,31 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
   return (await promptSecret(promptLabel, process.stdin, process.stderr)) || null;
 }
 
+/** `humanish keys` and `humanish keys status`: each provider key's source, never a value. */
+async function writeKeyStatus(command: Command, io: CliIo): Promise<void> {
+  const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
+  const missing = rows.filter((row) => row.source === null).length;
+  const result: KeysResult = {
+    schema: KEYS_RESULT_SCHEMA,
+    ok: true,
+    action: "status",
+    store: userKeyStorePath(process.env),
+    names: rows.filter((row) => row.source !== null).map((row) => row.name),
+    keys: rows.map(({ name, use, source, hint }) => ({
+      name,
+      use,
+      source,
+      ...(source === null ? { hint } : {}),
+    })),
+    message:
+      missing === 0
+        ? "Every provider key is set."
+        : `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing.`,
+  };
+  writeResult(command, io, result, () => formatKeyStatus(rows));
+  io.setExitCode(0);
+}
+
 /** "A", "A and B", "A, B and C". */
 function listNames(names: readonly string[]): string {
   return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
@@ -340,29 +365,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
       "Show each provider key humanish uses: where it comes from, or the command that adds it. Values are never printed.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (_options: { json?: boolean }, command) => {
-      const rows = await keyStatus({ cwd: process.cwd(), env: process.env });
-      const missing = rows.filter((row) => row.source === null).length;
-      const result: KeysResult = {
-        schema: KEYS_RESULT_SCHEMA,
-        ok: true,
-        action: "status",
-        store: userKeyStorePath(process.env),
-        names: rows.filter((row) => row.source !== null).map((row) => row.name),
-        keys: rows.map(({ name, use, source, hint }) => ({
-          name,
-          use,
-          source,
-          ...(source === null ? { hint } : {}),
-        })),
-        message:
-          missing === 0
-            ? "Every provider key is set."
-            : `${plural(missing, "provider key")} ${missing === 1 ? "is" : "are"} missing.`,
-      };
-      writeResult(command, io, result, () => formatKeyStatus(rows));
-      io.setExitCode(0);
-    });
+    .action(async (_options: { json?: boolean }, command) => writeKeyStatus(command, io));
 
   keys
     .command("set")
