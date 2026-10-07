@@ -100,7 +100,9 @@ describe("reviewer notes on a recorded run", () => {
     }
     await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
   });
+});
 
+describe("the text a note keeps", () => {
   it("replaces secret-shaped values and local paths before the note is written", async () => {
     const { runDir, prepared } = await timedRun();
     const secret = "sk-" + "syntheticvalue1234567890abcdef";
@@ -156,7 +158,9 @@ describe("reviewer notes on a recorded run", () => {
 
     expect(added.ok && added.note.text).toBe("After the run: [REDACTED_SECRET]");
   });
+});
 
+describe("notes.json in the run directory", () => {
   it("points a note on the whole run at the latest moment any participant recorded", async () => {
     const { prepared } = await timedRun();
 

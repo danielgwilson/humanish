@@ -171,8 +171,8 @@ describe("adding a reviewer note", () => {
     await type("Early stalls.");
     await click(document.querySelector("form.note-form button[type=submit]"));
 
-    const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-    expect(JSON.parse(String(init.body))).toMatchObject({ atMs: 3000, participant: "early" });
+    const [, init] = fetch.mock.calls[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(init.body)).toMatchObject({ atMs: 3000, participant: "early" });
     expect(document.body.textContent).toContain("The note was not saved");
   });
 
