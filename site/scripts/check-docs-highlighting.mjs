@@ -20,13 +20,28 @@ import { join, relative } from "node:path";
 const MIN_COLORS = 4;
 const dist = process.argv[2] ?? ".next";
 const app = join(dist, "server", "app");
+const routeCache = join(dist, "server", "route-cache", "APP_PAGE");
+
+/**
+ * Directories that hold prerendered App Router pages. A plain `next build` writes them under
+ * server/app. With a deployment adapter, which Vercel's build sets through NEXT_ADAPTER_PATH,
+ * next 16.4 writes each route's pages under server/route-cache/APP_PAGE/<route hash>/$ instead.
+ */
+function pageRoots() {
+  if (!existsSync(routeCache)) return [app];
+  return [app, ...readdirSync(routeCache).map((route) => join(routeCache, route, "$"))];
+}
 
 /** /docs prerenders to docs.html and every other docs page to docs/<slug>.html. */
 function docsPages() {
-  const pages = readdirSync(join(app, "docs"), { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".html"))
-    .map((entry) => join(entry.parentPath, entry.name));
-  return existsSync(join(app, "docs.html")) ? [join(app, "docs.html"), ...pages] : pages;
+  return pageRoots().flatMap((root) => {
+    const pages = existsSync(join(root, "docs"))
+      ? readdirSync(join(root, "docs"), { recursive: true, withFileTypes: true })
+          .filter((entry) => entry.isFile() && entry.name.endsWith(".html"))
+          .map((entry) => join(entry.parentPath, entry.name))
+      : [];
+    return existsSync(join(root, "docs.html")) ? [join(root, "docs.html"), ...pages] : pages;
+  });
 }
 
 /** For each color in one theme, the colors it pairs with in the other and the pages they are on. */
@@ -36,8 +51,9 @@ function pair(theme, color, other, page) {
   partners[theme].set(color, byColor.set(other, (byColor.get(other) ?? new Set()).add(page)));
 }
 
+const files = docsPages();
 let tokens = 0;
-for (const file of docsPages()) {
+for (const file of files) {
   const page = relative(dist, file);
   for (const [, light, dark] of readFileSync(file, "utf8").matchAll(
     /--shiki-light:(#[0-9A-Fa-f]{3,8});--shiki-dark:(#[0-9A-Fa-f]{3,8})/g,
@@ -49,7 +65,9 @@ for (const file of docsPages()) {
 }
 
 const failures = [];
-if (tokens === 0) failures.push(`no highlighted code in the docs pages under ${app}`);
+if (files.length === 0)
+  failures.push(`no prerendered docs pages under ${app} or ${routeCache}; run it after next build`);
+else if (tokens === 0) failures.push(`no highlighted code in the ${files.length} docs pages`);
 for (const theme of ["light", "dark"]) {
   for (const [color, others] of partners[theme]) {
     if (others.size < 2) continue;
@@ -67,4 +85,6 @@ if (failures.length > 0) {
   for (const failure of failures) process.stderr.write(`  ${failure}\n`);
   process.exit(1);
 }
-process.stdout.write(`docs highlighting: ${tokens} tokens in ${partners.light.size} color pairs\n`);
+process.stdout.write(
+  `docs highlighting: ${tokens} tokens in ${partners.light.size} color pairs on ${files.length} pages\n`,
+);
