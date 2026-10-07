@@ -51,6 +51,11 @@ const job = (
   updatedAt: "2026-10-04T00:00:00.000Z",
 });
 
+const overCap: AutomaticAnalysisView = {
+  ...job("skipped", "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED"),
+  admission: { expectedCostUsd: 2.952275, worstCaseCostUsd: 3.360675, maxCostUsd: 3 },
+};
+
 describe("a ready analysis", () => {
   it("projects every finding with its participants, evidence moments and capture files", () => {
     const view = analysisFindings(source(published("try-live")));
@@ -350,6 +355,13 @@ describe("a run without findings", () => {
       "humanish analyze --run synthetic-study --max-cost 3 --dry-run",
     ],
     [
+      "an analysis refused for its cost",
+      none(overCap),
+      "live",
+      "skipped",
+      "humanish analyze --run synthetic-study --max-cost 4",
+    ],
+    [
       "a run with no participant evidence",
       none(job("skipped", "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE")),
       "live",
@@ -390,6 +402,13 @@ describe("a run without findings", () => {
       expect(lines.slice(1)).toEqual(next === null ? [] : [`next: ${next}`]);
     },
   );
+
+  it("says what an analysis refused for its cost would cost", () => {
+    const { message } = analysisFindings(source(none(overCap)));
+    expect(message).toContain("$2.95");
+    expect(message).toContain("$3.36");
+    expect(message).toContain("$3 cap");
+  });
 
   it.each([
     [

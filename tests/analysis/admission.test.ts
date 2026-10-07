@@ -113,10 +113,13 @@ function packet(shape: PacketShape): AnalysisInput {
   return input;
 }
 
+type OpenAIConfig = Exclude<AnalysisConfig, { provider: "codex" }>;
+
 /** The configuration an undeclared analysis gets, as automatic analysis resolves it. */
-function defaultConfig(): AnalysisConfig {
+function defaultConfig(): OpenAIConfig {
   const resolved = resolveAutomaticAnalysis(undefined);
-  if (!resolved.ok || !resolved.config) throw new Error("the default analysis did not resolve");
+  if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
+    throw new Error("the default analysis did not resolve to OpenAI");
   return resolved.config;
 }
 

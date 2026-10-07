@@ -22,6 +22,7 @@ import { readAnalysisVersion } from "./store.js";
 import { readAnalysisExecution } from "./store-executions.js";
 import { hashAnalysisValue } from "./validation.js";
 import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./types.js";
+import type { RefusedAnalysisCost } from "./admission.js";
 
 export const AUTOMATIC_ANALYSIS_DIRECTORY = "analysis-automatic";
 const AUTOMATIC_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
@@ -45,6 +46,8 @@ export interface AutomaticAnalysisView {
   /** Safe stable code, not provider text. */
   reason: string | null;
   updatedAt: string;
+  /** What the analysis would have cost, when admission refused it for its cost. */
+  admission?: RefusedAnalysisCost;
 }
 
 export interface AutomaticAnalysisOutcome {
@@ -89,6 +92,12 @@ export type AutomaticAnalysisRefusal = "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED";
 const id = z.string().regex(ANALYSIS_ID_PATTERN);
 const date = z.iso.datetime();
 const digest = z.string().regex(SHA256_HEX_PATTERN);
+const usd = z.number().min(0).max(1e9);
+const refusedCostSchema = z.strictObject({
+  expectedCostUsd: usd,
+  worstCaseCostUsd: usd,
+  maxCostUsd: usd,
+});
 const jobSchema = z.strictObject({
   schema: z.literal(AUTOMATIC_ANALYSIS_SCHEMA),
   runId: id,
@@ -107,6 +116,7 @@ const jobSchema = z.strictObject({
   receiptSha256: digest.nullable(),
   startedAt: date.nullable(),
   finishedAt: date.nullable(),
+  admission: refusedCostSchema.optional(),
 });
 type JobRecord = z.infer<typeof jobSchema>;
 const cancelSchema = z.strictObject({
@@ -155,10 +165,11 @@ function parseJob(bytes: Buffer, runId: string): JobRecord {
 export function projectAutomaticAnalysisView(value: unknown): AutomaticAnalysisView | undefined {
   if (value === undefined) return undefined;
   const parsed = jobSchema
-    .pick({ state: true, analysisId: true, reason: true, updatedAt: true })
+    .pick({ state: true, analysisId: true, reason: true, updatedAt: true, admission: true })
     .safeParse(value);
   if (!parsed.success || containsSensitive(JSON.stringify(parsed.data))) return unknown();
-  return parsed.data;
+  const { admission, ...view } = parsed.data;
+  return admission === undefined ? view : { ...view, admission };
 }
 
 async function bindJob(
@@ -226,6 +237,7 @@ export async function readAutomaticAnalysisPrepared(
       analysisId: record.analysisId,
       reason: record.reason,
       updatedAt: record.updatedAt,
+      ...(record.admission === undefined ? {} : { admission: record.admission }),
     };
     const updated = Date.parse(record.updatedAt);
     if (updated > now || (pending(record.state) && now - updated > AUTOMATIC_ANALYSIS_STALE_MS)) {
@@ -292,6 +304,7 @@ export interface AutomaticAnalysisJob {
         | "startedAt"
         | "analysisSha256"
         | "receiptSha256"
+        | "admission"
       >
     >,
   ): Promise<void>;

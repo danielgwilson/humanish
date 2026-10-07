@@ -224,6 +224,31 @@ describe("automatic analysis admission and producer boundary", () => {
       expect(await readFile(file)).toEqual(original);
     },
   );
+  it("a refusal on cost records the expected cost, the worst case and the cap", async () => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    const finished = await publishRun(cwd, "over-cap", { shape: asLiveRecording });
+    const fetch = vi.fn<AnalysisFetch>(async () => {
+      throw new Error("No provider dispatch permitted");
+    });
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "over-cap", dryRun: false, ok: true },
+      finished,
+      { ...config, maxCostUsd: 0.01 },
+      { deps: { analysis: { deps: { apiKey: "synthetic-key", fetch } } } },
+    );
+    const admission = result.automaticAnalysis?.result?.admission;
+    expect((await readRunDetail(cwd, "over-cap"))?.automaticAnalysis).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED",
+      admission: {
+        expectedCostUsd: admission?.estimatedCostUsd,
+        worstCaseCostUsd: admission?.worstCaseCostUsd,
+        maxCostUsd: 0.01,
+      },
+    });
+    expect(admission?.estimatedCostUsd).toBeGreaterThan(0.01);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("first-contact and the release gate preserve their explicit zero-spend product scope", async () => {
     const raw = parseYaml(
       await readFile(path.resolve("humanish/studies/first-contact.yaml"), "utf8"),
@@ -606,9 +631,11 @@ describe("automatic analysis admission and producer boundary", () => {
           admission: {
             allowed: false,
             error: code,
-            inputTokenAllowance: 207482,
-            outputTokenAllowance: 16384,
-            estimatedCostUsd: 3.412725,
+            inputTokenAllowance: 137782,
+            outputTokenAllowance: 32768,
+            estimatedCostUsd: 2.952275,
+            worstCaseCostUsd: 3.360675,
+            maxCostUsd: 3,
             ratesAsOf: "2026-09-03",
           },
           warnings: [],
@@ -635,17 +662,25 @@ describe("automatic analysis admission and producer boundary", () => {
       );
     });
 
-    it("tells a human the command that runs it", () => {
-      const out: string[] = [];
-      const io = {
-        writeOut: (text: string) => out.push(text),
-        writeErr: () => {},
-        setExitCode: () => {},
-      };
-      const command = createProgram(io).command("probe-over-budget");
-      writeResult(command, io, overBudget("analysis_budget_exceeded", "default"), () => "");
-      expect(out.join("")).toContain("humanish analyze --run over-budget --max-cost 4");
-    });
+    it.each(["default", "explicit"] as const)(
+      "tells a human what the %s analysis would cost and the command that runs it",
+      (trigger) => {
+        const out: string[] = [];
+        const io = {
+          writeOut: (text: string) => out.push(text),
+          writeErr: () => {},
+          setExitCode: () => {},
+        };
+        const command = createProgram(io).command("probe-over-budget");
+        writeResult(command, io, overBudget("analysis_budget_exceeded", trigger), () => "");
+        const text = out.join("");
+        expect(text).toContain("$2.95");
+        expect(text).toContain("$3.36");
+        expect(text).toContain("$3 cap");
+        expect(text).toContain("humanish analyze --run over-budget --max-cost 4");
+        expect(text).not.toContain("configuration or question was refused");
+      },
+    );
   });
   it("announces preparation before admission without claiming a provider request", () => {
     const writeErr = vi.fn();
