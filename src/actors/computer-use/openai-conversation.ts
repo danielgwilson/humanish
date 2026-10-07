@@ -94,6 +94,25 @@ export class OpenAiConversation {
     return true;
   }
 
+  /**
+   * The account or model rejected reasoning summaries: stop asking for the rest of the session,
+   * from the request being sent. False when none are asked for, so the rejection stands.
+   */
+  dropReasoningSummaries(): boolean {
+    if (this.reasoningSummary === undefined) return false;
+    this.reasoningSummary = undefined;
+    return true;
+  }
+
+  /**
+   * Whether the server holds the whole session, so a closing report threaded on it reads every
+   * turn. An explicit-context conversation summarizes its oldest turns past its budget, configured
+   * or switched to at runtime.
+   */
+  get serverHoldsSession(): boolean {
+    return this.mode === "threaded" && this.lastResponseId !== undefined;
+  }
+
   /** The trace's account of how the conversation was carried (ActorConversation). */
   record(): ActorConversation {
     return this.evidence.snapshot(this.mode);

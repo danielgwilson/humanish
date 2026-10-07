@@ -54,6 +54,7 @@ function reply(n: number): Record<string, unknown> {
 interface Body {
   previous_response_id?: string;
   store?: boolean;
+  reasoning?: unknown;
   input: unknown[];
 }
 
@@ -173,5 +174,39 @@ describe("the record of a request", () => {
       carriedExchanges: 3,
       carriedScreenshots: 2,
     });
+  });
+});
+
+describe("reasoning summaries", () => {
+  it("stop for the rest of the session once rejected", () => {
+    const conversation = start();
+    const first = conversation.request(turnRequest());
+    expect((first.body() as unknown as Body).reasoning).toEqual({
+      effort: "medium",
+      summary: "auto",
+    });
+    expect(conversation.dropReasoningSummaries()).toBe(true);
+    expect((first.body() as unknown as Body).reasoning).toEqual({ effort: "medium" });
+    first.accept(reply(1));
+
+    const second = conversation.request(turnRequest()).body() as unknown as Body;
+    expect(second.reasoning).toEqual({ effort: "medium" });
+    // Nothing is left to drop, so a second rejection stands.
+    expect(conversation.dropReasoningSummaries()).toBe(false);
+  });
+});
+
+describe("a closing report", () => {
+  it("needs the server to hold the whole session", () => {
+    const threaded = start();
+    expect(threaded.serverHoldsSession).toBe(false);
+    exchange(threaded, 1);
+    expect(threaded.serverHoldsSession).toBe(true);
+    threaded.switchToExplicitContext("stored_item");
+    expect(threaded.serverHoldsSession).toBe(false);
+
+    const carried = start(true);
+    exchange(carried, 1);
+    expect(carried.serverHoldsSession).toBe(false);
   });
 });
