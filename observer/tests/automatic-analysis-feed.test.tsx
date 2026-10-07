@@ -148,11 +148,29 @@ describe("automatic analysis within the existing study shell", () => {
       "Analysis failed.",
     );
     expect(container.textContent).toContain("The displayed report is from a separate analysis.");
-    expect(container.textContent).toContain("Analysis was refused before dispatch.");
-    expect(container.textContent).toContain("higher --max-cost");
+    expect(container.textContent).toContain("Analysis was refused before dispatch:");
+    expect(container.textContent).toContain("--max-cost that admits it");
     expect(container.querySelectorAll("[data-finding]")).toHaveLength(2);
     await click('.study-views a[href="#"]');
     expect(container.querySelector(".gallery")).not.toBeNull();
+  });
+  it("names the costs, the cap and the command for an analysis refused on cost", async () => {
+    remote = {
+      ...NO_ANALYSIS,
+      automatic: {
+        ...job("skipped"),
+        reason: "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED",
+        admission: { expectedCostUsd: 2.952275, worstCaseCostUsd: 3.360675, maxCostUsd: 3 },
+      },
+    };
+    await mount();
+    await click('.study-views a[href="#/report"]');
+    const text = container.textContent;
+    expect(text).toContain("Automatic analysis did not run.");
+    expect(text).toContain("$2.95");
+    expect(text).toContain("$3.36");
+    expect(text).toContain("$3 cap");
+    expect(text).toContain(`humanish analyze --run ${data.run.runId} --max-cost 4`);
   });
   it.each(["queued", "running"] as const)(
     "never polls or promises live progress in a saved %s snapshot",

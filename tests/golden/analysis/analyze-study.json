@@ -58,16 +58,18 @@
       "admission": {
         "allowed": false,
         "error": "analysis_budget_exceeded",
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 0.000001,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
       "ok": false,
       "error": {
         "code": "analysis_budget_exceeded",
-        "message": "The conservative admission estimate exceeds --max-cost. No provider request was sent."
+        "message": "The expected cost is $0.21 and the worst case is $0.21. With a 10% margin the expected cost is over the $0.000001 cap, so no request was sent. To run it, raise the cap: humanish analyze --run analysis-golden --max-cost 1"
       }
     },
     "requests": [],
@@ -83,9 +85,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -104,9 +108,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 32768,
-        "estimatedCostUsd": 0.765335,
+        "estimatedCostUsd": 0.30314,
+        "worstCaseCostUsd": 0.6985,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -128,6 +134,8 @@
         "inputTokenAllowance": null,
         "outputTokenAllowance": null,
         "estimatedCostUsd": null,
+        "worstCaseCostUsd": null,
+        "maxCostUsd": null,
         "ratesAsOf": null
       },
       "warnings": [
@@ -154,9 +162,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       }
     },
@@ -190,9 +200,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -208,7 +220,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -226,25 +238,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "partial"
       }
     ],
@@ -269,7 +281,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -311,7 +323,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -440,9 +452,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -455,7 +469,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "inputTokens": 13543,
         "outputTokens": 221,
         "estimatedCostUsd": 0.07206
@@ -479,9 +493,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -497,7 +513,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-3/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-3/analysis.json"
@@ -515,25 +531,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "partial"
       }
     ],
@@ -560,7 +576,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -603,7 +619,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -732,9 +748,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -750,7 +768,7 @@
         "usageComplete": false,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "error": {
         "code": "analysis_provider_http_error",
@@ -765,19 +783,19 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "failed"
       }
     ],
@@ -802,7 +820,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -835,7 +853,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -911,9 +929,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -929,7 +949,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "error": {
         "code": "analysis_validation_failed_schema_invalid",
@@ -945,25 +965,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "failed"
       }
     ],
@@ -988,7 +1008,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1021,7 +1041,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1097,9 +1117,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 1024,
-        "estimatedCostUsd": 0.130455,
+        "estimatedCostUsd": 0.06362,
+        "worstCaseCostUsd": 0.06362,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1115,7 +1137,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.130455
+        "estimatedAdmissionUsd": 0.06362
       },
       "error": {
         "code": "analysis_admission_estimate_exceeded",
@@ -1130,25 +1152,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.130455
+        "estimatedAdmissionUsd": 0.06362
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.130455
+        "estimatedAdmissionUsd": 0.06362
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.130455
+        "estimatedAdmissionUsd": 0.06362
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.130455,
+        "estimatedAdmissionUsd": 0.06362,
         "status": "partial"
       }
     ],
@@ -1173,7 +1195,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.130455,
+          "estimatedAdmissionUsd": 0.06362,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1215,7 +1237,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.130455,
+          "estimatedAdmissionUsd": 0.06362,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1354,7 +1376,7 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       }
     ],
     "files": {}
@@ -1368,9 +1390,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1386,7 +1410,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "error": {
         "code": "analysis_cancelled",
@@ -1401,13 +1425,13 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "cancelled"
       }
     ],
@@ -1432,7 +1456,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1465,7 +1489,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.273815,
+          "estimatedAdmissionUsd": 0.20698,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1541,9 +1565,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1559,7 +1585,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "error": {
@@ -1573,25 +1599,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "partial"
       }
     ],
@@ -1609,9 +1635,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1627,7 +1655,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "error": {
         "code": "ANALYSIS_PUBLICATION_FAILED",
@@ -1640,25 +1668,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "partial"
       }
     ],
@@ -1675,9 +1703,11 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21995,
+        "inputTokenAllowance": 8628,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.273815,
+        "estimatedCostUsd": 0.20698,
+        "worstCaseCostUsd": 0.20698,
+        "maxCostUsd": 5,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [
@@ -1695,7 +1725,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -1706,25 +1736,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815
+        "estimatedAdmissionUsd": 0.20698
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.273815,
+        "estimatedAdmissionUsd": 0.20698,
         "status": "partial"
       }
     ],
@@ -1746,6 +1776,8 @@
         "inputTokenAllowance": null,
         "outputTokenAllowance": null,
         "estimatedCostUsd": null,
+        "worstCaseCostUsd": null,
+        "maxCostUsd": null,
         "ratesAsOf": null
       },
       "warnings": [],
@@ -2007,6 +2039,8 @@
         "inputTokenAllowance": null,
         "outputTokenAllowance": null,
         "estimatedCostUsd": null,
+        "worstCaseCostUsd": null,
+        "maxCostUsd": null,
         "ratesAsOf": null
       },
       "warnings": [],

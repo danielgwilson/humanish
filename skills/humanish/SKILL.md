@@ -105,6 +105,11 @@ not local inference or the participant's existing conversation. See
 [the analysis contract](../../docs/contracts/study-analysis.md) for the current
 CLI/model qualification and setup limits.
 
+When post-run analysis is refused for its cost, the run output and `humanish
+review` give its expected cost, its worst case and the command that runs it,
+`humanish analyze --run <id> --max-cost <n>`. Show the user those costs and run
+the command only once they agree to the spend.
+
 Do not pass numeric `maxCostUsd`/`maxOutputTokens` or their CLI flags to the
 account branch. It cannot enforce those ceilings and rejects them. Account dollar
 cost remains unknown even when token usage is reported. There is no fallback to

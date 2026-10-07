@@ -28,6 +28,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- Post-run analysis is no longer refused on an estimate several times its real cost. Admission
+  now prices input at 3 bytes per token and output at the size expected for the participant
+  count, and compares that expected cost plus a 10% margin with the cap. On 148 billed analyses
+  the expected cost was at or above the bill every time. The eight-participant run that the old
+  estimate put at $11.38 and that was billed $2.29 is now expected at $2.72 and admitted under the
+  default $3 cap.
+- A refused analysis says what it would cost and how to run it. The run output, `humanish review`
+  and the Observer give the expected cost, the worst case, the cap and
+  `humanish analyze --run <id> --max-cost <n>`, with `n` the worst case rounded up.
 - OpenAI computer-use traces now list the impressions-only request in `conversation.requests`,
   marked with `kind: impressions`. In explicit-context mode its record includes the carried
   exchanges, screenshots and estimated input tokens, using the same context budget and summaries
@@ -35,6 +44,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
   remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
   their estimate and cap, and state that those analyses are excluded from recall.
+
+### Changed
+
+- `study check` and live starts give the expected analysis cost range for the study's
+  participant count. `analyze --dry-run` prints the expected cost, the worst case and the cap.
+  In `analyze --json`, `admission.estimatedCostUsd` is now the expected cost, and `admission`
+  adds `worstCaseCostUsd` and `maxCostUsd`.
 
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 

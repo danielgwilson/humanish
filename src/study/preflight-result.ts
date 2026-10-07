@@ -3,6 +3,7 @@
 
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
+import { computerUseParticipantCount } from "./routing.js";
 import type { StudyPreflightCheck, StudyPreflightResult, PreflightContext } from "./preflight.js";
 
 /** The schema of `study check` results: whether a study is ready to run on this machine. */
@@ -13,7 +14,11 @@ export function finalize(
   args?: { check?: StudyPreflightCheck; checks?: StudyPreflightCheck[] },
 ): StudyPreflightResult {
   const checks = [...ctx.checks, ...(args?.check ? [args.check] : []), ...(args?.checks ?? [])];
-  const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.route);
+  const analysis = automaticAnalysisBudget(
+    ctx.config.review?.analysis,
+    ctx.route,
+    computerUseParticipantCount(ctx.config),
+  );
   return {
     schema: STUDY_CHECK_SCHEMA,
     ...(analysis ? { analysis } : {}),

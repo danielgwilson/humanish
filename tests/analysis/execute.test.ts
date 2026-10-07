@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   estimateAnalysisAdmission,
-  preferLargerAnalysisOutput,
   runAnalysis,
   ANALYSIS_PROMPT_VERSION,
 } from "../../src/analysis/execute.js";
@@ -136,31 +135,6 @@ function transport(output: unknown = result()) {
 }
 
 describe("bounded study analysis run", () => {
-  it("expands default output space only when the original budget admits it", () => {
-    const packet = input();
-    const base = { ...config, model: "gpt-6-astra", maxCostUsd: 3, maxOutputTokens: 16384 };
-    expect(preferLargerAnalysisOutput(packet, base)).toEqual({
-      ...base,
-      maxOutputTokens: 32768,
-    });
-    const small = estimateAnalysisAdmission(packet, base).estimatedCostUsd!;
-    const large = estimateAnalysisAdmission(packet, {
-      ...base,
-      maxOutputTokens: 32768,
-    }).estimatedCostUsd!;
-    const between = { ...base, maxCostUsd: (small + large) / 2 };
-    expect(estimateAnalysisAdmission(packet, between).allowed).toBe(true);
-    expect(estimateAnalysisAdmission(packet, { ...between, maxOutputTokens: 32768 }).allowed).toBe(
-      false,
-    );
-    expect(preferLargerAnalysisOutput(packet, between)).toEqual(between);
-    const denied = { ...base, maxCostUsd: 0.000001 };
-    expect(preferLargerAnalysisOutput(packet, denied)).toEqual(denied);
-    expect(estimateAnalysisAdmission(packet, denied).allowed).toBe(false);
-    expect(
-      preferLargerAnalysisOutput(packet, { ...base, maxOutputTokens: -1 }).maxOutputTokens,
-    ).toBe(-1);
-  });
   it("retains paid usage when a response omits the required concern review", async () => {
     const answer = result();
     delete answer.concernReviews;
@@ -436,7 +410,7 @@ describe("bounded study analysis run", () => {
     },
   );
 
-  it("admits without a provider call and refuses a budget below its conservative estimate", async () => {
+  it("admits without a provider call and refuses a budget below its expected cost", async () => {
     const packet = input();
     const admission = estimateAnalysisAdmission(packet, config);
     expect(admission.allowed).toBe(true);
@@ -622,6 +596,20 @@ describe("bounded study analysis run", () => {
       usage: { inputTokens: 999_999, dispatched: true, usageComplete: true },
     });
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it("keeps a result billed above the expected cost but within the worst case", async () => {
+    const h = transport();
+    const roomy = { ...config, maxOutputTokens: 32_768 };
+    const admission = estimateAnalysisAdmission(input(), roomy);
+    h.wire.usage.output_tokens = 20_000;
+    const artifact = await runAnalysis(input(), roomy, {
+      apiKey: "synthetic-key",
+      fetch: h.fetchFn,
+    });
+    expect(artifact.usage.estimatedCostUsd).toBeGreaterThan(admission.estimatedCostUsd!);
+    expect(artifact.usage.estimatedCostUsd).toBeLessThan(admission.worstCaseCostUsd!);
+    expect(artifact).toMatchObject({ status: "complete", error: null, result: result() });
   });
 
   it("retains null usage on cancellation before dispatch and never throws callback errors", async () => {

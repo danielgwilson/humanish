@@ -1,6 +1,15 @@
 import { numberField, objectField, runCli, stringField } from "./humanish-cli.js";
-import { canStartAnalysis, round, type BudgetSettings } from "./plan.js";
+import { canStartAnalysis, type BudgetSettings } from "./plan.js";
 import type { RunRecord } from "./report.js";
+
+/**
+ * The smallest four-decimal cap admission accepts for an expected cost: admission rounds the
+ * expected cost times its 10% margin up to the micro-dollar, so this rounds that figure up again.
+ */
+function admittedCap(expectedUsd: number): number {
+  const admitted = Math.ceil(expectedUsd * 1.1 * 1e6) / 1e6;
+  return Math.ceil(Math.round(admitted * 1e6) / 100) / 10000;
+}
 
 const SHORT_TIMEOUT_MS = 5 * 60_000;
 const ANALYSIS_TIMEOUT_MS = 12 * 60_000;
@@ -32,8 +41,9 @@ export async function analyzeWithinBudget(
   const admissionUsd = numberField(objectField(admission.json, "admission"), "estimatedCostUsd");
   if (budget.analysisAutoCap && admission.json?.ok === true && admissionUsd !== null) {
     // Ten percent headroom follows prompt growth without raising the brain's spending limit.
-    // The budget gate below checks the estimate first. Subtraction must not round its cap below it.
-    maxCostUsd = Math.max(admissionUsd, Math.min(round(admissionUsd * 1.1),
+    // Admission compares the expected cost times 1.1, rounded up, with the cap, so the headroom is
+    // rounded up too. The budget gate below checks the estimate first.
+    maxCostUsd = Math.max(admissionUsd, Math.min(admittedCap(admissionUsd),
       budget.analysisMaxUsd, budget.maxUsdPerBrain - spentUsd));
   }
   const base = { analysisId: null, estimatedUsd: null, admissionUsd, maxCostUsd };

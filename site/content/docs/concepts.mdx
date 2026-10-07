@@ -55,7 +55,7 @@ execution:
   timeoutMs: 600000 # each participant's session ends after 10 minutes
 
 # After the participants finish, a separate model reads the evidence and writes
-# findings. It is refused if its estimate is over maxCostUsd.
+# findings. It is refused if its expected cost, plus a 10% margin, is over maxCostUsd.
 review:
   analysis:
     maxCostUsd: 3
@@ -74,7 +74,7 @@ route: computer-use
 reachability: metadata
 targets: 1 declared, not checked
 spend: none
-After live runs: explicit analysis · gpt-6-astra · refused before it starts if its estimate is over $3; this is not a billing cap. Set review.analysis: false to disable.
+After live runs: explicit analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over $3; this is not a billing cap. Set review.analysis: false to disable.
 - ok study file: resolved committed study file
 - ok route: selected the computer-use route
 - ok reachability: metadata-only; no network, sandbox, or model calls. Target reachability was not checked.

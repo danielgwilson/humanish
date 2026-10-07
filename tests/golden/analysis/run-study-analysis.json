@@ -79,7 +79,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       "result": null,
       "error": "analysis_api_key_missing"
@@ -90,7 +90,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143,
+        "estimatedAdmissionUsd": 0.20624,
         "status": "failed"
       }
     ]
@@ -165,7 +165,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       "result": {
         "summary": "The participant encountered an obstacle.",
@@ -240,25 +240,25 @@
         "phase": "admitted",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       {
         "phase": "requesting",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       {
         "phase": "validating",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       {
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143,
+        "estimatedAdmissionUsd": 0.20624,
         "status": "complete"
       }
     ]
@@ -333,7 +333,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.27143
+        "estimatedAdmissionUsd": 0.20624
       },
       "result": null,
       "error": "analysis_cancelled"
@@ -344,7 +344,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.27143,
+        "estimatedAdmissionUsd": 0.20624,
         "status": "cancelled"
       }
     ]

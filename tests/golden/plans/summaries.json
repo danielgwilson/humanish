@@ -5,7 +5,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 2,
+          "expectedCostUsd": {
+            "low": 0.8032,
+            "high": 3.8392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "comms-email-demo",
@@ -31,7 +36,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-taskly-clean",
@@ -55,7 +65,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-taskly-planted",
@@ -79,7 +94,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-todomvc",
@@ -103,7 +123,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "dwell-window-todomvc",
@@ -128,7 +153,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 2,
+          "expectedCostUsd": {
+            "low": 0.8032,
+            "high": 3.8392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "effort-contrast-demo",
@@ -152,7 +182,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 4,
+          "expectedCostUsd": {
+            "low": 0.9032,
+            "high": 3.9392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "fanout-demo",
@@ -215,7 +250,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "handed-a-human-surface",
@@ -254,7 +294,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "later-tab-emulation",
@@ -279,7 +324,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 3,
+          "expectedCostUsd": {
+            "low": 0.8532,
+            "high": 3.8892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "lobby-trivia-3player",
@@ -309,7 +359,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "participant-camera",
@@ -334,7 +389,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 2,
+          "expectedCostUsd": {
+            "low": 0.8032,
+            "high": 3.8392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "persona-contrast-demo",
@@ -379,7 +439,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 3,
+          "expectedCostUsd": {
+            "low": 0.8532,
+            "high": 3.8892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "shared-world-concurrent-demo",
@@ -409,7 +474,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 3,
+          "expectedCostUsd": {
+            "low": 0.8532,
+            "high": 3.8892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "shared-world-concurrent-live",
@@ -439,7 +509,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 2,
+          "expectedCostUsd": {
+            "low": 0.8032,
+            "high": 3.8392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "signup-email-verify",
@@ -468,7 +543,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "terminal-product-demo",
@@ -490,7 +570,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 1,
+          "expectedCostUsd": {
+            "low": 0.7532,
+            "high": 3.7892
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "tui-self-study",
@@ -517,7 +602,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -575,7 +665,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -601,7 +696,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -659,7 +759,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -683,7 +788,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -741,7 +851,12 @@
           "analysis": {
             "model": "gpt-6-astra",
             "maxCostUsd": 3,
-            "trigger": "default"
+            "trigger": "default",
+            "participants": 1,
+            "expectedCostUsd": {
+              "low": 0.7532,
+              "high": 3.7892
+            }
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -766,7 +881,12 @@
         "analysis": {
           "model": "gpt-6-astra",
           "maxCostUsd": 3,
-          "trigger": "default"
+          "trigger": "default",
+          "participants": 4,
+          "expectedCostUsd": {
+            "low": 0.9032,
+            "high": 3.9392
+          }
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "mixed-participants",

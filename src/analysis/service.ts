@@ -40,6 +40,7 @@ import {
 import { beginAnalysisExecution, writeAnalysisExecutionReceipt } from "./store-executions.js";
 import { keepRejectedAnalysisOutput, type RejectedAnalysisOutput } from "./diagnostics.js";
 import { loadAnalysis } from "./load.js";
+import { admittingMaxCost, costRefusalText, refusedCost } from "./admission.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
   ANALYSIS_CORRECTION_SCHEMA,
@@ -309,18 +310,19 @@ type AnalyzeBase = Omit<AnalyzeResult, "ok"> & { admission: AnalysisAdmission };
 
 /** The result when admission refuses the attempt, or when a dry run stops after admission. */
 function admissionOnlyResult(base: AnalyzeBase, config: AnalysisConfig): AnalyzeResult {
-  if (!base.admission.allowed)
+  if (!base.admission.allowed) {
+    const cost = refusedCost(base.admission);
     return {
       ...base,
       ok: false,
       error: {
         code: base.admission.error ?? "analysis_admission_denied",
-        message:
-          base.admission.error === "analysis_budget_exceeded"
-            ? "The conservative admission estimate exceeds --max-cost. No provider request was sent."
-            : "The analysis input or configuration did not pass admission. No provider request was sent.",
+        message: cost
+          ? `${costRefusalText(cost)} To run it, raise the cap: humanish analyze --run ${base.run} --max-cost ${admittingMaxCost(cost)}`
+          : "The analysis input or configuration did not pass admission. No provider request was sent.",
       },
     };
+  }
   return {
     ...base,
     ok: true,

@@ -19,7 +19,7 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../actors/computer-use/openai-provider.js";
 import { inspectStudyManifest } from "./discover.js";
-import { isComputerUseComposition } from "./routing.js";
+import { computerUseParticipantCount, isComputerUseComposition } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
@@ -200,7 +200,11 @@ export async function readStudySummary(
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
-  const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, route);
+  const analysis = automaticAnalysisBudget(
+    inspected.config.review?.analysis,
+    route,
+    computerUseParticipantCount(inspected.config),
+  );
   const subject = subjectOf(config);
   const participants = participantsOf(inspected.config);
   const runtime =

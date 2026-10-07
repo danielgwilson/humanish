@@ -8,16 +8,19 @@ export function AutomaticAnalysisStatus({
   automatic,
   snapshot,
   now,
+  runId,
   separateAnalysis = false,
   resultAvailable = false,
 }: {
   automatic: AutomaticAnalysisView;
   snapshot: boolean;
   now: number;
+  /** Names the run in the command that runs an analysis refused for its cost. */
+  runId?: string;
   separateAnalysis?: boolean;
   resultAvailable?: boolean;
 }) {
-  const notice = automaticAnalysisNotice(automatic, snapshot, now);
+  const notice = automaticAnalysisNotice(automatic, snapshot, now, runId);
   const reason = parseAutomaticAnalysis(automatic)?.reason;
   return (
     <>
@@ -28,6 +31,11 @@ export function AutomaticAnalysisStatus({
             ? "The analysis result is not available in this view. Participant evidence remains available."
             : notice.detail}
         </p>
+        {notice.command ? (
+          <p className="analysis-status-detail">
+            <code>{notice.command}</code>
+          </p>
+        ) : null}
         {separateAnalysis ? (
           <p className="analysis-status-detail">
             The displayed report is from a separate analysis.

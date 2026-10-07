@@ -162,6 +162,8 @@ describe("explicit Codex account analysis", () => {
       inputTokenAllowance: null,
       outputTokenAllowance: null,
       estimatedCostUsd: null,
+      worstCaseCostUsd: null,
+      maxCostUsd: null,
       ratesAsOf: null,
     });
     const artifact = await runAnalysis(input, config(), {

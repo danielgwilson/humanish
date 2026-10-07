@@ -46,8 +46,8 @@ Counts are the distinct quoted codes in `src/` on 2026-10-03.
 The lowercase families are values recorded inside artifacts and receipts, and an artifact keeps
 the code it was written with. Automatic analysis reads two of them back:
 `analysis_admission_estimate_exceeded` becomes the reason `AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED`,
-and `analysis_budget_exceeded` on a default analysis prints the hint to rerun with
-`humanish analyze --max-cost`. Validation also accepts a partial artifact whose error is
+and `analysis_budget_exceeded` records the expected cost, the worst case and the cap on the job,
+and prints them with the command that reruns it, `humanish analyze --run <id> --max-cost <n>`. Validation also accepts a partial artifact whose error is
 `analysis_admission_estimate_exceeded`.
 
 Share-safety reasons in `humanish verify` (`VERIFY_FAILED`, `RAW_SCREENSHOTS` and the rest) are
