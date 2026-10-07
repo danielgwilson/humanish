@@ -464,12 +464,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: goal_satisfied 2/3, not_recorded 1/3; overlap proven; 1 state delta under load.",
+    "summary": "3 participants used one shared app at the same time. 2 of 3 reached the goal; the gaps list the other 1. The app's shared state changed 1 time during the run.",
     "gaps": [
       "persona-02: boom in actor 1"
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- outcome: failed: harness: persona-02: boom in actor 1\n- summary: Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: goal_satisfied 2/3, not_recorded 1/3; overlap proven; 1 state delta under load.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: boom in actor 1\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- outcome: failed: harness: persona-02: boom in actor 1\n- summary: 3 participants used one shared app at the same time. 2 of 3 reached the goal; the gaps list the other 1. The app's shared state changed 1 time during the run.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: boom in actor 1\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -579,7 +579,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 01",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -717,7 +717,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 02",
         "status": "failed",
         "judgedStatus": "failed",
         "transport": "snapshot",
@@ -788,7 +788,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 03",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1013,7 +1013,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "Concurrent shared-world (one shared app, 3 personas at once): swarm did not run coherently; 2/3 actor sessions passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: goal_satisfied 2/3, not_recorded 1/3; overlap proven; 1 state delta under load.",
+      "summary": "3 participants used one shared app at the same time. 2 of 3 reached the goal; the gaps list the other 1. The app's shared state changed 1 time during the run.",
       "gaps": [
         "persona-02: boom in actor 1"
       ]

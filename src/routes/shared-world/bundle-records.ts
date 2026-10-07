@@ -15,6 +15,7 @@ import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.j
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantTaxonomyLabel } from "./participant-specs.js";
+import { participantCaption } from "../../run/participant-caption.js";
 import type { ConcurrentBundleArgs } from "./types.js";
 
 /** What every participant's records share. */
@@ -143,7 +144,11 @@ function sharedWorldStream(
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.studyId}`,
+    label: participantCaption({
+      id: spec.planned.id,
+      personaId: spec.persona.id,
+      device: spec.planned.device,
+    }),
     status: view.status,
     ...(judged === undefined ? {} : { judgedStatus: judged }),
     transport: "snapshot",

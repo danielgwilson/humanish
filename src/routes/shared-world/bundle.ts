@@ -106,42 +106,48 @@ export function actorRunPassed(result: ActorRunResult | undefined): boolean {
 }
 
 /**
- * Keep three different claims separate in the stakeholder roll-up:
- *
- * - `outcome.ok` says the actor session passed the harness's credibility checks;
- * - `completionReason` says how the participant session ended;
- * - shared-world convergence is reported by the plane-specific summary alongside this line.
- *
- * None of those is adopter-scored proof that the mission text was completed. In particular, a
- * productive `budget_reached` session can coexist with lobby convergence without becoming a
- * `goal_satisfied` result.
+ * The run's summary in plain sentences: who took part, how many reached the goal, and what the
+ * world showed. A participant reached the goal when its session passed the judge's checks and
+ * ended at the goal, so a productive `budget_reached` session does not count even when the lobby
+ * converged. Each participant's ending stays in `sharedWorld.outcomes`, and the plane, topology
+ * and attribution limits stay in the bundle's events and `sharedWorld` block.
  */
-function formatSharedWorldActorOutcomes(
-  outcomes: SharedWorldOutcome[],
-  expectedCount: number,
+function sharedWorldSummary(
+  args: ConcurrentBundleArgs,
+  facts: {
+    external: boolean;
+    inProgress: boolean;
+    overlaps: boolean;
+    deltas: number;
+    outcomes: SharedWorldOutcome[];
+  },
 ): string {
-  const passedSessions = outcomes.filter((outcome) => outcome.ok).length;
-  const goalSatisfiedSessions = outcomes.filter(
-    (outcome) => outcome.ok && outcome.completionReason === "goal_satisfied",
-  ).length;
-  const completionReasonCounts = new Map<string, number>();
-  for (const outcome of outcomes) {
-    const reason = outcome.completionReason ?? "not_recorded";
-    completionReasonCounts.set(reason, (completionReasonCounts.get(reason) ?? 0) + 1);
+  const count = args.actorSpecs.length;
+  const people = plural(count, "participant");
+  const app = facts.external ? "one public app" : "one shared app";
+  if (args.dryRun) {
+    const served = facts.external ? ", as it is deployed" : ", served from a sandbox";
+    return `Dry run: ${people} would use ${app} at the same time${served}. No sandboxes were launched and $0 was spent.`;
   }
-  for (let missing = outcomes.length; missing < expectedCount; missing += 1) {
-    completionReasonCounts.set(
-      "not_recorded",
-      (completionReasonCounts.get("not_recorded") ?? 0) + 1,
-    );
+  if (facts.inProgress) {
+    return `${people} ${count === 1 ? "is" : "are"} using ${app} at the same time. The run is still going, so nothing here is final.`;
   }
-  const completionReasons = [...completionReasonCounts.entries()]
-    // ASCII contract tokens: compare directly so bundle text is byte-stable across host locales.
-    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-    .map(([reason, count]) => `${reason} ${count}/${expectedCount}`)
-    .join(", ");
-
-  return `${passedSessions}/${plural(expectedCount, "actor session")} passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
+  const passed = facts.outcomes.filter((outcome) => outcome.ok);
+  const reached = passed.filter((outcome) => outcome.completionReason === "goal_satisfied").length;
+  const together = facts.overlaps ? " at the same time" : ", but never at the same time";
+  // A participant who did not pass has a gap line; one who passed but stopped short has none.
+  const rest = [
+    passed.length > reached ? `; ${passed.length - reached} ended without reaching it` : "",
+    passed.length < count ? `; the gaps list the other ${count - passed.length}` : "",
+  ].join("");
+  const world = facts.external
+    ? args.lobbyConvergenceDigest
+      ? `All ${count} ended up in the same lobby.`
+      : "humanish did not see them all end up in the same lobby."
+    : facts.deltas === 0
+      ? "The app's shared state did not change during the run."
+      : `The app's shared state changed ${plural(facts.deltas, "time")} during the run.`;
+  return `${people} used ${app}${together}. ${reached} of ${count} reached the goal${rest}. ${world}`;
 }
 
 /** The run's first two events: its creation and the shared plane's provenance. */
@@ -337,10 +343,8 @@ function concurrencyReview(
 ): ReviewSummary {
   const {
     plan,
-    descriptor,
     run: { createdAt },
     dryRun,
-    actorSpecs,
   } = args;
   const { sharedWorld, windows, stateSeries, outcomes } = evidence;
   const overlaps = args.judgment.world.overlap;
@@ -366,26 +370,12 @@ function concurrencyReview(
   });
 
   // The judge's verdict (judgeSharedWorld): every participant produced a terminal, engaged, passed
-  // session. Mission endpoint and completion reasons are reported separately below; `outcomes[].ok`
-  // is not renamed into mission success.
-  const verdict = args.judgment.verdict;
-  const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
-
+  // session and the world showed the concurrency verify requires.
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
-    verdict,
-    // Plane-class-aware: the external-public plane has no getHost/clone/seed and carries no
-    // authoritative state series, so its summary must not claim a getHost-exposed plane (dry-run) nor
-    // report "state delta(s) under load" (live). It reports lobby convergence instead.
-    summary: dryRun
-      ? external
-        ? `Concurrent shared-world dry run: ${plural(actorSpecs.length, "persona")} declared against one public deployment, used as it is (no sandbox, clone or seed); no sandboxes launched, $0 spent.`
-        : `Concurrent shared-world dry run: ${plural(actorSpecs.length, "persona")} declared against one app served at a public sandbox URL (${descriptor.id}); no sandboxes launched, $0 spent.`
-      : inProgress
-        ? `In-progress concurrent shared-world Observer snapshot: ${plural(actorSpecs.length, "persona")} running against one shared app; final verification is pending.`
-        : external
-          ? `Concurrent shared-world (one public deployment, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} participants converged on one lobby` : "lobby convergence not observed"}.`
-          : `Concurrent shared-world (one shared app, ${actorSpecs.length} personas at once): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${plural(deltas, "state delta")} under load.`,
+    verdict: args.judgment.verdict,
+    // The external-public app has no state series, so its summary reports the lobby instead.
+    summary: sharedWorldSummary(args, { external, inProgress, overlaps, deltas, outcomes }),
     gaps: dryRun
       ? [
           "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.",

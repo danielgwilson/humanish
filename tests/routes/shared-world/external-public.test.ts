@@ -943,16 +943,15 @@ describe("admitSharedWorldPlan", () => {
 });
 
 describe("review.summary is external-public plane-aware", () => {
-  it("dry-run summary names the external-public plane (no getHost/clone/seed), not a getHost-exposed plane", async () => {
+  it("dry-run summary names the public app as deployed, not one served from a sandbox", async () => {
     const result = await runSharedWorld({ cwd, config: parseExternal(), dryRun: true });
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     const summary = bundle.review.summary;
-    expect(summary).toContain("one public deployment");
-    expect(summary).toContain("no sandbox, clone or seed");
-    expect(summary).not.toContain("public sandbox URL");
+    expect(summary).toContain("one public app at the same time, as it is deployed");
+    expect(summary).not.toContain("served from a sandbox");
   });
 
   it("live summary reports lobby convergence and drops the state-delta clause", async () => {
@@ -970,8 +969,8 @@ describe("review.summary is external-public plane-aware", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     const summary = bundle.review.summary;
-    expect(summary).not.toMatch(/state deltas? under load/);
-    expect(summary).toContain("participants converged on one lobby");
+    expect(summary).not.toContain("shared state");
+    expect(summary).toContain("All 3 ended up in the same lobby.");
   });
 
   it("separates lobby convergence from unfinished participant sessions", async () => {
@@ -1000,7 +999,7 @@ describe("review.summary is external-public plane-aware", () => {
 
     expect(bundle.review.verdict).toBe("pass");
     const expectedSummary =
-      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
+      "3 participants used one public app at the same time. 0 of 3 reached the goal; 3 ended without reaching it. All 3 ended up in the same lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(reviewMarkdown).toContain("- verdict: pass");
@@ -1370,6 +1369,64 @@ describe("external-public run directory goldens", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,
     );
+  });
+});
+
+describe("what a reader sees for each participant and for the run", () => {
+  const HARNESS_WORDS =
+    /\b(swarm|plane|coherently|overlap proven|seats?|goal_satisfied|completion reasons|credibility checks|run gate|actor sessions?)\b/i;
+
+  async function readBundle(runId: string): Promise<RunBundle> {
+    const file = path.join(cwd, ".humanish", "runs", runId, "run.json");
+    return JSON.parse(await readFile(file, "utf8")) as RunBundle;
+  }
+
+  it.each([
+    ["live", false],
+    ["dry", true],
+  ] as const)(
+    "names no harness mechanism in a %s run's captions or summary",
+    async (_mode, dryRun) => {
+      const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
+      const result = await runSharedWorld({ cwd, config: parseExternal(), dryRun, env, deps });
+      const bundle = await readBundle(result.runId);
+      for (const text of [...bundle.streams.map((stream) => stream.label), bundle.review.summary])
+        expect(text).not.toMatch(HARNESS_WORDS);
+    },
+  );
+
+  it("captions each participant by name and device and keeps the taxonomy in the data", async () => {
+    const raw = externalPublicConfig();
+    const roster = raw.participants as Array<Record<string, unknown>>;
+    Object.assign(roster[0]!, {
+      id: "lobby-host",
+      actorType: "host",
+      surface: "game",
+      caseGroup: "lobby-001",
+    });
+    roster[2]!.device = "desktop";
+    const parsed = parseStudy(raw);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
+    const result = await runSharedWorld({
+      cwd,
+      config: parsed.config,
+      dryRun: false,
+      env,
+      deps,
+    });
+    const bundle = await readBundle(result.runId);
+    expect(bundle.streams.map((stream) => stream.label)).toEqual([
+      "Lobby host, phone",
+      "Player 2, phone",
+      "Player 3",
+    ]);
+    expect(bundle.sharedWorld?.outcomes?.[0]).toMatchObject({
+      roleId: "lobby-host",
+      actorType: "host",
+      surface: "game",
+      caseGroup: "lobby-001",
+    });
   });
 });
 
