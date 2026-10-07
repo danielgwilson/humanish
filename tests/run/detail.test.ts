@@ -4,6 +4,10 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import terminalDry from "../golden/routes/terminal-dry-run.json" with { type: "json" };
+import scriptedDry from "../golden/routes/scripted-dry-run.json" with { type: "json" };
+import terminalLive from "../golden/routes/terminal-live.json" with { type: "json" };
+import scriptedLive from "../golden/routes/scripted-live.json" with { type: "json" };
 import { readRunDetail } from "../../src/run/detail.js";
 
 // Shapes here mirror what a real run writes (`humanish.actor-trace.v1` under `stream.actor`, and
@@ -286,4 +290,48 @@ describe("what a run has spent, while it is still spending it", () => {
     // The recorded figure wins over re-pricing the usage: it is what the run itself concluded.
     expect(detail?.participants[0]?.estimatedCostUsd).toBeCloseTo(0.42);
   });
+});
+
+describe("older participant captions", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-older-captions-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    [terminalLive["run.json"], "Terminal agent · terminal-proof", "Autonomous creative agent"],
+    [scriptedLive["run.json"], "Desktop browser surface · scripted-proof", "Synthetic new user"],
+  ] as const)(
+    "re-captions a saved participant from an older bundle",
+    async (recorded, label, caption) => {
+      const streams = recorded.streams.map((stream) => ({ ...stream, label }));
+      await writeBundle(cwd, "older-caption", { ...recorded, streams });
+      const detail = await readRunDetail(cwd, "older-caption");
+      expect(detail?.participants.map((participant) => participant.label)).toEqual([caption]);
+      expect(detail?.participants[0]?.status).toBe("passed");
+    },
+  );
+
+  it.each([
+    [terminalDry["run.json"], ["Terminal agent · terminal-proof"], ["Autonomous creative agent"]],
+    [
+      scriptedDry["run.json"],
+      ["Desktop browser surface · scripted-proof", "Mobile browser surface · scripted-proof"],
+      ["Synthetic new user", "Synthetic new user, phone"],
+    ],
+  ] as const)(
+    "re-captions an older dry run without an actor trace",
+    async (recorded, labels, captions) => {
+      const streams = recorded.streams.map((stream, index) => ({
+        ...stream,
+        label: labels[index],
+      }));
+      await writeBundle(cwd, "older-dry-caption", { ...recorded, streams });
+      const detail = await readRunDetail(cwd, "older-dry-caption");
+      expect(detail?.participants.map((participant) => participant.label)).toEqual(captions);
+    },
+  );
 });

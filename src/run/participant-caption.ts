@@ -41,6 +41,8 @@ export function participantCaption(participant: CaptionFacts): string {
 
 const OLDER_SHARED_WORLD_LABEL = /^Concurrent persona (\S+)/;
 const OLDER_COMPUTER_USE_LABEL = /^CUA |^\S+ · browser$/;
+const OLDER_TERMINAL_OR_SCRIPTED_LABEL =
+  /^(Terminal agent|Desktop browser surface|Mobile browser surface) · /;
 
 /** The fields of a saved stream that name its participant. */
 export interface SavedCaptionFacts {
@@ -54,13 +56,22 @@ export interface SavedCaptionFacts {
  * The caption a saved stream shows: its label, which a route writes with `participantCaption`.
  * Earlier releases wrote ids and taxonomy into the label (`lane-01 · browser`, `CUA participant
  * <id>: <study>`, `Concurrent persona <id> (type:<t> / ...) · <study>`), so a stream saved that way
- * is captioned again from the id it names, without a device.
+ * is captioned again from the id it names. Older terminal and scripted labels use the
+ * recorded persona; a scripted mobile surface also identifies a phone.
  */
 export function savedCaption(stream: SavedCaptionFacts): string {
   const { label, participantId, personaId } = stream;
   const sharedWorldId = OLDER_SHARED_WORLD_LABEL.exec(label)?.[1];
   if (sharedWorldId !== undefined) {
     return participantCaption({ id: sharedWorldId, personaId: personaId ?? sharedWorldId });
+  }
+  if (OLDER_TERMINAL_OR_SCRIPTED_LABEL.test(label) && personaId !== undefined) {
+    return participantCaption({
+      personaId,
+      ...(label.startsWith("Mobile browser surface · ")
+        ? { device: { name: "mobile", preset: { isMobile: true } } }
+        : {}),
+    });
   }
   if (OLDER_COMPUTER_USE_LABEL.test(label) && personaId !== undefined) {
     return participantCaption({

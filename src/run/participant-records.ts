@@ -3,7 +3,7 @@
 // field names; readers ask them for the ids a saved record carries. This module and run/bundle.ts
 // (its types and bundleHead) and run/streams.ts are where those contract spellings live.
 
-import type { RunEvent, RunProviderResource, RunSimulation } from "./bundle.js";
+import type { RunBundle, RunEvent, RunProviderResource, RunSimulation } from "./bundle.js";
 import type { RunStream } from "./streams.js";
 
 /** The ids a participant's saved records carry: its record id and its stream id. */
@@ -92,4 +92,13 @@ export function eventRecordIdOf(event: RunEvent): string | undefined {
 /** The participant id an adapter recorded on a saved stream (a fan-out `lane-NN` id), when it has one. */
 export function streamParticipantIdOf(stream: Pick<RunStream, "laneId">): string | undefined {
   return stream.laneId;
+}
+
+/** The persona recorded for a stream, including dry runs without an actor trace. */
+export function recordedPersonaId(
+  bundle: Partial<Pick<RunBundle, "simulations">>,
+  stream: Partial<Pick<RunStream, "simId">>,
+): string | undefined {
+  if (stream.simId === undefined || !Array.isArray(bundle.simulations)) return undefined;
+  return bundle.simulations.find((record) => record?.id === stream.simId)?.personaId;
 }
