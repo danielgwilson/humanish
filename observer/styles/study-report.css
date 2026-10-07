@@ -1148,6 +1148,21 @@
 .statement-time {
   white-space: nowrap;
 }
+.impression-group {
+  margin-top: var(--space-12);
+}
+.impression-group > h4 {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-12);
+  font-weight: 600;
+  color: var(--body-c);
+}
+.impression-group li + li {
+  margin-top: var(--space-8);
+}
+.impression-group .verbatim {
+  margin: 0;
+}
 @media (max-width: 880px) {
   .study-report details > summary,
   .participant-analysis > summary {

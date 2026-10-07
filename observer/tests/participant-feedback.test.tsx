@@ -102,3 +102,107 @@ it("does not crash or hide original statements when an older optional closing ac
     container.remove();
   }
 });
+
+const impression = (id: string, text: string) => ({
+  id,
+  kind: "message" as const,
+  lifecycle: "completed" as const,
+  title: "participant impression",
+  text,
+});
+
+it("groups a participant's impressions by kind under what they said at the end", async () => {
+  const data = fixtures.fixture(),
+    stream = data.streams[0]!;
+  const paper = "On the paper form I write the dose next to the drug name.";
+  const small = "The dose field label was too small to read.";
+  const saves = "The two Save buttons looked the same.";
+  stream.actor!.items.push(
+    impression("impression-1", `Impression (unlike my work): ${paper}`),
+    impression("impression-2", `Impression (unclear): ${small}`),
+    impression("impression-3", `Impression (unclear): ${saves}`),
+  );
+  stream.actor!.impressions = {
+    status: "collected",
+    items: [
+      { kind: "unlike_my_work", text: paper, messageId: "impression-1" },
+      { kind: "unclear", text: small, messageId: "impression-2" },
+      { kind: "unclear", text: saves, messageId: "impression-3" },
+    ],
+  };
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ParticipantFeedback data={data} stream={stream} />));
+    const region = container.querySelector('[aria-label="What they said at the end"]');
+    expect(region?.querySelector("h3")?.textContent).toBe("What they said at the end");
+    const groups = [...(region?.querySelectorAll("section") ?? [])].map((group) => ({
+      label: group.getAttribute("aria-label"),
+      texts: [...group.querySelectorAll("li .verbatim")].map((item) => item.textContent),
+    }));
+    expect(groups).toEqual([
+      { label: "Confusing or hard to read", texts: [small, saves] },
+      { label: "Different from how they do it", texts: [paper] },
+    ]);
+    expect(region?.querySelector("a")?.getAttribute("href")).toMatch(/\/e\/impression-2$/);
+    expect(
+      [...container.querySelectorAll("[data-feedback-entry]")].map((entry) =>
+        entry.getAttribute("data-feedback-entry"),
+      ),
+    ).not.toContain("impression-1");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it.each([
+  [
+    {
+      status: "not_collected",
+      reason: "the participant ended the session without a structured closing account",
+    },
+    "Not collected: the participant ended the session without a structured closing account.",
+  ],
+  [{ status: "collected", items: [] }, "They named none."],
+  [
+    { status: "collected", items: [{ kind: "liked", text: 17 }] },
+    "The recorded impressions could not be read.",
+  ],
+])("says what became of the impressions when they read %j", async (impressions, said) => {
+  const data = fixtures.fixture(),
+    stream = data.streams[0]!;
+  stream.actor!.impressions = impressions as NonNullable<
+    NonNullable<typeof stream.actor>["impressions"]
+  >;
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ParticipantFeedback data={data} stream={stream} />));
+    expect(
+      container.querySelector('[aria-label="What they said at the end"]')?.textContent,
+    ).toContain(said);
+    expect(container.textContent).toContain("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it("shows no impressions heading for a trace recorded before impressions", async () => {
+  const data = fixtures.fixture(),
+    stream = data.streams[0]!;
+  delete stream.actor!.impressions;
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ParticipantFeedback data={data} stream={stream} />));
+    expect(container.textContent).not.toContain("What they said at the end");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
