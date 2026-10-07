@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { cli } from "../../cli/invocation.js";
+import type { MachineSize } from "./capacity.js";
 
 const exec = promisify(execFile);
 export const LIMA_INSTANCE = "humanish-runtime";
@@ -12,6 +13,8 @@ export interface RuntimeHostOptions {
   signal?: AbortSignal;
   platform?: NodeJS.Platform;
   arch?: string;
+  /** This machine's memory and CPUs; tests pass a fixed size. */
+  machine?: MachineSize;
 }
 export const usesLima = (options: RuntimeHostOptions = {}): boolean =>
   (options.platform ?? process.platform) === "darwin";
@@ -115,9 +118,15 @@ provision:
       systemctl enable --now docker
 `;
 
-export async function limaStatus(
-  options: RuntimeHostOptions = {},
-): Promise<{ ready: boolean; exists: boolean; message: string }> {
+/** The humanish Lima VM's state, and its memory and CPUs when it exists. */
+export interface LimaStatus {
+  ready: boolean;
+  exists: boolean;
+  message: string;
+  size?: MachineSize;
+}
+
+export async function limaStatus(options: RuntimeHostOptions = {}): Promise<LimaStatus> {
   const chip = (
     await hostExec("sysctl", ["-n", "machdep.cpu.brand_string"], options)
   ).stdout.trim();
@@ -152,9 +161,15 @@ export async function limaStatus(
     throw new Error(
       `The existing ${LIMA_INSTANCE} Lima instance is incompatible. humanish will not replace it.`,
     );
+  // `limactl list --json` reports the instance's configured memory in bytes.
+  const size =
+    Number.isInteger(instance?.cpus) && Number.isFinite(instance?.memory)
+      ? { cpus: instance.cpus as number, memoryBytes: instance.memory as number }
+      : undefined;
   return {
     ready: instance?.status === "Running",
     exists: !!instance,
+    ...(size === undefined ? {} : { size }),
     message: instance
       ? `The humanish Lima host is stopped. Run ${cli("runtime setup")} to start it.`
       : `Run ${cli("runtime setup")} to create the humanish Lima host and install the browser runtime.`,

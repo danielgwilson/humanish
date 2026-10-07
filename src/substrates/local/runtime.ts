@@ -7,6 +7,7 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { LocalFirecrackerAssets } from "./firecracker-desktop.js";
 import { LOCAL_MEDIA_RUNTIME_RELEASES, LOCAL_RUNTIME_RELEASES } from "./runtime-release.js";
+import { defaultVmSize, localCapacity, machineSize, type LocalCapacity } from "./capacity.js";
 import {
   limaStatus,
   loadRuntimeArchive,
@@ -15,6 +16,7 @@ import {
   runtimeDocker,
   runtimeExec,
   usesLima,
+  type LimaStatus,
   type RuntimeHostOptions,
 } from "./runtime-host.js";
 import { cli } from "../../cli/invocation.js";
@@ -30,6 +32,8 @@ export interface LocalRuntimeStatus {
   installed: boolean;
   message: string;
   assets?: LocalFirecrackerAssets;
+  /** How many desktops fit, when the VM or this machine could be read. */
+  capacity?: LocalCapacity;
 }
 interface RuntimeOptions extends RuntimeHostOptions {
   media?: boolean;
@@ -45,26 +49,49 @@ const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefine
     runtimeArchitecture(options) ?? "amd64"
   ];
 
+/** Desktops the existing Lima VM holds, the VM setup would create, or this Linux machine. */
+function runtimeCapacity(options: RuntimeOptions, lima: LimaStatus | undefined): LocalCapacity {
+  if (lima === undefined) return localCapacity("linux-host", machineSize(options.machine));
+  if (lima.size !== undefined) return localCapacity("lima-vm", lima.size);
+  const planned = defaultVmSize(machineSize(options.machine));
+  return localCapacity(
+    "lima-vm",
+    { memoryBytes: planned.memoryGiB * 1024 ** 3, cpus: planned.cpus },
+    !lima.exists,
+  );
+}
+
 /** Read-only host and cache inspection. Never pulls an image or starts a container. */
 export async function localRuntimeStatus(
   options: RuntimeOptions = {},
 ): Promise<LocalRuntimeStatus> {
-  const architecture = runtimeArchitecture(options),
-    lima = usesLima(options);
+  const architecture = runtimeArchitecture(options);
   if (!architecture)
     return {
       ok: false,
       installed: false,
       message: "Local browsers need Linux x64 or an M3-or-newer Mac with Lima.",
     };
-  if (lima) {
+  let lima: LimaStatus | undefined;
+  if (usesLima(options)) {
     try {
-      const status = await limaStatus(options);
-      if (!status.ready) return { ok: true, installed: false, message: status.message };
+      lima = await limaStatus(options);
     } catch (error) {
       return { ok: false, installed: false, message: (error as Error).message };
     }
   }
+  const capacity = runtimeCapacity(options, lima);
+  if (lima !== undefined && !lima.ready)
+    return { ok: true, installed: false, message: lima.message, capacity };
+  return { ...(await engineStatus(options, architecture, lima !== undefined)), capacity };
+}
+
+/** The Docker engine, devices and cached image the desktops run on. */
+async function engineStatus(
+  options: RuntimeOptions,
+  architecture: "amd64" | "arm64",
+  lima: boolean,
+): Promise<LocalRuntimeStatus> {
   const env = options.env ?? process.env;
   if (!lima && env.DOCKER_HOST && !env.DOCKER_HOST.startsWith("unix://")) {
     return {

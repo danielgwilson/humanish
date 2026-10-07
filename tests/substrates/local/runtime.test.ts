@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   loads: 0,
   chip: "Apple M5 Max",
   lima: "Running",
+  limaSize: { cpus: 6, memory: 8 * 1024 ** 3 },
   arch: "amd64",
   commands: [] as string[],
   calls: [] as string[][],
@@ -38,6 +39,7 @@ vi.mock("node:child_process", async () => {
                     status: state.lima,
                     vmType: "vz",
                     arch: "aarch64",
+                    ...state.limaSize,
                   }),
           };
         if (args[0] === "shell") {
@@ -108,6 +110,7 @@ describe("local runtime preparation", () => {
       loads: 0,
       chip: "Apple M5 Max",
       lima: "Running",
+      limaSize: { cpus: 6, memory: 8 * 1024 ** 3 },
       arch: "amd64",
       commands: [],
       calls: [],
@@ -149,6 +152,44 @@ describe("local runtime preparation", () => {
     });
     expect(state.calls).toEqual([]);
     expect(state.commands.some((command) => command.includes("start"))).toBe(false);
+  });
+  it("reports how many desktops the existing Lima VM holds from its own size", async () => {
+    state.arch = "arm64";
+    state.installed = true;
+    state.limaSize = { cpus: 4, memory: 7 * 1024 ** 3 };
+    const status = await localRuntimeStatus({ ...options, platform: "darwin", arch: "arm64" });
+    expect(status.capacity).toMatchObject({
+      host: "lima-vm",
+      memoryGiB: 7,
+      cpus: 4,
+      perDesktop: { memoryGiB: 3, cpus: 2 },
+      desktops: 2,
+    });
+  });
+  it("reports what the VM that setup would create holds before it exists", async () => {
+    state.lima = "missing";
+    const status = await localRuntimeStatus({
+      ...options,
+      platform: "darwin",
+      arch: "arm64",
+      machine: { memoryBytes: 16 * 1024 ** 3, cpus: 8 },
+    });
+    expect(status.capacity).toEqual(
+      expect.objectContaining({
+        host: "lima-vm",
+        memoryGiB: 8,
+        cpus: 4,
+        desktops: 2,
+        planned: true,
+      }),
+    );
+  });
+  it("reports how many desktops this Linux machine holds", async () => {
+    const status = await localRuntimeStatus({
+      ...options,
+      machine: { memoryBytes: 31 * 1024 ** 3, cpus: 32 },
+    });
+    expect(status.capacity).toMatchObject({ host: "linux-host", memoryGiB: 31, desktops: 10 });
   });
   it("refuses Macs without nested virtualization before starting Lima", async () => {
     state.chip = "Apple M2 Max";

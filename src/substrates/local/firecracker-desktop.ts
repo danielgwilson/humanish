@@ -19,6 +19,7 @@ import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 import { cli } from "../../cli/invocation.js";
+import { DESKTOP_RESERVATION } from "./capacity.js";
 
 const docker = async (args: string[]): Promise<string> =>
   (await runtimeDocker(args, {}, 60_000)).stdout.trim();
@@ -246,11 +247,11 @@ function dockerCreateArgs(options: {
     "--sysctl",
     "net.ipv4.ip_forward=1",
     "--memory",
-    "3g",
+    `${DESKTOP_RESERVATION.memoryGiB}g`,
     "--memory-swap",
-    "3g",
+    `${DESKTOP_RESERVATION.memoryGiB}g`,
     "--cpus",
-    "2",
+    String(DESKTOP_RESERVATION.cpus),
     "--pids-limit",
     "128",
     "--tmpfs",
