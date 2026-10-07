@@ -99,4 +99,17 @@ describe("transient run narration secrets", () => {
       }
     });
   });
+
+  it("removes a value that holds an escape before decoding another value's encoded form", async () => {
+    const code = "743921";
+    const token = "pass%41word";
+    const hex = Buffer.from(code).toString("hex");
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([code, token]);
+      const scrubbed = transientCommsKnownValueScrub()(`${token} and ${hex}`);
+      expect(scrubbed).not.toContain(token);
+      expect(scrubbed).not.toContain("passAword");
+      expect(scrubbed).not.toContain(hex);
+    });
+  });
 });
