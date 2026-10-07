@@ -4,6 +4,7 @@
     "analysis": {
       "analysisId": "null",
       "completedAt": "null",
+      "designFindings": "null",
       "estimatedCostUsd": "null",
       "findings": [],
       "limitations": [],

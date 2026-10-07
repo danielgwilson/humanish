@@ -26,6 +26,13 @@ function source(loaded: LoadedAnalysis, mode: string | undefined = "live") {
   return { runId, mode, runRoot: `.humanish/runs/${runId}`, loaded, cwdFlag: "" };
 }
 
+const ready = (analysis: AnalysisArtifact): LoadedAnalysis => ({
+  state: "ready",
+  analysis,
+  corrections: [],
+  warnings: [],
+});
+
 const none = (automatic?: AutomaticAnalysisView): LoadedAnalysis => ({
   state: "none",
   analysis: null,
@@ -159,9 +166,132 @@ describe("a ready analysis", () => {
       reason: "The claim was too broad.",
       replacementClaim: "Creation stalled once.",
     });
-    expect(formatFindings(view)).toContain(
+    const lines = formatFindings(view);
+    expect(lines).toContain(
       "   human review: amended, The claim was too broad. Amended claim: Creation stalled once.",
     );
+    // The headline and experience describe the claim the reviewer replaced.
+    const f1 = lines.indexOf("finding-1 Creation stalled once.");
+    expect(lines[f1 + 1]).toBe(
+      "   Corrected in human review: the reviewer's claim replaces the original headline and account.",
+    );
+    expect(lines).not.toContain("finding-1 The participant could not create an item.");
+    expect(lines.join("\n")).not.toContain("They were trying to add an item.");
+    expect(formatFindingsSummary(view, "humanish review")[1]).toBe(
+      "- finding-1 Creation stalled once. (corrected in human review)",
+    );
+  });
+
+  it("leads each finding with its headline and experience, with its title and evidence beneath", () => {
+    const view = analysisFindings(source(ready(syntheticArtifact())));
+    expect(view.findings[0]).toMatchObject({
+      headline: "The participant could not create an item.",
+      experience:
+        "They were trying to add an item. The create step did not finish, and they said they could not create it.",
+      title: "Item creation was blocked",
+    });
+    const lines = formatFindings(view);
+    const f1 = lines.indexOf("finding-1 The participant could not create an item.");
+    expect(lines.slice(f1 + 1, f1 + 5)).toEqual([
+      "   They were trying to add an item. The create step did not finish, and they said they could not create it.",
+      "   evidence: Item creation was blocked",
+      "   impact: blocked task · confidence: medium · recovery: no recovery observed",
+      "   The participant could not create an item.",
+    ]);
+    expect(formatFindingsSummary(view, "humanish review")[1]).toBe(
+      "- finding-1 The participant could not create an item. (blocked task, medium confidence, no recovery observed)",
+    );
+  });
+
+  it("lists design findings most severe first, each with its screen, reasons and captures", () => {
+    const analysis = syntheticArtifact();
+    analysis.result!.designFindings!.push({
+      ...analysis.result!.designFindings![0]!,
+      id: "D2",
+      headline: "The save button is cut off at the bottom of the window.",
+      severity: "major",
+      confidence: "high",
+    });
+    const view = analysisFindings(source(ready(analysis)));
+    expect(view.designFindings?.map((finding) => [finding.id, finding.severity])).toEqual([
+      ["D2", "major"],
+      ["D1", "moderate"],
+    ]);
+    expect(view.designFindings![1]).toEqual({
+      id: "D1",
+      headline: "The create button is hard to find.",
+      screen: "Item list",
+      notice: "The create button is small and sits apart from the list it adds to.",
+      whyItMatters: "A person adding an item may not see where to start.",
+      suggestion: "Put the create button above the list and give it a text label.",
+      severity: "moderate",
+      confidence: "medium",
+      seenBy: [{ streamId: "participant-a", label: "Participant A" }],
+      evidence: [
+        {
+          id: "e000001",
+          streamId: "participant-a",
+          kind: "screenshot",
+          frame: 0,
+          elapsedMs: null,
+          at: null,
+          capture: ".humanish/runs/synthetic-study/captures/frame.png",
+        },
+      ],
+    });
+    const lines = formatFindings(view);
+    const design = lines.indexOf("design findings: 2, most severe first");
+    expect(design).toBeGreaterThan(lines.findIndex((line) => line.startsWith("finding-1 ")));
+    expect(lines.slice(design + 1, design + 3)).toEqual([
+      "D2 major: The save button is cut off at the bottom of the window.",
+      "   screen: Item list",
+    ]);
+    expect(lines.slice(design + 9, design + 16)).toEqual([
+      "D1 moderate: The create button is hard to find.",
+      "   screen: Item list",
+      "   notice: The create button is small and sits apart from the list it adds to.",
+      "   why it matters: A person adding an item may not see where to start.",
+      "   suggestion: Put the create button above the list and give it a text label.",
+      "   seen by: Participant A · confidence: medium",
+      "   captures: captures/frame.png",
+    ]);
+    expect(formatFindingsSummary(view, "humanish review").slice(2)).toEqual([
+      "design findings: 2",
+      "- D2 major: The save button is cut off at the bottom of the window.",
+      "- D1 moderate: The create button is hard to find.",
+      "all findings: humanish review",
+    ]);
+  });
+
+  it("says when the design review found nothing in the captures", () => {
+    const analysis = syntheticArtifact();
+    analysis.result!.designFindings = [];
+    const view = analysisFindings(source(ready(analysis)));
+    expect(view.designFindings).toEqual([]);
+    expect(formatFindings(view)).toContain("design findings: none in the reviewed captures");
+    expect(formatFindingsSummary(view, "humanish review")).toContain("design findings: none");
+  });
+
+  it("prints an analysis written before headlines and design findings by title and summary", () => {
+    const analysis = syntheticArtifact();
+    delete analysis.result!.findings[0]!.headline;
+    delete analysis.result!.findings[0]!.experience;
+    delete analysis.result!.designFindings;
+    const view = analysisFindings(source(ready(analysis)));
+    expect(view.findings[0]).toMatchObject({ headline: null, experience: null });
+    expect(view.designFindings).toBeNull();
+    const lines = formatFindings(view);
+    const f1 = lines.indexOf("finding-1 Item creation was blocked");
+    expect(lines.slice(f1 + 1, f1 + 3)).toEqual([
+      "   impact: blocked task · confidence: medium · recovery: no recovery observed",
+      "   The participant could not create an item.",
+    ]);
+    expect(lines.some((line) => line.startsWith("design findings"))).toBe(false);
+    expect(formatFindingsSummary(view, "humanish review")).toEqual([
+      "findings: 1",
+      "- finding-1 blocked task, medium confidence, no recovery observed: Item creation was blocked",
+      "all findings: humanish review",
+    ]);
   });
 
   it("marks findings stale when the run changed after the analysis, and names the command to redo it", () => {
