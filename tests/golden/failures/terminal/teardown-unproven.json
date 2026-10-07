@@ -310,12 +310,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "pass",
-    "summary": "agent reported passed verdict marker (nonce-verified)",
+    "summary": "1 participant took part: 1/1 reached the goal. How it ended: agent reported passed verdict marker (nonce-verified)",
     "gaps": [
       "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: failed: sandbox-cleanup: Sandbox teardown unproven (killed=true, remaining=1): kill(id) returned true (found and killed) but getInfo(id) still reports state=running; this sandbox's teardown is not confirmed by id\n- summary: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: failed: sandbox-cleanup: Sandbox teardown unproven (killed=true, remaining=1): kill(id) returned true (found and killed) but getInfo(id) still reports state=running; this sandbox's teardown is not confirmed by id\n- summary: 1 participant took part: 1/1 reached the goal. How it ended: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -441,7 +441,7 @@
           "mission": "Discover widgetsmith-cli from public surfaces."
         },
         "kind": "terminal",
-        "label": "Terminal agent · terminal-live-proof",
+        "label": "Autonomous creative agent",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -695,7 +695,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "pass",
-      "summary": "agent reported passed verdict marker (nonce-verified)",
+      "summary": "1 participant took part: 1/1 reached the goal. How it ended: agent reported passed verdict marker (nonce-verified)",
       "gaps": [
         "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
       ]

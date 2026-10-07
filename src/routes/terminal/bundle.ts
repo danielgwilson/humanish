@@ -29,6 +29,8 @@ import {
 } from "../../run/terminal-contract.js";
 import type { TerminalLedgers } from "./types.js";
 import { DEFAULT_RUNTIME_AUTH } from "./runtime-auth.js";
+import { participantCaption } from "../../run/participant-caption.js";
+import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../../run/outcomes.js";
 import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**
@@ -131,7 +133,7 @@ export function buildTerminalProductBundle(args: {
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict: args.verdict,
-    summary: reason,
+    summary: `Dry run: 1 participant would try ${args.productName} from a terminal. No sandbox was created, no key was used and $0 was spent.`,
     gaps: [
       "This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.",
       "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.",
@@ -257,7 +259,7 @@ export function buildLiveTerminalProductBundle(args: {
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict: args.verdict,
-    summary: args.sessionReason,
+    summary: `1 participant took part: ${formatParticipantOutcomes(tallyParticipantOutcomes([args.trace.status]))}. How it ended: ${args.sessionReason}`,
     gaps: [
       ...(args.trace.status === "passed"
         ? []
@@ -332,7 +334,7 @@ function terminalParticipant(
   const stream = participantStream(TERMINAL_IDS, {
     assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
-    label: `Terminal agent · ${args.studyId}`,
+    label: participantCaption({ personaId: args.persona.id }),
     status: session.status,
     transport: "snapshot",
     updatedAt: session.updatedAt,
