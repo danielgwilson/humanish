@@ -8,44 +8,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.112.0: Plain finding headlines, design findings, plain captions, DO_NOT_TRACK for terminal participants (2026-10-07)
 
-- Each analysis finding now leads with a plain headline and a short account of what the person
-  tried, what got in their way and how it seemed to feel, written for someone who did not watch
-  the session. `humanish review`, `humanish analyze show`, the end of a live run, the Observer and
-  analysis feedback drafts show the headline first. The finding's title, summary and observations
-  stay underneath as its evidence; in the Observer they are one disclosure away. When a reviewer
-  amends a finding with `analyze correct`, the amended claim takes the headline's place and the
-  finding says it was corrected.
-- Analyses now report design findings: problems a product designer would notice in the captures,
-  such as a primary button cut off at the bottom of the window or a control with a misleading
-  label, whether or not a participant mentioned them. Each names the screen, what a designer
-  notices, why it matters and one suggestion, has a severity (major, moderate or minor), and cites
-  at least one capture. The Observer lists them by severity with each capture as a thumbnail that
-  opens it; `review` and `analyze show` print them after the findings, and `review --json` carries
-  them as `analysis.designFindings`. The analysis prompt is now `study-evidence-7`. Analyses
-  written before it keep showing their findings by title, with no design section.
+humanish 0.112.0 writes findings and captions for someone who did not watch the session, and
+terminal participants send `DO_NOT_TRACK=1` by default. Each analysis finding leads with a plain
+headline and an account of what the person tried, what got in their way and how it seemed to feel;
+its title, summary and observations stay underneath as the evidence. Analyses also report design
+findings: problems a product designer would notice in the captures, each with a severity and at
+least one cited capture. `review --json` carries them as `analysis.designFindings`, and the
+analysis prompt is `study-evidence-7`. Participant captions name the person, such as "Lobby host,
+phone", and every route's run summary says how many participants took part and how many reached
+the goal. Terminal participant and product setup commands run with `DO_NOT_TRACK=1`; set
+`execution.terminal.doNotTrack: false` to study a product's telemetry. `humanish runs` and the
+Observer now read a run with no outcome and a running simulation as interrupted, as the TUI,
+`stats` and `verify` already did. The `--env-file` and `cleanup` aliases are removed in the first
+minor release on or after 2026-11-03.
 
-### Changed
-
-- The `--env-file` and `cleanup` aliases are removed in the first minor release on or after 2026-11-03, and the first minor release on or after 2026-11-04 refuses `execution.egressAllow` on routes other than `terminal`. Earlier notes and warnings named 0.112.0; the dates are unchanged.
-- Terminal study participants and product setup commands now send `DO_NOT_TRACK=1` by default so synthetic usage can be excluded by CLIs that honor it. Set `execution.terminal.doNotTrack: false` when studying the product's telemetry behavior. Dry and live run bundles record the resolved setting.
-- Participant captions and run summaries are in plain words. A participant is captioned by its roster id in words, plus "phone" or "tablet" when it is not on a desktop ("Lobby host, phone"); a numbered id such as `lane-01` takes the persona's name instead, and the study id is no longer repeated. The Observer and the TUI show the same caption, including for runs an earlier release recorded. Every route's summary says how many participants took part, how many reached the goal and that the gaps list the rest, without "swarm", "plane", "run gate", "credibility checks" or `goal_satisfied`. Each participant's own summary says how its session ended in words, a shared-world run is named "3 participants in one shared app", and a failed shared-world run says how many participants passed instead of "did not run coherently". The taxonomy (`actorType`, `surface`, `caseGroup`), attribution limits, topology and concurrency details stay in the bundle data and in `review.md`'s detail lines.
-
-### Fixed
-
-- Analysis text no longer keeps a run's received one-time codes or links when the model writes
-  them encoded. Every generated field is checked for each value as written and as percent-encoded,
-  JSON-escaped, base64 or hex text, and an analysis that puts one in a finding ID or reference is
-  refused. Before, only the value as written was removed.
-- A design finding can name a participant as having seen the problem only when it cites one of
-  that participant's captures, and the Observer now refuses a saved analysis that lacks the
-  headlines or design findings its prompt version requires.
-- Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
-- Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
-  an unfinished bundle without usable status reads as interrupted, and a recorded final outcome
-  wins over a stale status record. Fresh live snapshots still read as running. Invalid cost
-  estimates stay unknown across cost displays and statistics.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.112.0)
 
 ## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
