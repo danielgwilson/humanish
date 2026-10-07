@@ -456,11 +456,13 @@ export interface ActorConversation {
    */
   summarizedTurns: number;
   /**
-   * Per participant request, in order: its mode and, in explicit_context, what it carried and its
-   * estimated input. `tokenUsage.turns` has each request's billed input.
+   * Per participant turn or impressions request, in order: its mode and, in explicit_context,
+   * what it carried and its estimated input. `tokenUsage.turns` has each request's billed input.
    */
   requests: Array<{
     mode: "threaded" | "explicit_context";
+    /** Present for the impressions-only request; absent for participant turns and older bundles. */
+    kind?: "impressions";
     carriedExchanges?: number;
     carriedScreenshots?: number;
     estimatedInputTokens?: number;

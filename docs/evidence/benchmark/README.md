@@ -32,7 +32,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
 | `--participant-cap <usd>`  | 0.6                   | The generated study's `caps.maxUsd` for a priced participant                  |
-| `--analysis-max-usd <usd>` | 1.75                  | `humanish analyze --max-cost` for every run                                   |
+| `--analysis-max-usd <usd>` | admission plus 10% | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |
 | `--work-dir <dir>`         | a new temp directory  | The project, its `.humanish/runs`, `manifest.json` and `cli.log`              |
 | `--out <dir>`              | the work directory    | Where the results file and summary go                                         |
@@ -59,8 +59,9 @@ Every child process gets `DO_NOT_TRACK=1`.
    other than `clean` (`running`, `unconfirmed` or `unknown`). Results record both states. A run
    made by humanish 0.110.0 or earlier records no owner tags, so its check reports `unknown` even
    when every receipted sandbox is gone. Then `humanish analyze --dry-run` for the admission
-   estimate, and `humanish analyze --max-cost <analysis-max-usd>` when that estimate fits the
-   budget.
+   estimate. By default, the per-run cap is that estimate plus 10%, limited to the remaining
+   per-brain budget. `--analysis-max-usd` sets a fixed cap instead. Analysis starts only when its
+   estimate fits the budget.
 5. Scores every recorded run and writes the results file and summary.
 
 ## What it spends
@@ -71,8 +72,10 @@ Each step starts only when the spend so far plus that step's worst case fits und
   at $0.00888 a minute (8 CPU, 8 GiB). The participant cap is checked between turns, so one turn
   can pass it.
 - An analysis's worst case is the admission estimate `humanish analyze --dry-run` reports for
-  that run, which is at most `--analysis-max-usd`. `analyze` refuses before sending anything when
-  the estimate is higher than `--max-cost`. The estimate is conservative and is not a billing cap.
+  that run. The default cap follows that estimate with 10% headroom, bounded by the remaining
+  per-brain budget and the CLI's $1,000 limit. A missing estimate refuses automatic sizing.
+  `--analysis-max-usd` keeps a fixed per-run cap. `analyze` refuses before sending anything when
+  the estimate is higher than its cap. The estimate is conservative and is not a billing cap.
 - A `local-agent` participant's model spend has no price. It is recorded as unknown, and the cap
   bounds only its desktop and analysis spend.
 
@@ -86,9 +89,12 @@ step on its worst case, so the sixth analysis needs about $6.70 of headroom: at 
 projects 6 runs and 5 analyses, and the default of $7 fits all 12 steps. When a plan does not fit,
 the dry run names the smallest cap, in $0.50 steps, at which it does.
 
-The analysis here runs with `--max-cost 1.75`, where automatic analysis after a user's run uses a
-$3 limit. The model, effort and prompt version are the same; the output allowance is 16,384
-tokens at $1.75 and 32,768 at $3. Results record the analysis model, prompt version and limits.
+The benchmark's automatic cap uses a fixed 16,384-token output allowance for both the admission
+check and the analysis, preserving the allowance of earlier benchmarks as the input prompt grows.
+For example, a $1.81 admission estimate gets a $1.991 cap when the remaining budget allows it.
+An explicit `--analysis-max-usd` keeps the CLI's admission-based output sizing. Automatic analysis
+after a user's run uses a $3 limit. Results record the analysis model, prompt version and limits;
+each run's manifest records the cap it used.
 
 ## Missions
 
@@ -106,7 +112,11 @@ the committed study.
 ## What each score means
 
 Units: a participant report is one unit, and an analysis is one unit. Recall denominators count
-planted-arm units only.
+planted-arm units only. Refused analyses are excluded from analysis recall. The terminal results
+and generated Markdown summary list each refusal separately; a cost refusal reads "refused by
+cost cap" with its admission estimate, applied cap and exclusion from recall. The results JSON
+keeps those details on the run's `analysisRefusal` field. When rescoring older manifests, the
+benchmark uses their recorded `budget.analysisMaxUsd` if no per-run cap was recorded.
 
 | Score                     | Definition                                                                                                                                                                                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
