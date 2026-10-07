@@ -8,6 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Each analysis finding now leads with a plain headline and a short account of what the person
+  tried, what got in their way and how it seemed to feel, written for someone who did not watch
+  the session. `humanish review`, `humanish analyze show`, the end of a live run, the Observer and
+  analysis feedback drafts show the headline first. The finding's title, summary and observations
+  stay underneath as its evidence; in the Observer they are one disclosure away. When a reviewer
+  amends a finding with `analyze correct`, the amended claim takes the headline's place and the
+  finding says it was corrected.
+- Analyses now report design findings: problems a product designer would notice in the captures,
+  such as a primary button cut off at the bottom of the window or a control with a misleading
+  label, whether or not a participant mentioned them. Each names the screen, what a designer
+  notices, why it matters and one suggestion, has a severity (major, moderate or minor), and cites
+  at least one capture. The Observer lists them by severity with each capture as a thumbnail that
+  opens it; `review` and `analyze show` print them after the findings, and `review --json` carries
+  them as `analysis.designFindings`. The analysis prompt is now `study-evidence-7`. Analyses
+  written before it keep showing their findings by title, with no design section.
+
 ## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
 humanish 0.111.4 scrubs a run's known values from more of its evidence and fixes three messages.

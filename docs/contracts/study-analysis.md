@@ -161,6 +161,36 @@ thought. Older reports may omit this field and remain readable. The disclosure
 is model-generated assessment, not an independent completeness audit or a human
 reviewer annotation.
 
+## Headlines and design findings
+
+The `study-evidence-7` prompt writes each finding twice. `headline` is one plain sentence about what
+happened, for a designer, product manager or developer who did not watch the session.
+`experience` is one to three plain sentences: what the person tried, what got in their way, and
+how it seemed to feel. Neither names participant or evidence IDs. A concern known only from what
+participants said still reads as something they said. `title`, `summary` and `observations` keep
+their evidence-level wording, and validation applies to them as before.
+
+The same prompt adds `designFindings`: problems a product designer would notice in the supplied
+captures, whether or not a participant mentioned them. Each has an `id` (`D1`, `D2`, ...), a
+`headline`, the `screen` in plain words, what a designer would `notice`, `whyItMatters` to a
+person using the product, one `suggestion`, a `severity` (`major` when it misleads or blocks,
+`moderate` when it slows or confuses, `minor` when it is polish), a `confidence`,
+`seenByStreamIds` and `evidenceIds`. Validation rejects a design finding that cites no retained
+capture, cites evidence outside the packet, repeats an ID, or lists a participant in
+`seenByStreamIds` whose evidence it does not cite. An empty list means the review found no design
+problem in the captures. The model judges legibility and size from images alone; it does not
+measure text or control sizes.
+
+New provider responses must include `headline` and `experience` on every finding and a
+`designFindings` list. A stored artifact with prompt `study-evidence-7` or later must carry them
+too. Artifacts from earlier prompts load without them and render by title and summary. The
+narrative scrub covers the new text fields. A known secret echoed as a design finding ID,
+severity, confidence or reference refuses the response, as it does for finding IDs.
+
+When a reviewer amends a finding, its headline and experience describe the replaced claim.
+Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the
+finding was corrected; the stored analysis keeps the original.
+
 Every observation cites packet-local evidence IDs. The model cannot choose a
 filesystem path or fetch another resource. Validation checks participant
 membership, unique counts, quote fidelity, evidence type and reference
@@ -203,7 +233,7 @@ feedback quotes cite evidence IDs that the run's own `analysis.json` resolves.
 Participant reviews cite distinct packet-local evidence IDs belonging only to
 that participant's stream; source event IDs are not citation IDs. Shared
 interactions can cite multiple included participants in findings and concern
-reviews under the existing exposure rules. The `study-evidence-6` prompt makes
+reviews under the existing exposure rules. The `study-evidence-6` prompt made
 this distinction explicit without changing the validator or historical reports.
 
 Elapsed replay time starts at the first retained capture. It is not a video
@@ -218,6 +248,12 @@ not increase support. This is a display heuristic, not a confidence score or a
 guarantee that the selected capture is the most relevant. Context-only and
 nonvisual evidence retain their basis and original event. All cited moments stay
 available, with exact recording links.
+
+A finding with a headline leads its Observer row with the headline and its open panel with the
+experience. The title, summary, assessment and observations sit in a closed **Evidence**
+disclosure beneath. A **Design findings** section follows the ranked findings, grouped by
+severity, with each cited capture as a thumbnail that opens that frame. Findings without a
+headline render as described below.
 
 Confidence, recovery and the first full evidence limitation remain visible when
 a finding opens. Exposure and remaining unique limits are one disclosure away;
@@ -291,31 +327,35 @@ is disabled. Existing adapter captures and logs retain their contained routes.
 ## Reading findings
 
 `humanish review` prints a run's analysis findings after its participant review, and
-`humanish analyze show` prints them alone. Each finding shows its title, impact, confidence and
-recovery, the participants it affected out of those exposed, the frames its evidence cites with
-their time since the first retained capture, the capture files, its next step and the latest
-human review note. A live run's human output ends with up to three findings, one line each, and
-the `review` command that prints all of them. `analyze show --json` prints the validated
+`humanish analyze show` prints them alone. Each finding leads with its headline and experience,
+then shows its title as `evidence:`, its impact, confidence and recovery, the participants it
+affected out of those exposed, the frames its evidence cites with their time since the first
+retained capture, the capture files, its next step and the latest human review note. A finding
+without a headline starts at its title. Design findings follow, most severe first, each with its
+screen, notice, why it matters, suggestion, who saw it and its capture files. A live run's human
+output ends with up to three findings and up to three design findings, one line each, and the
+`review` command that prints all of them. `analyze show --json` prints the validated
 analysis record and its corrections, as before. Reading findings never starts an analysis.
 
 `review --json` carries the same view as its `analysis` field, schema
 `humanish.analysis-findings.v1`, built in `src/cli/findings.ts`:
 
-| Field                                                                          | Meaning                                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`                                                                       | `humanish.analysis-findings.v1`.                                                                                                                                                                                                                                                                                                              |
-| `runId`                                                                        | The run the view reads.                                                                                                                                                                                                                                                                                                                       |
-| `state`                                                                        | `ready`, `stale`, `running`, `none`, `skipped`, `failed`, `dry_run` or `unavailable`. Only `ready` and `stale` carry findings.                                                                                                                                                                                                                |
-| `reason`                                                                       | The stable code behind a state other than `ready`, or null: an automatic analysis reason such as `AUTOMATIC_ANALYSIS_KEY_MISSING`, a failed attempt's error code, or a load warning such as `ANALYSIS_SOURCE_CHANGED`.                                                                                                                        |
-| `message`                                                                      | What happened, in words.                                                                                                                                                                                                                                                                                                                      |
-| `next`                                                                         | The command that gets findings for this run, or for a dry run the command that starts a live one. Null when no command can, as for a run whose participants left no evidence.                                                                                                                                                                 |
-| `analysisId`, `status`, `provider`, `model`, `completedAt`, `estimatedCostUsd` | The analysis version `analyze show` selects: the newest ready one, else the newest stale one. Null without one.                                                                                                                                                                                                                               |
-| `runPath`, `path`                                                              | The run directory and the version's `analysis.json`, relative to the project directory.                                                                                                                                                                                                                                                       |
-| `summary`, `limitations`                                                       | The analysis's own summary and limitations.                                                                                                                                                                                                                                                                                                   |
-| `findings[]`                                                                   | Highest priority first: `id`, `title`, `summary`, `impact` (`blocked_task`, `friction`, `recovery`, `uncertain`), `confidence` (`low`, `medium`, `high`), `recovery` (`recovered`, `not_observed`, `unknown`), `affected[]` (`streamId`, `label`), `exposedCount`, `evidence[]`, `nextStep` and `correction`.                                 |
-| `findings[].evidence[]`                                                        | Each cited item once: `id`, `streamId`, `kind`, `bases` (how the observations used it), `frame` (the latest retained capture's index from 0, null before any capture), `elapsedMs` (time since the first retained capture, not a video offset), `at` and `capture` (the file relative to the project directory, null for nonvisual evidence). |
-| `findings[].correction`                                                        | The latest `analyze correct` note on that finding version (`status`, `reason`, `replacementClaim`), or null.                                                                                                                                                                                                                                  |
-| `warnings`                                                                     | Load warnings for the selected version.                                                                                                                                                                                                                                                                                                       |
+| Field                                                                          | Meaning                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`                                                                       | `humanish.analysis-findings.v1`.                                                                                                                                                                                                                                                                                                                                                        |
+| `runId`                                                                        | The run the view reads.                                                                                                                                                                                                                                                                                                                                                                 |
+| `state`                                                                        | `ready`, `stale`, `running`, `none`, `skipped`, `failed`, `dry_run` or `unavailable`. Only `ready` and `stale` carry findings.                                                                                                                                                                                                                                                          |
+| `reason`                                                                       | The stable code behind a state other than `ready`, or null: an automatic analysis reason such as `AUTOMATIC_ANALYSIS_KEY_MISSING`, a failed attempt's error code, or a load warning such as `ANALYSIS_SOURCE_CHANGED`.                                                                                                                                                                  |
+| `message`                                                                      | What happened, in words.                                                                                                                                                                                                                                                                                                                                                                |
+| `next`                                                                         | The command that gets findings for this run, or for a dry run the command that starts a live one. Null when no command can, as for a run whose participants left no evidence.                                                                                                                                                                                                           |
+| `analysisId`, `status`, `provider`, `model`, `completedAt`, `estimatedCostUsd` | The analysis version `analyze show` selects: the newest ready one, else the newest stale one. Null without one.                                                                                                                                                                                                                                                                         |
+| `runPath`, `path`                                                              | The run directory and the version's `analysis.json`, relative to the project directory.                                                                                                                                                                                                                                                                                                 |
+| `summary`, `limitations`                                                       | The analysis's own summary and limitations.                                                                                                                                                                                                                                                                                                                                             |
+| `findings[]`                                                                   | Highest priority first: `id`, `headline` and `experience` (null in analyses before `study-evidence-7`), `title`, `summary`, `impact` (`blocked_task`, `friction`, `recovery`, `uncertain`), `confidence` (`low`, `medium`, `high`), `recovery` (`recovered`, `not_observed`, `unknown`), `affected[]` (`streamId`, `label`), `exposedCount`, `evidence[]`, `nextStep` and `correction`. |
+| `findings[].evidence[]`                                                        | Each cited item once: `id`, `streamId`, `kind`, `bases` (how the observations used it), `frame` (the latest retained capture's index from 0, null before any capture), `elapsedMs` (time since the first retained capture, not a video offset), `at` and `capture` (the file relative to the project directory, null for nonvisual evidence).                                           |
+| `findings[].correction`                                                        | The latest `analyze correct` note on that finding version (`status`, `reason`, `replacementClaim`), or null. When `status` is `amended`, `replacementClaim` replaces the finding's headline and experience.                                                                                                                                                                             |
+| `designFindings`                                                               | Most severe first: `id`, `headline`, `screen`, `notice`, `whyItMatters`, `suggestion`, `severity` (`major`, `moderate`, `minor`), `confidence`, `seenBy[]` (`streamId`, `label`) and `evidence[]` (as `findings[].evidence[]`, without `bases`). Null without an analysis result, or for an analysis written before design findings.                                                    |
+| `warnings`                                                                     | Load warnings for the selected version.                                                                                                                                                                                                                                                                                                                                                 |
 
 The states without findings:
 
