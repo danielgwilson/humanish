@@ -88,7 +88,7 @@ export function scrubTransientCommsText(text: string): string {
  * The scope's values as a scrubSecretValues scrub, which also finds them percent-encoded, escaped or
  * base64-encoded and returns decoded text. Outside a scope it changes nothing.
  */
-export function transientCommsEncodedScrub(): (text: string) => string {
+function transientCommsEncodedScrub(): (text: string) => string {
   const scope = scopes.getStore();
   if (!scope) return (text) => text;
   usable(scope);
