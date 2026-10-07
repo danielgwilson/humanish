@@ -138,6 +138,8 @@ npx humanish observe --run latest --open
 ```
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
+`npx humanish keys` shows which keys are set and where each comes from, and
+`npx humanish keys set` with no vendor asks for each missing key in turn.
 `doctor --study` checks the study's local setup without launching a
 desktop or making a model request. It reports key presence, not remote key
 validity, model access, or quota. `study check` checks manifest metadata by default.
@@ -364,6 +366,7 @@ has the providers' retention terms.
 | Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                        | `local-agent` participants, local browser studies, the Codex analyst                                                             |
 | E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study with `execution.runtimeAuth: openai-env`, your OpenAI key | Every hosted study                                                                                                               |
 | PostHog              | Telemetry events, described [below](#check-what-telemetry-sends)                                                                                                                                                                                                                                                                                       | By default                                                                                                                       |
+| npm registry         | A request for the latest humanish version, with no identifying data, described [below](#check-what-telemetry-sends)                                                                                                                                                                                                                                    | At most once a day, at a terminal                                                                                                |
 
 ## Find the main commands
 
@@ -475,6 +478,14 @@ subjects, personas, prompts, paths, run ids and evidence are never sent.
 `humanish telemetry status` prints the exact event, and `humanish telemetry
 disable` or `DO_NOT_TRACK=1` turns it off. [TELEMETRY.md](TELEMETRY.md) lists
 every field.
+
+At most once a day, a command run at a terminal also asks the npm registry for
+the latest humanish version, and a later command prints one line on stderr when
+yours is older. That request is a plain `GET` of humanish's dist-tags with no
+machine id, version, command or path. It is skipped in CI, without a terminal,
+for `--json`, and with `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1` or
+`HUMANISH_NO_UPDATE_CHECK=1`. [TELEMETRY.md](TELEMETRY.md#the-update-check)
+describes it.
 
 ## Contribute
 
