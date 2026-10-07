@@ -21,7 +21,7 @@ Adopter-flow findings from vendoring (kept honest, good or bad):
 - `shadcn add @humanish/<item> --yes` worked first try against the live
   registry from a bare Vite workspace: 8 files, correct targets, install docs
   printed. No Next-specific imports leaked into any vendored file; `"use
-client"` directives are inert no-ops under Vite.
+  client"` directives are inert no-ops under Vite.
 - The registry's install docs assume a `app/globals.css`-relative import path
   (`../styles/humanish/...`); a consumer whose global CSS lives at
   `styles/globals.css` imports `./humanish/...` instead. Cosmetic, but a

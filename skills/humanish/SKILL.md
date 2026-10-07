@@ -342,8 +342,7 @@ The following configuration selects **local capture**:
 ```yaml
 comms:
   email:
-    injectEnv:
-      RESEND_API_URL # adopter-named: whatever env var YOUR app reads for its
+    injectEnv: RESEND_API_URL # adopter-named: whatever env var YOUR app reads for its
       # email-API base URL. The harness sets it to the in-sandbox catch — do NOT also
       # list it in subject.env. VERIFY the app actually reads this variable: a stock
       # email SDK does not honor a base-URL env unless the app passes it through, and

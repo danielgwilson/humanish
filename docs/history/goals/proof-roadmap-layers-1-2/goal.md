@@ -89,7 +89,7 @@ strategy; per-lane worlds is the only topology this layer.
   bound (an env var must never raise concurrent paid lanes — invariant 3);
 - app-url fan-out: loopback + N lanes ALLOWED (each sandbox is its own world,
   provisioned per-lane via the widened `prepareDesktop(desktop, {laneId, laneIndex,
-laneCount})`); `allowPublicTargets` + N>1 REJECTED naming shared-world as layer 7;
+  laneCount})`); `allowPublicTargets` + N>1 REJECTED naming shared-world as layer 7;
 - preflight: lane table + strategy + concurrency/waves + per-lane budgets + worst-case
   sandbox-minutes printed to stderr BEFORE any sandbox or provider call; identical plan
   in dry-run marked $0; recorded as a `cua-lab.fanout.plan` bundle event;

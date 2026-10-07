@@ -57,7 +57,7 @@ API surface.
 1. **Transport-agnostic contract; Codex stays the reference implementation.** The
    contract describes lifecycle and evidence, not transport. An adapter may be a
    subprocess protocol (Codex stdio JSON-RPC, `pi --mode rpc`, `claude -p
---output-format stream-json`) or an in-process SDK (`pi-agent-core`, Claude
+   --output-format stream-json`) or an in-process SDK (`pi-agent-core`, Claude
    Agent SDK, Stagehand). The existing Codex app-server integration is the
    reference adapter. `pi-agent-core` was planned as the first in-process-SDK
    adapter to prove both shapes early; it shipped only as a trace mapper with no
@@ -325,7 +325,7 @@ the computer-use loop distinguishes two ways to hit the cap:
 
 - **`budget_reached`**: the deadline was reached after at least one material (non-idle)
   action, or a spend, adapter or token limit ended the session. This maps to `ActorStatus:
-"incomplete"`: the participant did not reach the goal, and the harness did not fail.
+  "incomplete"`: the participant did not reach the goal, and the harness did not fail.
   `participantOutcomeOk` is false, the verdict is `fail`, and the CLI exits `2`. The trace
   `reason` and optional `stopCause` say which limit ended the session.
 - **`timed_out`**: the deadline was reached with zero material actions (a hung provider, an
@@ -422,7 +422,7 @@ returns the full `resolvedPersona` from `parseResolvedPersona`.
 Plan:
 
 1. **Parse the whole persona** into a `ResolvedPersona`: `{ id, name, summary, goals[],
-traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }` (map
+   traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }` (map
    `technical_confidence` to `skill`). The shipped shape in `src/study/persona.ts` has no
    `goals`, adds `background`, and makes every trait optional.
 2. **Compile traits into actor-neutral directives**, not prose, via a pure

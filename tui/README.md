@@ -75,11 +75,11 @@ worth not rediscovering:
   Both crashes faulted at a byte-identical address, and it reproduces on an
   isolated socket in three commands, every time.
 - `-g` is what made it catastrophic rather than local. `tmux set-option -t SESS
--g window-size manual` sets the option server-wide; the `-t` does not scope
+  -g window-size manual` sets the option server-wide; the `-t` does not scope
   it. One server means every session on the machine dies together.
 - The obvious replacement fails on a shared server. `new-session -x 36
--y 14` alone yielded a 59-column pane here, because the default `window-size
-latest` sizes the window to the most recently active client and overrides
+  -y 14` alone yielded a 59-column pane here, because the default `window-size
+  latest` sizes the window to the most recently active client and overrides
   `-x`/`-y`. Measure `#{pane_width}` before trusting a width.
 
 So, if a real terminal is genuinely needed:
