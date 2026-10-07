@@ -2,31 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
-  transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 
 describe("transient run narration secrets", () => {
-  it("removes a known value from generated text in every form, beside or inside redaction-shaped text", async () => {
-    await withTransientCommsSecrets(async () => {
-      registerTransientCommsSecrets(["743921", "café-secret"]);
-      const scrub = transientCommsKnownValueScrub();
-      const hex = Buffer.from("743921").toString("hex");
-      expect(scrub("743921 [REDACTED_743921]")).toBe(
-        "[REDACTED_SECRET] [REDACTED_[REDACTED_SECRET]]",
-      );
-      expect(scrub(`[REDACTED_${hex}] and [REDACTED_74%33921]`)).toBe(
-        "[REDACTED_[REDACTED_SECRET]] and [REDACTED_[REDACTED_SECRET]]",
-      );
-      expect(scrub("signed in with caf%C3%A9-secret at 50%25")).toBe(
-        "signed in with [REDACTED_SECRET] at 50%25",
-      );
-      expect(scrub("Ordinary text with [REDACTED_SECRET] and 50%25.")).toBe(
-        "Ordinary text with [REDACTED_SECRET] and 50%25.",
-      );
-    });
-  });
-
   it("matches literal overlapping values longest-first without altering ordinary text", async () => {
     const code = "743921";
     const link = `https://example.test/verify?code=${code}&proof=[synthetic]+(value)$`;

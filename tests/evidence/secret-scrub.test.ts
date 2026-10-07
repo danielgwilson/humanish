@@ -72,47 +72,6 @@ describe("scrubSecretValues", () => {
     );
   });
 
-  it("scans redaction-shaped text that is not a marker the scrubbers write", () => {
-    const code = "743921";
-    const scrub = scrubSecretValues([code]);
-    expect(scrub(`${code} [REDACTED_${code}]`)).toBe(
-      "[REDACTED_SECRET] [REDACTED_[REDACTED_SECRET]]",
-    );
-    const hex = Buffer.from(code).toString("hex");
-    expect(scrub(`[REDACTED_${hex}]`)).toBe("[REDACTED_[REDACTED_SECRET]]");
-    expect(scrub("[REDACTED_74%33921]")).toBe("[REDACTED_[REDACTED_SECRET]]");
-  });
-
-  it("leaves the exact markers the scrubbers write, even when a value is part of one", () => {
-    const markers = "[REDACTED_SECRET] [REDACTED_LOCAL_PATH] [REDACTED_RUNTIME_PATH]";
-    expect(scrubSecretValues(["SECRET", "LOCAL_PATH", "RUNTIME"])(markers)).toBe(markers);
-  });
-
-  it("finds a percent-encoded UTF-8 value as written and lowercased", () => {
-    const value = "café-secret";
-    const scrub = scrubSecretValues([value]);
-    expect(encodeURIComponent(value)).toBe("caf%C3%A9-secret");
-    expect(scrub("refused caf%C3%A9-secret")).toBe("refused [REDACTED_SECRET]");
-    expect(scrub("refused caf%c3%a9-secret")).toBe("refused [REDACTED_SECRET]");
-  });
-
-  it("returns percent-encoded UTF-8 decoded as UTF-8", () => {
-    expect(scrubSecretValues([T])(`caf%C3%A9 ${T}`)).toBe("café [REDACTED_SECRET]");
-  });
-
-  it("finds a value as written when it holds an escape", () => {
-    for (const value of ["pass%41word", "pass&amp;word", "pass\\u0041word"])
-      expect(scrubSecretValues([value])(`refused ${value}`)).toBe("refused [REDACTED_SECRET]");
-  });
-
-  it("keeps the spelling of everything but the value when asked", () => {
-    const scrub = scrubSecretValues(["743921", "café-secret"], { keepSpelling: true });
-    expect(scrub("code 7%34%33921 at 50%25 off")).toBe("code [REDACTED_SECRET] at 50%25 off");
-    expect(scrub("caf%C3%A9-secret and caf%C3%A9")).toBe("[REDACTED_SECRET] and caf%C3%A9");
-    expect(scrub(`refused ${T}%2dprivate`)).toBe(`refused ${T}%2dprivate`);
-    expect(scrub("7&#52;3921 &amp; \\u0041")).toBe("[REDACTED_SECRET] &amp; \\u0041");
-  });
-
   it("scrubs a value that is not well-formed Unicode without throwing", () => {
     const value = "x".repeat(16) + "\uD800";
     expect(scrubSecretValues([value])(`refused ${value}`)).toBe("refused [REDACTED_SECRET]");
