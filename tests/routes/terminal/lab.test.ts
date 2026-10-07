@@ -638,6 +638,104 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
+  it.each([true, false])("parses doNotTrack %s", (doNotTrack) => {
+    const config = liveConfig();
+    expect(
+      parseStudy({
+        ...config,
+        execution: { ...config.execution, terminal: { doNotTrack } },
+      }),
+    ).toMatchObject({ ok: true, config: { execution: { terminal: { doNotTrack } } } });
+  });
+
+  it.each(["false", 0, null, [], {}])("refuses non-boolean doNotTrack %j", (doNotTrack) => {
+    const config = liveConfig();
+    const parsed = parseStudy({
+      ...config,
+      execution: { ...config.execution, terminal: { doNotTrack } },
+    });
+    expect(parsed).toMatchObject({
+      ok: false,
+      error: { message: "`execution.terminal.doNotTrack` must be true or false (unquoted)." },
+    });
+  });
+
+  it.each([undefined, true, false])(
+    "applies doNotTrack %s to participant and product setup commands",
+    async (doNotTrack) => {
+      const config = liveConfig();
+      config.execution!.terminal = {
+        ...config.execution!.terminal,
+        ...(doNotTrack === undefined ? {} : { doNotTrack }),
+      };
+      config.subject.product!.install = "widget-cli init";
+      const runs: RecordedRun[] = [];
+      const result = await runTerminal({
+        cwd,
+        config,
+        dryRun: false,
+        open: false,
+        env: { ...baseEnv(), DO_NOT_TRACK: "host-value" },
+        deps: {
+          now: () => 1_000,
+          desktopModule: async () =>
+            makeFakeModule({
+              creates: [],
+              runs,
+              killed: [],
+              codexBehavior: (cmd) => ({
+                exitCode: 0,
+                stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+              }),
+            }),
+        },
+      });
+      expect(result.ok).toBe(true);
+      const commands = [
+        runs.find((run) => run.command.includes(" exec ")),
+        runs.find((run) => run.command.includes("widget-cli init")),
+      ];
+      for (const command of commands) {
+        expect(command).toBeDefined();
+        if (doNotTrack === false) expect(command!.envs).not.toHaveProperty("DO_NOT_TRACK");
+        else expect(command!.envs).toHaveProperty("DO_NOT_TRACK", "1");
+      }
+      const dir = path.join(cwd, ".humanish", "runs", result.runId);
+      const bundle = JSON.parse(await readFile(path.join(dir, "run.json"), "utf8"));
+      const actor = JSON.parse(await readFile(path.join(dir, "actor.json"), "utf8"));
+      const ledgers = JSON.parse(await readFile(path.join(dir, "terminal-ledgers.json"), "utf8"));
+      for (const runtime of [bundle.streams[0].actor.runtime, actor.runtime, ledgers.runtime])
+        expect(runtime.doNotTrack).toBe(doNotTrack !== false);
+    },
+  );
+
+  it.each([undefined, true, false])("records doNotTrack %s in a dry run", async (doNotTrack) => {
+    const config = liveConfig();
+    config.execution!.terminal = {
+      ...config.execution!.terminal,
+      ...(doNotTrack === undefined ? {} : { doNotTrack }),
+    };
+    const result = await runTerminal({
+      cwd,
+      config,
+      dryRun: true,
+      open: false,
+      deps: {
+        desktopModule: async () => {
+          throw new Error("must not allocate");
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    const event = bundle.events.find(
+      (entry: { type: string }) => entry.type === "terminal-lab.runtime.declared",
+    );
+    expect(JSON.parse(event.message).doNotTrack).toBe(doNotTrack !== false);
+  });
+
   it("records dry-run runtime declarations without resolving or allocating", async () => {
     const config = liveConfig();
     config.execution!.runtime = { version: "0.153.3" };
@@ -739,6 +837,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(actor.runtime).toEqual({
       schema: "humanish.actor-runtime.v1",
       package: "@openai/codex",
+      doNotTrack: true,
       requestedVersion: "0.153.3",
       observedVersion: "0.153.3",
       versionStatus: "verified",
@@ -834,7 +933,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const exec = runs.findIndex((r) => r.command.includes("HUMANISH_ACTOR_NONCE"));
     expect(install).toBeGreaterThan(-1);
     expect(exec).toBeGreaterThan(install);
-    expect(runs[install]?.envs).toEqual({ HUMANISH_STUDY_PARTICIPANT: "1" });
+    expect(runs[install]?.envs).toEqual({ HUMANISH_STUDY_PARTICIPANT: "1", DO_NOT_TRACK: "1" });
   });
 
   it("fails closed without a keyed exec when the product install fails", async () => {
@@ -1698,6 +1797,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER,
         CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE,
         HUMANISH_STUDY_PARTICIPANT: "1",
+        DO_NOT_TRACK: "1",
       });
       expect(codexRun?.command).toContain(
         `-c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`,
@@ -1944,7 +2044,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       Object.keys(codexRun?.envs ?? {})
         .slice()
         .sort(),
-    ).toEqual(["CODEX_API_KEY", "HUMANISH_STUDY_PARTICIPANT", "OPENAI_API_KEY"]);
+    ).toEqual(["CODEX_API_KEY", "DO_NOT_TRACK", "HUMANISH_STUDY_PARTICIPANT", "OPENAI_API_KEY"]);
     // Deny-by-default: no banned credential reached the command envs.
     expect(codexRun?.envs).not.toHaveProperty("GITHUB_TOKEN");
     expect(codexRun?.envs).not.toHaveProperty("DATABASE_URL");
@@ -2544,6 +2644,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     expect(codexRun?.envs).toEqual({
       CODEX_API_KEY: FAKE_RUNTIME_KEY,
       HUMANISH_STUDY_PARTICIPANT: "1",
+      DO_NOT_TRACK: "1",
     });
     const ledgers = JSON.parse(
       await readFile(
@@ -2586,6 +2687,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
       CODEX_API_KEY: FAKE_RUNTIME_KEY,
       OPENAI_API_KEY: FAKE_RUNTIME_KEY,
       HUMANISH_STUDY_PARTICIPANT: "1",
+      DO_NOT_TRACK: "1",
     });
     const ledgers = JSON.parse(
       await readFile(
@@ -2632,6 +2734,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     expect(codexRun?.envs).toEqual({
       CODEX_API_KEY: "FAKEKEY-codex-wins-0000000000000000",
       HUMANISH_STUDY_PARTICIPANT: "1",
+      DO_NOT_TRACK: "1",
     });
     const ledgers = JSON.parse(
       await readFile(

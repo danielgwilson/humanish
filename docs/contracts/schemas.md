@@ -296,6 +296,14 @@ instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` bec
   metadata; with `openai-egress` it stays in the host-side E2B header transform
   set at sandbox creation, and the agent gets a placeholder. A dry-run neither
   reads nor injects it;
+- `execution.terminal.doNotTrack`: boolean, default `true`. Terminal participant and product
+  setup commands receive `DO_NOT_TRACK=1`. Set `false` to leave that variable unset when
+  studying the product's telemetry behavior. Non-boolean values are refused at parse.
+  The resolved boolean is `doNotTrack` in `humanish.actor-runtime.v1`: `actor.json`,
+  `streams[].actor.runtime` in `run.json`, and `runtime` in `terminal-ledgers.json` for live
+  runs; the JSON message of the `terminal-lab.runtime.declared` event for dry runs.
+  Older bundles omit this field. It records the command environment policy, not whether
+  the studied CLI honored it;
 - `mode`: `dry-run` (a synthetic bundle, no spend; the default) or `live`. On the
   scripted route `live` gates real browser actuation against the declared app.
   Provider spend stays $0 there by mechanism (no model runs);

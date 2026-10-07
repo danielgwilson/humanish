@@ -10,6 +10,7 @@ import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js
 import { serveObserver } from "../../src/observer/render.js";
 import { liveObserverResult } from "../../src/observer/live.js";
 import type { RunBundle } from "../../src/run/bundle.js";
+import { renderCuaReviewMarkdown } from "../../src/routes/computer-use/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { readRunIndex } from "../../src/run/run-index.js";
 import { OUTCOME_POLICIES } from "../../src/run/judge.js";
@@ -175,6 +176,32 @@ describe("runScope closes a run on every exit", () => {
     await expect(readFile(path.join(runDir("leaked"), "run.json"))).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+});
+
+it("keeps a fresh live snapshot running in its Observer data and review", async () => {
+  await runScope(async (scope) => {
+    const started = await scope.startRun({
+      cwd,
+      runId: "fresh",
+      mintRunId: () => "fresh",
+      mode: "live",
+      renderReview: renderCuaReviewMarkdown,
+    });
+    if (!started.ok) throw new Error(started.message);
+    const bundle = bundleFor("fresh");
+    bundle.mode = "live";
+    bundle.simulations = bundle.simulations.map((simulation) => ({
+      ...simulation,
+      status: "running",
+    }));
+    await started.run.writeSnapshot(bundle);
+    expect(
+      (await readJson(path.join(runDir("fresh"), "observer/observer-data.json"))).run.display.state,
+    ).toBe("running");
+    expect(await readFile(path.join(runDir("fresh"), "review.md"), "utf8")).toMatch(
+      /^- outcome: running$/m,
+    );
   });
 });
 

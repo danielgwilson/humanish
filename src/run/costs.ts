@@ -1,4 +1,4 @@
-import { round6 } from "./pricing.js";
+import { runEstimateUsd, sumEstimatedUsd } from "./run-cost.js";
 import { bindExistingRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "../verify/costs.js";
@@ -47,14 +47,9 @@ export function emptyCostTotals(): CostTotals {
   };
 }
 
-const isKnownUsd = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value) && value >= 0;
-function sumKnown(a: number | null, b: number | null): number | null {
-  return a === null && b === null ? null : round6((a ?? 0) + (b ?? 0));
-}
 export function addCostTotals(into: CostTotals, next: CostTotals): void {
   for (const key of ["estimatedTotalUsd", "runEstimatedUsd", "analysisEstimatedUsd"] as const) {
-    into[key] = sumKnown(into[key], next[key]);
+    into[key] = sumEstimatedUsd(into[key], next[key]);
   }
   for (const key of [
     "incompleteRunEstimates",
@@ -78,11 +73,7 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
   const analysisWarnings: string[] = [];
   // A dry run makes no model request and creates no desktop, so with no figure it costs $0. A
   // recorded unknown (null) figure stays unknown.
-  costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd)
-    ? entry.estimatedCostUsd
-    : entry.estimatedCostUsd === undefined && entry.mode === "dry-run"
-      ? 0
-      : null;
+  costs.runEstimatedUsd = runEstimateUsd(entry);
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
     const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
@@ -98,9 +89,7 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
       runWarnings.push("RUN_COST_ID_MISMATCH");
     }
     if (bundle?.cost !== undefined) {
-      costs.runEstimatedUsd = isKnownUsd(bundle.cost?.estimatedTotalUsd)
-        ? bundle.cost.estimatedTotalUsd
-        : null;
+      costs.runEstimatedUsd = runEstimateUsd({ estimatedCostUsd: bundle.cost?.estimatedTotalUsd });
       if (bundle.cost?.fullyEstimated !== true || costs.runEstimatedUsd === null) {
         costs.incompleteRunEstimates = 1;
         runWarnings.push("RUN_COST_PARTIAL_OR_UNKNOWN");
@@ -129,7 +118,7 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
     costs.analysisHistoryUncertainRuns = 1;
     analysisWarnings.push("STUDY_COST_ACCOUNTING_UNAVAILABLE");
   }
-  costs.estimatedTotalUsd = sumKnown(costs.runEstimatedUsd, costs.analysisEstimatedUsd);
+  costs.estimatedTotalUsd = sumEstimatedUsd(costs.runEstimatedUsd, costs.analysisEstimatedUsd);
   return {
     runId: entry.runId,
     costs,
@@ -198,15 +187,14 @@ export async function readAnalysisAccounting(
     }
     if (!usage.dispatched) {
       accounting.notDispatched += 1;
-      accounting.estimatedUsd = sumKnown(accounting.estimatedUsd, 0);
+      accounting.estimatedUsd = sumEstimatedUsd(accounting.estimatedUsd, 0);
       continue;
     }
     accounting.dispatched += 1;
     if (record.receipt) providers.add(record.receipt.provider);
-    if (isKnownUsd(usage.estimatedCostUsd)) {
-      accounting.estimatedUsd = sumKnown(accounting.estimatedUsd, usage.estimatedCostUsd);
-    }
-    if (!isKnownUsd(usage.estimatedCostUsd) || !usage.usageComplete) accounting.unpriced += 1;
+    const estimatedUsd = runEstimateUsd({ estimatedCostUsd: usage.estimatedCostUsd });
+    accounting.estimatedUsd = sumEstimatedUsd(accounting.estimatedUsd, estimatedUsd);
+    if (estimatedUsd === null || !usage.usageComplete) accounting.unpriced += 1;
   }
   // A skipped or queued automatic job says nothing about earlier manual requests. Only final
   // no-dispatch receipts contribute a supported zero.

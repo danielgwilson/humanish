@@ -1,21 +1,10 @@
-// The run index: list and classify every run in a project without parsing bundles.
-//
-// The existing `listRuns` walks each run tree, screenshots included, validating symlinks and
-// then parses each `run.json`: measured 197ms cold / 152ms warm at 25 runs. That is fine for a
-// command that prints once and exits, and much too hot for a surface that refreshes on a cadence
-// over SSH. This module reads the small `status.json` record each run now writes (586 bytes beside
-// a 92KB bundle) and caches per-run entries keyed on the stat of the file each was derived from.
-//
-// Rules, unchanged from the record itself:
-//   - `run.json` is the evidence-of-record. Every field here is a projection for listing and
-//     classification; nothing here is a claim about what a participant did.
-//   - A run with no status record is not assumed finished. It is classified from what is on disk:
-//     a bundle means finished, receipts without a bundle mean interrupted. That is the
-//     reading of a run whose process died (and, before this contract existed, of every run).
-//   - One unreadable run directory degrades that run, never the listing.
+// The run index caches listing facts by both source files. run.json's outcome wins over status,
+// including when a process stopped between publishing its bundle and finalizing its heartbeat.
+// A status record supplies freshness only when the bundle has no outcome.
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { runLiveness } from "./liveness.js";
 import { AnalysisCostCache, readIndexedAnalysisCost } from "./run-index-analysis.js";
 import type { RunAnalysisCost } from "./run-cost.js";
 
@@ -87,7 +76,7 @@ interface CacheKey {
 }
 
 interface CacheSlot {
-  key: CacheKey;
+  key: string;
   entry: RunIndexEntry;
 }
 
@@ -101,18 +90,13 @@ export class RunIndexCache {
   /** Analysis costs, keyed on their own fingerprint: analysis lands after the status record. */
   readonly analysis = new AnalysisCostCache();
 
-  get(runId: string, key: CacheKey): RunIndexEntry | undefined {
+  get(runId: string, key: string): RunIndexEntry | undefined {
     const slot = this.slots.get(runId);
     if (slot === undefined) return undefined;
-    const same =
-      slot.key.file === key.file &&
-      slot.key.mtimeMs === key.mtimeMs &&
-      slot.key.size === key.size &&
-      slot.key.ino === key.ino;
-    return same ? slot.entry : undefined;
+    return slot.key === key ? slot.entry : undefined;
   }
 
-  set(runId: string, key: CacheKey, entry: RunIndexEntry): void {
+  set(runId: string, key: string, entry: RunIndexEntry): void {
     this.slots.set(runId, { key, entry });
   }
 
@@ -155,7 +139,7 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
   return {
     runId: record.runId,
     derivedFrom: "status",
-    liveness: classifyRunStatus(record, nowMs),
+    liveness: runLiveness(record.runId, record, {}, nowMs).liveness,
     mode: record.mode,
     ...(typeof record.pid === "number" ? { pid: record.pid } : {}),
     ...studyEntry(studyProvenanceOf(record)),
@@ -203,37 +187,6 @@ function usableStatusRecord(raw: unknown, runId: string): raw is RunStatusRecord
   return isRunStatusRecord(raw) && raw.runId === runId;
 }
 
-/**
- * The bundle-only reading, for a run with no usable status record. A bundle on disk usually means
- * the run reached its final write. But a live run now flushes an in-progress bundle as it goes (so
- * anything asking what a participant is doing has something to read), and that bundle marks its
- * simulations `running`. With no status record there is no freshness to judge, and the
- * reading of "it started, and nothing here says it finished" is interrupted, not finished.
- */
-function bundleLiveness(bundle: Pick<BundleFacts, "simulations" | "outcome">): RunLiveness {
-  if (isRunOutcome(bundle.outcome)) return bundle.outcome.state;
-  const inProgress = (bundle.simulations ?? []).some(
-    (simulation) => simulation?.status === "running",
-  );
-  return inProgress ? "interrupted" : "finished";
-}
-
-/**
- * One run's liveness from files already read: its status record when usable, else its bundle.
- * `readRunIndex` reads in the same order; `humanish verify` calls this with both in hand. `record`
- * is the status record the liveness came from, when there was one.
- */
-export function runLiveness(
-  runId: string,
-  status: unknown,
-  bundle: Pick<BundleFacts, "simulations" | "outcome">,
-  nowMs: number,
-): { liveness: RunLiveness; record?: RunStatusRecord } {
-  return usableStatusRecord(status, runId)
-    ? { liveness: classifyRunStatus(status, nowMs), record: status }
-    : { liveness: bundleLiveness(bundle) };
-}
-
 function studyEntry(study: RunStudyProvenance | undefined): { study?: RunStudyProvenance } {
   return study === undefined ? {} : { study };
 }
@@ -244,7 +197,12 @@ function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
   return {
     runId,
     derivedFrom: "bundle",
-    liveness: bundleLiveness(bundle),
+    liveness: runLiveness(
+      runId,
+      undefined,
+      { simulations: bundle.simulations, outcome },
+      Date.now(),
+    ).liveness,
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
     ...studyEntry(studyProvenanceOf(bundle)),
     ...(bundle.createdAt === undefined ? {} : { startedAt: bundle.createdAt }),
@@ -274,7 +232,7 @@ export interface ReadRunIndexOptions {
 }
 
 /**
- * Read every run in `.humanish/runs`, cheapest source first. Never throws for a bad run directory;
+ * Read every run in `.humanish/runs`, from its cached source files. Never throws for a bad run directory;
  * an unreadable one is named in `unreadable`.
  */
 export async function readRunIndex(
@@ -321,7 +279,7 @@ export async function readRunIndex(
   };
 }
 
-/** One run's entry, cheapest source first, or "unreadable" when its bundle cannot be parsed. */
+/** One run's entry, from its cached source files, or "unreadable" when its bundle cannot be parsed. */
 async function readEntry(
   runId: string,
   runDir: string,
@@ -331,48 +289,52 @@ async function readEntry(
   const statusFile = path.join(runDir, RUN_STATUS_FILE);
   const bundleFile = path.join(runDir, RUN_BUNDLE_FILE);
 
-  // Cheapest source first: the status record. Its stat is the cache key, so a live run whose
-  // record ticks every 5s re-reads 586 bytes and nothing else.
-  const statusKey = await statKey(statusFile);
-  if (statusKey !== null) {
-    const cached = cache?.get(runId, statusKey);
-    if (cached !== undefined) {
-      // A running record's liveness is time-dependent, so it is recomputed even on a cache hit:
-      // an unchanged record can still have gone stale. An ended record (finished or
-      // interrupted, both with completedAt) keeps the liveness it was cached with.
-      return cached.derivedFrom === "status" &&
-        cached.updatedAt !== undefined &&
-        cached.completedAt === undefined
-        ? {
-            ...cached,
-            liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
-          }
-        : cached;
-    }
-    const raw = await readJson(statusFile);
-    if (usableStatusRecord(raw, runId)) {
-      const entry = entryFromStatus(raw, nowMs);
-      cache?.set(runId, statusKey, entry);
-      return entry;
-    }
+  const [statusKey, bundleKey] = await Promise.all([statKey(statusFile), statKey(bundleFile)]);
+  const key = JSON.stringify([statusKey, bundleKey]);
+  const cached = cache?.get(runId, key);
+  if (cached !== undefined) {
+    return cached.derivedFrom === "status" &&
+      cached.updatedAt !== undefined &&
+      cached.completedAt === undefined
+      ? {
+          ...cached,
+          liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
+        }
+      : cached;
   }
-
-  // No usable status record: fall back to the bundle. This is every run written before the
-  // contract existed, and it is why an old project still lists correctly.
-  const bundleKey = await statKey(bundleFile);
-  if (bundleKey !== null) {
-    const cached = cache?.get(runId, bundleKey);
-    if (cached !== undefined) return cached;
-    const raw = await readJson(bundleFile);
-    if (raw === null || typeof raw !== "object") return "unreadable";
-    const entry = entryFromBundle(runId, raw as BundleFacts);
-    cache?.set(runId, bundleKey, entry);
-    return entry;
+  const [status, raw] = await Promise.all([
+    statusKey === null ? undefined : readJson(statusFile),
+    bundleKey === null ? undefined : readJson(bundleFile),
+  ]);
+  const record = usableStatusRecord(status, runId) ? status : undefined;
+  const bundle = raw !== null && typeof raw === "object" ? (raw as BundleFacts) : undefined;
+  let entry: RunIndexEntry;
+  if (bundle !== undefined && isRunOutcome(bundle.outcome)) {
+    const metadata = record === undefined ? undefined : entryFromStatus(record, nowMs);
+    entry = {
+      ...(metadata === undefined
+        ? {}
+        : {
+            pid: metadata.pid,
+            startedAt: metadata.startedAt,
+            updatedAt: metadata.updatedAt,
+            ...(metadata.completedAt === undefined ? {} : { completedAt: metadata.completedAt }),
+            ...(metadata.durationMs === undefined ? {} : { durationMs: metadata.durationMs }),
+            ...studyEntry(metadata.study),
+          }),
+      ...entryFromBundle(runId, bundle),
+    };
+  } else if (record !== undefined) {
+    entry = entryFromStatus(record, nowMs);
+  } else if (bundle !== undefined) {
+    entry = entryFromBundle(runId, bundle);
+  } else if (bundleKey !== null) {
+    return "unreadable";
+  } else {
+    return { runId, derivedFrom: "directory", liveness: "interrupted" };
   }
-
-  // Neither record nor bundle: receipts without an outcome. That is precisely an interrupted
-  // run (the shape a dropped connection leaves), and saying so is more useful than hiding it.
-  return { runId, derivedFrom: "directory", liveness: "interrupted" };
+  cache?.set(runId, key, entry);
+  return entry;
 }
 
 /** Newest-first ordering: the most recent thing known about a run, else its id's own timestamp. */

@@ -11,7 +11,7 @@ type ReviewBundle = Pick<RunBundle, "runId" | "mode" | "review"> &
 export function renderReviewMarkdown(
   bundle: ReviewBundle,
   middle: readonly string[],
-  options: { beforeVerdict?: readonly string[]; style?: "preview" } = {},
+  options: { beforeVerdict?: readonly string[]; style?: "preview"; status?: unknown } = {},
 ): string {
   const preview = options.style === "preview";
   const field = (name: string, value: string): string[] =>
@@ -23,7 +23,7 @@ export function renderReviewMarkdown(
     ...field("mode", bundle.mode),
     ...(options.beforeVerdict ?? []),
     ...field("verdict", verdictText(bundle.review.verdict, bundle.mode)),
-    ...field("outcome", reviewOutcome(bundle)),
+    ...field("outcome", reviewOutcome(bundle, options.status)),
     ...(preview ? [bundle.review.summary, ""] : field("summary", bundle.review.summary)),
     ...middle,
     ...(preview || bundle.review.gaps.length > 0

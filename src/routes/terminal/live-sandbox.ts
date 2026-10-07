@@ -365,7 +365,10 @@ export class LiveTerminalSandbox {
           // The install step may run the product itself (release:dogfood's does: `humanish init
           // --yes`); on the 0.67.0 dogfood that one command arrived unmarked while the participant's
           // nine others carried the marker.
-          envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
+          envs: {
+            HUMANISH_STUDY_PARTICIPANT: "1",
+            ...(plan.runtime.doNotTrack ? { DO_NOT_TRACK: "1" } : {}),
+          },
           requestTimeoutMs,
           timeoutMs: PRODUCT_SETUP_TIMEOUT_MS,
         },
@@ -428,7 +431,11 @@ export class LiveTerminalSandbox {
           // The selected command env (raw key or inert placeholder). The participant
           // marker rides the same command: humanish telemetry from inside a study reads as a new
           // adopter otherwise.
-          envs: { ...runtimeEnv.envs, HUMANISH_STUDY_PARTICIPANT: "1" },
+          envs: {
+            ...runtimeEnv.envs,
+            HUMANISH_STUDY_PARTICIPANT: "1",
+            ...(plan.runtime.doNotTrack ? { DO_NOT_TRACK: "1" } : {}),
+          },
           requestTimeoutMs,
           timeoutMs: wallClockMs,
           onStdout: (data: string) => recordStreamedTerminalChunk("stdout", data),
