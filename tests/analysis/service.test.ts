@@ -614,11 +614,13 @@ describe("ordinary study analysis flow", () => {
     ["claim", "Use 743921 to sign in."],
     ["claim", `Use ${Buffer.from("743921").toString("hex")} to sign in.`],
     ["reason", `The page showed ${Buffer.from("743921").toString("base64")}.`],
+    ["claim", `See [REDACTED_${Buffer.from("743921").toString("hex")}].`],
+    ["reason", "The footer printed caf%C3%A9-secret."],
   ])("refuses a correction whose %s holds a known value: %s", async (field, text) => {
     const artifact = syntheticArtifact(input);
     await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
     await withTransientCommsSecrets(async () => {
-      registerTransientCommsSecrets(["743921"]);
+      registerTransientCommsSecrets(["743921", "café-secret"]);
       await expect(
         correctAnalysis(cwd, "analysis-flow", {
           analysisId: artifact.id,

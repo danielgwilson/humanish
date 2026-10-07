@@ -277,6 +277,26 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
+  it("scrubs a known value inside redaction-shaped text and as percent-encoded UTF-8", async () => {
+    const packet = withCapture(input);
+    const answer = syntheticResult(packet);
+    const hex = Buffer.from(OTP).toString("hex");
+    answer.findings[0]!.headline = `Code ${OTP} [REDACTED_${OTP}] and [REDACTED_${hex}].`;
+    answer.designFindings![0]!.notice = "The page printed caf%C3%A9-secret in its footer.";
+    const artifact = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([OTP, "café-secret"]);
+      return runAnalysis(packet, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+    });
+    expect(artifact).toMatchObject({ status: "complete", error: null });
+    expect(artifact.result?.findings[0]?.headline).toBe(
+      "Code [REDACTED_SECRET] [REDACTED_[REDACTED_SECRET]] and [REDACTED_[REDACTED_SECRET]].",
+    );
+    expect(artifact.result?.designFindings?.[0]?.notice).toBe(
+      "The page printed [REDACTED_SECRET] in its footer.",
+    );
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
   it("keeps the spelling of generated text that holds escapes but no known value", async () => {
     const answer = syntheticResult(input);
     answer.summary = "The page offered 50%25 off &amp; a \\u0041 code.";
