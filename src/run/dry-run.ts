@@ -209,7 +209,7 @@ function createReviewSummary(verdict: Verdict): ReviewSummary {
 }
 
 /** The preview's review.md. */
-function renderPreviewReview(bundle: RunBundle): string {
+function renderPreviewReview(bundle: RunBundle, status?: unknown): string {
   return renderReviewMarkdown(
     bundle,
     [
@@ -218,7 +218,7 @@ function renderPreviewReview(bundle: RunBundle): string {
       `- Redaction: ${bundle.redaction.status}`,
       `- Notes: ${bundle.redaction.notes}`,
     ],
-    { style: "preview" },
+    { style: "preview", status },
   );
 }
 

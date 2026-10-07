@@ -405,16 +405,20 @@ function describeCaps(caps: StudyCaps | undefined): string {
   return parts.length > 0 ? parts.join(", ") : "empty";
 }
 
-export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
+export function renderTerminalReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const subject = bundle.events.find((event) => event.type === "terminal-lab.subject.declared");
   const credentials = bundle.events.find(
     (event) => event.type === "terminal-lab.credentials.declared",
   );
   const caps = bundle.events.find((event) => event.type === "terminal-lab.caps.declared");
-  return renderReviewMarkdown(bundle, [
-    `- mission: ${bundle.scenario.goal}`,
-    ...(subject ? [`- subject: ${subject.message}`] : []),
-    ...(credentials ? [`- credentials: ${credentials.message}`] : []),
-    ...(caps ? [`- caps: ${caps.message}`] : []),
-  ]);
+  return renderReviewMarkdown(
+    bundle,
+    [
+      `- mission: ${bundle.scenario.goal}`,
+      ...(subject ? [`- subject: ${subject.message}`] : []),
+      ...(credentials ? [`- credentials: ${credentials.message}`] : []),
+      ...(caps ? [`- caps: ${caps.message}`] : []),
+    ],
+    { status },
+  );
 }

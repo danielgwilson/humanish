@@ -60,6 +60,19 @@ describe("a run's cost", () => {
     expect(runCostLabel(fromIndex)).toBe("~$1.20 est.");
   });
 
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "keeps invalid estimate %s unknown",
+    (usd) => {
+      const cost = runCost({ estimatedTotalUsd: usd }, oneAnalysis);
+      expect(cost.run?.usd).toBeNull();
+      expect(cost.total).toEqual({ usd: 0.529005, complete: false });
+      expect(runCost(subtotal, { ...oneAnalysis, estimatedUsd: usd }).total).toEqual({
+        usd: 0.016123,
+        complete: false,
+      });
+    },
+  );
+
   it("says nothing for a run with no cost summary, and 'not estimated' for a null one", () => {
     expect(runCost(undefined, oneAnalysis)).toEqual({ run: null, analysis: null, total: null });
     expect(runCostParts(runCost(undefined, oneAnalysis))).toEqual([]);

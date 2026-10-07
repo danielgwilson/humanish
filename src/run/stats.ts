@@ -13,6 +13,7 @@ import {
   type CostTotals,
   type CostRow,
 } from "./costs.js";
+import { runEstimateUsd } from "./run-cost.js";
 import { round6 } from "./pricing.js";
 import { plural } from "./text.js";
 
@@ -124,17 +125,6 @@ function addParticipants(into: StatsParticipants, entry: RunIndexEntry): void {
   into.total += entry.participants.total;
   into.reachedGoal += entry.participants.reachedGoal;
   into.reportedFriction += entry.participants.reportedFriction ?? 0;
-}
-
-/**
- * A run's participant and desktop estimate: its recorded figure, or $0 for a dry run that records
- * none, since a dry run makes no model request and creates no desktop. Undefined when the cost is
- * unknown, including a dry run that records an unknown (null) figure.
- */
-function runEstimateUsd(entry: RunIndexEntry): number | undefined {
-  const usd = entry.estimatedCostUsd;
-  if (typeof usd === "number" && Number.isFinite(usd) && usd >= 0) return usd;
-  return usd === undefined && entry.mode === "dry-run" ? 0 : undefined;
 }
 
 function entryTime(entry: RunIndexEntry): string | undefined {
@@ -283,7 +273,7 @@ export async function computeStats(
     if (entry.mode === "live") totals.live += 1;
     if (entry.mode === "dry-run") totals.dryRun += 1;
     if (entry.liveness === "running") totals.running += 1;
-    const runUsd = runEstimateUsd(entry);
+    const runUsd = runEstimateUsd(entry) ?? undefined;
     if (runUsd === undefined) totals.unpricedRuns += 1;
     else totals.estimatedSpendUsd += runUsd;
     addParticipants(totals.participants, entry);

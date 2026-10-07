@@ -5,7 +5,8 @@
 
 import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
-import { classifyRunStatus, isRunStatusRecord, type RunLiveness } from "./status.js";
+import { type RunLiveness } from "./status.js";
+import { runLiveness } from "./liveness.js";
 import { plural } from "./text.js";
 
 /** The states a run is shown in. */
@@ -121,44 +122,38 @@ export interface DisplayedBundle {
  * The facts for a run from its bundle. run.json's `outcome` decides when it has one. A bundle
  * without one is in progress, or was recorded before the field existed: its status record, when
  * given and naming the run, then says whether the run is alive and, for the older run, holds its ok.
- * With no record, a bundle whose simulations are still running is live.
+ * With no record, a bundle whose simulations are still running is interrupted.
  */
 export function bundleDisplayFacts(
   bundle: DisplayedBundle,
   status?: unknown,
   nowMs: number = Date.now(),
 ): RunDisplayFacts {
-  const base = { mode: bundle.mode, verdict: bundle.review?.verdict };
+  const { liveness, record } = runLiveness(bundle.runId, status, bundle, nowMs);
+  const base = { liveness, mode: bundle.mode, verdict: bundle.review?.verdict };
   const outcome = bundle.outcome;
-  if (outcome?.state === "interrupted") return { ...base, liveness: "interrupted" };
+  if (outcome?.state === "interrupted") return base;
   if (outcome?.state === "finished")
     return {
       ...base,
-      liveness: "finished",
       ok: outcome.ok,
       failure: outcome.execution.failures[0],
     };
-  if (isRunStatusRecord(status) && status.runId === bundle.runId)
-    return {
-      ...base,
-      liveness: classifyRunStatus(status, nowMs),
-      ...(typeof status.outcome?.ok === "boolean" ? { ok: status.outcome.ok } : {}),
-      ...(status.outcome?.execution?.failures[0] === undefined
-        ? {}
-        : { failure: status.outcome.execution.failures[0] }),
-    };
-  const inProgress = (bundle.simulations ?? []).some(
-    (simulation) => simulation?.status === "running",
-  );
-  return { ...base, liveness: inProgress ? "running" : "finished" };
+  return {
+    ...base,
+    ...(typeof record?.outcome?.ok === "boolean" ? { ok: record.outcome.ok } : {}),
+    ...(record?.outcome?.execution?.failures[0] === undefined
+      ? {}
+      : { failure: record.outcome.execution.failures[0] }),
+  };
 }
 
 /**
  * How review.md says the run ended: the display of the bundle it is rendered from, so a run whose
  * execution failed never reads as a pass beside its participants' verdict.
  */
-export function reviewOutcome(bundle: DisplayedBundle): string {
-  return runDisplayLine(runDisplay(bundleDisplayFacts(bundle)));
+export function reviewOutcome(bundle: DisplayedBundle, status?: unknown): string {
+  return runDisplayLine(runDisplay(bundleDisplayFacts(bundle, status)));
 }
 
 /**

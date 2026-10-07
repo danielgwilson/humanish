@@ -86,7 +86,7 @@ describe("verify on a run that did not finish", () => {
     const status = await readJson<RunStatusRecord>(RUN_STATUS_FILE);
     await writeJson(RUN_STATUS_FILE, { ...status, state: "running", updatedAt: stopped });
     const contradicted = await graded();
-    expect(contradicted.notFinished).toBe(true);
+    expect(contradicted.notFinished).toBe(false);
     expect(contradicted.result).toEqual(asWritten.result);
 
     await rm(path.join(runDir, RUN_STATUS_FILE));
@@ -181,6 +181,16 @@ describe("verify on a run that did not finish", () => {
       `status.json state is running and its owner updated it at ${now}, so the run may still be writing`,
     );
     await expect(indexLiveness()).resolves.toBe("running");
+  });
+
+  it("reports the bundle interruption even when its status record is fresh", async () => {
+    await kill(new Date().toISOString());
+    const bundle = await readJson<RunBundle>("run.json");
+    bundle.outcome = { state: "interrupted", ok: false, signal: "SIGTERM", at: stopped };
+    await writeJson("run.json", bundle);
+    const { warnings, unfinished } = await notFinished();
+    expect(unfinished?.liveness).toBe("interrupted");
+    expect(warnings[0]).toContain(`run.json records interruption by SIGTERM at ${stopped}`);
   });
 
   it("falls back to the bundle when the run has no status record", async () => {
