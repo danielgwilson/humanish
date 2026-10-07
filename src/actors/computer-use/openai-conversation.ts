@@ -131,7 +131,7 @@ export class OpenAiConversation {
     return {
       body: () =>
         closing === undefined ? this.turnBody(req, sent) : this.closingBody(req, sent, closing),
-      accept: (reply) => this.accept(reply, closing !== undefined, sent),
+      accept: (reply) => this.accept(reply, closing, sent),
     };
   }
 
@@ -240,12 +240,16 @@ export class OpenAiConversation {
    * off by the output limit is set aside, so the next request is the same one again
    * (outputLimitRetry); its actions never run, so no call output is owed for them.
    */
-  private accept(reply: unknown, closing: boolean, sent: readonly unknown[]): CuaTurn {
+  private accept(
+    reply: unknown,
+    closing: ClosingRequest | undefined,
+    sent: readonly unknown[],
+  ): CuaTurn {
     // Recorded before the reply is accepted: accepting can cut the carried history, and the record
     // counts what this request carried.
-    if (!closing) this.evidence.requested(this.mode, this.carried, sent);
+    if (closing !== "report") this.evidence.requested(this.mode, this.carried, sent, closing);
     const parsed = parseOpenAiResponse(reply);
-    if (!closing && parsed.turn.interruption === "output_limit") return parsed.turn;
+    if (closing === undefined && parsed.turn.interruption === "output_limit") return parsed.turn;
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
     this.replies += 1;
@@ -279,14 +283,16 @@ class ConversationRecord {
     this.switchedAtRequest = this.requests.length + 1;
   }
 
-  /** A participant request went out with `sent` after `conversation`. */
+  /** A participant turn or impressions request went out with `sent` after `conversation`. */
   requested(
     mode: ActorConversation["mode"],
     conversation: CarriedConversation,
     sent: readonly unknown[],
+    kind?: "impressions",
   ): void {
+    const marker = kind === undefined ? {} : { kind };
     if (mode !== "explicit_context") {
-      this.requests.push({ mode: "threaded" });
+      this.requests.push({ mode: "threaded", ...marker });
       return;
     }
     const carried = conversation.size();
@@ -294,6 +300,7 @@ class ConversationRecord {
     this.summarizedTurns = carried.notedTurns;
     this.requests.push({
       mode: "explicit_context",
+      ...marker,
       carriedExchanges: carried.exchanges,
       carriedScreenshots: carried.screenshots,
       estimatedInputTokens: carried.estimatedTokens + estimateTokens(sent),

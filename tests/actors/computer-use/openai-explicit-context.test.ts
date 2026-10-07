@@ -590,6 +590,12 @@ describe("the actor trace", () => {
       requests: [
         { mode: "explicit_context", carriedExchanges: 0 },
         { mode: "explicit_context", carriedExchanges: 1, carriedScreenshots: 1 },
+        {
+          mode: "explicit_context",
+          kind: "impressions",
+          carriedExchanges: 2,
+          carriedScreenshots: 2,
+        },
       ],
     });
   });
