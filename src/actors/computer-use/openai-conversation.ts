@@ -24,8 +24,8 @@ export interface OpenAiConversationSettings {
   readonly reasoningEffort: ReasoningEffort;
   readonly maxOutputTokens?: number;
   readonly safetyIdentifier?: string;
-  /** The summaries to ask for until the account or model rejects them; absent asks for none. */
-  readonly reasoningSummary?: OpenAiReasoningSummary;
+  /** The summaries to ask for until the account or model rejects them; undefined asks for none. */
+  readonly reasoningSummary: OpenAiReasoningSummary | undefined;
   /** Carry the conversation on the client from the first request (explicit_context). */
   readonly zeroDataRetention: boolean;
   /** The clock the trace's record reads. */
@@ -40,13 +40,14 @@ export interface ConversationRequest {
   /** The body as the conversation stands now, so an attempt after a rejection shows its effect. */
   body(): Record<string, unknown>;
   /**
-   * The request was answered. Moves the conversation on to the reply and returns its turn.
+   * The request was answered: records a participant request with what it carried, moves the
+   * conversation on to the reply and returns the reply's turn.
    */
   accept(reply: unknown): CuaTurn;
 }
 
 /** Which answer told the provider that the organization keeps no server-side conversation. */
-type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
+export type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
 
 /** The closing report's output limit: its own cap, or the declared limit when that is lower. */
 const CLOSING_OUTPUT_LIMIT = 1024;
@@ -199,6 +200,8 @@ export class OpenAiConversation {
    * (outputLimitRetry); its actions never run, so no call output is owed for them.
    */
   private accept(reply: unknown, closing: boolean, sent: readonly unknown[]): CuaTurn {
+    // Recorded before the reply is accepted: accepting can cut the carried history, and the record
+    // counts what this request carried.
     if (!closing) this.evidence.requested(this.mode, this.carried, sent);
     const parsed = parseOpenAiResponse(reply);
     if (!closing && parsed.turn.interruption === "output_limit") return parsed.turn;
