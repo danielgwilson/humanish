@@ -10,6 +10,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- OpenAI computer-use traces now list the impressions-only request in `conversation.requests`,
+  marked with `kind: impressions`. In explicit-context mode its record includes the carried
+  exchanges, screenshots and estimated input tokens, using the same context budget and summaries
+  as a participant turn.
 - Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
   remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
   their estimate and cap, and state that those analyses are excluded from recall.
