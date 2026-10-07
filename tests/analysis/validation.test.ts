@@ -48,12 +48,13 @@ describe("study analysis validation", () => {
     const input = syntheticInput();
     const result = syntheticResult(input);
     result.designFindings![0]!.evidenceIds = ["e000002"];
+    // With no capture, no participant can be in seen-by either; the first code is the one stored.
     expect(checkAnalysisResult(input, result)).toEqual({
       ok: false,
-      errors: ["ANALYSIS_DESIGN_WITHOUT_CAPTURE"],
+      errors: ["ANALYSIS_DESIGN_WITHOUT_CAPTURE", "ANALYSIS_DESIGN_MEMBERSHIP_INVALID"],
     });
   });
-  it.each(["not-cited", "not-included", "repeated"])(
+  it.each(["not-cited", "capture-less", "not-included", "repeated"])(
     "rejects a design finding whose seen-by list has a %s participant",
     (kind) => {
       const input = syntheticInput();
@@ -68,8 +69,10 @@ describe("study analysis validation", () => {
       input.inputDigest = digestAnalysisInput(input);
       const result = syntheticResult(input);
       expect(checkAnalysisResult(input, result).ok).toBe(true);
+      // B's only cited entry is a message with no capture, so the captures do not show B the problem.
+      if (kind === "capture-less") result.designFindings![0]!.evidenceIds.push("e000003");
       result.designFindings![0]!.seenByStreamIds.push(
-        kind === "not-cited"
+        kind === "not-cited" || kind === "capture-less"
           ? "participant-b"
           : kind === "not-included"
             ? "participant-z"

@@ -460,10 +460,11 @@ export function checkAnalysisResult(
       errors.add("ANALYSIS_DESIGN_REFERENCE_INVALID");
     if (!refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined))
       errors.add("ANALYSIS_DESIGN_WITHOUT_CAPTURE");
-    const cited = new Set(refs.flatMap((ref) => (ref ? [ref.streamId] : [])));
+    // Seen by means a cited capture of that participant shows the problem.
+    const captured = new Set(refs.flatMap((ref) => (ref?.capture ? [ref.streamId] : [])));
     if (
       !distinct(finding.seenByStreamIds) ||
-      finding.seenByStreamIds.some((stream) => !included.has(stream) || !cited.has(stream))
+      finding.seenByStreamIds.some((stream) => !included.has(stream) || !captured.has(stream))
     )
       errors.add("ANALYSIS_DESIGN_MEMBERSHIP_INVALID");
   }
