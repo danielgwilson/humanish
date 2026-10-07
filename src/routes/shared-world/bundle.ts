@@ -49,6 +49,7 @@ import {
   type ActorRunResult,
   type ConcurrentBundleArgs,
 } from "./types.js";
+import { gapsListClause } from "../../run/outcomes.js";
 import { plural } from "../../run/text.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The simultaneity
@@ -138,7 +139,7 @@ function sharedWorldSummary(
   // A participant who did not pass has a gap line; one who passed but stopped short has none.
   const rest = [
     passed.length > reached ? `; ${passed.length - reached} ended without reaching it` : "",
-    passed.length < count ? `; the gaps list the other ${count - passed.length}` : "",
+    gapsListClause(count - passed.length, count),
   ].join("");
   const world = facts.external
     ? args.lobbyConvergenceDigest

@@ -9,6 +9,7 @@ import {
   participantStream,
 } from "../../run/participant-records.js";
 import type { RunDesktopGeometry, RunStream } from "../../run/streams.js";
+import { participantCaption } from "../../run/participant-caption.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import type { judgeParticipantRecords } from "../../run/judge.js";
@@ -134,7 +135,11 @@ function fanoutParticipantStream(
         ? {}
         : { caseGroup: spec.planned.labels.caseGroup }),
       kind: "browser",
-      label: `${spec.planned.id} · browser`,
+      label: participantCaption({
+        id: spec.planned.id,
+        personaId: spec.persona.id,
+        device: spec.planned.device,
+      }),
       status,
       ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",

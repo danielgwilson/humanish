@@ -352,12 +352,12 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().",
+    "summary": "1 participant took part: 1/1 reported reaching the goal. How it ended: Reached the goal via getState().",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 1 participant took part: 1/1 reported reaching the goal. How it ended: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -434,7 +434,7 @@
           "mission": "Drive the app via its state contract."
         },
         "kind": "browser",
-        "label": "lane-01 · browser",
+        "label": "Pixel pat",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -610,7 +610,7 @@
         "harnessFailed": 0,
         "reportedFriction": 0
       },
-      "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().",
+      "summary": "1 participant took part: 1/1 reported reaching the goal. How it ended: Reached the goal via getState().",
       "gaps": [
         "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
       ]

@@ -7,9 +7,9 @@ const NUMBERED_ID = /^(lane|role)-\d+$/;
 
 /** A participant, as much of it as a caption reads. */
 export interface CaptionFacts {
-  /** The roster id. */
-  readonly id: string;
-  /** The persona, which names the participant when the roster id is only a number. */
+  /** The roster id, on a route that has a roster. */
+  readonly id?: string;
+  /** The persona, which names the participant when there is no roster id or it is only a number. */
   readonly personaId: string;
   /** The participant's device, when it has one. */
   readonly device?: { readonly name: string; readonly preset: { readonly isMobile: boolean } };
@@ -33,7 +33,8 @@ function deviceInWords(device: CaptionFacts["device"]): string | undefined {
 
 /** "Lobby host", or "Player two, phone" for a participant on a phone. */
 export function participantCaption(participant: CaptionFacts): string {
-  const name = inWords(NUMBERED_ID.test(participant.id) ? participant.personaId : participant.id);
+  const { id, personaId } = participant;
+  const name = inWords(id === undefined || NUMBERED_ID.test(id) ? personaId : id);
   const device = deviceInWords(participant.device);
   return device === undefined ? name : `${name}, ${device}`;
 }

@@ -63,6 +63,7 @@ import { fullScreenXwininfo } from "../../helpers/full-screen-xwininfo.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { runAdmitted, runSharedWorld } from "../../helpers/route-run.js";
+import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -1373,9 +1374,6 @@ describe("external-public run directory goldens", () => {
 });
 
 describe("what a reader sees for each participant and for the run", () => {
-  const HARNESS_WORDS =
-    /\b(swarm|plane|coherently|overlap proven|seats?|goal_satisfied|completion reasons|credibility checks|run gate|actor sessions?)\b/i;
-
   async function readBundle(runId: string): Promise<RunBundle> {
     const file = path.join(cwd, ".humanish", "runs", runId, "run.json");
     return JSON.parse(await readFile(file, "utf8")) as RunBundle;

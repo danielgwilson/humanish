@@ -939,12 +939,12 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
+    "summary": "4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1073,7 +1073,7 @@
           "focus": "Sign up from a phone."
         },
         "kind": "browser",
-        "label": "mobile-newcomer · browser",
+        "label": "Mobile newcomer, phone",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1290,7 +1290,7 @@
           "focus": "Skim and bounce."
         },
         "kind": "browser",
-        "label": "small-skimmer · browser",
+        "label": "Small skimmer, phone",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1507,7 +1507,7 @@
           "focus": "Open advanced settings."
         },
         "kind": "browser",
-        "label": "desktop-power · browser",
+        "label": "Desktop power",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -1719,7 +1719,7 @@
           "focus": "Compare the plans."
         },
         "kind": "browser",
-        "label": "wide-researcher · browser",
+        "label": "Wide researcher",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -2070,7 +2070,7 @@
         "harnessFailed": 0,
         "reportedFriction": 0
       },
-      "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participants reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
+      "summary": "4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.",
       "gaps": [
         "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
       ]

@@ -8,6 +8,7 @@ import {
 import { actorEnding } from "../actors/stop-cause.js";
 import type { TaskFunnel } from "../study/tasks.js";
 import type { ParticipantOutcomes, ReviewSummary, RunTaskFunnel } from "./bundle.js";
+import { plural } from "./text.js";
 import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 
 /** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
@@ -125,6 +126,12 @@ function participantCompletionLine(
   return goalLine;
 }
 
+/** "; the gaps list the other 2", or "all 3" when nobody passed. Empty when the gaps list nobody. */
+export function gapsListClause(listed: number, total: number): string {
+  if (listed <= 0) return "";
+  return `; the gaps list ${listed === total ? `all ${total}` : `the other ${listed}`}`;
+}
+
 /** One line a stakeholder can read, with the denominator attached to every number. */
 export function formatParticipantOutcomes(
   outcomes: ParticipantOutcomes,
@@ -210,20 +217,25 @@ export function withCuaReviewProvenance(
   )
     return review;
   const outcomes = formatParticipantOutcomes(review.participants, details);
-  // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
-  // historical summary qualifies its old tally instead of silently discarding that context.
-  const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatRunTaskFunnel(review.tasks)}.` : ""}`;
-  const prefix = `${header} Recorded summary: `;
-  const recorded = review.summary.startsWith(prefix)
-    ? review.summary.slice(prefix.length)
-    : review.summary;
-  const oldGoal = `${review.participants.reachedGoal}/${review.participants.total} reached the goal`;
-  const qualified = recorded
-    .split(oldGoal)
-    .join(participantCompletionLine(review.participants, details));
+  const tasks = review.tasks ? ` Tasks: ${formatRunTaskFunnel(review.tasks)}.` : "";
+  // A summary that states the bare count gets it qualified where it stands, keeping rerun context,
+  // the participant's own words and adapter findings around it.
+  const { reachedGoal, total } = review.participants;
+  const bareLine = `${reachedGoal}/${total} reached the goal`;
+  const qualifiedLine = participantCompletionLine(review.participants, details);
+  // A summary with no count gets it in a header. Earlier releases wrote a header in other words.
+  const header = `${plural(total, "participant")} took part: ${outcomes}.${tasks} `;
+  const olderHeader = `Run gate: ${review.verdict}. Participants: ${outcomes}.${tasks} Recorded summary: `;
+  const summary = review.summary.startsWith(olderHeader)
+    ? `${header}${review.summary.slice(olderHeader.length)}`
+    : review.summary.includes(bareLine)
+      ? review.summary.split(bareLine).join(qualifiedLine)
+      : review.summary.includes(qualifiedLine)
+        ? review.summary
+        : `${header}${review.summary}`;
   return {
     ...review,
-    summary: `${prefix}${qualified}`,
+    summary,
     gaps:
       review.participants.reachedGoal === 0
         ? review.gaps

@@ -16,9 +16,17 @@ import {
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSimulation,
+  type RunTaskFunnel,
 } from "../../run/bundle.js";
 import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
-import { aggregateTaskFunnels, withCuaReviewProvenance } from "../../run/outcomes.js";
+import {
+  aggregateTaskFunnels,
+  formatParticipantOutcomes,
+  formatRunTaskFunnel,
+  withCuaReviewProvenance,
+} from "../../run/outcomes.js";
+import { participantCaption } from "../../run/participant-caption.js";
+import { actorEnding } from "../../actors/stop-cause.js";
 import {
   describeSubjectState,
   phaseEventIdSuffix,
@@ -162,7 +170,13 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
       ...(args.surface === undefined ? {} : { surface: args.surface }),
       ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
       kind: "browser",
-      label: `${args.participantId ?? "lane-01"} · browser`,
+      label: participantCaption({
+        id: args.participantId ?? "lane-01",
+        personaId: args.persona.id,
+        ...(args.isMobile === undefined
+          ? {}
+          : { device: { name: args.deviceName ?? "", preset: { isMobile: args.isMobile } } }),
+      }),
       status,
       ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",
@@ -314,12 +328,46 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
   return events;
 }
 
+/**
+ * The run's summary in plain sentences. A finished session gives the outcome with its denominator
+ * of one, any reason the harness did not count a pass, and how the session ended. The single
+ * participant has no gap line, so the summary carries the reason.
+ */
+function singleSummary(
+  args: SingleParticipantBundleArgs,
+  view: ParticipantView,
+  facts: { tasks?: RunTaskFunnel; credibilityNote?: string },
+): string {
+  if (args.inProgress === true) {
+    return "1 participant is using the app. The run is still going, so nothing here is final.";
+  }
+  if (args.dryRun) {
+    return `Dry run: 1 participant would use ${view.publicAppUrl}. Nothing was launched and $0 was spent.`;
+  }
+  if (args.session === undefined) {
+    return args.sessionError === undefined
+      ? `1 participant was planned against ${view.publicAppUrl}, but no session ran.`
+      : `1 participant was planned, but the run failed before their session finished: ${view.reason}`;
+  }
+  const ending = actorEnding(args.session.trace);
+  const outcomes = formatParticipantOutcomes(view.tally, [
+    { status: args.session.status, ...(ending === undefined ? {} : { label: ending.label }) },
+  ]);
+  return [
+    `1 participant took part: ${outcomes}.`,
+    facts.tasks === undefined ? undefined : `Tasks: ${formatRunTaskFunnel(facts.tasks)}.`,
+    facts.credibilityNote,
+    `How it ended: ${view.reason}`,
+  ]
+    .filter((sentence) => sentence !== undefined)
+    .join(" ");
+}
+
 function singleReview(
   args: SingleParticipantBundleArgs,
   view: ParticipantView,
   stream: RunStream,
 ): ReviewSummary {
-  const { reason } = view;
   // A funnel with a denominator of one is still the funnel, and its absence stays recorded: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
   const singleRunTasks =
@@ -346,7 +394,10 @@ function singleReview(
           }
         : {}),
       ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
-      summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
+      summary: singleSummary(args, view, {
+        ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
+        ...(credibilityNote === undefined ? {} : { credibilityNote }),
+      }),
       gaps:
         args.session || args.sessionError !== undefined
           ? []
@@ -383,6 +434,8 @@ export function buildSingleParticipantBundle(args: {
   assignment?: RunStream["assignment"];
   persona: ActorPersonaRef;
   resolution: [number, number];
+  /** The device preset's name; the caption names a tablet. */
+  deviceName?: string;
   /** False only for the custom in-process route, which has no hosted screen/window to claim. */
   desktopRoute?: boolean;
   /** The participant's runner; see runnerSubstrate for the default. */
