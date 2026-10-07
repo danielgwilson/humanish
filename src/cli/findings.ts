@@ -4,6 +4,7 @@
 
 import path from "node:path";
 import type { Command } from "commander";
+import { admittingMaxCost, costRefusalText } from "../analysis/admission.js";
 import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { loadAnalysis } from "../analysis/load.js";
@@ -406,13 +407,23 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       ),
     );
   }
+  if (job?.state === "skipped" && job.admission)
+    return withoutFindings(
+      source,
+      "skipped",
+      job.reason,
+      `The automatic analysis was refused before it started. ${costRefusalText(job.admission)}`,
+      cli(
+        `analyze --run ${source.runId}${source.cwdFlag} --max-cost ${admittingMaxCost(job.admission)}`,
+      ),
+    );
   if (job?.state === "skipped") {
     const refused = job.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED";
     return withoutFindings(
       source,
       "skipped",
       job.reason,
-      `The automatic analysis was ${analysisOutcomeText(job)}.${refused ? " The dry run prints its cost estimate; run it again with a --max-cost above the estimate." : ""}`,
+      `The automatic analysis was ${analysisOutcomeText(job)}.${refused ? " The dry run says why, and for a cost refusal names the --max-cost that admits it." : ""}`,
       job.reason === "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE"
         ? null
         : `${analyzeCommand(source, undefined)}${refused ? " --dry-run" : ""}`,

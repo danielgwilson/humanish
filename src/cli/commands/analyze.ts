@@ -11,6 +11,7 @@ import {
   dryRunBundleRefusal,
   showAnalysis,
 } from "../../analysis/service.js";
+import type { AnalysisAdmission } from "../../analysis/execute.js";
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
@@ -67,7 +68,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--max-cost <usd>",
-      "Required for OpenAI, also with --dry-run: send nothing when the estimated cost in USD is above this. The estimate is not a billing cap. Unsupported for Codex.",
+      "Required for OpenAI, also with --dry-run: send nothing when the expected cost in USD, plus a 10% margin, is above this. It does not limit billing. Unsupported for Codex.",
     )
     .option(
       "--model <id>",
@@ -217,8 +218,7 @@ async function handleAnalyze(
     writeResult(command, io, result, (value) => {
       if (value.ok && value.dryRun && selected.config?.provider === "codex")
         return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
-      if (value.ok && value.dryRun)
-        return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
+      if (value.ok && value.dryRun) return admittedDryRunText(value.admission);
       const lines: string[] = [];
       if (value.artifactPath)
         lines.push(
@@ -365,4 +365,11 @@ async function handleAnalyzeCorrect(
     );
     io.setExitCode(2);
   }
+}
+
+/** An admitted dry run's costs: the expected cost, the worst case and the cap it was admitted under. */
+function admittedDryRunText(admission: AnalysisAdmission | undefined): string {
+  const usd = (value: number | null | undefined): string =>
+    value === null || value === undefined ? "unknown" : `$${value.toFixed(2)}`;
+  return `Expected cost: ${usd(admission?.estimatedCostUsd)}. Worst case: ${usd(admission?.worstCaseCostUsd)}, if the analyst writes its whole ${admission?.outputTokenAllowance ?? "unknown"}-token output allowance, reasoning included. Admitted under the $${admission?.maxCostUsd ?? "unknown"} cap. No request sent.\n`;
 }

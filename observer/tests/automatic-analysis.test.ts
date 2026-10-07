@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { ADMISSION_MARGIN as SERVER_ADMISSION_MARGIN } from "../../src/analysis/admission";
 import { AUTOMATIC_ANALYSIS_STALE_MS as SERVER_STALE_MS } from "../../src/analysis/job";
 import {
+  ADMISSION_MARGIN,
   AUTOMATIC_ANALYSIS_STALE_MS,
   automaticAnalysisNotice,
   parseAutomaticAnalysis,
@@ -57,8 +59,9 @@ describe("independent automatic analysis metadata", () => {
       automatic: { state: "failed" },
     });
   });
-  it("pins the browser freshness threshold to the producer contract", () => {
+  it("pins the browser freshness threshold and admission margin to the producer contract", () => {
     expect(AUTOMATIC_ANALYSIS_STALE_MS).toBe(SERVER_STALE_MS);
+    expect(ADMISSION_MARGIN).toBe(SERVER_ADMISSION_MARGIN);
   });
   it.each(["queued", "running"] as const)(
     "never presents a stale/future %s heartbeat as live",
@@ -100,11 +103,7 @@ describe("independent automatic analysis metadata", () => {
       "No participant activity",
       "setup and failure records remain available",
     ],
-    [
-      "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED",
-      "Check the CLI admission details",
-      "higher --max-cost",
-    ],
+    ["AUTOMATIC_ANALYSIS_ADMISSION_REFUSED", "did not pass admission", "--max-cost that admits it"],
     [
       "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED",
       "Reported usage exceeded",

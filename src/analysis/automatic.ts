@@ -12,6 +12,7 @@ import {
 import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
 import { captureEvidence } from "./evidence.js";
 import { hashAnalysisValue } from "./validation.js";
+import { refusedCost, type RefusedAnalysisCost } from "./admission.js";
 import {
   claimAutomaticAnalysis,
   readAutomaticAnalysisPrepared,
@@ -160,6 +161,12 @@ async function readAutomaticSource(
   }
 }
 
+/** The cost of an analysis admission refused for its cost, kept so review and Observer can say it. */
+function withRefusedCost(result: AnalyzeResult | undefined): { admission?: RefusedAnalysisCost } {
+  const cost = result?.admission && refusedCost(result.admission);
+  return cost ? { admission: cost } : {};
+}
+
 /**
  * Bind the job's terminal metadata to the exact safely published execution. Reads never promote a
  * completed-looking sidecar without rechecking these bindings. Null when storage failed.
@@ -192,6 +199,7 @@ async function persistOutcome(
             receiptSha256: hashAnalysisValue(receipt),
           }),
       ...(entry?.analysis ? { analysisSha256: hashAnalysisValue(entry.analysis) } : {}),
+      ...withRefusedCost(outcome.result),
     });
     const persisted = await readAutomaticAnalysisPrepared(prepared);
     return persisted?.state === "unknown"

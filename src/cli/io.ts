@@ -1,9 +1,13 @@
 import {
   automaticAnalysisSucceeded,
-  defaultAnalysisOverBudget,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
+import {
+  admittingMaxCost,
+  costRefusalText,
+  refusedCost,
+  type RefusedAnalysisCost,
+} from "../analysis/admission.js";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
 import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
@@ -300,14 +304,17 @@ export function writeResult<T>(
     writeHuman(command, io, formatHuman(output));
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
-      if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
+      const cost = analysis?.result?.admission && refusedCost(analysis.result.admission);
+      if (cost)
+        io.writeOut(
+          `analysis: refused before it started. ${refusedAnalysisText(cost, analysis.result?.run ?? "latest")}\n`,
+        );
+      else if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
       const rejected = analysis?.result?.rejectedOutputPath;
       if (rejected)
         io.writeOut(
           `analysis: ${analysis.result?.error?.code ?? "rejected"}; the rejected output is kept locally at ${rejected}\n`,
         );
-      if (defaultAnalysisOverBudget(output as AutomaticAnalysisResult))
-        io.writeOut(overBudgetAnalysisHint(output as AutomaticAnalysisResult & { runId?: string }));
     }
   }
   markInvocationEnvelopeWritten(command);
@@ -430,7 +437,7 @@ const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
   AUTOMATIC_ANALYSIS_ALREADY_REQUESTED: "skipped because this run's analysis was already requested",
   AUTOMATIC_ANALYSIS_BUSY: "skipped because another analysis is running",
   AUTOMATIC_ANALYSIS_ADMISSION_REFUSED:
-    "not started because its configuration or question was refused",
+    "refused before it started: its configuration, question, evidence or cost did not pass admission",
   AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED: "not started because the run's cleanup was not confirmed",
   AUTOMATIC_ANALYSIS_REUSED: "complete, reusing an earlier analysis of the same evidence",
   AUTOMATIC_ANALYSIS_LIMITATIONS: "partial, because it covered only part of the evidence",
@@ -452,14 +459,12 @@ export function analysisOutcomeText(analysis: { state: string; reason: string | 
   return ANALYSIS_REASON_TEXT[analysis.reason] ?? `${analysis.state} (${analysis.reason})`;
 }
 
-/** Preserve the run's own result while making requested post-processing failures machine-visible. */
-function overBudgetAnalysisHint(result: AutomaticAnalysisResult & { runId?: string }): string {
-  const estimate = result.automaticAnalysis?.result?.admission?.estimatedCostUsd ?? null;
-  const suggested = Math.ceil(estimate ?? DEFAULT_ANALYSIS_MAX_COST_USD + 1);
-  const shown = estimate === null ? "" : ` ($${estimate.toFixed(2)})`;
-  return `analysis: its estimate${shown} is over the default $${DEFAULT_ANALYSIS_MAX_COST_USD} cap, so no request was sent. To analyze this run: ${cli(`analyze --run ${result.runId ?? "latest"} --max-cost ${suggested}`)}\n`;
+/** What a refused analysis would cost and the command that runs it with a cap that admits it. */
+function refusedAnalysisText(cost: RefusedAnalysisCost, runId: string): string {
+  return `${costRefusalText(cost)} To run it, raise the cap: ${cli(`analyze --run ${runId} --max-cost ${admittingMaxCost(cost)}`)}`;
 }
 
+/** Preserve the run's own result while making requested post-processing failures machine-visible. */
 export function automaticAnalysisEnvelope<T>(result: T): T {
   if (
     result === null ||

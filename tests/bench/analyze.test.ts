@@ -40,13 +40,35 @@ it("admits the grown prompt with headroom and the same output allowance", async 
   };
   const result = await analyzeWithinBudget(options, analyze);
   expect(result).toMatchObject({
-    analysis: { state: "complete", admissionUsd: 1.81, maxCostUsd: 1.991, estimatedUsd: 0.87 },
+    analysis: { state: "complete", admissionUsd: 1.81, maxCostUsd: 1.9911, estimatedUsd: 0.87 },
     chargeUsd: 0.87,
   });
   expect(calls).toHaveLength(2);
   expect(calls[1]).toEqual(
-    expect.arrayContaining(["--max-cost", "1.991", "--max-output-tokens", "16384"]),
+    expect.arrayContaining(["--max-cost", "1.9911", "--max-output-tokens", "16384"]),
   );
+});
+
+it("rounds the headroom cap up, so admission's expected cost plus margin still fits", async () => {
+  // Admission compares the expected cost times 1.1, rounded up to the micro-dollar, with the cap.
+  // Rounding the bench cap to the nearest 1/10000 could put it just under that figure.
+  const calls: string[][] = [];
+  const analyze: typeof runCli = async (_cli, args) => {
+    calls.push([...args]);
+    return response(
+      args.includes("--dry-run")
+        ? { ok: true, admission: { estimatedCostUsd: 1.234567, outputTokenAllowance: 16384 } }
+        : {
+            ok: true,
+            analysisId: "analysis-planted",
+            usage: { estimatedCostUsd: 0.5, dispatched: true },
+          },
+    );
+  };
+  const result = await analyzeWithinBudget(options, analyze);
+  const cap = Number(calls[1]![calls[1]!.indexOf("--max-cost") + 1]);
+  expect(cap).toBeGreaterThanOrEqual(Math.ceil(1.234567 * 1.1 * 1e6) / 1e6);
+  expect(result.analysis).toMatchObject({ state: "complete" });
 });
 
 it("refuses automatic sizing when admission has no usable estimate", async () => {
@@ -78,7 +100,7 @@ it("records the live admission estimate when evidence growth causes a cost refus
     analysis: {
       state: "refused",
       admissionUsd: 2.2,
-      maxCostUsd: 1.991,
+      maxCostUsd: 1.9911,
       error: "analysis_budget_exceeded",
     },
     chargeUsd: 0,
