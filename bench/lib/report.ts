@@ -62,6 +62,8 @@ export interface RunRecord {
     estimatedUsd: number | null;
     /** The CLI's admission estimate, the analysis's worst case under the cap. */
     admissionUsd: number | null;
+    /** The applied per-analysis cap; older manifests use budget.analysisMaxUsd. */
+    maxCostUsd?: number;
     error: string | null;
   };
   cleanup: CleanupRecord | null;
@@ -127,6 +129,12 @@ export interface ScoredRun {
     totalUsd: number | null;
   };
   analysisState: AnalysisState;
+  analysisRefusal: {
+    reason: string;
+    admissionUsd: number | null;
+    maxCostUsd: number;
+    excludedFromRecall: true;
+  } | null;
   cleanup: RunRecord["cleanup"];
   participants: (ReportScore & { model: string | null; status: string | null; stopCause: string | null })[];
   analysis: AnalysisScore | null;
@@ -273,7 +281,7 @@ function finish(
   };
 }
 
-function scoreRun(projectDir: string, record: RunRecord, missionText: string): ScoredRun {
+function scoreRun(projectDir: string, record: RunRecord, missionText: string, budget: BudgetSettings): ScoredRun {
   const base: ScoredRun = {
     arm: record.arm,
     index: record.index,
@@ -282,6 +290,13 @@ function scoreRun(projectDir: string, record: RunRecord, missionText: string): S
     error: record.error,
     costs: { participantUsd: null, desktopUsd: null, analysisUsd: record.analysis.estimatedUsd, totalUsd: null },
     analysisState: record.analysis.state,
+    analysisRefusal: record.analysis.state === "refused" ? {
+      reason: record.analysis.error === "analysis_budget_exceeded"
+        ? "refused by cost cap" : `refused (${record.analysis.error ?? "unknown error"})`,
+      admissionUsd: record.analysis.admissionUsd,
+      maxCostUsd: record.analysis.maxCostUsd ?? budget.analysisMaxUsd,
+      excludedFromRecall: true,
+    } : null,
     cleanup: record.cleanup,
     participants: [],
     analysis: null,
@@ -336,7 +351,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
   const brains = manifest.brains.map((brain): BrainResult => {
     const runs = manifest.runs
       .filter((record) => record.brain === brain)
-      .map((record) => scoreRun(projectDir, record, mission.text));
+      .map((record) => scoreRun(projectDir, record, mission.text, manifest.budget));
     const analyses = manifest.runs
       .filter((record) => record.brain === brain && record.analysis.state === "complete" && record.runId)
       .map((record) => readAnalysis(projectDir, record.runId ?? "", record.analysis.analysisId ?? undefined))
@@ -399,6 +414,17 @@ const ratio = (count: Count): string => `${count.hits}/${count.of}`;
 /** Model text goes in a code span, so the docs prose checks read none of it. */
 const code = (text: string): string => `\`${text.replace(/`/g, "'").replace(/\s+/g, " ")}\``;
 
+/** Refusals stay visible beside recall in both terminal and Markdown results. */
+export function analysisRefusalLines(brain: BrainResult): string[] {
+  return brain.runs.flatMap((run) => {
+    const refusal = run.analysisRefusal;
+    return refusal ? [
+      `${run.arm} ${run.index} (${run.runId ?? "no run"}): ${refusal.reason} ` +
+      `(estimate ${usd(refusal.admissionUsd)}, cap ${usd(refusal.maxCostUsd)}); excluded from analysis recall`,
+    ] : [];
+  });
+}
+
 /** The short Markdown summary committed next to the results file. */
 export function summaryMarkdown(result: BenchResult, jsonName: string): string {
   const date = result.createdAt.slice(0, 10);
@@ -454,6 +480,7 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
         `| Used the defect's control | ${DEFECT_IDS.map((defect) => `${defect} ${ratio(report.engaged?.[defect] ?? { hits: 0, of: 0 })}`).join(", ")} | |`,
       );
     }
+    lines.push("", ...analysisRefusalLines(brain).map((line) => `- ${line}`));
     lines.push("", "| arm | run | participant | desktop | analysis | analysis state | cleanup |", "|---|---|---|---|---|---|---|");
     for (const run of brain.runs) {
       const cleanup = cleanupText(run.cleanup);
