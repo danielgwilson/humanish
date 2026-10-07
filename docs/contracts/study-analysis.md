@@ -189,11 +189,9 @@ analysis, and treats an analysis that breaks them as unavailable.
 
 The narrative scrub removes a run's known transient values, such as a received one-time code or
 link, from every generated text field. It finds each value as written and in its encoded forms:
-percent-encoded (read as UTF-8), JSON-escaped, base64, base64url and hex, and where escapes split
-it. Text shaped like a redaction marker is searched too; only the exact markers humanish writes,
-such as `[REDACTED_SECRET]`, are skipped. Only each value's span is replaced, and the rest of the
-field keeps its spelling. A known value in any of these forms in an ID, enum or reference refuses
-the response.
+percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
+with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
+known value in any of these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the
@@ -224,7 +222,7 @@ artifact. For diagnosis, humanish keeps it locally at
 - the response, scrubbed. Every string and key loses known transient secret
   values, including their percent-encoded, escaped and base64 forms, and then gets
   shape redaction. A number or boolean equal to a known value is replaced. A
-  string keeps its original spelling apart from each replaced value.
+  string with no known value keeps its original spelling.
 
 When validation ran, the response is the one validation saw, after the narrative
 scrub. A schema or scrub rejection keeps the parsed response. An unexpected

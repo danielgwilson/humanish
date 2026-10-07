@@ -37,10 +37,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   them encoded. Every generated field is checked for each value as written and as percent-encoded,
   JSON-escaped, base64 or hex text, and an analysis that puts one in a finding ID or reference is
   refused. Before, only the value as written was removed.
-- Known values are now removed when they sit inside text shaped like a redaction marker, such as
-  `[REDACTED_743921]`, and when they are percent-encoded UTF-8, such as `caf%C3%A9`. This applies to
-  analysis text, rejected-output diagnostics and email catch warnings. Warnings that show
-  percent-encoded text now decode it as UTF-8.
 - A design finding can name a participant as having seen the problem only when it cites one of
   that participant's captures, and the Observer now refuses a saved analysis that lacks the
   headlines or design findings its prompt version requires.
