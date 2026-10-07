@@ -4,7 +4,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { cli } from "../../cli/invocation.js";
-import type { MachineSize } from "./capacity.js";
+import {
+  defaultVmSize,
+  machineSize,
+  vmSizeProblem,
+  type MachineSize,
+  type VmSize,
+} from "./capacity.js";
+import { plural } from "../../run/text.js";
 
 const exec = promisify(execFile);
 export const LIMA_INSTANCE = "humanish-runtime";
@@ -84,12 +91,12 @@ export async function runtimeDocker(
 
 // No host mounts, agent forwarding or automatic app-port discovery. Per-study
 // OpenSSH forwards grant just the selected app and browser-control sockets.
-const LIMA_TEMPLATE = `minimumLimaVersion: 2.2.0
+const limaTemplate = (size: VmSize): string => `minimumLimaVersion: 2.2.0
 vmType: vz
 arch: aarch64
 nestedVirtualization: true
-cpus: 6
-memory: 8GiB
+cpus: ${size.cpus}
+memory: ${size.memoryGiB}GiB
 disk: 80GiB
 images:
   - location: https://cloud.debian.org/images/cloud/trixie/20260712-2537/debian-13-genericcloud-arm64-20260712-2537.qcow2
@@ -176,11 +183,30 @@ export async function limaStatus(options: RuntimeHostOptions = {}): Promise<Lima
   };
 }
 
+/**
+ * Start the humanish Lima VM, creating it at `size` (or the default size) when it does not exist.
+ * An existing VM keeps its size unless `size` differs, in which case it is stopped, resized and
+ * started again.
+ */
 export async function prepareLima(
-  options: RuntimeHostOptions = {},
+  options: RuntimeHostOptions & { size?: Partial<VmSize> } = {},
   progress?: (message: string) => void,
 ): Promise<void> {
   const status = await limaStatus(options);
+  const mac = machineSize(options.machine);
+  const current =
+    status.size === undefined
+      ? defaultVmSize(mac)
+      : { memoryGiB: status.size.memoryBytes / 1024 ** 3, cpus: status.size.cpus };
+  const size = { ...current, ...options.size };
+  if (options.size !== undefined) {
+    const problem = vmSizeProblem(size, mac);
+    if (problem !== undefined) throw new Error(problem);
+  }
+  if (status.exists && (size.cpus !== current.cpus || size.memoryGiB !== current.memoryGiB)) {
+    await resizeLima(size, status.ready, options, progress);
+    return;
+  }
   if (status.ready) return;
   progress?.(
     status.exists
@@ -193,7 +219,7 @@ export async function prepareLima(
     const work = await mkdtemp(path.join(tmpdir(), "humanish-lima-"));
     try {
       const file = path.join(work, "host.yaml");
-      await writeFile(file, LIMA_TEMPLATE, { mode: 0o600 });
+      await writeFile(file, limaTemplate(size), { mode: 0o600 });
       await hostExec(
         "limactl",
         ["start", "--tty=false", "--name", LIMA_INSTANCE, file],
@@ -204,6 +230,35 @@ export async function prepareLima(
       await rm(work, { recursive: true, force: true });
     }
   }
+}
+
+/** Lima changes the memory and CPUs of a stopped instance only. Running desktops keep it running. */
+async function resizeLima(
+  size: VmSize,
+  running: boolean,
+  options: RuntimeHostOptions,
+  progress?: (message: string) => void,
+): Promise<void> {
+  if (running) {
+    const desktops = (
+      await runtimeDocker(["ps", "--quiet", "--filter", "label=to.humanish.runtime.api=1"], options)
+    ).stdout
+      .split("\n")
+      .filter((line) => line.trim() !== "");
+    if (desktops.length > 0)
+      throw new Error(
+        `${plural(desktops.length, "participant desktop")} ${desktops.length === 1 ? "is" : "are"} running in the humanish Lima VM, so it was not resized. Wait for the study to finish, then run ${cli(`runtime setup --memory ${size.memoryGiB} --cpus ${size.cpus}`)} again.`,
+      );
+    progress?.("Stopping the humanish Lima VM to resize it…");
+    await hostExec("limactl", ["stop", LIMA_INSTANCE], options, 5 * 60_000);
+  }
+  progress?.(`Resizing the humanish Lima VM to ${size.memoryGiB} GiB and ${size.cpus} CPUs…`);
+  await hostExec(
+    "limactl",
+    ["edit", "--cpus", String(size.cpus), "--memory", String(size.memoryGiB), LIMA_INSTANCE],
+    options,
+  );
+  await hostExec("limactl", ["start", "--tty=false", LIMA_INSTANCE], options, 15 * 60_000);
 }
 
 /** Copy across the OS boundary explicitly; shared folders cannot carry sockets. */

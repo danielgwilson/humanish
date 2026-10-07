@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Command, Option } from "commander";
+import { Command, InvalidArgumentError, Option } from "commander";
 import { shellArg } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
@@ -23,6 +23,7 @@ import {
   dotenvPathOf,
   envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
+  parsePositiveInteger,
   RUN_OPTION_DESCRIPTION,
   writeResult,
   humanError,
@@ -215,32 +216,70 @@ export function registerRunsCommand(parent: Command, io: CliIo): void {
     });
 }
 
+/** A whole number of GiB or CPUs above zero, for `runtime setup --memory` and `--cpus`. */
+function wholeNumber(flag: string): (value: string) => number {
+  return (value) => {
+    const parsed = parsePositiveInteger(value);
+    if (parsed === null)
+      throw new InvalidArgumentError(`${flag} takes a whole number above zero, such as 8.`);
+    return parsed;
+  };
+}
+
 export function registerRuntimeCommands(parent: Command, io: CliIo): void {
   const runtime = parent
     .command("runtime")
     .description("Prepare or inspect the local browser runtime.");
   for (const action of ["status", "setup"] as const) {
-    runtime
+    const command = runtime
       .command(action)
       .description(
         action === "status"
-          ? "Check local Docker, virtualization and the cached browser image without downloads."
+          ? "Check local Docker, virtualization and the cached browser image without downloads, and how many participant desktops fit."
           : "Download and install the local browser image. Does not start a study or use model quota.",
       )
       .option("--json", JSON_OPTION_DESCRIPTION)
-      .option("--media", "Prepare or inspect the optional camera and speech runtime.")
-      .action(async (_options, command) => {
+      .option("--media", "Prepare or inspect the optional camera and speech runtime.");
+    if (action === "setup")
+      command
+        .option(
+          "--memory <GiB>",
+          "Mac only: the humanish Lima VM's memory. Resizes an existing VM, which stops it first.",
+          wholeNumber("--memory"),
+        )
+        .option(
+          "--cpus <n>",
+          "Mac only: the humanish Lima VM's CPUs. Resizes an existing VM, which stops it first.",
+          wholeNumber("--cpus"),
+        );
+    command.action(
+      async (
+        options: { json?: boolean; media?: boolean; memory?: number; cpus?: number },
+        command: Command,
+      ) => {
         const { localRuntimeStatus, prepareLocalRuntime } =
           await import("../../substrates/local/runtime.js");
+        const { describeCapacity } = await import("../../substrates/local/capacity.js");
+        const media = options.media === true;
         try {
-          if (action === "setup")
+          if (action === "setup") {
+            const size = {
+              ...(options.memory === undefined ? {} : { memoryGiB: options.memory }),
+              ...(options.cpus === undefined ? {} : { cpus: options.cpus }),
+            };
             await prepareLocalRuntime({
-              media: _options.media === true,
+              media,
+              ...(Object.keys(size).length === 0 ? {} : { size }),
               progress: (message) => io.writeErr(`${message}\n`),
             });
-          const status = await localRuntimeStatus({ media: _options.media === true });
+          }
+          const status = await localRuntimeStatus({ media });
           const result = { schema: "humanish.runtime-result.v1", ...status };
-          writeResult(command, io, result, () => `${status.message}\n`);
+          writeResult(command, io, result, () =>
+            [status.message, ...(status.capacity ? [describeCapacity(status.capacity)] : [])]
+              .map((line) => `${line}\n`)
+              .join(""),
+          );
           io.setExitCode(status.ok ? 0 : 2);
         } catch (error) {
           const message =
@@ -255,7 +294,8 @@ export function registerRuntimeCommands(parent: Command, io: CliIo): void {
           writeResult(command, io, result, () => `${message}\n`);
           io.setExitCode(2);
         }
-      });
+      },
+    );
   }
 }
 

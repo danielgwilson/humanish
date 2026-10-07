@@ -98,7 +98,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish comms recover`: Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.
 - `humanish comms catch`: Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your study's comms.email.external.catchBaseUrl at this server.
 - `humanish runtime`: Prepare or inspect the local browser runtime.
-- `humanish runtime status`: Check local Docker, virtualization and the cached browser image without downloads.
+- `humanish runtime status`: Check local Docker, virtualization and the cached browser image without downloads, and how many participant desktops fit.
 - `humanish runtime setup`: Download and install the local browser image. Does not start a study or use model quota.
 - `humanish reclaim`: Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.
 - `humanish keys`: Manage the humanish user-level key store used by provider-key discovery.

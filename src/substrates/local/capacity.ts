@@ -1,4 +1,6 @@
 import { availableParallelism, totalmem } from "node:os";
+import { cli } from "../../cli/invocation.js";
+import { plural } from "../../run/text.js";
 
 const GiB = 1024 ** 3;
 
@@ -83,4 +85,37 @@ export function defaultVmSize(mac: MachineSize): VmSize {
     memoryGiB: Math.min(wanted.memoryGiB, Math.floor(mac.memoryBytes / GiB / 2)),
     cpus: Math.min(wanted.cpus, Math.floor(mac.cpus / 2)),
   };
+}
+
+/**
+ * Why a VM size the user asked for cannot work, or undefined: it must hold at least one desktop
+ * and fit within the Mac.
+ */
+export function vmSizeProblem(size: VmSize, mac: MachineSize): string | undefined {
+  const one = vmSizeFor(1);
+  const macGiB = Math.floor(mac.memoryBytes / GiB);
+  if (size.memoryGiB < one.memoryGiB || size.cpus < one.cpus)
+    return `One participant desktop needs a VM with at least ${one.memoryGiB} GiB and ${one.cpus} CPUs: ${DESKTOP_RESERVATION.memoryGiB} GiB and ${DESKTOP_RESERVATION.cpus} CPUs for the desktop and ${HOST_RESERVED_MEMORY_GIB} GiB for the VM itself.`;
+  if (size.memoryGiB > macGiB)
+    return `--memory ${size.memoryGiB} is more than the ${macGiB} GiB this Mac has. Choose ${macGiB} or less; about half leaves room for macOS and your app.`;
+  if (size.cpus > mac.cpus)
+    return `--cpus ${size.cpus} is more than the ${mac.cpus} CPUs this Mac has. Choose ${mac.cpus} or fewer.`;
+  return undefined;
+}
+
+/** "2 desktops fit", "1 desktop fits". */
+export function desktopsFit(count: number, future = false): string {
+  return `${plural(count, "desktop")} ${future ? "will fit" : count === 1 ? "fits" : "fit"}`;
+}
+
+/** The capacity in a sentence or two: the host's size, what each desktop takes and how many fit. */
+export function describeCapacity(capacity: LocalCapacity): string {
+  const each = `each participant desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs`;
+  const size = `${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs`;
+  if (capacity.host === "linux-host")
+    return `This machine has ${size}. After ${capacity.reservedMemoryGiB} GiB for the system, ${each}, so ${desktopsFit(capacity.desktops)} at once.`;
+  const vm = capacity.planned
+    ? `Setup will create the humanish Lima VM with ${size}.`
+    : `The humanish Lima VM has ${size}.`;
+  return `${vm} It keeps ${capacity.reservedMemoryGiB} GiB for itself and ${each}, so ${desktopsFit(capacity.desktops, capacity.planned)} at once. To change its size, run ${cli("runtime setup --memory <GiB> --cpus <n>")}.`;
 }

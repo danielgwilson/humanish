@@ -14,6 +14,8 @@ const state = vi.hoisted(() => ({
   arch: "amd64",
   commands: [] as string[],
   calls: [] as string[][],
+  template: "",
+  desktopsRunning: [] as string[],
 }));
 vi.mock("node:fs/promises", async (original) => ({
   ...(await original<typeof import("node:fs/promises")>()),
@@ -29,6 +31,18 @@ vi.mock("node:child_process", async () => {
       if (_file === "sysctl") return { stdout: state.chip };
       if (_file === "limactl") {
         if (args[0] === "--version") return { stdout: "limactl version 2.2.0" };
+        if (args[0] === "start") {
+          const file = args.at(-1)!;
+          if (file.endsWith(".yaml"))
+            state.template = (await import("node:fs")).readFileSync(file, "utf8");
+          state.lima = "Running";
+          return { stdout: "" };
+        }
+        if (args[0] === "stop") {
+          state.lima = "Stopped";
+          return { stdout: "" };
+        }
+        if (args[0] === "edit") return { stdout: "" };
         if (args[0] === "list")
           return {
             stdout:
@@ -53,6 +67,7 @@ vi.mock("node:child_process", async () => {
       state.calls.push(args);
       if (!state.daemon) throw new Error("Docker unavailable");
       if (args[0] === "context") return { stdout: JSON.stringify(state.endpoint) };
+      if (args[0] === "ps") return { stdout: state.desktopsRunning.join("\n") };
       if (args[0] === "info")
         return {
           stdout: JSON.stringify({
@@ -114,6 +129,8 @@ describe("local runtime preparation", () => {
       arch: "amd64",
       commands: [],
       calls: [],
+      template: "",
+      desktopsRunning: [],
     });
     vi.stubGlobal(
       "fetch",
@@ -304,5 +321,97 @@ describe("local runtime preparation", () => {
     controller.abort();
     await expect(prepareLocalRuntime({ ...options, signal: controller.signal })).rejects.toThrow();
     expect(state.loads).toBe(0);
+  });
+});
+
+describe("Lima VM size", () => {
+  const GiB = 1024 ** 3;
+  const mac = { ...options, platform: "darwin" as const, arch: "arm64" };
+  beforeEach(() => {
+    Object.assign(state, {
+      installed: true,
+      media: false,
+      daemon: true,
+      kvm: true,
+      chip: "Apple M5 Max",
+      lima: "Running",
+      limaSize: { cpus: 6, memory: 8 * GiB },
+      arch: "arm64",
+      commands: [],
+      calls: [],
+      template: "",
+      desktopsRunning: [],
+    });
+  });
+  const limaCommands = () =>
+    state.commands.filter((command) => /^limactl (start|stop|edit)/.test(command));
+
+  it("creates a new VM with room for four desktops, within half the Mac", async () => {
+    state.lima = "missing";
+    await prepareLocalRuntime({ ...mac, machine: { memoryBytes: 64 * GiB, cpus: 16 } });
+    expect(state.template).toMatch(/^cpus: 8$/m);
+    expect(state.template).toMatch(/^memory: 13GiB$/m);
+  });
+  it("creates a new VM with the size the flags ask for", async () => {
+    state.lima = "missing";
+    await prepareLocalRuntime({
+      ...mac,
+      machine: { memoryBytes: 64 * GiB, cpus: 16 },
+      size: { memoryGiB: 20, cpus: 10 },
+    });
+    expect(state.template).toMatch(/^cpus: 10$/m);
+    expect(state.template).toMatch(/^memory: 20GiB$/m);
+  });
+  it("keeps an existing VM's size when no size is asked for", async () => {
+    await prepareLocalRuntime({ ...mac, machine: { memoryBytes: 64 * GiB, cpus: 16 } });
+    expect(limaCommands()).toEqual([]);
+  });
+  it("stops, resizes and restarts an existing VM when the flags ask for another size", async () => {
+    await prepareLocalRuntime({
+      ...mac,
+      machine: { memoryBytes: 64 * GiB, cpus: 16 },
+      size: { memoryGiB: 13, cpus: 8 },
+    });
+    expect(limaCommands()).toEqual([
+      "limactl stop humanish-runtime",
+      "limactl edit --cpus 8 --memory 13 humanish-runtime",
+      "limactl start --tty=false humanish-runtime",
+    ]);
+  });
+  it("leaves a VM that already has the asked-for size running", async () => {
+    await prepareLocalRuntime({
+      ...mac,
+      machine: { memoryBytes: 64 * GiB, cpus: 16 },
+      size: { memoryGiB: 8, cpus: 6 },
+    });
+    expect(limaCommands()).toEqual([]);
+  });
+  it("does not stop a VM whose desktops are still running", async () => {
+    state.desktopsRunning = ["c".repeat(12)];
+    await expect(
+      prepareLocalRuntime({
+        ...mac,
+        machine: { memoryBytes: 64 * GiB, cpus: 16 },
+        size: { memoryGiB: 13, cpus: 8 },
+      }),
+    ).rejects.toThrow("1 participant desktop is running");
+    expect(limaCommands()).toEqual([]);
+  });
+  it("refuses a size that holds no desktop, or more than the Mac has", async () => {
+    const machine = { memoryBytes: 16 * GiB, cpus: 8 };
+    await expect(
+      prepareLocalRuntime({ ...mac, machine, size: { memoryGiB: 3, cpus: 2 } }),
+    ).rejects.toThrow("at least 4 GiB");
+    await expect(
+      prepareLocalRuntime({ ...mac, machine, size: { memoryGiB: 8, cpus: 12 } }),
+    ).rejects.toThrow("the 8 CPUs this Mac has");
+    expect(limaCommands()).toEqual([]);
+  });
+  it("refuses a VM size on Linux, where desktops use this machine directly", async () => {
+    state.arch = "amd64";
+    await expect(
+      prepareLocalRuntime({ ...options, size: { memoryGiB: 13, cpus: 8 } }),
+    ).rejects.toThrow("only on a Mac");
+    expect(state.calls).toEqual([]);
   });
 });

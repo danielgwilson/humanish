@@ -7,7 +7,13 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { LocalFirecrackerAssets } from "./firecracker-desktop.js";
 import { LOCAL_MEDIA_RUNTIME_RELEASES, LOCAL_RUNTIME_RELEASES } from "./runtime-release.js";
-import { defaultVmSize, localCapacity, machineSize, type LocalCapacity } from "./capacity.js";
+import {
+  defaultVmSize,
+  localCapacity,
+  machineSize,
+  type LocalCapacity,
+  type VmSize,
+} from "./capacity.js";
 import {
   limaStatus,
   loadRuntimeArchive,
@@ -37,6 +43,8 @@ export interface LocalRuntimeStatus {
 }
 interface RuntimeOptions extends RuntimeHostOptions {
   media?: boolean;
+  /** The Lima VM size `runtime setup --memory --cpus` asks for. Macs only. */
+  size?: Partial<VmSize>;
   progress?: (message: string) => void;
   /** Explicit source-build/test override; never provided by a participant. */
   release?: LocalRuntimeRelease;
@@ -217,6 +225,10 @@ export async function prepareLocalRuntime(
   options: RuntimeOptions = {},
 ): Promise<LocalFirecrackerAssets> {
   if (!runtimeArchitecture(options)) throw new Error((await localRuntimeStatus(options)).message);
+  if (options.size !== undefined && !usesLima(options))
+    throw new Error(
+      "--memory and --cpus size the humanish Lima VM, which runs only on a Mac. On Linux, desktops use this machine's memory and CPUs directly.",
+    );
   if (usesLima(options)) await prepareLima(options, options.progress);
   const before = await localRuntimeStatus(options);
   if (!before.ok) throw new Error(before.message);
