@@ -2,9 +2,11 @@ import type { AutomaticAnalysisView } from "../../src/analysis/job";
 
 export type { AutomaticAnalysisView } from "../../src/analysis/job";
 
-// Browser-only mirror: runtime imports from the producer are forbidden. The
-// contract test pins this against src/analysis/job.ts' AUTOMATIC_ANALYSIS_STALE_MS.
+// Browser-only mirrors: runtime imports from the producer are forbidden. The contract test pins
+// these against src/analysis/job.ts' AUTOMATIC_ANALYSIS_STALE_MS and src/analysis/admission.ts'
+// ADMISSION_MARGIN.
 export const AUTOMATIC_ANALYSIS_STALE_MS = 15_000;
+export const ADMISSION_MARGIN = 1.1;
 export const ANALYSIS_ADMISSION_EXCEEDED_DETAIL =
   "Reported usage exceeded an admission estimate or configured limit. Findings and known usage were retained. Review the saved usage before making another request.";
 const states = new Set([
@@ -37,7 +39,7 @@ const reasonDetails: Record<string, string> = {
   AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE:
     "No participant activity was retained to analyze. The run's setup and failure records remain available.",
   AUTOMATIC_ANALYSIS_ADMISSION_REFUSED:
-    "Analysis was refused before dispatch. Check the CLI admission details. If the estimate exceeds your budget, review it before choosing a higher --max-cost for an explicit humanish analyze request.",
+    "Analysis was refused before dispatch: its configuration, question, evidence or cost did not pass admission. humanish analyze with --dry-run says why, and for a cost refusal names the --max-cost that admits it.",
   AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED: ANALYSIS_ADMISSION_EXCEEDED_DETAIL,
   AUTOMATIC_ANALYSIS_BUSY:
     "Another analysis request owns this study's lock. Let it finish, then inspect the analysis history before deciding whether to retry.",
@@ -64,6 +66,18 @@ const reasonDetails: Record<string, string> = {
     "Review the report's coverage and limitations alongside participant evidence.",
 };
 
+const usd = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0;
+
+/** A cost refusal's numbers, or undefined when any is missing or malformed. */
+function parseRefusedCost(value: unknown): AutomaticAnalysisView["admission"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const { expectedCostUsd, worstCaseCostUsd, maxCostUsd } = value as Record<string, unknown>;
+  return usd(expectedCostUsd) && usd(worstCaseCostUsd) && usd(maxCostUsd)
+    ? { expectedCostUsd, worstCaseCostUsd, maxCostUsd }
+    : undefined;
+}
+
 /** Optional execution metadata cannot invalidate an otherwise readable report. */
 export function parseAutomaticAnalysis(value: unknown): AutomaticAnalysisView | undefined {
   if (value === undefined) return undefined;
@@ -83,11 +97,13 @@ export function parseAutomaticAnalysis(value: unknown): AutomaticAnalysisView | 
     new Date(v.updatedAt).toISOString() !== v.updatedAt
   )
     return unknown();
+  const admission = parseRefusedCost(v.admission);
   return {
     state: v.state as AutomaticAnalysisView["state"],
     analysisId: v.analysisId as string | null,
     reason: v.reason as string | null,
     updatedAt: v.updatedAt,
+    ...(admission === undefined ? {} : { admission }),
   };
 }
 
@@ -96,6 +112,13 @@ export interface AutomaticAnalysisNotice {
   message: string;
   detail: string;
   pending: boolean;
+  /** The command that runs an analysis refused for its cost. */
+  command?: string;
+}
+
+/** The costs of an analysis refused for its cost, worded as the CLI words them. */
+function refusedCostDetail(cost: NonNullable<AutomaticAnalysisView["admission"]>): string {
+  return `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent. To run it, raise the cap:`;
 }
 
 /** A heartbeat is a display hint, never authority to resume or dispatch work. */
@@ -103,8 +126,17 @@ export function automaticAnalysisNotice(
   automatic: AutomaticAnalysisView,
   snapshot: boolean,
   now: number,
+  runId?: string,
 ): AutomaticAnalysisNotice {
   const value = parseAutomaticAnalysis(automatic)!;
+  if (value.state === "skipped" && value.admission && runId)
+    return {
+      state: "skipped",
+      message: "Automatic analysis did not run.",
+      detail: refusedCostDetail(value.admission),
+      pending: false,
+      command: `humanish analyze --run ${runId} --max-cost ${Math.max(1, Math.ceil(value.admission.worstCaseCostUsd))}`,
+    };
   const nonterminal = value.state === "queued" || value.state === "running";
   const updated = Date.parse(value.updatedAt);
   if (nonterminal && snapshot && updated <= now)

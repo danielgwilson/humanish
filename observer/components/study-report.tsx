@@ -62,6 +62,7 @@ export function StudyReport({
         automatic={automatic}
         snapshot={snapshot}
         now={now}
+        runId={data.run.runId}
         separateAnalysis={
           !!report &&
           ["complete", "partial", "stale"].includes(report.state ?? "complete") &&
