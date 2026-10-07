@@ -78,3 +78,36 @@ export function estimateAnalysisCost(
     admittedCostUsd: Math.min(worstCaseCostUsd, roundUp(expectedCostUsd * ADMISSION_MARGIN)),
   };
 }
+
+/** The numbers a cost refusal reports. */
+export interface RefusedAnalysisCost {
+  expectedCostUsd: number;
+  worstCaseCostUsd: number;
+  maxCostUsd: number;
+}
+
+/** The --max-cost that admits a refused analysis: its worst case, rounded up to a whole dollar. */
+export function admittingMaxCost(cost: RefusedAnalysisCost): number {
+  return Math.max(1, Math.ceil(cost.worstCaseCostUsd));
+}
+
+/** Why admission refused an analysis, in plain words. */
+export function costRefusalText(cost: RefusedAnalysisCost): string {
+  return `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent.`;
+}
+
+/** The admission's refused cost, when it refused the analysis for its cost. */
+export function refusedCost(admission: {
+  error: string | null;
+  estimatedCostUsd: number | null;
+  worstCaseCostUsd: number | null;
+  maxCostUsd: number | null;
+}): RefusedAnalysisCost | undefined {
+  const { error, estimatedCostUsd, worstCaseCostUsd, maxCostUsd } = admission;
+  return error === "analysis_budget_exceeded" &&
+    estimatedCostUsd !== null &&
+    worstCaseCostUsd !== null &&
+    maxCostUsd !== null
+    ? { expectedCostUsd: estimatedCostUsd, worstCaseCostUsd, maxCostUsd }
+    : undefined;
+}

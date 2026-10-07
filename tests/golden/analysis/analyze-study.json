@@ -69,7 +69,7 @@
       "ok": false,
       "error": {
         "code": "analysis_budget_exceeded",
-        "message": "The conservative admission estimate exceeds --max-cost. No provider request was sent."
+        "message": "The expected cost is $0.21 and the worst case is $0.21. With a 10% margin the expected cost is over the $0.000001 cap, so no request was sent. To run it, raise the cap: humanish analyze --run analysis-golden --max-cost 1"
       }
     },
     "requests": [],

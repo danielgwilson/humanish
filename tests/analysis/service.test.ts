@@ -247,6 +247,23 @@ describe("ordinary study analysis flow", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("names the expected cost, the worst case, the cap and the command that runs a refused analysis", async () => {
+    const fetch = await transport();
+    const roomy = { ...config, maxCostUsd: 0.05, maxOutputTokens: 32_768 };
+    const result = await analyzeRun(cwd, "analysis-flow", { config: roomy }, { fetch });
+    expect(result.error?.code).toBe("analysis_budget_exceeded");
+    expect(fetch).not.toHaveBeenCalled();
+    const { estimatedCostUsd, worstCaseCostUsd } = result.admission!;
+    expect(worstCaseCostUsd).toBeGreaterThan(estimatedCostUsd!);
+    const message = result.error!.message;
+    expect(message).toContain(`$${estimatedCostUsd!.toFixed(2)}`);
+    expect(message).toContain(`$${worstCaseCostUsd!.toFixed(2)}`);
+    expect(message).toContain("$0.05 cap");
+    expect(message).toContain(
+      `humanish analyze --run analysis-flow --max-cost ${Math.ceil(worstCaseCostUsd!)}`,
+    );
+  });
+
   it("requires opt-in cost and refuses budget, dry-run source, active source and cancellation before dispatch", async () => {
     const fetch = await transport();
     expect(
