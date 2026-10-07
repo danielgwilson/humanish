@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { glyphColor, verdictGlyph } from "../src/frame.js";
+import { runDisplay } from "../../src/run/display.js";
 import { PALETTE } from "../src/palette.js";
 import { readRunIndex, type RunIndexEntry } from "../../src/run/run-index.js";
 import {
@@ -35,6 +36,10 @@ afterAll(async () => {
 });
 
 describe.each(cases.map((outcome) => [outcome.name, outcome] as const))("%s", (_name, outcome) => {
+  it("shows the same state as the other run surfaces", () => {
+    expect(runDisplay(entries.get(outcome.name)!).state).toBe(outcome.expected);
+  });
+
   it("shows a check mark only for a run that passed", () => {
     const glyph = verdictGlyph(entries.get(outcome.name)!);
     expect(PASS_GLYPHS.has(glyph)).toBe(outcome.expected === "passed");
@@ -42,11 +47,13 @@ describe.each(cases.map((outcome) => [outcome.name, outcome] as const))("%s", (_
 
   it("colors the glyph by how the run ended", () => {
     const expected =
-      outcome.expected === "passed"
-        ? undefined
-        : outcome.expected === "failed"
-          ? PALETTE.bad
-          : PALETTE.warn;
+      outcome.expected === "running"
+        ? PALETTE.ok
+        : outcome.expected === "passed"
+          ? undefined
+          : outcome.expected === "failed"
+            ? PALETTE.bad
+            : PALETTE.warn;
     expect(glyphColor(entries.get(outcome.name)!).color).toBe(expected);
   });
 });

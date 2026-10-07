@@ -6,6 +6,13 @@
 source of truth. This page explains the stable public fields and the extension rules; it does not
 version the runtime separately.
 
+Terminal runs record the resolved telemetry setting as `doNotTrack` in
+`streams[].actor.runtime` (`humanish.actor-runtime.v1`), also retained in `actor.json`
+and `terminal-ledgers.json`. `true` means participant and product setup commands receive
+`DO_NOT_TRACK=1`; `false` means humanish leaves it unset. Dry runs record the same boolean
+in the JSON message of the `terminal-lab.runtime.declared` event. Older bundles omit it.
+The setting does not attest that the studied CLI honors the variable.
+
 ## Purpose
 
 A run bundle is the durable evidence packet for one harness run. It should be
@@ -154,6 +161,9 @@ writing it, and on runs recorded before the field existed. For those, readers
 take liveness from `status.json` and, for an older finished run, its `ok` and
 `execution` from `status.json`'s `outcome`. That record is the only copy of an
 older run's `ok`; for a run with `outcome` in `run.json`, `status.json` copies it.
+The bundle's outcome wins even if the process stopped before updating `status.json`.
+Without an outcome or a usable status record naming the run, a bundle with a simulation still
+`running` reads as interrupted. A fresh status record keeps an in-progress bundle running.
 
 Every surface that shows whether a run passed calls `runDisplay`
 (`src/run/display.ts`) with the run's liveness, verdict and `ok`: the Observer

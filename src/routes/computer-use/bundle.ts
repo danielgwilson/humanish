@@ -7,13 +7,8 @@ import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import {
-  judgeOneParticipant,
-  judgeParticipants,
-  type Judgment,
-  verdictText,
-} from "../../run/judge.js";
-import { reviewOutcome } from "../../run/display.js";
+import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
+import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { providerResourcesForOutcome } from "./bundle-parts.js";
@@ -207,34 +202,27 @@ function singleParticipantArgs(
 }
 
 /** The run's review.md: title, run, mode, gate, summary, subject, actor evidence and gaps. */
-export function renderCuaReviewMarkdown(bundle: RunBundle): string {
+export function renderCuaReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
   const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
-    `- summary: ${bundle.review.summary}`,
-    ...(provenance ? [`- subject: ${provenance.message}`] : []),
-    ...(trace
-      ? [
-          `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
-          // Name the trace's actual screenshot mode ("raw" | "blurred"); say
-          // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
-          `- evidence: ${plural(trace.items.length, "trace item")}, ${plural(
-            trace.counts.screenshots ?? 0,
-            trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
-              ? `${trace.redaction.screenshots} screenshot`
-              : "screenshot",
-          )}`,
-        ]
-      : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
+  return renderReviewMarkdown(
+    bundle,
+    [
+      ...(provenance ? [`- subject: ${provenance.message}`] : []),
+      ...(trace
+        ? [
+            `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
+            // Name the trace's actual screenshot mode ("raw" | "blurred"); say
+            // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
+            `- evidence: ${plural(trace.items.length, "trace item")}, ${plural(
+              trace.counts.screenshots ?? 0,
+              trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
+                ? `${trace.redaction.screenshots} screenshot`
+                : "screenshot",
+            )}`,
+          ]
+        : []),
+    ],
+    { status },
+  );
 }

@@ -2,8 +2,7 @@
 // markdown that ship with it.
 
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
-import { verdictText } from "../../run/judge.js";
-import { reviewOutcome } from "../../run/display.js";
+import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -239,7 +238,7 @@ function buildScriptedReview(args: {
   };
 }
 
-export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
+export function renderScriptedReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const subject = bundle.events.find((event) => event.type === "scripted-lab.subject.declared");
   const spend = bundle.events.find((event) => event.type === "scripted-lab.spend");
   const traces = bundle.streams
@@ -247,24 +246,17 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     .filter(
       (entry): entry is { stream: RunStream; trace: ActorTrace } => entry.trace !== undefined,
     );
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
-    `- summary: ${bundle.review.summary}`,
-    `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
-    ...(subject ? [`- subject: ${subject.message}`] : []),
-    ...(spend ? [`- spend: ${spend.message}`] : []),
-    ...traces.map(
-      ({ stream, trace }) =>
-        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${plural(trace.counts.actions ?? 0, "step action")}, ${plural(trace.counts.screenshots ?? 0, "raw screenshot")}`,
-    ),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
+  return renderReviewMarkdown(
+    bundle,
+    [
+      `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
+      ...(subject ? [`- subject: ${subject.message}`] : []),
+      ...(spend ? [`- spend: ${spend.message}`] : []),
+      ...traces.map(
+        ({ stream, trace }) =>
+          `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${plural(trace.counts.actions ?? 0, "step action")}, ${plural(trace.counts.screenshots ?? 0, "raw screenshot")}`,
+      ),
+    ],
+    { status },
+  );
 }

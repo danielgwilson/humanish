@@ -12,7 +12,7 @@ import {
 } from "../../run/reclaim.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
-import type { RunDisplay, RunDisplayState } from "../../run/display.js";
+import { runDisplay, type RunDisplay } from "../../run/display.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
@@ -369,14 +369,6 @@ const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
   timed_out: "timed out",
 };
 
-/** The state runDisplay gives a finished run whose own ok agrees with its verdict. */
-const VERDICT_STATES: Partial<Record<ReviewSummary["verdict"], RunDisplayState>> = {
-  pass: "passed",
-  fail: "failed",
-  blocked: "blocked",
-  timed_out: "timed_out",
-};
-
 /**
  * Review's headline: the run's display label, as `humanish runs`, review.md and the Observer show
  * it. A verdict that names another state follows in parentheses, so an interrupted run whose last
@@ -390,8 +382,8 @@ function reviewHeadline(
   if (display === undefined) return REVIEW_VERDICTS[verdict];
   if (display.state === "no_verdict" || display.state === "dry_run")
     return `${display.label}; ${NOTHING_TESTED}`;
-  const judged = VERDICT_STATES[verdict];
-  return judged === undefined || judged === display.state
+  const judged = runDisplay({ liveness: "finished", verdict }).state;
+  return verdict === "contract_proof_only" || judged === display.state
     ? display.label
     : `${display.label} (verdict ${REVIEW_VERDICTS[verdict]})`;
 }

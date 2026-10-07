@@ -26,6 +26,18 @@ The Unreleased section holds the full notes for the next version until it is tag
   them as `analysis.designFindings`. The analysis prompt is now `study-evidence-7`. Analyses
   written before it keep showing their findings by title, with no design section.
 
+### Changed
+
+- Terminal study participants and product setup commands now send `DO_NOT_TRACK=1` by default so synthetic usage can be excluded by CLIs that honor it. Set `execution.terminal.doNotTrack: false` when studying the product's telemetry behavior. Dry and live run bundles record the resolved setting.
+
+### Fixed
+
+- Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
+- Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
+  an unfinished bundle without usable status reads as interrupted, and a recorded final outcome
+  wins over a stale status record. Fresh live snapshots still read as running. Invalid cost
+  estimates stay unknown across cost displays and statistics.
+
 ## 0.111.4: Encoded known values scrubbed, scripted traces scrubbed, a live command after a dry run (2026-10-06)
 
 humanish 0.111.4 scrubs a run's known values from more of its evidence and fixes three messages.

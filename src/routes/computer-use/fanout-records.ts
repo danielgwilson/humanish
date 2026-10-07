@@ -8,11 +8,10 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
-import type { RunDesktopGeometry, RunSimulationStatus, RunStream } from "../../run/streams.js";
+import type { RunDesktopGeometry, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
-import { judgedStatus } from "../../run/judge.js";
-import { participantFactsOf } from "./participant-facts.js";
+import type { judgeParticipantRecords } from "../../run/judge.js";
 import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
 import { participantSubjectEnv } from "./types.js";
 
@@ -22,6 +21,7 @@ const describeEnvNames = (names: readonly string[]): string =>
 /** What every participant's records share. */
 export interface FanoutParticipantContext {
   args: CuaFanoutBundleArgs;
+  participants: ReturnType<typeof judgeParticipantRecords>["participants"];
   /** Numbers events in the order they are pushed. */
   nextEventId: (suffix: string) => string;
 }
@@ -30,6 +30,7 @@ function fanoutParticipantView(
   args: CuaFanoutBundleArgs,
   spec: DesktopParticipantRun,
   index: number,
+  participant: FanoutParticipantContext["participants"][number],
 ) {
   const { outcomes, plan } = args;
   const outcome = outcomes?.[index];
@@ -53,23 +54,7 @@ function fanoutParticipantView(
   };
   const screenshots = outcome?.screenshots ?? [];
   const lastScreenshot = screenshots[screenshots.length - 1];
-  const status: RunSimulationStatus =
-    args.inProgress === true && outcome === undefined
-      ? "running"
-      : outcome?.skippedReason !== undefined
-        ? "blocked"
-        : session
-          ? session.status
-          : outcome?.sessionError !== undefined
-            ? "failed"
-            : "contract_proof_only";
-  const reason =
-    args.inProgress === true && outcome === undefined
-      ? "Live computer-use participant is running; stream auth URL is available only through the attached Observer server."
-      : (outcome?.skippedReason ??
-        session?.reason ??
-        outcome?.sessionError ??
-        "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.");
+  const { status, reason } = participant;
 
   const traceScreenshotMode = session?.trace.redaction.screenshots;
   const screenshotMode: "raw" | "blurred" =
@@ -80,6 +65,7 @@ function fanoutParticipantView(
         : "raw";
   return {
     outcome,
+    participant,
     publicTargetUrl,
     subject,
     session,
@@ -131,7 +117,7 @@ function fanoutParticipantStream(
 ): RunStream {
   const { outcome, publicTargetUrl, session, desktopGeometry, screenshots } = view;
   const { lastScreenshot, status, reason, screenshotMode } = view;
-  const judged = outcome === undefined ? undefined : judgedStatus(participantFactsOf(outcome));
+  const judged = view.participant.judgedStatus;
   return participantStream(
     spec,
     {
@@ -363,7 +349,7 @@ export function fanoutParticipantRecords(
   spec: DesktopParticipantRun,
   index: number,
 ): { simulation: RunSimulation; stream: RunStream; events: RunEvent[] } {
-  const view = fanoutParticipantView(ctx.args, spec, index);
+  const view = fanoutParticipantView(ctx.args, spec, index, ctx.participants[index]!);
   return {
     simulation: fanoutParticipantRecord(ctx.args, spec, index, view),
     stream: fanoutParticipantStream(ctx.args, spec, view),

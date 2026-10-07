@@ -33,12 +33,12 @@ import { participantFactsOf } from "../computer-use/participant-facts.js";
 import { participantFeedbackCandidates } from "../computer-use/participant-feedback.js";
 import {
   judgeSharedWorld,
+  judgeParticipantRecords,
   participantPassed,
   type SharedWorldJudgment,
   sharedWorldShortfall,
-  verdictText,
 } from "../../run/judge.js";
-import { reviewOutcome } from "../../run/display.js";
+import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { participantEvent, participantIds } from "../../run/participant-records.js";
@@ -316,22 +316,12 @@ function sharedWorldEvidence(
  * world shortfall that failed the run.
  */
 function finishedGaps(
-  actorResults: ConcurrentBundleArgs["actorResults"],
+  participants: ReturnType<typeof judgeParticipantRecords>["participants"],
   shortfall: string | undefined,
 ): string[] {
-  const participantGaps = actorResults
-    .filter(
-      (result) =>
-        result.outcome.sessionError !== undefined ||
-        result.outcome.noEngagement ||
-        result.outcome.selfReportedBlocker ||
-        result.outcome.session === undefined ||
-        result.outcome.session.status !== "passed",
-    )
-    .map(
-      (result) =>
-        `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
-    );
+  const participantGaps = participants.flatMap((participant) =>
+    participant.gapLine === undefined ? [] : [participant.gapLine],
+  );
   return participantGaps.length === 0 && shortfall !== undefined ? [shortfall] : participantGaps;
 }
 
@@ -343,6 +333,7 @@ function concurrencyReview(
   evidence: ReturnType<typeof sharedWorldEvidence>,
   events: RunEvent[],
   nextEventId: (suffix: string) => string,
+  participants: ReturnType<typeof judgeParticipantRecords>["participants"],
 ): ReviewSummary {
   const {
     plan,
@@ -350,7 +341,6 @@ function concurrencyReview(
     run: { createdAt },
     dryRun,
     actorSpecs,
-    actorResults,
   } = args;
   const { sharedWorld, windows, stateSeries, outcomes } = evidence;
   const overlaps = args.judgment.world.overlap;
@@ -404,7 +394,7 @@ function concurrencyReview(
         ? [
             "Final actor traces, screenshots, state deltas, and verification are pending; this Observer is for live watch only.",
           ]
-        : finishedGaps(actorResults, sharedWorldShortfall(args.judgment.world)),
+        : finishedGaps(participants, sharedWorldShortfall(args.judgment.world)),
   };
   return review;
 }
@@ -434,7 +424,27 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const nextEventId = (suffix: string): string =>
     `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
 
-  const recordContext = { args, external, inProgress, appUrl, nextEventId };
+  const judgment = judgeParticipantRecords(
+    actorSpecs.map((spec, index) => ({
+      ...participantFactsOf(actorResults[index]?.outcome),
+      id: spec.planned.id,
+      inProgress: inProgress && actorResults[index] === undefined,
+    })),
+    {
+      runningReason:
+        "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it.",
+      sessionLabel: "Participant",
+      missingSessionMessage: "Actor did not produce a terminal session.",
+    },
+  );
+  const recordContext = {
+    args,
+    external,
+    inProgress,
+    appUrl,
+    nextEventId,
+    participants: judgment.participants,
+  };
   actorSpecs.forEach((spec, index) => {
     const records = sharedWorldParticipantRecords(recordContext, spec, index);
     simulations.push(records.simulation);
@@ -444,7 +454,15 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 
   const evidence = sharedWorldEvidence(args, external, inProgress, planeCommit);
   const { sharedWorld } = evidence;
-  const review = concurrencyReview(args, external, inProgress, evidence, events, nextEventId);
+  const review = concurrencyReview(
+    args,
+    external,
+    inProgress,
+    evidence,
+    events,
+    nextEventId,
+    judgment.participants.filter((_, index) => actorResults[index] !== undefined),
+  );
 
   const anyRaw = actorResults.some(
     (result) => result.outcome.session?.trace.redaction.screenshots === "raw",
@@ -596,7 +614,7 @@ function declaredStateDigest(state: StudySubjectState | undefined): string {
   );
 }
 
-export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
+export function renderConcurrentReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const plane = bundle.events.find(
     (event) => event.type === "concurrent-shared-world.plane.provenance",
   );
@@ -604,23 +622,20 @@ export function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
     (event) => event.type === "concurrent-shared-world.concurrency",
   );
   const sw = bundle.sharedWorld;
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- attribution class: ${bundle.attributionClass ?? "isolated"}`,
-    `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
-    `- personas: ${sw?.roleCount ?? 0}`,
-    `- verdict: ${verdictText(bundle.review.verdict, bundle.mode)}`,
-    `- outcome: ${reviewOutcome(bundle)}`,
-    `- summary: ${bundle.review.summary}`,
-    ...(plane ? [`- plane: ${plane.message}`] : []),
-    ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),
-    ...(sw ? [`- attribution limits: ${sw.attributionLimits.join(", ")}`] : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
+  return renderReviewMarkdown(
+    bundle,
+    [
+      ...(plane ? [`- plane: ${plane.message}`] : []),
+      ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),
+      ...(sw ? [`- attribution limits: ${sw.attributionLimits.join(", ")}`] : []),
+    ],
+    {
+      status,
+      beforeVerdict: [
+        `- attribution class: ${bundle.attributionClass ?? "isolated"}`,
+        `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
+        `- personas: ${sw?.roleCount ?? 0}`,
+      ],
+    },
+  );
 }

@@ -17,6 +17,7 @@ import {
   isSafeRunIdSegment,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
+import { isRunOutcome } from "../run/bundle-shape.js";
 import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
@@ -218,7 +219,7 @@ async function readObserverData(
       typeof buildObserverData
     >[0];
     return withRuntimeStreamUrls(
-      withLocalRunStatus(record, buildObserverData(bundle, undefined, record)),
+      withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
       runtimeStreamUrls,
     );
   } catch {}
@@ -259,7 +260,7 @@ async function readLocalRunStatus(runRoot: PinnedDirectory): Promise<RunStatusRe
 }
 
 /**
- * Liveness is a current read of a contained local status record, separate from run evidence.
+ * A recorded bundle outcome wins; otherwise runtime status reads the contained local heartbeat.
  * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
  * process died (the evidence may have been copied from another machine). A record its stopped
  * process wrote is interrupted. No PID is served/probed.
@@ -267,6 +268,7 @@ async function readLocalRunStatus(runRoot: PinnedDirectory): Promise<RunStatusRe
 function withLocalRunStatus(
   record: RunStatusRecord | undefined,
   input: ObserverData,
+  outcome?: unknown,
 ): ObserverData {
   // A served observation must never be inherited from a persisted projection or export.
   const { runtime: _persistedRuntime, ...data } = input;
@@ -278,7 +280,9 @@ function withLocalRunStatus(
   const timestampsValid =
     Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
   let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
-  if (timestampsValid) {
+  if (isRunOutcome(outcome)) {
+    state = outcome.state;
+  } else if (timestampsValid) {
     if (record.state === "finished") {
       state = "finished";
     } else if (record.state === "interrupted") {

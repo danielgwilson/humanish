@@ -84,7 +84,7 @@
         },
         "error": {
           "code": "HUMANISH_SHARED_WORLD_FAILED",
-          "message": "Actor did not produce a terminal session."
+          "message": "Participant ended with failed: failed (actor_error)"
         }
       },
       {

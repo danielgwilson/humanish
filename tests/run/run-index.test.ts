@@ -154,6 +154,29 @@ describe("run index: list and classify without parsing bundles", () => {
     expect(later.runs[0]?.liveness).toBe("interrupted");
   });
 
+  it("a finished bundle wins when only run.json changes after a cached live read", async () => {
+    await writeFixtureRun(cwd, { runId: "r-between", state: "running" }, NOW);
+    const cache = new RunIndexCache();
+    expect((await readRunIndex(cwd, { cache, nowMs: NOW })).runs[0]?.liveness).toBe("running");
+    await writeFile(
+      path.join(cwd, ".humanish/runs/r-between/run.json"),
+      JSON.stringify({
+        runId: "r-between",
+        mode: "live",
+        review: { verdict: "pass" },
+        simulations: [{ status: "running" }],
+        outcome: { state: "finished", ok: true, execution: { succeeded: true, failures: [] } },
+      }),
+    );
+    for (const nowMs of [NOW, NOW + 600_000]) {
+      expect((await readRunIndex(cwd, { cache, nowMs })).runs[0]).toMatchObject({
+        liveness: "finished",
+        verdict: "pass",
+        ok: true,
+      });
+    }
+  });
+
   it("the cache keeps an interrupted record interrupted", async () => {
     const runDir = path.join(cwd, ".humanish", "runs", "r-stopped");
     await mkdir(runDir, { recursive: true });

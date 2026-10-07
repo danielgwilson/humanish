@@ -120,6 +120,7 @@ export function planTerminalStudy(
     ...(actor?.persona === undefined ? {} : { personaId: actor.persona }),
     ...(actor?.mission === undefined ? {} : { mission: actor.mission }),
     runtime: {
+      doNotTrack: config.execution?.terminal?.doNotTrack !== false,
       ...(runtimeVersion === undefined ? {} : { version: runtimeVersion }),
       // Codex's own default can change with any release and its JSON stream does not name it, so
       // the route always passes a model: the declared one, else humanish's participant default.

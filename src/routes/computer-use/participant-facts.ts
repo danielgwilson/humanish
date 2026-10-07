@@ -7,16 +7,27 @@ import {
   participantPassed,
   sandboxCleanupFailure,
   type ExecutionFailure,
-  type ParticipantFacts,
+  type ParticipantRecordFacts,
 } from "../../run/judge.js";
 import type { ParticipantRunOutcome } from "./types.js";
 
 /** A participant outcome's facts for the judge. */
-export function participantFactsOf(outcome: ParticipantRunOutcome): ParticipantFacts {
+export function participantFactsOf(
+  outcome: ParticipantRunOutcome | undefined,
+): ParticipantRecordFacts {
+  if (outcome === undefined)
+    return { skipped: false, noEngagement: false, selfReportedBlocker: false };
   return {
+    id: outcome.spec.planned.id,
+    ...(outcome.skippedReason === undefined ? {} : { skippedReason: outcome.skippedReason }),
+    reportedFriction: outcome.reportedFriction === true,
     ...(outcome.session === undefined
       ? {}
-      : { status: outcome.session.status, completionReason: outcome.session.completionReason }),
+      : {
+          status: outcome.session.status,
+          completionReason: outcome.session.completionReason,
+          reason: outcome.session.reason,
+        }),
     ...(outcome.sessionError === undefined ? {} : { sessionError: outcome.sessionError }),
     skipped: outcome.skippedReason !== undefined,
     noEngagement: outcome.noEngagement === true,

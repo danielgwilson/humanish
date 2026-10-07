@@ -33,11 +33,13 @@ import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./conta
 import { scrubRunSandboxIds, withPublicSandboxIds } from "./sandbox-ids.js";
 import { RunSecrets } from "./secrets.js";
 import {
+  RUN_STATUS_FILE,
   beginRunStatus,
   runStatusOutcome,
   type RunInterruptSignal,
   type RunStatusHandle,
 } from "./status.js";
+import { readRunJsonIfExists } from "./locate.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
 interface StartRunOptions {
@@ -51,7 +53,7 @@ interface StartRunOptions {
   /** `none` when the route creates no sandbox for this run; status.json records it for reclaim. */
   sandboxes?: "none" | undefined;
   /** review.md for the published bundle. */
-  renderReview: (bundle: RunBundle) => string;
+  renderReview: (bundle: RunBundle, status?: unknown) => string;
   /** Used by `FinishedRun.renderObserver`; `render` is the `StudyDeps.renderObserver` seam. */
   observer?: { open: boolean; render?: typeof renderObserver | undefined };
   /** Clock for `createdAt` and the latest pointer. */
@@ -88,7 +90,7 @@ interface RouteRunOptions {
   cwd: string;
   prefix: RunIdPrefix;
   /** review.md for the published bundle. */
-  renderReview: (bundle: RunBundle) => string;
+  renderReview: (bundle: RunBundle, status?: unknown) => string;
   /** `none` when the route creates no sandbox for this run; status.json records it for reclaim. */
   sandboxes?: "none" | undefined;
   /** Clock for `createdAt` and the latest pointer. The minted id reads the wall clock. */
@@ -384,14 +386,21 @@ function runPublisher(args: {
     });
     await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
     await afterBundle(publicBundle);
+    const status =
+      recorded === undefined ? await readRunJsonIfExists(paths, RUN_STATUS_FILE) : undefined;
     await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
-    await writeContainedOutputFile(paths, "review.md", options.renderReview(publicBundle), "utf8");
+    await writeContainedOutputFile(
+      paths,
+      "review.md",
+      options.renderReview(publicBundle, status),
+      "utf8",
+    );
     const events = publicBundle.events.map((event) => JSON.stringify(event)).join("\n");
     await writeContainedOutputFile(paths, "events.ndjson", `${events}\n`, "utf8");
     await writeContainedOutputFile(
       paths,
       "observer/observer-data.json",
-      json(buildObserverData(publicBundle)),
+      json(buildObserverData(publicBundle, undefined, status)),
       "utf8",
     );
   };

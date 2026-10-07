@@ -84,6 +84,20 @@ at the base tier, with cached input at the cached rate, and says so with
 checked against `caps.maxUsd` keeps the provider line unmeasured, and the studied
 product's no-spend boundary still needs separate interpretation.
 
+## Participant telemetry
+
+Terminal participant commands and product setup receive `DO_NOT_TRACK=1` by default.
+Their child processes inherit it, so studied CLIs that honor the convention can exclude
+synthetic usage. To study the product's telemetry behavior, set
+`execution.terminal.doNotTrack: false`; humanish then leaves the variable unset.
+Only booleans are accepted, and `true` or an omitted field enables the default.
+
+The resolved `doNotTrack` boolean is recorded with `humanish.actor-runtime.v1` in
+`actor.json`, `streams[].actor.runtime` in `run.json`, and `runtime` in
+`terminal-ledgers.json`. A dry run records it in the JSON message of its
+`terminal-lab.runtime.declared` event. Older bundles omit it. This records the
+command environment policy; it does not prove that the studied CLI honors the variable.
+
 ## Runtime auth: raw-key placement and remaining provider access
 
 `execution.runtimeAuth: openai-egress` is the default: a study that declares no

@@ -14,7 +14,7 @@ const FAILURES = path.resolve(import.meta.dirname, "../golden/failures");
 const AT = "2026-10-01T06:00:00.000Z";
 
 /** What a run's display state is, as every surface must show it. */
-type ExpectedState = "passed" | "failed" | "blocked" | "timed_out" | "interrupted";
+type ExpectedState = "running" | "passed" | "failed" | "blocked" | "timed_out" | "interrupted";
 
 export interface OutcomeCase {
   /** The golden's name under tests/golden/failures, or `synthetic/<what>`. */
@@ -56,6 +56,7 @@ const NUMBERS: Record<string, number> = {
 
 function restore(value: unknown, runId: string): unknown {
   if (typeof value === "string") {
+    if (value === "[fresh]") return new Date().toISOString();
     if (value in NUMBERS) return NUMBERS[value];
     return value.split("[run]").join(runId).split("[ts]").join(AT);
   }
@@ -127,6 +128,32 @@ function interrupted(files: Record<string, unknown>): Record<string, unknown> {
   return next;
 }
 
+function unfinished(
+  files: Record<string, unknown>,
+  status: "missing" | "fresh" | "stale" | "invalid" | "mismatched",
+) {
+  const next = interrupted(files);
+  delete record(next, "run.json").outcome;
+  const heartbeat = record(next, "status.json");
+  heartbeat.state = "running";
+  delete heartbeat.signal;
+  delete heartbeat.completedAt;
+  if (status === "missing") delete next["status.json"];
+  if (status === "invalid") next["status.json"] = {};
+  if (status === "mismatched") heartbeat.runId = "another-run";
+  if (status === "fresh") heartbeat.updatedAt = "[fresh]";
+  return next;
+}
+
+function betweenWrites(files: Record<string, unknown>) {
+  const next = clone(files);
+  const heartbeat = record(next, "status.json");
+  heartbeat.state = "running";
+  delete heartbeat.completedAt;
+  delete heartbeat.outcome;
+  return next;
+}
+
 /** Every case, the failure goldens first. */
 export async function outcomeCases(): Promise<OutcomeCase[]> {
   const cases: OutcomeCase[] = [];
@@ -159,6 +186,20 @@ export async function outcomeCases(): Promise<OutcomeCase[]> {
       routeWritten: false,
     },
   );
+  for (const status of ["missing", "fresh", "stale", "invalid", "mismatched"] as const) {
+    cases.push({
+      name: `synthetic/no-outcome-${status}`,
+      expected: status === "fresh" ? "running" : "interrupted",
+      files: unfinished(passing, status),
+      routeWritten: false,
+    });
+  }
+  cases.push({
+    name: "synthetic/between-writes",
+    expected: "passed",
+    files: betweenWrites(passing),
+    routeWritten: false,
+  });
   return cases;
 }
 

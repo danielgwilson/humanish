@@ -159,6 +159,7 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
     message: redactText(
       JSON.stringify(
         declaredRuntimeProvenance({
+          doNotTrack: runtime.doNotTrack,
           ...(version === undefined ? {} : { version }),
           model,
           modelSource,

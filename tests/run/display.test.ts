@@ -124,10 +124,10 @@ describe("bundleDisplayFacts", () => {
     ).toBe("interrupted");
   });
 
-  it("reads a bundle with no outcome and no record as live while a simulation runs", () => {
+  it("reads a bundle with no outcome and no record as interrupted while a simulation runs", () => {
     const live = { ...bundle, simulations: [{ status: "running" }] };
-    expect(runDisplay(bundleDisplayFacts(live)).state).toBe("running");
-    expect(reviewOutcome(live)).toBe("running");
+    expect(runDisplay(bundleDisplayFacts(live)).state).toBe("interrupted");
+    expect(reviewOutcome(live)).toBe("interrupted");
   });
 });
 
@@ -156,7 +156,7 @@ describe("displayedReview", () => {
 
   it("keeps the review of a run that is not interrupted or had no participant running", () => {
     const running = { runId: "run-a", simulations: [{ status: "running" }] };
-    expect(displayedReview(live, running, runDisplay(bundleDisplayFacts(running)))).toBe(live);
+    expect(displayedReview(live, running, runDisplay({ liveness: "running" }))).toBe(live);
     const ended = { ...stopped, simulations: [{ status: "passed" }] };
     expect(displayedReview(live, ended, runDisplay(bundleDisplayFacts(ended)))).toBe(live);
   });

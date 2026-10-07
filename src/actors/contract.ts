@@ -378,6 +378,8 @@ export interface ParticipantClosingReport {
 export interface ActorRuntimeProvenance {
   schema: "humanish.actor-runtime.v1";
   package: string;
+  /** Terminal command telemetry opt-out; absent in older bundles. */
+  doNotTrack?: boolean;
   requestedVersion: string;
   observedVersion?: string;
   versionStatus: "unobserved" | "verified" | "failed";
