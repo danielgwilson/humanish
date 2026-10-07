@@ -1,5 +1,6 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import { highDetailImageTokens } from "./image-tokens.js";
+import { estimateAnalysisCost } from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -97,9 +98,14 @@ Order findings by observed task impact, replication among exposed participants, 
 export interface AnalysisAdmission {
   allowed: boolean;
   error: string | null;
+  /** The input tokens admission priced. */
   inputTokenAllowance: number | null;
   outputTokenAllowance: number | null;
+  /** The expected cost. Admission compares it, with a margin, with maxCostUsd. */
   estimatedCostUsd: number | null;
+  /** The cost if the analyst spends its whole output allowance. */
+  worstCaseCostUsd: number | null;
+  maxCostUsd: number | null;
   ratesAsOf: string | null;
 }
 export interface AnalysisProgress {
@@ -183,11 +189,11 @@ function inputError(input: AnalysisInput): string | null {
 
 /**
  * Local admission estimate, not a provider-enforced billed-spend guarantee. No token-count API
- * call, credential, or network access. One UTF-8 byte/token for all text/schema plus framing is
- * intentionally conservative. Each high-detail image is priced from its PNG size by the vision
- * guide's patch formula (see image-tokens.ts), or at the 3,000-token ceiling when its size or the
- * model's sizing is unknown. Unknown models/rates fail closed rather than inheriting those
- * assumptions.
+ * call, credential, or network access. admission.ts holds the cost model: text at a calibrated
+ * bytes-per-token ratio, the expected output, and the worst case that spends the whole output
+ * allowance. Each high-detail image is priced from its PNG size by the vision guide's patch
+ * formula (see image-tokens.ts), or at the 3,000-token ceiling when its size or the model's sizing
+ * is unknown. Unknown models/rates fail closed rather than inheriting those assumptions.
  * Known-sensitive decoded text denies admission with analysis_input_sensitive or
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
@@ -201,6 +207,8 @@ export function estimateAnalysisAdmission(
     inputTokenAllowance: 0,
     outputTokenAllowance: 0,
     estimatedCostUsd: null,
+    worstCaseCostUsd: null,
+    maxCostUsd: null,
     ratesAsOf: null,
   });
   if (
@@ -233,6 +241,8 @@ export function estimateAnalysisAdmission(
       inputTokenAllowance: null,
       outputTokenAllowance: null,
       estimatedCostUsd: null,
+      worstCaseCostUsd: null,
+      maxCostUsd: null,
       ratesAsOf: null,
     };
   const rate = MODEL_RATES[config.model];
@@ -245,40 +255,28 @@ export function estimateAnalysisAdmission(
     rate.outputUsdPerToken < 0
   )
     return denied("analysis_rate_unknown");
-  const inputTokenAllowance =
-    Buffer.byteLength(
-      JSON.stringify({
-        instructions: instructions(config),
-        evidence: evidenceText(input),
-        schema: analysisResultJsonSchema,
-      }),
-    ) +
-    2048 +
-    input.images.reduce(
+  const cost = estimateAnalysisCost(rate, {
+    textBytes:
+      Buffer.byteLength(instructions(config)) +
+      Buffer.byteLength(evidenceText(input)) +
+      Buffer.byteLength(JSON.stringify(analysisResultJsonSchema)),
+    imageTokens: input.images.reduce(
       (sum, image) => sum + highDetailImageTokens(config.model, image.dataUrl),
       0,
-    );
-  const long =
-    rate.longContext !== undefined && inputTokenAllowance > rate.longContext.thresholdInputTokens;
-  const inputRate = Math.max(
-    rate.inputUsdPerToken,
-    rate.cacheWriteUsdPerToken ?? 0,
-    rate.cachedInputUsdPerToken ?? 0,
-  );
-  const estimate =
-    inputTokenAllowance * inputRate * (long ? rate.longContext!.inputMultiplier : 1) +
-    config.maxOutputTokens *
-      rate.outputUsdPerToken *
-      (long ? rate.longContext!.outputMultiplier : 1);
-  // Round upward for admission; rounding a small positive boundary down could admit an overrun.
-  const estimatedCostUsd = Math.ceil(estimate * 1e6) / 1e6;
-  if (!Number.isFinite(estimatedCostUsd)) return denied("analysis_rate_unknown");
+    ),
+    participants: input.participants.length,
+    outputAllowance: config.maxOutputTokens,
+  });
+  if (!Number.isFinite(cost.worstCaseCostUsd)) return denied("analysis_rate_unknown");
+  const allowed = cost.admittedCostUsd <= config.maxCostUsd;
   return {
-    allowed: estimatedCostUsd <= config.maxCostUsd,
-    error: estimatedCostUsd <= config.maxCostUsd ? null : "analysis_budget_exceeded",
-    inputTokenAllowance,
+    allowed,
+    error: allowed ? null : "analysis_budget_exceeded",
+    inputTokenAllowance: cost.inputTokens,
     outputTokenAllowance: config.maxOutputTokens,
-    estimatedCostUsd,
+    estimatedCostUsd: cost.expectedCostUsd,
+    worstCaseCostUsd: cost.worstCaseCostUsd,
+    maxCostUsd: config.maxCostUsd,
     ratesAsOf: rate.asOf,
   };
 }

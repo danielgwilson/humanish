@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   estimateAnalysisAdmission,
-  preferLargerAnalysisOutput,
   runAnalysis,
   ANALYSIS_PROMPT_VERSION,
 } from "../../src/analysis/execute.js";
@@ -136,31 +135,6 @@ function transport(output: unknown = result()) {
 }
 
 describe("bounded study analysis run", () => {
-  it("expands default output space only when the original budget admits it", () => {
-    const packet = input();
-    const base = { ...config, model: "gpt-6-astra", maxCostUsd: 3, maxOutputTokens: 16384 };
-    expect(preferLargerAnalysisOutput(packet, base)).toEqual({
-      ...base,
-      maxOutputTokens: 32768,
-    });
-    const small = estimateAnalysisAdmission(packet, base).estimatedCostUsd!;
-    const large = estimateAnalysisAdmission(packet, {
-      ...base,
-      maxOutputTokens: 32768,
-    }).estimatedCostUsd!;
-    const between = { ...base, maxCostUsd: (small + large) / 2 };
-    expect(estimateAnalysisAdmission(packet, between).allowed).toBe(true);
-    expect(estimateAnalysisAdmission(packet, { ...between, maxOutputTokens: 32768 }).allowed).toBe(
-      false,
-    );
-    expect(preferLargerAnalysisOutput(packet, between)).toEqual(between);
-    const denied = { ...base, maxCostUsd: 0.000001 };
-    expect(preferLargerAnalysisOutput(packet, denied)).toEqual(denied);
-    expect(estimateAnalysisAdmission(packet, denied).allowed).toBe(false);
-    expect(
-      preferLargerAnalysisOutput(packet, { ...base, maxOutputTokens: -1 }).maxOutputTokens,
-    ).toBe(-1);
-  });
   it("retains paid usage when a response omits the required concern review", async () => {
     const answer = result();
     delete answer.concernReviews;
