@@ -18,6 +18,7 @@ import {
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
+import { formatRunTime, RUN_NOTES_FILE, type RunNotes } from "../run/notes.js";
 import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
@@ -56,6 +57,16 @@ export interface FeedbackDraft {
   idempotency_key: string;
   proposed_next_state: RunFeedbackCandidate["proposed_next_state"];
   acceptance_proof: string[];
+  /** Notes a person added while reviewing the recording, in run clock order. Absent with none. */
+  reviewer_notes?: Array<{
+    id: string;
+    /** The moment on the run clock, as the Observer shows it: `02:31`. */
+    at: string;
+    at_ms: number;
+    participant: string | null;
+    author: string;
+    text: string;
+  }>;
 }
 
 export interface FeedbackDraftOptions {
@@ -321,6 +332,58 @@ function citedImpressions(
   });
 }
 
+/**
+ * The draft with the run's reviewer notes and their file cited. verify graded the run share_ready
+ * after scanning notes.json, so the notes are text it has read.
+ */
+export function withReviewerNotes(
+  draft: FeedbackDraft,
+  notes: RunNotes | null,
+  runRoot: string,
+): FeedbackDraft {
+  if (notes === null || notes.notes.length === 0) return draft;
+  const ordered = [...notes.notes].sort(
+    (left, right) => left.atMs - right.atMs || left.createdAt.localeCompare(right.createdAt),
+  );
+  return {
+    ...draft,
+    evidence: [
+      ...draft.evidence,
+      {
+        path: path.join(runRoot, RUN_NOTES_FILE),
+        kind: "review",
+        note: "Notes a person added while reviewing the recording.",
+      },
+    ],
+    reviewer_notes: ordered.map((note) => ({
+      id: note.id,
+      at: formatRunTime(note.atMs),
+      at_ms: note.atMs,
+      participant: note.participant,
+      author: note.author,
+      text: note.text,
+    })),
+  };
+}
+
+function reviewerNotesSection(draft: FeedbackDraft): string {
+  if (!draft.reviewer_notes?.length) return "";
+  const items = draft.reviewer_notes.map((note) => {
+    const [first = "", ...rest] = note.text.split("\n");
+    return [
+      `- ${note.at}, ${note.participant ?? "whole run"}, ${note.author}: ${first}`,
+      ...rest.map((line) => `  ${line}`),
+    ].join("\n");
+  });
+  return `## Reviewer notes
+
+Notes a person added while reviewing the recording. They are not participant feedback.
+
+${items.join("\n")}
+
+`;
+}
+
 export function isUsableFeedbackCandidate(candidate: unknown): candidate is RunFeedbackCandidate {
   if (
     !isRecord(candidate) ||
@@ -367,7 +430,7 @@ ${draft.expected}
 
 ${draft.actual}
 
-## Evidence
+${reviewerNotesSection(draft)}## Evidence
 
 ${draft.evidence.map((item) => `- ${item.kind} ${runRelative(draft, item.path)}: ${item.note}`).join("\n")}
 

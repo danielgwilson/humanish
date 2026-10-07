@@ -18,6 +18,7 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
+import { readableRunNotes } from "../run/notes.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import {
   buildAnalysisDraft,
@@ -27,6 +28,7 @@ import {
   type FeedbackDraft,
   type FeedbackDraftOptions,
   type FeedbackRunContext,
+  withReviewerNotes,
 } from "./draft.js";
 
 const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
@@ -196,9 +198,16 @@ async function draftFeedbackBound(
   }
 
   const independent = options.analysis !== undefined || options.finding !== undefined;
-  const draft = independent
+  const built = independent
     ? await buildAnalysisDraft(context, options)
     : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
+  const draft =
+    built &&
+    withReviewerNotes(
+      built,
+      await readableRunNotes(context.preparedRunPaths),
+      path.dirname(context.loaded.bundlePath),
+    );
   if (!draft)
     return {
       context,
