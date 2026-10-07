@@ -46,8 +46,10 @@ function transport(answer: AnalysisResult, gate?: Promise<void>) {
     return new Response(JSON.stringify(wire));
   });
 }
-function addNarrativeCanaries(answer: AnalysisResult): AnalysisResult {
-  const append = (value: string) => `${value} ${OTP} ${LINK}`;
+// The OTP as hex and the link as base64: encoded forms a model can echo, which no literal match finds.
+const ENCODED = `${Buffer.from(OTP).toString("hex")} ${Buffer.from(LINK).toString("base64")}`;
+function addNarrativeCanaries(answer: AnalysisResult, canary = `${OTP} ${LINK}`): AnalysisResult {
+  const append = (value: string) => `${value} ${canary}`;
   answer.summary = append(answer.summary);
   answer.limitations = [append("Review limitation.")];
   for (const participant of answer.participants) {
@@ -249,6 +251,42 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
+  it("scrubs a known value's encoded forms from every generated prose field", async () => {
+    const packet = withCapture(input);
+    const answer = addNarrativeCanaries(syntheticResult(packet), ENCODED);
+    const append = (value: string) => `${value} ${ENCODED}`;
+    const finding = answer.findings[0]!;
+    finding.headline = append(finding.headline!);
+    finding.experience = append(finding.experience!);
+    const design = answer.designFindings![0]!;
+    for (const field of ["headline", "screen", "notice", "whyItMatters", "suggestion"] as const)
+      design[field] = append(design[field]);
+    const fields = JSON.stringify(answer).split(ENCODED).length - 1;
+    expect(validateAnalysisResult(packet, answer)).toEqual(answer);
+    const artifact = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([OTP, LINK]);
+      return runAnalysis(packet, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+    });
+    expect(artifact).toMatchObject({ status: "complete", error: null });
+    const prose = JSON.stringify(artifact.result);
+    for (const form of ENCODED.split(" ")) expect(prose).not.toContain(form);
+    expect(prose.match(/\[REDACTED_SECRET\]/g)).toHaveLength(2 * fields);
+    expect(artifact.result?.designFindings?.[0]?.screen).toBe(
+      "Item list [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it("keeps the spelling of generated text that holds escapes but no known value", async () => {
+    const answer = syntheticResult(input);
+    answer.summary = "The page offered 50%25 off &amp; a \\u0041 code.";
+    const artifact = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([OTP, LINK]);
+      return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+    });
+    expect(artifact.result?.summary).toBe(answer.summary);
+  });
+
   it("isolates secrets across overlapping provider requests", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -283,7 +321,8 @@ describe("analysis scrubbing in the originating run scope", () => {
 
   it("fails safely if replacement expands an otherwise valid field beyond its limit", async () => {
     const answer = syntheticResult(input);
-    answer.findings[0]!.title = OTP.repeat(39);
+    // Separate values, so each becomes its own longer marker; touching values merge into one.
+    answer.findings[0]!.title = `${OTP} `.repeat(34).trim();
     expect(validateAnalysisResult(input, answer)).toEqual(answer);
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([OTP]);
@@ -340,6 +379,30 @@ describe("analysis scrubbing in the originating run scope", () => {
     });
     expect(JSON.stringify(artifact)).not.toContain(secret);
   });
+
+  it.each(["finding", "design finding"] as const)(
+    "refuses a known value hex-encoded as an otherwise valid %s ID",
+    async (kind) => {
+      const packet = withCapture(input);
+      const answer = syntheticResult(packet);
+      const encoded = Buffer.from(OTP).toString("hex");
+      if (kind === "finding") {
+        answer.findings[0]!.id = encoded;
+        answer.concernReviews = [];
+      } else answer.designFindings![0]!.id = encoded;
+      expect(validateAnalysisResult(packet, answer)).toEqual(answer);
+      const artifact = await withTransientCommsSecrets(async () => {
+        registerTransientCommsSecrets([OTP]);
+        return runAnalysis(packet, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+      });
+      expect(artifact).toMatchObject({
+        status: "failed",
+        result: null,
+        error: "analysis_validation_failed_scrub_rejected",
+      });
+      expect(JSON.stringify(artifact)).not.toContain(encoded);
+    },
+  );
 
   it("refuses a secret echoed as an otherwise valid design finding ID", async () => {
     const secret = "synthetic-management-key-canary";

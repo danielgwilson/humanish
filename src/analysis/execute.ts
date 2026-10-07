@@ -3,7 +3,7 @@ import { highDetailImageTokens } from "./image-tokens.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { scrubTransientCommsText } from "../run/transient-comms-secrets.js";
+import { transientCommsKnownValueScrub } from "../run/transient-comms-secrets.js";
 import {
   ANALYSIS_ID_PATTERN,
   ANALYSIS_SCHEMA,
@@ -299,9 +299,10 @@ export type AnalysisDispatchContext = Pick<
   "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion"
 >;
 
-/** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. */
+/** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. A
+ * known value is found as written and in its encoded forms. */
 function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
-  const scrub = scrubTransientCommsText;
+  const scrub = transientCommsKnownValueScrub();
   const observation = <T extends AnalysisObservation>(value: T): T => ({
     ...value,
     claim: scrub(value.claim),

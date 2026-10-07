@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { decodeEscapes } from "../evidence/encoded-text.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { escapeRegExp } from "./text.js";
 
@@ -92,4 +93,22 @@ export function transientCommsEncodedScrub(): (text: string) => string {
   if (!scope) return (text) => text;
   usable(scope);
   return scrubSecretValues([...scope.values]);
+}
+
+const REDACTED = "[REDACTED_SECRET]";
+const markers = (text: string): number => text.split(REDACTED).length - 1;
+
+/**
+ * A scrub for text a model writes: each scope value as written and in its encoded forms
+ * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Text that
+ * holds a value is returned decoded with each value replaced. Text without one keeps its original
+ * spelling and gets the literal scrub, so an exact quote that holds an escape still matches its
+ * evidence. Outside a scope it changes nothing.
+ */
+export function transientCommsKnownValueScrub(): (text: string) => string {
+  const encoded = transientCommsEncodedScrub();
+  return (text) => {
+    const found = encoded(text);
+    return markers(found) > markers(decodeEscapes(text)) ? found : scrubTransientCommsText(text);
+  };
 }
