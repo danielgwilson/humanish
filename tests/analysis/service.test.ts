@@ -632,6 +632,55 @@ describe("ordinary study analysis flow", () => {
     expect((await showAnalysis(cwd, "analysis-flow")).corrections).toEqual([]);
   });
 
+  it("quotes each impression a finding cites in its analysis feedback draft", async () => {
+    const paper = "On the paper form I write the dose next to the drug name.";
+    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
+    // A synthetic pharmacist's closing impressions, recorded as the computer-use loop records them.
+    const say = (id: string, text: string) => ({
+      id,
+      kind: "message" as const,
+      lifecycle: "completed" as const,
+      title: "participant impression",
+      text,
+    });
+    bundle.streams[0]!.actor = {
+      lane: "computer-use",
+      status: "passed",
+      completionReason: "goal_satisfied",
+      items: [
+        say("message-001", "I recorded the dose."),
+        say("message-002", `Impression (unlike my work): ${paper}`),
+        say("message-003", "Impression (liked): The dose saved at once."),
+      ],
+      impressions: {
+        status: "collected",
+        items: [
+          { kind: "unlike_my_work", text: paper, messageId: "message-002" },
+          { kind: "liked", text: "The dose saved at once.", messageId: "message-003" },
+        ],
+      },
+    } as unknown as NonNullable<RunBundle["streams"][number]["actor"]>;
+    await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle, null, 2) + "\n");
+    const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
+    const packet = await captureEvidence(prepared, await readFile(path.join(runRoot, "run.json")));
+    const cited = packet.evidence.find((entry) => entry.eventId === "message-002")!;
+    const artifact = syntheticArtifact(packet);
+    artifact.result!.findings[0]!.observations.push({
+      claim: "The participant said the dose sits away from the drug name.",
+      basis: "participant_statement",
+      evidenceIds: [cited.id],
+      limitation: "One participant's opinion.",
+    });
+    await writeAnalysis(prepared, artifact);
+    const draft = (
+      await draftFeedback(cwd, "analysis-flow", { analysis: artifact.id, finding: "finding-1" })
+    ).draft!;
+    expect(draft.actual).toContain(
+      `\nParticipant ${bundle.streams[0]!.id} said at the end (unlike my work): ${paper}\n`,
+    );
+    expect(draft.actual).not.toContain("The dose saved at once.");
+  });
+
   it("drafts feedback from an analysis written before headlines by its title and summary", async () => {
     const artifact = syntheticArtifact(input);
     delete artifact.result!.findings[0]!.headline;

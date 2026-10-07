@@ -18,9 +18,12 @@ import { plural } from "../../../run/text.js";
 // the stop earns a read-only debrief request. LoopSession.conclude commits a stop where it is
 // decided.
 
-/** A harness-observed completion after which the participant is asked for a debrief. */
+/**
+ * An ending after which the participant is asked for a debrief: a harness-observed completion, or
+ * the participant's own ending when only its impressions are missing.
+ */
 export interface DebriefTrigger {
-  readonly kind: "stop_when" | "dwell";
+  readonly kind: "stop_when" | "dwell" | "participant_end";
   /** The final observation, already captured; the debrief request sends it without observing. */
   readonly observation: CuaObservation;
 }

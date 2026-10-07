@@ -291,12 +291,14 @@ describe("explicit adapter admission limits", () => {
         },
       });
       const { result } = await run(provider);
-      expect(requests).toBe(3);
+      // A successful retry ends the session with the participant's final answer, and one
+      // impressions-only request follows it.
+      expect(requests).toBe(ending === "refused" ? 3 : 4);
       expect(delayFn).toHaveBeenCalledTimes(1);
       expect(provider.interactionUsageIncomplete).toBe(true);
       expect(result.trace.interactionUsageIncomplete).toBe(true);
       expect(result.trace.status).toBe(ending === "refused" ? "incomplete" : "passed");
-      expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 2);
+      expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 3);
       result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
       const cost = buildRunCostSummary({ participants: [{ trace: result.trace }] });
       expect(cost?.fullyEstimated).toBe(false);

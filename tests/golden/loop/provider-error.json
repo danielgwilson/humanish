@@ -120,6 +120,10 @@
         "total": 1,
         "shortcutTotal": 0
       },
+      "impressions": {
+        "status": "not_collected",
+        "reason": "the session stopped before a closing account"
+      },
       "tokenUsage": {
         "input": 13,
         "output": 2,

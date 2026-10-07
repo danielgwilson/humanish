@@ -292,7 +292,8 @@ describe.each([
       },
       { capped: false },
     );
-    expect(dispatches).toBe(2);
+    // The retried request ends the session; one impressions-only request follows it.
+    expect(dispatches).toBe(3);
     expect(result.trace.completionReason).toBe("goal_satisfied");
   });
 });

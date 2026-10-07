@@ -136,6 +136,10 @@
         "total": 3,
         "shortcutTotal": 0
       },
+      "impressions": {
+        "status": "not_collected",
+        "reason": "the session stopped before a closing account"
+      },
       "capabilities": {
         "headless": true,
         "structuredTrace": true,

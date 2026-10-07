@@ -27,7 +27,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "openai",
       "participants": [
         {
@@ -79,7 +79,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       "result": null,
       "error": "analysis_api_key_missing"
@@ -90,7 +90,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844,
+        "estimatedAdmissionUsd": 0.27143,
         "status": "failed"
       }
     ]
@@ -113,7 +113,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "openai",
       "participants": [
         {
@@ -165,7 +165,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       "result": {
         "summary": "The participant encountered an obstacle.",
@@ -232,7 +232,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "63a36a9752c690c0"
+        "bodySha256": "2290b748f0cfd5b5"
       }
     ],
     "progress": [
@@ -240,25 +240,25 @@
         "phase": "admitted",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       {
         "phase": "requesting",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       {
         "phase": "validating",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       {
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844,
+        "estimatedAdmissionUsd": 0.27143,
         "status": "complete"
       }
     ]
@@ -281,7 +281,7 @@
         "timeoutMs": 1000,
         "maxOutputTokens": 8192
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "openai",
       "participants": [
         {
@@ -333,7 +333,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.26844
+        "estimatedAdmissionUsd": 0.27143
       },
       "result": null,
       "error": "analysis_cancelled"
@@ -344,7 +344,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.26844,
+        "estimatedAdmissionUsd": 0.27143,
         "status": "cancelled"
       }
     ]
@@ -378,7 +378,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "codex",
       "participants": [
         {
@@ -497,7 +497,7 @@
         "model": "gpt-6-astra",
         "maxOutputTokens": null,
         "images": 0,
-        "bodySha256": "f84b2a9772fbdaac"
+        "bodySha256": "fcb87200a620c697"
       }
     ],
     "progress": [
@@ -557,7 +557,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "codex",
       "participants": [
         {
@@ -729,7 +729,7 @@
           "cliVersion": "0.157.1"
         }
       },
-      "promptVersion": "study-evidence-7",
+      "promptVersion": "study-evidence-8",
       "provider": "codex",
       "participants": [
         {

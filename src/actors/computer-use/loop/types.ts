@@ -10,6 +10,7 @@ import type {
   ActorTraceItem,
   ParticipantClosingReport,
   ParticipantDeclaredOutcome,
+  ParticipantImpression,
   ProviderRequestReceipt,
 } from "../../contract.js";
 import type { RedactionHooks } from "../../../evidence/redaction.js";
@@ -195,6 +196,8 @@ export interface CuaTurn {
   outcome?: ParticipantDeclaredOutcome;
   /** Present only for an accepted structured closing account. */
   closingReport?: ParticipantClosingReport;
+  /** Present only for an accepted impressions-only closing reply. */
+  impressions?: ParticipantImpression[];
 }
 
 /** The model side of the loop. Self-describes its identity and capabilities. */
@@ -241,6 +244,11 @@ export interface CuaProvider {
   nextTurn(req: CuaTurnRequest, signal: AbortSignal, spend?: CuaSpendGate): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
+  /**
+   * Optional read-only request for impressions only, after the participant ended the session
+   * itself without them. Its turn carries `impressions`. Same rules as `debrief`.
+   */
+  requestImpressions?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
   /** Release the participant's model resources. Idempotent; reject if cleanup is unconfirmed. */
   close?(): Promise<void>;
 }

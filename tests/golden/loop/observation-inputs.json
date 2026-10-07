@@ -117,6 +117,10 @@
           "total": 2,
           "shortcutTotal": 0
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -279,6 +283,10 @@
           "total": 4,
           "shortcutTotal": 0
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -383,6 +391,10 @@
           }
         ],
         "declaredOutcome": "reached",
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "taskFunnel": {
           "schema": "humanish.task-funnel.v1",
           "total": 1,
@@ -529,6 +541,10 @@
           },
           "total": 2,
           "shortcutTotal": 0
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
         },
         "capabilities": {
           "headless": true,

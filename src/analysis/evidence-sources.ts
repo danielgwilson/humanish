@@ -268,7 +268,19 @@ function spreadOrder<T>(entries: T[]): T[] {
   return result;
 }
 
-export function sourceOrder(entries: SourceEntry[], capturesOnly: boolean): SourceEntry[] {
+/** The trace messages that carry a participant's closing impressions. */
+export function impressionEventIds(stream: RunStream): ReadonlySet<string> {
+  const impressions = stream.actor?.impressions;
+  return new Set(
+    impressions?.status === "collected" ? impressions.items.map((item) => item.messageId) : [],
+  );
+}
+
+export function sourceOrder(
+  entries: SourceEntry[],
+  capturesOnly: boolean,
+  impressions: ReadonlySet<string> = new Set(),
+): SourceEntry[] {
   const candidates = capturesOnly ? entries.filter((entry) => entry.capturePath !== null) : entries;
   const ordered = new Set<SourceEntry>();
   const admit = (entry: SourceEntry | undefined): void => {
@@ -276,6 +288,8 @@ export function sourceOrder(entries: SourceEntry[], capturesOnly: boolean): Sour
   };
   // Actor endings precede appended run bookkeeping when text slots are scarce.
   if (!capturesOnly) admit(entries.findLast((entry) => !entry.kind.startsWith("run_event:")));
+  // The participant's closing impressions are its only opinions of the product; keep them all.
+  for (const entry of entries) if (impressions.has(entry.eventId)) admit(entry);
   admit(candidates.at(-1));
   admit(candidates[0]);
   const afterCapture: Array<SourceEntry | undefined> = [];

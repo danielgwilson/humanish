@@ -8,6 +8,7 @@ import {
   type ActorTraceItemKind,
 } from "../../contract.js";
 import type { Stop } from "./ending.js";
+import { impressionsNotCollected } from "./impressions.js";
 import type { LoopSession } from "./session.js";
 import type { CuaLoopResult } from "./types.js";
 import { plural } from "../../../run/text.js";
@@ -172,6 +173,7 @@ export function loopResult(
       : {}),
     ...(session.declaredOutcome === undefined ? {} : { declaredOutcome: session.declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
+    impressions: session.impressions ?? impressionsNotCollected(debrief),
     ...(usage.interactionUsageIncomplete(session.capDeclared)
       ? { interactionUsageIncomplete: true as const }
       : {}),

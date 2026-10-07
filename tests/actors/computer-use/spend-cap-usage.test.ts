@@ -246,6 +246,9 @@ describe("a capped OpenAI session whose transport fails", () => {
     output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }],
   };
   type Step = "network" | 503 | Record<string, unknown>;
+  // After the participant finishes, one impressions-only request follows. This fake answers it
+  // as an unexpected dispatch, so the impressions are not collected and the session is unchanged.
+  const IMPRESSIONS_REQUEST = 1;
 
   async function session(steps: Step[], caps: { maxUsd?: number; maxOutputTokens?: number }) {
     let dispatches = 0;
@@ -285,7 +288,7 @@ describe("a capped OpenAI session whose transport fails", () => {
 
   it("runs as before when every reply reports usage", async () => {
     const result = await session([callReply, finalReply], { maxUsd: 10 });
-    expect(result.dispatches).toBe(2);
+    expect(result.dispatches).toBe(2 + IMPRESSIONS_REQUEST);
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(result.trace.stopCause).toBeUndefined();
     expect(result.trace.interactionUsageIncomplete).toBeUndefined();
@@ -293,7 +296,7 @@ describe("a capped OpenAI session whose transport fails", () => {
 
   it("still retries an HTTP 503, which returns no billed reply", async () => {
     const result = await session([503, callReply, finalReply], { maxUsd: 10 });
-    expect(result.dispatches).toBe(3);
+    expect(result.dispatches).toBe(3 + IMPRESSIONS_REQUEST);
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(result.trace.stopCause).toBeUndefined();
   });
@@ -303,7 +306,7 @@ describe("a capped OpenAI session whose transport fails", () => {
       maxUsd: 10,
       maxOutputTokens: 1000,
     });
-    expect(result.dispatches).toBe(3);
+    expect(result.dispatches).toBe(3 + IMPRESSIONS_REQUEST);
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(result.trace.stopCause).toBeUndefined();
     expect(result.trace.interactionUsageIncomplete).toBe(true);
@@ -329,7 +332,7 @@ describe("a capped OpenAI session whose transport fails", () => {
 
   it("resends an uncapped failed dispatch as before", async () => {
     const result = await session(["network", callReply, finalReply], {});
-    expect(result.dispatches).toBe(3);
+    expect(result.dispatches).toBe(3 + IMPRESSIONS_REQUEST);
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(result.trace.interactionUsageIncomplete).toBe(true);
   });

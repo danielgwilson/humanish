@@ -266,6 +266,21 @@ a finding opens. Exposure and remaining unique limits are one disclosure away;
 observation details retain each original claim and its specific limitation.
 This presentation does not rewrite the saved analysis or reviewer corrections.
 
+## Participant impressions
+
+A computer-use participant's closing impressions (`ActorTrace.impressions`) reach the packet as
+ordinary `message` entries of that participant's stream, one per impression, with text
+`Impression (<kind>): <text>`. They are quote-eligible and attributed by `streamId`, so feedback,
+participant_statement observations and design findings can cite them under the existing rules.
+Selection admits them right after the participant's last entry, ahead of the rest of its
+session. The evidence mapping and `captureVersion` are unchanged.
+
+The `study-evidence-8` prompt adds one paragraph: impressions are the participant's own opinions,
+used as participant statements, and an `unlike my work` impression together with a capture of
+that screen is a strong design finding. Validation is unchanged. A design finding still needs at
+least one cited capture, so an impression plus the capture of its screen makes a design finding,
+and an impression alone supports only a finding about what the participant said.
+
 ## Durable records
 
 The frozen `humanish.observer-data.v1` schema is unchanged. A companion

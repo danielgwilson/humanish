@@ -24,6 +24,7 @@ import {
   participantSource,
   sourceEntries,
   sourceOrder,
+  impressionEventIds,
   type SourceEntry,
 } from "./evidence-sources.js";
 import { readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
@@ -435,7 +436,7 @@ function recordCaptureOmissions(
     if (hasUnmappedCaptures(packing.stream))
       omissions.add("Some declared captures have no normalized trace reference.");
     for (const source of packing.captures.keys()) packing.admitted.add(source);
-    for (const source of sourceOrder(packing.entries, false)) {
+    for (const source of sourceOrder(packing.entries, false, impressionEventIds(packing.stream))) {
       if (packing.admitted.size >= sel.evidenceShares[index]!) break;
       packing.admitted.add(source);
     }

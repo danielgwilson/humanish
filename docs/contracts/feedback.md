@@ -66,7 +66,9 @@ Listing does not create a draft or check public-sharing eligibility.
 
 For completed computer-use and shared-world sessions, participant-reported
 friction comes from the redacted closing report, a completed debrief's
-`frictionReports`, and observed-report clauses in earlier messages.
+`frictionReports`, and observed-report clauses in earlier messages. The
+participant's closing impressions (`ActorTrace.impressions`) are opinions about
+the product and never count as friction.
 Matching `stopWhen` or ending a dwell window does not discard an earlier
 report or change the successful completion verdict. Exact repeated reports
 appear once in the participant's candidate. Harness notices, reasoning, and observed
@@ -84,6 +86,11 @@ was not repeated in the message trace.
 Builds structured feedback from the first usable run candidate, or the candidate
 selected with `--candidate`. With no candidate, a live run produces a summary of
 its recorded review; that fallback does not add a finding to the candidate list.
+With `--analysis` and `--finding`, the draft is built from that analysis finding
+instead. When the finding's observations cite a participant's closing impression,
+`actual` quotes it after the observations as
+`Participant <id> said at the end (<kind>): <text>`. An impression is quoted only
+when the cited evidence entry carries its text whole; uncited impressions stay out.
 A dry run tests no product behavior, so `draft`, `verify`, `issue` and
 `issue-url` refuse it with `HUMANISH_FEEDBACK_REQUIRES_LIVE_RUN`. All drafts
 require a verified `share_ready` live run and are written under the run bundle,

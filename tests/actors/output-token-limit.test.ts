@@ -102,7 +102,7 @@ describe("declared per-response output limit", () => {
     expect(bodies[4]?.reasoning).not.toHaveProperty("summary");
     expect(provider.modelSettings?.maxOutputTokens).toBe(64);
   });
-  it.each([16, 4096, undefined])(
+  it.each([16, 2000, 4096, undefined])(
     "closing request respects the smaller bound; declared=%s",
     async (maxOutputTokens) => {
       const bodies: Record<string, unknown>[] = [];
@@ -117,10 +117,11 @@ describe("declared per-response output limit", () => {
       await provider.nextTurn(request, signal);
       await provider.debrief!(request, signal);
       expect(bodies).toHaveLength(2);
-      // The first request and the closing request both use the smaller of the declared limit
-      // and 1024.
+      // The first request uses the smaller of the declared limit and 1024. The closing request
+      // uses the smaller of the declared limit and 3072, so a long list of impressions cannot cut
+      // off the summary and friction reports ahead of it.
       expect(bodies[0]?.max_output_tokens).toBe(Math.min(maxOutputTokens ?? 1024, 1024));
-      expect(bodies[1]?.max_output_tokens).toBe(Math.min(maxOutputTokens ?? 1024, 1024));
+      expect(bodies[1]?.max_output_tokens).toBe(Math.min(maxOutputTokens ?? 3072, 3072));
       expect(bodies[1]?.tool_choice).toBe("none");
       if (maxOutputTokens === undefined) {
         expect(provider.modelSettings).not.toHaveProperty("maxOutputTokens");

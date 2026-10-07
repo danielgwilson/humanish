@@ -6,7 +6,11 @@ import {
   validateBrowserControlAction,
 } from "../../browser-control/protocol.js";
 import { validClosingReport, type CuaTurn, type ShortenedWait } from "../computer-use/loop.js";
-import type { ActorExecutionProfile, ParticipantClosingReport } from "../contract.js";
+import {
+  PARTICIPANT_IMPRESSION_KINDS,
+  type ActorExecutionProfile,
+  type ParticipantClosingReport,
+} from "../contract.js";
 
 /** The declared profile. A participant replaces cliVersion with its detected CLI release, or with
  * this host's newest qualified release before its first launch. */
@@ -48,7 +52,7 @@ export const PARTICIPANT_TOOL_SCHEMA = participantToolSchema();
 export const PARTICIPANT_FINAL_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["outcome", "summary", "frictionReports"],
+  required: ["outcome", "summary", "frictionReports", "impressions"],
   properties: {
     outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
     summary: { type: "string", minLength: 1, maxLength: 4000 },
@@ -56,6 +60,19 @@ export const PARTICIPANT_FINAL_SCHEMA = {
       type: "array",
       maxItems: 8,
       items: { type: "string", minLength: 1, maxLength: 2000 },
+    },
+    impressions: {
+      type: "array",
+      maxItems: 6,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind", "text"],
+        properties: {
+          kind: { type: "string", enum: [...PARTICIPANT_IMPRESSION_KINDS] },
+          text: { type: "string", minLength: 1, maxLength: 500 },
+        },
+      },
     },
   },
 };
@@ -119,6 +136,10 @@ export function parseParticipantFinal(
     done: true,
     outcome,
     message: [report.summary, ...report.frictionReports].join("\n"),
-    closingReport: { summary: report.summary, frictionReports: [...report.frictionReports] },
+    closingReport: {
+      summary: report.summary,
+      frictionReports: [...report.frictionReports],
+      ...(report.impressions === undefined ? {} : { impressions: [...report.impressions] }),
+    },
   };
 }

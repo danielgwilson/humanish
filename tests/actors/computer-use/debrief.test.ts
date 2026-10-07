@@ -9,9 +9,12 @@ import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
+  sessionEnding,
 } from "../../../src/routes/computer-use/self-report.js";
+import { hollowCompletion } from "../../../src/run/judge.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
+import type { ParticipantImpression } from "../../../src/actors/contract.js";
 
 const report = "The Save button did nothing. I used Enter and finished the task.";
 const closing = (overrides: Partial<CuaTurn> = {}): CuaTurn => ({
@@ -222,11 +225,51 @@ describe("read-only participant debrief", () => {
     expect(s.debrief).not.toHaveBeenCalled();
   });
 
-  it("does not request a second report after a natural ending", async () => {
-    const s = setup();
-    s.nextTurn.mockResolvedValue(closing());
-    expect((await s.run()).trace.debrief).toBeUndefined();
+  it("asks only for impressions after a natural ending, and changes nothing else", async () => {
+    const ending = (s: ReturnType<typeof setup>) => {
+      s.nextTurn.mockResolvedValue({
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        message: report,
+        usage: { input: 20, output: 10 },
+      });
+      return s;
+    };
+    const before = await ending(setup()).run();
+    const s = ending(setup());
+    const ask = vi.fn<NonNullable<CuaProvider["requestImpressions"]>>(async () => ({
+      actions: [],
+      pendingSafetyChecks: [],
+      done: true,
+      usage: { input: 30, output: 8 },
+      impressions: [{ kind: "liked", text: "Pressing Enter saved the name at once." }],
+    }));
+    s.provider.requestImpressions = ask;
+    const after = await s.run();
+
     expect(s.debrief).not.toHaveBeenCalled();
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(ask.mock.calls[0]?.[0].contextHint).toContain("Return only impressions");
+    expect(after.trace.impressions).toMatchObject({
+      status: "collected",
+      items: [{ kind: "liked", text: "Pressing Enter saved the name at once." }],
+    });
+    expect(after.trace.debrief).toEqual({
+      trigger: "participant_end",
+      status: "completed",
+      reason: expect.any(String),
+      usageReported: true,
+    });
+    expect(after.trace.tokenUsage).toMatchObject({ input: 50, output: 18 });
+    // The participant's own ending is what it was without the request.
+    expect(before.trace.debrief).toBeUndefined();
+    for (const run of [before, after]) expect(run.status).toBe("passed");
+    expect(after.reason).toBe(before.reason);
+    expect(after.completionReason).toBe(before.completionReason);
+    expect(after.trace.declaredOutcome).toBe(before.trace.declaredOutcome);
+    expect(resolveSelfReportedFriction(after)).toBe(resolveSelfReportedFriction(before));
+    expect(sessionEnding(after)).toEqual(sessionEnding(before));
   });
 
   it("skips providers without the optional contract", async () => {
@@ -401,5 +444,242 @@ describe("read-only participant debrief", () => {
       stopCause: "usage_unreported",
       interactionUsageIncomplete: true,
     });
+  });
+});
+
+describe("participant impressions at the end of a session", () => {
+  const unclear =
+    "The Save button looked the same as the task text, so I could not tell it was a button at first.";
+  const unlike =
+    "On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared.";
+  const impressions = [
+    { kind: "unclear" as const, text: unclear },
+    { kind: "unlike_my_work" as const, text: unlike },
+  ];
+  const withImpressions = (list: ParticipantImpression[] = impressions) =>
+    closing({
+      closingReport: { summary: "I renamed the item.", frictionReports: [], impressions: list },
+    });
+
+  it("asks for each kind of impression, including how the persona does the same task", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    await s.run();
+    const hint = String(s.debrief.mock.calls[0]?.[0].contextHint);
+    for (const kind of [
+      "unclear",
+      "unfinished",
+      "untrustworthy",
+      "liked",
+      "missing",
+      "unlike_my_work",
+    ])
+      expect(hint).toContain(kind);
+    expect(hint).toContain("own work or life");
+  });
+
+  it("records the closing account's impressions as quotable participant statements", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    const { trace } = await s.run();
+    expect(trace.impressions).toEqual({
+      status: "collected",
+      items: [
+        { kind: "unclear", text: unclear, messageId: expect.any(String) },
+        { kind: "unlike_my_work", text: unlike, messageId: expect.any(String) },
+      ],
+    });
+    const items = trace.impressions?.status === "collected" ? trace.impressions.items : [];
+    for (const impression of items) {
+      const message = trace.items.find((item) => item.id === impression.messageId);
+      expect(message?.kind).toBe("message");
+      expect(message?.text).toContain(impression.text);
+    }
+    expect(trace.items.find((item) => item.id === items[1]?.messageId)?.text).toContain(
+      "unlike my work",
+    );
+    // Impressions answer the harness's question, so they do not count as the participant speaking.
+    expect(trace.counts.messages).toBe(1);
+    expect(trace.debrief?.report).toEqual({ summary: "I renamed the item.", frictionReports: [] });
+  });
+
+  it("keeps impressions out of the participant's reported friction", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    expect(resolveSelfReportedFriction(await s.run())).toBeUndefined();
+  });
+
+  it("records an empty list when the participant had no impressions", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions([]));
+    expect((await s.run()).trace.impressions).toEqual({ status: "collected", items: [] });
+  });
+
+  it("redacts impressions like the rest of the closing account", async () => {
+    const s = setup({ scrubText: (text) => text.replaceAll("opaque-private-value", "[scrubbed]") });
+    s.debrief.mockResolvedValue(
+      withImpressions([{ kind: "missing", text: "I expected opaque-private-value on the list." }]),
+    );
+    const { trace } = await s.run();
+    expect(JSON.stringify(trace)).not.toContain("opaque-private-value");
+    expect(trace.impressions).toMatchObject({
+      items: [{ kind: "missing", text: "I expected [scrubbed] on the list." }],
+    });
+  });
+
+  it("keeps the impressions in a participant's own final account", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue(withImpressions());
+    const { trace } = await s.run();
+    expect(trace.debrief).toBeUndefined();
+    expect(trace.impressions).toMatchObject({
+      status: "collected",
+      items: [{ kind: "unclear" }, { kind: "unlike_my_work" }],
+    });
+  });
+
+  const withoutReport = (): CuaTurn => {
+    const { closingReport: _report, ...turn } = closing();
+    return turn;
+  };
+
+  it.each([
+    [
+      "the provider has no closing report",
+      (s: ReturnType<typeof setup>) => delete s.provider.debrief,
+      /closing report was skipped: this provider does not support/,
+    ],
+    [
+      "the closing report failed",
+      (s: ReturnType<typeof setup>) => s.debrief.mockRejectedValue(new Error("network down")),
+      /closing report failed: network down/,
+    ],
+    [
+      "the closing report has no impressions",
+      () => undefined,
+      /closing account did not include impressions/,
+    ],
+    [
+      "the participant ended without a structured account",
+      (s: ReturnType<typeof setup>) => s.nextTurn.mockResolvedValue(withoutReport()),
+      /ended the session without a structured closing account/,
+    ],
+    [
+      "the session stopped before a closing account",
+      (s: ReturnType<typeof setup>) => s.nextTurn.mockRejectedValue(new Error("provider down")),
+      /stopped before a closing account/,
+    ],
+  ])("says why impressions were not collected when %s", async (_name, arrange, reason) => {
+    const s = setup();
+    arrange(s);
+    const { trace } = await s.run();
+    expect(trace.impressions?.status).toBe("not_collected");
+    expect(trace.impressions?.status === "not_collected" && trace.impressions.reason).toMatch(
+      reason,
+    );
+  });
+});
+
+describe("impressions after the participant ends the session itself", () => {
+  const ended: CuaTurn = {
+    actions: [],
+    pendingSafetyChecks: [],
+    done: true,
+    message: report,
+    usage: { input: 20, output: 10 },
+  };
+  const run = async (
+    ask: NonNullable<CuaProvider["requestImpressions"]>,
+    overrides: Partial<LoopRunOptions> = {},
+  ) => {
+    const s = setup(overrides);
+    s.nextTurn.mockResolvedValue(ended);
+    s.provider.requestImpressions = vi.fn(ask);
+    return s.run();
+  };
+  const without = async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue(ended);
+    return s.run();
+  };
+
+  it.each([
+    [
+      "fails",
+      async () => {
+        throw new Error("network down");
+      },
+      /impressions request failed: network down/,
+    ],
+    [
+      "times out",
+      (_req: unknown, signal: AbortSignal) =>
+        new Promise<CuaTurn>((_resolve, reject) =>
+          signal.addEventListener("abort", () => reject(new Error("aborted"))),
+        ),
+      /impressions request failed: impressions request deadline reached/,
+    ],
+    [
+      "is cut off",
+      async (): Promise<CuaTurn> => ({
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        interruption: "output_limit",
+        usage: { input: 30, output: 3072 },
+      }),
+      /impressions request failed: the reply was cut off by the output limit/,
+    ],
+  ] as const)(
+    "records not_collected with the reason when the request %s, and changes nothing else",
+    async (_name, ask, reason) => {
+      const before = await without();
+      const after = await run(ask as NonNullable<CuaProvider["requestImpressions"]>, {
+        turnTimeoutMs: 5,
+      });
+      expect(after.trace.impressions?.status).toBe("not_collected");
+      expect(
+        after.trace.impressions?.status === "not_collected" && after.trace.impressions.reason,
+      ).toMatch(reason);
+      expect(after.trace.debrief).toMatchObject({ trigger: "participant_end", status: "failed" });
+      expect(after.trace.debrief?.report).toBeUndefined();
+      expect(after.status).toBe(before.status);
+      expect(after.reason).toBe(before.reason);
+      expect(resolveSelfReportedFriction(after)).toBe(resolveSelfReportedFriction(before));
+      expect(sessionEnding(after)).toEqual(sessionEnding(before));
+    },
+  );
+
+  it("keeps a participant that acted on nothing and said nothing a hollow completion", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue({ actions: [], pendingSafetyChecks: [], done: true });
+    s.provider.requestImpressions = vi.fn(async () => ({
+      actions: [],
+      pendingSafetyChecks: [],
+      done: true,
+      usage: { input: 30, output: 8 },
+      impressions: [{ kind: "unfinished" as const, text: "The page was blank." }],
+    }));
+    const result = await s.run();
+    expect(result.trace.impressions).toMatchObject({ status: "collected" });
+    expect(hollowCompletion(sessionEnding(result))).toBe(true);
+  });
+
+  it("does not ask a participant whose own final account carried impressions", async () => {
+    const s = setup();
+    s.nextTurn.mockResolvedValue({
+      ...ended,
+      closingReport: {
+        summary: "I renamed it.",
+        frictionReports: [],
+        impressions: [{ kind: "liked", text: "Enter saved it." }],
+      },
+    });
+    const ask = vi.fn<NonNullable<CuaProvider["requestImpressions"]>>();
+    s.provider.requestImpressions = ask;
+    const result = await s.run();
+    expect(ask).not.toHaveBeenCalled();
+    expect(result.trace.debrief).toBeUndefined();
+    expect(result.trace.impressions).toMatchObject({ status: "collected" });
   });
 });

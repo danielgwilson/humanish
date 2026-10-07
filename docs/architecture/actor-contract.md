@@ -350,22 +350,36 @@ this paragraph is the record of that decision.
 
 `ComputerUseProvider.debrief` is an optional read-only request after a structured
 `stopWhen` or dwell stop. It returns a `ComputerUseTurn` with `closingReport` containing
-`summary` and `frictionReports`; an empty friction list is valid. The loop rejects
+`summary`, `frictionReports` and `impressions`; an empty friction or impressions list is valid,
+and a report without `impressions` (an older provider) is still accepted. The loop rejects
 actions, pending safety checks, and invalid report shapes. It redacts accepted
 reports, records them in `ActorTrace.debrief`, and projects one readable message
-without invoking action or communication callbacks.
+without invoking action or communication callbacks. Each impression becomes its own message
+and goes to `ActorTrace.impressions`; a session without them records why in the same field.
+A turn that ends the session itself may carry `closingReport` too, and the loop keeps its
+impressions the same way without a second request.
+
+`ComputerUseProvider.requestImpressions` is the optional request after the participant ended
+the session itself without impressions. It asks for impressions only, returns them as
+`impressions` on the turn, and follows the debrief's rules and guards. The loop records it as
+`ActorTrace.debrief` with `trigger: "participant_end"` and no report, so the participant's
+reason, outcome and friction come from its final message as before. A failed, timed-out or
+cut-off request leaves `ActorTrace.impressions` as `not_collected` with the reason.
 
 This request uses the final observation and retained provider history. It does
 not expose the hidden stop criterion or change the original task outcome. It is
-skipped before any participant turn, after natural completion, without provider
-support, or without remaining time and known budget. An attempted request's
+skipped before any participant turn, after natural completion (apart from the impressions-only
+request), without provider support, or without remaining time and known budget. An attempted request's
 unreported usage remains an unknown cost line. `counts.debriefCalls` is separate
 from interaction turns, and reported usage contributes to aggregate cost.
 
 The OpenAI implementation makes one request with tools disabled and structured
-output; no HTTP or policy retries. Stateless/ZDR mode does not offer retrospective
+output; no HTTP or policy retries. Its output limit is 3072 tokens, or the declared
+`maxOutputTokens` when lower. Stateless/ZDR mode does not offer retrospective
 reporting: its client-carried conversation summarizes its oldest turns past a token
-budget, so it may not hold the whole session a retrospective report needs. The
+budget, so it may not hold the whole session a retrospective report needs. It does offer
+the impressions-only request, which reads the carried conversation: its newest
+exchanges whole and earlier turns as a text note. The
 [paired live receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/structured-closing-report-2026-09-05.md)
 records both report recovery and control failures in the separate legacy parser.
 

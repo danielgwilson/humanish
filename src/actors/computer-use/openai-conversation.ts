@@ -1,6 +1,6 @@
 import type { CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import type { ActorConversation } from "../contract.js";
+import { PARTICIPANT_IMPRESSION_KINDS, type ActorConversation } from "../contract.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   buildCallOutput,
@@ -49,8 +49,59 @@ export interface ConversationRequest {
 /** Which answer told the provider that the organization keeps no server-side conversation. */
 export type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
 
-/** The closing report's output limit: its own cap, or the declared limit when that is lower. */
-const CLOSING_OUTPUT_LIMIT = 1024;
+/**
+ * The closing request's output limit: its own cap, or the declared limit when that is lower. It
+ * counts reasoning too, and leaves room for six impressions after the summary and friction reports.
+ */
+const CLOSING_OUTPUT_LIMIT = 3072;
+
+/**
+ * What a closing request asks for: the closing report after a harness-owned stop, or only
+ * impressions after the participant ended the session itself.
+ */
+export type ClosingRequest = "report" | "impressions";
+
+const IMPRESSIONS_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["kind", "text"],
+    properties: {
+      kind: { type: "string", enum: [...PARTICIPANT_IMPRESSION_KINDS] },
+      text: { type: "string" },
+    },
+  },
+};
+
+const CLOSING_FORMATS: Record<ClosingRequest, Record<string, unknown>> = {
+  report: {
+    type: "json_schema",
+    name: "participant_closing_report",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "frictionReports", "impressions"],
+      properties: {
+        summary: { type: "string" },
+        frictionReports: { type: "array", items: { type: "string" } },
+        impressions: IMPRESSIONS_SCHEMA,
+      },
+    },
+  },
+  impressions: {
+    type: "json_schema",
+    name: "participant_impressions",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["impressions"],
+      properties: { impressions: IMPRESSIONS_SCHEMA },
+    },
+  },
+};
 
 export class OpenAiConversation {
   private lastResponseId: string | undefined;
@@ -73,13 +124,14 @@ export class OpenAiConversation {
 
   /**
    * The next request, carrying `req`'s screen: the opening request, or the outputs the latest
-   * reply's computer calls are owed. A closing report asks for a strict JSON report and no tools.
+   * reply's computer calls are owed. A closing request asks for strict JSON and no tools.
    */
-  request(req: CuaTurnRequest, closing = false): ConversationRequest {
+  request(req: CuaTurnRequest, closing?: ClosingRequest): ConversationRequest {
     const sent = this.newItems(req);
     return {
-      body: () => (closing ? this.closingBody(req, sent) : this.turnBody(req, sent)),
-      accept: (reply) => this.accept(reply, closing, sent),
+      body: () =>
+        closing === undefined ? this.turnBody(req, sent) : this.closingBody(req, sent, closing),
+      accept: (reply) => this.accept(reply, closing !== undefined, sent),
     };
   }
 
@@ -166,8 +218,12 @@ export class OpenAiConversation {
     });
   }
 
-  /** The read-only closing report: no tools, a small output limit, a strict schema. */
-  private closingBody(req: CuaTurnRequest, sent: readonly unknown[]): Record<string, unknown> {
+  /** A read-only closing request: no tools, its own output limit, a strict schema. */
+  private closingBody(
+    req: CuaTurnRequest,
+    sent: readonly unknown[],
+    closing: ClosingRequest,
+  ): Record<string, unknown> {
     return {
       ...this.turnBody(req, sent),
       tool_choice: "none",
@@ -175,22 +231,7 @@ export class OpenAiConversation {
         this.settings.maxOutputTokens ?? CLOSING_OUTPUT_LIMIT,
         CLOSING_OUTPUT_LIMIT,
       ),
-      text: {
-        format: {
-          type: "json_schema",
-          name: "participant_closing_report",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["summary", "frictionReports"],
-            properties: {
-              summary: { type: "string" },
-              frictionReports: { type: "array", items: { type: "string" } },
-            },
-          },
-        },
-      },
+      text: { format: CLOSING_FORMATS[closing] },
     };
   }
 

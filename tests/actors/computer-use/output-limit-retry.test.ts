@@ -159,18 +159,25 @@ describe("the OpenAI provider after a cut-off reply", () => {
 
   it("sends the first request again after a cut-off first reply", async () => {
     const result = await session([cutOffReply, callReply, finalReply]);
-    expect(result.bodies).toHaveLength(3);
+    // The fourth request asks only for impressions after the participant's own ending.
+    expect(result.bodies).toHaveLength(4);
     expect(result.bodies[1]).toEqual(result.bodies[0]);
     expect(result.bodies[0]).not.toHaveProperty("previous_response_id");
     expect(result.bodies[2]).toMatchObject({ previous_response_id: callReply.id });
+    expect(result.bodies[3]).toMatchObject({
+      previous_response_id: finalReply.id,
+      tool_choice: "none",
+    });
     expect(result.trace.completionReason).toBe("goal_satisfied");
   });
 
   it("continues from the last complete reply after a cut-off later reply", async () => {
     const result = await session([callReply, cutOffReply, finalReply]);
-    expect(result.bodies).toHaveLength(3);
+    // The fourth request asks only for impressions after the participant's own ending.
+    expect(result.bodies).toHaveLength(4);
     expect(result.bodies[1]).toMatchObject({ previous_response_id: callReply.id });
     expect(result.bodies[2]).toEqual(result.bodies[1]);
+    expect(result.bodies[3]).toMatchObject({ tool_choice: "none" });
     expect(result.trace.completionReason).toBe("goal_satisfied");
   });
 });

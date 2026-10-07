@@ -1,4 +1,4 @@
-import { validClosingReport } from "./loop.js";
+import { validClosingReport, validImpressionsReply } from "./loop.js";
 import type { ActorCapabilities, ActorConversation } from "../contract.js";
 import {
   ComputerUseAdmissionLimitError,
@@ -8,6 +8,7 @@ import { ComputerUsePromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
 import {
   OpenAiConversation,
+  type ClosingRequest,
   type ConversationRequest,
   type ZdrRejection,
 } from "./openai-conversation.js";
@@ -594,23 +595,27 @@ export function createOpenAiResponsesProvider(
   const requestTurn = async (
     req: CuaTurnRequest,
     signal: AbortSignal,
-    closing = false,
+    closing?: ClosingRequest,
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     await capture.prepareNext();
     const request = conversation.request(req, closing);
-    // A closing report makes exactly one request: no HTTP or policy-latch retries.
-    const raw = closing
-      ? await post(request.body(), signal, 0, false)
-      : await postTurn(request, signal, spend);
+    // A closing request makes exactly one request: no HTTP or policy-latch retries.
+    const raw =
+      closing === undefined
+        ? await postTurn(request, signal, spend)
+        : await post(request.body(), signal, 0, false);
     const turn = request.accept(raw);
-    if (closing) {
+    if (closing !== undefined) {
       // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
       // Never promote raw JSON or a fallback paragraph into a structured finding.
       try {
-        const report: unknown = JSON.parse(turn.message ?? "");
-        if (asRecord(raw).status === "completed" && validClosingReport(report)) {
-          return { ...turn, closingReport: report };
+        const reply: unknown = JSON.parse(turn.message ?? "");
+        if (asRecord(raw).status === "completed") {
+          if (closing === "report" && validClosingReport(reply))
+            return { ...turn, closingReport: reply };
+          if (closing === "impressions" && validImpressionsReply(reply))
+            return { ...turn, impressions: reply.impressions };
         }
       } catch {
         /* A failed optional closing account keeps its usage and no report. */
@@ -637,15 +642,18 @@ export function createOpenAiResponsesProvider(
     get interactionUsageIncomplete() {
       return interactionUsageIncomplete;
     },
-    nextTurn: (req, signal, spend) => requestTurn(req, signal, false, spend),
+    nextTurn: (req, signal, spend) => requestTurn(req, signal, undefined, spend),
     get conversation(): ActorConversation {
       return conversation.record();
     },
     // A retrospective report reads the session the server holds; see serverHoldsSession.
     get debrief() {
       return conversation.serverHoldsSession
-        ? (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, true)
+        ? (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, "report")
         : undefined;
     },
+    // Offered in both modes. An explicit_context conversation carries its newest screens whole and
+    // earlier turns as text, which serves impressions; a closing report needs the whole session.
+    requestImpressions: (req, signal) => requestTurn(req, signal, "impressions"),
   };
 }

@@ -115,6 +115,10 @@
           "total": 2,
           "shortcutTotal": 0
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -216,6 +220,10 @@
             "at": "1970-01-01T00:00:06.000Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -305,6 +313,10 @@
           "trigger": "stop_when",
           "status": "skipped",
           "reason": "the study stopped before any participant turn"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: the study stopped before any participant turn"
         },
         "capabilities": {
           "headless": true,
@@ -434,6 +446,10 @@
           "trigger": "stop_when",
           "status": "skipped",
           "reason": "this provider does not support read-only closing reports"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: this provider does not support read-only closing reports"
         },
         "capabilities": {
           "headless": true,
@@ -627,6 +643,10 @@
           "total": 1,
           "shortcutTotal": 0
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -793,6 +813,10 @@
           "status": "skipped",
           "reason": "the study stopped before any participant turn"
         },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the closing report was skipped: the study stopped before any participant turn"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -900,6 +924,10 @@
             "at": "1970-01-01T00:00:00.009Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -1018,6 +1046,10 @@
             "at": "1970-01-01T00:00:00.030Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the session stopped before a closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -1127,6 +1159,10 @@
             "at": "1970-01-01T00:00:00.033Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -1232,6 +1268,10 @@
             "at": "1970-01-01T00:00:00.033Z"
           }
         ],
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
         "capabilities": {
           "headless": true,
           "structuredTrace": true,
@@ -1432,6 +1472,10 @@
           },
           "total": 2,
           "shortcutTotal": 0
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
         },
         "capabilities": {
           "headless": true,

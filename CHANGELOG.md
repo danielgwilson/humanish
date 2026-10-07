@@ -8,6 +8,27 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Computer-use participants now give impressions at the end of a session: up to six first-person
+  notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
+  and did not find, and where the screen differs from how their persona does the same task in
+  their own work or life. The OpenAI closing report and the Codex participant's final account
+  ask for them. When an OpenAI participant ends the session itself, one more request asks for its
+  impressions only; it adds one model request per participant and leaves the participant's
+  summary, reason and outcome as they were. The trace's `impressions` keeps them, each recorded
+  as a message the analysis can quote and cite, or says why none were collected, for example
+  when a Claude local-agent participant ends the session itself or the request fails. The Observer shows them under "What they said at the end",
+  grouped by kind. An analysis can cite an impression as a participant statement, and an
+  impression with a capture of that screen as a design finding. A feedback draft for a finding
+  that cites one quotes it. The analysis prompt is now `study-evidence-8`.
+
+### Changed
+
+- OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,
+  or the study's `actor.maxOutputTokens` when that is lower. They used at most 1024, which a
+  closing report with impressions could exceed, losing the whole report.
+
 ## 0.112.0: Plain finding headlines, design findings, plain captions, DO_NOT_TRACK for terminal participants (2026-10-07)
 
 humanish 0.112.0 writes findings and captions for someone who did not watch the session, and

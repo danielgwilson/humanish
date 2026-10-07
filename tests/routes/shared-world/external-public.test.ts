@@ -1309,7 +1309,11 @@ it("routes actor output limits and per-participant reasoning to concurrent provi
       "utf8",
     ),
   );
-  const bodies: Array<{ max_output_tokens?: number; reasoning?: { effort?: string } }> = [];
+  const bodies: Array<{
+    max_output_tokens?: number;
+    reasoning?: { effort?: string };
+    tool_choice?: string;
+  }> = [];
   vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
     bodies.push(JSON.parse(init.body));
     return {
@@ -1328,9 +1332,14 @@ it("routes actor output limits and per-participant reasoning to concurrent provi
       prepareDesktop,
       deps,
     });
-    expect(bodies).toHaveLength(3);
-    expect(bodies.map((body) => body.max_output_tokens)).toEqual([512, 512, 512]);
-    expect(bodies.map((body) => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
+    // Each participant ends on its first reply, and one impressions-only request follows. The
+    // declared 512 is below the closing request's own 3072, so it bounds that request too.
+    const turns = bodies.filter((body) => body.tool_choice !== "none");
+    const closing = bodies.filter((body) => body.tool_choice === "none");
+    expect(turns).toHaveLength(3);
+    expect(closing).toHaveLength(3);
+    expect(bodies.map((body) => body.max_output_tokens)).toEqual(Array(6).fill(512));
+    expect(turns.map((body) => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
     expect(result.roles).toHaveLength(3);
   } finally {
     vi.unstubAllGlobals();

@@ -58,9 +58,9 @@
       "admission": {
         "allowed": false,
         "error": "analysis_budget_exceeded",
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -83,9 +83,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -104,9 +104,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 32768,
-        "estimatedCostUsd": 0.762345,
+        "estimatedCostUsd": 0.765335,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -154,9 +154,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       }
     },
@@ -190,9 +190,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -208,7 +208,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -218,7 +218,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "25773469671e958d"
+        "bodySha256": "56dfc609c4eb44ea"
       }
     ],
     "progress": [
@@ -226,25 +226,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "partial"
       }
     ],
@@ -261,7 +261,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -269,7 +269,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -282,7 +282,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "schema": "humanish.analysis-execution-start.v1",
         "createdAt": "[ts]"
       },
@@ -303,7 +303,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 8192
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -311,7 +311,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -440,9 +440,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -455,7 +455,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "inputTokens": 13543,
         "outputTokens": 221,
         "estimatedCostUsd": 0.07206
@@ -479,9 +479,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -497,7 +497,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-3/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-3/analysis.json"
@@ -507,7 +507,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "25773469671e958d"
+        "bodySha256": "56dfc609c4eb44ea"
       }
     ],
     "progress": [
@@ -515,25 +515,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "partial"
       }
     ],
@@ -552,7 +552,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -560,7 +560,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -573,7 +573,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "schema": "humanish.analysis-execution-start.v1",
         "createdAt": "[ts]"
       },
@@ -595,7 +595,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 8192
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -603,7 +603,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -732,9 +732,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -750,7 +750,7 @@
         "usageComplete": false,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "error": {
         "code": "analysis_provider_http_error",
@@ -765,19 +765,19 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "failed"
       }
     ],
@@ -794,7 +794,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -802,7 +802,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -827,7 +827,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 8192
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -835,7 +835,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -911,9 +911,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -929,7 +929,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "error": {
         "code": "analysis_validation_failed_schema_invalid",
@@ -945,25 +945,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "failed"
       }
     ],
@@ -980,7 +980,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -988,7 +988,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1013,7 +1013,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 8192
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -1021,7 +1021,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1097,9 +1097,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 1024,
-        "estimatedCostUsd": 0.127465,
+        "estimatedCostUsd": 0.130455,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1115,7 +1115,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.127465
+        "estimatedAdmissionUsd": 0.130455
       },
       "error": {
         "code": "analysis_admission_estimate_exceeded",
@@ -1130,25 +1130,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.127465
+        "estimatedAdmissionUsd": 0.130455
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.127465
+        "estimatedAdmissionUsd": 0.130455
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.127465
+        "estimatedAdmissionUsd": 0.130455
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.127465,
+        "estimatedAdmissionUsd": 0.130455,
         "status": "partial"
       }
     ],
@@ -1165,7 +1165,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "dba72a9685abeab8e0552cca5dec6a34e3cd582ce80789f6cb56ae7ca9f9a8df",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -1173,7 +1173,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.127465,
+          "estimatedAdmissionUsd": 0.130455,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1186,7 +1186,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "dba72a9685abeab8e0552cca5dec6a34e3cd582ce80789f6cb56ae7ca9f9a8df",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "schema": "humanish.analysis-execution-start.v1",
         "createdAt": "[ts]"
       },
@@ -1207,7 +1207,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 1024
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": 13468,
@@ -1215,7 +1215,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.127465,
+          "estimatedAdmissionUsd": 0.130455,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1354,7 +1354,7 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       }
     ],
     "files": {}
@@ -1368,9 +1368,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1386,7 +1386,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "error": {
         "code": "analysis_cancelled",
@@ -1401,13 +1401,13 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "cancelled"
       }
     ],
@@ -1424,7 +1424,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -1432,7 +1432,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1457,7 +1457,7 @@
           "timeoutMs": 1000,
           "maxOutputTokens": 8192
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "openai",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -1465,7 +1465,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.270825,
+          "estimatedAdmissionUsd": 0.273815,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1541,9 +1541,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1559,7 +1559,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "error": {
@@ -1573,25 +1573,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "partial"
       }
     ],
@@ -1609,9 +1609,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1627,7 +1627,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "error": {
         "code": "ANALYSIS_PUBLICATION_FAILED",
@@ -1640,25 +1640,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "partial"
       }
     ],
@@ -1675,9 +1675,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 21397,
+        "inputTokenAllowance": 21995,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.270825,
+        "estimatedCostUsd": 0.273815,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [
@@ -1695,7 +1695,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -1706,25 +1706,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825
+        "estimatedAdmissionUsd": 0.273815
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.270825,
+        "estimatedAdmissionUsd": 0.273815,
         "status": "partial"
       }
     ],
@@ -1771,7 +1771,7 @@
         "model": "gpt-6-astra",
         "maxOutputTokens": null,
         "images": 0,
-        "bodySha256": "6a2a5c13ee3356d3"
+        "bodySha256": "d89a0f5d98263d12"
       }
     ],
     "progress": [
@@ -1814,7 +1814,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "codex",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -1835,7 +1835,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "schema": "humanish.analysis-execution-start.v1",
         "createdAt": "[ts]"
       },
@@ -1867,7 +1867,7 @@
             "cliVersion": "0.157.1"
           }
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "codex",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -2066,7 +2066,7 @@
         "sourceRunSha256": "[source-sha256]",
         "inputDigest": "[input-digest]",
         "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "codex",
         "usage": {
           "cacheWriteInputTokens": null,
@@ -2110,7 +2110,7 @@
             "cliVersion": "0.157.1"
           }
         },
-        "promptVersion": "study-evidence-7",
+        "promptVersion": "study-evidence-8",
         "provider": "codex",
         "usage": {
           "cacheWriteInputTokens": null,
