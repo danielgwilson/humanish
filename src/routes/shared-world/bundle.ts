@@ -353,7 +353,7 @@ function concurrencyReview(
     (snapshot, i) => i > 0 && snapshot.digest !== (stateSeries ?? [])[i - 1]!.digest,
   ).length;
   const stateSeriesLabel = external
-    ? "stateSeries omitted (no authoritative shared-state proof on the external-public plane)"
+    ? "Shared app state was not recorded because the app is hosted outside humanish"
     : `stateSeries ${plural((stateSeries ?? []).length, "snapshot")}, ${plural(deltas, "delta")}`;
   const convergenceLabel = external
     ? `; lobby convergence ${args.lobbyConvergenceDigest ? "shown (all participants reached one /lobby/CODE)" : "not observed"}`

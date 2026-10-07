@@ -29,6 +29,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   impression with a capture of that screen as a design finding. A feedback draft for a finding
   that cites one quotes it. The analysis prompt is now `study-evidence-8`.
 
+### Fixed
+
+- Shared-world runs now finish with plain participant captions and app-use wording in the CLI,
+  and the Observer uses those captions for recording titles. Older terminal and scripted runs
+  now show participant names in the Observer and TUI, including dry runs without actor traces.
+
 ### Changed
 
 - OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,

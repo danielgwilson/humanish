@@ -4,4 +4,4 @@
  * data, events and review details keep the facts these words named.
  */
 export const HARNESS_WORDS =
-  /\b(swarm|plane|coherently|overlap proven|seats?|goal_satisfied|completion reasons|credibility checks|run gate|actor sessions?)\b/i;
+  /\b(swarm|plane|coherently|overlap:? proven|seats?|goal_satisfied|completion reasons|credibility checks|run gate|actor sessions?)\b/i;

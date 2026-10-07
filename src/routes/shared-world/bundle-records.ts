@@ -138,16 +138,17 @@ function sharedWorldStream(
   const { args } = ctx;
   const { name, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
   const judged = view.judgment.judgedStatus;
+  const caption = participantCaption({
+    id: spec.planned.id,
+    personaId: spec.persona.id,
+    device: spec.planned.device,
+  });
   return participantStream(spec, {
     ...(spec.evidenceAssignment === undefined
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: participantCaption({
-      id: spec.planned.id,
-      personaId: spec.persona.id,
-      device: spec.planned.device,
-    }),
+    label: caption,
     status: view.status,
     ...(judged === undefined ? {} : { judgedStatus: judged }),
     transport: "snapshot",
@@ -156,9 +157,9 @@ function sharedWorldStream(
       ? {
           kind: "screenshot",
           url: lastScreenshot,
-          title: `Shared plane, persona ${spec.planned.id} (${screenshotMode})`,
+          title: `${caption} (${screenshotMode})`,
         }
-      : { kind: "placeholder", title: `Shared plane, persona ${spec.planned.id}` },
+      : { kind: "placeholder", title: caption },
     ...(desktopGeometry.viewport === undefined
       ? {}
       : {
