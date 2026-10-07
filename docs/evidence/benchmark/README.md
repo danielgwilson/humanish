@@ -171,6 +171,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-04 | 0.110.0, src/ as of 8be10e9b | `neutral` | `openai-computer-use` | 2            | 8/10          | 8/10            | 0 and 0             | $3.49           | [summary](2026-10-04-0.110.0-neutral-openai-computer-use.md) |
 | 2026-10-05 | 0.111.0, src/ as of 0c4a6d70 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $5.10           | [summary](2026-10-05-0.111.0-neutral-openai-computer-use.md) |
 | 2026-10-07 | 0.112.0, src/ as of 4a132ed6 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $5.99           | [summary](2026-10-07-0.112.0-neutral-openai-computer-use.md) |
+| 2026-10-07 | 0.113.0, src/ as of 323e65a0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 6/10            | 0 and 0             | $5.83           | [summary](2026-10-07-0.113.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -198,6 +199,25 @@ true: the clean build's edit box has no Enter handler. Four reports say the part
 terminal, from the persona's `clear_terminal_output` trait. The analysis prompt is now
 `study-evidence-7`; the rubric scores each finding's title, summary and observations as before, and
 reads neither the new headline and experience nor the design findings.
+
+The 0.113.0 run used the same persona file, which this release rewrote to lead with a background
+and dropped its `patience` and `technical_confidence` traits, so its participants got a different
+prompt from 0.112.0's. Each participant also gave impressions after it ended the session, which
+the analysis reads as evidence; the report rubric reads only the participant's own report. The
+OpenAI organization of this run refuses server-side conversation state, so humanish carried each
+conversation itself; input grew every turn for all six participants. The second planted run's
+analysis was refused before any request: its admission estimate, $1.81, passed the benchmark's
+$1.75 per-analysis cap. Its participant took 16 turns, the most of the six. Run by hand afterwards
+with `--max-cost 2.5` ($0.87), outside the results file, that analysis lists D1, D3, D4 and D5.
+No planted participant typed more than 30 characters in one action, so none met D2. The first
+planted report's "clicking save while editing did not seem to respond. pressing enter saved the
+change." and the third planted analysis's "Save did not retain an edit; Enter provided an
+in-session workaround" are D5, which the rubric left unresolved. Read by hand, report recall is
+11/15 and analysis recall 11/15 with the hand-run analysis. The planted-arm invented line "the
+edit save button did nothing." (X4) is also D5. The third clean participant said it did not reach
+the goal: a refresh emptied the list, which both builds do, and it would not keep using Taskly. The
+clean-arm analysis lines "Enter did not finish editing; clicking Save recovered" and "Enter did not
+exit editing; clicking Save applied the change" are true.
 
 ## What these numbers are not
 

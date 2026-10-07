@@ -8,92 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
-- `humanish keys` with no subcommand, or `humanish keys status`, lists the provider keys humanish
-  uses (`E2B_API_KEY`, `OPENAI_API_KEY`, `GH_TOKEN`, `AGENTMAIL_API_KEY`), each with the source
-  that supplies it (environment, project file, user store, `gh auth token`, `e2b auth login`) or
-  the command that adds it. It never prints a value. It used to print the usage block.
+humanish 0.113.0 asks computer-use participants what they thought at the end of a session, warns
+when a study scripts its participants, and says how many local desktops fit. An OpenAI or Codex
+participant ends with up to six first-person impressions: what looked unclear, unfinished or
+untrustworthy, what they liked, what they expected and did not find, and where the screen differs
+from how they do the same task in their own work or life. The trace keeps them as `impressions`,
+the Observer shows them under "What they said at the end", and analyses at prompt
+`study-evidence-8` can cite them. `study check` and `run` warn when a mission reads like a list of
+UI steps or a participant's persona has no background, and the starter personas `init` writes now
+lead with a background, which changes their participant prompt. `runtime status` and
+`doctor --study` report how many participant desktops the local runtime holds, and a live local
+study that needs more than a Mac's humanish VM holds is refused before any desktop starts.
+`humanish keys` lists each provider key with its source and never its value, and humanish says at
+most once a day, at a terminal, when a newer version is out. Live shared-world output and older
+terminal and scripted runs use plain participant captions.
 
-- `humanish keys set` with no vendor, run at a terminal, asks for each missing provider key in
-  turn with hidden input. Press Enter to skip a key, or Ctrl+C to stop and keep the keys already
-  stored. Without a terminal it still needs a vendor, and its error now names the `--stdin` form.
-
-- humanish tells you when a newer version is out. At most once a day, after a command run at a
-  terminal, one line on stderr names your version, the latest one and `npx humanish@latest`. The
-  registry request runs in a background process, carries no identifying data and never delays or
-  fails a command. It is off in CI, without a terminal, for `--json` output, and with
-  `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1` or `HUMANISH_NO_UPDATE_CHECK=1`.
-  `humanish doctor` shows the version the last check found.
-
-- `humanish study check` and `humanish run` warn when computer-use or shared-world
-  missions script UI steps or participants lack a persona background. Mission
-  warnings quote the matched lines and suggest a situation-style brief. Runs keep
-  both warnings in their evidence bundles. Committed browser personas and init
-  templates now include short fictional backgrounds.
-
-- Computer-use participants now give impressions at the end of a session: up to six first-person
-  notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
-  and did not find, and where the screen differs from how their persona does the same task in
-  their own work or life. The OpenAI closing report and the Codex participant's final account
-  ask for them. When an OpenAI participant ends the session itself, one more request asks for its
-  impressions only; it adds one model request per participant and leaves the participant's
-  summary, reason and outcome as they were. The trace's `impressions` keeps them, each recorded
-  as a message the analysis can quote and cite, or says why none were collected, for example
-  when a Claude local-agent participant ends the session itself or the request fails. The Observer shows them under "What they said at the end",
-  grouped by kind. An analysis can cite an impression as a participant statement, and an
-  impression with a capture of that screen as a design finding. A feedback draft for a finding
-  that cites one quotes it. The analysis prompt is now `study-evidence-8`.
-- `humanish runtime setup --memory <GiB> --cpus <n>` sizes the Mac's humanish Lima VM. An
-  existing VM keeps its size unless you pass them; with them, setup stops the VM, resizes it and
-  starts it again, and refuses while participant desktops are running in it.
-- A live local study that runs more participant desktops at once than the Lima VM holds is
-  refused before any desktop or model call with `HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED`.
-  The message says how many it runs, how many fit and why, then what to do: run it on cloud
-  desktops (`subject.source: local-tree` with `execution.target: e2b-desktop`), give the VM more
-  room with `runtime setup --memory`, or lower `execution.concurrency`. Memory sets the limit:
-  desktops that share fewer than 2 CPUs each only run slower, and `runtime status` says so. On Linux the same
-  shortfall prints a warning and the run starts.
-- `humanish runtime status` (and `--json`, as `capacity`) reports the VM's or this machine's
-  memory and CPUs, each desktop's 3 GiB, and how many desktops fit. `humanish doctor
---study` on a local study adds a local desktop capacity row that says whether the study fits.
-- When Docker kills a local participant's desktop for memory, the participant's error, the run's
-  error and `review.md` say the desktop ran out of memory and what to change, with the code
-  `HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY`.
-
-### Fixed
-
-- Shared-world runs now finish with plain participant captions and app-use wording in the CLI,
-  and the Observer uses those captions for recording titles. Older terminal and scripted runs
-  now show participant names in the Observer and TUI, including dry runs without actor traces.
-
-### Changed
-
-- `help` is no longer listed under Commands in any command's help. `humanish help <command>` and
-  `humanish <command> help` still work.
-
-- The TUI footer says `? shortcuts` where it said `? keys`, and `c keys and accounts` where it
-  said `c connections`. On a narrow terminal the legend drops the word "move" so it stays on one
-  line.
-
-- A missing `AGENTMAIL_API_KEY` now points at `humanish keys set agentmail`.
-
-- OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,
-  or the study's `actor.maxOutputTokens` when that is lower. They used at most 1024, which a
-  closing report with impressions could exceed, losing the whole report.
-- A new humanish Lima VM gets room for four participant desktops plus 1 GiB for itself (13 GiB
-  and 8 CPUs), capped at half the Mac's memory and CPUs. It got 8 GiB and 6 CPUs on every Mac,
-  which holds two desktops.
-- `humanish doctor --study` on a local study whose runtime is not set up starts with a `next:`
-  line naming the step to take, such as `humanish runtime setup`, and shows a runtime that will
-  download on first use as a note.
-- `humanish study check` passes a valid study in a `--reachability` mode it cannot apply:
-  `prepared-host`, which has no CLI check, and `public-preview` or `sandbox-loopback` on a local
-  study. Those rows, and a new `this machine` row, are marked not checked and name
-  `humanish doctor --study <study>`. The JSON rows carry `checked: false`.
-- `--rerun-failed-from` refusals name the run they read, say why it cannot be rerun (no runs yet,
-  a dry run, a run with one participant, or no failed participant) and give the `watch` and `run`
-  commands for the whole study.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.113.0)
 
 ## 0.112.0: Plain finding headlines, design findings, plain captions, DO_NOT_TRACK for terminal participants (2026-10-07)
 
