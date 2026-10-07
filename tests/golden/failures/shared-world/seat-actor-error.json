@@ -135,7 +135,7 @@
     ],
     "error": {
       "code": "HUMANISH_SHARED_WORLD_FAILED",
-      "message": "Concurrent shared-world run did not run coherently: 2/3 actors reached a terminal, engaged passed session."
+      "message": "The shared-world run failed: 2 of 3 participants passed. The run's review.md lists what happened to the others."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -367,12 +367,12 @@
         "label": "failed",
         "tone": "fail"
       },
-      "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
+      "title": "Concurrent shared-world proof - 3 participants in one shared app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "persona-1",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one shared app",
         "source": "study:concurrent-shared-world-proof",
         "sourceDigest": "48b083174eecbf02"
       },
@@ -566,7 +566,7 @@
     },
     "persona": {
       "id": "persona-1",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one shared app",
       "source": "study:concurrent-shared-world-proof",
       "sourceDigest": "48b083174eecbf02"
     },
@@ -595,7 +595,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Persona 01 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],
@@ -612,7 +612,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "failed (actor_error)",
-        "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2): drove the shared plane concurrently; actor_error.",
+        "summary": "Persona 02 used the shared app and stopped on an error.",
         "streamIds": [
           "stream-002"
         ],
@@ -629,7 +629,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Persona 03 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-003"
         ],
@@ -688,7 +688,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 01 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -826,7 +826,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 02 use the shared app at the same time as the others.",
           "state": "failed (actor_error)",
           "actorStatus": "failed"
         },
@@ -964,7 +964,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 03 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },

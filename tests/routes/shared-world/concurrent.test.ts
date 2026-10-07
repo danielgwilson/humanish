@@ -1665,9 +1665,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     }).finally(stderr.stop);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain(
-      "2/3 actors reached a terminal, engaged passed session",
-    );
+    expect(result.error?.message).toContain("2 of 3 participants passed");
 
     expect(result.roles[1]?.error?.message).toBe(
       "Participant ended with failed: failed (actor_error)",

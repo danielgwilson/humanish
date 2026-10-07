@@ -90,12 +90,12 @@
         "label": "dry run",
         "tone": "neutral"
       },
-      "title": "the example multiplayer app 3-player external-public - Concurrent shared-world swarm (3 personas)",
+      "title": "the example multiplayer app 3-player external-public - 3 participants in one public app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "party-host",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one public app",
         "source": "study:lobby-trivia-3player-test",
         "sourceDigest": "07e0454012db815d"
       },
@@ -273,7 +273,7 @@
     },
     "persona": {
       "id": "party-host",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one public app",
       "source": "study:lobby-trivia-3player-test",
       "sourceDigest": "07e0454012db815d"
     },
@@ -302,7 +302,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona host (party-host) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
+        "summary": "Host would use the shared app; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -319,7 +319,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona player-2 (competitive-friend) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
+        "summary": "Player 2 would use the shared app; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -336,7 +336,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona player-3 (casual-friend) for openai-computer-use against the shared plane at [external-public-plane]; no session ran.",
+        "summary": "Player 3 would use the shared app; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -376,7 +376,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona host (party-host) use the shared app at the same time as the other personas.",
+          "intent": "Watch Host use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -428,7 +428,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-2 (competitive-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 2 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -480,7 +480,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-3 (casual-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 3 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [

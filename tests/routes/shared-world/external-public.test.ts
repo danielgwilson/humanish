@@ -1393,7 +1393,8 @@ describe("what a reader sees for each participant and for the run", () => {
     },
   );
 
-  it("captions each participant by name and device and keeps the taxonomy in the data", async () => {
+  /** The three-player study with a taxonomy on the host and a desktop third player. */
+  function taxonomyConfig(): StudyConfig {
     const raw = externalPublicConfig();
     const roster = raw.participants as Array<Record<string, unknown>>;
     Object.assign(roster[0]!, {
@@ -1405,10 +1406,22 @@ describe("what a reader sees for each participant and for the run", () => {
     roster[2]!.device = "desktop";
     const parsed = parseStudy(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  /** Every string value in a JSON document. */
+  function stringsIn(value: unknown): string[] {
+    if (typeof value === "string") return [value];
+    if (Array.isArray(value)) return value.flatMap(stringsIn);
+    if (value !== null && typeof value === "object") return Object.values(value).flatMap(stringsIn);
+    return [];
+  }
+
+  it("captions each participant by name and device and keeps the taxonomy in the data", async () => {
     const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
     const result = await runSharedWorld({
       cwd,
-      config: parsed.config,
+      config: taxonomyConfig(),
       dryRun: false,
       env,
       deps,
@@ -1425,6 +1438,54 @@ describe("what a reader sees for each participant and for the run", () => {
       surface: "game",
       caseGroup: "lobby-001",
     });
+  });
+
+  it.each([
+    ["live", false],
+    ["dry", true],
+  ] as const)(
+    "shows no taxonomy or harness words in the Observer for a %s run",
+    async (_mode, dryRun) => {
+      const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen: [] }));
+      const result = await runSharedWorld({ cwd, config: taxonomyConfig(), dryRun, env, deps });
+      const file = path.join(
+        cwd,
+        ".humanish",
+        "runs",
+        result.runId,
+        "observer",
+        "observer-data.json",
+      );
+      const observerData = JSON.parse(await readFile(file, "utf8")) as {
+        run: { persona: { name: string } };
+        streams: { sim: { summary: string }; ui?: { intent?: string } }[];
+      };
+      const shown = stringsIn(observerData);
+      expect(shown.filter((text) => /\b(type|surface|case):|swarm|coherently/i.test(text))).toEqual(
+        [],
+      );
+      expect(observerData.run.persona.name).not.toMatch(HARNESS_WORDS);
+      for (const stream of observerData.streams) {
+        expect(stream.sim.summary).not.toMatch(HARNESS_WORDS);
+        expect(stream.ui?.intent ?? "").not.toMatch(HARNESS_WORDS);
+      }
+    },
+  );
+
+  it("says why a run with a stuck participant failed, in plain words", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], stuckPersonaId: "casual-friend" }),
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).not.toMatch(HARNESS_WORDS);
+    expect(result.error?.message).toContain("2 of 3 participants passed");
   });
 });
 

@@ -100,12 +100,12 @@
         "label": "dry run",
         "tone": "neutral"
       },
-      "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
+      "title": "Concurrent shared-world proof - 3 participants in one shared app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "persona-1",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one shared app",
         "source": "study:concurrent-shared-world-proof",
         "sourceDigest": "48b083174eecbf02"
       },
@@ -292,7 +292,7 @@
     },
     "persona": {
       "id": "persona-1",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one shared app",
       "source": "study:concurrent-shared-world-proof",
       "sourceDigest": "48b083174eecbf02"
     },
@@ -321,7 +321,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 01 would use the shared app; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -338,7 +338,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 02 would use the shared app; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -355,7 +355,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 03 would use the shared app; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -389,7 +389,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 01 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -435,7 +435,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 02 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -481,7 +481,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 03 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [

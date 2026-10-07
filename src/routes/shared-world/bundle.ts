@@ -404,10 +404,6 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
-  // Public-safe label only: neither the raw getHost URL (provisioned) nor the raw public origin
-  // (external-public) lands in the bundle. The plane identity is a digest (plane.hostDigest on
-  // getHost; plane.publicOriginDigest on external-public).
-  const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";
   const planeCommit = external ? undefined : dryRun ? undefined : args.subjectCommit;
   const events = planeEvents(args, external);
 
@@ -432,7 +428,6 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     args,
     external,
     inProgress,
-    appUrl,
     nextEventId,
     participants: judgment.participants,
   };
@@ -471,7 +466,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     }),
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
-      name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
+      name: `${plural(actorSpecs.length, "participant")} in one ${external ? "public" : "shared"} app`,
       source: `study:${plan.studyId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },

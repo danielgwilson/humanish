@@ -320,12 +320,12 @@
         "label": "passed",
         "tone": "pass"
       },
-      "title": "the example multiplayer app 3-player external-public - Concurrent shared-world swarm (3 personas)",
+      "title": "the example multiplayer app 3-player external-public - 3 participants in one public app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "party-host",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one public app",
         "source": "study:lobby-trivia-3player-test",
         "sourceDigest": "07e0454012db815d"
       },
@@ -500,7 +500,7 @@
     },
     "persona": {
       "id": "party-host",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one public app",
       "source": "study:lobby-trivia-3player-test",
       "sourceDigest": "07e0454012db815d"
     },
@@ -529,7 +529,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona host (party-host): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Host used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],
@@ -546,7 +546,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona player-2 (competitive-friend): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Player 2 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-002"
         ],
@@ -563,7 +563,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona player-3 (casual-friend): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Player 3 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-003"
         ],
@@ -628,7 +628,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona host (party-host) use the shared app at the same time as the other personas.",
+          "intent": "Watch Host use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -772,7 +772,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-2 (competitive-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 2 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -916,7 +916,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-3 (casual-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 3 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },

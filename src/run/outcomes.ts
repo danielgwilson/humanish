@@ -126,6 +126,38 @@ function participantCompletionLine(
   return goalLine;
 }
 
+/**
+ * How one participant's session ended, in words a participant summary can end on. A computer-use
+ * goal says where the claim came from, as the run's participant line does.
+ */
+export function sessionEndingInWords(trace: ActorTrace): string {
+  switch (trace.completionReason) {
+    case "goal_satisfied": {
+      const source = cuaGoalSource(trace);
+      if (source === "participant_report") return "reported reaching the goal";
+      return source === "condition_matched" ? "met its completion condition" : "reached the goal";
+    }
+    case "turn_completed":
+      return "said it was done";
+    case "gave_up":
+      return "gave up";
+    case "blocked_approval":
+      return "was blocked waiting for an approval";
+    case "timed_out":
+      return "ran out of time";
+    case "budget_reached":
+      return "was stopped by a time or spend limit";
+    case "actor_error":
+      return "stopped on an error";
+    case "step_failed":
+      return "failed a scripted step";
+    case "harness_error":
+      return "was lost to a harness failure";
+    default:
+      return "ended";
+  }
+}
+
 /** "; the gaps list the other 2", or "all 3" when nobody passed. Empty when the gaps list nobody. */
 export function gapsListClause(listed: number, total: number): string {
   if (listed <= 0) return "";
