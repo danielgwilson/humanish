@@ -121,8 +121,8 @@ describe("committed persona resolution", () => {
       "synthetic-new-user",
     ]);
     expect(resolved.warnings).toEqual([]);
-    expect(resolved.personas.get("skeptical-power-user")?.traits.patience).toBe("low");
-    expect(resolved.personas.get("synthetic-new-user")?.traits.patience).toBe("medium");
+    expect(resolved.personas.get("skeptical-power-user")?.background).toContain("Robin");
+    expect(resolved.personas.get("synthetic-new-user")?.background).toContain("Alex");
   });
 
   it("reads a machine-local persona, and a committed persona with the same id wins", async () => {

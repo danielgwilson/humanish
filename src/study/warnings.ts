@@ -1,3 +1,4 @@
+import type { ResolvedPersona } from "./persona.js";
 import {
   isComputerUseComposition,
   isScriptedBrowserComposition,
@@ -7,7 +8,11 @@ import {
 import type { StudyConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
-import { participantList, declaredParticipantCount } from "./study-fields.js";
+import {
+  participantList,
+  participantInstruction,
+  declaredParticipantCount,
+} from "./study-fields.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -381,5 +386,106 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
       );
     }
   }
-  return warnings;
+  return [...warnings, ...scriptedMissionWarnings(config)];
+}
+
+const UI_ACTION = /\b(?:click|tap|press|type\b[^.!?\n]*?\binto|select\b[^.!?\n]*?\bfrom)\b/gi;
+
+function normalizedUrl(value: string): string {
+  try {
+    return new URL(value).href;
+  } catch {
+    return value;
+  }
+}
+
+function scriptedLine(line: string, entry: string | undefined): boolean {
+  const urls = line.match(/https?:\/\/[^\s<>"'`)]+/gi) ?? [];
+  if (
+    urls.some(
+      (url) =>
+        normalizedUrl(url.replace(/[.,;!?]+$/, "")) !== (entry ? normalizedUrl(entry) : undefined),
+    )
+  )
+    return true;
+  if (/^\s*(?:\d+[.)]|[-*+])\s+/.test(line)) return true;
+  if (
+    /\b(?:click|tap|press|open|select|choose)\s+(?:on\s+)?(?:the\s+)?[`"'“‘][^`"'”’]+[`"'”’]/i.test(
+      line,
+    ) ||
+    /[`"'“‘][^`"'”’]+[`"'”’]\s+(?:button|link|tab|menu|control|field)\b/i.test(line)
+  )
+    return true;
+  if (
+    /(?:^|[\s`"'])(?:button|input|textarea|select|form|div|span|main|a)?(?:[#.][a-zA-Z_][\w-]*|\[[\w-]+(?:[~|^$*]?=|\]))|\b[a-z][\w-]*\s*>\s*[a-z#.[]/i.test(
+      line,
+    )
+  )
+    return true;
+  return actionChain(line);
+}
+
+function actionChain(text: string): boolean {
+  const actions = [...text.matchAll(UI_ACTION)];
+  return (
+    actions.length > 1 ||
+    (actions.length === 1 &&
+      /\bthen\b/i.test(text.slice((actions[0]?.index ?? 0) + (actions[0]?.[0].length ?? 0))))
+  );
+}
+
+/** Authored participant text is checked before runtime instructions or researcher criteria join it. */
+export function scriptedMissionWarnings(config: StudyConfig): string[] {
+  if (config.route !== "computer-use" && config.route !== "shared-world") return [];
+  const fields: Array<[string, string | undefined]> = [
+    ["actor.mission", config.actor?.mission],
+    ["participants.instruction", participantInstruction(config)],
+    ...(participantList(config) ?? []).map((participant, index): [string, string | undefined] => [
+      `participants[${index}].instruction`,
+      participant.instruction,
+    ]),
+    ...(config.actor?.tasks ?? []).map((task, index): [string, string | undefined] => [
+      `actor.tasks[${index}].goal`,
+      task.goal,
+    ]),
+  ];
+  return fields.flatMap(([field, text]) => {
+    const chain = actionChain(text ?? "");
+    const matches =
+      text
+        ?.split(/\r?\n/)
+        .filter(
+          (line) =>
+            scriptedLine(line, config.subject.appUrl ?? config.subject.serve?.url) ||
+            (chain && (line.match(UI_ACTION) !== null || /\bthen\b/i.test(line))),
+        ) ?? [];
+    if (matches.length === 0) return [];
+    return [
+      `${field} reads like a script, which can hide where a participant would get lost. Matched lines:\n${matches
+        .slice(0, 3)
+        .map((line) => `> ${line}`)
+        .join(
+          "\n",
+        )}\nDescribe a situation and desired outcome instead. For example: "Saturday's event needs two setup volunteers and one cleanup volunteer. See whether this app helps you organize the event and keep people informed." Keep researcher criteria in tasks[].success.`,
+    ];
+  });
+}
+
+/** Backgrounds give participants a reason to act beyond the assigned task. */
+export function personaBackgroundWarnings(
+  config: StudyConfig,
+  personas: ReadonlyMap<string, ResolvedPersona>,
+): string[] {
+  if (config.route !== "computer-use" && config.route !== "shared-world") return [];
+  const roster = participantList(config);
+  return declaredParticipantIds(config).flatMap((id, index) => {
+    const personaId = roster?.[index]?.persona ?? config.actor?.persona;
+    if (personaId && personas.get(personaId)?.background) return [];
+    const reason = personaId
+      ? `persona ${personaId} has no readable background`
+      : "no persona is assigned";
+    return [
+      `Participant ${id} has no persona background because ${reason}. Add a short, fictional background describing their experience and situation. Run humanish study show ${config.id} --json to see what the participant receives.`,
+    ];
+  });
 }

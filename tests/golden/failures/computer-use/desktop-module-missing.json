@@ -95,7 +95,8 @@
     },
     "warnings": [
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
     ],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FAILED",
@@ -194,7 +195,7 @@
       },
       "active": 0,
       "blocked": 1,
-      "warnings": 0
+      "warnings": 1
     },
     "laneGroups": [],
     "streams": [
@@ -411,6 +412,13 @@
         "message": "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
         "simId": "sim-001",
         "streamId": "stream-001"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant lane-01 has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show cua-routing-proof --json to see what the participant receives."
       }
     ],
     "redaction": {

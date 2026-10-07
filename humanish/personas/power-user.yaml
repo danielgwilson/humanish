@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: power-user
+name: Power User
+background: >-
+  Taylor maintains a community equipment inventory in spreadsheets. They often adjust software preferences to reduce repetitive work.

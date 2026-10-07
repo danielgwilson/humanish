@@ -18,11 +18,11 @@
       "personas": [
         {
           "id": "first-time-visitor",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "impatient-skimmer",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -165,19 +165,19 @@
       "personas": [
         {
           "id": "first-time-visitor",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "impatient-skimmer",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "power-user",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "comparison-shopper",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -292,15 +292,15 @@
       "personas": [
         {
           "id": "party-host",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "competitive-friend",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "casual-friend",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -392,15 +392,15 @@
       "personas": [
         {
           "id": "contributor",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "reviewer",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "impatient-skimmer",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -422,15 +422,15 @@
       "personas": [
         {
           "id": "weekly-planner",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "ops-coordinator",
-          "resolved": false
+          "resolved": true
         },
         {
           "id": "on-the-go-contributor",
-          "resolved": false
+          "resolved": true
         }
       ]
     },

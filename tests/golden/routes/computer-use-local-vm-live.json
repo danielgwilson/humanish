@@ -105,7 +105,8 @@
     "warnings": [
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant lane-01 has no persona background because no persona is assigned. Add a short, fictional background describing their experience and situation. Run humanish study show local-vm-golden --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -331,7 +332,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 1
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
@@ -715,6 +716,13 @@
         "message": "passed: Done.",
         "simId": "sim-001",
         "streamId": "stream-001"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant lane-01 has no persona background because no persona is assigned. Add a short, fictional background describing their experience and situation. Run humanish study show local-vm-golden --json to see what the participant receives."
       }
     ],
     "redaction": {

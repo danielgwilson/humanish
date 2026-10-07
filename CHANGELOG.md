@@ -10,6 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- `humanish study check` and `humanish run` warn when computer-use or shared-world
+  missions script UI steps or participants lack a persona background. Mission
+  warnings quote the matched lines and suggest a situation-style brief. Runs keep
+  both warnings in their evidence bundles. Committed browser personas and init
+  templates now include short fictional backgrounds.
+
 - Computer-use participants now give impressions at the end of a session: up to six first-person
   notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
   and did not find, and where the screen differs from how their persona does the same task in

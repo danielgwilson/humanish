@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: comparison-shopper
+name: Comparison Shopper
+background: >-
+  Jordan helps a small hobby group choose its planning tools. They compare costs and limits before asking the group to switch.

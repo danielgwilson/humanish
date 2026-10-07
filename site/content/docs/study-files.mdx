@@ -36,6 +36,22 @@ None of the three creates a desktop or calls a model. `study show` prints the re
 - A field the study's route does not read fails, and the message names the route, such as "route: preview reads no `caps`; remove the block."
 - The `route` must match the subject, `execution.target` and the actor. When they disagree, the message names the route they take.
 
+`study check` and `run` also report two advisory warnings for computer-use and
+shared-world participants. Neither warning prevents execution, and runs record
+them as `study.warning` events in the bundle:
+
+- **Scripted mission:** `actor.mission`, participant `instruction`, or `tasks[].goal`
+  contains a numbered or bulleted step list, chained UI actions, quoted control
+  labels, CSS selectors, or a URL other than the subject's entry point. The warning
+  quotes at most three matching lines per field and gives a situation-style example.
+  Describe the participant's situation and desired outcome so the study can show
+  where they would get lost. Scripted-browser and terminal studies and researcher
+  criteria in `tasks[].success` are excluded.
+- **Missing persona background:** a participant has no assigned persona, its file
+  cannot be read, or it has no `background`. Add a short, fictional account of their
+  relevant experience and situation. Run `humanish study show <study> --json` to
+  see what the participant receives, including inherited persona context.
+
 The tables below give each field's type and its default when you leave it out. "required" means the study fails without it.
 
 ## Look up a top-level field
