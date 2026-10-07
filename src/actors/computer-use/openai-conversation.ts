@@ -49,8 +49,11 @@ export interface ConversationRequest {
 /** Which answer told the provider that the organization keeps no server-side conversation. */
 export type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
 
-/** The closing report's output limit: its own cap, or the declared limit when that is lower. */
-const CLOSING_OUTPUT_LIMIT = 1024;
+/**
+ * The closing request's output limit: its own cap, or the declared limit when that is lower. It
+ * counts reasoning too, and leaves room for six impressions after the summary and friction reports.
+ */
+const CLOSING_OUTPUT_LIMIT = 3072;
 
 export class OpenAiConversation {
   private lastResponseId: string | undefined;

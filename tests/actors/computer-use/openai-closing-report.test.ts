@@ -106,7 +106,7 @@ describe("captured OpenAI closing-report contract", () => {
     expect(h.bodies[1]).toMatchObject({
       previous_response_id: pending.id,
       tool_choice: "none",
-      max_output_tokens: 1024,
+      max_output_tokens: 3072,
       text: {
         format: {
           type: "json_schema",

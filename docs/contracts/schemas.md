@@ -970,8 +970,9 @@ Core-owned fields:
 - optional `modelSettings.maxOutputTokens`: the declared positive integer
   `actor.maxOutputTokens`, passed to every first-party OpenAI CUA response
   request, including reasoning output. Absent when undeclared. The first request
-  of a session and closing reports use `min(maxOutputTokens, 1024)`, or 1024 when
-  undeclared; the first request also carries the opening screenshot as an
+  of a session uses `min(maxOutputTokens, 1024)`, or 1024 when undeclared, and
+  closing requests use `min(maxOutputTokens, 3072)`, or 3072 when undeclared; the
+  first request also carries the opening screenshot as an
   `input_image` after the instructions. Unsupported routes,
   custom provider/session hooks, and per-participant overrides fail before allocation.
   This is an output-token limit, not an input-token, request-count or billing cap.
