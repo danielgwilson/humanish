@@ -17,6 +17,8 @@ import { estimateActorCostForExecution } from "./pricing.js";
 import { resolveRunPath } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 import { savedCaption } from "./participant-caption.js";
+import { streamParticipantIdOf } from "./participant-records.js";
+import type { RunStream } from "./streams.js";
 import { readContainedRegularFile } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
@@ -87,10 +89,9 @@ interface ActorTraceFacts {
   items?: { kind?: string; title?: string; text?: string; at?: string; lifecycle?: string }[];
 }
 
-interface StreamFacts {
+interface StreamFacts extends Pick<RunStream, "laneId"> {
   id?: string;
   label?: string;
-  laneId?: string;
   status?: string;
   actor?: ActorTraceFacts;
   liveActor?: ActorTraceFacts;
@@ -126,6 +127,7 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
   const trace = stream.liveActor ?? stream.actor ?? {};
   const id = stream.id ?? `stream-${index + 1}`;
   const personaId = trace.persona?.id;
+  const participantId = streamParticipantIdOf(stream);
   // Computed once: calling it twice to test-then-use reads as though the two could differ.
   const thought = latestThought(trace);
   const status = trace.status ?? stream.status;
@@ -137,7 +139,7 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
         ? (personaId ?? id)
         : savedCaption({
             label: stream.label,
-            ...(stream.laneId === undefined ? {} : { laneId: stream.laneId }),
+            ...(participantId === undefined ? {} : { participantId }),
             ...(personaId === undefined ? {} : { personaId }),
           }),
     ...(personaId === undefined ? {} : { personaId }),

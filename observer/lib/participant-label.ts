@@ -5,7 +5,7 @@ import { savedCaption } from "../../src/run/participant-caption.js";
 function displayLabel(stream: ObserverStream): string {
   return savedCaption({
     label: stream.label,
-    ...(stream.laneId === undefined ? {} : { laneId: stream.laneId }),
+    ...(stream.laneId === undefined ? {} : { participantId: stream.laneId }),
     personaId: stream.sim.personaId,
   });
 }

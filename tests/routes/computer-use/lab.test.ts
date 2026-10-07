@@ -7676,47 +7676,6 @@ describe("computer-use run directory goldens", () => {
     );
   });
 
-  it.each([
-    ["dry", true],
-    ["live", false],
-  ] as const)(
-    "captions the participant by its persona and summarizes a %s run in plain words",
-    async (_mode, dryRun) => {
-      const sandbox: FakeSandbox = makeFakeSandbox({
-        commandHandler: measuredChromeDesktop(() => sandbox.screen),
-      });
-      const { module } = makeFakeModule(sandbox);
-      let clock = 0;
-      const outcome = await runStudyWith(
-        cuaConfig(),
-        {
-          cwd: goldenCwd,
-          dryRun,
-          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-        },
-        {
-          analysis: { run: automaticAnalysisBoundary() },
-          desktopModule: async () => module,
-          now: () => (clock += 30_000),
-          runSession: async (options) =>
-            runCuaActorSession({
-              ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-            }),
-        },
-      );
-      const runId = outcome.result.runId;
-      if (!runId) throw new Error("the run wrote no bundle");
-      const bundle = JSON.parse(
-        await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
-      ) as RunBundle;
-      // The plan numbers an undeclared participant `lane-01`, so the persona names it.
-      expect(bundle.streams.map((stream) => stream.label)).toEqual(["First time visitor"]);
-      expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
-      expect(bundle.review.summary).toContain("1 participant");
-    },
-  );
-
   // The goldens above use a desktop whose Chrome reports its geometry. This one answers no
   // geometry command, so every unmeasured-geometry warning is pinned here, in each place a run
   // records it: the result, the stream's desktopGeometry and the events.
@@ -7800,4 +7759,55 @@ describe("computer-use run directory goldens", () => {
       "../../golden/routes/computer-use-in-process-live.json",
     );
   });
+});
+
+describe("computer-use captions and summaries", () => {
+  let goldenCwd: string;
+  beforeEach(async () => {
+    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-caption-"));
+  });
+  afterEach(async () => {
+    await rm(goldenCwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["dry", true],
+    ["live", false],
+  ] as const)(
+    "captions the participant by its persona and summarizes a %s run in plain words",
+    async (_mode, dryRun) => {
+      const sandbox: FakeSandbox = makeFakeSandbox({
+        commandHandler: measuredChromeDesktop(() => sandbox.screen),
+      });
+      const { module } = makeFakeModule(sandbox);
+      let clock = 0;
+      const outcome = await runStudyWith(
+        cuaConfig(),
+        {
+          cwd: goldenCwd,
+          dryRun,
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        },
+        {
+          analysis: { run: automaticAnalysisBoundary() },
+          desktopModule: async () => module,
+          now: () => (clock += 30_000),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      );
+      const runId = outcome.result.runId;
+      if (!runId) throw new Error("the run wrote no bundle");
+      const bundle = JSON.parse(
+        await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      // The plan numbers an undeclared participant `lane-01`, so the persona names it.
+      expect(bundle.streams.map((stream) => stream.label)).toEqual(["First time visitor"]);
+      expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
+      expect(bundle.review.summary).toContain("1 participant");
+    },
+  );
 });

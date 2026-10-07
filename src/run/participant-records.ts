@@ -90,6 +90,6 @@ export function eventRecordIdOf(event: RunEvent): string | undefined {
 }
 
 /** The participant id an adapter recorded on a saved stream (a fan-out `lane-NN` id), when it has one. */
-export function streamParticipantIdOf(stream: RunStream): string | undefined {
+export function streamParticipantIdOf(stream: Pick<RunStream, "laneId">): string | undefined {
   return stream.laneId;
 }
