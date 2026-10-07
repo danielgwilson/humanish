@@ -60,7 +60,7 @@ function sequenceLength(lead: number): number {
 
 /**
  * A run of percent escapes read as UTF-8, as a browser reads a URL. A byte that starts no valid
- * sequence stands for itself, the character with that code, so `%E9` alone still reads as `é`.
+ * sequence stands for itself, the character with that code, as decodeEscapes reads every byte.
  */
 function decodePercentRun(run: string): string {
   const bytes = Buffer.from(run.replace(/%/g, ""), "hex");
@@ -69,8 +69,8 @@ function decodePercentRun(run: string): string {
     const length = sequenceLength(bytes[at]!);
     const sequence = length > 0 ? bytes.subarray(at, at + length) : undefined;
     const decoded = sequence?.length === length ? sequence.toString("utf8") : undefined;
-    // Node writes U+FFFD for an overlong form, a surrogate half or a bad continuation byte, so a
-    // sequence counts only when its decoded character encodes back to the same bytes.
+    // Node writes the replacement character for an overlong form, a surrogate half or a bad
+    // continuation byte, so a sequence counts only when its character encodes back to its bytes.
     if (decoded !== undefined && Buffer.from(decoded, "utf8").equals(sequence!)) {
       text += decoded;
       at += length;
@@ -82,8 +82,36 @@ function decodePercentRun(run: string): string {
   return text;
 }
 
-/** Undoes JSON and JS escapes, percent-encoding and HTML character references, one pass each. */
+function decodePercentBytes(run: string): string {
+  return Buffer.from(run.replace(/%/g, ""), "hex").toString("latin1");
+}
+
+/**
+ * Undoes JSON and JS escapes, percent-encoding and HTML character references, one pass each. Each
+ * percent escape is one character, the byte's code, so `caf%C3%A9` reads as `cafÃ©`;
+ * decodeEscapesUtf8 reads it as `café`. A scan checks both: either reading can split a value that
+ * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
+ */
 export function decodeEscapes(text: string): string {
+  return decodeWith(text, decodePercentBytes);
+}
+
+/** decodeEscapes with each run of percent escapes read as UTF-8. */
+export function decodeEscapesUtf8(text: string): string {
+  return decodeWith(text, decodePercentRun);
+}
+
+/**
+ * The UTF-8 reading of text's escapes when it differs from decodeEscapes, which it can only where
+ * a percent escape holds a byte of 0x80 or more.
+ */
+export function utf8ReadingOf(text: string, decoded: string): string | undefined {
+  if (!/%[89a-f][0-9a-f]/i.test(text)) return undefined;
+  const utf8 = decodeEscapesUtf8(text);
+  return utf8 === decoded ? undefined : utf8;
+}
+
+function decodeWith(text: string, percent: (match: string) => string): string {
   return text
     .replace(/\\u([0-9a-f]{4})/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
@@ -92,7 +120,7 @@ export function decodeEscapes(text: string): string {
       codePoint(Number.parseInt(hex, 16), match),
     )
     .replace(/\\\//g, "/")
-    .replace(/(?:%[0-9a-f]{2})+/gi, decodePercentRun)
+    .replace(/(?:%[0-9a-f]{2})+/gi, percent)
     .replace(/&#x([0-9a-f]{1,6});?/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
     )
@@ -280,7 +308,8 @@ function inspectDecoded(
 }
 
 /**
- * Scans text for secrets as written, after decodeEscapes and transfer escapes, and inside each
+ * Scans text for secrets as written, after decodeEscapes (also with percent escapes read as UTF-8)
+ * and transfer escapes, and inside each
  * base64 (standard, URL-safe or line-wrapped) and hex run. A run that decodes to text is scanned in
  * turn. A run that decodes to an archive, or to other binary past MIN_OPAQUE_BASE64_RUN characters,
  * is opaque unless the caller allows opaque runs.
@@ -292,11 +321,13 @@ export function scanEncodedText(
 ): EncodedTextScan {
   const matches = matcherOf(options);
   const decoded = decodeEscapes(text);
+  const utf8 = utf8ReadingOf(text, decoded);
   const expanded = decodeTransferEscapes(decoded);
   // A decoding that returns the same string would match the same way, so it is not matched again.
   if (
     matches(text) ||
     (decoded !== text && matches(decoded)) ||
+    (utf8 !== undefined && matches(utf8)) ||
     (expanded !== decoded && matches(expanded))
   )
     return SENSITIVE;

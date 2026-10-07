@@ -26,10 +26,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
   remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
   their estimate and cap, and state that those analyses are excluded from recall.
-- `verify`, bundle export and the known-value scrub read a run of percent escapes as UTF-8.
-  `caf%C3%A9` used to decode as `cafÃ©`, so a percent-encoded secret with a non-ASCII character
-  could go unmatched; a password starting `Voilà` in a percent-encoded redirect graded a run
-  share-ready. A byte that starts no valid UTF-8 sequence still reads as one character (#1645).
+- `verify` and bundle export also read percent escapes as UTF-8, and the known-value scrub finds a
+  percent-encoded value with non-ASCII characters. Each escape was read as one character, so
+  `caf%C3%A9` read as `cafÃ©`, and a percent-encoded redirect holding a password that starts
+  `Voilà` graded a run share-ready. The byte-by-byte reading is still scanned too: read as UTF-8,
+  `%E2%80%80` is a space that can end a match the byte reading keeps whole (#1645).
 
 ### Changed
 
