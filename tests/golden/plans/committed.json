@@ -1885,7 +1885,7 @@
             "index": 0,
             "personaId": "weekly-planner",
             "assignment": {
-              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "mission": "You are one of several people planning work together. You have one task to share with the group. See whether this board helps you record it so the others know what needs doing.",
               "focus": "Add one task describing planning the week, then stop."
             },
             "labels": {
@@ -1913,7 +1913,7 @@
             "index": 1,
             "personaId": "ops-coordinator",
             "assignment": {
-              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "mission": "You are one of several people planning work together. You have one task to share with the group. See whether this board helps you record it so the others know what needs doing.",
               "focus": "Add one task describing coordinating an operations handoff, then stop."
             },
             "labels": {
@@ -1941,7 +1941,7 @@
             "index": 2,
             "personaId": "on-the-go-contributor",
             "assignment": {
-              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "mission": "You are one of several people planning work together. You have one task to share with the group. See whether this board helps you record it so the others know what needs doing.",
               "focus": "From a phone, add one quick task describing a follow-up, then stop."
             },
             "labels": {

@@ -652,7 +652,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Persona 01"
         },
         "viewport": {
           "width": 1440,
@@ -790,7 +790,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Persona 02"
         },
         "viewport": {
           "width": 1440,
@@ -928,7 +928,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Persona 03"
         },
         "viewport": {
           "width": 1440,

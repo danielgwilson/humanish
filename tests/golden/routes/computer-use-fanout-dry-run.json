@@ -187,7 +187,11 @@
     },
     "warnings": [
       "This is a dry run: its participants are synthetic and no product behavior was tested.",
-      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "Participant mobile-newcomer has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant small-skimmer has no persona background because persona impatient-skimmer has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant desktop-power has no persona background because persona power-user has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives.",
+      "Participant wide-researcher has no persona background because persona comparison-shopper has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
     ],
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -273,7 +277,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 0
+      "warnings": 4
     },
     "laneGroups": [],
     "streams": [
@@ -779,6 +783,34 @@
         "message": "Participant wide-researcher: dry-run participant ready; switch mode to live for a real desktop session.",
         "simId": "sim-004",
         "streamId": "stream-004"
+      },
+      {
+        "id": "event-study-warning-001",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant mobile-newcomer has no persona background because persona first-time-visitor has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-002",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant small-skimmer has no persona background because persona impatient-skimmer has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-003",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant desktop-power has no persona background because persona power-user has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
+      },
+      {
+        "id": "event-study-warning-004",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "study.warning",
+        "message": "Participant wide-researcher has no persona background because persona comparison-shopper has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show fanout-proof --json to see what the participant receives."
       }
     ],
     "redaction": {

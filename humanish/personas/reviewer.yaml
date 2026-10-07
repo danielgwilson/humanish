@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: reviewer
+name: Reviewer
+background: >-
+  Pat reviews plans for a community workshop. They need to understand what changed and share a useful comment with the organizer.

@@ -190,16 +190,6 @@ Legacy profiles without it retain medium defaults for missing patience and
 technical confidence. Avoid contradictory prose and traits; inspect the compiled
 brief with `humanish study show <study> --json` before running.
 
-For an autonomous participant study, use a computer-use/local-agent study and write
-its `mission` as a believable situation and desired outcome. Supply fixture facts
-needed to act, but do not supply selectors, click sequences, hidden success rules,
-expected defects or recovery tricks. For example: “Saturday's event needs two
-setup volunteers and one cleanup volunteer. See whether this app helps you
-organize the event and keep people informed.” Do not instruct a participant to
-find a specific UI control merely to make the study succeed. Allow discovery,
-recovery and stopping appropriate to the participant. Keep researcher criteria in
-`tasks[].success`, separate from participant-facing `tasks[].goal`.
-
 Scripted regression checks are a different use of scenarios. When the requested
 work is deterministic verification of a known path, a `browser.steps` manifest
 can drive it with explicit selectors and assertions. It does not establish
@@ -231,6 +221,27 @@ values only. Do not write real emails, names, customer data, tickets, logs, or
 tokens into scenario files.
 
 ## Authoring Studies
+
+For an autonomous participant study, write `mission`, participant `instruction`
+and `tasks[].goal` as a believable situation and desired outcome. Supply fixture
+facts needed to act. Leave discovery, recovery and stopping to the participant.
+Keep researcher criteria in `tasks[].success`.
+
+| Bad: scripts the controls                                                              | Good: gives a situation                                                                                                                            |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Click "New event", type a title into the field, then press "Save" and open "Settings". | Saturday's event needs two setup volunteers and one cleanup volunteer. See whether this app helps you organize the event and keep people informed. |
+
+`humanish study check` and `humanish run` warn about step lists, chains of UI
+actions, quoted control labels, CSS selectors and URLs beyond the subject's entry
+point. They quote up to three matched lines and suggest a situation-style mission.
+The checks apply to computer-use and shared-world studies; scripted-browser and
+terminal studies and `tasks[].success` are excluded. These warnings never refuse
+a run, and the run records them in its bundle.
+
+Give each participant a persona with a short, fictional `background` describing
+their relevant experience and situation. A missing persona or background also
+warns. Use `humanish study show <study> --json` to see what the participant receives.
+Do not supply hidden success rules, expected defects or recovery tricks.
 
 Write reusable studies as `.yaml` study files (`humanish.study.v3`):
 

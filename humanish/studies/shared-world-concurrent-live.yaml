@@ -47,8 +47,8 @@ subject:
 actor:
   type: openai-computer-use # REAL dispatch key: resolves in the actor registry
   mission: >-
-    You are one of several people using a shared task board at the same time. The page has a text
-    box and an "Add task" button. Add exactly ONE task, then stop.
+    You are one of several people planning work together. You have one task to share with the
+    group. See whether this board helps you record it so the others know what needs doing.
 # The roster IS the persona roster (>= 2). On the CONCURRENT route every persona drives the SAME
 # getHost URL AT ONCE (the fixture's single page); each gets its OWN desktop sandbox, so the
 # per-persona device is physically honored here.

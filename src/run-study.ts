@@ -5,6 +5,9 @@
 // returns the route's run. prepareStudy is the same path in two steps, so the CLI can present either
 // refusal before it loads a declared review scorer.
 
+import { participantList } from "./study/study-fields.js";
+import { personaBackgroundWarnings } from "./study/warnings.js";
+import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./study/persona-resolve.js";
 import type { LocalVmInput } from "./routes/computer-use/types.js";
 import {
   computerUseInput,
@@ -118,7 +121,9 @@ export async function prepareStudy(
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const admitted = await admitPlan(study, planning, planned.planned.plan, deps, normalized.emit);
+  const runWarnings = [...(planned.planned.plan.warnings ?? [])];
+  const plan = { ...planned.planned.plan, warnings: runWarnings };
+  const admitted = await admitPlan(study, planning, plan, deps, normalized.emit);
   if (!admitted.ok) {
     await vm?.close();
     admitted.outcome.result.warnings.push(...normalized.warnings);
@@ -140,6 +145,26 @@ export async function prepareStudy(
             return outcome;
           }
         }
+        // Admission keeps its refusal order; these warnings join the plan before its run scope opens.
+        const personas =
+          route === "computer-use" || route === "shared-world"
+            ? (await resolveCommittedPersonasForCwd(options.cwd, studyPersonaIds(study))).personas
+            : new Map();
+        const backgroundWarnings = personaBackgroundWarnings(
+          route === "computer-use" &&
+            options.count !== undefined &&
+            participantList(study) === undefined
+            ? { ...study, participants: options.count }
+            : study,
+          personas,
+        );
+        runWarnings.splice(
+          0,
+          runWarnings.length,
+          ...(planned.planned.plan.warnings ?? []),
+          ...backgroundWarnings,
+        );
+        normalized.warnings.push(...backgroundWarnings);
         // The route layers the scorer over the inputs it admitted, and the local study is not
         // rebuilt for it. The admitted runSession, provider and participant desktop belong to this
         // study, so a rebuilt one would leave the participants they start for no finally to close.

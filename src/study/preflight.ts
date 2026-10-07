@@ -1,3 +1,5 @@
+import { personaBackgroundWarnings } from "./warnings.js";
+import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./persona-resolve.js";
 import path from "node:path";
 import type { AutomaticAnalysisBudget } from "../analysis/automatic-config.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
@@ -157,6 +159,10 @@ export async function runStudyPreflight(
     };
   }
 
+  const personas =
+    resolved.config.route === "computer-use" || resolved.config.route === "shared-world"
+      ? (await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config))).personas
+      : new Map();
   const route = routeOf(resolved.config);
   const ctx: PreflightContext = {
     cwd,
@@ -176,7 +182,7 @@ export async function runStudyPreflight(
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },
-    warnings: resolved.warnings,
+    warnings: [...resolved.warnings, ...personaBackgroundWarnings(resolved.config, personas)],
   };
 
   const machine = machineCheck(ctx.config);

@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: contributor
+name: Contributor
+background: >-
+  Lee records decisions for a volunteer team. They want teammates to find a clear note without another round of messages.

@@ -186,9 +186,11 @@ export const starterFiles: StarterFile[] = [
 id: synthetic-new-user
 name: Synthetic New User
 summary: A privacy-safe first-time user evaluating the app with realistic but synthetic needs.
-traits:
-  patience: medium
-  technical_confidence: medium
+background: >-
+  Alex keeps personal plans in a notebook and uses email and a few everyday apps without trouble.
+  They are trying an unfamiliar app to see whether it can make everyday tasks easier. They work
+  through some friction but stop when more effort no longer seems worth it, and they take the
+  straightforward path the screen offers.
 constraints:
   - Do not use real personal data.
   - Do not use production accounts.
@@ -202,9 +204,12 @@ constraints:
 id: skeptical-power-user
 name: Skeptical Power User
 summary: A privacy-safe experienced user looking for speed, reversibility, and clear proof.
+background: >-
+  Robin manages several volunteer projects with spreadsheets and keyboard shortcuts and is at ease
+  with advanced options. They want faster tools but have lost work before and care about undoing
+  mistakes. They have little patience for repeated friction and stop when a tool keeps getting in
+  the way.
 traits:
-  patience: low
-  technical_confidence: high
   accessibility_needs: keyboard_first
 constraints:
   - Do not use real personal data.

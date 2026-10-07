@@ -18,16 +18,19 @@ describe("parseResolvedPersona", () => {
   it("normalizes the committed synthetic-new-user persona", async () => {
     const persona = await loadCommittedPersona("synthetic-new-user.yaml");
     expect(persona.id).toBe("synthetic-new-user");
-    expect(persona.traits.patience).toBe("medium");
-    expect(persona.traits.skill).toBe("medium"); // technical_confidence -> skill
+    // Background-first: patience and confidence are in the prose, so no trait directive is sent.
+    expect(persona.background).toContain("Alex");
+    expect(persona.traits.patience).toBeUndefined();
+    expect(persona.traits.skill).toBeUndefined();
     expect(persona.traits.accessibilityNeeds).toBe("clear_terminal_output");
     expect(persona.constraints.length).toBeGreaterThan(0);
   });
 
   it("normalizes the committed skeptical-power-user persona", async () => {
     const persona = await loadCommittedPersona("skeptical-power-user.yaml");
-    expect(persona.traits.patience).toBe("low");
-    expect(persona.traits.skill).toBe("high");
+    expect(persona.background).toContain("Robin");
+    expect(persona.traits.patience).toBeUndefined();
+    expect(persona.traits.skill).toBeUndefined();
     expect(persona.traits.accessibilityNeeds).toBe("keyboard_first");
   });
 

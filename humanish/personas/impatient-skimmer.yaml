@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: impatient-skimmer
+name: Impatient Skimmer
+background: >-
+  Casey checks updates on a phone between errands. They have little time to learn a new tool and leave when the next useful step is unclear.

@@ -1,0 +1,5 @@
+schema: humanish.persona.v1
+id: first-time-visitor
+name: First Time Visitor
+background: >-
+  Sam organizes a neighborhood book club by email. They are considering a new app and want to understand its value before making an account.

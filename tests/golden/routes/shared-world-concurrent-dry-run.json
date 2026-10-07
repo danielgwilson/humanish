@@ -377,7 +377,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Persona 01"
         },
         "desktopGeometry": {
           "screen": {
@@ -423,7 +423,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Persona 02"
         },
         "desktopGeometry": {
           "screen": {
@@ -469,7 +469,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Persona 03"
         },
         "desktopGeometry": {
           "screen": {

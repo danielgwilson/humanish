@@ -469,7 +469,7 @@
     "summary": "3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.",
     "gaps": []
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- outcome: passed\n- summary: 3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- outcome: passed\n- summary: 3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; Shared app state was not recorded because the app is hosted outside humanish; lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -587,7 +587,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona host"
+          "title": "Host, phone"
         },
         "viewport": {
           "width": 1440,
@@ -731,7 +731,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona player-2"
+          "title": "Player 2, phone"
         },
         "viewport": {
           "width": 1440,
@@ -875,7 +875,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona player-3"
+          "title": "Player 3, phone"
         },
         "viewport": {
           "width": 1440,
@@ -1081,7 +1081,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; Shared app state was not recorded because the app is hosted outside humanish; lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "redaction": {

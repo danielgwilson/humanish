@@ -10,6 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
+- `humanish study check` and `humanish run` warn when computer-use or shared-world
+  missions script UI steps or participants lack a persona background. Mission
+  warnings quote the matched lines and suggest a situation-style brief. Runs keep
+  both warnings in their evidence bundles. Committed browser personas and init
+  templates now include short fictional backgrounds.
+
 - Computer-use participants now give impressions at the end of a session: up to six first-person
   notes on what looked unclear, unfinished or untrustworthy, what they liked, what they expected
   and did not find, and where the screen differs from how their persona does the same task in
@@ -38,6 +44,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 - When Docker kills a local participant's desktop for memory, the participant's error, the run's
   error and `review.md` say the desktop ran out of memory and what to change, with the code
   `HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY`.
+
+### Fixed
+
+- Shared-world runs now finish with plain participant captions and app-use wording in the CLI,
+  and the Observer uses those captions for recording titles. Older terminal and scripted runs
+  now show participant names in the Observer and TUI, including dry runs without actor traces.
 
 ### Changed
 
