@@ -82,6 +82,7 @@
     "runtime": {
       "schema": "humanish.actor-runtime.v1",
       "package": "@openai/codex",
+      "doNotTrack": true,
       "requestedVersion": "latest",
       "versionStatus": "verified",
       "requestedModel": "gpt-5.6-sol",
@@ -480,6 +481,7 @@
           "runtime": {
             "schema": "humanish.actor-runtime.v1",
             "package": "@openai/codex",
+            "doNotTrack": true,
             "requestedVersion": "latest",
             "versionStatus": "verified",
             "requestedModel": "gpt-5.6-sol",
@@ -808,6 +810,7 @@
     "runtime": {
       "schema": "humanish.actor-runtime.v1",
       "package": "@openai/codex",
+      "doNotTrack": true,
       "requestedVersion": "latest",
       "versionStatus": "verified",
       "requestedModel": "gpt-5.6-sol",

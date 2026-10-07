@@ -8,6 +8,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Terminal study participants and product setup commands now send `DO_NOT_TRACK=1` by default so synthetic usage can be excluded by CLIs that honor it. Set `execution.terminal.doNotTrack: false` when studying the product's telemetry behavior. Dry and live run bundles record the resolved setting.
+
 ### Fixed
 
 - Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.

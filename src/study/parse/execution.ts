@@ -96,9 +96,15 @@ function parseTerminal(
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid("`execution.terminal` must be an object ({ transport?, stdin? }).");
+    return invalid("`execution.terminal` must be an object ({ transport?, stdin?, doNotTrack? }).");
   }
   const terminal: StudyExecutionTerminal = {};
+  if (raw.doNotTrack !== undefined) {
+    if (typeof raw.doNotTrack !== "boolean") {
+      return invalid("`execution.terminal.doNotTrack` must be true or false (unquoted).");
+    }
+    terminal.doNotTrack = raw.doNotTrack;
+  }
   if (raw.transport !== undefined) {
     const transport = str(raw.transport);
     if (transport !== "exec-stream") {

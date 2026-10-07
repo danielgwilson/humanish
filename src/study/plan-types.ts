@@ -215,6 +215,7 @@ export type TerminalPlan = PlanBase & {
   readonly personaId?: string;
   readonly mission?: string;
   readonly runtime: {
+    readonly doNotTrack: boolean;
     readonly version?: string;
     /** Passed to Codex as `--model` on every run, so the bundle can name and price it. */
     readonly model: string;

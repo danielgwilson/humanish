@@ -50,6 +50,7 @@ export function buildRuntimeExecPrefix(
 }
 
 export function declaredRuntimeProvenance(args: {
+  doNotTrack: boolean;
   version?: string;
   model: string;
   modelSource: "declared" | "humanish_default";
@@ -58,6 +59,7 @@ export function declaredRuntimeProvenance(args: {
   return {
     schema: "humanish.actor-runtime.v1",
     package: TERMINAL_RUNTIME_PACKAGE,
+    doNotTrack: args.doNotTrack,
     requestedVersion: args.version ?? "latest",
     versionStatus: "unobserved",
     requestedModel: args.model,

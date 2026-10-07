@@ -6,6 +6,13 @@
 source of truth. This page explains the stable public fields and the extension rules; it does not
 version the runtime separately.
 
+Terminal runs record the resolved telemetry setting as `doNotTrack` in
+`streams[].actor.runtime` (`humanish.actor-runtime.v1`), also retained in `actor.json`
+and `terminal-ledgers.json`. `true` means participant and product setup commands receive
+`DO_NOT_TRACK=1`; `false` means humanish leaves it unset. Dry runs record the same boolean
+in the JSON message of the `terminal-lab.runtime.declared` event. Older bundles omit it.
+The setting does not attest that the studied CLI honors the variable.
+
 ## Purpose
 
 A run bundle is the durable evidence packet for one harness run. It should be
