@@ -15,6 +15,7 @@ import {
   writeTelemetryState,
   isOwnCheckoutRun,
 } from "./telemetry.js";
+import { checkForUpdate, startRefreshWorker } from "./update-check.js";
 import { registerAnalyzeCommand } from "./commands/analyze.js";
 import { registerCodexCommands } from "./commands/codex.js";
 import { registerCommsCommands } from "./commands/comms.js";
@@ -151,6 +152,30 @@ async function recordCommandTelemetry(
 }
 
 /**
+ * After a command, one line on stderr when a newer humanish is published. It reads only the cache;
+ * the registry request runs detached (see update-check.ts), so nothing here waits on the network.
+ */
+function noticeNewerVersion(command: Command, io: CliIo): void {
+  try {
+    const notice = checkForUpdate({
+      installed: CLI_VERSION,
+      env: process.env,
+      terminal: process.stderr.isTTY === true,
+      json: wantsJson(command),
+      ownCheckout: isOwnCheckoutRun(process.cwd(), dirname(fileURLToPath(import.meta.url)), (p) =>
+        readFileSync(p, "utf8"),
+      ),
+      now: Date.now(),
+      startRefresh: startRefreshWorker,
+      ...io.updateCheck,
+    });
+    if (notice !== undefined) io.writeErr(`${notice}\n`);
+  } catch {
+    // An update notice is never a reason for a command to fail.
+  }
+}
+
+/**
  * HUMANISH_DEBUG_HANDLES=1: after a command's handler settles, name what is still keeping the
  * process alive. A live terminal run wrote its result 64 s in and the CLI stayed up for
  * sixteen more minutes; nothing in the bundle could say what held it, and an in-process probe of
@@ -227,6 +252,7 @@ class HumanishCommand extends Command {
       const noticed = announceTelemetryOnce(this, cliIo);
       const finish = (ok: boolean): void => {
         void recordCommandTelemetry(this, ok, Date.now() - startedAt, lastExitCode);
+        noticeNewerVersion(this, cliIo);
         reportActiveHandles(this, cliIo);
       };
       try {

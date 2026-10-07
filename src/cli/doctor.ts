@@ -38,6 +38,8 @@ import {
   validateCwd,
 } from "../run/project.js";
 import { cli } from "./invocation.js";
+import { recordedVersion } from "./update-check.js";
+import { CLI_VERSION } from "./version.js";
 
 const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
 
@@ -192,6 +194,7 @@ export async function doctor(
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
     terminalSurfaceCheck(),
+    ...versionCheck(env),
     ...localAgentChecks(agents),
     await claudeTranscriptCheck(env),
     ...keyChecks(probes, receivingKey, setup, keyUsers),
@@ -354,6 +357,20 @@ function terminalSurfaceCheck(): DoctorCheck {
       nodeVersion: process.version,
     }),
   };
+}
+
+/** The latest version the update check recorded on this machine; no row before a check. */
+function versionCheck(env: NodeJS.ProcessEnv): DoctorCheck[] {
+  const recorded = recordedVersion(CLI_VERSION, env, env.HOME ?? homedir());
+  if (recorded === undefined) return [];
+  return [
+    {
+      name: "humanish version",
+      ok: true,
+      ...(recorded.newer ? { status: "note" as const } : {}),
+      message: recorded.message,
+    },
+  ];
 }
 
 /** Probes the live-run keys, plus the receiving-email key a real-comms study names. */
