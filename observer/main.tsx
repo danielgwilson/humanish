@@ -12,6 +12,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app";
 import { readInlineStudyAnalysis } from "./lib/study-analysis";
 import { isSnapshotArtifact, readInlineObserverData } from "./lib/data";
+import { readInlineRunNotes } from "./lib/run-notes";
 import type { ObserverData } from "./lib/observer-data";
 
 async function boot(): Promise<void> {
@@ -37,6 +38,7 @@ async function boot(): Promise<void> {
         data={data}
         snapshot={isSnapshotArtifact(document)}
         analysis={readInlineStudyAnalysis(document, data)}
+        {...(data ? { notes: readInlineRunNotes(document, data.run.runId) } : {})}
       />
     </StrictMode>,
   );

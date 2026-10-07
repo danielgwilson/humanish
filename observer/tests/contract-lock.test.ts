@@ -23,6 +23,12 @@ it("the companion analysis schema matches the producer without importing it into
   expect(ANALYSIS_SCHEMA).toBe(ANALYSIS_PRODUCER_SCHEMA);
 });
 
+import { RUN_NOTES_SCHEMA as NOTES_PRODUCER_SCHEMA } from "../../src/run/notes";
+import { RUN_NOTES_SCHEMA } from "../lib/run-notes";
+it("the run notes schema matches the producer without importing it into app code", () => {
+  expect(RUN_NOTES_SCHEMA).toBe(NOTES_PRODUCER_SCHEMA);
+});
+
 const OBSERVER_ROOT = path.resolve(import.meta.dirname, "..");
 const CLI_ROOT = path.resolve(OBSERVER_ROOT, "../src");
 

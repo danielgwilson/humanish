@@ -19,6 +19,7 @@ import { Sidebar, type StudyLibrary } from "./components/sidebar";
 import { Select } from "./components/ui/select";
 import { Drawer } from "./components/ui/drawer";
 import { StudyReport } from "./components/study-report";
+import { ReviewerNotes } from "./components/reviewer-notes";
 import {
   findingHeading,
   reportFindingId,
@@ -52,6 +53,8 @@ import { projectStudyAnalysis, type LoadedAnalysis } from "./lib/study-analysis"
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
 import { useStudyPlayback } from "./lib/use-study-playback";
+import type { RunNote, RunNotesState } from "./lib/run-notes";
+import { useRunNotes } from "./lib/use-run-notes";
 import { AUTOPLAY_LOOP_DELAY_MS, parseAutoplay, sidebarClosedByUrl } from "./lib/autoplay";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
@@ -73,25 +76,30 @@ export function App({
   report: suppliedReport,
   library,
   analysis: initialAnalysis,
+  notes: initialNotes,
 }: {
   data: ObserverData | null;
   snapshot?: boolean;
   report?: ReportData;
   library?: StudyLibrary;
   analysis?: LoadedAnalysis;
+  /** The run-notes slot: reviewer notes, and the token for adding one. */
+  notes?: RunNotesState;
 }) {
   const { data, history, connection, retry, analysis } = useObserverFeed(
     initialData,
     snapshot,
     initialAnalysis,
   );
+  const runNotes = useRunNotes(initialNotes, data?.run.runId, snapshot);
   const currentRunId = useRef(data?.run.runId ?? "");
   currentRunId.current = data?.run.runId ?? "";
   const report = useMemo(
     () => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined),
     [suppliedReport, analysis, data],
   );
-  const hasFindingsView = !!report || !!analysis.automatic;
+  const hasFindingsView =
+    !!report || !!analysis.automatic || runNotes.notes.length > 0 || runNotes.unreadable;
   const [reportRoute, setReportRoute] = useState(() => reportFindingId(window.location.hash));
   const [concernsOpen, setConcernsOpen] = useState(false);
   const reportIds = useRef<string[]>([]);
@@ -282,6 +290,14 @@ export function App({
     if (id) focus(() => contentRef.current);
   };
   const toGrid = () => openParticipant(null, null, undefined, undefined, null, true);
+  /** Seeks the study timeline to a note and shows its participant, or every participant. */
+  const openNote = (note: RunNote) => {
+    const start = studyPlayback.recording.startMs;
+    if (start !== null) studyPlayback.seek(start + note.atMs);
+    if (note.participant !== null && streams.some((stream) => stream.id === note.participant))
+      openParticipant(note.participant, null, undefined, undefined, "replay", true);
+    else toGrid();
+  };
   const openReport = (id = "") => {
     pushHash(reportHash(id));
     setReportRoute(id);
@@ -889,6 +905,11 @@ export function App({
                     <span aria-label={!report ? automaticNotice?.message : undefined}>
                       {report ? report.findings.length : automaticNotice?.pending ? "…" : "—"}
                     </span>
+                    {runNotes.notes.length ? (
+                      <span className="viewbar-notes">
+                        {runNotes.notes.length} {runNotes.notes.length === 1 ? "note" : "notes"}
+                      </span>
+                    ) : null}
                   </a>
                 ) : null}
               </nav>
@@ -963,6 +984,16 @@ export function App({
               ) : (
                 participantContent
               )}
+              {reportActive &&
+              (runNotes.notes.length > 0 || runNotes.save || runNotes.unreadable) ? (
+                <ReviewerNotes
+                  notes={runNotes.notes}
+                  labels={labels}
+                  unreadable={runNotes.unreadable}
+                  writable={!!runNotes.save}
+                  onOpen={openNote}
+                />
+              ) : null}
             </main>
             {!reportActive && !comparison && (!selected || sharedPlayer) ? (
               <StudyPlayback
@@ -980,6 +1011,14 @@ export function App({
                 onSeek={studyPlayback.seek}
                 onSpeed={studyPlayback.setSpeed}
                 onLatest={studyPlayback.latest}
+                notes={runNotes.notes}
+                noteParticipant={selected ? (labels.get(selected.id) ?? selected.id) : null}
+                {...(runNotes.save
+                  ? {
+                      onAddNote: (atMs: number, text: string) =>
+                        runNotes.save!({ atMs, participant: selected?.id ?? null, text }),
+                    }
+                  : {})}
               />
             ) : null}
           </div>

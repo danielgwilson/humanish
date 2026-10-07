@@ -87,7 +87,7 @@ export function formatRunTime(ms: number): string {
 }
 
 /** The run clock: the first and last timed capture or desktop video moment, in epoch ms. */
-function runClock(bundle: RunBundle): { startMs: number; endMs: number } | null {
+export function runClock(bundle: RunBundle): { startMs: number; endMs: number } | null {
   const moments = bundle.streams.flatMap((stream) => [
     ...(captureTimes(stream) ?? []),
     ...recordingMoments(stream),
