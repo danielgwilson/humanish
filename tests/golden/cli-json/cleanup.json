@@ -23,6 +23,6 @@
     "mode": "check",
     "state": "clean",
     "reason": "dry-run",
-    "warning": "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0."
+    "warning": "`cleanup` is now `reclaim --check`; `cleanup` is removed in the first minor release on or after 2026-11-03."
   }
 }

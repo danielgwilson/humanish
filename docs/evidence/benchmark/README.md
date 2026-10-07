@@ -170,6 +170,7 @@ mission, and read every unresolved and invented line before tagging.
 | ---------- | ---------------------------- | --------- | --------------------- | ------------ | ------------- | --------------- | ------------------- | --------------- | ----------------------------------------------------------------------- |
 | 2026-10-04 | 0.110.0, src/ as of 8be10e9b | `neutral` | `openai-computer-use` | 2            | 8/10          | 8/10            | 0 and 0             | $3.49           | [summary](2026-10-04-0.110.0-neutral-openai-computer-use.md) |
 | 2026-10-05 | 0.111.0, src/ as of 0c4a6d70 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $5.10           | [summary](2026-10-05-0.111.0-neutral-openai-computer-use.md) |
+| 2026-10-07 | 0.112.0, src/ as of 4a132ed6 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $5.99           | [summary](2026-10-07-0.112.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -187,6 +188,16 @@ before tagging, those three lines are D5, D5 and D1, which puts analysis recall 
 clean-arm analyses that say the list was empty after a refresh are true: both builds hold tasks in
 memory. One planted report says Enter did not save an edit either, which the rubric counts as
 invented (B1); the same report's Save claim is D5.
+
+The 0.112.0 run's misses: no planted report or analysis named D2. One planted participant typed
+more than 30 characters in one action and did not report the truncation; the other two never did.
+The first planted analysis missed D1 and names D5 only in a line the rubric left unresolved for a
+person ("Repeated Save attempts did not retain the added task detail"), which puts analysis recall
+at 10/15 read by hand. The second planted analysis missed D4. The clean-arm analysis line "Enter left the rename in edit mode" is
+true: the clean build's edit box has no Enter handler. Four reports say the participant used no
+terminal, from the persona's `clear_terminal_output` trait. The analysis prompt is now
+`study-evidence-7`; the rubric scores each finding's title, summary and observations as before, and
+reads neither the new headline and experience nor the design findings.
 
 ## What these numbers are not
 

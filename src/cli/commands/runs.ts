@@ -66,7 +66,8 @@ export function registerVerifyCommand(parent: Command, io: CliIo): void {
     );
 }
 
-const CLEANUP_RENAMED = "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0.";
+const CLEANUP_RENAMED =
+  "`cleanup` is now `reclaim --check`; `cleanup` is removed in the first minor release on or after 2026-11-03.";
 
 /**
  * The deprecated `cleanup`, hidden from help: one warning, then exactly `reclaim --check`, with
