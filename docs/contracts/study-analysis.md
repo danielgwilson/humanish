@@ -4,7 +4,7 @@ Study analysis is an independent interpretation of retained participant evidence
 It is separate from the participant's account, recorded outcome, and the run's
 deterministic review verdict. Opening an Observer never starts a provider request.
 Supported live runs request analysis on completion by default, with a separate
-$3 admission estimate limit. Set `review.analysis: false` to disable that request;
+$3 cap on its expected cost. Set `review.analysis: false` to disable that request;
 see [automatic analysis](../product/automatic-analysis.md).
 
 ## Invocation
@@ -20,16 +20,30 @@ humanish analyze show --run latest --json
 The source must be a verified, completed live run. A dry-run contract bundle is
 not a participant study. Here, `analyze --dry-run` means checking an existing
 study's input and admission estimate without credentials, a provider request,
-or a new analysis artifact.
+or a new analysis artifact. It prints the expected cost, the worst case and the
+cap; a refused dry run says why, and names the `--max-cost` that admits it.
 
 The default provider is `openai`; its default model is `gpt-6-astra`, with high reasoning effort. A request sends selected retained text and
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
 participant assignment. For OpenAI API analysis, `--max-cost` is required, including for dry-run
-admission. It bounds a conservative estimate, not an exact provider bill.
-`--timeout-ms` and `--max-output-tokens` bound the request. An exceeded admission
-estimate retains valid findings and usage but returns a partial result and a
-nonzero command exit, including when that version is reused.
+admission. Admission compares the expected cost plus a 10% margin with it; the
+provider bill is not limited by it.
+`--timeout-ms` and `--max-output-tokens` bound the request. A bill above the
+worst case or the cap retains valid findings and usage but returns a partial
+result and a nonzero command exit, including when that version is reused.
+
+The estimate counts the instructions, evidence packet and result schema at 3
+UTF-8 bytes per input token, adds 2,048 framing tokens and each capture's
+high-detail image tokens, and prices input at the model's highest input rate.
+The expected output is 12,000 tokens plus 1,000 per participant, at most the
+output allowance; the worst case spends the whole allowance. `admission` in
+`--json` output has `estimatedCostUsd` (the expected cost), `worstCaseCostUsd`,
+`maxCostUsd`, `inputTokenAllowance` (the input tokens priced) and
+`outputTokenAllowance`. On 148 billed gpt-6-astra analyses the expected cost was
+1.08 to 7.3 times the bill, and 1.08 to 1.32 times for those billed $1 or more.
+A refusal's message gives the expected cost, the worst case, the cap, and
+`humanish analyze --run <id> --max-cost <n>` with `n` the worst case rounded up.
 
 The default deadline is ten minutes. With no explicit output-token limit, analysis
 uses 32,768 tokens if admission fits the declared budget, or retains the prior
@@ -304,7 +318,9 @@ describes:
 The optional automatic job is separate from the immutable analysis. Its view
 binds terminal state to the exact execution receipt and report. A stale or
 unverifiable job remains unknown; reading or exporting it never dispatches.
-Automatic job metadata is omitted from shared derivatives. See
+Automatic job metadata is omitted from shared derivatives. A job refused for its
+cost also records `admission` (`expectedCostUsd`, `worstCaseCostUsd`,
+`maxCostUsd`), which `review` and the Observer read; other jobs omit it. See
 [automatic analysis](../product/automatic-analysis.md).
 
 Version and correction directories are claimed exclusively; publication is
@@ -384,7 +400,9 @@ The states without findings:
 - `skipped`: the automatic analysis was skipped or refused, for example without
   `OPENAI_API_KEY`, or the run's study file sets `review.analysis: false`
   (`AUTOMATIC_ANALYSIS_DISABLED`, read from the file when the view is built). `next` is
-  `analyze --max-cost 3`, which runs an analysis anyway.
+  `analyze --max-cost 3`, which runs an analysis anyway. For an analysis refused for its
+  cost, the message gives the expected cost, the worst case and the cap, and `next` sets
+  `--max-cost` to the worst case rounded up.
 - `failed`: the latest attempt failed or was cancelled and no usable version exists. `next`
   reruns it with the same analyst, `--provider codex` for the Codex account analyst.
 - `none`: no analysis ran for this live run and nothing records why, for example a run that

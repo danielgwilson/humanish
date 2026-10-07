@@ -3,10 +3,10 @@
 Supported live studies automatically request analysis after each recording finishes. Findings remain
 separate from participant feedback and the recorded study verdict.
 
-The default is `gpt-6-astra` with high reasoning effort, a separate $3 admission
-estimate limit and a 600-second timeout. When no output limit is specified,
-humanish selects 32,768 tokens if the exact input's admission estimate fits that
-budget; otherwise it keeps the established 16,384-token allowance. This preserves
+The default is `gpt-6-astra` with high reasoning effort, a separate $3 cap on its
+expected cost and a 600-second timeout. When no output limit is specified,
+humanish selects 32,768 tokens if the exact input's expected cost still fits that
+cap; otherwise it keeps the established 16,384-token allowance. This preserves
 previously admitted studies without increasing their spending limit. To customize it:
 
 ```yaml
@@ -22,11 +22,15 @@ review:
 
 Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
-mapping using the default OpenAI API provider requires `maxCostUsd`. This limits an admission estimate, not the
-provider's final bill, and is separate from participant spending limits. Analysis
-can decline a large study before dispatch when its conservative estimate exceeds
-that limit. Use `analyze --dry-run --max-cost <usd>` on retained evidence to inspect
-the estimate and selected token allowance before deliberately choosing a larger budget. Explicit
+mapping using the default OpenAI API provider requires `maxCostUsd`. Admission
+compares the expected cost plus a 10% margin with it; it does not limit the
+provider's final bill, and it is separate from participant spending limits. The
+estimate gives two numbers: the expected cost, and the worst case if the analyst
+spends its whole output allowance. `humanish study check` gives the expected cost
+range for the study's participant count, from a run that keeps no evidence to one
+at the evidence limits. Use `analyze --dry-run --max-cost <usd>` on retained
+evidence to inspect the expected cost, the worst case and the selected token
+allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance
 includes reasoning as well as the report; exhausting it does not produce a usable
 report and never starts an automatic retry. Analysis
@@ -74,7 +78,7 @@ Default analysis also skips recordings containing only setup or failure records
 with no retained participant activity. A desktop startup failure does not start
 an analysis request. The original failure remains visible.
 
-CLI live starts disclose the selected analyst and its separate admission estimate limit or unknown account dollars before execution.
+CLI live starts disclose the selected analyst, its expected cost range and cap, or unknown account dollars before execution.
 `humanish study check <study> --json` and the TUI study screen also expose the
 resolved budget without dispatching analysis. Library callers can inspect
 `resolveAutomaticAnalysis` or `automaticAnalysisBudget` before running.
@@ -101,11 +105,13 @@ for post-run analysis, and `ok` for the overall request. Failed, cancelled or
 unknown analysis produces exit code 2 without discarding the recording. A missing
 `OPENAI_API_KEY` skips default analysis and preserves a successful run exit;
 `automaticAnalysisTrigger: "default"` distinguishes that case in JSON. So does a
-default analysis whose conservative estimate is over the default $3 limit: it is
-skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED`, the run exits 0, and the CLI
-prints the `humanish analyze --run <id> --max-cost <usd>` command that runs it.
-A missing key or an over-limit estimate for an explicitly configured analysis
-remains a failed overall request. Every skip is retained for review and does not
+default analysis whose expected cost, plus the margin, is over the default $3 cap:
+it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` and the run exits 0. For
+any analysis refused for its cost, the job records the expected cost, the worst
+case and the cap, and the CLI, `humanish review` and the Observer give them with
+the `humanish analyze --run <id> --max-cost <n>` command that runs it, `n` being
+the worst case rounded up. A missing key or an over-cap estimate for an explicitly
+configured analysis remains a failed overall request. Every skip is retained for review and does not
 retry automatically. Partial
 findings remain visibly partial; a valid partial result can succeed, while a
 partial result with an analysis error still fails the command. Recorded task
@@ -119,7 +125,7 @@ outcomes and the deterministic review verdict are never rewritten by analysis.
 | none (`null`)                                 | `complete`                | Analysis completed                                                    |
 | `AUTOMATIC_ANALYSIS_REUSED`                   | that of the reused result | An earlier analysis of this run was reused                            |
 | `AUTOMATIC_ANALYSIS_LIMITATIONS`              | `partial`                 | Analysis completed with recorded limitations                          |
-| `AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED`       | `partial`                 | Usage passed the admission estimate                                   |
+| `AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED`       | `partial`                 | Usage passed the worst case or the cap                                |
 | `AUTOMATIC_ANALYSIS_FAILED`                   | `failed` or `partial`     | Analysis failed, or an unexpected error stopped it                    |
 | `AUTOMATIC_ANALYSIS_CANCELLED`                | `cancelled`               | Ctrl-C or the TUI's **Cancel analysis** stopped it                    |
 | `AUTOMATIC_ANALYSIS_DRY_RUN`                  | `skipped`                 | A dry run records no participant evidence                             |

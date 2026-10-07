@@ -8,6 +8,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Post-run analysis is no longer refused on an estimate several times its real cost. Admission
+  now prices input at 3 bytes per token and output at the size expected for the participant
+  count, and compares that expected cost plus a 10% margin with the cap. On 148 billed analyses
+  the expected cost was at or above the bill every time. The eight-participant run that the old
+  estimate put at $11.38 and that was billed $2.29 is now expected at $2.72 and admitted under the
+  default $3 cap.
+- A refused analysis says what it would cost and how to run it. The run output, `humanish review`
+  and the Observer give the expected cost, the worst case, the cap and
+  `humanish analyze --run <id> --max-cost <n>`, with `n` the worst case rounded up.
+
+### Changed
+
+- `study check` and live starts give the expected analysis cost range for the study's
+  participant count. `analyze --dry-run` prints the expected cost, the worst case and the cap.
+  In `analyze --json`, `admission.estimatedCostUsd` is now the expected cost, and `admission`
+  adds `worstCaseCostUsd` and `maxCostUsd`.
+
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
 humanish 0.113.0 asks computer-use participants what they thought at the end of a session, warns

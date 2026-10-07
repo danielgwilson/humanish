@@ -6,8 +6,8 @@ import type { ModelRate } from "../run/pricing.js";
 /**
  * UTF-8 bytes per input token for the instructions, evidence packet and schema. On 148 billed
  * gpt-6-astra analyses the evidence packet ran 3.1 to 3.3 bytes per token and the instructions
- * more, so 3 stays above every billed input. CJK text is 3 bytes per character in UTF-8, so it
- * also counts at least a token per character.
+ * more, so 3 stays above every billed input. Chinese, Japanese and Korean text is 3 bytes per
+ * character in UTF-8, so it also counts at least a token per character.
  */
 const BYTES_PER_INPUT_TOKEN = 3;
 /** Request framing on top of the text and the images. */
