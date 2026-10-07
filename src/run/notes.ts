@@ -1,49 +1,36 @@
-// Reviewer notes: free text a person adds at a moment of a recorded run, kept in the run directory
-// as notes.json (humanish.run-notes.v1). A note's time counts from the run clock's start, the
+// Reviewer notes: free text a person adds at a moment of a recorded run. Each note is its own file
+// in the run directory (note-files.ts). A note's time counts from the run clock's start, the
 // first timed capture or desktop video of any participant, which is the Observer's study clock.
 
-import { randomUUID } from "node:crypto";
-
 import type { ActorTraceItem } from "../actors/contract.js";
-import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
 import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
-import { readBoundedFileResult } from "./evidence-files.js";
 import { loadRunBundlePrepared } from "./locate.js";
+import {
+  countRunNotes,
+  encodeRunNote,
+  MAX_NOTE_TEXT,
+  MAX_RUN_NOTES,
+  newRunNoteId,
+  runNoteFile,
+  type RunNote,
+} from "./note-files.js";
 import { streamCaptions } from "./participant-caption.js";
 import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
-import { withNotesLock, type NotesLockHooks } from "./notes-lock.js";
 import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStream } from "./streams.js";
 import { transientCommsKnownValueScrub } from "./transient-comms-secrets.js";
-import { isRecord } from "./type-guards.js";
 
-export const RUN_NOTES_SCHEMA = "humanish.run-notes.v1";
-export const RUN_NOTES_FILE = "notes.json";
+export {
+  MAX_NOTE_TEXT,
+  readNotesForSharing,
+  readRunNotes,
+  type RunNote,
+  type RunNotes,
+} from "./note-files.js";
+
 const DEFAULT_AUTHOR = "you";
-export const MAX_NOTE_TEXT = 2000;
-const MAX_RUN_NOTES = 500;
-
-export interface RunNote {
-  id: string;
-  /** Milliseconds from the run clock's start. */
-  atMs: number;
-  /** The participant's stream id, or null for a note on the whole run. */
-  participant: string | null;
-  /** The latest timed capture or event at or before the moment, with its participant. */
-  nearest: { participant: string; itemId: string } | null;
-  text: string;
-  author: string;
-  createdAt: string;
-  editedAt: string | null;
-}
-
-export interface RunNotes {
-  schema: typeof RUN_NOTES_SCHEMA;
-  runId: string;
-  notes: RunNote[];
-}
 
 export interface RunNoteInput {
   atMs: number;
@@ -58,12 +45,11 @@ export type RunNoteErrorCode =
   | "HUMANISH_NOTE_UNKNOWN_PARTICIPANT"
   | "HUMANISH_NOTE_OUTSIDE_RUN"
   | "HUMANISH_NOTES_UNREADABLE"
-  | "HUMANISH_NOTES_FULL"
-  | "HUMANISH_NOTES_BUSY";
+  | "HUMANISH_NOTES_FULL";
 
 export type AddRunNoteResult =
   /** `scrubbed`: redaction replaced part of the text before it was written. */
-  | { ok: true; note: RunNote; notes: RunNotes; scrubbed: boolean }
+  | { ok: true; note: RunNote; scrubbed: boolean }
   | { ok: false; error: { code: RunNoteErrorCode; message: string } };
 
 const refuse = (code: RunNoteErrorCode, message: string): AddRunNoteResult => ({
@@ -88,19 +74,25 @@ export function runParticipantCaptions(bundle: RunBundle): Map<string, string> {
 }
 
 /**
- * The stream id a note's participant names: a stream id, or the participant's own id from the
- * study (`charge-nurse`) when exactly one stream records it. Otherwise the refusal, which names the
- * run's participants by caption, with the id to type for each.
+ * The stream id a note's participant names: a stream id, or the participant's own id from the study
+ * (`charge-nurse`). Both kinds of id are matched, so a name that is one stream's id and another
+ * stream's study id is refused, naming both, as is a study id that two streams record. Otherwise
+ * the refusal names the run's participants by caption, with the id to type for each.
  */
 function participantStreamId(bundle: RunBundle, named: string): string | AddRunNoteResult {
-  if (bundle.streams.some((stream) => stream.id === named)) return named;
-  const matching = bundle.streams.filter((stream) => streamParticipantIdOf(stream) === named);
-  if (matching.length === 1) return matching[0]!.id;
   const captions = runParticipantCaptions(bundle);
+  const matching = bundle.streams.filter(
+    (stream) => stream.id === named || streamParticipantIdOf(stream) === named,
+  );
+  if (matching.length === 1) return matching[0]!.id;
+  const described = (stream: RunStream): string => {
+    const participantId = streamParticipantIdOf(stream);
+    return `${captions.get(stream.id)} (stream id ${stream.id}${participantId === undefined ? "" : `, study id ${participantId}`})`;
+  };
   if (matching.length > 1)
     return refuse(
       "HUMANISH_NOTE_UNKNOWN_PARTICIPANT",
-      `Participant ${named} has ${matching.length} streams in run ${bundle.runId}: ${matching.map((stream) => `${captions.get(stream.id)} (${stream.id})`).join(", ")}. Name one by its stream id.`,
+      `${named} names ${matching.length} participants in run ${bundle.runId}: ${matching.map(described).join(" and ")}. Name the one you mean by an id only it has.`,
     );
   const known = bundle.streams.map(
     (stream) => `${captions.get(stream.id)} (${streamParticipantIdOf(stream) ?? stream.id})`,
@@ -179,123 +171,6 @@ function nearestItem(streams: readonly RunStream[], moment: number): RunNote["ne
   return best === null ? null : { participant: best.participant, itemId: best.itemId };
 }
 
-const text = (value: unknown, max: number): value is string =>
-  typeof value === "string" && value.length > 0 && value.length <= max;
-const timestamp = (value: unknown): value is string =>
-  text(value, 64) && Number.isFinite(Date.parse(value));
-
-function isRunNote(value: unknown): value is RunNote {
-  return (
-    isRecord(value) &&
-    text(value.id, 128) &&
-    typeof value.atMs === "number" &&
-    Number.isSafeInteger(value.atMs) &&
-    value.atMs >= 0 &&
-    (value.participant === null || text(value.participant, 256)) &&
-    (value.nearest === null ||
-      (isRecord(value.nearest) &&
-        text(value.nearest.participant, 256) &&
-        text(value.nearest.itemId, 256))) &&
-    text(value.text, MAX_NOTE_TEXT) &&
-    text(value.author, 80) &&
-    timestamp(value.createdAt) &&
-    (value.editedAt === null || timestamp(value.editedAt))
-  );
-}
-
-/** A notes file for `runId`, or null when the value is not one. Unknown fields are dropped. */
-function parseRunNotes(value: unknown, runId: string): RunNotes | null {
-  if (
-    !isRecord(value) ||
-    value.schema !== RUN_NOTES_SCHEMA ||
-    value.runId !== runId ||
-    !Array.isArray(value.notes) ||
-    value.notes.length > MAX_RUN_NOTES ||
-    !value.notes.every(isRunNote) ||
-    new Set(value.notes.map((note) => note.id)).size !== value.notes.length
-  )
-    return null;
-  return {
-    schema: RUN_NOTES_SCHEMA,
-    runId,
-    notes: value.notes.map((note) => ({
-      id: note.id,
-      atMs: note.atMs,
-      participant: note.participant,
-      nearest: note.nearest && {
-        participant: note.nearest.participant,
-        itemId: note.nearest.itemId,
-      },
-      text: note.text,
-      author: note.author,
-      createdAt: note.createdAt,
-      editedAt: note.editedAt,
-    })),
-  };
-}
-
-/** The bytes a notes.json may hold: 500 notes at the longest text, with room for JSON escapes. */
-export const MAX_NOTES_BYTES = 8 * 1024 * 1024;
-
-/** The notes in bytes read from a run's notes.json, or null when they are not a notes file. */
-export function decodeRunNotes(bytes: Buffer, runId: string): RunNotes | null {
-  try {
-    return parseRunNotes(JSON.parse(bytes.toString("utf8")), runId);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The run's notes, or null when it has no notes.json. Throws HUMANISH_NOTES_UNREADABLE when a
- * notes.json is there but cannot be read safely, is over MAX_NOTES_BYTES or is not a notes file for
- * this run. The read stops at the limit, before anything is decoded.
- */
-export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<RunNotes | null> {
-  if (await containedPathAbsent(prepared, RUN_NOTES_FILE)) return null;
-  const read = await readBoundedFileResult(prepared, RUN_NOTES_FILE, MAX_NOTES_BYTES);
-  const parsed = read.state === "read" ? decodeRunNotes(read.bytes, runIdOf(prepared)) : null;
-  if (parsed === null) throw new Error("HUMANISH_NOTES_UNREADABLE");
-  return parsed;
-}
-
-/** What verify's text scan finds in shared notes: a secret-shaped value, or text it cannot read. */
-type NotesFinding = "sensitive" | "opaque";
-
-/**
- * The run's notes as a caller is about to share them, read once within the size limit, with what
- * verify's text scan finds in that snapshot as it would be shared. The caller shares this snapshot
- * only, so a notes.json changed after verify ran cannot go out unchecked. `unreadable`: there is a
- * notes.json and it cannot be read; `notes` is then null.
- */
-export async function readNotesForSharing(prepared: PreparedRunArtifactPaths): Promise<{
-  notes: RunNotes | null;
-  unreadable: boolean;
-  finding: NotesFinding | null;
-}> {
-  let notes: RunNotes | null;
-  try {
-    notes = await readRunNotes(prepared);
-  } catch {
-    return { notes: null, unreadable: true, finding: null };
-  }
-  if (notes === null) return { notes, unreadable: false, finding: null };
-  const scan = scanEncodedTextCached(JSON.stringify(notes));
-  return {
-    notes,
-    unreadable: false,
-    finding: scan.sensitive ? "sensitive" : scan.opaque ? "opaque" : null,
-  };
-}
-
-/** The run's notes for a page or a draft: null when it has none or they cannot be read. */
-export function readableRunNotes(prepared: PreparedRunArtifactPaths): Promise<RunNotes | null> {
-  return readRunNotes(prepared).catch(() => null);
-}
-
-const UNREADABLE_MESSAGE = (runId: string): string =>
-  `The notes.json in run ${runId} is not a notes file humanish can read, so no note was added and the file was left as it is. Move it out of the run directory to start a new one.`;
-
 /**
  * The text as it is written: line breaks as `\n`, the run's known values and every secret-shaped
  * value or local path replaced, as other run text is before it is written.
@@ -322,16 +197,13 @@ function noteTextProblem(text: string): string | null {
   return null;
 }
 
-/** Internal fault-injection seam for tests. */
-export interface RunNoteHooks extends NotesLockHooks {
-  /** Runs holding the lock, after the existing notes are read and before the file is written. */
-  beforeWrite?: () => Promise<void>;
-}
-
+/**
+ * Adds a note as a new file, notes/<id>.json. It reads no other note and rewrites nothing, so
+ * notes added at the same time, from any process, are all kept.
+ */
 export async function addRunNote(
   prepared: PreparedRunArtifactPaths,
   input: RunNoteInput,
-  hooks: RunNoteHooks = {},
 ): Promise<AddRunNoteResult> {
   const text = scrubNoteText(input.text);
   const problem = noteTextProblem(text);
@@ -368,58 +240,39 @@ export async function addRunNote(
   const streams = bundle.streams.filter(
     (stream) => participant === null || stream.id === participant,
   );
+  const now = new Date();
   const note: RunNote = {
-    id: `note-${randomUUID()}`,
+    id: newRunNoteId(now),
     atMs,
     participant,
     nearest: nearestItem(streams, clock.startMs + atMs),
     text,
     author: DEFAULT_AUTHOR,
-    createdAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
     editedAt: null,
   };
-  const saved = await withNotesLock(
-    prepared,
-    async (): Promise<AddRunNoteResult> => {
-      let existing: RunNotes | null;
-      try {
-        existing = await readRunNotes(prepared);
-      } catch {
-        return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
-      }
-      if ((existing?.notes.length ?? 0) >= MAX_RUN_NOTES)
-        return refuse(
-          "HUMANISH_NOTES_FULL",
-          `Run ${bundle.runId} already has ${MAX_RUN_NOTES} notes, the most one run keeps.`,
-        );
-      const notes: RunNotes = {
-        schema: RUN_NOTES_SCHEMA,
-        runId: bundle.runId,
-        notes: [...(existing?.notes ?? []), note],
-      };
-      await hooks.beforeWrite?.();
-      try {
-        await writeContainedOutputFile(
-          prepared,
-          RUN_NOTES_FILE,
-          `${JSON.stringify(notes, null, 2)}\n`,
-        );
-      } catch {
-        return refuse("HUMANISH_NOTES_UNREADABLE", UNREADABLE_MESSAGE(bundle.runId));
-      }
-      return {
-        ok: true,
-        note,
-        notes,
-        scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim(),
-      };
-    },
-    hooks,
-  );
-  return saved === "busy"
-    ? refuse(
-        "HUMANISH_NOTES_BUSY",
-        `Another writer holds the notes lock of run ${bundle.runId}, so the note was not saved. Add it again in a moment. If no humanish process is adding a note to this run, remove the folders .notes-lock and .notes-lock-reclaim from the run directory, then add the note again.`,
-      )
-    : saved;
+  const unusable = (): AddRunNoteResult =>
+    refuse(
+      "HUMANISH_NOTES_UNREADABLE",
+      `The notes folder in run ${bundle.runId} is not a plain folder inside the run, so no note was added. Move it out of the run directory and add the note again.`,
+    );
+  try {
+    // A count of the files notes/ lists; no note is read.
+    if ((await countRunNotes(prepared)) >= MAX_RUN_NOTES)
+      return refuse(
+        "HUMANISH_NOTES_FULL",
+        `Run ${bundle.runId} already has ${MAX_RUN_NOTES} notes, the most one run keeps.`,
+      );
+    // The 48 random bits make a taken id unlikely; one that is taken is never written over.
+    if (!(await containedPathAbsent(prepared, runNoteFile(note.id))))
+      throw new Error("The new note's id is taken.");
+    await writeContainedOutputFile(
+      prepared,
+      runNoteFile(note.id),
+      encodeRunNote(note, bundle.runId),
+    );
+  } catch {
+    return unusable();
+  }
+  return { ok: true, note, scrubbed: text !== input.text.replace(/\r\n?/g, "\n").trim() };
 }

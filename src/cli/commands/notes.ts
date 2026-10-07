@@ -85,8 +85,8 @@ export function registerNotesCommand(parent: Command, io: CliIo): void {
         '  humanish notes latest --add --at 02:31 "The save button was hidden here."',
         '  humanish notes <runId> --add --at 00:45 --participant <id> "They gave up."',
         "",
-        "Notes are saved in the run directory as notes.json. Text that looks like a secret or a",
-        "local path is replaced before it is saved, and verify scans notes like other run text.",
+        "Each note is saved in the run directory as notes/<id>.json. Text that looks like a secret",
+        "or a local path is replaced before it is saved, and verify scans notes like other run text.",
       ].join("\n"),
     )
     .action((run: string, options: NotesOptions, command: Command) => {
@@ -173,20 +173,14 @@ async function handleNotes(
       );
   }
 
-  let notes;
-  try {
-    notes = await readRunNotes(prepared);
-  } catch {
-    return fail(
-      "HUMANISH_NOTES_UNREADABLE",
-      `The notes.json in run ${runId} is not a notes file humanish can read. Move it out of the run directory to start a new one.`,
-    );
-  }
+  const notes = await readRunNotes(prepared);
+  // A note file that cannot be read is named and left as it is; the others are listed.
+  warnings.push(...notes.skipped);
   const result: NotesResult = {
     ...base,
     ok: true,
     run: runId,
-    notes: byRunTime(notes?.notes ?? []),
+    notes: byRunTime(notes.notes),
     participants: await participantsOf(cwd, prepared),
     ...(added === undefined ? {} : { added }),
     warnings,

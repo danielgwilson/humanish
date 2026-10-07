@@ -8,9 +8,10 @@ import { renderObserverHtml } from "../../src/observer/artifact.js";
 import { buildObserverData } from "../../src/observer/data.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
 import type { RunBundle } from "../../src/run/bundle.js";
-import { addRunNote, type RunNotes } from "../../src/run/notes.js";
+import { addRunNote, type RunNote, type RunNotes } from "../../src/run/notes.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import { bytesReadDuring } from "../helpers/bytes-read.js";
+import { noteId } from "../helpers/note-files.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { writeTimedRun } from "../helpers/timed-run.js";
 
@@ -23,7 +24,12 @@ function notesSlot(html: string): unknown {
   return JSON.parse(match[1]!);
 }
 
-async function notedRun(): Promise<{ cwd: string; runDir: string; notes: RunNotes }> {
+async function notedRun(): Promise<{
+  cwd: string;
+  runDir: string;
+  note: RunNote;
+  notes: RunNotes;
+}> {
   const cwd = await makeTestTempDir("humanish-notes-page-");
   const runDir = await writeTimedRun(cwd, RUN);
   const added = await addRunNote(await bindExistingRunArtifactPaths(cwd, RUN), {
@@ -32,17 +38,20 @@ async function notedRun(): Promise<{ cwd: string; runDir: string; notes: RunNote
     text: "The whole page went blank here.",
   });
   if (!added.ok) throw new Error(added.error.message);
-  return { cwd, runDir, notes: added.notes };
+  return { cwd, runDir, note: added.note, notes: { runId: RUN, notes: [added.note], skipped: [] } };
 }
 
 describe("reviewer notes in the Observer page", () => {
   it("the saved Observer page shows the run's notes and carries no token to add one", async () => {
-    const { cwd, runDir, notes } = await notedRun();
+    const { cwd, runDir, note } = await notedRun();
 
     expect((await renderObserver(cwd, RUN, { open: false })).ok).toBe(true);
 
     const html = await readFile(path.join(runDir, "observer", "index.html"), "utf8");
-    expect(notesSlot(html)).toEqual({ notes, write: null });
+    expect(notesSlot(html)).toEqual({
+      notes: { runId: RUN, notes: [note], skipped: 0 },
+      write: null,
+    });
   });
 
   it("carries a token only when the caller passes one, and never in a snapshot", async () => {
@@ -51,33 +60,42 @@ describe("reviewer notes in the Observer page", () => {
     const data = buildObserverData(bundle);
     const token = "t".repeat(43);
 
+    const slotted = { runId: RUN, notes: notes.notes, skipped: 0 };
     expect(notesSlot(renderObserverHtml(data, { notes, notesToken: token }))).toEqual({
-      notes,
+      notes: slotted,
       write: { token },
     });
     expect(
       notesSlot(renderObserverHtml(data, { notes, notesToken: token, snapshot: true })),
-    ).toEqual({ notes, write: null });
+    ).toEqual({ notes: slotted, write: null });
   });
 
-  it("serves the page without notes over 8 MiB and never reads them whole", async () => {
-    const { cwd, runDir } = await notedRun();
-    const oversized = 9 * 1024 * 1024;
-    await writeFile(path.join(runDir, "notes.json"), Buffer.alloc(oversized, 0x20));
+  it("serves the page without a note file over 16 KiB, and never reads it, page or raw", async () => {
+    const { cwd, runDir, note } = await notedRun();
+    const oversized = 17 * 1024;
+    const big = noteId(1);
+    await writeFile(path.join(runDir, "notes", `${big}.json`), Buffer.alloc(oversized, 0x20));
     const server = await serveObserver(await renderObserver(cwd, RUN, { open: false }), {
       open: false,
       scope: "run",
     });
     try {
       let page = "";
+      let raw = 0;
       const read = await bytesReadDuring(async () => {
         const response = await fetch(new URL("/observer/index.html", server.url));
         expect(response.status).toBe(200);
         page = await response.text();
+        raw = (await fetch(new URL(`/notes/${big}.json`, server.url))).status;
       });
 
-      expect(notesSlot(page)).toMatchObject({ notes: null });
+      expect(notesSlot(page)).toMatchObject({
+        notes: { runId: RUN, notes: [note], skipped: 1 },
+      });
+      expect(raw).toBe(404);
       expect(read).toBeLessThan(oversized);
+      const small = await fetch(new URL(`/notes/${note.id}.json`, server.url));
+      expect(small.status).toBe(200);
     } finally {
       await server.close();
     }

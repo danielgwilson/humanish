@@ -29,7 +29,7 @@ function page(slot: unknown): Document {
 describe("reading the run-notes slot", () => {
   it("reads the run's notes and the token a loopback server put in the page", () => {
     const slot = {
-      notes: { schema: "humanish.run-notes.v1", runId: RUN, notes: [note] },
+      notes: { runId: RUN, notes: [note], skipped: 0 },
       write: { token: TOKEN },
     };
 
@@ -42,7 +42,7 @@ describe("reading the run-notes slot", () => {
 
   it("reads nothing from an unfilled slot, a page without one, or another run's notes", () => {
     const other = {
-      notes: { schema: "humanish.run-notes.v1", runId: "other", notes: [note] },
+      notes: { runId: "other", notes: [note], skipped: 0 },
       write: null,
     };
 
@@ -56,7 +56,7 @@ describe("reading the run-notes slot", () => {
 
   it("says when a slot's notes cannot be read and drops a malformed token", () => {
     const malformed = {
-      notes: { schema: "humanish.run-notes.v1", runId: RUN, notes: [{ ...note, atMs: -1 }] },
+      notes: { runId: RUN, notes: [{ ...note, atMs: -1 }], skipped: 0 },
       write: { token: "short" },
     };
 
@@ -67,14 +67,23 @@ describe("reading the run-notes slot", () => {
     });
     expect(readInlineRunNotes(page("{ not json"), RUN).unreadable).toBe(true);
   });
+
+  it("says when the server skipped note files it could not read", () => {
+    const slot = { notes: { runId: RUN, notes: [note], skipped: 2 }, write: null };
+
+    expect(readInlineRunNotes(page(slot), RUN)).toEqual({
+      notes: [note],
+      token: null,
+      unreadable: true,
+    });
+  });
 });
 
 describe("saving a note", () => {
-  it("posts the note with the token and returns the run's notes", async () => {
-    const saved = { schema: "humanish.run-notes.v1", runId: RUN, notes: [note] };
+  it("posts the note with the token and returns the note the server saved", async () => {
     const fetchImpl = vi.fn(
       async () =>
-        new Response(JSON.stringify({ ok: true, note, notes: saved, scrubbed: false }), {
+        new Response(JSON.stringify({ ok: true, note, scrubbed: false }), {
           status: 201,
         }),
     );
@@ -86,7 +95,7 @@ describe("saving a note", () => {
       text: "The menu was hidden.",
     });
 
-    expect(result).toEqual({ ok: true, notes: [note], scrubbed: false });
+    expect(result).toEqual({ ok: true, note, scrubbed: false });
     expect(fetchImpl).toHaveBeenCalledWith("/api/notes", {
       method: "POST",
       headers: { "content-type": "application/json", "x-humanish-notes-token": TOKEN },

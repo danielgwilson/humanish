@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -2718,7 +2718,7 @@ try {
   });
   await runCase("reviewer-notes", {}, async ({ page, record, snap }) => {
     // The loopback server from the root build renders the page, checks its token and origin,
-    // writes notes.json and renders the reloaded page from it.
+    // writes the note to notes/<id>.json and renders the reloaded page from it.
     const { renderObserver, serveObserver } = await import("../dist/observer/render.js");
     const { runDryRun } = await import("../dist/run/dry-run.js");
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-notes-proof-"));
@@ -2792,12 +2792,17 @@ try {
       await marker.waitFor();
       const before = await marker.evaluate((element) => element.style.left);
       await snap("note-marked");
-      const stored = JSON.parse(await readFile(path.join(runDir, "notes.json"), "utf8"));
-      assert.equal(stored.schema, "humanish.run-notes.v1");
+      const storedNotes = async () =>
+        Promise.all(
+          (await readdir(path.join(runDir, "notes"))).map(async (name) =>
+            JSON.parse(await readFile(path.join(runDir, "notes", name), "utf8")),
+          ),
+        );
+      const stored = await storedNotes();
       assert.deepEqual(
-        stored.notes.map((note) => [note.atMs, note.participant, note.author]),
-        [[30_000, null, "you"]],
-        "notes.json must hold the note at the paused moment",
+        stored.map((note) => [note.schema, note.atMs, note.participant, note.author]),
+        [["humanish.run-note.v1", 30_000, null, "you"]],
+        "notes/ must hold one note file at the paused moment",
       );
 
       await page.reload();
@@ -2830,9 +2835,9 @@ try {
         return response.status;
       }, runId);
       assert.equal(record.checks.withoutToken, 403);
-      const after = JSON.parse(await readFile(path.join(runDir, "notes.json"), "utf8"));
-      assert.equal(after.notes.length, 1, "A refused request must not add a note");
-      record.checks.notes = after.notes.map((note) => ({ atMs: note.atMs, text: note.text }));
+      const after = await storedNotes();
+      assert.equal(after.length, 1, "A refused request must not add a note");
+      record.checks.notes = after.map((note) => ({ atMs: note.atMs, text: note.text }));
 
       // At phone width the dock keeps the composer as an icon button named with its time.
       await page.setViewportSize({ width: 390, height: 844 });

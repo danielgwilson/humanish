@@ -1,12 +1,13 @@
 // POST /api/notes: the one write an Observer server accepts. A loopback server takes a note only
 // with the token its page carries, from that page's own origin; everything else is refused.
-import { readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, symlink } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { renderObserver, serveObserver, type ObserverServer } from "../../src/observer/render.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
+import { noteEntries } from "../helpers/note-files.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { FIRST_PARTICIPANT, writeTimedRun } from "../helpers/timed-run.js";
 
@@ -111,8 +112,8 @@ describe("adding a note through a loopback Observer", () => {
       ok: true,
       note: { atMs: 60_000, participant: FIRST_PARTICIPANT, text: "Here." },
     });
-    const stored = JSON.parse(await readFile(path.join(runDir, "notes.json"), "utf8"));
-    expect(stored.notes).toHaveLength(1);
+    const { note: saved } = JSON.parse(reply.body) as { note: { id: string } };
+    expect(await noteEntries(runDir)).toEqual([`${saved.id}.json`]);
     const reloaded = await send(server.port, "/observer/index.html", {
       headers: { host: `127.0.0.1:${server.port}` },
     });
@@ -120,8 +121,8 @@ describe("adding a note through a loopback Observer", () => {
     // The saved page is rendered again once the server has finished with the write.
     await server.close();
     servers.splice(servers.indexOf(server), 1);
-    const saved = await readFile(path.join(runDir, "observer", "index.html"), "utf8");
-    expect(notesSlot(saved)).toMatchObject({ notes: { notes: [{ text: "Here." }] }, write: null });
+    const page = await readFile(path.join(runDir, "observer", "index.html"), "utf8");
+    expect(notesSlot(page)).toMatchObject({ notes: { notes: [{ text: "Here." }] }, write: null });
   });
 });
 
@@ -134,7 +135,7 @@ describe("refusing a note through a loopback Observer", () => {
       expect(reply.status).toBe(403);
       expect(errorCode(reply)).toBe("HUMANISH_NOTES_TOKEN");
     }
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 
   it("refuses a request from another origin, with no origin, or for another host", async () => {
@@ -166,7 +167,7 @@ describe("refusing a note through a loopback Observer", () => {
       expect(reply.status).toBe(403);
       expect(errorCode(reply)).toBe("HUMANISH_NOTES_ORIGIN");
     }
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 
   it("takes the participant's own id from the study and stores its stream id", async () => {
@@ -210,7 +211,7 @@ describe("refusing a note through a loopback Observer", () => {
       expect(reply.status).toBe(413);
       expect(errorCode(reply)).toBe("HUMANISH_NOTES_TOO_LARGE");
     }
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 
   it("refuses a body that is not a JSON note", async () => {
@@ -275,25 +276,25 @@ describe("refusing a note through a loopback Observer", () => {
       await send(server.port, "/api/notes", { headers }),
       await send(server.port, "/api/notes/", { method: "POST", headers, body }),
       await send(server.port, "/api//notes", { method: "POST", headers, body }),
-      await send(server.port, "/api/notes/../../notes.json", { method: "POST", headers, body }),
+      await send(server.port, "/api/notes/../../notes/x.json", { method: "POST", headers, body }),
       await send(server.port, "/observer/index.html", { method: "POST", headers, body }),
       await send(server.port, "/api/notes", { method: "PUT", headers, body }),
     ];
 
     for (const reply of replies) expect(reply.status).toBe(405);
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 
-  it("refuses to write through a notes.json that links outside the run", async () => {
+  it("refuses to write through a notes folder that links outside the run", async () => {
     const { cwd, runDir, server, token } = await servedRun();
-    const outside = path.join(cwd, "outside.json");
-    await writeFile(outside, "outside");
-    await symlink(outside, path.join(runDir, "notes.json"));
+    const outside = path.join(cwd, "outside-notes");
+    await mkdir(outside);
+    await symlink(outside, path.join(runDir, "notes"));
 
     const reply = await note(server.port, token);
 
     expect(reply.status).toBe(409);
-    expect(await readFile(outside, "utf8")).toBe("outside");
+    expect(await readdir(outside)).toEqual([]);
   });
 });
 
@@ -310,7 +311,7 @@ describe("an exposed Observer", () => {
       expect(reply.status).toBe(403);
       expect(errorCode(reply)).toBe("HUMANISH_NOTES_EXPOSED");
     }
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 });
 
@@ -339,9 +340,7 @@ describe("the run library", () => {
     const reply = await note(port, slot.write?.token);
 
     expect(reply.status).toBe(201);
-    expect(JSON.parse(await readFile(path.join(runDir, "notes.json"), "utf8")).notes).toHaveLength(
-      1,
-    );
+    expect(await noteEntries(runDir)).toHaveLength(1);
   });
 
   it("refuses every note when exposed and serves no token", async () => {
@@ -352,6 +351,6 @@ describe("the run library", () => {
     expect(slot.write).toBeNull();
     expect(reply.status).toBe(403);
     expect(errorCode(reply)).toBe("HUMANISH_NOTES_EXPOSED");
-    await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+    expect(await noteEntries(runDir)).toEqual([]);
   });
 });

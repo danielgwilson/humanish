@@ -18,12 +18,8 @@ import {
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
-import {
-  formatRunTime,
-  RUN_NOTES_FILE,
-  runParticipantCaptions,
-  type RunNotes,
-} from "../run/notes.js";
+import { runNoteFile } from "../run/note-files.js";
+import { formatRunTime, runParticipantCaptions, type RunNotes } from "../run/notes.js";
 import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
@@ -68,7 +64,7 @@ export interface FeedbackDraft {
     /** The moment on the run clock, as the Observer shows it: `02:31`. */
     at: string;
     at_ms: number;
-    /** The stream id notes.json records, or null for a note on the whole run. */
+    /** The stream id the note file records, or null for a note on the whole run. */
     participant: string | null;
     /** The participant's caption, as the Observer names it. */
     participant_caption: string | null;
@@ -341,8 +337,8 @@ function citedImpressions(
 }
 
 /**
- * The draft with the run's reviewer notes and their file cited. verify graded the run share_ready
- * after scanning notes.json, so the notes are text it has read.
+ * The draft with the run's reviewer notes and each note's file cited. The caller passes the set it
+ * read and checked for sharing (readNotesForSharing).
  */
 export function withReviewerNotes(
   draft: FeedbackDraft,
@@ -359,11 +355,11 @@ export function withReviewerNotes(
     ...draft,
     evidence: [
       ...draft.evidence,
-      {
-        path: path.join(runRoot, RUN_NOTES_FILE),
-        kind: "review",
-        note: "Notes a person added while reviewing the recording.",
-      },
+      ...ordered.map((note) => ({
+        path: path.join(runRoot, runNoteFile(note.id)),
+        kind: "review" as const,
+        note: `Reviewer note at ${formatRunTime(note.atMs)}, added while reviewing the recording.`,
+      })),
     ],
     reviewer_notes: ordered.map((note) => ({
       id: note.id,

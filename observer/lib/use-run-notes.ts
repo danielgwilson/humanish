@@ -42,7 +42,13 @@ export function useRunNotes(
         participant: note.participant,
         text: note.text,
       });
-      if (saved.ok) setState((value) => ({ ...value, runId, notes: saved.notes }));
+      // The server saved this one note; the others are as the page last read them.
+      if (saved.ok)
+        setState((value) => ({
+          ...value,
+          runId,
+          notes: [...value.notes.filter((item) => item.id !== saved.note.id), saved.note],
+        }));
       return saved;
     },
     [token, runId],

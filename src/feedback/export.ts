@@ -206,7 +206,7 @@ export async function exportRun(
       cwd,
       runInput,
       "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
-      `The run's reviewer notes hold text that looks like a secret, a token or a local path, which verify may not have seen if notes.json changed after it ran. Run \`${cli(`verify --run ${runId}`)}\`, fix notes.json, and export again.`,
+      `The run's reviewer notes hold text that looks like a secret, a token or a local path, which verify may not have seen if a note was added or changed after it ran. Run \`${cli(`verify --run ${runId}`)}\`, fix the note files in notes/, and export again.`,
       verified.shareSafety,
     );
   if (notes.check === "downgraded") shareReady = false;
@@ -555,7 +555,7 @@ async function recheckAnalysis(
 
 /**
  * The run's notes for the export, read once within the notes size limit. That snapshot is scanned
- * as verify scans run text and is the one rendered, so a notes.json changed after verify ran cannot
+ * as verify scans run text and is the one rendered, so a note added or changed after verify ran cannot
  * reach the file unchecked. A finding blocks the export, or downgrades it under --local-only.
  */
 async function checkedNotes(
@@ -564,12 +564,9 @@ async function checkedNotes(
   inlined: Record<string, unknown>,
   options: ExportOptions,
   warnings: string[],
-): Promise<{ notes: RunNotes | null; check: "ok" | "blocked" | "downgraded" }> {
-  const { notes, unreadable, finding } = await readNotesForSharing(runPaths);
-  if (unreadable)
-    warnings.push(
-      "The run's notes.json could not be read or is over its size limit, so the export carries no reviewer notes.",
-    );
+): Promise<{ notes: RunNotes; check: "ok" | "blocked" | "downgraded" }> {
+  const { notes, finding } = await readNotesForSharing(runPaths);
+  for (const skipped of notes.skipped) warnings.push(`Reviewer notes: ${skipped}`);
   if (finding === null) return { notes, check: "ok" };
   verified.shareSafety = {
     status:
@@ -602,7 +599,7 @@ async function checkedNotes(
 /** The portable Observer HTML, with the local-only banner when the export is watermarked. */
 function renderExportHtml(
   inlined: Record<string, unknown>,
-  review: { analysis: AnalysisState; notes: RunNotes | null },
+  review: { analysis: AnalysisState; notes: RunNotes },
   assets: ObserverExportAssets,
   verified: VerifyResult,
   watermarked: boolean,

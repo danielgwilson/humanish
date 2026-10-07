@@ -86,7 +86,12 @@ export async function openContainedFile(
     await assertPinnedDirectory(root);
     const expectedStats = await inspectContainedRegularFile(root, filePath);
     if (!expectedStats) return null;
-    handle = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    // O_NONBLOCK: a leaf swapped for a FIFO after the checks above opens at once, without waiting
+    // for a writer, and the descriptor checks below refuse it.
+    handle = await open(
+      filePath,
+      fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK,
+    );
     const openedStats = await handle.stat({ bigint: true });
     if (
       !openedStats.isFile() ||

@@ -177,7 +177,8 @@ function renderExportAssets(assets: ObserverExportAssets): string {
  * adding one. A page without the token shows the notes read-only.
  */
 interface RunNotesSlot {
-  notes: RunNotes | null;
+  /** The notes read, and how many files in notes/ were skipped. */
+  notes: { runId: string; notes: RunNotes["notes"]; skipped: number } | null;
   write: { token: string } | null;
 }
 
@@ -277,7 +278,19 @@ export function renderObserverHtml(
     withObserverEndings(data),
     options.snapshot === true,
     projectShareCheckedAnalysis(analysis),
-    { notes: options.notes ?? null, write },
+    {
+      // A run without notes renders the slot as before notes existed.
+      notes:
+        options.notes == null ||
+        (options.notes.notes.length === 0 && options.notes.skipped.length === 0)
+          ? null
+          : {
+              runId: options.notes.runId,
+              notes: options.notes.notes,
+              skipped: options.notes.skipped.length,
+            },
+      write,
+    },
     options.assets ?? {},
   );
 }

@@ -126,7 +126,8 @@ export function ReviewerNotes({
       </p>
       {unreadable ? (
         <output>
-          This run&apos;s notes could not be read. <code>humanish notes</code> says why.
+          Some of this run&apos;s note files could not be read. <code>humanish notes</code> names
+          them.
         </output>
       ) : null}
       {notes.length === 0 ? (

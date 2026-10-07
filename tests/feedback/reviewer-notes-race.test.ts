@@ -1,11 +1,11 @@
-// A feedback draft checks the notes it includes, as read for the draft. Here notes.json changes
-// after verify graded the run share_ready and before the draft reads it.
+// A feedback draft checks the notes it includes, as read for the draft. Here a note is added after
+// verify graded the run share_ready and before the draft reads the notes.
 import { cp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { draftFeedback } from "../../src/feedback/feedback.js";
-import { RUN_NOTES_SCHEMA } from "../../src/run/notes.js";
+import { noteFile, noteId, writeNoteFile } from "../helpers/note-files.js";
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
@@ -26,34 +26,16 @@ vi.mock("../../src/verify/verify.js", async (importOriginal) => {
   };
 });
 
-function notesFile(text: string): string {
-  return JSON.stringify({
-    schema: RUN_NOTES_SCHEMA,
-    runId: RUN,
-    notes: [
-      {
-        id: "note-raced",
-        atMs: 0,
-        participant: null,
-        nearest: null,
-        text,
-        author: "you",
-        createdAt: "2026-05-01T10:00:00.000Z",
-        editedAt: null,
-      },
-    ],
-  });
-}
-
-describe("reviewer notes that change after verify", () => {
+describe("a reviewer note added after verify", () => {
   it("refuses a draft whose notes look like a secret when the draft reads them", async () => {
     const cwd = await makeTestTempDir("humanish-notes-race-");
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
     await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
-    const notesPath = path.join(cwd, ".humanish", "runs", RUN, "notes.json");
-    await writeFile(notesPath, notesFile("Clean note."));
-    swap.notesPath = notesPath;
-    swap.text = notesFile(`Key ${SECRET}`);
+    const runDir = path.join(cwd, ".humanish", "runs", RUN);
+    await writeNoteFile(runDir, RUN, { text: "Clean note." });
+    // A second note, added after verify read the run.
+    swap.notesPath = path.join(runDir, "notes", `${noteId(1)}.json`);
+    swap.text = JSON.stringify(noteFile(RUN, { id: noteId(1), text: `Key ${SECRET}` }));
 
     const drafted = await draftFeedback(cwd, RUN);
 

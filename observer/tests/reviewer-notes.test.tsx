@@ -127,15 +127,7 @@ describe("adding a reviewer note", () => {
     const saved = note(4500, null, "Both participants stalled here.");
     const fetch = vi.fn(
       async () =>
-        new Response(
-          JSON.stringify({
-            ok: true,
-            note: saved,
-            notes: { schema: "humanish.run-notes.v1", runId: study().run.runId, notes: [saved] },
-            scrubbed: false,
-          }),
-          { status: 201 },
-        ),
+        new Response(JSON.stringify({ ok: true, note: saved, scrubbed: false }), { status: 201 }),
     );
     vi.stubGlobal("fetch", fetch);
     const data = await render({ notes: [], token: TOKEN, unreadable: false });

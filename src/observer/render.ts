@@ -20,7 +20,7 @@ import {
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import { loadRunBundlePrepared, readRunJsonIfExists } from "../run/locate.js";
-import { readableRunNotes } from "../run/notes.js";
+import { readRunNotes } from "../run/notes.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
@@ -235,7 +235,7 @@ export async function renderObserver(
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "index.html"),
-    renderObserverHtml(observerData, { analysis, notes: await readableRunNotes(preparedRunPaths) }),
+    renderObserverHtml(observerData, { analysis, notes: await readRunNotes(preparedRunPaths) }),
     "utf8",
   );
   await validatePreparedRunArtifactPaths(preparedRunPaths);

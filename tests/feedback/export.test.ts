@@ -14,6 +14,7 @@ import liveBundle from "../golden/labs/live.json" with { type: "json" };
 import { buildObserverData } from "../../src/observer/data.js";
 import { tallyParticipantOutcomes } from "../../src/run/outcomes.js";
 import { type RunBundle } from "../../src/run/bundle.js";
+import { noteFile, noteId, writeNoteFile } from "../helpers/note-files.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
 
 const PNG = syntheticPng1x1();
@@ -108,22 +109,11 @@ describe("humanish export", () => {
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
   });
 
-  const notesFile = (text: string) => ({
-    schema: "humanish.run-notes.v1",
-    runId: RUN,
-    notes: [
-      {
-        id: "note-export",
-        atMs: 1000,
-        participant: null,
-        nearest: null,
-        text,
-        author: "you",
-        createdAt: "2026-05-01T10:00:00.000Z",
-        editedAt: null,
-      },
-    ],
-  });
+  /** The note as the page slot carries it: the stored note without its schema and run id. */
+  const slotted = (text: string) => {
+    const { schema: _schema, runId: _runId, ...note } = noteFile(RUN, { text });
+    return { runId: RUN, notes: [note], skipped: 0 };
+  };
   const notesSlot = (html: string): unknown =>
     JSON.parse(
       /<script id="run-notes" type="application\/json">([\s\S]*?)<\/script>/.exec(html)?.[1] ??
@@ -133,19 +123,18 @@ describe("humanish export", () => {
   const secret = "sk-" + "syntheticvalue1234567890abcdef";
 
   it("carries the run's reviewer notes read-only", async () => {
-    const notes = notesFile("Exported note.");
-    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notes));
+    await writeNoteFile(runDir, RUN, { text: "Exported note." });
 
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
 
     const html = await readFile(path.join(cwd, result.path), "utf8");
-    expect(notesSlot(html)).toEqual({ notes, write: null });
+    expect(notesSlot(html)).toEqual({ notes: slotted("Exported note."), write: null });
   });
 
-  // The verify stand-in answers share_ready as a verify that ran before notes.json changed would.
+  // The verify stand-in answers share_ready as a verify that ran before the note was added would.
   it("refuses notes that look like a secret when they are read for the export, after verify", async () => {
-    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notesFile(`Key ${secret}`)));
+    await writeNoteFile(runDir, RUN, { text: `Key ${secret}` });
 
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
 
@@ -160,8 +149,7 @@ describe("humanish export", () => {
   });
 
   it("marks a local-only export whose notes look like a secret, with the notes it checked", async () => {
-    const notes = notesFile(`Key ${secret}`);
-    await writeFile(path.join(runDir, "notes.json"), JSON.stringify(notes));
+    await writeNoteFile(runDir, RUN, { text: `Key ${secret}` });
 
     const result = await exportRun(
       cwd,
@@ -174,18 +162,22 @@ describe("humanish export", () => {
     expect(result).toMatchObject({ watermarked: true, shareSafety: { status: "blocked" } });
     const html = await readFile(path.join(cwd, result.path), "utf8");
     expect(html).toContain("humanish-local-only");
-    expect(notesSlot(html)).toEqual({ notes, write: null });
+    expect(notesSlot(html)).toEqual({ notes: slotted(`Key ${secret}`), write: null });
   });
 
-  it("exports no notes from a notes.json it cannot read and says so", async () => {
-    await writeFile(path.join(runDir, "notes.json"), Buffer.alloc(9 * 1024 * 1024, 0x20));
+  it("leaves out a note file it cannot read and says which", async () => {
+    await mkdir(path.join(runDir, "notes"), { recursive: true });
+    await writeFile(path.join(runDir, "notes", `${noteId(1)}.json`), Buffer.alloc(17 * 1024, 0x20));
 
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
 
     const html = await readFile(path.join(cwd, result.path), "utf8");
-    expect(notesSlot(html)).toEqual({ notes: null, write: null });
-    expect(result.warnings.some((warning) => warning.includes("notes.json"))).toBe(true);
+    expect(notesSlot(html)).toEqual({
+      notes: { runId: RUN, notes: [], skipped: 1 },
+      write: null,
+    });
+    expect(result.warnings.some((warning) => warning.includes(noteId(1)))).toBe(true);
   });
 
   it("renders old recordings with the current packaged UI without changing the source", async () => {

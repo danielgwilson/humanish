@@ -1,5 +1,5 @@
 // `humanish notes` lists a run's reviewer notes and adds one at a moment of the run clock.
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command, CommanderError } from "commander";
 import { describe, expect, it } from "vitest";
@@ -141,6 +141,20 @@ describe("humanish notes", () => {
     );
 
     expect(JSON.parse(added.output)).toMatchObject({ ok: true, added: { text: "Two words." } });
+  });
+});
+
+describe("humanish notes listings and refusals", () => {
+  it("lists the notes it can read and names a note file it skipped", async () => {
+    const cwd = await timedProject();
+    await runCli(["notes", RUN, "--add", "--at", "00:05", "Readable.", "--cwd", cwd]);
+    await writeFile(path.join(cwd, ".humanish", "runs", RUN, "notes", "stray.txt"), "stray");
+
+    const listed = await runCli(["notes", RUN, "--cwd", cwd]);
+
+    expect(listed.exitCode).toBe(0);
+    expect(listed.output).toContain("you: Readable.");
+    expect(listed.output).toContain("warning: notes/stray.txt is not a note file");
   });
 
   it("says how to add a note when a run has none", async () => {

@@ -1,12 +1,10 @@
 // Run files that mean something only on the machine that recorded the run. sandbox-receipts.ndjson
-// holds the raw sandbox ids reclaim kills by, status.json holds the recording process's pid, and a
-// notes lock's owner.json holds the pid of the process adding a note.
+// holds the raw sandbox ids reclaim kills by, and status.json holds the recording process's pid.
 // Bundle export leaves both out of a shared copy, and the Observer servers never hand them out.
 
 import { lstat } from "node:fs/promises";
 import path from "node:path";
 
-import { NOTES_LOCK_OWNER } from "./notes-lock.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "./status.js";
 
@@ -14,7 +12,6 @@ import { RUN_STATUS_FILE } from "./status.js";
 export const LOCAL_ONLY_RUN_FILES: ReadonlyMap<string, string> = new Map([
   [RUN_STATUS_FILE, "local process status is not a new attempt"],
   [SANDBOX_RECEIPTS_ARTIFACT, "operational journal does not confer a derivative resource lease"],
-  [NOTES_LOCK_OWNER, "a notes writer's lock names a process on this machine"],
 ]);
 
 /**

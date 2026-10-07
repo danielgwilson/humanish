@@ -2,9 +2,6 @@ import type { RunNote } from "../../src/run/notes";
 
 export type { RunNote } from "../../src/run/notes";
 
-// Kept as a literal (not imported as a value) so the artifact never bundles CLI code.
-// tests/contract-lock.test.ts asserts it equals src/run/notes.ts's exported const.
-export const RUN_NOTES_SCHEMA = "humanish.run-notes.v1";
 // Assembled at runtime so the literal appears once in the built artifact, in the index.html slot.
 export const RUN_NOTES_PLACEHOLDER = ["__HUMANISH", "RUN_NOTES__"].join("_");
 
@@ -12,7 +9,7 @@ export const RUN_NOTES_PLACEHOLDER = ["__HUMANISH", "RUN_NOTES__"].join("_");
 export interface RunNotesState {
   notes: RunNote[];
   token: string | null;
-  /** The page carried notes that could not be read. */
+  /** The page carried notes that could not be read, or the server skipped note files. */
   unreadable: boolean;
 }
 
@@ -42,17 +39,24 @@ function isRunNote(value: unknown): value is RunNote {
   );
 }
 
-/** The notes of `runId` in a notes file, or null when the value is not one. */
-function parseNotes(value: unknown, runId: string): RunNote[] | null {
+/**
+ * The notes of `runId` the slot carries and how many note files the server skipped, or null when
+ * the value is not that.
+ */
+function parseNotes(value: unknown, runId: string): { notes: RunNote[]; skipped: number } | null {
   if (
     !object(value) ||
-    value.schema !== RUN_NOTES_SCHEMA ||
     !Array.isArray(value.notes) ||
     value.notes.length > 500 ||
-    !value.notes.every(isRunNote)
+    !value.notes.every(isRunNote) ||
+    typeof value.skipped !== "number" ||
+    !Number.isSafeInteger(value.skipped) ||
+    value.skipped < 0
   )
     return null;
-  return value.runId === runId ? value.notes : [];
+  return value.runId === runId
+    ? { notes: value.notes, skipped: value.skipped }
+    : { notes: [], skipped: 0 };
 }
 
 /** The run-notes slot the CLI fills, for the run the page shows. */
@@ -66,7 +70,7 @@ export function readInlineRunNotes(doc: Document, runId: string): RunNotesState 
     return { ...NO_RUN_NOTES, unreadable: true };
   }
   if (!object(slot)) return { ...NO_RUN_NOTES, unreadable: true };
-  const notes = slot.notes === null ? [] : parseNotes(slot.notes, runId);
+  const notes = slot.notes === null ? { notes: [], skipped: 0 } : parseNotes(slot.notes, runId);
   const token =
     object(slot.write) &&
     typeof slot.write.token === "string" &&
@@ -75,7 +79,7 @@ export function readInlineRunNotes(doc: Document, runId: string): RunNotesState 
       : null;
   return notes === null
     ? { ...NO_RUN_NOTES, unreadable: true }
-    : { notes, token, unreadable: false };
+    : { notes: notes.notes, token, unreadable: notes.skipped > 0 };
 }
 
 /** Notes in run clock order, the earliest added first at the same moment. */
@@ -86,10 +90,10 @@ export function byRunTime(notes: readonly RunNote[]): RunNote[] {
 }
 
 export type SaveRunNoteResult =
-  | { ok: true; notes: RunNote[]; scrubbed: boolean }
+  | { ok: true; note: RunNote; scrubbed: boolean }
   | { ok: false; message: string };
 
-/** Sends a note to the server that rendered this page; it answers with all of the run's notes. */
+/** Sends a note to the server that rendered this page; it answers with the note it saved. */
 export async function saveRunNote(
   fetchImpl: typeof fetch,
   token: string,
@@ -110,10 +114,8 @@ export async function saveRunNote(
     };
   }
   const body: unknown = await response.json().catch(() => null);
-  if (response.ok && object(body) && object(body.notes)) {
-    const notes = parseNotes(body.notes, note.runId);
-    if (notes !== null) return { ok: true, notes, scrubbed: body.scrubbed === true };
-  }
+  if (response.ok && object(body) && isRunNote(body.note))
+    return { ok: true, note: body.note, scrubbed: body.scrubbed === true };
   const message =
     object(body) && object(body.error) && typeof body.error.message === "string"
       ? body.error.message

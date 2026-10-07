@@ -174,8 +174,8 @@ async function draftFeedbackBound(
     };
   }
 
-  // The notes the draft includes are this snapshot, checked here: notes.json can change after
-  // verify read it.
+  // The notes the draft includes are this set, checked here: a note can be added or changed after
+  // verify read the run.
   const shared = await readNotesForSharing(context.preparedRunPaths);
   if (shared.finding !== null)
     return {
@@ -283,7 +283,7 @@ function notesRefusal(
     },
     error: {
       code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
-      message: `The run's reviewer notes hold text that looks like a secret, a token or a local path, so no draft was written. Run \`${cli(`verify --run ${runId}`)}\` and fix notes.json.`,
+      message: `The run's reviewer notes hold text that looks like a secret, a token or a local path, so no draft was written. Run \`${cli(`verify --run ${runId}`)}\` and fix the note files in notes/.`,
     },
   };
 }

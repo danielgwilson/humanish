@@ -1,49 +1,36 @@
 // A feedback draft carries the run's reviewer notes, labelled as notes a person added while
 // reviewing, apart from what participants said.
-import { cp, writeFile } from "node:fs/promises";
+import { cp } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
-import { RUN_NOTES_SCHEMA } from "../../src/run/notes.js";
+import { noteId, writeNoteFile } from "../helpers/note-files.js";
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const RUN = "noted-feedback-run";
 
-function note(id: string, atMs: number, participant: string | null, text: string) {
-  return {
-    id,
-    atMs,
-    participant,
-    nearest: null,
-    text,
-    author: "you",
-    createdAt: "2026-05-01T10:00:00.000Z",
-    editedAt: null,
-  };
-}
+const EARLY = noteId(2);
+const LATE = noteId(1);
 
 async function notedLiveRun(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-notes-feedback-");
   await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
   await runSyntheticLive({ cwd, dryRun: true, runId: RUN });
-  await writeFile(
-    path.join(cwd, ".humanish", "runs", RUN, "notes.json"),
-    JSON.stringify({
-      schema: RUN_NOTES_SCHEMA,
-      runId: RUN,
-      notes: [
-        note("note-late", 151_000, null, "The whole page went blank."),
-        note("note-early", 12_000, "sim-01-ui", "The menu was hidden.\nThey scrolled past it."),
-      ],
-    }),
-  );
+  const runDir = path.join(cwd, ".humanish", "runs", RUN);
+  await writeNoteFile(runDir, RUN, { id: LATE, atMs: 151_000, text: "The whole page went blank." });
+  await writeNoteFile(runDir, RUN, {
+    id: EARLY,
+    atMs: 12_000,
+    participant: "sim-01-ui",
+    text: "The menu was hidden.\nThey scrolled past it.",
+  });
   return cwd;
 }
 
 describe("reviewer notes in feedback drafts", () => {
-  it("lists the notes in run clock order and cites notes.json", async () => {
+  it("lists the notes in run clock order and cites each note's file", async () => {
     const cwd = await notedLiveRun();
 
     const drafted = await draftFeedback(cwd, RUN);
@@ -51,7 +38,7 @@ describe("reviewer notes in feedback drafts", () => {
     expect(drafted.ok).toBe(true);
     expect(drafted.draft?.reviewer_notes).toEqual([
       {
-        id: "note-early",
+        id: EARLY,
         at: "00:12",
         at_ms: 12_000,
         participant: "sim-01-ui",
@@ -60,7 +47,7 @@ describe("reviewer notes in feedback drafts", () => {
         text: "The menu was hidden.\nThey scrolled past it.",
       },
       {
-        id: "note-late",
+        id: LATE,
         at: "02:31",
         at_ms: 151_000,
         participant: null,
@@ -69,7 +56,9 @@ describe("reviewer notes in feedback drafts", () => {
         text: "The whole page went blank.",
       },
     ]);
-    expect(drafted.draft?.evidence.map((item) => path.basename(item.path))).toContain("notes.json");
+    expect(drafted.draft?.evidence.map((item) => path.basename(item.path))).toEqual(
+      expect.arrayContaining([`${EARLY}.json`, `${LATE}.json`]),
+    );
     expect((await verifyFeedback(cwd, RUN)).ok).toBe(true);
   });
 
