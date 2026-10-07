@@ -11,7 +11,7 @@ import { readRunJsonIfExists, readRunTextIfExists } from "../run/locate.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
-import { runLiveness } from "../run/run-index.js";
+import { runLiveness } from "../run/liveness.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { plural } from "../run/text.js";
@@ -37,8 +37,8 @@ export interface UnfinishedRun {
 
 /**
  * One warning, and the unfinished-run facts, when the run is not finished, by the run index's
- * rule: its status record when it has a usable one, else a participant still `running` in its
- * bundle's `simulations[]`. Nothing for a finished run.
+ * rule: its bundle outcome first, then usable status, then the bundle's simulations. Nothing
+ * for a finished run.
  */
 export async function runNotFinished(
   runPaths: PreparedRunArtifactPaths,
@@ -51,7 +51,9 @@ export async function runNotFinished(
   if (liveness === "finished") return { warnings: [] };
 
   const seen: string[] = [];
-  if (record === undefined) {
+  if (bundle.outcome?.state === "interrupted") {
+    seen.push(`run.json records interruption by ${bundle.outcome.signal} at ${bundle.outcome.at}`);
+  } else if (record === undefined) {
     const running = bundle.simulations.filter((simulation) => simulation.status === "running");
     seen.push(
       `the run has no usable ${RUN_STATUS_FILE} and ${running.length} of ${bundle.simulations.length} simulations are still running`,

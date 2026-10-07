@@ -61,6 +61,23 @@ export function analysisCostOf(
   };
 }
 
+/** The recorded estimate, or a supported zero for a dry run with no cost record. */
+export function runEstimateUsd(entry: {
+  estimatedCostUsd?: number | null | undefined;
+  mode?: string | null | undefined;
+}): number | null {
+  const usd = entry.estimatedCostUsd;
+  if (typeof usd === "number" && Number.isFinite(usd) && usd >= 0) return usd;
+  return usd === undefined && entry.mode === "dry-run" ? 0 : null;
+}
+
+/** Add known estimates, retaining unknown when neither component has a price. */
+export function sumEstimatedUsd(a: number | null, b: number | null): number | null {
+  const left = runEstimateUsd({ estimatedCostUsd: a });
+  const right = runEstimateUsd({ estimatedCostUsd: b });
+  return left === null && right === null ? null : round6((left ?? 0) + (right ?? 0));
+}
+
 export function runCost(
   subtotal: RunCostSubtotal | null | undefined,
   analysis?: RunAnalysisCost | null,
@@ -68,22 +85,29 @@ export function runCost(
   if (subtotal === null || subtotal === undefined)
     return { run: null, analysis: null, total: null };
   const run = {
-    usd: typeof subtotal.estimatedTotalUsd === "number" ? subtotal.estimatedTotalUsd : null,
+    usd: runEstimateUsd({ estimatedCostUsd: subtotal.estimatedTotalUsd }),
     complete: subtotal.fullyEstimated === undefined ? null : subtotal.fullyEstimated,
     ratesAsOf: subtotal.ratesAsOf ?? null,
     placeholder: subtotal.placeholder === true,
   };
-  const spent = analysis ?? null;
-  const known = [run.usd, spent?.estimatedUsd].filter(
-    (usd): usd is number => typeof usd === "number",
-  );
-  if (known.length === 0) return { run, analysis: spent, total: null };
+  const spent =
+    analysis == null
+      ? null
+      : {
+          ...analysis,
+          estimatedUsd: runEstimateUsd({ estimatedCostUsd: analysis.estimatedUsd }),
+          complete:
+            analysis.complete &&
+            runEstimateUsd({ estimatedCostUsd: analysis.estimatedUsd }) !== null,
+        };
+  const totalUsd = sumEstimatedUsd(run.usd, spent?.estimatedUsd ?? null);
+  if (totalUsd === null) return { run, analysis: spent, total: null };
   const lowerBound = run.usd === null || run.complete === false || spent?.complete === false;
   return {
     run,
     analysis: spent,
     total: {
-      usd: round6(known.reduce((sum, usd) => sum + usd, 0)),
+      usd: totalUsd,
       complete: lowerBound ? false : run.complete,
     },
   };

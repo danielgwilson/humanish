@@ -238,7 +238,7 @@ function buildScriptedReview(args: {
   };
 }
 
-export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
+export function renderScriptedReviewMarkdown(bundle: RunBundle, status?: unknown): string {
   const subject = bundle.events.find((event) => event.type === "scripted-lab.subject.declared");
   const spend = bundle.events.find((event) => event.type === "scripted-lab.spend");
   const traces = bundle.streams
@@ -246,13 +246,17 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     .filter(
       (entry): entry is { stream: RunStream; trace: ActorTrace } => entry.trace !== undefined,
     );
-  return renderReviewMarkdown(bundle, [
-    `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
-    ...(subject ? [`- subject: ${subject.message}`] : []),
-    ...(spend ? [`- spend: ${spend.message}`] : []),
-    ...traces.map(
-      ({ stream, trace }) =>
-        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${plural(trace.counts.actions ?? 0, "step action")}, ${plural(trace.counts.screenshots ?? 0, "raw screenshot")}`,
-    ),
-  ]);
+  return renderReviewMarkdown(
+    bundle,
+    [
+      `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
+      ...(subject ? [`- subject: ${subject.message}`] : []),
+      ...(spend ? [`- spend: ${spend.message}`] : []),
+      ...traces.map(
+        ({ stream, trace }) =>
+          `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${plural(trace.counts.actions ?? 0, "step action")}, ${plural(trace.counts.screenshots ?? 0, "raw screenshot")}`,
+      ),
+    ],
+    { status },
+  );
 }
