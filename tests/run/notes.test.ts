@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 import { addRunNote, readRunNotes, RUN_NOTES_SCHEMA } from "../../src/run/notes.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
+import {
+  registerTransientCommsSecrets,
+  withTransientCommsSecrets,
+} from "../../src/run/transient-comms-secrets.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { FIRST_PARTICIPANT, SECOND_PARTICIPANT, writeTimedRun } from "../helpers/timed-run.js";
 
@@ -104,16 +108,53 @@ describe("reviewer notes on a recorded run", () => {
     const added = await addRunNote(prepared, {
       atMs: 0,
       participant: null,
-      text: `Pasted ${secret} from /home/reviewer/keys.txt by mistake.\r\nSecond line.`,
+      text: `Pasted ${secret} from /home/someuser/keys.txt by mistake.\r\nSecond line.`,
     });
 
     expect(added).toMatchObject({ ok: true, scrubbed: true });
     const stored = await readFile(path.join(runDir, "notes.json"), "utf8");
     expect(stored).not.toContain(secret);
-    expect(stored).not.toContain("/home/reviewer");
+    expect(stored).not.toContain("/home/someuser");
     expect(added.ok && added.note.text).toBe(
       "Pasted [REDACTED_SECRET] from [REDACTED_RUNTIME_PATH] by mistake.\nSecond line.",
     );
+  });
+
+  it("replaces a value the run registered as known while the run's scope is open", async () => {
+    const { prepared } = await timedRun();
+
+    const added = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets(["Delivery-Code-4471"]);
+      return addRunNote(prepared, {
+        atMs: 0,
+        participant: null,
+        text: "The email said Delivery-Code-4471.",
+      });
+    });
+
+    expect(added.ok && added.note.text).toBe("The email said [REDACTED_SECRET].");
+  });
+
+  it("still saves a note, with pattern redaction, after the run's scope has closed", async () => {
+    const { prepared } = await timedRun();
+    const secret = "sk-" + "syntheticvalue1234567890abcdef";
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let pending!: Promise<Awaited<ReturnType<typeof addRunNote>>>;
+    // A server started during a run keeps the run's async context after the run returns.
+    await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets(["Delivery-Code-4471"]);
+      pending = gate.then(() =>
+        addRunNote(prepared, { atMs: 0, participant: null, text: `After the run: ${secret}` }),
+      );
+    });
+    release();
+
+    const added = await pending;
+
+    expect(added.ok && added.note.text).toBe("After the run: [REDACTED_SECRET]");
   });
 
   it("points a note on the whole run at the latest moment any participant recorded", async () => {
