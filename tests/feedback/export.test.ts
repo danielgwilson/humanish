@@ -14,6 +14,7 @@ import liveBundle from "../golden/labs/live.json" with { type: "json" };
 import { buildObserverData } from "../../src/observer/data.js";
 import { tallyParticipantOutcomes } from "../../src/run/outcomes.js";
 import { type RunBundle } from "../../src/run/bundle.js";
+import { noteFile, noteId, writeNoteFile } from "../helpers/note-files.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
 
 const PNG = syntheticPng1x1();
@@ -106,6 +107,77 @@ describe("humanish export", () => {
     expect(formatExportHuman(result)).toContain("1 image embedded");
     // The file says what verify said, so its chrome can agree with the result envelope.
     expect(html).toMatch(/"share":\{"status":"share_ready","verifiedAt":"[^"]+","reasons":\[\]\}/);
+  });
+
+  /** The note as the page slot carries it: the stored note without its schema and run id. */
+  const slotted = (text: string) => {
+    const { schema: _schema, runId: _runId, ...note } = noteFile(RUN, { text });
+    return { runId: RUN, notes: [note], skipped: 0 };
+  };
+  const notesSlot = (html: string): unknown =>
+    JSON.parse(
+      /<script id="run-notes" type="application\/json">([\s\S]*?)<\/script>/.exec(html)?.[1] ??
+        "null",
+    );
+  // Concatenated so this file never holds a secret-shaped literal.
+  const secret = "sk-" + "syntheticvalue1234567890abcdef";
+
+  it("carries the run's reviewer notes read-only", async () => {
+    await writeNoteFile(runDir, RUN, { text: "Exported note." });
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(notesSlot(html)).toEqual({ notes: slotted("Exported note."), write: null });
+  });
+
+  // The verify stand-in answers share_ready as a verify that ran before the note was added would.
+  it("refuses notes that look like a secret when they are read for the export, after verify", async () => {
+    await writeNoteFile(runDir, RUN, { text: `Key ${secret}` });
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED" },
+      shareSafety: { status: "blocked", reasons: [{ code: "PUBLIC_SAFETY_FINDINGS" }] },
+    });
+    await expect(readFile(path.join(cwd, ".humanish", "exports", `${RUN}.html`))).rejects.toThrow(
+      /ENOENT/,
+    );
+  });
+
+  it("marks a local-only export whose notes look like a secret, with the notes it checked", async () => {
+    await writeNoteFile(runDir, RUN, { text: `Key ${secret}` });
+
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { localOnly: true },
+      { verify: verified("share_ready") },
+    );
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(result).toMatchObject({ watermarked: true, shareSafety: { status: "blocked" } });
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(html).toContain("humanish-local-only");
+    expect(notesSlot(html)).toEqual({ notes: slotted(`Key ${secret}`), write: null });
+  });
+
+  it("leaves out a note file it cannot read and says which", async () => {
+    await mkdir(path.join(runDir, "notes"), { recursive: true });
+    await writeFile(path.join(runDir, "notes", `${noteId(1)}.json`), Buffer.alloc(17 * 1024, 0x20));
+
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(notesSlot(html)).toEqual({
+      notes: { runId: RUN, notes: [], skipped: 1 },
+      write: null,
+    });
+    expect(result.warnings.some((warning) => warning.includes(noteId(1)))).toBe(true);
   });
 
   it("renders old recordings with the current packaged UI without changing the source", async () => {

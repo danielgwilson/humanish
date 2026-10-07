@@ -576,6 +576,63 @@ updatedAt: "<ISO timestamp>"
 
 The latest pointer may move. Run bundle directories should not.
 
+## Reviewer notes
+
+Each note a person adds while reviewing a run is its own file in the run directory,
+`notes/<id>.json`, written by `humanish notes --add` and by an Observer served on loopback.
+`notes/` is absent until the first note.
+
+```json
+{
+  "schema": "humanish.run-note.v1",
+  "runId": "example-2026-06-02t10-00-00-000z-proof",
+  "id": "note-20260602t103000000z-000000000001",
+  "atMs": 151000,
+  "participant": "stream-001",
+  "nearest": { "participant": "stream-001", "itemId": "turn-07-call-01" },
+  "text": "They looked for the save button here.",
+  "author": "you",
+  "createdAt": "2026-06-02T10:30:00.000Z",
+  "editedAt": null
+}
+```
+
+- `id`: `note-`, the creation time as `yyyymmddthhmmssmmmz`, `-` and 12 hex digits of
+  random bits. The file is named `<id>.json`, so the files sort in the order they were
+  added.
+- `runId`: the run directory's name. A file whose `runId` or `id` does not match its run or
+  its file name is not read.
+- `atMs`: milliseconds from the run clock's start, the earliest timed capture or
+  desktop video of any participant. The Observer's study timeline shows that moment as
+  00:00. A participant's captures count only when every one is stamped and the stamps
+  never go back.
+- `participant`: the stream id the note belongs to, or `null` for the whole run.
+  `humanish notes --add --participant` and the Observer also take the participant's id from
+  the study (the stream's `laneId`) and record its stream id. A name that is one stream's id
+  and another stream's study id is refused.
+- `nearest`: the latest stamped trace item, a capture or an event, at or before the
+  moment, among the note's participant or every participant; `null` when there is none.
+- `text`: 1 to 2000 characters, after the run's known values, secret-shaped values and
+  local paths are replaced.
+- `author`: `"you"` in this version.
+- `createdAt`, `editedAt`: ISO-8601. Notes cannot be edited yet, so `editedAt` is `null`.
+
+A note file is written once and never rewritten: its bytes go to a temporary file inside
+`notes/`, which `link` gives the note's name only when no file has that name, and a taken name
+gets a new id. Adding a note reads no other note, so notes added at the same time from any
+process are all kept, and there is no lock. Readers list at most 1000 entries of `notes/` and
+read at most 500 notes, each within 16 KiB and refused before reading past that; any other
+entry, or a file that is not a note of the run, is skipped and named. The Observer servers serve
+any file under `notes/` only within 16 KiB. A run takes no note past 500.
+`verify` scans the note files with every other run file, so a secret-shaped value in a note
+keeps the run from `share_ready`. A bundle export copies them; an HTML export carries the notes
+read-only after checking the set it read.
+
+Threat model: forged web requests are refused, whether from a page on another site or through a
+name rebound to 127.0.0.1, by the token, Origin and Host checks on `POST /api/notes`. A local
+process with write access to the run directory is out of scope: it already has the user's
+privileges and can change any file in the run.
+
 ## Verify Result Share Safety
 
 `humanish.verify-result.v1` includes a machine-readable `shareSafety` block in

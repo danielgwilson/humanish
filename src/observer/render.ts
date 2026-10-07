@@ -20,12 +20,14 @@ import {
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import { loadRunBundlePrepared, readRunJsonIfExists } from "../run/locate.js";
+import { readRunNotes } from "../run/notes.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./http.js";
 import { listenOnLoopback } from "./listen.js";
+import { createNotesWriter, NOTES_PATH } from "./notes-route.js";
 import {
   pinDirectChildDirectory,
   pinDirectory,
@@ -233,7 +235,7 @@ export async function renderObserver(
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "index.html"),
-    renderObserverHtml(observerData, { analysis }),
+    renderObserverHtml(observerData, { analysis, notes: await readRunNotes(preparedRunPaths) }),
     "utf8",
   );
   await validatePreparedRunArtifactPaths(preparedRunPaths);
@@ -331,6 +333,23 @@ async function resolveObserverRunSelection(
   return { runId: pointer.runId, runRoot, runsRoot };
 }
 
+/**
+ * The served run history. Exposed watch and selected-run viewers pass `onlyRun` and cannot
+ * enumerate other runs; full-library loopback viewers get the complete project index.
+ */
+async function writeHistory(
+  response: ServerResponse,
+  proofRoot: PinnedDirectory,
+  onlyRun: string | null,
+): Promise<void> {
+  const history = await buildHistoryIndex(proofRoot);
+  const runs =
+    onlyRun === null ? history.runs : history.runs.filter((run) => run.runId === onlyRun);
+  const listed =
+    onlyRun === null ? history : { latestRunId: runs.length > 0 ? onlyRun : null, runs };
+  writeResponse(response, 200, JSON.stringify(listed, null, 2), "application/json; charset=utf-8");
+}
+
 export async function serveObserver(
   result: ObserverResult,
   options: ObserverServeOptions = {},
@@ -365,6 +384,14 @@ export async function serveObserver(
   const runtimeStreamUrls = () => observerRuntimeStreamUrls.get(result) ?? [];
   const exposed = options.exposed === true;
   const scopedToRun = exposed || options.scope === "run";
+  let port = 0;
+  // Notes are taken for the selected run only, whose paths this server already holds.
+  const notes = createNotesWriter({
+    exposed,
+    port: () => port,
+    resolveRun: async (runId) => (runId === result.run ? preparedRunPaths : null),
+    refresh: (prepared) => renderObserver(cwd, result.run, { open: false, expectedRun: prepared }),
+  });
   // Host allowlist for exposed mode (DNS-rebinding defense, identical to the run-library surface).
   // Seeded with the loopback names after bind; addPublicOrigin extends it with the tunnel/public-url
   // host. Never consulted in loopback (non-exposed) mode.
@@ -388,6 +415,16 @@ export async function serveObserver(
 
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
 
+      if (url.pathname === NOTES_PATH) {
+        await notes.handle(request, response);
+        return;
+      }
+      // Adding a note is the only write; nothing else is read with another method.
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        writeResponse(response, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+        return;
+      }
+
       if (url.pathname === "/") {
         response.writeHead(302, { location: "/observer/index.html" });
         response.end();
@@ -395,29 +432,7 @@ export async function serveObserver(
       }
 
       if (url.pathname === "/_humanish/history.json") {
-        const history = await buildHistoryIndex(proofRoot);
-        // Exposed watch and selected-run viewers cannot enumerate other runs. Full-library
-        // loopback viewers retain the complete project index.
-        if (scopedToRun) {
-          const attachedRuns = history.runs.filter((entry) => entry.runId === result.run);
-          writeResponse(
-            response,
-            200,
-            JSON.stringify(
-              { latestRunId: attachedRuns.length > 0 ? result.run : null, runs: attachedRuns },
-              null,
-              2,
-            ),
-            "application/json; charset=utf-8",
-          );
-          return;
-        }
-        writeResponse(
-          response,
-          200,
-          JSON.stringify(history, null, 2),
-          "application/json; charset=utf-8",
-        );
+        await writeHistory(response, proofRoot, scopedToRun ? result.run : null);
         return;
       }
 
@@ -443,6 +458,7 @@ export async function serveObserver(
           response,
           runRoute.runId === result.run ? runtimeStreamUrls() : [],
           request,
+          runRoute.runId === result.run ? notes.pageToken(request) : undefined,
         );
         return;
       }
@@ -453,6 +469,7 @@ export async function serveObserver(
         response,
         runtimeStreamUrls(),
         request,
+        notes.pageToken(request),
       );
     } catch {
       writeResponse(response, 500, "Observer request failed", "text/plain; charset=utf-8");
@@ -462,7 +479,7 @@ export async function serveObserver(
     void handleRequest(request, response);
   });
 
-  const port = await listenOnLoopback(server, options.port ?? 0);
+  port = await listenOnLoopback(server, options.port ?? 0);
   if (exposed) {
     hostAllowlist.add(`127.0.0.1:${port}`);
     hostAllowlist.add(`localhost:${port}`);
@@ -489,7 +506,10 @@ export async function serveObserver(
         hostAllowlist.add(parsed.host);
       }
     },
-    close: () => closeServer(server),
+    close: async () => {
+      await notes.settled();
+      await closeServer(server);
+    },
   };
 }
 

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { RUN_NOTES_PLACEHOLDER } from "../lib/run-notes";
 import { STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { OBSERVER_DATA_PLACEHOLDER, injectObserverData } from "../scripts/inject";
 
@@ -52,6 +53,7 @@ describe("observer artifact", () => {
     const html = await readArtifact();
     expect(occurrences(html, OBSERVER_DATA_PLACEHOLDER)).toBe(1);
     expect(occurrences(html, STUDY_ANALYSIS_PLACEHOLDER)).toBe(1);
+    expect(occurrences(html, RUN_NOTES_PLACEHOLDER)).toBe(1);
     // The dev-only golden import must be dead-code-eliminated from the build.
     expect(html).not.toContain("golden-first-run");
   });

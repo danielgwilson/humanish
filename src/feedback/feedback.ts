@@ -18,6 +18,8 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
+import { readNotesForSharing } from "../run/notes.js";
+import { cli } from "../cli/invocation.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import {
   buildAnalysisDraft,
@@ -27,6 +29,7 @@ import {
   type FeedbackDraft,
   type FeedbackDraftOptions,
   type FeedbackRunContext,
+  withReviewerNotes,
 } from "./draft.js";
 
 const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
@@ -171,6 +174,15 @@ async function draftFeedbackBound(
     };
   }
 
+  // The notes the draft includes are this set, checked here: a note can be added or changed after
+  // verify read the run.
+  const shared = await readNotesForSharing(context.preparedRunPaths);
+  if (shared.finding !== null)
+    return {
+      context,
+      result: notesRefusal(cwd, runInput, context.storedRunId, verified, shared.finding),
+    };
+
   const candidates = summarizeCandidates(context.loaded.bundle);
   if (
     options.candidate !== undefined &&
@@ -196,9 +208,17 @@ async function draftFeedbackBound(
   }
 
   const independent = options.analysis !== undefined || options.finding !== undefined;
-  const draft = independent
+  const built = independent
     ? await buildAnalysisDraft(context, options)
     : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
+  const draft =
+    built &&
+    withReviewerNotes(
+      built,
+      shared.notes,
+      context.loaded.bundle,
+      path.dirname(context.loaded.bundlePath),
+    );
   if (!draft)
     return {
       context,
@@ -227,6 +247,43 @@ async function draftFeedbackBound(
       draftPath,
       draft,
       candidates,
+    },
+  };
+}
+
+/** The refusal of a draft whose reviewer notes, as read for it, hold what verify's scan flags. */
+function notesRefusal(
+  cwd: string,
+  runInput: string,
+  runId: string,
+  verified: VerifyResult,
+  finding: "sensitive" | "opaque",
+): FeedbackResult {
+  return {
+    schema: FEEDBACK_RESULT_SCHEMA,
+    ok: false,
+    cwd,
+    run: runInput,
+    shareSafety: {
+      status: "blocked",
+      reasons: [
+        ...verified.shareSafety.reasons,
+        finding === "sensitive"
+          ? {
+              code: "PUBLIC_SAFETY_FINDINGS",
+              message:
+                "The reviewer notes the draft would include match secret, token or local-path patterns.",
+            }
+          : {
+              code: "UNSCANNED_ARTIFACT",
+              message:
+                "The reviewer notes the draft would include hold encoded text the scan cannot read.",
+            },
+      ],
+    },
+    error: {
+      code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
+      message: `The run's reviewer notes hold text that looks like a secret, a token or a local path, so no draft was written. Run \`${cli(`verify --run ${runId}`)}\` and fix the note files in notes/.`,
     },
   };
 }

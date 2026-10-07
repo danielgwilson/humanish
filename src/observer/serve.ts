@@ -5,7 +5,9 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import path from "node:path";
 
 import { pinDirectChildDirectory, pinDirectory } from "./pinned-files.js";
-import { buildHistoryIndex, matchRunRoute, serveRunPath } from "./run-routes.js";
+import { createNotesWriter, NOTES_PATH, type NotesWriter } from "./notes-route.js";
+import { renderObserver } from "./render.js";
+import { buildHistoryIndex, matchRunRoute, servedRunPaths, serveRunPath } from "./run-routes.js";
 import type { PinnedDirectory } from "./pinned-files.js";
 import {
   hashRunInventory,
@@ -203,6 +205,8 @@ function sameHashes(
 
 export interface ServeRequestHandlerOptions {
   proofRoot: PinnedDirectory;
+  /** Takes reviewer notes on loopback; without it the library refuses them. */
+  notes?: NotesWriter;
   safe: boolean;
   // Required even when safe is false: a fail-open path where safe===true but
   // admit is absent would silently serve every run. serveObserverLibrary always
@@ -221,6 +225,12 @@ export function createServeRequestHandler(
     try {
       for (const [name, value] of Object.entries(buildServeSecurityHeaders())) {
         response.setHeader(name, value);
+      }
+
+      if (new URL(request.url ?? "/", "http://127.0.0.1").pathname === NOTES_PATH) {
+        if (options.notes) await options.notes.handle(request, response);
+        else writeText(response, 405, "Method Not Allowed");
+        return;
       }
 
       const method = request.method ?? "GET";
@@ -306,6 +316,7 @@ export function createServeRequestHandler(
           response,
           [],
           request,
+          options.notes?.pageToken(request),
         );
         return;
       }
@@ -453,8 +464,24 @@ export async function serveObserverLibrary(
   const declaredOrigin = options.publicOrigin ? parsePublicOrigin(options.publicOrigin) : null;
 
   const hostAllowlist = new Set<string>();
+  let port = 0;
+  const notes = createNotesWriter({
+    exposed: mode !== "loopback",
+    port: () => port,
+    resolveRun: async (runId) => {
+      const pinned = await pinDirectChildDirectory(proofRoot, runId);
+      if (!pinned || (options.safe && (await admission.admit(runId)) === null)) return null;
+      return servedRunPaths(pinned);
+    },
+    refresh: (prepared) =>
+      renderObserver(cwd, path.basename(prepared.physicalRunRoot), {
+        open: false,
+        expectedRun: prepared,
+      }),
+  });
   const handler = createServeRequestHandler({
     proofRoot,
+    notes,
     safe: options.safe,
     admit: (runId) => admission.admit(runId),
     hostAllowlist,
@@ -471,7 +498,6 @@ export async function serveObserverLibrary(
   const server = createServer((request, response) => {
     void handler(request, response);
   });
-  let port: number;
   try {
     port = await listenOnLoopback(server, options.port);
   } catch (error) {
@@ -509,6 +535,7 @@ export async function serveObserverLibrary(
         hostAllowlist.add(parsed.host);
       },
       close: async () => {
+        await notes.settled();
         const closed = closeServer(server);
         // Keep-alive sockets would otherwise keep close() pending past the point
         // the operator believes Ctrl-C tore the server down.

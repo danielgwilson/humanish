@@ -1,0 +1,149 @@
+/* Reviewer notes: the composer in the study dock, its timeline markers and the list in Findings. */
+.study-playback .add-note {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 32px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-6);
+  background: var(--panel);
+  color: var(--ink);
+  font: 12px var(--sans);
+  white-space: nowrap;
+}
+.study-playback .add-note:hover {
+  border-color: var(--accent);
+}
+@container observer-workspace (max-width: 880px) {
+  .study-playback .add-note {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  /* The accessible name keeps the time; the phone dock shows the icon only. */
+  .study-playback .add-note-text {
+    display: none;
+  }
+}
+.scrub-note {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 14px;
+  border-radius: var(--radius-2);
+  background: var(--accent-ink);
+  transform: translate(-50%, -50%);
+}
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  max-width: 340px;
+  font: 12px/1.5 var(--sans);
+}
+.note-form p {
+  margin: 0;
+  color: var(--muted);
+}
+.note-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--ink);
+}
+.note-form textarea {
+  min-height: 96px;
+  padding: var(--space-8);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-6);
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+  resize: vertical;
+}
+.note-form textarea:focus-visible,
+.note-form button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.note-form button {
+  align-self: flex-start;
+}
+.note-form output:empty {
+  display: none;
+}
+.note-form output,
+.reviewer-notes output {
+  display: block;
+}
+.viewbar-notes {
+  color: var(--label);
+}
+.reviewer-notes {
+  padding: 0 var(--space-24) var(--space-28);
+  font-size: var(--text-13);
+  line-height: 1.6;
+}
+.reviewer-notes h2 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-16);
+  font-weight: 600;
+}
+.reviewer-notes h2 span {
+  font: 11px var(--mono);
+  color: var(--label);
+}
+.reviewer-notes-intro {
+  margin: var(--space-4) 0 var(--space-12);
+  color: var(--muted);
+  font-size: var(--text-12);
+}
+.reviewer-notes ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reviewer-notes li {
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-8);
+  background: var(--panel);
+}
+.reviewer-note-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-12);
+  color: var(--muted);
+  font-size: var(--text-12);
+}
+.reviewer-note-head .review-tool {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.reviewer-note-author {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.reviewer-note-human {
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-4);
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font: 600 11px var(--sans);
+}
+.reviewer-note-text {
+  margin: var(--space-8) 0 0;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -17,6 +17,7 @@ import {
 } from "../../src/observer/serve.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
+import { writeNoteFile } from "../helpers/note-files.js";
 
 // Concatenated so this file never holds a secret-shaped literal.
 const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -194,6 +195,29 @@ describe("a change that lands after the admission walk", () => {
     expect(forget).toHaveBeenCalledTimes(1);
     expect((await get(base, runPath("review.json"))).status).toBe(200);
     expect(forget).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show reviewer notes whose bytes changed after admission", async () => {
+    const { cwd, runRoot } = await admittedRun();
+    const noteFile = await writeNoteFile(runRoot, RUN, { text: "Admitted note." });
+    const original = await createShareSafetyAdmission(cwd).admit(RUN);
+    const changed = JSON.parse(await readFile(noteFile, "utf8")) as Record<string, unknown>;
+    await writeFile(noteFile, JSON.stringify({ ...changed, text: `Changed ${SECRET}` }));
+    const inventory = await readRunInventory(runRoot);
+    if (!original || !inventory) throw new Error("run was not admitted");
+    const base = await startHandler(cwd, async () => ({
+      inventory,
+      hashes: original.hashes,
+      forget: vi.fn(),
+    }));
+
+    const page = await get(base, runPath("observer/index.html"));
+
+    expect(page.status).toBe(200);
+    expect(page.body.includes(SECRET)).toBe(false);
+    expect(page.body).toContain(
+      `<script id="run-notes" type="application/json">{"notes":{"runId":"${RUN}","notes":[],"skipped":1}`,
+    );
   });
 
   it("verifies the run again after a hash mismatch", async () => {
