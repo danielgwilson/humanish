@@ -15,7 +15,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-async function fixture() {
+async function fixture(withoutOutcome = false) {
   const root = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-runtime-"));
   roots.push(root);
   const cwd = path.join(root, "project");
@@ -24,6 +24,11 @@ async function fixture() {
   expect((await runDryRun({ cwd, dryRun: true, runId })).ok).toBe(true);
   const runRoot = path.join(cwd, ".humanish", "runs", runId);
   const bundlePath = path.join(runRoot, "run.json");
+  if (withoutOutcome) {
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
+    delete bundle.outcome;
+    await writeFile(bundlePath, JSON.stringify(bundle));
+  }
   const before = await readFile(bundlePath, "utf8");
   const started = await serveObserverLibrary(cwd, {
     port: 0,
@@ -56,7 +61,7 @@ async function fixture() {
 
 describe("served Observer runtime status", () => {
   it("observes running, uncertain, and finalized states without changing evidence or revealing identifiers", async () => {
-    const { statusPath, status, read, before, bundlePath } = await fixture();
+    const { statusPath, status, read, before, bundlePath } = await fixture(true);
     await writeFile(statusPath, JSON.stringify(status()));
     const running = await read();
     expect(running.runtime).toEqual({
@@ -79,7 +84,9 @@ describe("served Observer runtime status", () => {
     );
     const finished = await read();
     expect(finished.runtime?.state).toBe("finished");
-    expect(finished.run).toEqual(running.run);
+    expect(running.run.display?.state).toBe("running");
+    expect(finished.run.display?.state).toBe("dry_run");
+    expect({ ...finished.run, display: undefined }).toEqual({ ...running.run, display: undefined });
     expect(finished.streams).toEqual(running.streams);
     expect(await readFile(bundlePath, "utf8")).toBe(before);
     expect(buildObserverData(JSON.parse(before)).runtime).toBeUndefined();
@@ -110,7 +117,7 @@ describe("served Observer runtime status", () => {
   });
 
   it("treats future, invalid, and out-of-order timestamps as uncertain, never live", async () => {
-    const { statusPath, status, read } = await fixture();
+    const { statusPath, status, read } = await fixture(true);
     for (const overrides of [
       { updatedAt: "not-a-date" },
       { startedAt: new Date(Date.now() + 60_000).toISOString() },
