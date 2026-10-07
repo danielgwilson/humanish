@@ -171,7 +171,7 @@ function concurrentStudyError(args: {
   if (passed === participantCount && args.shortfall !== undefined) {
     return {
       code: "HUMANISH_SHARED_WORLD_FAILED",
-      message: `Concurrent shared-world run did not run coherently. ${args.shortfall}`,
+      message: `The shared-world run failed although every participant passed. ${args.shortfall}`,
     };
   }
   if (passed === participantCount && args.executionFailure !== undefined) {
@@ -182,7 +182,7 @@ function concurrentStudyError(args: {
   }
   return {
     code: "HUMANISH_SHARED_WORLD_FAILED",
-    message: `Concurrent shared-world run did not run coherently: ${passed}/${plural(participantCount, "actor")} reached a terminal, engaged passed session.`,
+    message: `The shared-world run failed: ${passed} of ${plural(participantCount, "participant")} passed. The run's review.md lists what happened to the others.`,
   };
 }
 

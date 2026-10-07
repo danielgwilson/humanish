@@ -5,7 +5,7 @@ import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { pricedModel } from "../../study/plan-base.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
 import type { SharedWorldPlan } from "../../study/plan-types.js";
-import type { Participant, SharedWorldParticipant } from "../../study/plan-participants.js";
+import type { SharedWorldParticipant } from "../../study/plan-participants.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
@@ -65,15 +65,6 @@ export function resolveActorEntryUrl(baseUrl: string, entry: string | undefined)
   } catch {
     return baseUrl;
   }
-}
-
-export function participantTaxonomyLabel(labels: Participant["labels"]): string {
-  const parts = [
-    labels.actorType ? `type:${labels.actorType}` : undefined,
-    labels.surface ? `surface:${labels.surface}` : undefined,
-    labels.caseGroup ? `case:${labels.caseGroup}` : undefined,
-  ].filter((part): part is string => part !== undefined);
-  return parts.length > 0 ? ` (${parts.join(" / ")})` : "";
 }
 
 /** Build one participant's DesktopParticipantRun from its plan (each participant has its own

@@ -1,5 +1,6 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -2901,6 +2902,23 @@ describe("terminal run directory golden", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/terminal-dry-run.json",
     );
+  });
+
+  it("captions the participant by its persona and leaves the study id out", async () => {
+    const result = await runTerminal({
+      cwd,
+      config: liveConfig(),
+      dryRun: true,
+      open: false,
+      env: baseEnv(),
+      deps: { analysis: { run: automaticAnalysisBoundary() }, now: () => 1_000 },
+    });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as { streams: { label: string }[]; review: { summary: string } };
+    expect(bundle.streams.map((stream) => stream.label)).toEqual(["Autonomous creative agent"]);
+    expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
+    expect(bundle.review.summary).toContain("1 participant");
   });
 });
 

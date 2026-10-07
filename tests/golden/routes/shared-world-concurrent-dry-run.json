@@ -100,12 +100,12 @@
         "label": "dry run",
         "tone": "neutral"
       },
-      "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
+      "title": "Concurrent shared-world proof - 3 participants in one shared app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "persona-1",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one shared app",
         "source": "study:concurrent-shared-world-proof",
         "sourceDigest": "48b083174eecbf02"
       },
@@ -256,12 +256,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Concurrent shared-world dry run: 3 personas declared against one app served at a public sandbox URL (openai-computer-use); no sandboxes launched, $0 spent.",
+    "summary": "Dry run: 3 participants would use one shared app at the same time, served from a sandbox. No sandboxes were launched and $0 was spent.",
     "gaps": [
       "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- outcome: dry run\n- summary: Concurrent shared-world dry run: 3 personas declared against one app served at a public sandbox URL (openai-computer-use); no sandboxes launched, $0 spent.\n- plane: Shared app declared: clone of example-org/collab-app, to be served in the sandbox at a public sandbox URL (dry run: nothing cloned). Seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants (dry run; $0); stateSeries 1 snapshot, 0 deltas. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 3 participants would use one shared app at the same time, served from a sandbox. No sandboxes were launched and $0 was spent.\n- plane: Shared app declared: clone of example-org/collab-app, to be served in the sandbox at a public sandbox URL (dry run: nothing cloned). Seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants (dry run; $0); stateSeries 1 snapshot, 0 deltas. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This dry run proves nothing about live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -292,7 +292,7 @@
     },
     "persona": {
       "id": "persona-1",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one shared app",
       "source": "study:concurrent-shared-world-proof",
       "sourceDigest": "48b083174eecbf02"
     },
@@ -321,7 +321,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 01 would use the shared app; no session ran.",
         "streamIds": [
           "stream-001"
         ],
@@ -338,7 +338,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 02 would use the shared app; no session ran.",
         "streamIds": [
           "stream-002"
         ],
@@ -355,7 +355,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens.",
-        "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) for openai-computer-use against the shared plane at [provisioned-subject]; no session ran.",
+        "summary": "Persona 03 would use the shared app; no session ran.",
         "streamIds": [
           "stream-003"
         ],
@@ -371,7 +371,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 01",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -389,7 +389,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 01 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -417,7 +417,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 02",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -435,7 +435,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 02 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -463,7 +463,7 @@
           "mission": "Use the shared app."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) · concurrent-shared-world-proof",
+        "label": "Persona 03",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -481,7 +481,7 @@
         },
         "ui": {
           "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) use the shared app at the same time as the other personas.",
+          "intent": "Watch Persona 03 use the shared app at the same time as the others.",
           "state": "Dry run: the evidence shape was written without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -569,7 +569,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Concurrent shared-world dry run: 3 personas declared against one app served at a public sandbox URL (openai-computer-use); no sandboxes launched, $0 spent.",
+      "summary": "Dry run: 3 participants would use one shared app at the same time, served from a sandbox. No sandboxes were launched and $0 was spent.",
       "gaps": [
         "This dry run launched no concurrent shared-world session; it checks the evidence shape only, not live behavior, scale, or adopter-harness replacement."
       ]

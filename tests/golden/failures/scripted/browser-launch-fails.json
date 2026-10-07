@@ -295,12 +295,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.",
+    "summary": "Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 0/1 passed it; the gaps say why.",
     "gaps": [
       "desktop: Scripted browser launch failed: chromium executable missing"
     ]
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: Scripted session ended with a harness error: Scripted browser launch failed: chromium executable missing\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) failed (harness_error); 0 step actions, 0 raw screenshots\n\n## Gaps\n- desktop: Scripted browser launch failed: chromium executable missing\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: Scripted session ended with a harness error: Scripted browser launch failed: chromium executable missing\n- summary: Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 0/1 passed it; the gaps say why.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) failed (harness_error); 0 step actions, 0 raw screenshots\n\n## Gaps\n- desktop: Scripted browser launch failed: chromium executable missing\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -360,7 +360,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Scripted browser launch failed: chromium executable missing",
-        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; harness_error.",
+        "summary": "Scenario scripted-first-run ran in the desktop browser and was lost to a harness failure.",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -373,7 +373,7 @@
         "id": "scripted-desktop-stream",
         "simId": "scripted-desktop",
         "kind": "browser",
-        "label": "Desktop browser surface · scripted-routing-proof",
+        "label": "Synthetic new user",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -550,7 +550,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.",
+      "summary": "Scenario scripted-first-run ran on 1 browser surface against [app-url]/: 0/1 passed it; the gaps say why.",
       "gaps": [
         "desktop: Scripted browser launch failed: chromium executable missing"
       ]

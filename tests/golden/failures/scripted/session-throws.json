@@ -203,10 +203,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+    "summary": "The run failed before the script finished: session exploded with [REDACTED_SECRET]",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: session exploded with [REDACTED_SECRET]\n- summary: The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: session exploded with [REDACTED_SECRET]\n- summary: The run failed before the script finished: session exploded with [REDACTED_SECRET]\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at http://127.0.0.1:5173/; humanish did not provision it, so its build and commit are unpinned. The evidence is tied to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. mode: live gates real browser actuation against the declared app.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -266,7 +266,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "session exploded with [REDACTED_SECRET]",
-        "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+        "summary": "The run failed before the script finished: session exploded with [REDACTED_SECRET]",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -279,7 +279,7 @@
         "id": "scripted-desktop-stream",
         "simId": "scripted-desktop",
         "kind": "browser",
-        "label": "Desktop browser surface · scripted-routing-proof",
+        "label": "Synthetic new user",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -361,7 +361,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "The scripted run failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
+      "summary": "The run failed before the script finished: session exploded with [REDACTED_SECRET]",
       "gaps": []
     },
     "feedbackCandidates": [],

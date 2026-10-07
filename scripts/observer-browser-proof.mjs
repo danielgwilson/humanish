@@ -2826,8 +2826,9 @@ try {
       prepare: () => {
         data.run.persona.name = "Synthetic fan-out placeholder";
         for (const [index, stream] of data.streams.entries()) {
+          // A label an earlier release wrote, on a numbered participant: the persona names it.
           stream.label = `CUA lane ${index + 1}`;
-          stream.laneId = index ? "landscape" : "portrait";
+          stream.laneId = `lane-0${index + 1}`;
           stream.sim.personaId = index ? "skeptical-power-user" : "synthetic-new-user";
         }
       },

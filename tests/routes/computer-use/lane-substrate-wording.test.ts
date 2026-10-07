@@ -84,7 +84,7 @@ describe.each(["e2b-desktop", "local-desktop", "local-filesystem"] as const)(
     it("names the runner in the finished summary and the stream intent", async () => {
       const run = await bundle(runner, "finished");
       expect(run.simulations[0]?.summary).toBe(
-        `Computer-use actor (openai-computer-use) drove the subject app ${place[runner]}; goal_satisfied.`,
+        `First time visitor used the app ${place[runner]}, and reached the goal.`,
       );
       expect(run.streams[0]?.ui?.intent).toBe(
         `Watch the computer-use actor drive the subject app ${place[runner]}.`,
@@ -94,7 +94,7 @@ describe.each(["e2b-desktop", "local-desktop", "local-filesystem"] as const)(
     it("names the runner while the session is running", async () => {
       const run = await bundle(runner, "running");
       expect(run.simulations[0]?.summary).toBe(
-        `Computer-use actor (openai-computer-use) is driving the subject app ${place[runner]}.`,
+        `First time visitor is using the app ${place[runner]}.`,
       );
     });
   },

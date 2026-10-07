@@ -944,9 +944,12 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
         status: "passed",
       }),
     ]);
-    expect(
-      observerData.streams.map((stream: { label: string }) => stream.label).join("\n"),
-    ).toContain("type:initiator / surface:intake / case:case-001");
+    // The taxonomy stays in the data above; the Observer captions each participant by its id.
+    expect(observerData.streams.map((stream: { label: string }) => stream.label)).toEqual([
+      "Persona 01",
+      "Persona 02",
+      "Persona 03",
+    ]);
 
     // Per-actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".humanish", "runs", result.runId, "actors"));
@@ -1662,9 +1665,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     }).finally(stderr.stop);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain(
-      "2/3 actors reached a terminal, engaged passed session",
-    );
+    expect(result.error?.message).toContain("2 of 3 participants passed");
 
     expect(result.roles[1]?.error?.message).toBe(
       "Participant ended with failed: failed (actor_error)",
@@ -1674,12 +1675,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).toContain("2/3 actor sessions passed credibility checks");
-    expect(bundle.review.summary).toContain("mission endpoint: 2/3 ended goal_satisfied");
-    expect(bundle.review.summary).toContain(
-      "completion reasons: actor_error 1/3, goal_satisfied 2/3",
-    );
-    expect(bundle.review.summary).not.toContain("reached their goal");
+    expect(bundle.review.summary).toContain("2 of 3 reached the goal; the gaps list the other 1.");
     expect(bundle.review.gaps.some((gap) => gap.includes("persona-02"))).toBe(true);
     expect(bundle.sharedWorld?.outcomes).toEqual(
       expect.arrayContaining([

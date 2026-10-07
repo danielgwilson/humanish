@@ -38,9 +38,7 @@ describe("computer-use completion provenance", () => {
     const review = withCuaReviewProvenance(run.review, run.streams);
     expect(review.verdict).toBe("pass");
     expect(review.participants).toEqual(run.review.participants);
-    expect(review.summary).toContain(
-      "Run gate: pass. Participants: 1/1 reported reaching the goal.",
-    );
+    expect(review.summary).toContain("1 participant took part: 1/1 reported reaching the goal.");
     expect(review.summary).toContain(run.review.summary);
     expect(review.gaps).toContain(CUA_COMPLETION_NOTE);
     expect(run).toEqual(before);
@@ -129,11 +127,19 @@ describe("computer-use completion provenance", () => {
       "Rerun from previous-run: 1/1 reached the goal. Adapter check: output differs.";
     run.review.verdict = "fail";
     const next = withCuaReviewProvenance(run.review, run.streams);
-    expect(next.summary).toContain("Run gate: fail.");
-    expect(next.summary).toContain(
+    expect(next.summary).toBe(
       "Rerun from previous-run: 1/1 reported reaching the goal. Adapter check: output differs.",
     );
     expect(next.summary).not.toContain("1/1 reached the goal");
+    expect(withCuaReviewProvenance(next, run.streams)).toEqual(next);
+  });
+
+  it("rewrites the header an earlier release wrote, once", () => {
+    const run = bundle();
+    run.review.summary =
+      "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.";
+    const next = withCuaReviewProvenance(run.review, run.streams);
+    expect(next.summary).toBe("1 participant took part: 1/1 reported reaching the goal. Done.");
     expect(withCuaReviewProvenance(next, run.streams)).toEqual(next);
   });
 

@@ -220,10 +220,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+    "summary": "The run failed before the script finished: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
     "gaps": []
   },
-  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- summary: The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n",
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- summary: The run failed before the script finished: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -283,7 +283,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
-        "summary": "The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+        "summary": "The run failed before the script finished: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -296,7 +296,7 @@
         "id": "scripted-desktop-stream",
         "simId": "scripted-desktop",
         "kind": "browser",
-        "label": "Desktop browser surface · provisioned-scripted-routing-proof",
+        "label": "Synthetic provider",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -378,7 +378,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "The scripted run failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+      "summary": "The run failed before the script finished: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
       "gaps": []
     },
     "feedbackCandidates": [],

@@ -9,6 +9,8 @@ import {
   participantStream,
 } from "../../run/participant-records.js";
 import type { RunDesktopGeometry, RunStream } from "../../run/streams.js";
+import { participantCaption } from "../../run/participant-caption.js";
+import { sessionEndingInWords } from "../../run/outcomes.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import type { judgeParticipantRecords } from "../../run/judge.js";
@@ -88,6 +90,7 @@ function fanoutParticipantRecord(
 ): RunSimulation {
   const { plan } = args;
   const { outcome, publicTargetUrl, session, status, reason } = view;
+  const name = participantCaption({ id: spec.planned.id, personaId: spec.persona.id });
   return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
     scenarioId: `cua-${plan.studyId}`,
@@ -97,14 +100,14 @@ function fanoutParticipantRecord(
     progress: args.inProgress === true && outcome === undefined ? 20 : 100,
     currentStep: reason,
     summary: session
-      ? `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
+      ? `${name} used the app and ${sessionEndingInWords(session.trace)}.`
       : args.inProgress === true && outcome === undefined
-        ? `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
+        ? `${name} is using the app.`
         : outcome?.skippedReason !== undefined
-          ? `Participant ${spec.planned.id} ${outcome.skippedReason}.`
+          ? `${name} was ${outcome.skippedReason}.`
           : outcome?.sessionError !== undefined
-            ? `Participant ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}; no session ran.`,
+            ? `${name} did not finish a session: ${outcome.sessionError}`
+            : `${name} would use ${publicTargetUrl}; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });
@@ -134,7 +137,11 @@ function fanoutParticipantStream(
         ? {}
         : { caseGroup: spec.planned.labels.caseGroup }),
       kind: "browser",
-      label: `${spec.planned.id} · browser`,
+      label: participantCaption({
+        id: spec.planned.id,
+        personaId: spec.persona.id,
+        device: spec.planned.device,
+      }),
       status,
       ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",

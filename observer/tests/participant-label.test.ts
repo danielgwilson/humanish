@@ -15,30 +15,42 @@ function observerData(golden: Record<string, unknown>): ObserverData {
 }
 
 describe("participant labels", () => {
-  it("names each recorded fan-out participant by its persona", () => {
+  it("names each fan-out participant by the caption its run recorded", () => {
     const { streams } = observerData(fanoutLive);
     expect([...participantLabels(streams).values()]).toEqual([
-      "First time visitor",
-      "Impatient skimmer",
-      "Power user",
-      "Comparison shopper",
+      "Mobile newcomer, phone",
+      "Small skimmer, phone",
+      "Desktop power",
+      "Wide researcher",
     ]);
   });
 
-  it("names a participant by its persona whatever its recorded label says", () => {
+  it("names a computer-use participant from its ids when an older release recorded the label", () => {
     const { streams } = observerData(fanoutLive);
-    const older = streams.map((stream) => ({
-      ...stream,
-      label: `CUA lane ${stream.laneId} — fanout-proof`,
-    }));
-    expect([...participantLabels(older).values()]).toEqual([
-      ...participantLabels(streams).values(),
-    ]);
+    for (const older of [
+      (laneId: string) => `${laneId} · browser`,
+      (laneId: string) => `CUA lane ${laneId} — fanout-proof`,
+    ]) {
+      const recorded = streams.map((stream) => ({ ...stream, label: older(stream.laneId!) }));
+      expect([...participantLabels(recorded).values()]).toEqual([
+        "Mobile newcomer",
+        "Small skimmer",
+        "Desktop power",
+        "Wide researcher",
+      ]);
+    }
   });
 
-  it("keeps the recorded label on a stream with no participant id", () => {
+  it("names a shared-world participant by its id, not the taxonomy an older label carried", () => {
     const { streams } = observerData(sharedWorldLive);
-    expect(streams.every((stream) => stream.laneId === undefined)).toBe(true);
-    expect([...participantLabels(streams).values()]).toEqual(streams.map((stream) => stream.label));
+    const recorded = streams.map((stream, index) => ({
+      ...stream,
+      label: `Concurrent persona persona-0${index + 1} (type:initiator / surface:intake / case:case-001) · concurrent-shared-world-proof`,
+    }));
+    expect([...participantLabels(recorded).values()]).toEqual([
+      "Persona 01",
+      "Persona 02",
+      "Persona 03",
+    ]);
   });
 });

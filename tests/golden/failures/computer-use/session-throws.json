@@ -279,10 +279,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "provider exploded mid-session",
+    "summary": "1 participant was planned, but the run failed before their session finished: provider exploded mid-session",
     "gaps": []
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: lane-01: provider exploded mid-session\n- summary: provider exploded mid-session\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: lane-01: provider exploded mid-session\n- summary: 1 participant was planned, but the run failed before their session finished: provider exploded mid-session\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -342,7 +342,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "provider exploded mid-session",
-        "summary": "The computer-use run failed before a terminal session verdict: provider exploded mid-session",
+        "summary": "First time visitor did not finish a session: provider exploded mid-session",
         "streamIds": [
           "stream-001"
         ],
@@ -360,7 +360,7 @@
           "focus": "Focus on the landing page."
         },
         "kind": "browser",
-        "label": "lane-01 · browser",
+        "label": "First time visitor",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -474,7 +474,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "provider exploded mid-session",
+      "summary": "1 participant was planned, but the run failed before their session finished: provider exploded mid-session",
       "gaps": []
     },
     "feedbackCandidates": [],

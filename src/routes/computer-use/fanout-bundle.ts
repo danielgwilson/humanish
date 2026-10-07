@@ -17,6 +17,7 @@ import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
   formatRunTaskFunnel,
+  gapsListClause,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
@@ -51,12 +52,33 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
   return events;
 }
 
+/**
+ * The run's summary in plain sentences: who took part, what happened to them with the denominator
+ * attached, and that the gaps list the participants who did not pass.
+ */
+function fanoutSummary(
+  args: CuaFanoutBundleArgs,
+  facts: { passed: number; outcomes: string; tasks?: string },
+): string {
+  const count = args.specs.length;
+  const people = plural(count, "participant");
+  const rerun = args.rerun === undefined ? "" : `Rerun from ${args.rerun.sourceRunId}: `;
+  if (args.inProgress === true) {
+    return `${people} ${count === 1 ? "is" : "are"} each using their own copy of the app. The run is still going, so nothing here is final.`;
+  }
+  if (args.dryRun) {
+    return `${rerun}Dry run: ${people} would each use their own copy of ${publicSafeAppUrlLabel(args.appUrl)}. No desktops were launched and $0 was spent.`;
+  }
+  const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
+  return `${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;
+}
+
 function fanoutReview(
   args: CuaFanoutBundleArgs,
   streams: RunStream[],
   judgment: ReturnType<typeof judgeParticipantRecords>,
 ): ReviewSummary {
-  const { specs, outcomes } = args;
+  const { outcomes } = args;
   // The judge's verdict: live fan-out must prove every participant (judgeParticipants).
   const verdict = args.verdict;
 
@@ -91,12 +113,14 @@ function fanoutReview(
       ...(runTasks === undefined ? {} : { tasks: runTasks }),
       // The app URL is named as the participant records name it: one on an E2B host names a
       // sandbox, so the summary carries its digest, which verify accepts in a shared run.
-      summary:
-        args.inProgress === true
-          ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
-          : args.dryRun
-            ? `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out: ${specs.length} participants composed for ${args.descriptor.id} against ${publicSafeAppUrlLabel(args.appUrl)}, one world each; no desktops launched, $0 spend.`
-            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${plural(specs.length, "participant")} reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${runTasks ? `; tasks: ${formatRunTaskFunnel(runTasks)}` : ""}.`,
+      summary: fanoutSummary(args, {
+        passed: passedParticipants,
+        outcomes:
+          participants === undefined
+            ? `0/${args.specs.length} finished a session`
+            : formatParticipantOutcomes(participants, participantEndings),
+        ...(runTasks === undefined ? {} : { tasks: formatRunTaskFunnel(runTasks) }),
+      }),
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]

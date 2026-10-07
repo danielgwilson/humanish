@@ -14,7 +14,8 @@ import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
-import { participantTaxonomyLabel } from "./participant-specs.js";
+import { participantCaption } from "../../run/participant-caption.js";
+import { sessionEndingInWords } from "../../run/outcomes.js";
 import type { ConcurrentBundleArgs } from "./types.js";
 
 /** What every participant's records share. */
@@ -23,14 +24,13 @@ export interface SharedWorldRecordContext {
   participants: ReturnType<typeof judgeParticipantRecords>["participants"];
   external: boolean;
   inProgress: boolean;
-  /** The public-safe plane label: never the raw getHost URL or public origin. */
-  appUrl: string;
   /** Numbers events in the order they are pushed. */
   nextEventId: (suffix: string) => string;
 }
 
 interface ParticipantView {
-  taxonomy: string;
+  /** The participant's name in words, without the device the caption adds. */
+  name: string;
   judgment: SharedWorldRecordContext["participants"][number];
   outcome: ParticipantRunOutcome | undefined;
   session: ParticipantRunOutcome["session"];
@@ -49,7 +49,7 @@ function participantView(
   index: number,
 ): ParticipantView {
   const { args, external } = ctx;
-  const taxonomy = participantTaxonomyLabel(spec.planned.labels);
+  const name = participantCaption({ id: spec.planned.id, personaId: spec.persona.id });
   const result = args.actorResults[index];
   const outcome = result?.outcome;
   const session = outcome?.session;
@@ -87,7 +87,7 @@ function participantView(
         ? "blurred"
         : "raw";
   return {
-    taxonomy,
+    name,
     judgment,
     outcome,
     session,
@@ -108,7 +108,7 @@ function sharedWorldSimulation(
   view: ParticipantView,
 ): RunSimulation {
   const { args, inProgress } = ctx;
-  const { taxonomy, outcome, session } = view;
+  const { name, outcome, session } = view;
   return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
     scenarioId: `concurrent-shared-world-${args.plan.studyId}`,
@@ -118,12 +118,12 @@ function sharedWorldSimulation(
     progress: inProgress ? 35 : 100,
     currentStep: view.reason,
     summary: session
-      ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
+      ? `${name} used the shared app and ${sessionEndingInWords(session.trace)}.`
       : outcome?.sessionError !== undefined
-        ? `Persona ${spec.planned.id}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
+        ? `${name} did not finish a session: ${outcome.sessionError}`
         : inProgress
-          ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
-          : `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}; no session ran.`,
+          ? `${name} is using the shared app.`
+          : `${name} would use the shared app; no session ran.`,
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });
@@ -136,14 +136,18 @@ function sharedWorldStream(
   view: ParticipantView,
 ): RunStream {
   const { args } = ctx;
-  const { taxonomy, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
+  const { name, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
   const judged = view.judgment.judgedStatus;
   return participantStream(spec, {
     ...(spec.evidenceAssignment === undefined
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.studyId}`,
+    label: participantCaption({
+      id: spec.planned.id,
+      personaId: spec.persona.id,
+      device: spec.planned.device,
+    }),
     status: view.status,
     ...(judged === undefined ? {} : { judgedStatus: judged }),
     transport: "snapshot",
@@ -168,7 +172,7 @@ function sharedWorldStream(
     desktopGeometry,
     ui: {
       route: view.route,
-      intent: `Watch persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) use the shared app at the same time as the other personas.`,
+      intent: `Watch ${name} use the shared app at the same time as the others.`,
       state: view.reason,
       ...(session ? { actorStatus: session.status } : {}),
       ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),

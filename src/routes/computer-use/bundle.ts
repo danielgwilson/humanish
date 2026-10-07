@@ -141,6 +141,7 @@ function singleParticipantArgs(
     ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
     persona: spec.persona,
     resolution: spec.planned.device.resolution,
+    deviceName: spec.planned.device.name,
     desktopRoute: base.plan.runner.desktop !== "in-process",
     substrate:
       base.plan.runner.desktop === "in-process"

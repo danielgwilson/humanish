@@ -683,7 +683,7 @@ export function Player({
             playing={studyPlayback.playing}
             speed={studyPlayback.speed}
             seekRevision={studyPlayback.seekRevision}
-            label={stream.label}
+            label={participantName}
             onUnavailable={() => setUnavailableRecording(recordingKey)}
           />
         ) : (
@@ -696,7 +696,7 @@ export function Player({
             zoom={zoom}
             live={live}
             streamRevision={streamRevision}
-            label={stream.label}
+            label={participantName}
             emptyText={emptyText}
           />
         )}
@@ -1227,11 +1227,11 @@ export function Player({
               <ParticipantAssignment stream={stream} />
               <div className="kv">
                 <span className="k">Persona</span>
-                <span className="v">{participantName}</span>
+                <span className="v">{stream.sim.personaId}</span>
                 <span className="k">Scenario</span>
                 <span className="v">{data.run.scenario.title}</span>
                 <span className="k">Participant</span>
-                <span className="v">{stream.label}</span>
+                <span className="v">{participantName}</span>
                 {actor ? (
                   <>
                     <span className="k">Actor</span>

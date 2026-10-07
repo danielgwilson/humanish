@@ -1,15 +1,13 @@
 import type { ObserverStream } from "./observer-data";
+import { savedCaption } from "../../src/run/participant-caption.js";
 
-/**
- * A computer-use participant stream records its participant id as `laneId`; no other route sets
- * it. Those streams display the recorded persona, so the card does not depend on the label's
- * wording, which has changed between releases (`CUA lane <id> — <lab>`, then
- * `CUA participant <id>: <lab>`). Every other stream keeps its recorded label.
- */
+/** The recorded caption, the same words the TUI shows for the participant. */
 function displayLabel(stream: ObserverStream): string {
-  if (stream.laneId === undefined) return stream.label;
-  const persona = stream.sim.personaId.replace(/[-_]+/g, " ");
-  return persona.charAt(0).toUpperCase() + persona.slice(1);
+  return savedCaption({
+    label: stream.label,
+    ...(stream.laneId === undefined ? {} : { participantId: stream.laneId }),
+    personaId: stream.sim.personaId,
+  });
 }
 
 export function participantLabels(streams: ObserverStream[]): Map<string, string> {
