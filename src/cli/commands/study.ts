@@ -219,7 +219,8 @@ function formatStudyCheckHuman(result: StudyPreflightResult): HumanOutput {
         ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
         : []),
       ...result.checks.map(
-        (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
+        (check) =>
+          `- ${check.checked === false ? "not checked" : check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
       ),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n";

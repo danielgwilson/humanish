@@ -19,6 +19,7 @@ import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 import { cli } from "../../cli/invocation.js";
+import { DESKTOP_RESERVATION } from "./capacity.js";
 
 const docker = async (args: string[]): Promise<string> =>
   (await runtimeDocker(args, {}, 60_000)).stdout.trim();
@@ -36,6 +37,39 @@ export interface LocalFirecrackerAssets {
 
 export interface LocalFirecrackerDesktop extends DesktopSession {
   finishRecording(destination: Writable): Promise<DesktopRecordingMetadata>;
+  /** Whether Docker killed this desktop's container for memory; undefined when it cannot tell. */
+  killedForMemory?(): Promise<boolean | undefined>;
+}
+
+/**
+ * Whether Docker recorded an `oom` event for the container since `since` (epoch ms). The
+ * container is created with --rm, so its OOMKilled state is gone once it exits; the daemon's
+ * recent events still hold the kill.
+ */
+export async function desktopKilledForMemory(
+  container: string,
+  since: number,
+): Promise<boolean | undefined> {
+  // Relative times use the clock of the machine Docker runs on, which is the Lima VM on a Mac.
+  const seconds = Math.ceil((Date.now() - since) / 1000) + 60;
+  try {
+    const events = await docker([
+      "events",
+      "--since",
+      `${seconds}s`,
+      "--until",
+      "0s",
+      "--filter",
+      `container=${container}`,
+      "--filter",
+      "event=oom",
+      "--format",
+      "{{.Action}}",
+    ]);
+    return events.split("\n").some((line) => line.trim() === "oom");
+  } catch {
+    return undefined;
+  }
 }
 
 type GuestClient = Awaited<ReturnType<typeof connectGuestBootstrap>>;
@@ -246,11 +280,11 @@ function dockerCreateArgs(options: {
     "--sysctl",
     "net.ipv4.ip_forward=1",
     "--memory",
-    "3g",
+    `${DESKTOP_RESERVATION.memoryGiB}g`,
     "--memory-swap",
-    "3g",
+    `${DESKTOP_RESERVATION.memoryGiB}g`,
     "--cpus",
-    "2",
+    String(DESKTOP_RESERVATION.cpus),
     "--pids-limit",
     "128",
     "--tmpfs",
@@ -381,6 +415,7 @@ export async function createLocalFirecrackerDesktop(
   const aborted = (): void => {
     void close();
   };
+  const createdAt = Date.now();
   try {
     const { uid, gid } = await prepareVmHost(host, url, inbox, signal);
     const container = await startContainer(
@@ -414,6 +449,7 @@ export async function createLocalFirecrackerDesktop(
     return {
       ...session,
       finishRecording: (destination) => client.finishRecording(destination),
+      killedForMemory: () => desktopKilledForMemory(container, createdAt),
     };
   } catch (error) {
     if (host.container) await saveStartupLogs(host.container, options.outputRoot, work);

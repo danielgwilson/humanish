@@ -6,10 +6,12 @@ import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import { type StudyConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
-import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
+import { digest, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
 import { type StudyRoute, routeOf } from "./plan.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
+import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
+import { cli } from "../cli/invocation.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 
@@ -23,6 +25,8 @@ export interface StudyPreflightCheck {
   name: string;
   ok: boolean;
   message: string;
+  /** `false` on a row the CLI could not check; its message names the command that checks it. */
+  checked?: false;
 }
 
 export interface StudyPreflightTarget {
@@ -181,34 +185,64 @@ export async function runStudyPreflight(
     warnings: [...resolved.warnings, ...personaBackgroundWarnings(resolved.config, personas)],
   };
 
+  const machine = machineCheck(ctx.config);
+  // A local study's app and desktops run on this machine, so the hosted probes do not apply.
+  if (reachability !== "metadata" && isLocalBrowserStudy(ctx.config))
+    return finalize(ctx, {
+      checks: [
+        {
+          name: "reachability",
+          ok: true,
+          checked: false,
+          message: `${reachability} reachability does not apply to a local study: its app runs on this machine and its participant desktops in the local runtime, not in a hosted sandbox.`,
+        },
+        machine,
+      ],
+    });
   switch (reachability) {
     case "metadata":
       return finalize(ctx, {
-        check: {
-          name: "reachability",
-          ok: true,
-          message:
-            "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --study <study> for setup checks.",
-        },
+        checks: [
+          {
+            name: "reachability",
+            ok: true,
+            message:
+              "metadata-only; no network, sandbox, or model calls. Target reachability was not checked.",
+          },
+          machine,
+        ],
       });
     case "public-preview":
       return await runPublicPreviewPreflight(ctx);
     case "sandbox-loopback":
       return await runSandboxLoopbackPreflight(ctx);
     case "prepared-host":
-      return fail(
-        ctx,
-        "HUMANISH_STUDY_PREFLIGHT_UNSUPPORTED_ROUTE",
-        "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.",
-        [
+      return finalize(ctx, {
+        checks: [
           {
-            name: "prepared-host",
-            ok: false,
-            message: "no generic CLI hook exists for adopter-prepared hosts yet",
+            name: "reachability",
+            ok: true,
+            checked: false,
+            message:
+              "prepared-host reachability has no CLI check: it needs a library adapter hook for a host you prepare yourself. The study file was checked.",
           },
+          machine,
         ],
-      );
+      });
   }
+}
+
+/** What study check leaves to doctor: this machine's setup for the study, and the command. */
+function machineCheck(config: StudyConfig): StudyPreflightCheck {
+  const command = cli(`doctor --study ${config.id}`);
+  return {
+    name: "this machine",
+    ok: true,
+    checked: false,
+    message: isLocalBrowserStudy(config)
+      ? `The local runtime, the participant sign-in and whether this study's desktops fit were not checked. Run ${command} to check them.`
+      : `Credentials, local login and dependencies were not checked. Run ${command} to check them.`,
+  };
 }
 
 function collectTargets(config: StudyConfig): StudyPreflightTarget[] {

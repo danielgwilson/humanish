@@ -536,9 +536,11 @@ describe("selected lab setup without paid dispatch", () => {
     await project(lab(), async (cwd) => {
       const result = await runStudyPreflight({ cwd, study: "preview", env: keyless });
       expect(result.ok).toBe(true);
-      expect(result.checks.find((check) => check.name === "reachability")?.message).toContain(
-        "Credentials, local login, dependencies and target reachability were not checked",
-      );
+      expect(result.checks.find((check) => check.name === "this machine")).toMatchObject({
+        ok: true,
+        checked: false,
+        message: expect.stringContaining("doctor --study preview"),
+      });
       expect(result.spend).toEqual({ e2bDesktop: false, model: false });
     });
   });

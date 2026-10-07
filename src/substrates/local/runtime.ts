@@ -8,6 +8,13 @@ import { pipeline } from "node:stream/promises";
 import type { LocalFirecrackerAssets } from "./firecracker-desktop.js";
 import { LOCAL_MEDIA_RUNTIME_RELEASES, LOCAL_RUNTIME_RELEASES } from "./runtime-release.js";
 import {
+  defaultVmSize,
+  localCapacity,
+  machineSize,
+  type LocalCapacity,
+  type VmSize,
+} from "./capacity.js";
+import {
   limaStatus,
   loadRuntimeArchive,
   prepareLima,
@@ -15,6 +22,7 @@ import {
   runtimeDocker,
   runtimeExec,
   usesLima,
+  type LimaStatus,
   type RuntimeHostOptions,
 } from "./runtime-host.js";
 import { cli } from "../../cli/invocation.js";
@@ -30,9 +38,13 @@ export interface LocalRuntimeStatus {
   installed: boolean;
   message: string;
   assets?: LocalFirecrackerAssets;
+  /** How many desktops fit, when the VM or this machine could be read. */
+  capacity?: LocalCapacity;
 }
 interface RuntimeOptions extends RuntimeHostOptions {
   media?: boolean;
+  /** The Lima VM size `runtime setup --memory --cpus` asks for. Macs only. */
+  size?: Partial<VmSize>;
   progress?: (message: string) => void;
   /** Explicit source-build/test override; never provided by a participant. */
   release?: LocalRuntimeRelease;
@@ -45,26 +57,72 @@ const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefine
     runtimeArchitecture(options) ?? "amd64"
   ];
 
+/** Desktops the existing Lima VM holds, the VM setup would create, or this Linux machine. */
+function runtimeCapacity(
+  options: RuntimeOptions,
+  lima: LimaStatus | undefined,
+): LocalCapacity | undefined {
+  if (lima === undefined) return localCapacity("linux-host", machineSize(options.machine));
+  const machine = machineSize(options.machine);
+  if (lima.size !== undefined) return localCapacity("lima-vm", lima.size, { machine });
+  // An existing VM whose size Lima did not list has an unknown size, which no default replaces.
+  if (lima.exists) return undefined;
+  const planned = defaultVmSize(machine);
+  return localCapacity(
+    "lima-vm",
+    { memoryBytes: planned.memoryGiB * 1024 ** 3, cpus: planned.cpus },
+    { planned: true, machine },
+  );
+}
+
+/**
+ * How many desktops the local runtime holds, read without starting anything. Undefined when the
+ * host cannot be read, such as a Mac without Lima: preparing the runtime reports that.
+ */
+export async function localRuntimeCapacity(
+  options: RuntimeHostOptions = {},
+): Promise<LocalCapacity | undefined> {
+  if (runtimeArchitecture(options) === undefined) return undefined;
+  if (!usesLima(options)) return runtimeCapacity(options, undefined);
+  try {
+    return runtimeCapacity(options, await limaStatus(options));
+  } catch {
+    return undefined;
+  }
+}
+
 /** Read-only host and cache inspection. Never pulls an image or starts a container. */
 export async function localRuntimeStatus(
   options: RuntimeOptions = {},
 ): Promise<LocalRuntimeStatus> {
-  const architecture = runtimeArchitecture(options),
-    lima = usesLima(options);
+  const architecture = runtimeArchitecture(options);
   if (!architecture)
     return {
       ok: false,
       installed: false,
       message: "Local browsers need Linux x64 or an M3-or-newer Mac with Lima.",
     };
-  if (lima) {
+  let lima: LimaStatus | undefined;
+  if (usesLima(options)) {
     try {
-      const status = await limaStatus(options);
-      if (!status.ready) return { ok: true, installed: false, message: status.message };
+      lima = await limaStatus(options);
     } catch (error) {
       return { ok: false, installed: false, message: (error as Error).message };
     }
   }
+  const capacity = runtimeCapacity(options, lima);
+  const sized = capacity === undefined ? {} : { capacity };
+  if (lima !== undefined && !lima.ready)
+    return { ok: true, installed: false, message: lima.message, ...sized };
+  return { ...(await engineStatus(options, architecture, lima !== undefined)), ...sized };
+}
+
+/** The Docker engine, devices and cached image the desktops run on. */
+async function engineStatus(
+  options: RuntimeOptions,
+  architecture: "amd64" | "arm64",
+  lima: boolean,
+): Promise<LocalRuntimeStatus> {
   const env = options.env ?? process.env;
   if (!lima && env.DOCKER_HOST && !env.DOCKER_HOST.startsWith("unix://")) {
     return {
@@ -190,6 +248,10 @@ export async function prepareLocalRuntime(
   options: RuntimeOptions = {},
 ): Promise<LocalFirecrackerAssets> {
   if (!runtimeArchitecture(options)) throw new Error((await localRuntimeStatus(options)).message);
+  if (options.size !== undefined && !usesLima(options))
+    throw new Error(
+      "--memory and --cpus size the humanish Lima VM, which runs only on a Mac. On Linux, desktops use this machine's memory and CPUs directly.",
+    );
   if (usesLima(options)) await prepareLima(options, options.progress);
   const before = await localRuntimeStatus(options);
   if (!before.ok) throw new Error(before.message);

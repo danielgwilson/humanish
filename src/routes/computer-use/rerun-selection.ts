@@ -6,6 +6,9 @@ import { loadRunBundle } from "../../run/locate.js";
 import { type RunStream } from "../../run/streams.js";
 import type { CuaParticipantPlan, DesktopParticipantRun } from "./types.js";
 import { plural } from "../../run/text.js";
+import { access } from "node:fs/promises";
+import path from "node:path";
+import { cli } from "../../cli/invocation.js";
 
 export async function resolveCuaRerunSelection(args: {
   cwd: string;
@@ -24,21 +27,35 @@ export async function resolveCuaRerunSelection(args: {
     }
   | { ok: false; message: string }
 > {
-  const source = await loadRunBundle(args.cwd, args.sourceRunId);
+  const { studyId, sourceRunId } = args;
+  // Every refusal ends with the command that runs the whole study, which is what a user who
+  // reached for a rerun too early wants.
+  const instead = `To run every participant of ${studyId} instead, leave out --rerun-failed-from: ${cli(`watch ${studyId}`)} or ${cli(`run ${studyId}`)}.`;
+  const refuse = (what: string) => ({ ok: false as const, message: `${what} ${instead}` });
+  const source = await loadRunBundle(args.cwd, sourceRunId);
   if (!source) {
-    return { ok: false, message: `source run not found or invalid: ${args.sourceRunId}` };
+    const noRuns =
+      sourceRunId === "latest" &&
+      !(await access(path.join(args.cwd, ".humanish", "runs", "latest.json")).then(
+        () => true,
+        () => false,
+      ));
+    return refuse(
+      noRuns
+        ? "--rerun-failed-from latest found no run: this project has no runs yet, and a rerun repeats the failed participants of an earlier live run."
+        : `--rerun-failed-from ${sourceRunId} names no run humanish can read in this project. ${cli("runs")} lists its runs.`,
+    );
   }
   const bundle = source.bundle;
+  const run = `Run ${bundle.runId}${sourceRunId === bundle.runId ? "" : ` (the ${sourceRunId} run)`}`;
+  const notFanout = `${run} is not a live computer-use run with more than one participant, so it has no participants to rerun.`;
   if (bundle.mode !== "live") {
-    return {
-      ok: false,
-      message: `source run ${bundle.runId} is ${bundle.mode}; rerun selection only applies to live CUA fan-out evidence.`,
-    };
+    return refuse(
+      `${run} is a dry run: no participant ran in it, so none can be rerun. A rerun repeats the failed participants of a live run with more than one participant.`,
+    );
   }
   const fanoutEvent = bundle.events.some((event) => event.type === "cua-lab.fanout.plan");
-  if (!fanoutEvent || bundle.streams.length < 2) {
-    return { ok: false, message: `source run ${bundle.runId} is not a CUA fan-out run.` };
-  }
+  if (!fanoutEvent || bundle.streams.length < 2) return refuse(notFanout);
 
   const prior = bundle.streams
     .map(snapshotPriorParticipant)
@@ -46,24 +63,17 @@ export async function resolveCuaRerunSelection(args: {
       (entry): entry is NonNullable<ReturnType<typeof snapshotPriorParticipant>> => entry !== null,
     );
   const priorById = new Map(prior.map((entry) => [entry.participantId, entry]));
-  if (priorById.size < 2) {
-    return {
-      ok: false,
-      message: `source run ${bundle.runId} does not expose multiple participant ids.`,
-    };
-  }
+  if (priorById.size < 2) return refuse(notFanout);
 
   const explicitIds = uniqueIds(args.participantIds ?? []);
   const selectedIds =
     explicitIds.length > 0
       ? explicitIds
       : prior.filter((entry) => entry.rerunnable).map((entry) => entry.participantId);
-  if (selectedIds.length === 0) {
-    return {
-      ok: false,
-      message: `source run ${bundle.runId} has no participant to rerun: none failed, was blocked, timed out or ended without engaging.`,
-    };
-  }
+  if (selectedIds.length === 0)
+    return refuse(
+      `${run} has no participant to rerun: none failed, was blocked, timed out or ended without engaging.`,
+    );
 
   const missingPrior = selectedIds.filter((id) => !priorById.has(id));
   if (missingPrior.length > 0) {

@@ -1,6 +1,11 @@
 import path from "node:path";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
+import {
+  capacityShortfall,
+  describeCapacity,
+  type LocalCapacity,
+} from "../substrates/local/capacity.js";
 import type { StudyConfig } from "./types.js";
 import type { StudyRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
@@ -235,6 +240,8 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   keys: string[];
   reads?: ReadonlySet<string>;
   checks: Check[];
+  /** The step to take first, which doctor prints before its rows. */
+  next?: string;
 }> {
   const { resolveStudy, resolveDryRun, routeOf } = await studyLoaders();
   const resolved = await resolveStudy(args.cwd, args.study);
@@ -280,7 +287,10 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
     (accountReadiness ??= (args.codexAnalysisReadiness ?? codexAccountReadiness)(args.env).catch(
       () => ({ ready: false, errorCode: "codex_unavailable" }),
     ));
-  if (local) checks.push(...(await localBrowserChecks(config, args)));
+  const plan = planned.planned.plan;
+  const desktopsAtOnce = plan.route === "computer-use" ? plan.concurrency : undefined;
+  const localChecks = local ? await localBrowserChecks(config, args, desktopsAtOnce) : undefined;
+  if (localChecks !== undefined) checks.push(...localChecks.checks);
   if (config.comms?.email?.kind === "real")
     checks.push(await realEmailCheck(config.comms.email.connection, keys, args));
   checks.push(...(await participantChecks(config, route, keys, local, args, checkAccount)));
@@ -293,14 +303,24 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
     config.review?.scorer === undefined
       ? new Set([...keyNamesOf(planned.planned.plan), ...keys])
       : undefined;
-  return { desktop, keys, ...(reads === undefined ? {} : { reads }), checks };
+  return {
+    desktop,
+    keys,
+    ...(reads === undefined ? {} : { reads }),
+    checks,
+    ...(localChecks?.next === undefined ? {} : { next: localChecks.next }),
+  };
 }
 
-/** A local browser study's runtime and, with an external catch, its captured inbox. */
+/**
+ * A local browser study's runtime, how many of its desktops fit and, with an external catch, its
+ * captured inbox. `next` is the runtime's message when it is not ready, which doctor leads with.
+ */
 async function localBrowserChecks(
   config: StudyConfig,
   args: StudySetupCheckArgs,
-): Promise<Check[]> {
+  desktopsAtOnce: number | undefined,
+): Promise<{ checks: Check[]; next?: string }> {
   const checks: Check[] = [];
   const runtime = await (
     args.localRuntimeReadiness ??
@@ -312,7 +332,14 @@ async function localBrowserChecks(
           config.execution?.desktop?.recording !== undefined,
       }))
   )();
-  checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
+  checks.push({
+    name: "local browser runtime",
+    ok: runtime.ok,
+    message: runtime.message,
+    ...(runtime.ok && !runtime.installed ? { status: "note" as const } : {}),
+  });
+  if (runtime.capacity !== undefined && desktopsAtOnce !== undefined)
+    checks.push(capacityCheck(runtime.capacity, desktopsAtOnce));
   const email = config.comms?.email;
   if (email?.kind === "fake" && email.external) {
     const healthy = await externalCatchHealthy(email.external, { timeoutMs: 5000 });
@@ -324,7 +351,26 @@ async function localBrowserChecks(
         : `Captured inbox is unavailable or outdated. Start or upgrade and restart ${cli("comms catch")}, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated.`,
     });
   }
-  return checks;
+  return {
+    checks,
+    ...(runtime.ok && runtime.installed ? {} : { next: runtime.message }),
+  };
+}
+
+/** Whether the desktops the study runs at once fit the VM or this machine, and why. */
+function capacityCheck(capacity: LocalCapacity, desktopsAtOnce: number): Check {
+  const shortfall = capacityShortfall(capacity, desktopsAtOnce);
+  const name = "local desktop capacity";
+  if (shortfall === undefined)
+    return {
+      name,
+      ok: true,
+      message: `${describeCapacity(capacity)} This study runs ${desktopsAtOnce} at once, so it fits.`,
+    };
+  // Linux runs a study that is short of memory with a warning, so the row is advice there.
+  return "refusal" in shortfall
+    ? { name, ok: false, message: shortfall.refusal }
+    : { name, ok: true, status: "note", message: shortfall.warning };
 }
 
 /** The saved real email connection. Adds the key it needs to `keys`. */

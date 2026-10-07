@@ -28,6 +28,22 @@ The Unreleased section holds the full notes for the next version until it is tag
   grouped by kind. An analysis can cite an impression as a participant statement, and an
   impression with a capture of that screen as a design finding. A feedback draft for a finding
   that cites one quotes it. The analysis prompt is now `study-evidence-8`.
+- `humanish runtime setup --memory <GiB> --cpus <n>` sizes the Mac's humanish Lima VM. An
+  existing VM keeps its size unless you pass them; with them, setup stops the VM, resizes it and
+  starts it again, and refuses while participant desktops are running in it.
+- A live local study that runs more participant desktops at once than the Lima VM holds is
+  refused before any desktop or model call with `HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED`.
+  The message says how many it runs, how many fit and why, then what to do: run it on cloud
+  desktops (`subject.source: local-tree` with `execution.target: e2b-desktop`), give the VM more
+  room with `runtime setup --memory`, or lower `execution.concurrency`. Memory sets the limit:
+  desktops that share fewer than 2 CPUs each only run slower, and `runtime status` says so. On Linux the same
+  shortfall prints a warning and the run starts.
+- `humanish runtime status` (and `--json`, as `capacity`) reports the VM's or this machine's
+  memory and CPUs, each desktop's 3 GiB, and how many desktops fit. `humanish doctor
+--study` on a local study adds a local desktop capacity row that says whether the study fits.
+- When Docker kills a local participant's desktop for memory, the participant's error, the run's
+  error and `review.md` say the desktop ran out of memory and what to change, with the code
+  `HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY`.
 
 ### Fixed
 
@@ -40,6 +56,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 - OpenAI computer-use closing requests may now use up to 3072 output tokens, reasoning included,
   or the study's `actor.maxOutputTokens` when that is lower. They used at most 1024, which a
   closing report with impressions could exceed, losing the whole report.
+- A new humanish Lima VM gets room for four participant desktops plus 1 GiB for itself (13 GiB
+  and 8 CPUs), capped at half the Mac's memory and CPUs. It got 8 GiB and 6 CPUs on every Mac,
+  which holds two desktops.
+- `humanish doctor --study` on a local study whose runtime is not set up starts with a `next:`
+  line naming the step to take, such as `humanish runtime setup`, and shows a runtime that will
+  download on first use as a note.
+- `humanish study check` passes a valid study in a `--reachability` mode it cannot apply:
+  `prepared-host`, which has no CLI check, and `public-preview` or `sandbox-loopback` on a local
+  study. Those rows, and a new `this machine` row, are marked not checked and name
+  `humanish doctor --study <study>`. The JSON rows carry `checked: false`.
+- `--rerun-failed-from` refusals name the run they read, say why it cannot be rerun (no runs yet,
+  a dry run, a run with one participant, or no failed participant) and give the `watch` and `run`
+  commands for the whole study.
 
 ## 0.112.0: Plain finding headlines, design findings, plain captions, DO_NOT_TRACK for terminal participants (2026-10-07)
 

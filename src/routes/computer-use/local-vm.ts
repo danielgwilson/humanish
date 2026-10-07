@@ -18,8 +18,9 @@ import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "../../substrates/local/runtime-config.js";
-import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
-import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
+import { localRuntimeCapacity, prepareLocalRuntime } from "../../substrates/local/runtime.js";
+import { dockerCommandLine, usesLima } from "../../substrates/local/runtime-host.js";
+import { outOfMemoryMessage } from "../../substrates/local/capacity.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { withCloseReport } from "./participant-model.js";
@@ -173,6 +174,11 @@ function createLocalParticipantDesktop(
             );
           }
         }
+        // Asked before close, which removes the container; the answer comes from Docker's events.
+        if ((await session.killedForMemory?.()) === true) {
+          evidence.failureCode = "HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY";
+          evidence.desktopFailure = outOfMemoryMessage(usesLima() ? "lima-vm" : "linux-host");
+        }
         try {
           evidence.released = (await session.close()).status === "released";
         } catch {
@@ -253,6 +259,7 @@ export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
     localVm: {
       desktop: (run, warnings, artifactRoot) =>
         createLocalParticipantDesktop(context, run, warnings, artifactRoot),
+      capacity: () => localRuntimeCapacity(),
       analysisRefusal: () =>
         state.cleanupUnconfirmed ? "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED" : undefined,
       ...(options.signal === undefined ? {} : { signal: options.signal }),

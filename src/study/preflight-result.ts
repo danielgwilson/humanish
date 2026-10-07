@@ -10,9 +10,9 @@ export const STUDY_CHECK_SCHEMA = "humanish.study-check.v1";
 
 export function finalize(
   ctx: PreflightContext,
-  args?: { check?: StudyPreflightCheck },
+  args?: { check?: StudyPreflightCheck; checks?: StudyPreflightCheck[] },
 ): StudyPreflightResult {
-  const checks = args?.check ? [...ctx.checks, args.check] : ctx.checks;
+  const checks = [...ctx.checks, ...(args?.check ? [args.check] : []), ...(args?.checks ?? [])];
   const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.route);
   return {
     schema: STUDY_CHECK_SCHEMA,

@@ -667,7 +667,7 @@ humanish runtime [options] [command]
 
 ### humanish runtime status
 
-Check local Docker, virtualization and the cached browser image without downloads.
+Check local Docker, virtualization and the cached browser image without downloads, and how many participant desktops fit.
 
 ```text
 humanish runtime status [options]
@@ -691,6 +691,8 @@ humanish runtime setup [options]
 | --- | --- |
 | `--json` | Print a machine-readable JSON response. |
 | `--media` | Prepare or inspect the optional camera and speech runtime. |
+| `--memory <GiB>` | Mac only: the humanish Lima VM's memory. Resizes an existing VM, which stops it first. |
+| `--cpus <n>` | Mac only: the humanish Lima VM's CPUs. Resizes an existing VM, which stops it first. |
 | `-h, --help` | Show help for this command. |
 
 ## humanish reclaim

@@ -381,12 +381,14 @@ function formatDoctorHuman(result: DoctorResult): string {
   return (
     [
       `humanish doctor ${result.ok ? "ok" : "needs setup"}`,
+      ...(result.next === undefined ? [] : [`next: ${result.next}`]),
       `cwd: ${result.cwd}`,
       // "missing" is a verdict, and a row that never ran has none. A participant reading doctor on a
       // fresh desktop got `- missing package.json: package.json is present and safe to read`, which
       // contradicts itself in eleven words (labs/tui-self-study.yaml).
       ...result.checks.map(
-        (check) => `- ${check.status.replace("_", " ")} ${check.name}: ${check.message}`,
+        (check) =>
+          `- ${check.status.replace("_", " ")} ${check.name}: ${check.message.replaceAll("\n", "\n    ")}`,
       ),
     ].join("\n") + "\n"
   );
