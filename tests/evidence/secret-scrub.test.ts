@@ -46,6 +46,16 @@ describe("scrubSecretValues", () => {
     );
   });
 
+  // Each find is checked against the markers by binary search. A scan of every marker per find
+  // took about 6 s on this input.
+  it("scrubs 1 MiB of markers and values in linear time", () => {
+    const text = "[REDACTED_SECRET]%20743921 ".repeat(40_000);
+    const started = performance.now();
+    const scrubbed = scrubSecretValues(["743921"])(text);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(scrubbed).not.toContain("743921");
+  });
+
   it("leaves the marker intact when a value is part of it", () => {
     expect(scrubSecretValues(["SECRET", "tango-lima"])("refused tango-lima")).toBe(
       "refused [REDACTED_SECRET]",

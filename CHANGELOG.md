@@ -49,6 +49,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   `caf%C3%A9` read as `cafÃ©`, and a percent-encoded redirect holding a password that starts
   `Voilà` graded a run share-ready. The byte-by-byte reading is still scanned too: read as UTF-8,
   `%E2%80%80` is a space that can end a match the byte reading keeps whole (#1645).
+- The known-value scrub checks each match against the `[REDACTED_...]` markers in the text by
+  binary search. It compared every match with every marker, so 1 MiB of alternating markers and
+  values took about 5 s; it now takes well under a second (#1646).
 
 ### Changed
 
