@@ -60,13 +60,30 @@ const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefine
 /** Desktops the existing Lima VM holds, the VM setup would create, or this Linux machine. */
 function runtimeCapacity(options: RuntimeOptions, lima: LimaStatus | undefined): LocalCapacity {
   if (lima === undefined) return localCapacity("linux-host", machineSize(options.machine));
-  if (lima.size !== undefined) return localCapacity("lima-vm", lima.size);
-  const planned = defaultVmSize(machineSize(options.machine));
+  const machine = machineSize(options.machine);
+  if (lima.size !== undefined) return localCapacity("lima-vm", lima.size, { machine });
+  const planned = defaultVmSize(machine);
   return localCapacity(
     "lima-vm",
     { memoryBytes: planned.memoryGiB * 1024 ** 3, cpus: planned.cpus },
-    !lima.exists,
+    { planned: !lima.exists, machine },
   );
+}
+
+/**
+ * How many desktops the local runtime holds, read without starting anything. Undefined when the
+ * host cannot be read, such as a Mac without Lima: preparing the runtime reports that.
+ */
+export async function localRuntimeCapacity(
+  options: RuntimeHostOptions = {},
+): Promise<LocalCapacity | undefined> {
+  if (runtimeArchitecture(options) === undefined) return undefined;
+  if (!usesLima(options)) return runtimeCapacity(options, undefined);
+  try {
+    return runtimeCapacity(options, await limaStatus(options));
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read-only host and cache inspection. Never pulls an image or starts a container. */

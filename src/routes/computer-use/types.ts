@@ -1,4 +1,5 @@
 import type { Verdict } from "../../run/judge.js";
+import type { LocalCapacity } from "../../substrates/local/capacity.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type {
   CuaExecutor,
@@ -97,6 +98,8 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
  */
 export interface LocalVmInput {
   readonly desktop: ParticipantDesktopFactory;
+  /** How many desktops the local runtime holds, or undefined when it cannot be read. */
+  readonly capacity?: () => Promise<LocalCapacity | undefined>;
   /** The skip reason automatic analysis records instead of running, or undefined to run it. */
   readonly analysisRefusal: () => AutomaticAnalysisRefusal | undefined;
   readonly signal?: AbortSignal;
@@ -258,6 +261,9 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER"
   | "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR"
   | "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING"
+  // A local study runs more desktops at once than the Mac's Lima VM holds. Refused before any
+  // desktop, sandbox or model call; the message says how to run it.
+  | "HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED"
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"

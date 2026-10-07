@@ -18,7 +18,7 @@ import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "../../substrates/local/runtime-config.js";
-import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
+import { localRuntimeCapacity, prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
@@ -253,6 +253,7 @@ export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
     localVm: {
       desktop: (run, warnings, artifactRoot) =>
         createLocalParticipantDesktop(context, run, warnings, artifactRoot),
+      capacity: () => localRuntimeCapacity(),
       analysisRefusal: () =>
         state.cleanupUnconfirmed ? "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED" : undefined,
       ...(options.signal === undefined ? {} : { signal: options.signal }),

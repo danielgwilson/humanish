@@ -27,6 +27,8 @@ vi.mock("../../../src/substrates/local/runtime.js", async (importOriginal) => ({
     image: "synthetic-runtime-image",
     runtimeRevision: "synthetic-runtime-revision",
   }),
+  // The test machine's size would decide whether the run prints a capacity warning.
+  localRuntimeCapacity: async () => undefined,
 }));
 vi.mock("../../../src/substrates/local/firecracker-desktop.js", async (importOriginal) => ({
   ...(await importOriginal<

@@ -41,13 +41,15 @@ export interface LocalCapacity {
   readonly desktops: number;
   /** No humanish Lima VM exists yet: the size is the one setup would create. */
   readonly planned?: true;
+  /** The Mac's own memory and CPUs, which a Lima VM cannot exceed. */
+  readonly machine?: { readonly memoryGiB: number; readonly cpus: number };
 }
 
 /** Desktops that fit in a host of this size, after the host's own memory, by memory and by CPUs. */
 export function localCapacity(
   host: LocalCapacity["host"],
   size: MachineSize,
-  planned = false,
+  more: { planned?: boolean; machine?: MachineSize } = {},
 ): LocalCapacity {
   const memoryGiB = size.memoryBytes / GiB;
   const byMemory = Math.floor(
@@ -61,7 +63,15 @@ export function localCapacity(
     reservedMemoryGiB: HOST_RESERVED_MEMORY_GIB,
     perDesktop: { ...DESKTOP_RESERVATION },
     desktops: Math.max(0, Math.min(byMemory, byCpus)),
-    ...(planned ? { planned: true as const } : {}),
+    ...(more.planned ? { planned: true as const } : {}),
+    ...(more.machine === undefined
+      ? {}
+      : {
+          machine: {
+            memoryGiB: Math.floor(more.machine.memoryBytes / GiB),
+            cpus: more.machine.cpus,
+          },
+        }),
   };
 }
 
@@ -118,4 +128,51 @@ export function describeCapacity(capacity: LocalCapacity): string {
     ? `Setup will create the humanish Lima VM with ${size}.`
     : `The humanish Lima VM has ${size}.`;
   return `${vm} It keeps ${capacity.reservedMemoryGiB} GiB for itself and ${each}, so ${desktopsFit(capacity.desktops, capacity.planned)} at once. To change its size, run ${cli("runtime setup --memory <GiB> --cpus <n>")}.`;
+}
+
+/**
+ * What a local study that runs `needed` desktops at once is told: a refusal on a Mac, whose Lima
+ * VM has a fixed size, or a warning on Linux, where free memory varies. Undefined when they fit.
+ */
+export function capacityShortfall(
+  capacity: LocalCapacity,
+  needed: number,
+): { refusal: string } | { warning: string } | undefined {
+  const fits = capacity.desktops;
+  if (needed <= fits) return undefined;
+  const holds = `${capacity.host === "lima-vm" ? "the humanish Lima VM" : "this machine"} holds ${fits}: it has ${capacity.memoryGiB} GiB and ${capacity.cpus} CPUs, keeps ${capacity.reservedMemoryGiB} GiB for ${capacity.host === "lima-vm" ? "itself" : "the system"}, and each desktop reserves ${capacity.perDesktop.memoryGiB} GiB and ${capacity.perDesktop.cpus} CPUs.`;
+  const runs = `This study runs ${plural(needed, "participant desktop")} at once, and ${holds}`;
+  const cloud = [
+    "Run it on cloud desktops, which have no local memory limit. In the study file, set these two fields, add `subject.serve` with the command that starts your app, and provide E2B_API_KEY:",
+    "     subject.source: local-tree",
+    "     execution.target: e2b-desktop",
+  ];
+  const fewer =
+    fits === 0
+      ? []
+      : [
+          `Run fewer at once: set \`execution.concurrency: ${fits}\` to run them ${fits} at a time, or lower \`participants\` to ${fits}.`,
+        ];
+  if (capacity.host === "linux-host")
+    return {
+      warning: `${runs} The run starts anyway because free memory on Linux varies, but a desktop that runs out of memory is killed and its participant fails. To avoid that, run it on cloud desktops (\`subject.source: local-tree\` and \`execution.target: e2b-desktop\`, with a \`subject.serve\` command)${fits === 0 ? "" : `, or set \`execution.concurrency: ${fits}\``}.`,
+    };
+  const wanted = vmSizeFor(needed);
+  const size = {
+    memoryGiB: Math.max(wanted.memoryGiB, Math.ceil(capacity.memoryGiB)),
+    cpus: Math.max(wanted.cpus, capacity.cpus),
+  };
+  const machine = capacity.machine;
+  const bigger =
+    machine !== undefined && (size.memoryGiB > machine.memoryGiB || size.cpus > machine.cpus)
+      ? `This Mac has ${machine.memoryGiB} GiB and ${machine.cpus} CPUs, too few for a VM that holds ${needed} desktops.`
+      : `Give the VM room for ${needed} desktops: ${cli(`runtime setup --memory ${size.memoryGiB} --cpus ${size.cpus}`)}`;
+  const steps = [cloud.join("\n"), bigger, ...fewer];
+  return {
+    refusal: [
+      `${runs} More desktops than that run the VM out of memory and their browsers crash, so nothing was started.`,
+      "To run this study, do one of these:",
+      ...steps.map((step, index) => `${index + 1}. ${step}`),
+    ].join("\n"),
+  };
 }

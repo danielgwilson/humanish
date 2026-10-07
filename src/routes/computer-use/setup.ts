@@ -46,6 +46,7 @@ import {
   type ComputerUseRunInput,
   participantSubjectEnv,
 } from "./types.js";
+import { capacityShortfall } from "../../substrates/local/capacity.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
 import { refusedResult } from "../../run/study-result.js";
 
@@ -259,6 +260,14 @@ export async function admitCuaRun(
       externalCommsConfig,
     });
     if (rejection) return refuse(rejection.code, rejection.message, descriptor.id);
+    const shortfall = await localCapacityShortfall(input.localVm, participantPlan.concurrency);
+    if (shortfall !== undefined && "refusal" in shortfall)
+      return refuse(
+        "HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED",
+        shortfall.refusal,
+        descriptor.id,
+      );
+    if (shortfall !== undefined) process.stderr.write(`warning: ${shortfall.warning}\n`);
   }
 
   // Pack the working tree once per run, on the host, before any sandbox or provider call: every
@@ -310,6 +319,18 @@ export async function admitCuaRun(
       localTreeArchiveBuffer,
     },
   };
+}
+
+/**
+ * Whether a local study's desktops at once fit the local runtime. Read before any desktop: a
+ * desktop past the VM's memory is killed mid-session, after its participant has spent.
+ */
+async function localCapacityShortfall(
+  localVm: ComputerUseRunInput["localVm"],
+  desktops: number,
+): Promise<ReturnType<typeof capacityShortfall>> {
+  const capacity = await localVm?.capacity?.();
+  return capacity === undefined ? undefined : capacityShortfall(capacity, desktops);
 }
 
 /** Starts the run and builds what the participants and the finish read: the deps and the bundle base. */
