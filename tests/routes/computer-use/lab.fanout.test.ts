@@ -10,6 +10,7 @@ import path from "node:path";
 import { measuredChromeDesktop } from "../../helpers/measured-chrome-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
@@ -765,6 +766,52 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/computer-use-fanout-live.json",
     );
+  });
+
+  it("captions each participant by name and device and summarizes the run in plain words", async () => {
+    const handle = makeFanoutModule({ measuredChrome: true });
+    const outcome = await runStudyWith(
+      fanoutConfig({ concurrency: 1 }),
+      { cwd, env: FANOUT_ENV },
+      {
+        ...passingSeams(handle, { now: () => 1_000_000 }),
+        analysis: { run: automaticAnalysisBoundary() },
+      },
+    );
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.streams.map((stream) => stream.label)).toEqual([
+      "Mobile newcomer, phone",
+      "Small skimmer, phone",
+      "Desktop power",
+      "Wide researcher",
+    ]);
+    expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
+    expect(bundle.review.summary).toContain("4 participants took part");
+  });
+
+  it("summarizes each participant by name and how the session ended", async () => {
+    const handle = makeFanoutModule({ measuredChrome: true });
+    const outcome = await runStudyWith(
+      fanoutConfig({ concurrency: 1 }),
+      { cwd, env: FANOUT_ENV },
+      {
+        ...passingSeams(handle, { now: () => 1_000_000 }),
+        analysis: { run: automaticAnalysisBoundary() },
+      },
+    );
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    for (const simulation of bundle.simulations) {
+      expect(simulation.summary).not.toMatch(HARNESS_WORDS);
+    }
+    expect(bundle.simulations[0]?.summary).toContain("Mobile newcomer");
   });
 
   // createProvider receives each participant's id, 0-based index and the run's participant count,

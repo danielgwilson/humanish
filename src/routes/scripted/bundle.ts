@@ -25,6 +25,7 @@ import {
 import { type RunStream } from "../../run/streams.js";
 import { participantEvent, recordIdOf } from "../../run/participant-records.js";
 import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
+import { gapsListClause } from "../../run/outcomes.js";
 import { plural } from "../../run/text.js";
 
 /** What the scripted study's bundle is built from. */
@@ -214,7 +215,7 @@ function buildScriptedReview(args: {
     return {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
-      summary: `The scripted run failed before a terminal session verdict: ${args.sessionError}`,
+      summary: `The run failed before the script finished: ${args.sessionError}`,
       gaps: [],
     };
   }
@@ -222,16 +223,17 @@ function buildScriptedReview(args: {
     return {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
-      summary: `Dry run of scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) against ${args.appUrl}: composition and scenario checked at $0; no browser ran.`,
+      summary: `Dry run: scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) would replay against ${args.appUrl} on ${plural(args.surfaces.length, "browser surface")}. No browser ran and $0 was spent.`,
       gaps: ["Live scripted session not yet run (dry run only)."],
     };
   }
 
   const passed = args.sessionResults.filter((result) => result.status === "passed").length;
+  const ran = args.sessionResults.length;
   return {
     schema: REVIEW_SCHEMA,
     verdict: args.verdict,
-    summary: `Scripted-browser actor replayed ${args.journey.scenarioId} on ${args.sessionResults.length} surface${args.sessionResults.length === 1 ? "" : "s"} against ${args.appUrl}: ${passed}/${args.sessionResults.length} satisfied the scenario predicate.`,
+    summary: `Scenario ${args.journey.scenarioId} ran on ${plural(ran, "browser surface")} against ${args.appUrl}: ${passed}/${ran} passed it${gapsListClause(ran - passed, ran)}.`,
     gaps: args.sessionResults
       .filter((result) => result.status !== "passed")
       .map((result) => `${result.capture.surface.id}: ${result.reason}`),

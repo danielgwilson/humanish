@@ -446,7 +446,7 @@ function LiveRun({
           <Text color={PALETTE.ok}>{verdictGlyph({ liveness: "running", tick })} </Text>
         </Box>
         <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
-          {participant?.personaId ?? participant?.label ?? "starting…"}
+          {participant?.label ?? "starting…"}
         </Text>
         <Box flexGrow={1} />
         <Text dimColor>{elapsed === undefined ? "" : `${elapsed}${of}`}</Text>

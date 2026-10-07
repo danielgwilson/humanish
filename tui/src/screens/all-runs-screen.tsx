@@ -124,8 +124,7 @@ export function AllRunsScreen({
 }
 
 function personaOf(detail: RunDetail | undefined): string | undefined {
-  const participant = detail?.participants[0];
-  return participant?.personaId ?? participant?.label;
+  return detail?.participants[0]?.label;
 }
 
 function RunRow({

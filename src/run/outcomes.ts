@@ -8,6 +8,7 @@ import {
 import { actorEnding } from "../actors/stop-cause.js";
 import type { TaskFunnel } from "../study/tasks.js";
 import type { ParticipantOutcomes, ReviewSummary, RunTaskFunnel } from "./bundle.js";
+import { plural } from "./text.js";
 import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 
 /** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
@@ -125,6 +126,45 @@ function participantCompletionLine(
   return goalLine;
 }
 
+/**
+ * How one participant's session ended, in words a participant summary can end on. A computer-use
+ * goal says where the claim came from, as the run's participant line does.
+ */
+export function sessionEndingInWords(trace: ActorTrace): string {
+  switch (trace.completionReason) {
+    case "goal_satisfied": {
+      const source = cuaGoalSource(trace);
+      if (source === "participant_report") return "reported reaching the goal";
+      return source === "condition_matched" ? "met its completion condition" : "reached the goal";
+    }
+    case "turn_completed":
+      return "said it was done";
+    case "gave_up":
+      return "gave up";
+    case "blocked_approval":
+      return "was blocked waiting for an approval";
+    case "timed_out":
+      return "ran out of time";
+    case "budget_reached":
+      return "was stopped by a time or spend limit";
+    case "actor_error":
+      return "stopped on an error";
+    case "step_failed":
+      return "failed a scripted step";
+    case "harness_error":
+      return "was lost to a harness failure";
+    default:
+      return "ended";
+  }
+}
+
+/** "; the gaps list the other 2", or "all 3" when nobody passed. Empty when the gaps list nobody. */
+export function gapsListClause(listed: number, total: number): string {
+  if (listed <= 0) return "";
+  if (listed < total) return `; the gaps list the other ${listed}`;
+  return total === 1 ? "; the gaps say why" : `; the gaps list all ${total}`;
+}
+
 /** One line a stakeholder can read, with the denominator attached to every number. */
 export function formatParticipantOutcomes(
   outcomes: ParticipantOutcomes,
@@ -210,20 +250,25 @@ export function withCuaReviewProvenance(
   )
     return review;
   const outcomes = formatParticipantOutcomes(review.participants, details);
-  // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
-  // historical summary qualifies its old tally instead of silently discarding that context.
-  const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatRunTaskFunnel(review.tasks)}.` : ""}`;
-  const prefix = `${header} Recorded summary: `;
-  const recorded = review.summary.startsWith(prefix)
-    ? review.summary.slice(prefix.length)
-    : review.summary;
-  const oldGoal = `${review.participants.reachedGoal}/${review.participants.total} reached the goal`;
-  const qualified = recorded
-    .split(oldGoal)
-    .join(participantCompletionLine(review.participants, details));
+  const tasks = review.tasks ? ` Tasks: ${formatRunTaskFunnel(review.tasks)}.` : "";
+  // A summary that states the bare count gets it qualified where it stands, keeping rerun context,
+  // the participant's own words and adapter findings around it.
+  const { reachedGoal, total } = review.participants;
+  const bareLine = `${reachedGoal}/${total} reached the goal`;
+  const qualifiedLine = participantCompletionLine(review.participants, details);
+  // A summary with no count gets it in a header. Earlier releases wrote a header in other words.
+  const header = `${plural(total, "participant")} took part: ${outcomes}.${tasks} `;
+  const olderHeader = `Run gate: ${review.verdict}. Participants: ${outcomes}.${tasks} Recorded summary: `;
+  const summary = review.summary.startsWith(olderHeader)
+    ? `${header}${review.summary.slice(olderHeader.length)}`
+    : review.summary.includes(bareLine)
+      ? review.summary.split(bareLine).join(qualifiedLine)
+      : review.summary.includes(qualifiedLine)
+        ? review.summary
+        : `${header}${review.summary}`;
   return {
     ...review,
-    summary: `${prefix}${qualified}`,
+    summary,
     gaps:
       review.participants.reachedGoal === 0
         ? review.gaps

@@ -68,7 +68,7 @@ describe("a fan-out dry run against an E2B app URL", () => {
 
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.review.summary).toMatch(
-      /^Dry-run fan-out: 2 participants composed for openai-computer-use against \[target-url:[0-9a-f]{16}\]/,
+      /^Dry run: 2 participants would each use their own copy of \[target-url:[0-9a-f]{16}\]\./,
     );
     const review = await readFile(path.join(runDir, "review.md"), "utf8");
     expect(review.startsWith("# Hosted fan-out\n")).toBe(true);

@@ -71,7 +71,8 @@ describe("what one run's participants are doing", () => {
 
     const detail = await readRunDetail(cwd, "run-a");
     const participant = detail?.participants[0];
-    expect(participant?.label).toBe("CUA browser — observer-live-check");
+    // An older release's label names no one, so the persona captions the participant.
+    expect(participant?.label).toBe("Synthetic new user");
     expect(participant?.personaId).toBe("synthetic-new-user");
     // The abbreviated persona: who is struggling, which a name alone does not say.
     expect(participant?.traits).toEqual(["patience:medium", "skill:medium", "constraints:3"]);
@@ -127,6 +128,28 @@ describe("what one run's participants are doing", () => {
     const detail = await readRunDetail(cwd, "run-c");
     // Quoting a partial thought would attribute to the participant something they had not said.
     expect(detail?.participants[0]?.thought?.text).toBe("finished thinking");
+  });
+
+  it("captions each participant as the Observer does, including labels an older release wrote", async () => {
+    await writeBundle(cwd, "run-labels", {
+      runId: "run-labels",
+      streams: [
+        { id: "stream-001", label: "Lobby host, phone", actor: ACTOR_TRACE },
+        {
+          id: "stream-002",
+          label:
+            "Concurrent persona player-2 (type:guest / surface:game / case:lobby-001) · lobby-test",
+          actor: ACTOR_TRACE,
+        },
+        { id: "stream-003", label: "lane-01 · browser", laneId: "lane-01", actor: ACTOR_TRACE },
+      ],
+    });
+    const detail = await readRunDetail(cwd, "run-labels");
+    expect(detail?.participants.map((participant) => participant.label)).toEqual([
+      "Lobby host, phone",
+      "Player 2",
+      "Synthetic new user",
+    ]);
   });
 
   it("reports every participant of a multi-participant run, separately", async () => {

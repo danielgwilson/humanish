@@ -320,12 +320,12 @@
         "label": "passed",
         "tone": "pass"
       },
-      "title": "the example multiplayer app 3-player external-public - Concurrent shared-world swarm (3 personas)",
+      "title": "the example multiplayer app 3-player external-public - 3 participants in one public app",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
         "id": "party-host",
-        "name": "Concurrent shared-world swarm (3 personas)",
+        "name": "3 participants in one public app",
         "source": "study:lobby-trivia-3player-test",
         "sourceDigest": "07e0454012db815d"
       },
@@ -466,10 +466,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "pass",
-    "summary": "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.",
+    "summary": "3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.",
     "gaps": []
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- outcome: passed\n- summary: Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- outcome: passed\n- summary: 3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.\n- plane: Shared app: a public deployment the operator declares they own (example-operator/lobby-trivia, authorized), used as it is, with no sandbox, clone or seed. humanish observed that each participant reached the declared origin (publicOriginDigest); it did not create or control the app. Ownership is the study's declaration, and the data is not claimed to be synthetic.\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence shown (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -500,7 +500,7 @@
     },
     "persona": {
       "id": "party-host",
-      "name": "Concurrent shared-world swarm (3 personas)",
+      "name": "3 participants in one public app",
       "source": "study:lobby-trivia-3player-test",
       "sourceDigest": "07e0454012db815d"
     },
@@ -529,7 +529,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona host (party-host): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Host used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],
@@ -546,7 +546,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona player-2 (competitive-friend): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Player 2 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-002"
         ],
@@ -563,7 +563,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona player-3 (casual-friend): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Player 3 used the shared app and reported reaching the goal.",
         "streamIds": [
           "stream-003"
         ],
@@ -580,7 +580,7 @@
           "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona host · lobby-trivia-3player-test",
+        "label": "Host, phone",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -628,7 +628,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona host (party-host) use the shared app at the same time as the other personas.",
+          "intent": "Watch Host use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -724,7 +724,7 @@
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona player-2 · lobby-trivia-3player-test",
+        "label": "Player 2, phone",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -772,7 +772,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-2 (competitive-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 2 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -868,7 +868,7 @@
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona player-3 · lobby-trivia-3player-test",
+        "label": "Player 3, phone",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -916,7 +916,7 @@
         },
         "ui": {
           "route": "[external-public-plane]",
-          "intent": "Watch persona player-3 (casual-friend) use the shared app at the same time as the other personas.",
+          "intent": "Watch Player 3 use the shared app at the same time as the others.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -1098,7 +1098,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "pass",
-      "summary": "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor sessions passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.",
+      "summary": "3 participants used one public app at the same time. 3 of 3 reached the goal. All 3 ended up in the same lobby.",
       "gaps": []
     },
     "feedbackCandidates": [],

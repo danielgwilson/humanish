@@ -16,6 +16,9 @@ import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { savedCaption } from "./participant-caption.js";
+import { streamParticipantIdOf } from "./participant-records.js";
+import type { RunStream } from "./streams.js";
 import { readContainedRegularFile } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
@@ -33,7 +36,7 @@ interface RunThought {
 export interface RunParticipant {
   /** Stream id: stable within a run, and what distinguishes participants of one study. */
   id: string;
-  /** What to call them on screen: the participant's own label, else the persona id. */
+  /** What to call them on screen: the caption the Observer shows, else the persona id. */
   label: string;
   /** The persona id, when the trace recorded one. */
   personaId?: string;
@@ -86,7 +89,7 @@ interface ActorTraceFacts {
   items?: { kind?: string; title?: string; text?: string; at?: string; lifecycle?: string }[];
 }
 
-interface StreamFacts {
+interface StreamFacts extends Pick<RunStream, "laneId"> {
   id?: string;
   label?: string;
   status?: string;
@@ -124,13 +127,21 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
   const trace = stream.liveActor ?? stream.actor ?? {};
   const id = stream.id ?? `stream-${index + 1}`;
   const personaId = trace.persona?.id;
+  const participantId = streamParticipantIdOf(stream);
   // Computed once: calling it twice to test-then-use reads as though the two could differ.
   const thought = latestThought(trace);
   const status = trace.status ?? stream.status;
   const thoughts = (trace.items ?? []).filter((item) => item?.kind === "reasoning").length;
   return {
     id,
-    label: stream.label ?? personaId ?? id,
+    label:
+      stream.label === undefined
+        ? (personaId ?? id)
+        : savedCaption({
+            label: stream.label,
+            ...(participantId === undefined ? {} : { participantId }),
+            ...(personaId === undefined ? {} : { personaId }),
+          }),
     ...(personaId === undefined ? {} : { personaId }),
     traits: Array.isArray(trace.persona?.traitsApplied) ? trace.persona.traitsApplied : [],
     ...(status === undefined ? {} : { status }),

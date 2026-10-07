@@ -402,12 +402,12 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+    "summary": "1 participant took part: 1/1 reported reaching the goal. How it ended: Done.",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 1 participant took part: 1/1 reported reaching the goal. How it ended: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -467,7 +467,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "summary": "First time visitor used the app in a hosted desktop browser, and reported reaching the goal.",
         "streamIds": [
           "stream-001"
         ],
@@ -485,7 +485,7 @@
           "focus": "Focus on the landing page."
         },
         "kind": "browser",
-        "label": "lane-01 · browser",
+        "label": "First time visitor",
         "status": "passed",
         "judgedStatus": "passed",
         "transport": "snapshot",
@@ -748,7 +748,7 @@
         "harnessFailed": 0,
         "reportedFriction": 0
       },
-      "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+      "summary": "1 participant took part: 1/1 reported reaching the goal. How it ended: Done.",
       "gaps": [
         "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
       ]

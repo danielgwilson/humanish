@@ -18,6 +18,7 @@ import path from "node:path";
 import { measuredChromeDesktop } from "../../helpers/measured-chrome-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
@@ -3477,7 +3478,7 @@ describe("runCuaActorLab", () => {
     );
     expect(bundle.review.verdict).toBe("blocked");
     expect(bundle.review.summary).toContain(
-      "Recorded summary: Not counted as a pass: the participant's final message described a blocker.",
+      "Not counted as a pass: the participant's final message described a blocker.",
     );
     // Zero recorded completions, 1 blocked, 1 reported friction: what that run recorded.
     expect(bundle.review.participants).toMatchObject({
@@ -7757,5 +7758,89 @@ describe("computer-use run directory goldens", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/computer-use-in-process-live.json",
     );
+  });
+});
+
+describe("computer-use captions and summaries", () => {
+  let goldenCwd: string;
+  beforeEach(async () => {
+    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-caption-"));
+  });
+  afterEach(async () => {
+    await rm(goldenCwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["dry", true],
+    ["live", false],
+  ] as const)(
+    "captions the participant by its persona and summarizes a %s run in plain words",
+    async (_mode, dryRun) => {
+      const sandbox: FakeSandbox = makeFakeSandbox({
+        commandHandler: measuredChromeDesktop(() => sandbox.screen),
+      });
+      const { module } = makeFakeModule(sandbox);
+      let clock = 0;
+      const outcome = await runStudyWith(
+        cuaConfig(),
+        {
+          cwd: goldenCwd,
+          dryRun,
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        },
+        {
+          analysis: { run: automaticAnalysisBoundary() },
+          desktopModule: async () => module,
+          now: () => (clock += 30_000),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      );
+      const runId = outcome.result.runId;
+      if (!runId) throw new Error("the run wrote no bundle");
+      const bundle = JSON.parse(
+        await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      // The plan numbers an undeclared participant `lane-01`, so the persona names it.
+      expect(bundle.streams.map((stream) => stream.label)).toEqual(["First time visitor"]);
+      expect(bundle.review.summary).not.toMatch(HARNESS_WORDS);
+      expect(bundle.review.summary).toContain("1 participant");
+    },
+  );
+
+  it("summarizes the participant by name and how the session ended", async () => {
+    const sandbox: FakeSandbox = makeFakeSandbox({
+      commandHandler: measuredChromeDesktop(() => sandbox.screen),
+    });
+    const { module } = makeFakeModule(sandbox);
+    let clock = 0;
+    const outcome = await runStudyWith(
+      cuaConfig(),
+      {
+        cwd: goldenCwd,
+        dryRun: false,
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+      },
+      {
+        analysis: { run: automaticAnalysisBoundary() },
+        desktopModule: async () => module,
+        now: () => (clock += 30_000),
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    );
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const bundle = JSON.parse(
+      await readFile(path.join(goldenCwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.simulations[0]?.summary).not.toMatch(HARNESS_WORDS);
+    expect(bundle.simulations[0]?.summary).toContain("First time visitor");
   });
 });

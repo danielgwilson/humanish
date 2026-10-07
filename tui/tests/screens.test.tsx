@@ -164,9 +164,9 @@ describe("the labs screen, rendered", () => {
     expect(new Set(rowLines).size).toBe(rowLines.length);
   });
 
-  it("a live study names the participant, not the `lane-NN` id the harness ran them in", async () => {
-    // "CUA browser: observer-live-check" is the harness describing itself. The row is about who is
-    // in there, so the persona wins whenever the live flush carries one.
+  it("a live study names the participant by the caption the Observer shows", async () => {
+    // readRunDetail turns a label that names no one into the persona in words, so the row shows
+    // that caption and not the raw persona id.
     const frame = await frameAt(
       80,
       24,
@@ -177,7 +177,7 @@ describe("the labs screen, rendered", () => {
           participants: [
             {
               id: "s1",
-              label: "CUA browser — signup flow",
+              label: "Skeptical power user",
               personaId: "skeptical-power-user",
               traits: [],
               status: "running",
@@ -185,11 +185,11 @@ describe("the labs screen, rendered", () => {
           ],
         }),
       },
-      (candidate) => candidate.includes("skeptical-power-user"),
+      (candidate) => candidate.includes("Skeptical power user"),
     );
     const liveRow = frame.split("\n").find((line) => line.includes("Signup flow")) ?? "";
-    expect(liveRow).toContain("skeptical-power-user");
-    expect(liveRow).not.toContain("CUA browser");
+    expect(liveRow).toContain("Skeptical power user");
+    expect(liveRow).not.toContain("skeptical-power-user");
   });
 
   it("counts runs with no study separately instead of inventing a lab for them", async () => {
@@ -519,14 +519,13 @@ describe("all runs: everyone working, across every study", () => {
     updatedAt: new Date(NOW).toISOString(),
   });
 
-  const detailFor = (runId: string, persona: string, thought?: string) => ({
+  const detailFor = (runId: string, caption: string, thought?: string) => ({
     schema: "humanish.run-detail.v1" as const,
     runId,
     participants: [
       {
         id: "s1",
-        label: "lane",
-        personaId: persona,
+        label: caption,
         traits: [],
         status: "running",
         ...(thought === undefined ? {} : { thought: { text: thought } }),
@@ -539,10 +538,10 @@ describe("all runs: everyone working, across every study", () => {
     const details: Record<string, ReturnType<typeof detailFor>> = {
       "r-1": detailFor(
         "r-1",
-        "synthetic-new-user",
+        "Synthetic new user",
         "**Figuring out table creation** I am thinking about possible names.",
       ),
-      "r-2": detailFor("r-2", "skeptical-power-user"),
+      "r-2": detailFor("r-2", "Skeptical power user"),
     };
     const rendered = await renderToText(
       <App
@@ -564,13 +563,13 @@ describe("all runs: everyone working, across every study", () => {
       const frame = await rendered.press(KEY.down);
       if (/❯\s+All runs/.test(frame)) break;
     }
-    await rendered.press(KEY.enter, (candidate) => candidate.includes("synthetic-new-user"));
+    await rendered.press(KEY.enter, (candidate) => candidate.includes("Synthetic new user"));
     // Move to the participant who has recorded thinking: the quoted line follows the cursor, which
     // is the whole reason only one is quoted.
     let frame = "";
     for (let index = 0; index < 4; index += 1) {
       frame = await rendered.press(KEY.down);
-      if (/❯[^\n]*synthetic-new-user/.test(frame)) break;
+      if (/❯[^\n]*Synthetic new user/.test(frame)) break;
     }
     rendered.unmount();
     return frame;
@@ -578,13 +577,13 @@ describe("all runs: everyone working, across every study", () => {
 
   it("leads with participants and follows with the lab they are in", async () => {
     const frame = await openAllRuns();
-    const row = frame.split("\n").find((line) => line.includes("synthetic-new-user")) ?? "";
+    const row = frame.split("\n").find((line) => line.includes("Synthetic new user")) ?? "";
     // And each run appears exactly once, even though two manifests declare the same lab id.
-    expect(frame.split("\n").filter((line) => line.includes("skeptical-power-user")).length).toBe(
+    expect(frame.split("\n").filter((line) => line.includes("Skeptical power user")).length).toBe(
       1,
     );
     // Who first, where second: when three studies run at once the question is who is doing what.
-    expect(row.indexOf("synthetic-new-user")).toBeLessThan(row.indexOf("Signup flow"));
+    expect(row.indexOf("Synthetic new user")).toBeLessThan(row.indexOf("Signup flow"));
     expect(row).toMatch(/\d+:\d\d/);
   });
 

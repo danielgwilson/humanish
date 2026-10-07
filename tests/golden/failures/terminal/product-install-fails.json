@@ -339,13 +339,13 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "fail",
-    "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
+    "summary": "1 participant took part: 0/1 recorded completions, 1 lost to a harness failure. How it ended: subject.product.install could not prepare the world before codex exec: exit status 1",
     "gaps": [
       "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
       "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: 1 participant took part: 0/1 recorded completions, 1 lost to a harness failure. How it ended: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -466,7 +466,7 @@
           "mission": "Discover widgetsmith-cli from public surfaces."
         },
         "kind": "terminal",
-        "label": "Terminal agent · terminal-live-proof",
+        "label": "Autonomous creative agent",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -700,7 +700,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "fail",
-      "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
+      "summary": "1 participant took part: 0/1 recorded completions, 1 lost to a harness failure. How it ended: subject.product.install could not prepare the world before codex exec: exit status 1",
       "gaps": [
         "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
         "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one."
