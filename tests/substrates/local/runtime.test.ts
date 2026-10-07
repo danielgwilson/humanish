@@ -201,6 +201,18 @@ describe("local runtime preparation", () => {
       }),
     );
   });
+  it("reports no capacity for an existing VM whose size Lima does not list", async () => {
+    state.arch = "arm64";
+    state.installed = true;
+    state.limaSize = {} as typeof state.limaSize;
+    const status = await localRuntimeStatus({
+      ...options,
+      platform: "darwin",
+      arch: "arm64",
+      machine: { memoryBytes: 64 * 1024 ** 3, cpus: 16 },
+    });
+    expect(status.capacity).toBeUndefined();
+  });
   it("reports how many desktops this Linux machine holds", async () => {
     const status = await localRuntimeStatus({
       ...options,
@@ -377,6 +389,15 @@ describe("Lima VM size", () => {
       "limactl edit --cpus 8 --memory 13 humanish-runtime",
       "limactl start --tty=false humanish-runtime",
     ]);
+  });
+  it("applies an asked-for size to an existing VM whose size Lima does not list", async () => {
+    state.limaSize = {} as typeof state.limaSize;
+    await prepareLocalRuntime({
+      ...mac,
+      machine: { memoryBytes: 64 * GiB, cpus: 16 },
+      size: { memoryGiB: 13, cpus: 8 },
+    });
+    expect(limaCommands()).toContain("limactl edit --cpus 8 --memory 13 humanish-runtime");
   });
   it("leaves a VM that already has the asked-for size running", async () => {
     await prepareLocalRuntime({

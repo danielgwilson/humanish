@@ -203,7 +203,12 @@ export async function prepareLima(
     const problem = vmSizeProblem(size, mac);
     if (problem !== undefined) throw new Error(problem);
   }
-  if (status.exists && (size.cpus !== current.cpus || size.memoryGiB !== current.memoryGiB)) {
+  // An existing VM whose size Lima did not list gets the asked-for size without a comparison.
+  const differs =
+    status.size === undefined
+      ? options.size !== undefined
+      : size.cpus !== current.cpus || size.memoryGiB !== current.memoryGiB;
+  if (status.exists && differs) {
     await resizeLima(size, status.ready, options, progress);
     return;
   }

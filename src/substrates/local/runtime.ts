@@ -58,15 +58,20 @@ const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefine
   ];
 
 /** Desktops the existing Lima VM holds, the VM setup would create, or this Linux machine. */
-function runtimeCapacity(options: RuntimeOptions, lima: LimaStatus | undefined): LocalCapacity {
+function runtimeCapacity(
+  options: RuntimeOptions,
+  lima: LimaStatus | undefined,
+): LocalCapacity | undefined {
   if (lima === undefined) return localCapacity("linux-host", machineSize(options.machine));
   const machine = machineSize(options.machine);
   if (lima.size !== undefined) return localCapacity("lima-vm", lima.size, { machine });
+  // An existing VM whose size Lima did not list has an unknown size, which no default replaces.
+  if (lima.exists) return undefined;
   const planned = defaultVmSize(machine);
   return localCapacity(
     "lima-vm",
     { memoryBytes: planned.memoryGiB * 1024 ** 3, cpus: planned.cpus },
-    { planned: !lima.exists, machine },
+    { planned: true, machine },
   );
 }
 
@@ -106,9 +111,10 @@ export async function localRuntimeStatus(
     }
   }
   const capacity = runtimeCapacity(options, lima);
+  const sized = capacity === undefined ? {} : { capacity };
   if (lima !== undefined && !lima.ready)
-    return { ok: true, installed: false, message: lima.message, capacity };
-  return { ...(await engineStatus(options, architecture, lima !== undefined)), capacity };
+    return { ok: true, installed: false, message: lima.message, ...sized };
+  return { ...(await engineStatus(options, architecture, lima !== undefined)), ...sized };
 }
 
 /** The Docker engine, devices and cached image the desktops run on. */
