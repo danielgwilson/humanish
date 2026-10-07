@@ -18,7 +18,12 @@ import {
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
-import { formatRunTime, RUN_NOTES_FILE, type RunNotes } from "../run/notes.js";
+import {
+  formatRunTime,
+  RUN_NOTES_FILE,
+  runParticipantCaptions,
+  type RunNotes,
+} from "../run/notes.js";
 import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
@@ -63,7 +68,10 @@ export interface FeedbackDraft {
     /** The moment on the run clock, as the Observer shows it: `02:31`. */
     at: string;
     at_ms: number;
+    /** The stream id notes.json records, or null for a note on the whole run. */
     participant: string | null;
+    /** The participant's caption, as the Observer names it. */
+    participant_caption: string | null;
     author: string;
     text: string;
   }>;
@@ -339,9 +347,11 @@ function citedImpressions(
 export function withReviewerNotes(
   draft: FeedbackDraft,
   notes: RunNotes | null,
+  bundle: RunBundle,
   runRoot: string,
 ): FeedbackDraft {
   if (notes === null || notes.notes.length === 0) return draft;
+  const captions = runParticipantCaptions(bundle);
   const ordered = [...notes.notes].sort(
     (left, right) => left.atMs - right.atMs || left.createdAt.localeCompare(right.createdAt),
   );
@@ -360,6 +370,8 @@ export function withReviewerNotes(
       at: formatRunTime(note.atMs),
       at_ms: note.atMs,
       participant: note.participant,
+      participant_caption:
+        note.participant === null ? null : (captions.get(note.participant) ?? note.participant),
       author: note.author,
       text: note.text,
     })),
@@ -371,7 +383,7 @@ function reviewerNotesSection(draft: FeedbackDraft): string {
   const items = draft.reviewer_notes.map((note) => {
     const [first = "", ...rest] = note.text.split("\n");
     return [
-      `- ${note.at}, ${note.participant ?? "whole run"}, ${note.author}: ${first}`,
+      `- ${note.at}, ${note.participant_caption ?? "whole run"}, ${note.author}: ${first}`,
       ...rest.map((line) => `  ${line}`),
     ].join("\n");
   });

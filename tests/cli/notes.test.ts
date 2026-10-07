@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
-import { FIRST_PARTICIPANT, writeTimedRun } from "../helpers/timed-run.js";
+import { FIRST_PARTICIPANT, SECOND_PARTICIPANT, writeTimedRun } from "../helpers/timed-run.js";
 
 const RUN = "noted-run";
 
@@ -42,7 +42,7 @@ async function timedProject(): Promise<string> {
 }
 
 describe("humanish notes", () => {
-  it("adds a note at mm:ss for a participant and lists it", async () => {
+  it("adds a note at mm:ss for a participant named by its study id and lists it", async () => {
     const cwd = await timedProject();
 
     const added = await runCli([
@@ -52,7 +52,7 @@ describe("humanish notes", () => {
       "--at",
       "02:31",
       "--participant",
-      FIRST_PARTICIPANT,
+      "first-visitor",
       "They looked for the save button here.",
       "--cwd",
       cwd,
@@ -70,6 +70,10 @@ describe("humanish notes", () => {
     expect(JSON.parse(listed.output)).toMatchObject({
       ok: true,
       notes: [{ atMs: 151_000, text: "They looked for the save button here." }],
+      participants: [
+        { id: FIRST_PARTICIPANT, participantId: "first-visitor", caption: "First visitor" },
+        { id: SECOND_PARTICIPANT, participantId: "second-visitor", caption: "Second visitor" },
+      ],
     });
     // The saved Observer page is rendered again and shows the note.
     const page = await readFile(
@@ -101,12 +105,32 @@ describe("humanish notes", () => {
     expect(listed.output).toBe(
       [
         `Reviewer notes on run ${RUN}: 2`,
-        `  00:12  ${FIRST_PARTICIPANT}  you: Early note.`,
+        "  00:12  First visitor  you: Early note.",
         "         Second line.",
-        "  02:31  whole run   you: Late note.",
+        "  02:31  whole run      you: Late note.",
         "",
       ].join("\n"),
     );
+  });
+
+  it("names the participant by caption when it adds a note", async () => {
+    const cwd = await timedProject();
+
+    const added = await runCli([
+      "notes",
+      RUN,
+      "--add",
+      "--at",
+      "00:30",
+      "--participant",
+      SECOND_PARTICIPANT,
+      "Stuck.",
+      "--cwd",
+      cwd,
+    ]);
+
+    expect(added.output).toContain("Added a note at 00:30 for Second visitor to run noted-run.");
+    expect(added.output).not.toContain(SECOND_PARTICIPANT);
   });
 
   it("takes the words after the run as the text when they are not quoted", async () => {

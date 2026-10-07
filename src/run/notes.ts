@@ -11,6 +11,8 @@ import type { RunBundle } from "./bundle.js";
 import { containedPathAbsent, writeContainedOutputFile } from "./contained-output.js";
 import { readBoundedFileResult } from "./evidence-files.js";
 import { loadRunBundlePrepared } from "./locate.js";
+import { streamCaptions } from "./participant-caption.js";
+import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
 import { withNotesLock, type NotesLockHooks } from "./notes-lock.js";
 import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStream } from "./streams.js";
@@ -68,6 +70,46 @@ const refuse = (code: RunNoteErrorCode, message: string): AddRunNoteResult => ({
   ok: false,
   error: { code, message },
 });
+
+/** Each participant's caption, by stream id, as the Observer and the TUI name them. */
+export function runParticipantCaptions(bundle: RunBundle): Map<string, string> {
+  return streamCaptions(
+    bundle.streams.map((stream) => {
+      const participantId = streamParticipantIdOf(stream);
+      const personaId = recordedPersonaId(bundle, stream);
+      return {
+        id: stream.id,
+        label: stream.label,
+        ...(participantId === undefined ? {} : { participantId }),
+        ...(personaId === undefined ? {} : { personaId }),
+      };
+    }),
+  );
+}
+
+/**
+ * The stream id a note's participant names: a stream id, or the participant's own id from the
+ * study (`charge-nurse`) when exactly one stream records it. Otherwise the refusal, which names the
+ * run's participants by caption, with the id to type for each.
+ */
+function participantStreamId(bundle: RunBundle, named: string): string | AddRunNoteResult {
+  if (bundle.streams.some((stream) => stream.id === named)) return named;
+  const matching = bundle.streams.filter((stream) => streamParticipantIdOf(stream) === named);
+  if (matching.length === 1) return matching[0]!.id;
+  const captions = runParticipantCaptions(bundle);
+  if (matching.length > 1)
+    return refuse(
+      "HUMANISH_NOTE_UNKNOWN_PARTICIPANT",
+      `Participant ${named} has ${matching.length} streams in run ${bundle.runId}: ${matching.map((stream) => `${captions.get(stream.id)} (${stream.id})`).join(", ")}. Name one by its stream id.`,
+    );
+  const known = bundle.streams.map(
+    (stream) => `${captions.get(stream.id)} (${streamParticipantIdOf(stream) ?? stream.id})`,
+  );
+  return refuse(
+    "HUMANISH_NOTE_UNKNOWN_PARTICIPANT",
+    `Run ${bundle.runId} has no participant ${named}. Its participants are ${known.join(", ")}; leave the participant out for a note on the whole run.`,
+  );
+}
 
 /** A run clock time as the Observer shows it: whole minutes and seconds, `02:31`. */
 export function formatRunTime(ms: number): string {
@@ -308,14 +350,9 @@ export async function addRunNote(
       "HUMANISH_NOTE_NO_CLOCK",
       `Run ${bundle.runId} has no captures with recorded times, so a note cannot point at a moment of it.`,
     );
-  if (
-    input.participant !== null &&
-    !bundle.streams.some((stream) => stream.id === input.participant)
-  )
-    return refuse(
-      "HUMANISH_NOTE_UNKNOWN_PARTICIPANT",
-      `Run ${bundle.runId} has no participant ${input.participant}. Its participants are ${bundle.streams.map((stream) => stream.id).join(", ")}; leave the participant out for a note on the whole run.`,
-    );
+  const participant =
+    input.participant === null ? null : participantStreamId(bundle, input.participant);
+  if (participant !== null && typeof participant !== "string") return participant;
   // The Observer shows whole seconds, so a moment in the second the clock ends is its end.
   const durationMs = clock.endMs - clock.startMs;
   if (
@@ -329,12 +366,12 @@ export async function addRunNote(
     );
   const atMs = Math.min(Math.round(input.atMs), durationMs);
   const streams = bundle.streams.filter(
-    (stream) => input.participant === null || stream.id === input.participant,
+    (stream) => participant === null || stream.id === participant,
   );
   const note: RunNote = {
     id: `note-${randomUUID()}`,
     atMs,
-    participant: input.participant,
+    participant,
     nearest: nearestItem(streams, clock.startMs + atMs),
     text,
     author: DEFAULT_AUTHOR,

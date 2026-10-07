@@ -61,10 +61,25 @@ describe("reviewer notes on a recorded run", () => {
       ok: false,
       error: {
         code: "HUMANISH_NOTE_UNKNOWN_PARTICIPANT",
-        message: expect.stringContaining("stream-one, stream-two"),
+        message: expect.stringContaining(
+          "First visitor (first-visitor), Second visitor (second-visitor)",
+        ),
       },
     });
+    expect(added.ok || added.error.message).not.toContain("stream-one");
     await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
+  });
+
+  it("takes the participant's own id from the study and keeps its stream id", async () => {
+    const { prepared } = await timedRun();
+
+    const added = await addRunNote(prepared, {
+      atMs: 1000,
+      participant: "second-visitor",
+      text: "Named by the study's id.",
+    });
+
+    expect(added.ok && added.note.participant).toBe(SECOND_PARTICIPANT);
   });
 
   it("refuses a moment before the run clock starts or after the second it ends", async () => {

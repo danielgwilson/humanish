@@ -66,9 +66,12 @@ function trace(items: ActorTraceItem[]): ActorTrace {
   };
 }
 
-/** The first participant: captures at 00:00, 01:00 and 02:31, a click at 00:40, a message at 02:30. */
+/**
+ * The first participant, "First visitor" (participant id first-visitor): captures at 00:00, 01:00
+ * and 02:31, a click at 00:40, a message at 02:30.
+ */
 export const FIRST_PARTICIPANT = "stream-one";
-/** The second participant: captures at 00:20 and 01:30. */
+/** The second participant, "Second visitor" (second-visitor): captures at 00:20 and 01:30. */
 export const SECOND_PARTICIPANT = "stream-two";
 
 /**
@@ -115,6 +118,7 @@ export async function writeTimedRun(cwd: string, runId: string): Promise<string>
     {
       ...template,
       id: FIRST_PARTICIPANT,
+      laneId: "first-visitor",
       simId: "participant-one",
       label: "First visitor",
       actor: trace(first),
@@ -122,6 +126,7 @@ export async function writeTimedRun(cwd: string, runId: string): Promise<string>
     {
       ...template,
       id: SECOND_PARTICIPANT,
+      laneId: "second-visitor",
       simId: "participant-two",
       label: "Second visitor",
       actor: trace(second),

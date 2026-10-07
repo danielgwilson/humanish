@@ -55,6 +55,7 @@ describe("reviewer notes in feedback drafts", () => {
         at: "00:12",
         at_ms: 12_000,
         participant: "sim-01-ui",
+        participant_caption: "UI journey",
         author: "you",
         text: "The menu was hidden.\nThey scrolled past it.",
       },
@@ -63,6 +64,7 @@ describe("reviewer notes in feedback drafts", () => {
         at: "02:31",
         at_ms: 151_000,
         participant: null,
+        participant_caption: null,
         author: "you",
         text: "The whole page went blank.",
       },
@@ -71,7 +73,7 @@ describe("reviewer notes in feedback drafts", () => {
     expect((await verifyFeedback(cwd, RUN)).ok).toBe(true);
   });
 
-  it("renders the notes under their own heading, labelled as reviewer notes", async () => {
+  it("renders the notes under their own heading, naming participants by caption", async () => {
     const cwd = await notedLiveRun();
 
     const rendered = await renderIssueMarkdown(cwd, RUN, "example/app");
@@ -88,7 +90,7 @@ describe("reviewer notes in feedback drafts", () => {
         "",
         "Notes a person added while reviewing the recording. They are not participant feedback.",
         "",
-        "- 00:12, sim-01-ui, you: The menu was hidden.",
+        "- 00:12, UI journey, you: The menu was hidden.",
         "  They scrolled past it.",
         "- 02:31, whole run, you: The whole page went blank.",
         "",

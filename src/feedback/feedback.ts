@@ -212,7 +212,13 @@ async function draftFeedbackBound(
     ? await buildAnalysisDraft(context, options)
     : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
   const draft =
-    built && withReviewerNotes(built, shared.notes, path.dirname(context.loaded.bundlePath));
+    built &&
+    withReviewerNotes(
+      built,
+      shared.notes,
+      context.loaded.bundle,
+      path.dirname(context.loaded.bundlePath),
+    );
   if (!draft)
     return {
       context,

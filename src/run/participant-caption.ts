@@ -81,3 +81,33 @@ export function savedCaption(stream: SavedCaptionFacts): string {
   }
   return label;
 }
+
+/** A saved stream, as much of it as `streamCaptions` reads. */
+export interface CaptionedStream extends SavedCaptionFacts {
+  readonly id: string;
+}
+
+/**
+ * Each stream's caption, by stream id, as the Observer shows it: the saved caption, with the
+ * participant id or the stream id added where two streams would read the same.
+ */
+export function streamCaptions(streams: readonly CaptionedStream[]): Map<string, string> {
+  const repeated = (labels: readonly string[]): Set<string> =>
+    new Set(labels.filter((label, index) => labels.indexOf(label) !== index));
+  const saved = streams.map(savedCaption);
+  const savedTwice = repeated(saved);
+  const qualified = streams.map((stream, index) =>
+    savedTwice.has(saved[index]!)
+      ? `${saved[index]!} · ${stream.participantId ?? stream.id}`
+      : saved[index]!,
+  );
+  const qualifiedTwice = repeated(qualified);
+  return new Map(
+    streams.map((stream, index) => [
+      stream.id,
+      qualifiedTwice.has(qualified[index]!)
+        ? `${qualified[index]!} · ${stream.id}`
+        : qualified[index]!,
+    ]),
+  );
+}

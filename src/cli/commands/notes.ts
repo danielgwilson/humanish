@@ -1,15 +1,17 @@
 import type { Command } from "commander";
 
 import { renderObserver } from "../../observer/render.js";
-import { resolveRunPath } from "../../run/locate.js";
+import { loadRunBundlePrepared, resolveRunPath } from "../../run/locate.js";
 import {
   addRunNote,
   formatRunTime,
   readRunNotes,
+  runParticipantCaptions,
   type RunNote,
   type RunNoteErrorCode,
 } from "../../run/notes.js";
-import { resolvePhysicalCwd, runIdOf } from "../../run/paths.js";
+import { streamParticipantIdOf } from "../../run/participant-records.js";
+import { resolvePhysicalCwd, runIdOf, type PreparedRunArtifactPaths } from "../../run/paths.js";
 import { runNotFoundMessage } from "../../run/run-not-found.js";
 import { cli } from "../invocation.js";
 import {
@@ -30,6 +32,11 @@ interface NotesResult {
   run: string;
   /** Every note on the run, in run clock order. */
   notes: RunNote[];
+  /**
+   * The run's participants: the stream id notes record, the participant's own id from the study
+   * when it has one (either works for --participant), and the caption listings show.
+   */
+  participants: Array<{ id: string; participantId?: string; caption: string }>;
   added?: RunNote;
   warnings: string[];
   error?: {
@@ -65,7 +72,7 @@ export function registerNotesCommand(parent: Command, io: CliIo): void {
     .option("--at <mm:ss>", "With --add: the moment, in minutes and seconds, such as 02:31.")
     .option(
       "--participant <id>",
-      "With --add: the participant's stream id. Leave it out for a note on the whole run.",
+      "With --add: the participant's id from the study, or its stream id. Leave it out for a note on the whole run.",
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -106,13 +113,15 @@ async function handleNotes(
   options: NotesOptions,
   command: Command,
 ): Promise<void> {
-  const base: Pick<NotesResult, "schema" | "cwd" | "run" | "notes" | "warnings"> = {
-    schema: NOTES_RESULT_SCHEMA,
-    cwd: options.cwd,
-    run,
-    notes: [],
-    warnings: [],
-  };
+  const base: Pick<NotesResult, "schema" | "cwd" | "run" | "notes" | "participants" | "warnings"> =
+    {
+      schema: NOTES_RESULT_SCHEMA,
+      cwd: options.cwd,
+      run,
+      notes: [],
+      participants: [],
+      warnings: [],
+    };
   const fail = (code: NonNullable<NotesResult["error"]>["code"], message: string): void => {
     writeResult(command, io, { ...base, ok: false, error: { code, message } }, formatNotesHuman);
     io.setExitCode(2);
@@ -178,6 +187,7 @@ async function handleNotes(
     ok: true,
     run: runId,
     notes: byRunTime(notes?.notes ?? []),
+    participants: await participantsOf(cwd, prepared),
     ...(added === undefined ? {} : { added }),
     warnings,
   };
@@ -185,8 +195,32 @@ async function handleNotes(
   io.setExitCode(0);
 }
 
-function noteLine(note: RunNote, width: number): string {
-  const head = `  ${formatRunTime(note.atMs)}  ${(note.participant ?? "whole run").padEnd(width)}  `;
+/** The run's participants with their captions; none when its run.json cannot be read. */
+async function participantsOf(
+  cwd: string,
+  prepared: PreparedRunArtifactPaths,
+): Promise<NotesResult["participants"]> {
+  const loaded = await loadRunBundlePrepared(cwd, prepared).catch(() => null);
+  if (!loaded) return [];
+  const captions = runParticipantCaptions(loaded.bundle);
+  return loaded.bundle.streams.map((stream) => {
+    const participantId = streamParticipantIdOf(stream);
+    return {
+      id: stream.id,
+      ...(participantId === undefined ? {} : { participantId }),
+      caption: captions.get(stream.id) ?? stream.id,
+    };
+  });
+}
+
+/** Who a note is about, as a person reads it. */
+function participantName(result: NotesResult, participant: string | null): string {
+  if (participant === null) return "whole run";
+  return result.participants.find((entry) => entry.id === participant)?.caption ?? participant;
+}
+
+function noteLine(note: RunNote, name: string, width: number): string {
+  const head = `  ${formatRunTime(note.atMs)}  ${name.padEnd(width)}  `;
   const [first = "", ...rest] = note.text.split("\n");
   return [`${head}${note.author}: ${first}`, ...rest.map((line) => `         ${line}`)].join("\n");
 }
@@ -195,9 +229,10 @@ function formatNotesHuman(result: NotesResult): HumanOutput {
   if (!result.ok) return humanError(result.error);
   const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
   if (result.added)
-    return `Added a note at ${formatRunTime(result.added.atMs)} ${result.added.participant === null ? "on the whole run" : `for ${result.added.participant}`} to run ${result.run}. The Observer marks it on the study timeline, and ${cli(`notes ${result.run}`)} lists every note.\n${warnings}`;
+    return `Added a note at ${formatRunTime(result.added.atMs)} ${result.added.participant === null ? "on the whole run" : `for ${participantName(result, result.added.participant)}`} to run ${result.run}. The Observer marks it on the study timeline, and ${cli(`notes ${result.run}`)} lists every note.\n${warnings}`;
   if (result.notes.length === 0)
     return `Run ${result.run} has no reviewer notes. Add one: ${cli(`notes ${result.run} --add --at 00:30 "text"`)}\n${warnings}`;
-  const width = Math.max(...result.notes.map((note) => (note.participant ?? "whole run").length));
-  return `${[`Reviewer notes on run ${result.run}: ${result.notes.length}`, ...result.notes.map((note) => noteLine(note, width))].join("\n")}\n${warnings}`;
+  const names = result.notes.map((note) => participantName(result, note.participant));
+  const width = Math.max(...names.map((name) => name.length));
+  return `${[`Reviewer notes on run ${result.run}: ${result.notes.length}`, ...result.notes.map((note, index) => noteLine(note, names[index]!, width))].join("\n")}\n${warnings}`;
 }

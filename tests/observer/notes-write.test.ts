@@ -169,6 +169,20 @@ describe("refusing a note through a loopback Observer", () => {
     await expect(readFile(path.join(runDir, "notes.json"))).rejects.toThrow(/ENOENT/);
   });
 
+  it("takes the participant's own id from the study and stores its stream id", async () => {
+    const { server, token } = await servedRun();
+
+    const reply = await note(server.port, token, {
+      runId: RUN,
+      atMs: 1000,
+      participant: "first-visitor",
+      text: "By study id.",
+    });
+
+    expect(reply.status).toBe(201);
+    expect(JSON.parse(reply.body)).toMatchObject({ note: { participant: FIRST_PARTICIPANT } });
+  });
+
   it("accepts a page opened at localhost from its own origin", async () => {
     const { server, token } = await servedRun();
 
