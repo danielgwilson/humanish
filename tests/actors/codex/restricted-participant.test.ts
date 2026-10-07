@@ -241,6 +241,40 @@ describe("restricted participant conversation", () => {
       expect(() => parseParticipantFinal(value)).toThrow();
   });
 
+  it("keeps the impressions in a final account and asks for them in its instructions", async () => {
+    const impressions = [
+      { kind: "liked", text: "The note saved without a page reload." },
+      {
+        kind: "unlike_my_work",
+        text: "In my notebook the date comes first; here it is at the bottom of the note.",
+      },
+    ];
+    expect(parseParticipantFinal(finalOutput({ impressions })).closingReport).toEqual({
+      summary: "I saved the note.",
+      frictionReports: ["The first click was skipped, so I retried."],
+      impressions,
+    });
+    expect(parseParticipantFinal(finalOutput({ impressions })).message).toBe(
+      "I saved the note.\nThe first click was skipped, so I retried.",
+    );
+    for (const invalid of [
+      [{ kind: "annoying", text: "Slow." }],
+      [{ kind: "liked", text: "" }],
+      Array(7).fill({ kind: "liked", text: "Fast." }),
+    ])
+      expect(() => parseParticipantFinal(finalOutput({ impressions: invalid }))).toThrow(
+        "invalid_response",
+      );
+
+    run.mockResolvedValueOnce(result(finalOutput({ impressions })));
+    const h = createRestrictedCodexParticipant();
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    const instructions = String(run.mock.calls[0]![0].instructions);
+    expect(instructions).toContain("impressions");
+    expect(instructions).toContain("own work or life");
+    await h.close();
+  });
+
   it("publishes strict native tool and final schemas", () => {
     expect(PARTICIPANT_TOOL_SCHEMA).toMatchObject({
       type: "object",
@@ -252,7 +286,26 @@ describe("restricted participant conversation", () => {
       },
     });
     expect(PARTICIPANT_FINAL_SCHEMA).toMatchObject({ type: "object", additionalProperties: false });
-    expect(PARTICIPANT_FINAL_SCHEMA.required).toEqual(["outcome", "summary", "frictionReports"]);
+    expect(PARTICIPANT_FINAL_SCHEMA.required).toEqual([
+      "outcome",
+      "summary",
+      "frictionReports",
+      "impressions",
+    ]);
+    expect(PARTICIPANT_FINAL_SCHEMA.properties.impressions).toMatchObject({
+      type: "array",
+      maxItems: 6,
+      items: {
+        additionalProperties: false,
+        required: ["kind", "text"],
+        properties: {
+          kind: {
+            enum: ["unclear", "unfinished", "untrustworthy", "liked", "missing", "unlike_my_work"],
+          },
+          text: { minLength: 1, maxLength: 500 },
+        },
+      },
+    });
     expect(JSON.stringify(PARTICIPANT_TOOL_SCHEMA)).not.toContain('"speak"');
     expect(JSON.stringify(participantToolSchema(true))).toContain('"speak"');
     expect(JSON.stringify(participantToolSchema(true))).not.toContain("heldKeys");
