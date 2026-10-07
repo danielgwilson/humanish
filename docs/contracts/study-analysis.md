@@ -177,15 +177,21 @@ person using the product, one `suggestion`, a `severity` (`major` when it mislea
 `moderate` when it slows or confuses, `minor` when it is polish), a `confidence`,
 `seenByStreamIds` and `evidenceIds`. Validation rejects a design finding that cites no retained
 capture, cites evidence outside the packet, repeats an ID, or lists a participant in
-`seenByStreamIds` whose evidence it does not cite. An empty list means the review found no design
+`seenByStreamIds` without a cited capture of that participant. An empty list means the review found no design
 problem in the captures. The model judges legibility and size from images alone; it does not
 measure text or control sizes.
 
 New provider responses must include `headline` and `experience` on every finding and a
 `designFindings` list. A stored artifact with prompt `study-evidence-7` or later must carry them
 too. Artifacts from earlier prompts load without them and render by title and summary. The
-narrative scrub covers the new text fields. A known secret echoed as a design finding ID,
-severity, confidence or reference refuses the response, as it does for finding IDs.
+Observer applies the same prompt-version rules and the same field limits when it reads a saved
+analysis, and treats an analysis that breaks them as unavailable.
+
+The narrative scrub removes a run's known transient values, such as a received one-time code or
+link, from every generated text field. It finds each value as written and in its encoded forms:
+percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
+with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
+known value in any of these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the
@@ -392,7 +398,10 @@ humanish feedback issue --run latest --analysis <id> --finding F1 --repo owner/r
 
 Corrections append against exact analysis and finding hashes. Confirming one
 version does not approve a later claim. Dismissed findings cannot become feedback
-drafts; amendments preserve the original and record the replacement. Feedback
+drafts; amendments preserve the original and record the replacement. A reason or replacement
+claim that matches a sensitive pattern is refused. When the correction is made inside the run's
+own invocation, one that holds a known transient value, as written or encoded, is refused too; a
+separate `analyze correct` command has no transient values to check against. Feedback
 drafts include source/version/evidence references and remain explicitly
 independent of participant-authored candidates. No command above posts to GitHub.
 Each analysis has room for 256 correction inventory entries, including interrupted

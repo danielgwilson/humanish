@@ -32,6 +32,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- Analysis text no longer keeps a run's received one-time codes or links when the model writes
+  them encoded. Every generated field is checked for each value as written and as percent-encoded,
+  JSON-escaped, base64 or hex text, and an analysis that puts one in a finding ID or reference is
+  refused. Before, only the value as written was removed.
+- A design finding can name a participant as having seen the problem only when it cites one of
+  that participant's captures, and the Observer now refuses a saved analysis that lacks the
+  headlines or design findings its prompt version requires.
 - Shared-world participant errors now report a terminal session's status and reason instead of claiming that no terminal session was produced.
 - Run listings, the Observer, stats, verify and the TUI agree when a run stops updating:
   an unfinished bundle without usable status reads as interrupted, and a recorded final outcome
