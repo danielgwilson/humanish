@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 import type { LoadedAnalysis } from "../../src/analysis/types";
 import { StudyReport } from "../components/study-report";
+import { participantLabels } from "../lib/participant-label";
 import { parseStudyAnalysis, projectStudyAnalysis } from "../lib/study-analysis";
 
 // The synthetic analyses the browser proof renders, through the same parse and projection.
@@ -145,8 +146,10 @@ describe("design findings", () => {
       ["Why it matters", "A person may not see that the form has a next step."],
       ["Suggestion", "Keep the primary action inside the first screen, or pin it to the bottom."],
     ]);
+    // The caption is the one every Observer surface uses for this participant.
+    const seenBy = participantLabels(data.streams).get(data.streams[0]!.id);
     expect(major.querySelector(".design-meta")?.textContent).toBe(
-      "Seen by Persona 1 · high confidence",
+      `Seen by ${seenBy} · high confidence`,
     );
     const capture = major.querySelector<HTMLButtonElement>("button.design-capture")!;
     expect(capture.querySelector("img")?.getAttribute("src")).toBe("../screenshots/portrait-3.png");
