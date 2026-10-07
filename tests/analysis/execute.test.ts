@@ -598,6 +598,20 @@ describe("bounded study analysis run", () => {
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
+  it("keeps a result billed above the expected cost but within the worst case", async () => {
+    const h = transport();
+    const roomy = { ...config, maxOutputTokens: 32_768 };
+    const admission = estimateAnalysisAdmission(input(), roomy);
+    h.wire.usage.output_tokens = 20_000;
+    const artifact = await runAnalysis(input(), roomy, {
+      apiKey: "synthetic-key",
+      fetch: h.fetchFn,
+    });
+    expect(artifact.usage.estimatedCostUsd).toBeGreaterThan(admission.estimatedCostUsd!);
+    expect(artifact.usage.estimatedCostUsd).toBeLessThan(admission.worstCaseCostUsd!);
+    expect(artifact).toMatchObject({ status: "complete", error: null, result: result() });
+  });
+
   it("retains null usage on cancellation before dispatch and never throws callback errors", async () => {
     const h = transport();
     const cancelled = await runAnalysis(input(), config, {

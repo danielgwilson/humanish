@@ -597,10 +597,12 @@ function settleCompletedOutput(
   artifact.result = checked.result;
   artifact.status = input.coverage.complete ? "complete" : "partial";
   artifact.error = null;
+  // A bill above the expected cost is a normal outcome. Only one above the worst case or the cap
+  // shows the estimate was wrong.
   if (
     config.provider !== "codex" &&
     ((response.usage?.output ?? 0) > config.maxOutputTokens ||
-      (artifact.usage.estimatedCostUsd ?? 0) > (admission.estimatedCostUsd ?? config.maxCostUsd) ||
+      (artifact.usage.estimatedCostUsd ?? 0) > (admission.worstCaseCostUsd ?? config.maxCostUsd) ||
       (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)
   ) {
     artifact.status = "partial";
