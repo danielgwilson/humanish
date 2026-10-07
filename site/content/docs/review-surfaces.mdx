@@ -189,8 +189,10 @@ Each note is a mark on the study timeline. **Findings** lists the notes under
 The notes are saved in the run directory as `notes.json`. A note's time counts from
 the study timeline's 00:00: the first timed capture or desktop video of any
 participant. From a terminal or an agent, `humanish notes <run>` lists the notes and
-`humanish notes <run> --add --at 02:31 --participant <id> "text"` adds one; leave out
-`--participant` for a note on the whole study.
+`humanish notes <run> --add --at 02:31 --participant <id> "text"` adds one. `--participant`
+takes the participant's id from the study, such as `charge-nurse`, or its stream id; leave it
+out for a note on the whole study. Listings name each participant by its caption, as the
+Observer does.
 
 Only an Observer that `humanish observe`, `watch` or `run --open` serves on 127.0.0.1
 takes notes. The server accepts a note from the page it rendered: the page carries a
@@ -201,7 +203,9 @@ opened from disk and an exported page show the notes and offer no way to add one
 Text that looks like a secret or a local path is replaced before a note is saved.
 `humanish verify` reads `notes.json` like the rest of the run, so a secret-shaped
 value in a note keeps the run from `share_ready`. Feedback drafts include the notes
-under **Reviewer notes**, apart from what participants said.
+under **Reviewer notes**, apart from what participants said. A draft and an HTML export
+read the notes once, check that copy as verify would, and include that copy only, so a
+`notes.json` changed after verify ran cannot go out unchecked.
 
 ### What the viewer keeps out
 

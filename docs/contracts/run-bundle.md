@@ -606,6 +606,8 @@ absent until the first note.
   00:00. A participant's captures count only when every one is stamped and the stamps
   never go back.
 - `participant`: the stream id the note belongs to, or `null` for the whole run.
+  `humanish notes --add --participant` and the Observer also take the participant's id from
+  the study (the stream's `laneId`) and record its stream id.
 - `nearest`: the latest stamped trace item, a capture or an event, at or before the
   moment, among the note's participant or every participant; `null` when there is none.
 - `text`: 1 to 2000 characters, after the run's known values, secret-shaped values and
@@ -613,9 +615,16 @@ absent until the first note.
 - `author`: `"you"` in this version.
 - `createdAt`, `editedAt`: ISO-8601. Notes cannot be edited yet, so `editedAt` is `null`.
 
-A run holds at most 500 notes. `verify` scans `notes.json` with every other run file,
-so a secret-shaped value in it keeps the run from `share_ready`. A bundle export copies
-it; an HTML export carries the notes read-only.
+A run holds at most 500 notes, and `notes.json` at most 8 MiB; a larger file is refused
+without being read. `verify` scans `notes.json` with every other run file, so a
+secret-shaped value in it keeps the run from `share_ready`. A bundle export copies it; an
+HTML export carries the notes read-only after checking the copy it read.
+
+While a note is being saved, the run directory holds `.notes-lock/owner.json`: the
+writer's pid, a digest of its host name and an id for that hold. The lock is freed by its
+writer, or by another writer on the same host once that pid is gone, never by age. It is a
+local-only file like `status.json`: the Observer servers never serve it and a bundle export
+leaves it out.
 
 ## Verify Result Share Safety
 

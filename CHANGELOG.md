@@ -17,10 +17,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   same moment. They are saved in the run directory as `notes.json`
   (`humanish.run-notes.v1`). `humanish notes <run>` lists them and
   `humanish notes <run> --add --at <mm:ss> [--participant <id>] "text"` adds one; `--json`
-  works for both. The server takes a note only with the token in the page it rendered and from
-  that page's own address, and an Observer shared with `--expose` takes none. Text that looks
-  like a secret or a local path is replaced before it is saved, `verify` scans `notes.json`
-  like other run text, and feedback drafts include the notes under **Reviewer notes**.
+  works for both. `--participant` takes the participant's id from the study, such as
+  `charge-nurse`, or its stream id, and listings name each participant by its caption. The
+  server takes a note only with the token in the page it rendered and from that page's own
+  address, and an Observer shared with `--expose` takes none. Text that looks like a secret or
+  a local path is replaced before it is saved, and `verify` scans `notes.json` like other run
+  text. Feedback drafts include the notes under **Reviewer notes**; a draft or an HTML export
+  checks the notes again as it reads them and refuses ones that look like a secret.
 
 ### Fixed
 
