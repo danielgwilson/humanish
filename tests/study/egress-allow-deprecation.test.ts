@@ -1,5 +1,5 @@
 // `execution.egressAllow` acts only on the terminal route, whose sandbox is created with the list as
-// an outbound allowlist. Every other route ignores it. Until 0.112.0 refuses it there, the parse
+// an outbound allowlist. Every other route ignores it. Until the release that refuses it there, the parse
 // warns, so `study check` and every run print it, and each run records it in its bundle.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -14,7 +14,7 @@ import { makeTestTempDir } from "../helpers/temp-dir.js";
 const allow = { execution: { egressAllow: ["example.com"] } };
 const ignoredOn = (route: string) => (warning: string) =>
   warning.startsWith(`\`execution.egressAllow\` is ignored on route: ${route}.`) &&
-  warning.includes("0.112.0");
+  warning.includes("2026-11-04");
 
 function parsed(base: BaseName) {
   const result = parseStudy(lab(base, allow));

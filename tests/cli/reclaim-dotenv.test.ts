@@ -130,7 +130,8 @@ describe("humanish reclaim --dotenv", () => {
     await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
     const result = await runCli(["reclaim", "--cwd", cwd, "--env-file", "local.env", "--json"]);
     expect(seenKeys).toEqual([CANARY]);
-    const warning = "`--env-file` is now `--dotenv`; `--env-file` is removed in 0.112.0.";
+    const warning =
+      "`--env-file` is now `--dotenv`; `--env-file` is removed in the first minor release on or after 2026-11-03.";
     expect(result.output).toContain(`warning: ${warning}\n`);
     const json = JSON.parse(result.output.slice(result.output.indexOf("{")));
     expect(json.warnings.filter((line: string) => line === warning)).toHaveLength(1);

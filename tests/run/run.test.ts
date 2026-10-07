@@ -219,7 +219,8 @@ describe("dry-run bundles", () => {
   it("runs the deprecated humanish cleanup as reclaim --check, with one warning", async () => {
     await withFixtureCopy(async (cwd) => {
       await runDryRun({ cwd, dryRun: true, runId: "cleanup-alias" });
-      const warning = "`cleanup` is now `reclaim --check`; `cleanup` is removed in 0.112.0.";
+      const warning =
+        "`cleanup` is now `reclaim --check`; `cleanup` is removed in the first minor release on or after 2026-11-03.";
       const check = await runCli(["reclaim", "--check", "--cwd", cwd, "--json"]);
       const cleanup = await runCli(["cleanup", "--cwd", cwd, "--json"]);
       // The same result and exit code, with the warning first in warnings[] and once on stderr.
