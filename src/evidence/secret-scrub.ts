@@ -65,6 +65,21 @@ export function encodedForms(value: string): string[] {
   return [value, ...escaped, ...binary.filter((form) => form.length >= MIN_ENCODED_FORM)];
 }
 
+/**
+ * Whether [at, end) overlaps a marker. The markers are one regex's matches, so they are sorted and
+ * disjoint: only the first marker that ends after `at` can also start before `end`.
+ */
+function overlapsMarker(markers: readonly [number, number][], at: number, end: number): boolean {
+  let low = 0;
+  let high = markers.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (markers[middle]![1] > at) high = middle;
+    else low = middle + 1;
+  }
+  return low < markers.length && markers[low]![0] < end;
+}
+
 /** Every occurrence of every form, outside the markers, merged where they overlap or touch. */
 function secretSpans(text: string, forms: readonly string[]): [number, number][] {
   const markers: [number, number][] = [];
@@ -76,7 +91,7 @@ function secretSpans(text: string, forms: readonly string[]): [number, number][]
   for (const form of forms) {
     for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + 1)) {
       const end = at + form.length;
-      if (!markers.some(([start, stop]) => at < stop && end > start)) spans.push([at, end]);
+      if (!overlapsMarker(markers, at, end)) spans.push([at, end]);
     }
   }
   spans.sort((left, right) => left[0] - right[0]);
