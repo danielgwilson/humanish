@@ -6,16 +6,22 @@ import type { ScriptedBrowserStudyResult } from "../../routes/scripted/types.js"
 import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 
-/** A run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
+/**
+ * A run's first lines: the command that ran, whether it was a dry run, how it ended, and its route.
+ * `runOk` is the run's own ok, which automaticAnalysisEnvelope keeps when an analysis that did not
+ * complete turns `ok` false. That run finished, and the line says so.
+ */
 function runHeader(
-  result: { ok: boolean; dryRun?: boolean; studyId: string },
+  result: { ok: boolean; runOk?: boolean; dryRun?: boolean; studyId: string },
   route: "computer-use" | "terminal" | "scripted" | "shared-world",
 ): string[] {
   const kind = result.dryRun === true ? "dry run" : result.dryRun === false ? "live run" : "run";
-  return [
-    `humanish run ${result.studyId}: ${kind} ${result.ok ? "finished" : "failed"}`,
-    `route: ${route}`,
-  ];
+  const ending = result.ok
+    ? "finished"
+    : result.runOk === true
+      ? "finished; the analysis did not complete"
+      : "failed";
+  return [`humanish run ${result.studyId}: ${kind} ${ending}`, `route: ${route}`];
 }
 
 /**
