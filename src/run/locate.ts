@@ -11,7 +11,9 @@ import {
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
+  LATEST_POINTER_MAX_BYTES,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import type { RunPointer } from "./results.js";
@@ -71,7 +73,12 @@ export async function readLatest(
   if (latestStats.isSymbolicLink() || !latestStats.isFile() || latestStats.nlink !== 1n) {
     throw new Error("Latest run pointer must be a single-link regular file.");
   }
-  const bytes = await readContainedRegularFile(runsRoot, "latest.json");
+  if (latestStats.size > BigInt(LATEST_POINTER_MAX_BYTES)) {
+    throw new Error(
+      `Latest run pointer is larger than ${LATEST_POINTER_MAX_BYTES} bytes, so humanish did not write it. Name the run with --run <id>, or delete .humanish/runs/latest.json and run a study again.`,
+    );
+  }
+  const bytes = await readContainedRegularFile(runsRoot, "latest.json", LATEST_POINTER_MAX_BYTES);
   if (!bytes) {
     throw new Error("Latest run pointer changed while it was being read.");
   }
@@ -100,19 +107,18 @@ export async function readRunJsonIfExists(
   }
 }
 
+/** A run file as text, or null when it is missing, unsafe or larger than RUN_ARTIFACT_MAX_BYTES. */
 export async function readRunTextIfExists(
   runPaths: PreparedRunArtifactPaths,
   ...segments: string[]
 ): Promise<string | null> {
-  const bytes = await readContainedRegularFile(runPaths, segments.join("/"));
+  const bytes = await readContainedRegularFile(
+    runPaths,
+    segments.join("/"),
+    RUN_ARTIFACT_MAX_BYTES,
+  );
   return bytes?.toString("utf8") ?? null;
 }
-
-/**
- * The most one run-artifact read returns. verify reads every run file whole to scan it, and a frame
- * whole to check it, so this covers the largest screenshot src/evidence/image.ts accepts (32 MiB).
- */
-export const RUN_ARTIFACT_MAX_BYTES = 32 * 1024 * 1024;
 
 /**
  * A run file, read whole through the bounded evidence reader: `limit` when it holds more than

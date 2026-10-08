@@ -9,6 +9,7 @@ import type { BrowserPersonaJourney } from "../../actors/scripted-browser/types.
 import { digestText } from "../../evidence/redaction.js";
 import {
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "../../run/contained-output.js";
 
@@ -72,7 +73,11 @@ export async function resolveScriptedScenario(
   }
 
   const relativeScenarioPath = path.relative(projectRoot.physicalPath, absolutePath);
-  const scenarioBytes = await readContainedRegularFile(projectRoot, relativeScenarioPath);
+  const scenarioBytes = await readContainedRegularFile(
+    projectRoot,
+    relativeScenarioPath,
+    PROJECT_FILE_MAX_BYTES,
+  );
   if (!scenarioBytes) {
     return { ok: false, message: `scenario "${trimmed}" could not be read (${source}).` };
   }
@@ -122,7 +127,7 @@ async function firstExistingFile(
   candidates: string[],
 ): Promise<string | null> {
   for (const candidate of candidates) {
-    if ((await readContainedRegularFile(projectRoot, candidate)) !== null) {
+    if ((await readContainedRegularFile(projectRoot, candidate, PROJECT_FILE_MAX_BYTES)) !== null) {
       return candidate;
     }
   }

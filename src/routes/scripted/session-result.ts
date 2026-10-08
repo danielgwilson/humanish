@@ -6,7 +6,7 @@ import path from "node:path";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserSurface } from "../../actors/scripted-browser/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { readContainedRegularFile } from "../../run/contained-output.js";
+import { readContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../../run/contained-output.js";
 
 export class UnsafeScriptedSessionResultError extends Error {
   constructor(message: string) {
@@ -25,7 +25,11 @@ export async function existingScreenshots(
     if (!step.screenshotPath) {
       continue;
     }
-    const screenshot = await readContainedRegularFile(runPaths, step.screenshotPath);
+    const screenshot = await readContainedRegularFile(
+      runPaths,
+      step.screenshotPath,
+      RUN_ARTIFACT_MAX_BYTES,
+    );
     if (screenshot && screenshot.byteLength > 0) {
       existing.push(step.screenshotPath);
     }

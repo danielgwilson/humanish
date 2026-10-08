@@ -17,6 +17,7 @@ import {
   prepareSelectedOutputDirectory,
   prepareSelectedOutputFile,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   type PreparedOutputRoot,
   type PreparedSelectedOutputFile,
   writeContainedOutputFile,
@@ -219,7 +220,11 @@ async function serveArtifact(args: {
   response: ServerResponse;
   runRoot: PreparedOutputRoot;
 }): Promise<void> {
-  const body = await readContainedRegularFile(args.runRoot, args.requestPath);
+  const body = await readContainedRegularFile(
+    args.runRoot,
+    args.requestPath,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
   if (body) {
     args.response.writeHead(200, {
       "cache-control": "no-store",

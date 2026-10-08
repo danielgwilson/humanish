@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, open, rm, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, mkdtemp, open, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -263,6 +263,23 @@ describe("verify reads a run file by its bytes, not its name", () => {
     expect(verified.shareSafety.status).toBe("local_only");
     const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
     expect(reason?.message).toContain(overLimit.path);
+    expect(bytes).toBeLessThan(OVER_READ_LIMIT);
+  });
+
+  it("refuses a run.json over the read limit without reading it whole", async () => {
+    const dir = await makeTestTempDir("humanish-over-limit-bundle-");
+    const { runId, runDir } = await shareSafetyDryRun(dir);
+    // JSON allows trailing whitespace, so the bundle still parses if it is read whole.
+    await appendFile(path.join(runDir, "run.json"), Buffer.alloc(OVER_READ_LIMIT, " "));
+
+    let verified!: Awaited<ReturnType<typeof verifyRun>>;
+    const bytes = await bytesReadDuring(async () => {
+      verified = await verifyRun(dir, runId);
+    });
+
+    expect(verified.shareSafety.status).toBe("blocked");
+    const exists = verified.checks.find((check) => check.name === "run.json exists");
+    expect(exists).toMatchObject({ ok: false, message: expect.stringContaining("larger than") });
     expect(bytes).toBeLessThan(OVER_READ_LIMIT);
   });
 

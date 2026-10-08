@@ -14,7 +14,9 @@ import {
 } from "../run/paths.js";
 import {
   bindExistingManagedHumanishOutputDirectory,
+  LATEST_POINTER_MAX_BYTES,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
@@ -330,7 +332,10 @@ async function isSafeFeedbackEvidenceFile(
   ) {
     return false;
   }
-  return (await readContainedRegularFile(context.preparedRunPaths, relative)) !== null;
+  return (
+    (await readContainedRegularFile(context.preparedRunPaths, relative, RUN_ARTIFACT_MAX_BYTES)) !==
+    null
+  );
 }
 
 export async function renderIssueMarkdown(
@@ -409,6 +414,7 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
   const draftBytes = await readContainedRegularFile(
     context.preparedRunPaths,
     path.join("feedback", "draft.json"),
+    RUN_ARTIFACT_MAX_BYTES,
   );
   const draft =
     draftBytes === null ? undefined : (JSON.parse(draftBytes.toString("utf8")) as FeedbackDraft);
@@ -444,7 +450,11 @@ async function resolveFeedbackRunContext(
   if (runInput === "latest") {
     const runsRoot = await bindExistingManagedHumanishOutputDirectory(physicalCwd, "runs");
     if (!runsRoot) return null;
-    const pointerBytes = await readContainedRegularFile(runsRoot, "latest.json");
+    const pointerBytes = await readContainedRegularFile(
+      runsRoot,
+      "latest.json",
+      LATEST_POINTER_MAX_BYTES,
+    );
     if (!pointerBytes) return null;
     const pointer = JSON.parse(pointerBytes.toString("utf8")) as {
       path?: unknown;

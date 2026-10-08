@@ -1,10 +1,11 @@
 import { constants, type BigIntStats } from "node:fs";
-import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
+import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
+  readOpenedAtMost,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import { isNodeError } from "./type-guards.js";
@@ -101,27 +102,6 @@ export async function pathMissing(filePath: string): Promise<boolean> {
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") return true;
     throw error;
-  }
-}
-
-/**
- * At most `maxBytes` from the start of an opened file, or null when it holds more. It reads by
- * position, in chunks of up to 64 KiB, and stops one byte past the limit, so a file that grew
- * after it was opened is never read whole.
- */
-export async function readOpenedAtMost(
-  handle: FileHandle,
-  maxBytes: number,
-): Promise<Buffer | null> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for (;;) {
-    const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
-    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
-    if (bytesRead === 0) return Buffer.concat(chunks, total);
-    total += bytesRead;
-    if (total > maxBytes) return null;
-    chunks.push(chunk.subarray(0, bytesRead));
   }
 }
 

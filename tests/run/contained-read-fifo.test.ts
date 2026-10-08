@@ -40,7 +40,7 @@ describe("a contained file swapped for a FIFO", () => {
 
     try {
       const read = await Promise.race([
-        readContainedRegularFile(root, "state.json"),
+        readContainedRegularFile(root, "state.json", 1024),
         new Promise((resolve) => setTimeout(() => resolve("still waiting"), 3000)),
       ]);
 

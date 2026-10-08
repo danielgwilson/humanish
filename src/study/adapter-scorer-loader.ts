@@ -32,6 +32,7 @@ import type {
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
 } from "../run/contained-output.js";
 
 /** The read-model context a loaded scorer sees: the terminal or browser scoring context. The module
@@ -188,11 +189,11 @@ export async function loadAdapterScorer(args: {
 
   // Fail-closed containment gate on the entry file only: rejects symlink, nlink>1, realpath-escape,
   // TOCTOU. Its returned bytes are the digest input.
-  const bytes = await readContainedRegularFile(root, relPosix);
+  const bytes = await readContainedRegularFile(root, relPosix, PROJECT_FILE_MAX_BYTES);
   if (!bytes) {
     return fail(
       "HUMANISH_STUDY_SCORER_NOT_FOUND",
-      `review.scorer.ref "${trimmed}" could not be read as a regular file inside the project (${relPosix}). Use a plain file there: not a symlink or a hard link, and not a path that resolves outside the project.`,
+      `review.scorer.ref "${trimmed}" could not be read as a regular file of at most ${PROJECT_FILE_MAX_BYTES} bytes inside the project (${relPosix}). Use a plain file there: not a symlink or a hard link, and not a path that resolves outside the project.`,
     );
   }
   const digest = digestText(bytes.toString("utf8"));

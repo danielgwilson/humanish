@@ -11,13 +11,12 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { openContainedRegularFile } from "../run/contained-output.js";
+import { openContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import {
-  RUN_ARTIFACT_MAX_BYTES,
   readSafeRunArtifact,
   readSafeRunArtifactBytes,
   readSafeRunArtifactJson,
@@ -28,6 +27,12 @@ import { isZeroEventTerminalTrace } from "./actor.js";
 
 /** Public-safety and evidence-reference findings stop at this many per list. */
 export const MAX_REPORTED_FINDINGS = 50;
+
+/**
+ * The most entries, files and directories, the public-safety scan visits in one run. Bundle export
+ * refuses a run with more, so the scan never passes a run whose files it did not all read.
+ */
+export const MAX_RUN_ENTRIES = 10_000;
 
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -378,7 +383,8 @@ interface RegisteredStreamMedia {
  * Scans every run file for secret and path patterns and returns the findings. A file that is not
  * registered stream media and that the scan cannot read as text (readPlainText), cannot read at
  * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned`, so the caller can keep
- * the run from grading share_ready.
+ * the run from grading share_ready. So does a directory it cannot list, and the rest of the run
+ * after MAX_RUN_ENTRIES entries.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -388,7 +394,9 @@ export async function scanRunPublicSafetyArtifacts(
 ): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
-  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned, {
+    entries: 0,
+  });
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
@@ -400,6 +408,7 @@ async function scanRunPublicSafetyDirectory(
   derivedFindings: string[],
   media: RegisteredStreamMedia,
   unscanned: string[],
+  walk: { entries: number },
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -410,8 +419,20 @@ async function scanRunPublicSafetyDirectory(
   const current = relativeDirectory
     ? path.join(runPaths.physicalRunRoot, ...relativeDirectory.split("/"))
     : runPaths.physicalRunRoot;
-  const entries = await readdir(current).catch(() => []);
+  const entries = await readdir(current).catch(() => null);
+  if (entries === null) {
+    unscanned.push(`${relativeDirectory || "."}/ (could not be listed)`);
+    return;
+  }
   for (const entryName of entries) {
+    walk.entries += 1;
+    if (walk.entries > MAX_RUN_ENTRIES) {
+      if (walk.entries === MAX_RUN_ENTRIES + 1)
+        unscanned.push(
+          `${relativeDirectory || "."}/ (the scan stops after ${MAX_RUN_ENTRIES} entries)`,
+        );
+      return;
+    }
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
     const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     const selectedFindings =
@@ -451,6 +472,7 @@ async function scanRunPublicSafetyDirectory(
         derivedFindings,
         media,
         unscanned,
+        walk,
       );
       continue;
     }

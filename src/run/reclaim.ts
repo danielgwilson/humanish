@@ -17,6 +17,7 @@ import {
 import {
   containedPathAbsent,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import {
@@ -225,7 +226,11 @@ async function recordedNoSandbox(
       return undefined;
   }
   if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return reason;
-  const journal = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
+  const journal = await readContainedRegularFile(
+    runPaths,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
   return journal !== null && journal.toString("utf8").trim() === "" ? reason : undefined;
 }
 
@@ -381,7 +386,11 @@ async function reclaimRoot(
   hooks: ReclaimHooks,
   warnings: string[],
 ): Promise<RootReclaim> {
-  const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
+  const bytes = await readContainedRegularFile(
+    root,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
   if (bytes === null && !(await containedPathAbsent(root, SANDBOX_RECEIPTS_ARTIFACT)))
     return { kind: "unreadable" };
   const journal = bytes === null ? "" : bytes.toString("utf8");

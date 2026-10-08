@@ -19,7 +19,7 @@ import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { savedCaption } from "./participant-caption.js";
 import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
 import type { RunStream } from "./streams.js";
-import { readContainedRegularFile } from "./contained-output.js";
+import { readContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
@@ -206,7 +206,7 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
   let bundle: BundleFacts;
   try {
     // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
-    const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE);
+    const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE, RUN_ARTIFACT_MAX_BYTES);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw.toString("utf8"));
     if (parsed === null || typeof parsed !== "object") return null;

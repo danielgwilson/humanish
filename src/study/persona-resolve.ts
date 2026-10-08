@@ -6,6 +6,7 @@ import { parseResolvedPersona, PersonaConfigError, type ResolvedPersona } from "
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { digestText, redactText } from "../evidence/redaction.js";
@@ -50,7 +51,7 @@ export async function resolveCommittedPersona(
     path.posix.join(directory, `${personaId}.yaml`),
     path.posix.join(directory, `${personaId}.yml`),
   ])) {
-    const bytes = await readContainedRegularFile(projectRoot, candidate);
+    const bytes = await readContainedRegularFile(projectRoot, candidate, PROJECT_FILE_MAX_BYTES);
     if (!bytes) continue;
     let raw: unknown;
     try {

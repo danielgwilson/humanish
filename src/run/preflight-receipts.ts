@@ -14,6 +14,7 @@ import {
   bindExistingManagedHumanishOutputDirectory,
   prepareManagedHumanishOutputDirectory,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
@@ -125,7 +126,9 @@ export async function listPreflightJournals(cwd: string): Promise<PreflightJourn
     if (!entry.isDirectory() || !JOURNAL_NAME.test(entry.name)) continue;
     const root = await bindExistingManagedHumanishOutputDirectory(cwd, PREFLIGHT_DIR, entry.name);
     if (!root) continue;
-    const owner = parseOwner(await readContainedRegularFile(root, OWNER_FILE));
+    const owner = parseOwner(
+      await readContainedRegularFile(root, OWNER_FILE, RUN_ARTIFACT_MAX_BYTES),
+    );
     journals.push({ id: entry.name, root, ...(owner === undefined ? {} : { owner }) });
   }
   return journals;
@@ -159,9 +162,16 @@ export async function preflightReclaimDecision(
   journal: PreflightJournal,
   nowMs: number,
 ): Promise<{ reclaim: true } | { reclaim: false; reason: string }> {
-  if ((await readContainedRegularFile(journal.root, ABANDONED_MARKER)) !== null)
+  if (
+    (await readContainedRegularFile(journal.root, ABANDONED_MARKER, RUN_ARTIFACT_MAX_BYTES)) !==
+    null
+  )
     return { reclaim: true };
-  const receipts = await readContainedRegularFile(journal.root, SANDBOX_RECEIPTS_ARTIFACT);
+  const receipts = await readContainedRegularFile(
+    journal.root,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
   const endsAt = leaseEndsAt(journal, receipts === null ? null : receipts.toString("utf8"));
   if (endsAt !== undefined && nowMs > endsAt) return { reclaim: true };
   const until = endsAt === undefined ? "" : `; its lease ends at ${new Date(endsAt).toISOString()}`;

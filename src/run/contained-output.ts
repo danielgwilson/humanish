@@ -256,19 +256,62 @@ export async function createContainedOutputFile(
   await handle.close();
 }
 
-/** Read one regular file only when both lexical and physical paths stay in root. */
+// The most humanish reads of one file of each kind. A larger file reads as null.
+
+/**
+ * A file in a run directory or a preflight journal. verify reads every run file whole to scan it,
+ * and a frame whole to check it, so this covers the largest screenshot src/evidence/image.ts
+ * accepts (32 MiB). Every other reader of a run file uses the same limit, so no command reads a
+ * run file that verify could not scan.
+ */
+export const RUN_ARTIFACT_MAX_BYTES = 32 * 1024 * 1024;
+
+/** `.humanish/runs/latest.json`: a run id and a path. */
+export const LATEST_POINTER_MAX_BYTES = 64 * 1024;
+
+/** A file a person writes in the project: study, persona and scenario YAML, package.json, agent instructions. */
+export const PROJECT_FILE_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Read one regular file only when both lexical and physical paths stay in root and it holds at
+ * most `maxBytes`. A larger file reads as null without being read, and one that grows past
+ * `maxBytes` while it is read reads as null after at most `maxBytes + 1` bytes.
+ */
 export async function readContainedRegularFile(
   rootInput: PreparedOutputRoot,
   relativePath: string,
+  maxBytes: number,
 ): Promise<Buffer | null> {
   const handle = await openContainedRegularFile(rootInput, relativePath);
   if (!handle) return null;
   try {
-    return await handle.readFile();
+    if ((await handle.stat()).size > maxBytes) return null;
+    return await readOpenedAtMost(handle, maxBytes);
   } catch {
     return null;
   } finally {
     await handle.close().catch(() => {});
+  }
+}
+
+/**
+ * At most `maxBytes` from the start of an opened file, or null when it holds more. It reads by
+ * position, in chunks of up to 64 KiB, and stops one byte past the limit, so a file that grew
+ * after it was opened is never read whole.
+ */
+export async function readOpenedAtMost(
+  handle: FileHandle,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
+    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
+    if (bytesRead === 0) return Buffer.concat(chunks, total);
+    total += bytesRead;
+    if (total > maxBytes) return null;
+    chunks.push(chunk.subarray(0, bytesRead));
   }
 }
 

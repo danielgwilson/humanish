@@ -17,6 +17,7 @@ import {
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import {
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "./contained-output.js";
@@ -228,7 +229,11 @@ export async function earlierOutcomes(
 ): Promise<ReclaimOutcome[]> {
   let parsed: unknown;
   try {
-    const bytes = await readContainedRegularFile(root, RECLAIM_RECEIPT_ARTIFACT);
+    const bytes = await readContainedRegularFile(
+      root,
+      RECLAIM_RECEIPT_ARTIFACT,
+      RUN_ARTIFACT_MAX_BYTES,
+    );
     if (bytes === null) return [];
     parsed = JSON.parse(bytes.toString("utf8"));
   } catch {

@@ -13,6 +13,7 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
@@ -515,10 +516,14 @@ async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Bu
     if (Buffer.isBuffer(returned) || returned instanceof Uint8Array) {
       return stripPngMetadataChunks(browserScreenshotBytes(returned));
     }
-    const stagedBytes = await readContainedRegularFile(stagingRoot, "capture.png");
+    const stagedBytes = await readContainedRegularFile(
+      stagingRoot,
+      "capture.png",
+      RUN_ARTIFACT_MAX_BYTES,
+    );
     if (!stagedBytes) {
       throw new Error(
-        "Browser screenshot did not return bytes or write a single-link staging file.",
+        `Browser screenshot did not return bytes or write a single-link staging file of at most ${RUN_ARTIFACT_MAX_BYTES} bytes.`,
       );
     }
     return stripPngMetadataChunks(stagedBytes);

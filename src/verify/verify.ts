@@ -6,6 +6,7 @@ import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js
 import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
@@ -327,7 +328,10 @@ function bundlePresenceChecks(
     {
       name: "run.json exists",
       ok: bundle !== null,
-      message: bundle === null ? "run.json is missing or not valid JSON" : "run.json is present",
+      message:
+        bundle === null
+          ? `run.json is missing, larger than ${RUN_ARTIFACT_MAX_BYTES} bytes, or not valid JSON`
+          : "run.json is present",
     },
     {
       name: "run schema",

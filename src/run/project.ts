@@ -8,6 +8,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import { isNodeError, isRecord } from "./type-guards.js";
@@ -81,7 +82,16 @@ export async function readImplicitProjectFile(
   if (!stats.isFile() || stats.nlink !== 1n) {
     throw new Error(`Implicit project file must be a single-link regular file: ${relativePath}`);
   }
-  const bytes = await readContainedRegularFile(projectRoot, relativePath.replace(/\\/g, "/"));
+  if (stats.size > BigInt(PROJECT_FILE_MAX_BYTES)) {
+    throw new Error(
+      `Implicit project file is larger than ${PROJECT_FILE_MAX_BYTES} bytes, the most humanish reads: ${relativePath}`,
+    );
+  }
+  const bytes = await readContainedRegularFile(
+    projectRoot,
+    relativePath.replace(/\\/g, "/"),
+    PROJECT_FILE_MAX_BYTES,
+  );
   if (!bytes) {
     throw new Error(`Implicit project file changed while it was being read: ${relativePath}`);
   }

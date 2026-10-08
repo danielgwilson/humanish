@@ -723,11 +723,17 @@ a file for secret and path patterns only when the bytes are strict UTF-8 with no
 control bytes other than tab, line feed and carriage return, the rule bundle
 export uses for text. `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream
 screenshots that actor traces reference under `screenshots/`, where the harness
-writes every frame, and the recordings `streams[].recording` registers. Every other file the scan cannot read as text, cannot read at all,
-or that is larger than 32 MiB (verify reads at most that much of one file) contributes `UNSCANNED_ARTIFACT`. The reason's message lists the paths, and it keeps
-otherwise valid evidence `local_only`. This includes images that only feedback
-candidates, adapter artifacts or stream artifact entries cite, and a PNG an actor
-trace references outside `screenshots/`. An unregistered
+writes every frame, and the recordings `streams[].recording` registers. Every
+other file the scan cannot read as text, cannot read at all, or that is larger
+than 32 MiB (verify reads at most that much of one file) contributes
+`UNSCANNED_ARTIFACT`. So does a folder the scan cannot list, and the rest of a
+run past its first 10,000 files and folders, the most `export --format bundle`
+takes. The reason's message lists the paths, and it keeps otherwise valid
+evidence `local_only`. This includes images that only feedback candidates,
+adapter artifacts or stream artifact entries cite, and a PNG an actor trace
+references outside `screenshots/`. An adapter artifact larger than 32 MiB grades
+the run `local_only` when nothing cites it, and `blocked` when the bundle cites
+it as evidence, because the evidence check cannot read it. An unregistered
 `.mp4`, and a file or directory whose name contains `\`, are public-safety
 findings and block the run.
 

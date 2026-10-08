@@ -15,6 +15,7 @@ import {
 } from "../evidence/redaction.js";
 import {
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "./contained-output.js";
@@ -127,7 +128,11 @@ export function holdsKeyedSandboxId(file: string, text: string): boolean {
 export async function readRunSandboxIds(root: PreparedOutputRoot): Promise<string[]> {
   let journaled: string[] = [];
   try {
-    const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
+    const bytes = await readContainedRegularFile(
+      root,
+      SANDBOX_RECEIPTS_ARTIFACT,
+      RUN_ARTIFACT_MAX_BYTES,
+    );
     if (bytes) journaled = receiptSandboxIds(bytes);
   } catch {
     // The ids this process receipted still apply.
@@ -176,7 +181,7 @@ export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promi
   );
   if (!valid) return;
   const scrub = async (file: string): Promise<void> => {
-    const bytes = await readContainedRegularFile(paths, file);
+    const bytes = await readContainedRegularFile(paths, file, RUN_ARTIFACT_MAX_BYTES);
     if (bytes === null) return;
     const scrubbed = scrubSandboxIdBytes(file, bytes, ids);
     if (scrubbed !== bytes) await writeContainedOutputFile(paths, file, scrubbed);

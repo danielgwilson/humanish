@@ -8,6 +8,7 @@ import { runtimeDirectories, starterFiles } from "./init-templates.js";
 import {
   assertPreparedSelectedOutputDirectory,
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import type { InitResult } from "./init.js";
@@ -70,7 +71,7 @@ export async function readTextIfExists(
   projectRoot: PreparedSelectedOutputDirectory,
   relativePath: string,
 ): Promise<string | null> {
-  const bytes = await readContainedRegularFile(projectRoot, relativePath);
+  const bytes = await readContainedRegularFile(projectRoot, relativePath, PROJECT_FILE_MAX_BYTES);
   if (bytes !== null) {
     return bytes.toString("utf8");
   }

@@ -19,7 +19,7 @@ import {
 } from "../evidence/redaction.js";
 import { decodeEscapes, readingsOf } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
-import { streamScreenshotPaths } from "../verify/artifacts.js";
+import { MAX_RUN_ENTRIES, streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
@@ -42,7 +42,6 @@ import {
 } from "../run/contained-output.js";
 
 const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
-const MAX_FILES = 10_000;
 const TEXT_EXTENSIONS = new Set([
   ".json",
   ".ndjson",
@@ -118,8 +117,8 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
     if (!before.isDirectory() || before.isSymbolicLink())
       throw new Error("Source contains an unsafe directory.");
     for (const name of (await readdir(directory)).sort()) {
-      if (++entriesSeen > MAX_FILES)
-        throw new Error(`Source exceeds ${MAX_FILES} inventory entries.`);
+      if (++entriesSeen > MAX_RUN_ENTRIES)
+        throw new Error(`Source exceeds ${MAX_RUN_ENTRIES} inventory entries.`);
       if (name.includes("\\") || name.includes("\0"))
         throw new Error("Source contains an unsafe path segment.");
       const rel = relative ? `${relative}/${name}` : name;
