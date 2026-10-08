@@ -10,6 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- When a study's analysis does not complete (refused at admission, failed or cancelled) and the
+  run's own result is ok, the first line of `humanish run` reads
+  `humanish run <study>: live run finished; the analysis did not complete`. It read
+  `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
+  keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
+  `live run failed` (#1673).
 - A run whose received email held a link of 32,768 characters or more no longer fails its analysis
   with `analysis_validation_failed_unexpected`. The scrub of the run's known values built one
   regular expression of them, which Node refuses once a value is that long; it now searches each

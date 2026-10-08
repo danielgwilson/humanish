@@ -21,6 +21,9 @@ import { libraryConfig } from "../../helpers/library-config.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
+import { automaticAnalysisEnvelope, writeResult } from "../../../src/cli/io.js";
+import { formatScriptedStudyHuman } from "../../../src/cli/commands/study-format.js";
+import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 import { digestText } from "../../../src/evidence/redaction.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import type { RunBundle } from "../../../src/run/bundle.js";
@@ -1545,6 +1548,77 @@ describe("humanish lab run scripted-demo (CLI)", () => {
     expect(result.stdout).toContain("subject: http://127.0.0.1:5173/");
     expect(result.stdout).toContain("scenario: scripted-first-run @");
     expect(result.stdout).toContain("(humanish/scenarios/scripted-first-run.yaml, 4 steps)");
+  });
+});
+
+// A study that asks for analysis fails the command when that analysis does not complete (exit 2,
+// `ok: false`), while `runOk` keeps the run's own ok. The first line has to say which one failed.
+describe("the run header when the requested analysis is refused", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-header-"));
+    await writeCommittedScenario(cwd);
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const noProviderRequest: AnalysisFetch = async () => {
+    throw new Error("No provider request is allowed in this test.");
+  };
+
+  it.each([
+    {
+      participant: "passes",
+      launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+      runOk: true,
+      header: "humanish run scripted-header: live run finished; the analysis did not complete",
+    },
+    {
+      // The scripted route records a failed step as evidence, so the run's own ok stays true.
+      participant: "fails a step",
+      launchBrowser: async () => makeFakeBrowser({}),
+      runOk: true,
+      header: "humanish run scripted-header: live run finished; the analysis did not complete",
+    },
+    {
+      participant: "has no browser",
+      launchBrowser: async (): Promise<ScriptedBrowserLike> => {
+        throw new Error("chromium executable missing");
+      },
+      runOk: false,
+      header: "humanish run scripted-header: live run failed",
+    },
+  ])("a participant who $participant prints: $header", async ({ launchBrowser, runOk, header }) => {
+    await withHttpServer(async (appUrl) => {
+      const parsed = parseStudy({
+        ...scriptedStudy({ appUrl, count: 1, mode: "live" }),
+        id: "scripted-header",
+        review: { analysis: { maxCostUsd: 0.01 } },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const stderr = captureStderr();
+      const outcome = await runStudyWith(
+        parsed.config,
+        { cwd },
+        {
+          launchBrowser,
+          analysis: { deps: { apiKey: "synthetic-key", fetch: noProviderRequest } },
+        },
+      ).finally(stderr.stop);
+      if (outcome.route !== "scripted") throw new Error("expected scripted backend");
+      expect(automaticAnalysisEnvelope(outcome.result)).toMatchObject({ ok: false, runOk });
+
+      const stdout: string[] = [];
+      const io = {
+        writeOut: (text: string) => void stdout.push(text),
+        writeErr: () => {},
+        setExitCode: () => {},
+      };
+      const run = createProgram(io).commands.find((command) => command.name() === "run")!;
+      writeResult(run, io, outcome.result, formatScriptedStudyHuman);
+      expect(stdout.join("").split("\n")[0]).toBe(header);
+    });
   });
 });
 
