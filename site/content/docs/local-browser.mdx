@@ -162,7 +162,9 @@ npx humanish runtime setup --memory 13 --cpus 8
 
 Setup stops the VM, resizes it and starts it again. It refuses while participant
 desktops are running, and refuses a size below one desktop (4 GiB and 2 CPUs) or above
-the Mac's own. Without the flags, an existing VM keeps its size.
+the Mac's own. Without the flags, an existing VM keeps its size. When `limactl list` shows
+no size for the VM, give both flags: setup cannot tell which value to keep, and
+`runtime status` reports no capacity for it.
 
 On a Mac, a live study that needs more desktops at once than the VM holds is refused
 before any desktop or model call, with `HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED`.
