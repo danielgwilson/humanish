@@ -3,6 +3,7 @@
 // entities) and looks inside base64 runs. verify and bundle export share decodeEscapes, so they
 // judge the same decoded text.
 
+import { isUtf8 } from "node:buffer";
 import { createHash } from "node:crypto";
 
 import { readPlainText } from "./plain-text.js";
@@ -10,38 +11,38 @@ import { containsSensitive } from "./redaction.js";
 
 // HTML5 named references that stand for printable ASCII. Letters and digits have only numeric
 // references, which decodeEscapes handles.
-const ASCII_ENTITIES: Readonly<Record<string, string>> = {
-  amp: "&",
-  apos: "'",
-  ast: "*",
-  bsol: "\\",
-  colon: ":",
-  comma: ",",
-  commat: "@",
-  dollar: "$",
-  equals: "=",
-  excl: "!",
-  grave: "`",
-  gt: ">",
-  hat: "^",
-  lcub: "{",
-  lowbar: "_",
-  lpar: "(",
-  lsqb: "[",
-  lt: "<",
-  num: "#",
-  percnt: "%",
-  period: ".",
-  plus: "+",
-  quest: "?",
-  quot: '"',
-  rcub: "}",
-  rpar: ")",
-  rsqb: "]",
-  semi: ";",
-  sol: "/",
-  verbar: "|",
-};
+const ASCII_ENTITIES: ReadonlyMap<string, string> = new Map([
+  ["amp", "&"],
+  ["apos", "'"],
+  ["ast", "*"],
+  ["bsol", "\\"],
+  ["colon", ":"],
+  ["comma", ","],
+  ["commat", "@"],
+  ["dollar", "$"],
+  ["equals", "="],
+  ["excl", "!"],
+  ["grave", "`"],
+  ["gt", ">"],
+  ["hat", "^"],
+  ["lcub", "{"],
+  ["lowbar", "_"],
+  ["lpar", "("],
+  ["lsqb", "["],
+  ["lt", "<"],
+  ["num", "#"],
+  ["percnt", "%"],
+  ["period", "."],
+  ["plus", "+"],
+  ["quest", "?"],
+  ["quot", '"'],
+  ["rcub", "}"],
+  ["rpar", ")"],
+  ["rsqb", "]"],
+  ["semi", ";"],
+  ["sol", "/"],
+  ["verbar", "|"],
+]);
 
 function codePoint(value: number, original: string): string {
   return Number.isInteger(value) && value >= 0 && value <= 0x10ffff
@@ -64,15 +65,14 @@ function sequenceLength(lead: number): number {
  */
 function decodePercentRun(run: string): string {
   const bytes = Buffer.from(run.replace(/%/g, ""), "hex");
+  if (isUtf8(bytes)) return bytes.toString("utf8");
   let text = "";
   for (let at = 0; at < bytes.length;) {
     const length = sequenceLength(bytes[at]!);
-    const sequence = length > 0 ? bytes.subarray(at, at + length) : undefined;
-    const decoded = sequence?.length === length ? sequence.toString("utf8") : undefined;
-    // Node writes the replacement character for an overlong form, a surrogate half or a bad
-    // continuation byte, so a sequence counts only when its character encodes back to its bytes.
-    if (decoded !== undefined && Buffer.from(decoded, "utf8").equals(sequence!)) {
-      text += decoded;
+    const sequence = bytes.subarray(at, at + length);
+    // isUtf8 refuses an overlong form, a surrogate half and a bad continuation byte.
+    if (length > 0 && sequence.length === length && isUtf8(sequence)) {
+      text += sequence.toString("utf8");
       at += length;
     } else {
       text += String.fromCharCode(bytes[at]!);
@@ -88,27 +88,31 @@ function decodePercentBytes(run: string): string {
 
 /**
  * Undoes JSON and JS escapes, percent-encoding and HTML character references, one pass each. Each
- * percent escape is one character, the byte's code, so `caf%C3%A9` reads as `cafÃ©`;
- * decodeEscapesUtf8 reads it as `café`. A scan checks both: either reading can split a value that
- * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
+ * percent escape is one character, the byte's code, so `caf%C3%A9` reads as `cafÃ©`; readingsOf
+ * also gives the reading as UTF-8, `café`.
  */
 export function decodeEscapes(text: string): string {
   return decodeWith(text, decodePercentBytes);
 }
 
-/** decodeEscapes with each run of percent escapes read as UTF-8. */
-export function decodeEscapesUtf8(text: string): string {
-  return decodeWith(text, decodePercentRun);
+/** The readings a scan matches, with the two that scanEncodedText also searches for runs. */
+function readings(text: string): { decoded: string; expanded: string; all: string[] } {
+  const decoded = decodeEscapes(text);
+  // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
+  // decodeEscapes writes as a character from U+0080 to U+00FF. Testing the decoded text also
+  // catches a `%` that a `\u0025` wrote.
+  const utf8 = /[\x80-\xff]/.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
+  const expanded = decodeTransferEscapes(decoded);
+  return { decoded, expanded, all: [...new Set([text, decoded, utf8, expanded])] };
 }
 
 /**
- * The UTF-8 reading of text's escapes when it differs from decodeEscapes, which it can only where
- * a percent escape holds a byte of 0x80 or more.
+ * Every reading of the text a scan matches, each once: as written, decodeEscapes, with percent
+ * escapes read as UTF-8, and decodeEscapes with transfer escapes expanded. Either percent reading
+ * can split a value that the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
  */
-export function utf8ReadingOf(text: string, decoded: string): string | undefined {
-  if (!/%[89a-f][0-9a-f]/i.test(text)) return undefined;
-  const utf8 = decodeEscapesUtf8(text);
-  return utf8 === decoded ? undefined : utf8;
+export function readingsOf(text: string): string[] {
+  return readings(text).all;
 }
 
 function decodeWith(text: string, percent: (match: string) => string): string {
@@ -130,10 +134,8 @@ function decodeWith(text: string, percent: (match: string) => string): string {
     .replace(/&([a-z]+);/gi, namedReference);
 }
 
-// Own names only: `&constructor;` would otherwise read Object.prototype.constructor.
 function namedReference(match: string, name: string): string {
-  const key = name.toLowerCase();
-  return Object.hasOwn(ASCII_ENTITIES, key) ? ASCII_ENTITIES[key]! : match;
+  return ASCII_ENTITIES.get(name.toLowerCase()) ?? match;
 }
 
 // Sixteen characters hold twelve bytes, enough for the start of a key. Shorter runs are mostly
@@ -299,8 +301,7 @@ function inspectDecoded(
   const inner = plain.ok ? plain.text : utf16Text(bytes);
   if (inner !== undefined) {
     if (depth < MAX_DEPTH) return scanEncodedText(inner, options, depth + 1);
-    const innerDecoded = decodeEscapes(inner);
-    return matches(inner) || (innerDecoded !== inner && matches(innerDecoded)) ? SENSITIVE : CLEAN;
+    return readingsOf(inner).some(matches) ? SENSITIVE : CLEAN;
   }
   // A key next to a few binary bytes is still a printable stretch.
   if (matches(printableStretches(bytes))) return SENSITIVE;
@@ -314,9 +315,8 @@ function inspectDecoded(
 }
 
 /**
- * Scans text for secrets as written, after decodeEscapes (also with percent escapes read as UTF-8)
- * and transfer escapes, and inside each
- * base64 (standard, URL-safe or line-wrapped) and hex run. A run that decodes to text is scanned in
+ * Scans text for secrets in each of its readingsOf, and inside each base64 (standard, URL-safe or
+ * line-wrapped) and hex run. A run that decodes to text is scanned in
  * turn. A run that decodes to an archive, or to other binary past MIN_OPAQUE_BASE64_RUN characters,
  * is opaque unless the caller allows opaque runs.
  */
@@ -326,17 +326,8 @@ export function scanEncodedText(
   depth = 0,
 ): EncodedTextScan {
   const matches = matcherOf(options);
-  const decoded = decodeEscapes(text);
-  const utf8 = utf8ReadingOf(text, decoded);
-  const expanded = decodeTransferEscapes(decoded);
-  // A decoding that returns the same string would match the same way, so it is not matched again.
-  if (
-    matches(text) ||
-    (decoded !== text && matches(decoded)) ||
-    (utf8 !== undefined && matches(utf8)) ||
-    (expanded !== decoded && matches(expanded))
-  )
-    return SENSITIVE;
+  const { decoded, expanded, all } = readings(text);
+  if (all.some(matches)) return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
   // A piece or a run decoded from a slash only adds findings; its bytes are not judged opaque.
   const slashStarts: Buffer[] = [];

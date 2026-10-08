@@ -1,13 +1,16 @@
 import { gzipSync } from "node:zlib";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import {
   decodeEscapes,
-  decodeEscapesUtf8,
+  readingsOf,
   scanEncodedText,
   scanEncodedTextCached,
 } from "../../src/evidence/encoded-text.js";
 import { sensitivePatterns } from "../../src/evidence/redaction.js";
+import { propertyParameters, scrubInputs } from "../helpers/scrub-arbitraries.js";
+import { modelReadings } from "../helpers/scrub-model.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the scan detects it.
 const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -26,27 +29,55 @@ describe("decodeEscapes", () => {
   });
 
   it("leaves a named reference that only Object.prototype defines as written", () => {
-    for (const decode of [decodeEscapes, decodeEscapesUtf8])
-      expect(decode("&constructor; &CONSTRUCTOR; &toString; &amp;")).toBe(
-        "&constructor; &CONSTRUCTOR; &toString; &",
-      );
+    expect(readingsOf("&constructor; &CONSTRUCTOR; &toString; &amp;")).toEqual([
+      "&constructor; &CONSTRUCTOR; &toString; &amp;",
+      "&constructor; &CONSTRUCTOR; &toString; &",
+    ]);
   });
 });
 
-describe("decodeEscapesUtf8", () => {
-  it("reads a run of percent escapes as UTF-8", () => {
-    expect(decodeEscapesUtf8("caf%C3%A9 %e2%82%ac %F0%9F%98%80")).toBe("café € 😀");
-    expect(decodeEscapesUtf8("voil%C3%A0%2Fsecret &amp; \\u0073")).toBe("voilà/secret & s");
+describe("readingsOf", () => {
+  it("lists the text as written, decoded, read as UTF-8 and transfer-expanded", () => {
+    expect(readingsOf("plain")).toEqual(["plain"]);
+    expect(readingsOf("caf%C3%A9")).toEqual(["caf%C3%A9", "caf\u00c3\u00a9", "café"]);
+    expect(readingsOf("a\\nb %41=42")).toEqual(["a\\nb %41=42", "a\\nb A=42", "a\nb AB"]);
+  });
+
+  it("reads percent escapes as UTF-8 when a \\u escape writes their percent signs", () => {
+    expect(readingsOf("\\u0025C3\\u0025A9")).toEqual(["\\u0025C3\\u0025A9", "\u00c3\u00a9", "é"]);
+  });
+
+  it("reads a run of percent escapes as UTF-8, keeping a byte-order mark", () => {
+    expect(readingsOf("caf%C3%A9 %e2%82%ac %F0%9F%98%80")).toContain("café € 😀");
+    expect(readingsOf("voil%C3%A0%2Fsecret &amp; \\u0073")).toContain("voilà/secret & s");
+    expect(readingsOf("%EF%BB%BF%41")).toContain("\uFEFFA");
+  });
+
+  it("agrees with a decoder built on JSON.parse, decodeURIComponent and String.fromCodePoint", () => {
+    const texts = fc.oneof(
+      scrubInputs({ holdsValues: true }).map(({ text }) => text),
+      fc.string({ unit: "binary", maxLength: 40 }),
+    );
+    fc.assert(
+      fc.property(texts, (text) => {
+        expect(readingsOf(text)).toEqual(modelReadings(text));
+      }),
+      propertyParameters(),
+    );
   });
 
   it("keeps a byte that starts no valid UTF-8 sequence as one character", () => {
-    // A lone byte, a cut-short sequence, an overlong `/` and a surrogate half.
-    expect(decodeEscapesUtf8("%E9t%E9")).toBe("\u00e9t\u00e9");
-    expect(decodeEscapesUtf8("%C3")).toBe("\u00c3");
-    expect(decodeEscapesUtf8("%E2%82x")).toBe("\u00e2\u0082x");
-    expect(decodeEscapesUtf8("%C0%AF")).toBe("\u00c0\u00af");
-    expect(decodeEscapesUtf8("%ED%A0%80")).toBe("\u00ed\u00a0\u0080");
-    expect(decodeEscapesUtf8("%FF%C3%A9")).toBe("\u00ffé");
+    // A lone byte, a cut-short sequence, an overlong `/` and a surrogate half read the same both
+    // ways, so they give one decoded reading.
+    for (const [text, decoded] of [
+      ["%E9t%E9", "\u00e9t\u00e9"],
+      ["%C3", "\u00c3"],
+      ["%E2%82x", "\u00e2\u0082x"],
+      ["%C0%AF", "\u00c0\u00af"],
+      ["%ED%A0%80", "\u00ed\u00a0\u0080"],
+    ])
+      expect(readingsOf(text!)).toEqual([text, decoded]);
+    expect(readingsOf("%FF%C3%A9")).toEqual(["%FF%C3%A9", "\u00ff\u00c3\u00a9", "\u00ffé"]);
   });
 });
 

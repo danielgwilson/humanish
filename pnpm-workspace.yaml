@@ -10,6 +10,7 @@ catalog:
   "@types/node": ^22.20.4 # tracks the engines.node floor (22), so code cannot use newer Node APIs
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
+  fast-check: ^4.10.2
   oxc-parser: 0.153.0
   react: ^19.3.0
   react-dom: ^19.3.0

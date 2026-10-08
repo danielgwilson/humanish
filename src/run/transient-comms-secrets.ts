@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { REDACTION_MARKERS } from "../evidence/redaction.js";
 import { holdsSecretValue, scrubSecretValues } from "../evidence/secret-scrub.js";
 import { escapeRegExp } from "./text.js";
 
@@ -77,13 +78,13 @@ export function scrubTransientCommsText(text: string): string {
         .join("|"),
       "g",
     );
-    return text.replace(scope.pattern, "[REDACTED_SECRET]");
+    return text.replace(scope.pattern, REDACTION_MARKERS.secret);
   } catch {
     return fail(scope);
   }
 }
 
-const REDACTED = "[REDACTED_SECRET]";
+const REDACTED = REDACTION_MARKERS.secret;
 
 /**
  * A scrub for text a model writes: each scope value as written and in its encoded forms

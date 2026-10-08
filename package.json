@@ -113,6 +113,7 @@
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
     "axe-core": "4.14.0",
+    "fast-check": "catalog:",
     "knip": "6.40.0",
     "oxc-parser": "catalog:",
     "oxfmt": "0.72.0",

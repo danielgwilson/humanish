@@ -206,8 +206,8 @@ link, from every generated text field. It finds each value as written and in its
 percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
 with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
 value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
-humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`) are left
-as they are. If the stored field would still hold a value as written or decoded once more, as a
+humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
+`[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If the stored field would still hold a value as written or decoded once more, as a
 value encoded twice does once the field is decoded, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
 these forms in an ID, enum or reference refuses the response.
 

@@ -12,12 +12,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
   (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
-  humanish writes, `[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]` and `[REDACTED_RUNTIME_PATH]`,
-  and only text wholly inside one. It also reads percent escapes as UTF-8, which finds a value
-  with one of two non-ASCII characters percent-encoded. If its result still holds a value as
-  written or decoded once more, the whole text is replaced: a value encoded twice came out
-  encoded once. `&constructor;` now stays as written in `verify` and the scrub; it decoded to
-  the text of a JavaScript function (#1646).
+  humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
+  `[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`), and only text wholly inside one. It reads
+  percent escapes as UTF-8 too, and finds a value such as `xÃ©z` written as its UTF-8 reading
+  `xéz`. If its result still holds a value as written or decoded once more, the whole text is
+  replaced: a value encoded twice came out encoded once. A value that overlaps itself is found in
+  time linear in the text; 1 MiB of one letter with a registered value half as long took 93 s.
+  `&constructor;` now stays as written in `verify` and the scrub; it decoded to the text of a
+  JavaScript function (#1646).
+- `verify` and bundle export read text in the same four ways everywhere: as written, decoded, with
+  percent escapes as UTF-8 and with transfer escapes expanded. Text decoded from base64 two levels
+  deep was read only as written and decoded, and percent escapes that a `\u0025` wrote were not
+  read as UTF-8 (#1646).
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

@@ -198,4 +198,27 @@ describe("the known-value scrub on encoded and marker-shaped text", () => {
   it("keeps the text around a value inside an entity it does not know", async () => {
     expect(await knownValueScrub(["value"], "a%20&xvaluey;z")).toBe("a%20&x[REDACTED_SECRET]y;z");
   });
+
+  it("removes a value whose UTF-8 reading is its own bytes read as Latin-1", async () => {
+    expect(await knownValueScrub(["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx")).toBe(
+      "[REDACTED_SECRET] [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+  });
+
+  // A value that overlaps itself, in a text of growing length. Comparing the value again at every
+  // overlapping start took 153 ms at 32,768 characters and grew fourfold per doubling.
+  it("scrubs a value that overlaps itself in time linear in the text", async () => {
+    const elapsed = async (n: number): Promise<number> => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const started = performance.now();
+        expect(await knownValueScrub(["éà".repeat(n / 4)], "é%C3%A0".repeat(n / 2))).toBe(
+          "[REDACTED_SECRET]",
+        );
+        best = Math.min(best, performance.now() - started);
+      }
+      return best;
+    };
+    expect((await elapsed(32_768)) / Math.max(5, await elapsed(8_192))).toBeLessThan(8);
+  });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decodeEscapes } from "../../src/evidence/encoded-text.js";
 import { redactText } from "../../src/evidence/redaction.js";
-import { scrubSecretValues } from "../../src/evidence/secret-scrub.js";
+import { encodedForms, scrubSecretValues } from "../../src/evidence/secret-scrub.js";
 import { survivingForm } from "../helpers/scrub-model.js";
 
 describe("scrubSecretValues", () => {
@@ -191,5 +191,59 @@ describe("scrubSecretValues on encoded and marker-shaped text", () => {
 
   it("keeps the text around a value inside an entity it does not know", () => {
     expect(scrubSecretValues(["value"])("a%20&xvaluey;z")).toBe("a &x[REDACTED_SECRET]y;z");
+  });
+
+  it("removes a value whose UTF-8 reading is its own bytes read as Latin-1", () => {
+    // xÃ©z is the bytes of xéz read one per character; reading them as UTF-8 recovers xéz.
+    expect(encodedForms("xÃ©z")).toContain("xéz");
+    expect(encodedForms("Ãz")).not.toContain("z");
+    const scrub = scrubSecretValues(["xÃ©z", "éàxx"]);
+    expect(scrub("x%C3%A9z é%C3%A0xx é%C3%A0xx")).toBe(
+      "[REDACTED_SECRET] [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+    expect(scrub("x%C3%A9z é%C3%A0xx")).toBe("[REDACTED_SECRET] [REDACTED_SECRET]");
+  });
+
+  it("keeps the text of every marker humanish writes", () => {
+    const scrub = scrubSecretValues(["TEXT", "CODE"]);
+    expect(scrub("[REDACTED_PROMPT_TEXT] [REDACTED_LOBBY_CODE] TEXT CODE")).toBe(
+      "[REDACTED_PROMPT_TEXT] [REDACTED_LOBBY_CODE] [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+  });
+});
+
+describe("scrubSecretValues on values that overlap themselves", () => {
+  /** Milliseconds for the fastest of five scrubs. */
+  const fastest = (values: string[], text: string): number => {
+    let best = Number.POSITIVE_INFINITY;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const started = performance.now();
+      scrubSecretValues(values)(text);
+      best = Math.min(best, performance.now() - started);
+    }
+    return best;
+  };
+
+  // Each shape grows the value with the text, so a search that compares the value again at every
+  // overlapping start takes sixteen times as long for four times the length: one letter took
+  // 1.42 s at 131,072 characters and 92.6 s at 1 MiB. Linear takes about four times as long.
+  it.each([
+    ["a run of one letter", (n: number) => ["a".repeat(n / 2)], (n: number) => "a".repeat(n)],
+    [
+      "two letters read as UTF-8",
+      (n: number) => ["éà".repeat(n / 4)],
+      (n: number) => "é%C3%A0".repeat(n / 2),
+    ],
+    [
+      "a letter encoded twice",
+      (n: number) => ["a".repeat(n / 2)],
+      (n: number) => "%2561".repeat(n),
+    ],
+  ])("scrubs %s in time linear in its length", (_shape, values, text) => {
+    const [small, large] = [32_768, 131_072];
+    expect(scrubSecretValues(values(small))(text(small))).toBe("[REDACTED_SECRET]");
+    const ratio =
+      fastest(values(large), text(large)) / Math.max(20, fastest(values(small), text(small)));
+    expect(ratio).toBeLessThan(10);
   });
 });

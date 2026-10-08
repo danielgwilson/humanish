@@ -17,7 +17,7 @@ import {
   redactScreenshot,
   redactText,
 } from "../evidence/redaction.js";
-import { decodeEscapes, utf8ReadingOf } from "../evidence/encoded-text.js";
+import { decodeEscapes, readingsOf } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
@@ -208,9 +208,9 @@ async function prospectivePhysicalPath(requested: string): Promise<string> {
 function assertNoInlineRaster(text: string): void {
   // Decode the escapes verify decodes (decodeEscapes) before checking. Unknown embedded bytes are
   // refused: copying a text extension must not smuggle untransformed pixels.
-  const decoded = decodeEscapes(text);
-  if ([text, decoded, utf8ReadingOf(text, decoded) ?? ""].some(containsSensitive))
+  if (readingsOf(text).some(containsSensitive))
     throw new Error("Decoded text contains a secret-shaped value or private path; export refused.");
+  const decoded = decodeEscapes(text);
   if (
     /data\s*:\s*(?:image\/|application\/|text\/|[^,\s]*;base64,|,)/i.test(decoded) ||
     /iVBORw0KGgo|\/9j\/[A-Za-z0-9+/]|R0lGOD|UklGR[A-Za-z0-9+/]{4}|<svg\b/i.test(decoded)
