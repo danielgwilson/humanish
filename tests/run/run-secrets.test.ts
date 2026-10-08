@@ -98,6 +98,15 @@ describe("RunSecrets", () => {
     expect(forms).toContain(value("address"));
   });
 
+  // Replacing `YWJjZA` (abcd in base64) puts a marker before `x`, which spells the other value.
+  it("replaces the whole text when its replacements spell a value again", () => {
+    const secrets = new RunSecrets(["abcd", "SECRET]x"]);
+    expect(secrets.scrub("SECRET]x YWJjZAx")).toBe("[REDACTED_SECRET]");
+    secrets.add([value("address")]);
+    expect(secrets.scrub(`SECRET]x YWJjZAx ${value("address")}`)).toBe("[REDACTED_SECRET]");
+    expect(secrets.scrub(`mail ${value("address")}`)).toBe("mail [REDACTED_SECRET]");
+  });
+
   it("leaves its values out of JSON and object spread", () => {
     const secrets = new RunSecrets([value("key")]);
     expect(JSON.stringify({ secrets })).not.toContain(value("key"));

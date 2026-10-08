@@ -5,7 +5,7 @@
 // redactText runs after the scrub and finds secrets by shape.
 
 import { scrubLiterals } from "../evidence/redaction.js";
-import { encodedForms } from "../evidence/secret-scrub.js";
+import { encodedForms, holdsSecretValue } from "../evidence/secret-scrub.js";
 
 /** Each route's seed list, marker and floor are its own; the defaults are what most routes use. */
 interface RunSecretsOptions {
@@ -22,11 +22,14 @@ export class RunSecrets {
   /** Every held value as written and encoded, longest first. */
   readonly #forms: string[] = [];
   readonly #minLength: number;
+  /** holdsSecretValue of the held values, built at its first use after `add` holds a new one. */
+  #holds: ((text: string) => boolean) | undefined;
   /**
    * Replaces every held value with the marker, as written, in each encoded form, and where a URL
    * carries it partly percent-encoded or a terminal escape sequence splits it. It reads the values
    * on each call, so a value added after the scrub was handed to a participant or a subject is
-   * scrubbed from then on.
+   * scrubbed from then on. If the result still holds a value in any readingsOf, as when a marker
+   * written before `x` spells the value `SECRET]x`, the whole text becomes the marker.
    */
   readonly scrub: (text: string) => string;
 
@@ -41,7 +44,9 @@ export class RunSecrets {
     const literal = scrubLiterals(this.#forms, marker);
     this.scrub = (text) => {
       const scrubbed = literal(text);
-      return replaceSpans(scrubbed, viewSpans(scrubbed, this.#forms), marker);
+      const result = replaceSpans(scrubbed, viewSpans(scrubbed, this.#forms), marker);
+      this.#holds ??= holdsSecretValue(this.#held);
+      return this.#holds(result) ? marker : result;
     };
   }
 
@@ -50,6 +55,7 @@ export class RunSecrets {
     for (const value of values) {
       if (value.length < this.#minLength || this.#held.includes(value)) continue;
       this.#held.push(value);
+      this.#holds = undefined;
       for (const form of encodedForms(value))
         if (!this.#forms.includes(form)) this.#forms.push(form);
     }
