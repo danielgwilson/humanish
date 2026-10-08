@@ -1,9 +1,5 @@
-import {
-  PARTICIPANT_IMPRESSION_KINDS,
-  type ActorTrace,
-  type ParticipantClosingReport,
-  type ParticipantImpression,
-} from "../../contract.js";
+import { closingReportSchema, participantImpressionsSchema } from "../../closing-report.js";
+import type { ActorTrace } from "../../contract.js";
 import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
 import { IMPRESSIONS_ASK, IMPRESSIONS_HINT, recordImpressions } from "./impressions.js";
 import type { DebriefTrigger } from "./ending.js";
@@ -30,56 +26,6 @@ export interface DebriefContext {
 
 const DEBRIEF_REQUEST_CAP_MS = 30_000;
 const DEBRIEF_HINT = `The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.`;
-
-/**
- * Runtime validation is also required for third-party provider ports. A report without
- * impressions stays valid: older providers and stored traces do not have them.
- */
-export function validClosingReport(value: unknown): value is ParticipantClosingReport {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const report = value as Record<string, unknown>;
-  return (
-    Object.keys(report).every((key) => REPORT_KEYS.includes(key)) &&
-    typeof report.summary === "string" &&
-    report.summary.trim().length > 0 &&
-    report.summary.length <= 4_000 &&
-    Array.isArray(report.frictionReports) &&
-    report.frictionReports.length <= 8 &&
-    report.frictionReports.every(
-      (item: unknown) => typeof item === "string" && item.trim().length > 0 && item.length <= 2_000,
-    ) &&
-    (report.impressions === undefined || validImpressions(report.impressions))
-  );
-}
-
-const REPORT_KEYS = ["summary", "frictionReports", "impressions"];
-
-/** The reply to an impressions-only request: an object with the impressions and nothing else. */
-export function validImpressionsReply(
-  value: unknown,
-): value is { impressions: ParticipantImpression[] } {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const reply = value as Record<string, unknown>;
-  return Object.keys(reply).length === 1 && validImpressions(reply.impressions);
-}
-
-function validImpressions(value: unknown): value is ParticipantImpression[] {
-  return (
-    Array.isArray(value) &&
-    value.length <= 6 &&
-    value.every((item: unknown) => {
-      if (item === null || typeof item !== "object" || Array.isArray(item)) return false;
-      const { kind, text, ...rest } = item as Record<string, unknown>;
-      return (
-        Object.keys(rest).length === 0 &&
-        PARTICIPANT_IMPRESSION_KINDS.some((known) => known === kind) &&
-        typeof text === "string" &&
-        text.trim().length > 0 &&
-        text.length <= 500
-      );
-    })
-  );
-}
 
 /** The provider's closing request for a trigger: the closing report, or impressions only. */
 type ClosingAsk = NonNullable<CuaProvider["debrief"]>;
@@ -273,8 +219,10 @@ function acceptDebriefTurn(
       usageReported,
     );
   }
+  // First-party providers parse their replies already; these parses cover third-party ports.
   if (trigger.kind === "participant_end") {
-    if (!validImpressions(turn.impressions)) {
+    const impressions = participantImpressionsSchema.safeParse(turn.impressions);
+    if (!impressions.success) {
       return record(
         "failed",
         turn.interruption === "output_limit"
@@ -283,14 +231,15 @@ function acceptDebriefTurn(
         usageReported,
       );
     }
-    session.impressions = recordImpressions(session, turn.impressions);
+    session.impressions = recordImpressions(session, impressions.data);
     return record(
       "completed",
       "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
       usageReported,
     );
   }
-  if (!validClosingReport(turn.closingReport)) {
+  const closing = closingReportSchema.safeParse(turn.closingReport);
+  if (!closing.success) {
     return record(
       "failed",
       "the closing response did not contain a valid structured participant report",
@@ -298,11 +247,9 @@ function acceptDebriefTurn(
     );
   }
   const report: Debrief["report"] = {
-    summary: session.redactNarration(turn.closingReport.summary.trim()),
+    summary: session.redactNarration(closing.data.summary.trim()),
     frictionReports: [
-      ...new Set(
-        turn.closingReport.frictionReports.map((text) => session.redactNarration(text.trim())),
-      ),
+      ...new Set(closing.data.frictionReports.map((text) => session.redactNarration(text.trim()))),
     ],
   };
   const messageId = session.trace.record("message", () => ({
@@ -311,7 +258,7 @@ function acceptDebriefTurn(
     text: [report.summary, ...report.frictionReports].join("\n\n"),
   }));
   session.trace.bump("messages");
-  session.impressions = recordImpressions(session, turn.closingReport.impressions);
+  session.impressions = recordImpressions(session, closing.data.impressions);
   const debrief = record(
     "completed",
     "one read-only report; no additional desktop actions; original stop and task outcomes preserved",

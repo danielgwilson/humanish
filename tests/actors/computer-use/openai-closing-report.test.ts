@@ -204,6 +204,56 @@ describe("captured OpenAI closing-report contract", () => {
   });
 });
 
+describe("limits the OpenAI participant is told", () => {
+  const said = (maxLength: number) => ({ type: "string", minLength: 1, maxLength });
+  const impressionsWire = {
+    type: "array",
+    maxItems: 6,
+    items: {
+      type: "object",
+      additionalProperties: false,
+      required: ["kind", "text"],
+      properties: {
+        kind: {
+          type: "string",
+          enum: ["unclear", "unfinished", "untrustworthy", "liked", "missing", "unlike_my_work"],
+        },
+        text: said(500),
+      },
+    },
+  };
+  const schemaOf = (body: Record<string, unknown> | undefined) =>
+    (body?.text as { format: { schema: unknown } } | undefined)?.format.schema;
+
+  it("asks for a closing report within the limits its reply is checked against", async () => {
+    const h = harness();
+    await h.provider.nextTurn(request, signal);
+    await h.provider.debrief!(request, signal);
+    expect(schemaOf(h.bodies[1])).toEqual({
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "frictionReports", "impressions"],
+      properties: {
+        summary: said(4000),
+        frictionReports: { type: "array", maxItems: 8, items: said(2000) },
+        impressions: impressionsWire,
+      },
+    });
+  });
+
+  it("asks for impressions only within the same limits", async () => {
+    const h = harness();
+    await h.provider.nextTurn(request, signal);
+    await h.provider.requestImpressions!(request, signal);
+    expect(schemaOf(h.bodies[1])).toEqual({
+      type: "object",
+      additionalProperties: false,
+      required: ["impressions"],
+      properties: { impressions: impressionsWire },
+    });
+  });
+});
+
 describe("impressions in the captured OpenAI closing report", () => {
   it("keeps the participant's typed impressions from a closing reply", async () => {
     const h = harness(withImpressions);
