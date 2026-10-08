@@ -147,6 +147,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `HUMANISH_E2B_MAX_SANDBOX_MINUTES` can set to 24 hours. The kills, checks and tag search of
   `humanish reclaim` and of the run's interrupt handler now carry `E2B_API_KEY` and `E2B_DOMAIN`
   from the environment by name (#1708).
+- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
+  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
+  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
+  With another key in `process.env`, the check asked that key's account, and a not-found answer
+  from it would be recorded as confirming the sandbox was gone.
 - Redacting a local path that holds a long run of backslashes takes time linear in the run. A path
   holding 40,000 backslashes and then a letter took 1.4 s.
 - A terminal run's review, its no-spend statement and the provider line of

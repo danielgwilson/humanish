@@ -50,6 +50,7 @@ function recordingSdk() {
   } as unknown as E2BDesktopSandbox;
   const created: E2BDesktopCreateOptions[] = [];
   const kills: { sandboxId: string; options: unknown }[] = [];
+  const checks: { sandboxId: string; options: unknown }[] = [];
   const module: E2BDesktopModule = {
     Sandbox: {
       create: async (first: string | E2BDesktopCreateOptions, second?: E2BDesktopCreateOptions) => {
@@ -60,9 +61,13 @@ function recordingSdk() {
         kills.push({ sandboxId, options });
         return true;
       },
+      getInfo: async (sandboxId: string, options?: unknown) => {
+        checks.push({ sandboxId, options });
+        throw Object.assign(new Error("sandbox is gone"), { name: "SandboxNotFoundError" });
+      },
     },
   };
-  return { module, created, kills };
+  return { module, created, kills, checks };
 }
 
 function liveStudy() {
@@ -74,6 +79,28 @@ function liveStudy() {
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore." },
     execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] } },
+    review: { analysis: false },
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
+function terminalStudy() {
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
+    id: "library-key-terminal",
+    route: "terminal",
+    mode: "live",
+    subject: {
+      source: "terminal-product",
+      product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
+    },
+    actor: { type: "codex-exec", persona: "autonomous-creative-agent", mission: "Explore." },
+    caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
+    execution: {
+      target: "e2b-terminal",
+      terminal: { transport: "exec-stream", stdin: "disabled" },
+    },
     review: { analysis: false },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
@@ -112,6 +139,30 @@ describe("a library run's E2B calls", () => {
       const { sdk } = await finishedRun();
       expect(sdk.created.map((options) => options.apiKey)).toEqual([RUN_KEY]);
       expect(sdk.kills).toEqual([
+        { sandboxId: "fake-sb-library", options: expect.objectContaining({ apiKey: RUN_KEY }) },
+      ]);
+    },
+  );
+
+  it.each([
+    ["holds no E2B key", undefined],
+    ["holds another account's key", "synthetic-other-account-key"],
+  ])(
+    "check a terminal sandbox after its kill with the key from the run options when process.env %s",
+    async (_case, processKey) => {
+      vi.stubEnv("E2B_API_KEY", processKey);
+      vi.stubEnv("E2B_DOMAIN", undefined);
+      const cwd = await makeTestTempDir("humanish-e2b-connection-terminal-");
+      const sdk = recordingSdk();
+      // The fake shell never prints the readiness marker, so the session stops after the create
+      // and the route tears the sandbox down.
+      await runStudyWith(
+        terminalStudy(),
+        { cwd, env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: RUN_KEY } },
+        { desktopModule: async () => sdk.module },
+      );
+      expect(sdk.created.map((options) => options.apiKey)).toEqual([RUN_KEY]);
+      expect(sdk.checks).toEqual([
         { sandboxId: "fake-sb-library", options: expect.objectContaining({ apiKey: RUN_KEY }) },
       ]);
     },
