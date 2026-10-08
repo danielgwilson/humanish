@@ -4,7 +4,6 @@
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { pricedModel } from "../../study/plan-base.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
-import type { SharedWorldPlan } from "../../study/plan-types.js";
 import type { SharedWorldParticipant } from "../../study/plan-participants.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
@@ -20,37 +19,7 @@ import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./type
 import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
-import {
-  MAX_SANDBOX_MS,
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
-} from "../../substrates/e2b/lifetime.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-
-// The default per-participant session budget is derived from the route. On a provisioned route the
-// binding constraint is the subject sandbox (it must outlive every participant: timeoutMs +
-// provisioning + seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the
-// derivation hands each participant the most that cap allows, capped at 15 minutes, floored at the
-// historical 300s so a seed-heavy study never gets less room than it always had. App-url
-// participants have no subject sandbox and default to 30 minutes (participant sandbox: 30m + 10m
-// buffer stays well under the hour). An explicit execution.timeoutMs is never adjusted. The handoff
-// latch scales off this (40%).
-const MAX_DERIVED_SESSION_MS = 15 * 60_000;
-
-const MIN_DERIVED_SESSION_MS = 300_000;
-
-const DEFAULT_APP_URL_SESSION_MS = 30 * 60_000;
-
-export function defaultSessionTimeoutMs(plan: SharedWorldPlan): number {
-  if (plan.plane.kind !== "provisioned") return DEFAULT_APP_URL_SESSION_MS;
-  const stateBudgetMs = (plan.plane.subject.state.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-    0,
-  );
-  const room =
-    MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
-  return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
-}
+import { SANDBOX_TIMEOUT_BUFFER_MS } from "../../substrates/e2b/lifetime.js";
 
 // prose-check: model prompt (the participant model reads this, not a person)
 const DEFAULT_MISSION =

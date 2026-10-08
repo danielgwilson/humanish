@@ -8,6 +8,7 @@ import type {
   CuaParticipantPlan,
   DesktopParticipantRun,
 } from "../../src/routes/computer-use/types.js";
+import { sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
 
 /**
  * The participant table a computer-use config plans to, the one the route prints before a run.
@@ -20,6 +21,7 @@ export function participantPlanOf(
   const planned = planComputerUseStudy(config, {
     dryRun: opts.dryRun === true,
     ...(opts.countOverride === undefined ? {} : { countOverride: opts.countOverride }),
+    sandboxCeiling: sandboxCeiling(opts.env ?? {}),
   });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return participantRunsAndPlan(planned.plan, opts.env === undefined ? {} : { env: opts.env })

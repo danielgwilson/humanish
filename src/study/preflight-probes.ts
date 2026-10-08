@@ -5,7 +5,7 @@
 
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_STUDY_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop/prepare.js";
-import { MAX_SANDBOX_MS } from "../substrates/e2b/lifetime.js";
+import { sandboxCeiling } from "../substrates/e2b/lifetime.js";
 import {
   abandonPreflightJournal,
   discardPreflightJournal,
@@ -223,10 +223,18 @@ async function withPreflightSandbox(
   let allocation: OwnedDesktopAllocation | undefined;
   let failureMessage: string | undefined;
   // The lease is sized to the probe's work, never longer than a declared sandbox timeout (the run
-  // gets no more than that either) or E2B's maximum.
+  // gets no more than that either) or the sandbox ceiling.
+  const ceiling = sandboxCeiling(ctx.env);
+  if (!ceiling.ok)
+    return {
+      ok: false,
+      result: fail(ctx, "HUMANISH_STUDY_PREFLIGHT_PROVISION_FAILED", ceiling.message, [
+        { name: "sandbox preflight", ok: false, message: ceiling.message },
+      ]),
+    };
   const timeoutMs = Math.min(
     args.leaseMs,
-    ctx.config.execution?.desktop?.sandboxTimeoutMs ?? MAX_SANDBOX_MS,
+    ctx.config.execution?.desktop?.sandboxTimeoutMs ?? ceiling.ms,
   );
   // The receipt goes to a journal under .humanish/preflight, so `humanish reclaim --preflight`
   // can kill the probe if this process dies before the finally block does.
