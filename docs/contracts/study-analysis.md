@@ -207,7 +207,13 @@ The narrative scrub removes a run's known transient values, such as a received o
 link, from every generated text field. It finds each value as written and in its encoded forms:
 percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
 with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
-known value in any of these forms in an ID, enum or reference refuses the response.
+value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
+humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
+`[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If another reading of
+the stored field still holds a value (decoded once more, with percent escapes as UTF-8, with
+transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes), as for a value encoded
+twice, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
+these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the

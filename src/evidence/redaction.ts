@@ -157,18 +157,30 @@ const SECRET_PATTERNS: RegExp[] = [
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 
+/**
+ * Every marker humanish writes in place of what it withholds. The known-value scrub leaves text
+ * wholly inside one of these as it is, so a writer of a new marker adds it here.
+ */
+export const REDACTION_MARKERS = {
+  secret: "[REDACTED_SECRET]",
+  localPath: "[REDACTED_LOCAL_PATH]",
+  runtimePath: "[REDACTED_RUNTIME_PATH]",
+  promptText: "[REDACTED_PROMPT_TEXT]",
+  lobbyCode: "[REDACTED_LOBBY_CODE]",
+} as const;
+
 const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
-  [/\/private\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/private\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"],
+  [/\/private\/var\/folders\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/var\/folders\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/private\/tmp\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/tmp\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, REDACTION_MARKERS.localPath],
+  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, REDACTION_MARKERS.runtimePath],
   // A Windows profile path, with `\`, `\\` (JSON-escaped) or `/` between segments. A match never
   // ends in a backslash, so it cannot swallow the escape of a closing quote.
   [
     /\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:\\\\|\\|\/)[^\\/\s"'`<>)]+[^\s"'`<>)]*/g,
-    "[REDACTED_LOCAL_PATH]",
+    REDACTION_MARKERS.localPath,
   ],
 ];
 
@@ -328,7 +340,7 @@ function redactSecrets(text: string): string {
       current.replace(pattern, (...args: unknown[]) => {
         const groups = args.at(-1);
         const keep = isRecord(groups) && typeof groups.keep === "string" ? groups.keep : "";
-        return `${keep}[REDACTED_SECRET]`;
+        return `${keep}${REDACTION_MARKERS.secret}`;
       }),
     text,
   );
@@ -341,7 +353,7 @@ export function redactText(text: string): string {
 
 /** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */
 export function redactToSecretLabel(text: string): string {
-  return redactLocalPaths(redactSecrets(text), "[REDACTED_SECRET]");
+  return redactLocalPaths(redactSecrets(text), REDACTION_MARKERS.secret);
 }
 
 function canonicalizePath(value: string): string {
@@ -692,7 +704,7 @@ function blurPass(
  */
 export function scrubLiterals(
   values: readonly string[],
-  marker = "[REDACTED_SECRET]",
+  marker: string = REDACTION_MARKERS.secret,
 ): (text: string) => string {
   return (text) => values.reduce((current, value) => current.split(value).join(marker), text);
 }

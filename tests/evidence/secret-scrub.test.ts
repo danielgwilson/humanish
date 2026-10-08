@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { scrubSecretValues } from "../../src/evidence/secret-scrub.js";
+import { decodeEscapes } from "../../src/evidence/encoded-text.js";
+import { redactText } from "../../src/evidence/redaction.js";
+import { encodedForms, scrubSecretValues } from "../../src/evidence/secret-scrub.js";
+import { survivingForm } from "../helpers/scrub-model.js";
 
 describe("scrubSecretValues", () => {
   it("scrubs a value of any length, and ignores an empty one", () => {
@@ -98,5 +101,162 @@ describe("scrubSecretValues", () => {
   it("scrubs a value that is not well-formed Unicode without throwing", () => {
     const value = "x".repeat(16) + "\uD800";
     expect(scrubSecretValues([value])(`refused ${value}`)).toBe("refused [REDACTED_SECRET]");
+  });
+});
+
+describe("scrubSecretValues on encoded and marker-shaped text", () => {
+  it("returns the decoded text when it holds no value", () => {
+    for (const text of ["\\/", "%25", "&amp; %C3%A9 \\u0041"])
+      expect(scrubSecretValues(["743921"])(text)).toBe(decodeEscapes(text));
+  });
+
+  it("replaces the whole text when its decoded text still decodes to a value", () => {
+    // A value encoded twice: the decoded text shows %4d, which decodes to M.
+    expect(scrubSecretValues(["PPQM"])("%50%50%51%254d")).toBe("[REDACTED_SECRET]");
+  });
+
+  it("replaces the whole text when only the UTF-8 reading holds the value", () => {
+    // Only é is percent-encoded, so the byte reading shows Ã© next to a literal à.
+    expect(scrubSecretValues(["tango-é-à"])("x tango-%C3%A9-à y")).toBe("[REDACTED_SECRET]");
+  });
+
+  it("finds a value inside a marker-shaped span that no scrub writes", () => {
+    const hex = Buffer.from("743921").toString("hex");
+    for (const text of [`[REDACTED_${hex}]`, "[REDACTED_74%33921]", "[REDACTED_743921]"])
+      expect(scrubSecretValues(["743921"])(text)).toBe("[REDACTED_[REDACTED_SECRET]]");
+    expect(scrubSecretValues(["0346"])("[REDACTED_034\\u0036]")).toBe(
+      "[REDACTED_[REDACTED_SECRET]]",
+    );
+    expect(scrubSecretValues(["DACT"])("[REDACTED_T]")).toBe("[RE[REDACTED_SECRET]ED_T]");
+  });
+
+  it("removes a value that crosses a marker's edge", () => {
+    const scrub = scrubSecretValues(["swordfish["]);
+    expect(scrub("swordfish[[REDACTED_SECRET]")).toBe("[REDACTED_SECRET][REDACTED_SECRET]");
+    expect(scrub("swordfish[REDACTED_SECRET]")).toBe("[REDACTED_SECRET]REDACTED_SECRET]");
+    expect(scrubSecretValues(["]YNQ"])("[REDACTED_T]YNQ")).toBe("[REDACTED_T[REDACTED_SECRET]");
+  });
+
+  it("removes a value escaped in sequence or holding a byte-order mark", () => {
+    expect(scrubSecretValues(["743921"])("7%343921")).toBe("[REDACTED_SECRET]");
+    const marked = "tango\uFEFFlima";
+    for (const text of ["x tango%EF%BB%BFlima y", "x tango\\ufefflima y", `x ${marked} y`])
+      expect(scrubSecretValues([marked])(text)).toBe("x [REDACTED_SECRET] y");
+  });
+
+  it("removes a percent-encoded value with a non-ASCII character", () => {
+    expect(scrubSecretValues(["café-secret"])("refused caf%C3%A9-secret here")).toBe(
+      "refused [REDACTED_SECRET] here",
+    );
+  });
+
+  it("keeps a value that is part of a marker inside the marker and removes it elsewhere", () => {
+    expect(scrubSecretValues(["SECRET"])("SECRET [REDACTED_SECRET]")).toBe(
+      "[REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+    expect(scrubSecretValues(["[REDACTED_SECRET]"])("[REDACTED_SECRET]")).toBe("[REDACTED_SECRET]");
+  });
+
+  it("replaces the whole text when replacing a value that holds marker text spells it again", () => {
+    // The marker that replaces `T] x` ends in `T]`, which spells the value with the next ` x`.
+    expect(scrubSecretValues(["T] x"])("[REDACTED_SECRET] x x")).toBe("[REDACTED_SECRET]");
+    const hex = Buffer.from("743921").toString("hex");
+    const values = ["[REDACTED_SECRET]x", "743921"];
+    const text = `[REDACTED_SECRET]x%78%78 ${hex}`;
+    expect(survivingForm(values, scrubSecretValues(values)(text))).toBeUndefined();
+  });
+
+  it("keeps every marker redactText writes", () => {
+    const home = ["", "home", "participant", "notes.txt"].join("/");
+    const key = "sk-" + "syntheticvalue1234567890abcdef";
+    const written = redactText(`/tmp/run-1 ${home} ${key}`);
+    const markers = written.match(/\[REDACTED_[A-Z_]+\]/g) ?? [];
+    expect(new Set(markers)).toEqual(
+      new Set(["[REDACTED_LOCAL_PATH]", "[REDACTED_RUNTIME_PATH]", "[REDACTED_SECRET]"]),
+    );
+    for (const marker of markers)
+      expect(scrubSecretValues([marker.slice(1, -1)])(marker)).toBe(marker);
+  });
+
+  it("reads `&constructor;` as written and finds the value after it", () => {
+    // Lower-case letters, digits and four capitals, built here so no long literal looks like a key.
+    const run = (first: string, count: number): string =>
+      String.fromCharCode(...Array.from({ length: count }, (_, at) => first.charCodeAt(0) + at));
+    const value = run("a", 26) + run("0", 10) + run("A", 4);
+    const text = `&constructor; %61${value.slice(1)}${"!".repeat(40)}`;
+    expect(scrubSecretValues([value])(text)).toBe(
+      `&constructor; [REDACTED_SECRET]${"!".repeat(40)}`,
+    );
+  });
+
+  it("keeps the text around a value inside an entity it does not know", () => {
+    expect(scrubSecretValues(["value"])("a%20&xvaluey;z")).toBe("a &x[REDACTED_SECRET]y;z");
+  });
+
+  it("removes a value written as the UTF-8 reading of its own characters", () => {
+    // xÃ©z is the bytes of xéz read one per character. No reading of `xéz` gives xÃ©z, so only
+    // this form of the value finds it.
+    expect(encodedForms("xÃ©z")).toContain("xéz");
+    expect(encodedForms("Ãz")).not.toContain("z");
+    expect(scrubSecretValues(["xÃ©z"])("refused xéz here")).toBe("refused [REDACTED_SECRET] here");
+    // Only the Ã© of xÃ©z€ is UTF-8 read one byte per character.
+    expect(scrubSecretValues(["xÃ©z€"])("refused xéz€ here")).toBe(
+      "refused [REDACTED_SECRET] here",
+    );
+  });
+
+  it("returns the byte reading, or the whole-text marker when another reading still holds a value", () => {
+    // Each byte reading leaves éàxx as éÃ\u00a0xx, and the transfer reading turns =39 into 9.
+    for (const [values, text] of [
+      [["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx"],
+      [["xÃ©z€", "éàxx"], "x%C3%A9z€ é%C3%A0xx é%C3%A0xx"],
+      [["éÃ©zz", "éàxx"], "é%C3%A9zz é%C3%A0xx é%C3%A0xx"],
+      [["ab\\ncd", "743921"], "ab%5Cncd 743=39=32=31 743=39=32=31"],
+    ] as const)
+      expect(scrubSecretValues([...values])(text)).toBe("[REDACTED_SECRET]");
+    expect(scrubSecretValues(["éàxx"])("a%20b éàxx")).toBe("a b [REDACTED_SECRET]");
+  });
+
+  it("keeps the text of every marker humanish writes", () => {
+    const scrub = scrubSecretValues(["TEXT", "CODE"]);
+    expect(scrub("[REDACTED_PROMPT_TEXT] [REDACTED_LOBBY_CODE] TEXT CODE")).toBe(
+      "[REDACTED_PROMPT_TEXT] [REDACTED_LOBBY_CODE] [REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+  });
+});
+
+describe("scrubSecretValues on values that overlap themselves", () => {
+  /** Milliseconds for the fastest of five scrubs. */
+  const fastest = (values: string[], text: string): number => {
+    let best = Number.POSITIVE_INFINITY;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const started = performance.now();
+      scrubSecretValues(values)(text);
+      best = Math.min(best, performance.now() - started);
+    }
+    return best;
+  };
+
+  // Each shape grows the value with the text, so a search that compares the value again at every
+  // overlapping start takes sixteen times as long for four times the length: one letter took
+  // 1.42 s at 131,072 characters and 92.6 s at 1 MiB. Linear takes about four times as long.
+  it.each([
+    ["a run of one letter", (n: number) => ["a".repeat(n / 2)], (n: number) => "a".repeat(n)],
+    [
+      "two letters read as UTF-8",
+      (n: number) => ["éà".repeat(n / 4)],
+      (n: number) => "é%C3%A0".repeat(n / 2),
+    ],
+    [
+      "a letter encoded twice",
+      (n: number) => ["a".repeat(n / 2)],
+      (n: number) => "%2561".repeat(n),
+    ],
+  ])("scrubs %s in time linear in its length", (_shape, values, text) => {
+    const [small, large] = [32_768, 131_072];
+    expect(scrubSecretValues(values(small))(text(small))).toBe("[REDACTED_SECRET]");
+    const ratio =
+      fastest(values(large), text(large)) / Math.max(20, fastest(values(small), text(small)));
+    expect(ratio).toBeLessThan(10);
   });
 });

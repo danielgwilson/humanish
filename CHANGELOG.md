@@ -42,6 +42,25 @@ The Unreleased section holds the full notes for the next version until it is tag
   and another add's run directory check refused the run as having "no run.json humanish can read
   safely". A note is now created under its own name, and a refusal from that check names what it
   found (#1679).
+- The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
+  (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
+  humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
+  `[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`), and only text wholly inside one. It still
+  returns the decoded text with the values replaced, and replaces the whole text when another
+  reading of that result still holds a value: decoded once more, with percent escapes as UTF-8,
+  with transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes. That covers a
+  value encoded twice and a value with one of two non-ASCII characters percent-encoded, which came
+  out encoded once or as `éÃ\u00a0` for `éà`. It also finds a value such as `xÃ©z€` written as
+  `xéz€`. A value that overlaps itself is found in time linear in the text; 1 MiB of one letter
+  with a registered value half as long took 93 s (#1646).
+- `verify` and bundle export read text in the same ways everywhere: as written, decoded, with
+  percent escapes as UTF-8, with transfer escapes expanded and with Latin-1 characters read as
+  UTF-8 bytes. Text decoded from base64 two levels deep was read only as written and decoded, and
+  percent escapes that a `\u0025` wrote were not read as UTF-8 (#1646).
+- `&constructor;` and the other names only a JavaScript object's prototype defines stay as written
+  in `verify` and the known-value scrub. They decoded to a JavaScript function's source text, so a
+  made-up text such as `/home/&constructor;` graded as holding a local path; it now reads as clean
+  (#1646).
 
 ### Changed
 

@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { redactText } from "../../src/evidence/redaction.js";
 import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
   transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
+import { survivingForm } from "../helpers/scrub-model.js";
+
+/** The known-value scrub of `text` in a scope that holds `values`. */
+const knownValueScrub = (values: string[], text: string): Promise<string> =>
+  withTransientCommsSecrets(async () => {
+    registerTransientCommsSecrets(values);
+    return transientCommsKnownValueScrub()(text);
+  });
+const HEX = Buffer.from("743921").toString("hex");
 
 describe("transient run narration secrets", () => {
   it("matches literal overlapping values longest-first without altering ordinary text", async () => {
@@ -111,5 +121,108 @@ describe("transient run narration secrets", () => {
       expect(scrubbed).not.toContain("passAword");
       expect(scrubbed).not.toContain(hex);
     });
+  });
+});
+
+describe("the known-value scrub on encoded and marker-shaped text", () => {
+  it("finds a value hex-encoded or split inside a marker-shaped span", async () => {
+    for (const text of [`[REDACTED_${HEX}]`, "[REDACTED_74%33921]"])
+      expect(await knownValueScrub(["743921"], text)).toBe("[REDACTED_[REDACTED_SECRET]]");
+  });
+
+  it("returns text with a value decoded, and text without one as written", async () => {
+    expect(await knownValueScrub(["743921"], "a%20b 7%343921 c%2Fd")).toBe(
+      "a b [REDACTED_SECRET] c/d",
+    );
+    expect(await knownValueScrub(["743921"], "a%20b c%2Fd")).toBe("a%20b c%2Fd");
+    // The decoded text holds one more marker-shaped span than it had, and the value is gone.
+    expect(await knownValueScrub(["743921"], `%5BREDACTED_SECRET%5D ${HEX}`)).toBe(
+      "[REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+  });
+
+  it("keeps a value encoded twice as written when the text holds no other value", async () => {
+    const twice = "%2537%2534%2533%2539%2532%2531";
+    expect(await knownValueScrub(["743921"], `code ${twice}`)).toBe(`code ${twice}`);
+  });
+
+  it("removes a percent-encoded value with a non-ASCII character", async () => {
+    expect(await knownValueScrub(["café-secret"], "refused caf%C3%A9-secret here")).toBe(
+      "refused [REDACTED_SECRET] here",
+    );
+  });
+
+  it("leaves no value that holds a marker when decoding puts text next to the marker", async () => {
+    const values = ["[REDACTED_SECRET]x", "743921"];
+    const scrubbed = await knownValueScrub(values, `[REDACTED_SECRET]x%78%78 ${HEX}`);
+    expect(survivingForm(values, scrubbed)).toBeUndefined();
+  });
+
+  it("shows a value that is part of a marker only inside markers", async () => {
+    for (const text of ["[REDACTED_SECRET]", "SECRET [REDACTED_SECRET]"])
+      expect(survivingForm(["SECRET"], await knownValueScrub(["SECRET"], text))).toBeUndefined();
+    // redactText writes [REDACTED_LOCAL_PATH] after the scrub; the value is the marker's own text.
+    const redacted = redactText(await knownValueScrub(["LOCAL_PATH"], "/tmp/work LOCAL_PATH"));
+    expect(redacted).toBe("[REDACTED_LOCAL_PATH] [REDACTED_SECRET]");
+    expect(survivingForm(["LOCAL_PATH"], redacted)).toBeUndefined();
+  });
+
+  it("leaves a marker as it is when a value is the whole marker, which shows nothing more", async () => {
+    expect(await knownValueScrub(["[REDACTED_SECRET]"], "[REDACTED_SECRET]")).toBe(
+      "[REDACTED_SECRET]",
+    );
+  });
+
+  it("checks its output after the last literal pass", async () => {
+    // The literal pass rewrites the first value inside a marker, which then spells the second
+    // value across the marker's edge.
+    for (const [values, text] of [
+      [["CRET", "T]]x"], "CRET]x%78"],
+      [["CRET", "ET]]x"], "%43RETx"],
+    ] as const) {
+      const scrubbed = await knownValueScrub([...values], text);
+      expect(survivingForm(values, scrubbed)).toBeUndefined();
+    }
+  });
+
+  it("reads `&constructor;` as written and finds the value after it", async () => {
+    const run = (first: string, count: number): string =>
+      String.fromCharCode(...Array.from({ length: count }, (_, at) => first.charCodeAt(0) + at));
+    const value = run("a", 26) + run("0", 10) + run("A", 4);
+    const text = `&constructor; %61${value.slice(1)}${"!".repeat(40)}`;
+    expect(await knownValueScrub([value], text)).toBe(
+      `&constructor; [REDACTED_SECRET]${"!".repeat(40)}`,
+    );
+  });
+
+  it("keeps the text around a value inside an entity it does not know", async () => {
+    expect(await knownValueScrub(["value"], "a%20&xvaluey;z")).toBe("a%20&x[REDACTED_SECRET]y;z");
+  });
+
+  it("replaces the whole text when a reading other than the byte reading still holds a value", async () => {
+    for (const [values, text] of [
+      [["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx"],
+      [["xÃ©z€", "éàxx"], "x%C3%A9z€ é%C3%A0xx é%C3%A0xx"],
+      [["éÃ©zz", "éàxx"], "é%C3%A9zz é%C3%A0xx é%C3%A0xx"],
+      [["ab\\ncd", "743921"], "ab%5Cncd 743=39=32=31 743=39=32=31"],
+    ] as const)
+      expect(await knownValueScrub([...values], text)).toBe("[REDACTED_SECRET]");
+  });
+
+  // A value that overlaps itself, in a text of growing length. Comparing the value again at every
+  // overlapping start took 153 ms at 32,768 characters and grew fourfold per doubling.
+  it("scrubs a value that overlaps itself in time linear in the text", async () => {
+    const elapsed = async (n: number): Promise<number> => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const started = performance.now();
+        expect(await knownValueScrub(["éà".repeat(n / 4)], "é%C3%A0".repeat(n / 2))).toBe(
+          "[REDACTED_SECRET]",
+        );
+        best = Math.min(best, performance.now() - started);
+      }
+      return best;
+    };
+    expect((await elapsed(32_768)) / Math.max(5, await elapsed(8_192))).toBeLessThan(8);
   });
 });
