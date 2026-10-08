@@ -8,7 +8,7 @@ import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { digestText } from "../../evidence/redaction.js";
 import { type RunProviderResource, type RunSubjectProvenance } from "../../run/bundle.js";
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
-import { type CuaSubjectProvenanceArg, type ParticipantRunOutcome } from "./types.js";
+import { type ParticipantRunOutcome } from "./types.js";
 import { plural } from "../../run/text.js";
 
 /** The human-readable state story appended to the provenance event (and review.md via it). */
@@ -30,10 +30,10 @@ export function describeSubjectState(
   }
 }
 
-/** Human-readable provenance line for the single-participant subject.provenance event:
- *  claims "cloned/packed and served" only when it actually happened. */
+/** Human-readable provenance line for the single-participant subject.provenance event of a clone
+ *  or local-tree subject: claims "cloned/packed and served" only when it actually happened. */
 export function subjectProvenanceMessage(
-  provenance: CuaSubjectProvenanceArg,
+  provenance: RunSubjectProvenance,
   publicAppUrl: string,
   dryRun: boolean,
   hasSession: boolean,

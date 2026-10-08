@@ -317,9 +317,9 @@ The rest of this section names keys by their v3 spelling:
   fail-closed cap in force. `maxMinutes` is the
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
   ledger after the session (a run whose known spend exceeds the cap fails closed,
-  `HUMANISH_TERMINAL_CAPS_EXCEEDED`). Core records Codex provider spend as
-  unpriced tokens and measures no product, media or payment spend, so no line can trip a
-  positive `maxUsd`: a live run refuses `maxUsd > 0` before creating a sandbox
+  `HUMANISH_TERMINAL_CAPS_EXCEEDED`). Core prices the Codex participant's tokens as an
+  estimate that the cap does not count, and measures no product, media or payment spend, so no
+  line can trip a positive `maxUsd`: a live run refuses `maxUsd > 0` before creating a sandbox
   (`HUMANISH_TERMINAL_UNPRICED_CAP`). A terminal `maxUsd` cap has no adopter cost source
   until [issue 347](https://github.com/danielgwilson/humanish/issues/347) lands;
   `StudyDeps.costProbe` is a test seam. The sandbox's server-side timeout is the steps before the
@@ -529,8 +529,8 @@ Core-owned fields:
   an older run, else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
-  `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
-  dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
+  `{ source: clone | app-url | local-tree | desktop-cli, repo?, product?, commit?,
+  archiveSha256?, dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
   unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
   commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
   }`. Emitted by the computer-use and shared-world routes and the clone
@@ -538,7 +538,10 @@ Core-owned fields:
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
   `humanish.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
-  the archive content digest stands in for it. `commandDigest` is the
+  the archive content digest stands in for it. `product` is the desktop-cli field: the
+  `subject.product.name` the study declares, with state `undeclared`. A computer-use
+  run of a desktop-cli study saved before this field existed records `app-url` with no
+  `product`. `commandDigest` is the
   sha256-16 of the exact seed command; command text and env values never
   appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state
@@ -1142,15 +1145,20 @@ discipline** that distinguishes three states and never conflates them:
 
 `knownTotalUsd` sums only the non-null lines (a `null` line contributes nothing
 and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
-Core meters only the `provider` line, populated from the actor trace's
-`tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
+Core meters only the `provider` line, from the actor trace's `tokenUsage.costUsd` when present
+(the Codex usage records the terminal route reads carry none today); `product`/`media`/`payment`
 remain `null`, because no adopter can supply those signals until
-[issue 347](https://github.com/danielgwilson/humanish/issues/347) lands. The terminal route records the model as `codex` and does not pin Codex's
-model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`, and
-`knownTotalUsd: 0` with `fullyMeasured: false` means no line of this ledger was priced. E2B
-time for the terminal sandbox is not a line of this ledger, whose lines are checked against
-`caps.maxUsd`. The run bundle's `cost` summary prices it as a `desktop-minutes`
-line (see Run Cost Summary And Estimated Actor Cost below).
+[issue 347](https://github.com/danielgwilson/humanish/issues/347) lands. Without a measured
+charge the `provider` line keeps `usd: null` and counts the participant's tokens. The route
+passes Codex a model and prices the tokens once from it (the actor trace's `estimatedCost`); the
+line carries that price as `estimatedUsd` with `source: estimated-token-usage`, the same figure as
+the run bundle's `model-tokens` cost line. The estimate is not part of `knownTotalUsd`, so
+`caps.maxUsd` and the no-spend proof do not count it. Tokens of a model with no rate stay
+`source: unpriced-token-usage` with the model named in the note, and a run whose output had no
+usage record has `source: unmeasured`. `knownTotalUsd: 0` with `fullyMeasured: false` means no
+line of this ledger was measured. E2B time for the terminal sandbox is not a line of this ledger,
+whose lines are checked against `caps.maxUsd`. The run bundle's `cost` summary prices it as a
+`desktop-minutes` line (see Run Cost Summary And Estimated Actor Cost below).
 
 ```yaml
 schema: humanish.terminal-cost-ledger.v1
@@ -1159,7 +1167,8 @@ lines:
   product: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
   media: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
   payment: { usd: null, count: null, source: unmeasured, note: "…no signal yet…" }
-  provider: { usd: null, source: unmeasured, note: "…no tokenUsage.costUsd this run…" }
+  provider:
+    { usd: null, estimatedUsd: 0.37157, source: estimated-token-usage, note: "…estimated at…" }
 knownTotalUsd: 0
 fullyMeasured: false
 ```
@@ -1171,9 +1180,9 @@ it explicitly cannot vouch for). `satisfied` is true only when every known line
 is within `maxUsd` (for a no-spend run, `maxUsd: 0` ⇒ every known line is `0`).
 Unmeasured lines never break it, so a ledger whose lines are all `null` is
 `satisfied` with nothing proven. The `statement` says which case applies: it
-names the measured lines and their dollars, provider tokens that were counted
-but unpriced (with the counts), and the lines with no signal; when no line was
-measured it says the proof was not established. A proof never claims zero on a
+names the measured lines and their dollars, the provider tokens that were counted
+(with the counts, and their estimate or that they are unpriced), and the lines with
+no signal; when no line was measured it says the proof was not established. A proof never claims zero on a
 `null` line; verification fails closed if it does.
 
 ```yaml

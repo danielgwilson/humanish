@@ -26,9 +26,9 @@ import type {
   CuaParticipantPlan,
   CuaParticipantResult,
   DesktopParticipantRun,
-  CuaSubjectProjection,
   ParticipantRunOutcome,
 } from "./types.js";
+import type { RunSubjectProvenance } from "../../run/bundle.js";
 
 /** Build a participant's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
@@ -281,7 +281,7 @@ export async function runCuaParticipants(
 export function toParticipantResult(
   spec: DesktopParticipantRun,
   outcome: ParticipantRunOutcome | undefined,
-  subject: CuaSubjectProjection,
+  subject: RunSubjectProvenance,
   dryRun: boolean,
 ): CuaParticipantResult {
   const base = {

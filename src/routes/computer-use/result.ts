@@ -1,7 +1,7 @@
 import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
-import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
+import type { RunBundle, RunRerunLineage, RunSubjectProvenance } from "../../run/bundle.js";
 import {
   foldScorerFailures,
   judgeExecution,
@@ -22,11 +22,7 @@ import { toParticipantResult } from "./participant-execution.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
 import type { runStudyParticipants } from "./live-phase.js";
 import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
-import {
-  aggregateCuaSubject,
-  projectParticipantSubjects,
-  subjectProvenanceArg,
-} from "./subject-projection.js";
+import { aggregateCuaSubject, projectParticipantSubjects } from "./subject-projection.js";
 import {
   CUA_FANOUT_STRATEGY,
   type CuaActorStudyErrorCode,
@@ -34,9 +30,7 @@ import {
   type CuaParticipantPlan,
   type CuaParticipantSummary,
   type DesktopParticipantRun,
-  type CuaSubjectProjection,
   type ParticipantRunOutcome,
-  participantSubjectEnv,
 } from "./types.js";
 import { plannedAppUrl } from "./plan.js";
 import { studyResultIdentity } from "../../run/study-result.js";
@@ -100,8 +94,8 @@ function cuaStudyResult(args: {
   dryRun: boolean;
   participantRuns: DesktopParticipantRun[];
   outcomes: ParticipantRunOutcome[] | undefined;
-  subjects: CuaSubjectProjection[];
-  aggregateSubject: CuaSubjectProjection;
+  subjects: RunSubjectProvenance[];
+  aggregateSubject: RunSubjectProvenance;
   participantPlan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
@@ -240,10 +234,9 @@ export async function finishCuaRun(
 ): Promise<CuaActorStudyResult> {
   const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, bundleBase } = setup;
-  const { rerunLineage, publicRepo, subjectArgs } = finish;
+  const { rerunLineage, subjectArgs } = finish;
   const { dryRun } = plan;
   const appUrl = plannedAppUrl(plan.runner.subject);
-  const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId } = run;
   const participantCount = participantRuns.length;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
@@ -258,8 +251,6 @@ export async function finishCuaRun(
     ...(capWarning === undefined ? [] : [capWarning]),
     ...aggregate.warnings,
   ];
-  const finalProvenance = subjectProvenanceArg(aggregateSubject, publicRepo, subjectEnvNames);
-
   // One judgment for the whole run: the bundle's verdict and the result's ok both read it.
   const judgment = judgeComputerUseRun(bundleBase, { dryRun, outcomes });
   const bundle = buildCuaRunBundle(bundleBase, {
@@ -268,7 +259,6 @@ export async function finishCuaRun(
     outcomes,
     subjects,
     aggregateSubject,
-    subjectProvenance: finalProvenance,
     ...(failFastReason === undefined ? {} : { failFastReason }),
   });
 

@@ -78,7 +78,9 @@ const CHILD = `
 
 // The same live run on a fake SDK behind the real desktop startup guard. The guard reports the
 // sandbox's id, the signal kills it before create returns, and desktop startup fails with an error
-// that quotes the id, which the route records.
+// that quotes the id, which the route records. The handler does not wait for the route: once its
+// own reclaim and sweep end it exits, and the route's record can land after that. So reclaim's tag
+// search waits until the route's run has settled, and the handler sweeps and exits after it.
 const STARTUP_CHILD = `
   const root = process.env.REPO_ROOT;
   const { runStudyWith } = await import(root + "/src/run-study.ts");
@@ -86,9 +88,13 @@ const STARTUP_CHILD = `
   const { STUDY_SCHEMA } = await import(root + "/src/study/types.ts");
   const { beginRunSignalPhase } = await import(root + "/src/cli/commands/run-signals.ts");
   const { guardedFakeDesktop } = await import(root + "/tests/helpers/guarded-fake-desktop.ts");
+  let routeSettled;
   const { module } = guardedFakeDesktop({
     ids: [process.env.PROBE_SANDBOX_ID],
     onConstructed: () => process.stdout.write("allocated\\n"),
+    listGate: new Promise((resolve) => {
+      routeSettled = resolve;
+    }),
   });
   // Desktop startup waits on E2B, which keeps a real process alive; the handler's exit ends it.
   setInterval(() => {}, 60000);
@@ -114,7 +120,7 @@ const STARTUP_CHILD = `
       env: { OPENAI_API_KEY: "synthetic-openai", E2B_API_KEY: "synthetic-e2b" },
     },
     { desktopModule: async () => module },
-  );
+  ).finally(routeSettled);
 `;
 
 describe("a live run with the run command's handler, signalled mid-session", () => {

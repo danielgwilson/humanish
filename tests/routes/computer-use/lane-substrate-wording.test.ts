@@ -50,6 +50,7 @@ async function bundle(runner: Runner, state: "finished" | "running"): Promise<Ru
     verdict: state === "finished" ? verdictForStatus(session.status) : "contract_proof_only",
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
+    subject: { source: "app-url", state: { provenance: "undeclared" } },
     run: {
       runId: "cua-2026-01-01T00-00-00-000Z-00000000",
       mode: "live",
