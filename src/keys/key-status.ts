@@ -38,14 +38,16 @@ export function otherStoredKeys(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps 
   return listUserKeys(env, deps).filter((name) => !listed.has(name));
 }
 
+/** The line `humanish keys` prints for one key: what it is for, and its source or how to add it. */
+export function keyStatusLine(row: KeyStatusRow): string {
+  return `${row.name} (${row.use}): ${row.source === null ? `missing; ${row.hint}` : `set, from ${row.source}`}`;
+}
+
 export function formatKeyStatus(
   rows: readonly KeyStatusRow[],
   otherStored: readonly string[] = [],
 ): string {
-  const lines = rows.map(
-    (row) =>
-      `${row.name} (${row.use}): ${row.source === null ? `missing; ${row.hint}` : `set, from ${row.source}`}`,
-  );
+  const lines = rows.map(keyStatusLine);
   if (otherStored.length > 0)
     lines.push(
       `Also in the user store: ${otherStored.join(", ")}. humanish does not use ${otherStored.length === 1 ? "it" : "them"} today.`,

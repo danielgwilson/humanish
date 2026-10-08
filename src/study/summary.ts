@@ -7,11 +7,10 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 // what a stakeholder reads on the screen where they decide whether to press Start.
 //
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
-// declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
+// declared is not "unlimited" and not "$0": the screen says that no cap is set.
 
-import { resolveStudyDryRun } from "./plan.js";
-import { routeOf } from "./plan.js";
-import { localCodexParticipantCheck, planCliRun } from "./doctor.js";
+import { planStudy, resolveStudyDryRun, routeOf } from "./plan.js";
+import { localCodexParticipantCheck } from "./doctor.js";
 import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import {
   automaticAnalysisBudget,
@@ -65,9 +64,15 @@ export interface StudySummary {
    * default. A study variable you cannot see is one nobody chose.
    */
   reasoningEffort?: string;
-  caps: StudyCaps;
+  /** Absent on routes whose dollar caps the summary does not show; `{}` when none is declared. */
+  caps?: StudyCaps;
   /**
-   * Whether the configured route's required keys resolve. Dry runs require none. This checks key
+   * What `humanish run <study>` runs this file as: its `mode`, a dry run when it sets none. The TUI
+   * cannot start a live run of a dry-run file, because no `run` flag overrides the file to live.
+   */
+  mode: "live" | "dry-run";
+  /**
+   * Whether the keys a live run of this study needs resolve, whatever its mode. This checks key
    * presence, not local CLI authentication or provider validity. Undefined when not checked.
    */
   keysReady?: boolean;
@@ -128,8 +133,8 @@ function participantsOf(config: StudyConfig): string | undefined {
 }
 
 /** The computer-use caps. Other routes draw none. */
-function summaryCapsOf(config: StudyConfig): StudyCaps {
-  if (!isComputerUseComposition(config)) return {};
+function summaryCapsOf(config: StudyConfig): StudyCaps | undefined {
+  if (!isComputerUseComposition(config)) return undefined;
   const caps = config.caps;
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
@@ -161,20 +166,19 @@ export async function readStudySummary(
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
-  const dryRun = resolveStudyDryRun(inspected.config, undefined, true) === true;
-  // A live key check reads the plan's requirements. A study the planner refuses has none to check,
-  // so the summary reports the refusal in place of its keys.
+  const mode = resolveStudyDryRun(inspected.config, undefined, true) === true ? "dry-run" : "live";
+  // The keys are the live plan's, whatever the file's mode: the screen offers a live run of every
+  // study, and a dry run needs no keys to report. A study the planner refuses live has none to
+  // check, so the summary reports the refusal in place of its keys.
   const planned =
-    options.checkKeys === true && !dryRun ? await planCliRun(inspected.config, cwd) : undefined;
+    options.checkKeys === true ? planStudy(inspected.config, { cwd, dryRun: false }) : undefined;
   const planRefusal = planned?.ok === false ? planned.refusal.message : undefined;
-  if (options.checkKeys === true && planned?.ok !== false) {
-    const requirements = planned?.planned.plan.requirements ?? [];
+  if (planned?.ok === true) {
+    const requirements = planned.planned.plan.requirements;
     const subjectKeys = requiredSubjectEnv(requirements);
     const email = inspected.config.comms?.email;
     const receivingKey =
-      !dryRun && email?.kind === "real"
-        ? await receivingRequiredKey(cwd, email.connection)
-        : undefined;
+      email?.kind === "real" ? await receivingRequiredKey(cwd, email.connection) : undefined;
     const candidates = [
       "OPENAI_API_KEY",
       "CODEX_API_KEY",
@@ -182,13 +186,11 @@ export async function readStudySummary(
       ...subjectKeys,
       ...(receivingKey ? [receivingKey] : []),
     ];
-    const probes = dryRun
-      ? []
-      : await probeKeySources(candidates, {
-          cwd,
-          env: options.env ?? process.env,
-          ...(options.keyDeps === undefined ? {} : { deps: options.keyDeps }),
-        }).catch(() => []);
+    const probes = await probeKeySources(candidates, {
+      cwd,
+      env: options.env ?? process.env,
+      ...(options.keyDeps === undefined ? {} : { deps: options.keyDeps }),
+    }).catch(() => []);
     const present = new Set(
       probes.filter((probe) => probe.source !== null).map((probe) => probe.name),
     );
@@ -209,6 +211,7 @@ export async function readStudySummary(
   );
   const subject = subjectOf(config);
   const participants = participantsOf(inspected.config);
+  const caps = summaryCapsOf(inspected.config);
   const runtime =
     options.checkKeys === true && isLocalBrowserStudy(inspected.config)
       ? await localRuntimeStatus({
@@ -253,7 +256,8 @@ export async function readStudySummary(
     ...(participants === undefined ? {} : { participants }),
     model: inspected.config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL,
     reasoningEffort: reasoningEffortOf(inspected.config),
-    caps: summaryCapsOf(inspected.config),
+    ...(caps === undefined ? {} : { caps }),
+    mode,
     ...(keysReady === undefined ? {} : { keysReady }),
     ...(missingKeys === undefined ? {} : { missingKeys }),
     ...(planRefusal === undefined ? {} : { planRefusal }),

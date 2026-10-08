@@ -11,8 +11,8 @@ export interface FrameTextView {
   confirming: "live" | undefined;
   initialized: boolean;
   /** A screen drawn over the navigation stack, which writes its own breadcrumb and legend. */
-  overlay: "connections" | "help" | undefined;
-  /** Whether the connections screen exists in this build, so `c` is worth listing. */
+  overlay: "keys" | "connections" | "help" | undefined;
+  /** Whether the keys and accounts screen exists in this build, so `c` is worth listing. */
   connections: boolean;
   cwd: string;
   /** Terminal width. The legend is fitted to the frame's capped content width. */
@@ -25,9 +25,14 @@ export function frameText(
 ): Pick<FrameProps, "context" | "breadcrumb" | "hints"> {
   return {
     context: contextLine(view),
-    breadcrumb: view.overlay === "connections" ? "‹ connections" : breadcrumbOf(view),
+    breadcrumb:
+      view.overlay === "keys"
+        ? "‹ keys and accounts"
+        : view.overlay === "connections"
+          ? "‹ connections"
+          : breadcrumbOf(view),
     hints:
-      view.overlay === "connections"
+      view.overlay === "keys" || view.overlay === "connections"
         ? "↑↓ move  ⏎ select  esc back  q quit"
         : view.overlay === "help"
           ? "any key returns   q quit"

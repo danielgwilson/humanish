@@ -72,6 +72,35 @@ export function retiredFileOf(
 }
 
 /**
+ * The study file a run starts again from: the one declared manifest with the run's study id. When
+ * there is none, or several, nothing can be started, and `refusal` says why.
+ */
+export function rerunStudyOf(
+  data: ProjectData,
+  run: RunIndexEntry,
+): { row: StudyRow; refusal?: never } | { row?: never; refusal: string } {
+  const studyId = run.study?.id;
+  const matching =
+    studyId === undefined
+      ? []
+      : data.rows.filter((candidate) => candidate.studyId === studyId && candidate.declared);
+  if (matching.length > 1)
+    return {
+      refusal:
+        "multiple manifests share this study id; choose the exact one from the list to run again",
+    };
+  const row = matching[0];
+  if (row !== undefined) return { row };
+  const retired = retiredFileOf(data, studyId);
+  return {
+    refusal:
+      retired === undefined
+        ? "cannot run this again: its study has no manifest here any more"
+        : `cannot run this again: ${retired.message}`,
+  };
+}
+
+/**
  * Every live run in the project, once.
  *
  * Not a flatMap over study rows: two manifests can declare the same study id, so a run belonging to
