@@ -1,0 +1,23 @@
+{
+  "schema": "humanish.analyze-result.v1",
+  "run": "cua-2026-10-08T00-21-52-120Z-c53f9610",
+  "dryRun": true,
+  "reused": false,
+  "admission": {
+    "allowed": false,
+    "error": "analysis_budget_exceeded",
+    "inputTokenAllowance": 42590,
+    "outputTokenAllowance": 16384,
+    "estimatedCostUsd": 1.182375,
+    "worstCaseCostUsd": 1.351575,
+    "admittedCostUsd": 1.300613,
+    "maxCostUsd": 1.25,
+    "ratesAsOf": "2026-09-03"
+  },
+  "warnings": [],
+  "ok": false,
+  "error": {
+    "code": "analysis_budget_exceeded",
+    "message": "The expected cost is $1.18 and the worst case is $1.35. With a 10% margin the expected cost is over the $1.25 cap, so no request was sent. To run it, raise the cap: humanish analyze --run cua-2026-10-08T00-21-52-120Z-c53f9610 --max-cost 2"
+  }
+}

@@ -1,13 +1,18 @@
 import type { ActorTrace, ParticipantImpression, ParticipantImpressions } from "../../contract.js";
+import { CLOSING_REPORT_LIMITS } from "../../closing-report-limits.js";
 import type { LoopSession } from "./session.js";
 
 // A participant's impressions: what it says about the product at the end of a session, beyond
 // friction. Each one is recorded as its own message so the analysis can quote and cite it as a
 // participant statement, and the trace says why none were collected when a session has none.
 
+// The limits are spelled out in the ask, so the participant is told the numbers its reply is
+// checked against. Counts up to ten are written as words.
+const COUNT_WORDS = "zero one two three four five six seven eight nine ten".split(" ");
+const inWords = (count: number) => COUNT_WORDS[count] ?? String(count);
+
 /** The closing-account request for impressions, shared by every provider that writes one. */
-export const IMPRESSIONS_ASK =
-  "In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none.";
+export const IMPRESSIONS_ASK = `In impressions, list up to ${inWords(CLOSING_REPORT_LIMITS.impressions)} things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under ${CLOSING_REPORT_LIMITS.impressionChars} characters. Use an empty list if you have none.`;
 
 /** The request after the participant ended the session itself without giving impressions. */
 export const IMPRESSIONS_HINT = `The interactive session has ended. Return only impressions. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions.`;

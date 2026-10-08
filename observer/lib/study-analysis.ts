@@ -3,6 +3,7 @@ import type {
   AnalysisArtifact,
   AnalysisCorrection,
 } from "../../src/analysis/types";
+import { bySeverity, findingLead } from "../../src/analysis/finding-lead.js";
 import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
@@ -460,18 +461,17 @@ const impact = {
   uncertain: "Uncertain",
 };
 const outcomeLabel = (outcome: string) => outcome.charAt(0).toUpperCase() + outcome.slice(1);
-const severityRank = { major: 0, moderate: 1, minor: 2 };
 
-/** A reviewer's amendment replaces the plain headline and experience, which describe the old claim. */
+/** The finding's lead in the report's optional fields; an analysis without headlines adds none. */
 function plainLead(
   finding: { headline?: string; experience?: string },
-  amendment: AnalysisCorrection | undefined,
-): { headline?: string; experience?: string; corrected?: true } {
-  if (finding.headline === undefined) return {};
-  if (amendment?.replacementClaim) return { headline: amendment.replacementClaim, corrected: true };
+  correction: AnalysisCorrection | undefined,
+): { headline?: string; experience?: string } {
+  const lead = findingLead(finding, correction);
+  if (lead === null) return {};
   return {
-    headline: finding.headline,
-    ...(finding.experience === undefined ? {} : { experience: finding.experience }),
+    headline: lead.headline,
+    ...(lead.account === null ? {} : { experience: lead.account }),
   };
 }
 export function projectStudyAnalysis(
@@ -576,7 +576,7 @@ export function projectStudyAnalysis(
         return {
           id: f.id,
           title: f.title,
-          ...plainLead(f, latest?.status === "amended" ? latest : undefined),
+          ...plainLead(f, latest),
           impact: impact[f.impact],
           summary: f.summary,
           scope: `${f.affectedStreamIds.length} of ${f.exposedStreamIds.length} exposed participants affected`,
@@ -615,15 +615,13 @@ export function projectStudyAnalysis(
     ...(result?.designFindings === undefined
       ? {}
       : {
-          designFindings: [...result.designFindings]
-            .sort((x, y) => severityRank[x.severity] - severityRank[y.severity])
-            .map(({ evidenceIds, ...d }) => ({
-              ...d,
-              moments: evidenceIds.flatMap((key) => {
-                const e = evidence.get(key);
-                return e?.capture ? [{ streamId: e.streamId, eventId: e.eventId }] : [];
-              }),
-            })),
+          designFindings: bySeverity(result.designFindings).map(({ evidenceIds, ...d }) => ({
+            ...d,
+            moments: evidenceIds.flatMap((key) => {
+              const e = evidence.get(key);
+              return e?.capture ? [{ streamId: e.streamId, eventId: e.eventId }] : [];
+            }),
+          })),
         }),
     outcomes:
       loaded.state === "ready"

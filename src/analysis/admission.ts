@@ -1,5 +1,5 @@
-// The admission cost model for one study analysis request: the expected cost, the worst case, and
-// the figure admission compares with the cap.
+// The admission cost model for one study analysis request: the expected cost, the worst case, the
+// figure admission compares with the cap, and the words and command a cost refusal gives.
 
 import type { ModelRate } from "../run/pricing.js";
 
@@ -86,14 +86,30 @@ export interface RefusedAnalysisCost {
   maxCostUsd: number;
 }
 
-/** The --max-cost that admits a refused analysis: its worst case, rounded up to a whole dollar. */
-export function admittingMaxCost(cost: RefusedAnalysisCost): number {
-  return Math.max(1, Math.ceil(cost.worstCaseCostUsd));
+/** A cost refusal in plain words, and the command that runs the analysis under a cap that admits it. */
+export interface CostRefusal {
+  /** The costs, the cap and that no request was sent, ending in the lead-in to `command`. */
+  text: string;
+  /** `analyze` with `--max-cost` at the worst case rounded up to a whole dollar, at least 1. */
+  command: string;
 }
 
-/** Why admission refused an analysis, in plain words. */
-export function costRefusalText(cost: RefusedAnalysisCost): string {
-  return `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent.`;
+/**
+ * Words a cost refusal. `runFlags` are the `analyze` flags that select the run, such as
+ * `--run <id>`. `cli` prefixes a humanish command: the CLI passes `cli` from
+ * src/cli/invocation.ts, and the Observer, which cannot read the install, a bare `humanish`.
+ * This module keeps only type imports, so the Observer can bundle it.
+ */
+export function costRefusal(
+  cost: RefusedAnalysisCost,
+  runFlags: string,
+  cli: (rest: string) => string,
+): CostRefusal {
+  const margin = Math.round((ADMISSION_MARGIN - 1) * 100);
+  return {
+    text: `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${margin}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent. To run it, raise the cap:`,
+    command: cli(`analyze ${runFlags} --max-cost ${Math.max(1, Math.ceil(cost.worstCaseCostUsd))}`),
+  };
 }
 
 /** The admission's refused cost, when it refused the analysis for its cost. */

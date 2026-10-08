@@ -4,8 +4,9 @@
 
 import path from "node:path";
 import type { Command } from "commander";
-import { admittingMaxCost, costRefusalText } from "../analysis/admission.js";
+import { costRefusal } from "../analysis/admission.js";
 import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
+import { bySeverity, findingLead } from "../analysis/finding-lead.js";
 import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
@@ -212,12 +213,6 @@ function evidenceOf(finding: Finding, analysis: AnalysisArtifact, runRoot: strin
   );
 }
 
-const SEVERITY_RANK: Record<DesignFinding["severity"], number> = {
-  major: 0,
-  moderate: 1,
-  minor: 2,
-};
-
 /** Most severe first; equal severity keeps the analysis order. */
 function designFindingViews(
   analysis: AnalysisArtifact,
@@ -226,23 +221,21 @@ function designFindingViews(
   const designFindings = analysis.result?.designFindings;
   if (designFindings === undefined) return null;
   const labels = new Map(analysis.participants.map((p) => [p.streamId, p.label]));
-  return [...designFindings]
-    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
-    .map((finding) => ({
-      id: finding.id,
-      headline: finding.headline,
-      screen: finding.screen,
-      notice: finding.notice,
-      whyItMatters: finding.whyItMatters,
-      suggestion: finding.suggestion,
-      severity: finding.severity,
-      confidence: finding.confidence,
-      seenBy: finding.seenByStreamIds.map((streamId) => ({
-        streamId,
-        label: labels.get(streamId) ?? streamId,
-      })),
-      evidence: citedEvidence(finding.evidenceIds, analysis, runRoot),
-    }));
+  return bySeverity(designFindings).map((finding) => ({
+    id: finding.id,
+    headline: finding.headline,
+    screen: finding.screen,
+    notice: finding.notice,
+    whyItMatters: finding.whyItMatters,
+    suggestion: finding.suggestion,
+    severity: finding.severity,
+    confidence: finding.confidence,
+    seenBy: finding.seenByStreamIds.map((streamId) => ({
+      streamId,
+      label: labels.get(streamId) ?? streamId,
+    })),
+    evidence: citedEvidence(finding.evidenceIds, analysis, runRoot),
+  }));
 }
 
 function findingView(
@@ -407,16 +400,16 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       ),
     );
   }
-  if (job?.state === "skipped" && job.admission)
+  if (job?.state === "skipped" && job.admission) {
+    const refusal = costRefusal(job.admission, `--run ${source.runId}${source.cwdFlag}`, cli);
     return withoutFindings(
       source,
       "skipped",
       job.reason,
-      `The automatic analysis was refused before it started. ${costRefusalText(job.admission)}`,
-      cli(
-        `analyze --run ${source.runId}${source.cwdFlag} --max-cost ${admittingMaxCost(job.admission)}`,
-      ),
+      `The automatic analysis was refused before it started. ${refusal.text}`,
+      refusal.command,
     );
+  }
   if (job?.state === "skipped") {
     const refused = job.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED";
     return withoutFindings(
@@ -615,18 +608,6 @@ function captureFiles(evidence: CitedEvidence[], runRoot: string): string[] {
   ];
 }
 
-/**
- * What a reader sees first: the headline, or the reviewer's claim when a review amended the finding,
- * since the headline and experience describe the claim it replaced. Null before headlines existed.
- */
-function leadOf(finding: FindingView): { headline: string; corrected: boolean } | null {
-  const amended = finding.correction?.status === "amended" ? finding.correction : null;
-  if (finding.headline === null) return null;
-  return amended?.replacementClaim
-    ? { headline: amended.replacementClaim, corrected: true }
-    : { headline: finding.headline, corrected: false };
-}
-
 function findingLines(finding: FindingView, runRoot: string): string[] {
   const cited = [...new Set(finding.evidence.map((entry) => entry.streamId))];
   const labels = new Map(finding.affected.map((p) => [p.streamId, p.label]));
@@ -634,19 +615,13 @@ function findingLines(finding: FindingView, runRoot: string): string[] {
   const streams = [...affectedIds, ...cited.filter((id) => !labels.has(id))];
   const captures = captureFiles(finding.evidence, runRoot);
   const correction = finding.correction;
-  const lead = leadOf(finding);
+  const lead = findingLead(finding, correction);
   return [
     ...(lead === null
       ? [`${finding.id} ${finding.title}`]
       : [
           `${finding.id} ${lead.headline}`,
-          ...(lead.corrected
-            ? [
-                "   Corrected in human review. The reviewer's claim replaces the original headline and account.",
-              ]
-            : finding.experience === null
-              ? []
-              : [`   ${finding.experience}`]),
+          ...(lead.account === null ? [] : [`   ${lead.account}`]),
           `   evidence: ${finding.title}`,
         ]),
     `   impact: ${IMPACT_TEXT[finding.impact]} · confidence: ${finding.confidence} · recovery: ${RECOVERY_TEXT[finding.recovery]}`,
@@ -731,7 +706,7 @@ export function formatFindingsSummary(
     `findings: ${view.findings.length === 0 ? "none" : view.findings.length}${view.state === "stale" ? " (stale)" : ""}`,
     ...shown.map((finding) => {
       const qualities = `${IMPACT_TEXT[finding.impact]}, ${finding.confidence} confidence, ${RECOVERY_TEXT[finding.recovery]}`;
-      const lead = leadOf(finding);
+      const lead = findingLead(finding, finding.correction);
       if (lead === null) return `- ${finding.id} ${qualities}: ${finding.title}`;
       return `- ${finding.id} ${lead.headline} (${lead.corrected ? "corrected in human review" : qualities})`;
     }),

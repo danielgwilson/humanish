@@ -52,7 +52,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
   --participant-cap <usd>  the study's caps.maxUsd for a priced participant (default 0.6)
-  --analysis-max-usd <usd> per-run cap override (default: admission estimate plus 10%, within budget)
+  --analysis-max-usd <usd> per-run cap override (default: the admitted cost analyze --dry-run reports)
   --no-analysis            skip the analysis step
   --work-dir <dir>         where the throwaway project and bundles go (default: a new temp dir)
   --out <dir>              where the results JSON and summary go (default: the work dir)

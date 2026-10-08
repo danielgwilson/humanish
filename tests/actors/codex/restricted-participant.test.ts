@@ -285,24 +285,41 @@ describe("restricted participant conversation", () => {
         actions: { type: "array", minItems: 1, maxItems: 4 },
       },
     });
-    expect(PARTICIPANT_FINAL_SCHEMA).toMatchObject({ type: "object", additionalProperties: false });
-    expect(PARTICIPANT_FINAL_SCHEMA.required).toEqual([
-      "outcome",
-      "summary",
-      "frictionReports",
-      "impressions",
-    ]);
-    expect(PARTICIPANT_FINAL_SCHEMA.properties.impressions).toMatchObject({
-      type: "array",
-      maxItems: 6,
-      items: {
-        additionalProperties: false,
-        required: ["kind", "text"],
-        properties: {
-          kind: {
-            enum: ["unclear", "unfinished", "untrustworthy", "liked", "missing", "unlike_my_work"],
+    // The final schema Codex participants have been sent, keyword for keyword.
+    expect(PARTICIPANT_FINAL_SCHEMA).toEqual({
+      type: "object",
+      additionalProperties: false,
+      required: ["outcome", "summary", "frictionReports", "impressions"],
+      properties: {
+        outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
+        summary: { type: "string", minLength: 1, maxLength: 4000 },
+        frictionReports: {
+          type: "array",
+          maxItems: 8,
+          items: { type: "string", minLength: 1, maxLength: 2000 },
+        },
+        impressions: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["kind", "text"],
+            properties: {
+              kind: {
+                type: "string",
+                enum: [
+                  "unclear",
+                  "unfinished",
+                  "untrustworthy",
+                  "liked",
+                  "missing",
+                  "unlike_my_work",
+                ],
+              },
+              text: { type: "string", minLength: 1, maxLength: 500 },
+            },
           },
-          text: { minLength: 1, maxLength: 500 },
         },
       },
     });
