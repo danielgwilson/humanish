@@ -97,13 +97,40 @@ export function machineSize(machine?: MachineSize): MachineSize {
   return machine ?? { memoryBytes: totalmem(), cpus: availableParallelism() };
 }
 
-/** A new VM's size: room for four desktops, capped at half the Mac's memory and CPUs. */
-export function defaultVmSize(mac: MachineSize): VmSize {
+/** The humanish Lima VM as `limactl list` shows it: whether it exists, and its size when listed. */
+interface LimaVmListing {
+  readonly exists: boolean;
+  readonly size?: MachineSize;
+}
+
+/**
+ * The humanish Lima VM's memory and CPUs: the size Lima lists for it, or for a VM that does not
+ * exist yet, the size setup creates (room for four desktops, capped at half the Mac's memory and
+ * CPUs). Undefined for an existing VM that lists no size: Lima omits the memory it cannot parse,
+ * and a default in its place would be a guess.
+ */
+export function limaVmSize(vm: LimaVmListing, mac: MachineSize): VmSize | undefined {
+  if (vm.size !== undefined) return { memoryGiB: vm.size.memoryBytes / GiB, cpus: vm.size.cpus };
+  if (vm.exists) return undefined;
   const wanted = vmSizeFor(DEFAULT_VM_DESKTOPS);
   return {
     memoryGiB: Math.min(wanted.memoryGiB, Math.floor(mac.memoryBytes / GiB / 2)),
     cpus: Math.min(wanted.cpus, Math.floor(mac.cpus / 2)),
   };
+}
+
+/**
+ * Desktops the humanish Lima VM holds, or will hold once setup creates it. Undefined when its size
+ * is unknown.
+ */
+export function limaCapacity(vm: LimaVmListing, mac: MachineSize): LocalCapacity | undefined {
+  const size = limaVmSize(vm, mac);
+  if (size === undefined) return undefined;
+  return localCapacity(
+    "lima-vm",
+    { memoryBytes: size.memoryGiB * GiB, cpus: size.cpus },
+    { planned: !vm.exists, machine: mac },
+  );
 }
 
 /**

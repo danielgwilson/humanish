@@ -8,6 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A shared-world study whose persona file has an invalid background now stops with that error
+  before the route checks its keys, as a computer-use study already did.
+- When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
+  concurrency cap below the roster or about participants without an inbox, the `egressAllow`
+  warning now comes after those two.
+- `humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
+  shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
+  value not given from the default size of a new VM, which could change the VM's CPUs or memory.
+- The refusal of `humanish keys set` for a name that is not a provider key now lists
+  `E2B_API_KEY` before `ANTHROPIC_API_KEY`.
+
 ### Fixed
 
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
@@ -16,6 +29,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
   keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
   `live run failed` (#1673).
+- A run whose received email held a link of 32,768 characters or more no longer fails its analysis
+  with `analysis_validation_failed_unexpected`. The scrub of the run's known values builds one
+  regular expression of them, which Node refuses once a value is that long; it then searches each
+  value directly and replaces the same text (#1646).
+- The known-value scrubs find the base64 of a value of 4 or 5 bytes, such as the code `7439`
+  written `NzQzOQ`, and a 5-byte value inside a longer base64 run. Base64 and hex forms are
+  searched from 6 characters instead of 8. A 4-byte value inside a longer base64 run is still not
+  found, and an identifier that holds a short value's base64, such as `aMTIzNAz` while the code
+  `1234` is registered, loses that part (#1646).
+- Run evidence is checked after its known values are replaced. When the result still holds a value
+  in any reading `verify` uses, as when the marker written for one value spells another, the whole
+  text becomes `[REDACTED_SECRET]` (#1646).
+- Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
+  operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

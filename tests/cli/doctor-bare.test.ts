@@ -42,6 +42,20 @@ describe("doctor without --lab", () => {
     expect(JSON.stringify(result)).not.toContain("synthetic-desktop-canary");
   });
 
+  it("ends each key row with the command that fills that key", async () => {
+    const result = await doctor(cwd, { env: keyless, localAgents: noAgents });
+    expect(
+      result.checks
+        .filter((check) => check.name.startsWith("key "))
+        .map((check) => `${check.name}: ${check.message}`),
+    ).toEqual([
+      "key OPENAI_API_KEY: missing; used by try-live; run `humanish keys set openai`",
+      "key E2B_API_KEY: missing; used by try-live; run `e2b auth login`, or `humanish keys set e2b`",
+      "key GH_TOKEN: missing; not used by any study in this project; run `gh auth login`, or `humanish keys set github`",
+      "key CODEX_API_KEY: missing; not used by any study in this project; run `humanish keys set CODEX_API_KEY`",
+    ]);
+  });
+
   it("finds a lab whose file name differs from its id", async () => {
     const labs = path.join(cwd, "humanish", "studies");
     const tryLive = await readFile(path.join(labs, "try-live.yaml"), "utf8");

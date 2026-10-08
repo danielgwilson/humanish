@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import {
+  KEY_VENDORS,
   listUserKeys,
   resolveKeyName,
   setUserKey,
@@ -380,7 +381,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
     .command("set")
     .argument(
       "[vendor-or-name]",
-      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn.",
+      `A vendor alias (${KEY_VENDORS.join(", ")}) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn.`,
     )
     .description(
       "Store one provider key in the user store (0600), prompted with hidden input. With no key named, ask for each missing key in turn.",
@@ -406,7 +407,7 @@ export function registerKeysCommand(parent: Command, io: CliIo): void {
             action: "set",
             store: storePath,
             names: [],
-            message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
+            message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: ${KEY_VENDORS.join(", ")}.`,
           };
           writeResult(command, io, result, formatKeysHuman);
           io.setExitCode(2);

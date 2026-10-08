@@ -5,7 +5,6 @@
 // returns the route's run. prepareStudy is the same path in two steps, so the CLI can present either
 // refusal before it loads a declared review scorer.
 
-import { participantList } from "./study/study-fields.js";
 import { personaBackgroundWarnings } from "./study/warnings.js";
 import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./study/persona-resolve.js";
 import type { LocalVmInput } from "./routes/computer-use/types.js";
@@ -121,8 +120,12 @@ export async function prepareStudy(
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const runWarnings = [...(planned.planned.plan.warnings ?? [])];
-  const plan = { ...planned.planned.plan, warnings: runWarnings };
+  // The run records the background warnings in its bundle with the plan's own.
+  const backgroundWarnings = await planBackgroundWarnings(planned.planned.plan, study, options.cwd);
+  const plan = {
+    ...planned.planned.plan,
+    warnings: [...(planned.planned.plan.warnings ?? []), ...backgroundWarnings],
+  };
   const admitted = await admitPlan(study, planning, plan, deps, normalized.emit);
   if (!admitted.ok) {
     await vm?.close();
@@ -145,25 +148,7 @@ export async function prepareStudy(
             return outcome;
           }
         }
-        // Admission keeps its refusal order; these warnings join the plan before its run scope opens.
-        const personas =
-          route === "computer-use" || route === "shared-world"
-            ? (await resolveCommittedPersonasForCwd(options.cwd, studyPersonaIds(study))).personas
-            : new Map();
-        const backgroundWarnings = personaBackgroundWarnings(
-          route === "computer-use" &&
-            options.count !== undefined &&
-            participantList(study) === undefined
-            ? { ...study, participants: options.count }
-            : study,
-          personas,
-        );
-        runWarnings.splice(
-          0,
-          runWarnings.length,
-          ...(planned.planned.plan.warnings ?? []),
-          ...backgroundWarnings,
-        );
+        // A run's result lists the background warnings; a refusal before the run does not.
         normalized.warnings.push(...backgroundWarnings);
         // The route layers the scorer over the inputs it admitted, and the local study is not
         // rebuilt for it. The admitted runSession, provider and participant desktop belong to this
@@ -180,6 +165,26 @@ export async function prepareStudy(
       }
     },
   };
+}
+
+/**
+ * A warning for each of the plan's participants whose persona has no background. Only
+ * computer-use and shared-world plans have participants; the committed personas are read for them.
+ */
+async function planBackgroundWarnings(
+  plan: StudyPlan,
+  study: StudyConfig,
+  cwd: string,
+): Promise<string[]> {
+  const participants =
+    plan.route === "computer-use"
+      ? plan.runner.participants
+      : plan.route === "shared-world"
+        ? plan.plane.participants
+        : [];
+  if (participants.length === 0) return [];
+  const { personas } = await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(study));
+  return personaBackgroundWarnings(plan.studyId, participants, personas);
 }
 
 /** The route's admit function for a plan, with the route's input from the run's options. */

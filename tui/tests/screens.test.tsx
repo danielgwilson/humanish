@@ -129,6 +129,19 @@ describe("the labs screen, rendered", () => {
     await expectGolden("labs-45", await frameAt(45));
   });
 
+  it("lays out again when the terminal narrows from 80 to 45 columns", async () => {
+    const rendered = await renderToText(<App options={options()} now={NOW} tick={0} />, {
+      columns: 80,
+      rows: 24,
+      until: (frame) => frame.includes("never-run-lab"),
+    });
+    const narrowed = await rendered.resize(45, 24);
+    rendered.unmount();
+    // Compared with a fresh 45-column render, which the test above pins to the labs-45 golden.
+    // Writing the golden from here would let UPDATE_TUI_GOLDENS record a stale layout.
+    expect(normalizeFrame(narrowed)).toBe(await frameAt(45));
+  });
+
   it("puts a live lab first, and never invents numbers for a lab that has not run", async () => {
     const frame = await frameAt(80);
     const lines = frame.split("\n").filter((line) => line.trim().length > 0);

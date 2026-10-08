@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { cli } from "../../cli/invocation.js";
 import {
-  defaultVmSize,
+  limaVmSize,
   machineSize,
   vmSizeProblem,
   type MachineSize,
@@ -194,23 +194,18 @@ export async function prepareLima(
 ): Promise<void> {
   const status = await limaStatus(options);
   const mac = machineSize(options.machine);
-  const current =
-    status.size === undefined
-      ? defaultVmSize(mac)
-      : { memoryGiB: status.size.memoryBytes / 1024 ** 3, cpus: status.size.cpus };
-  const size = { ...current, ...options.size };
+  const current = limaVmSize(status, mac);
   if (options.size !== undefined) {
+    const size = sizeToApply(current, options.size);
     const problem = vmSizeProblem(size, mac);
     if (problem !== undefined) throw new Error(problem);
-  }
-  // An existing VM whose size Lima did not list gets the asked-for size without a comparison.
-  const differs =
-    status.size === undefined
-      ? options.size !== undefined
-      : size.cpus !== current.cpus || size.memoryGiB !== current.memoryGiB;
-  if (status.exists && differs) {
-    await resizeLima(size, status.ready, options, progress);
-    return;
+    // An existing VM whose size Lima did not list gets the asked-for size without a comparison.
+    const differs =
+      current === undefined || size.cpus !== current.cpus || size.memoryGiB !== current.memoryGiB;
+    if (status.exists && differs) {
+      await resizeLima(size, status.ready, options, progress);
+      return;
+    }
   }
   if (status.ready) return;
   progress?.(
@@ -224,7 +219,7 @@ export async function prepareLima(
     const work = await mkdtemp(path.join(tmpdir(), "humanish-lima-"));
     try {
       const file = path.join(work, "host.yaml");
-      await writeFile(file, limaTemplate(size), { mode: 0o600 });
+      await writeFile(file, limaTemplate(sizeToApply(current, options.size)), { mode: 0o600 });
       await hostExec(
         "limactl",
         ["start", "--tty=false", "--name", LIMA_INSTANCE, file],
@@ -235,6 +230,20 @@ export async function prepareLima(
       await rm(work, { recursive: true, force: true });
     }
   }
+}
+
+/**
+ * The size to create or resize the VM at: the asked-for values over the VM's current size. Only an
+ * existing VM that lists no size has no current size, so there a value not asked for is unknown.
+ */
+function sizeToApply(current: VmSize | undefined, asked: Partial<VmSize> = {}): VmSize {
+  const memoryGiB = asked.memoryGiB ?? current?.memoryGiB;
+  const cpus = asked.cpus ?? current?.cpus;
+  if (memoryGiB === undefined || cpus === undefined)
+    throw new Error(
+      `limactl lists no size for the humanish Lima VM, so humanish cannot tell which ${memoryGiB === undefined ? "--memory" : "--cpus"} to keep. Run ${cli("runtime setup --memory <GiB> --cpus <n>")} with both values.`,
+    );
+  return { memoryGiB, cpus };
 }
 
 /** Lima changes the memory and CPUs of a stopped instance only. Running desktops keep it running. */
