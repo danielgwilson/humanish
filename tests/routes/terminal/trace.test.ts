@@ -117,12 +117,6 @@ describe("terminal participant text items", () => {
     expect(item?.text).toHaveLength(MESSAGE_CHARS);
   });
 
-  it("redacts a path that holds a backslash and an n whole in the agent's text", () => {
-    // The wire text `/tmp/a\\ncustomer.csv` decodes to a backslash and an `n`, not a line break.
-    const result = read(said("Saved /tmp/a\\ncustomer.csv for you."), redactText);
-    expect(result.items.map((item) => item.text)).toEqual(["Saved [REDACTED_LOCAL_PATH] for you."]);
-  });
-
   it("strips harness marker lines from the agent's text", () => {
     const stdout = [
       said("Done.\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=12345678-123", "a"),
@@ -141,7 +135,7 @@ describe("terminal participant text items", () => {
     const database = "postgres:" + "//user:synthetic" + "@db.example/database";
     const recorder = createTerminalRecorder({
       nowIso: () => "2026-10-02T00:00:00.000Z",
-      scrub: scrubLiterals([key]),
+      sanitize,
       knownSecretValues: [key],
       verdictNonce: "synthetic-nonce",
     });

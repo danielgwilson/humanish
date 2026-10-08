@@ -46,14 +46,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   text becomes `[REDACTED_SECRET]` (#1646).
 - Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
   operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
-- A terminal run's transcript and event stream keep the text after a local path in the agent's
-  Codex output. Complete stdout lines are redacted together, secrets first as written, and each
-  line that is JSON has each string, keys included, redacted as the text it decodes to. A path
-  inside a string now ends at a line break or tab in that string. Redaction used to read the
-  encoded line, so `humanish init` read `cwd: [REDACTED_RUNTIME_PATH]  AGENTS.md` without its line
-  break and `created:` header. Stderr, lines that are not JSON, an unfinished line and a line that
-  stderr output arrived inside are redacted as before, and JSON written inside a string is read as
-  raw text, as before (#1702).
 - Redacting a local path that holds a long run of backslashes takes time linear in the run. A path
   holding 40,000 backslashes and then a letter took 1.4 s.
 - A terminal run's review, its no-spend statement and the provider line of

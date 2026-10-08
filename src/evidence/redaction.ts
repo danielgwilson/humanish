@@ -359,52 +359,6 @@ export function redactText(text: string): string {
   return redactLocalPaths(redactSecrets(text));
 }
 
-/**
- * Redact complete lines of output that may be JSON, such as `codex exec --json` output, keeping
- * the text after a local path inside a JSON string. Secrets are redacted in the text as written
- * first, as redactText does, so a credential's name still marks its value and a pattern such as
- * `Bearer\s+` still reaches across a line break. Each line that is still JSON then has each string,
- * keys included, redacted as the text it decodes to and written back, so a path ends at a line
- * break or tab in the string, as it does in raw text, and redactText runs over the whole text.
- * Text with no JSON line gets exactly what redactText gives it. JSON written inside a string is
- * read as raw text, as redactText reads it.
- */
-export function redactJsonLines(text: string): string {
-  const secretsRedacted = redactSecrets(text);
-  let rewroteJson = false;
-  const lines = secretsRedacted.split("\n").map((line) => {
-    if (!isJson(line)) return line;
-    rewroteJson = true;
-    return rewriteJsonStrings(line, redactText);
-  });
-  return rewroteJson ? redactText(lines.join("\n")) : redactLocalPaths(secretsRedacted);
-}
-
-function isJson(text: string): boolean {
-  try {
-    JSON.parse(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** `json`, which JSON.parse accepts, with each string in it replaced by `rewrite` of its value. */
-function rewriteJsonStrings(json: string, rewrite: (value: string) => string): string {
-  let rewritten = "";
-  let copied = 0;
-  // In valid JSON every quote outside a string opens one, and an escape is a backslash and the
-  // character after it (a `\u` escape's four digits read as plain characters).
-  for (let open = json.indexOf('"'); open >= 0; open = json.indexOf('"', copied)) {
-    let close = open + 1;
-    while (json[close] !== '"') close += json[close] === "\\" ? 2 : 1;
-    const value = JSON.parse(json.slice(open, close + 1)) as string;
-    rewritten += json.slice(copied, open) + JSON.stringify(rewrite(value));
-    copied = close + 1;
-  }
-  return rewritten + json.slice(copied);
-}
-
 /** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */
 export function redactToSecretLabel(text: string): string {
   return redactLocalPaths(redactSecrets(text), REDACTION_MARKERS.secret);

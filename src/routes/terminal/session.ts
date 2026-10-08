@@ -93,7 +93,7 @@ export async function runLiveTerminalSession(
   // The ledgers + capture buffers, mutated through the live lifecycle.
   const recorder = createTerminalRecorder({
     nowIso,
-    scrub: secrets.scrub,
+    sanitize,
     knownSecretValues: run.secrets.forms(),
     verdictNonce,
   });
