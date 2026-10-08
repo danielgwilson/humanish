@@ -31,7 +31,8 @@ import {
 } from "../io.js";
 import { plural } from "../../run/text.js";
 import { warnAndQueue } from "../deprecations.js";
-import { type AnalysisFindings, formatFindings, readRunFindings } from "../findings.js";
+import { type AnalysisFindings, readRunFindings } from "../findings.js";
+import { formatFindings } from "../findings-text.js";
 import { cli } from "../invocation.js";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
