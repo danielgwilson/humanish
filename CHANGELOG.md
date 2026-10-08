@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
+  and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
+  marked an event as coming from CI.
+- `humanish keys set constructor` and `humanish keys set __proto__` now refuse the name with the
+  list of provider keys the store holds. Both names matched a built-in object property in the alias
+  table and printed `Not a valid env name: function Object() { [native code] }`.
+
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 
 humanish 0.114.0 lets a reviewer note a moment of a recorded run, admits post-run analysis on its
