@@ -399,6 +399,26 @@ describe("Lima VM size", () => {
     });
     expect(limaCommands()).toContain("limactl edit --cpus 8 --memory 13 humanish-runtime");
   });
+  it("asks for both values when an existing VM lists no size and one value is given", async () => {
+    // Lima lists no memory when it cannot parse the VM's memory value; its CPUs stay unknown here.
+    state.limaSize = { cpus: 6 } as typeof state.limaSize;
+    await expect(
+      prepareLocalRuntime({
+        ...mac,
+        machine: { memoryBytes: 64 * GiB, cpus: 16 },
+        size: { memoryGiB: 16 },
+      }),
+    ).rejects.toThrow(
+      "limactl lists no size for the humanish Lima VM, so humanish cannot tell which --cpus to keep. Run humanish runtime setup --memory <GiB> --cpus <n> with both values.",
+    );
+    expect(limaCommands()).toEqual([]);
+  });
+  it("starts an existing VM that lists no size without resizing it when no size is asked for", async () => {
+    state.lima = "Stopped";
+    state.limaSize = {} as typeof state.limaSize;
+    await prepareLocalRuntime({ ...mac, machine: { memoryBytes: 64 * GiB, cpus: 16 } });
+    expect(limaCommands()).toEqual(["limactl start --tty=false humanish-runtime"]);
+  });
   it("leaves a VM that already has the asked-for size running", async () => {
     await prepareLocalRuntime({
       ...mac,

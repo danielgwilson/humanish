@@ -8,6 +8,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+`humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
+shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
+value not given from the default size of a new VM, which could change the VM's CPUs or memory.
 The refusal of `humanish keys set` for a name that is not a provider key now lists E2B_API_KEY
 before ANTHROPIC_API_KEY.
 

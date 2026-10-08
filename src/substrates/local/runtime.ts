@@ -8,7 +8,7 @@ import { pipeline } from "node:stream/promises";
 import type { LocalFirecrackerAssets } from "./firecracker-desktop.js";
 import { LOCAL_MEDIA_RUNTIME_RELEASES, LOCAL_RUNTIME_RELEASES } from "./runtime-release.js";
 import {
-  defaultVmSize,
+  limaCapacity,
   localCapacity,
   machineSize,
   type LocalCapacity,
@@ -57,22 +57,13 @@ const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefine
     runtimeArchitecture(options) ?? "amd64"
   ];
 
-/** Desktops the existing Lima VM holds, the VM setup would create, or this Linux machine. */
+/** Desktops the Lima VM holds (or setup would create), or this Linux machine. */
 function runtimeCapacity(
   options: RuntimeOptions,
   lima: LimaStatus | undefined,
 ): LocalCapacity | undefined {
-  if (lima === undefined) return localCapacity("linux-host", machineSize(options.machine));
   const machine = machineSize(options.machine);
-  if (lima.size !== undefined) return localCapacity("lima-vm", lima.size, { machine });
-  // An existing VM whose size Lima did not list has an unknown size, which no default replaces.
-  if (lima.exists) return undefined;
-  const planned = defaultVmSize(machine);
-  return localCapacity(
-    "lima-vm",
-    { memoryBytes: planned.memoryGiB * 1024 ** 3, cpus: planned.cpus },
-    { planned: true, machine },
-  );
+  return lima === undefined ? localCapacity("linux-host", machine) : limaCapacity(lima, machine);
 }
 
 /**
