@@ -82,6 +82,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   list reordered. When the action the person chose on a run's screen goes away under the cursor
   (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
   so; it used to act on the row now there, which could be Run again (#1696).
+- In `humanish tui`, an armed action no longer stays armed after the cursor leaves it. Arming Stop,
+  moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
+  analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
+  after `?`. The five actions that take two Enters (those four and a live start) now follow one
+  rule: the second Enter counts only on the same action of the same screen within 30 seconds, any
+  other key cancels the first, and Esc cancels it without going back (#1722).
 - On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
   punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
   to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,

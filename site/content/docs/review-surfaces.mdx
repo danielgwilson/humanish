@@ -17,6 +17,8 @@ Arrow keys move, Enter opens, Esc goes back, q quits. There are seven screens. T
 - **study**: that study's description, history and two ways to start it. A dry run starts on one keypress because it costs nothing. A live run takes two, with the cost shown between them: what its live runs have cost, its participant caps, and the analysis line `humanish run` prints. A study whose file sets `mode: dry-run` cannot start live from here, because `humanish run` runs a file in the mode it sets; set `mode: live` in the file first. The keys line is checked against a live run of the study either way.
 - **run**: who is in the run, what each participant is doing now, and how far along it is, with time and money underneath. A terminal cannot show screenshots, so when the run has an Observer file, the run screen's **Open in Observer** action opens it in your browser. **Run again** on a live run asks twice, with the same cost shown, as a live start does.
 
+Five actions take two Enters: a live start, **Run again** on a live run, **Stop this run**, **Cancel analysis**, and **Set up humanish here** in a directory that is not a project yet. The second Enter counts only on the same action within 30 seconds. Any other key cancels the first, and Esc cancels it without going back.
+
 A run started from the TUI is detached: it keeps going if you quit, and it survives a dropped SSH session. The TUI follows it by reading `.humanish/runs/<id>/status.json` and holds no handle on it, so you can quit mid-run, reopen, and find it still there.
 
 ## For coding agents and scripts

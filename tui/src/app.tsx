@@ -4,6 +4,7 @@ import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
 import { KeysScreen } from "./screens/keys-screen.js";
 import { PALETTE } from "./palette.js";
+import { useArming } from "./arming.js";
 
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
@@ -63,12 +64,6 @@ const CHROME_ROWS = 6;
  */
 const REFRESH_MS = 2_000;
 
-/**
- * The shortest gap between arming a live run and committing it. Key auto-repeat delivers around one
- * event every 30ms, so without a floor a held Enter arms and commits inside a single keypress.
- */
-const LIVE_CONFIRM_MIN_MS = 400;
-
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
 
@@ -93,8 +88,6 @@ export function App({
   const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
   const [data, setData] = useState<ProjectData | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
-  // A live start is armed by the first Enter and committed by the second; a dry run needs neither.
-  const [confirming, setConfirming] = useState<"live" | undefined>(undefined);
   // Launch state is scoped to the study it belongs to: it is one surface with one piece of state, and
   // an unscoped note follows the operator to a different study's screen and reports something about
   // that study which is not true of it.
@@ -105,8 +98,6 @@ export function App({
   const [launchNote, setLaunchNote] = useState<{ studyKey: string; text: string } | undefined>(
     undefined,
   );
-  /** When the live confirmation was armed, so a held key cannot blow through it. */
-  const [armedAt, setArmedAt] = useState<number | undefined>(undefined);
   /**
    * The open run's participants. `undefined` means "not read yet" and `null` means "read, and it
    * has no bundle": a run that has just started. The screen says something different for each,
@@ -115,10 +106,6 @@ export function App({
   const [detail, setDetail] = useState<RunDetail | null | undefined>(undefined);
   /** What the last run-card action reported. An action that appears to do nothing is a bug. */
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
-  /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
-  const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
-  /** When Run again was armed for a live run, which spends like a live start. */
-  const [againArmedAt, setAgainArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
   /** `c keys and accounts`, and the email connection one of its rows opens. */
   const [accounts, setAccounts] = useState<"keys" | "email" | undefined>(
@@ -131,8 +118,6 @@ export function App({
   const [keysCursor, setKeysCursor] = useState(0);
   const hasAccounts =
     options.capabilities.keys !== undefined || options.capabilities.comms !== undefined;
-  /** When the "set up humanish here" action was armed: it writes into the operator's directory. */
-  const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
   const [liveTick, setTick] = useState(0);
   const tick = frozenTick ?? liveTick;
@@ -200,6 +185,14 @@ export function App({
   const screen = currentScreen(nav);
   const selected = selectedIndex(nav);
   const rowCount = countRows(screen, data, detail);
+  // A live start, Run again on a live run, Stop, Cancel analysis and setting up the project each take
+  // two Enters, and the second counts only while the cursor is on the same action of the same screen.
+  const {
+    armed,
+    press: pressArmed,
+    disarm,
+  } = useArming(`${screenKey(screen)}\n${identityOf(screen, data, selected, detail) ?? selected}`);
+  const confirming = armed === "live-start" ? "live" : undefined;
 
   // A move on the same screen records the row the cursor is on. Anything else (a refresh, arriving
   // at a screen, coming back to one) puts the cursor on the recorded row. When that row is gone
@@ -231,20 +224,9 @@ export function App({
         setLaunchNote({ studyKey: row.key, text: dryRunFileNote(row) });
         return;
       }
-      if (mode === "live" && confirming !== "live") {
-        // Arm, do not fire. The row above says what a live run costs; this makes the operator press
-        // again having read it.
-        setConfirming("live");
-        setArmedAt(Date.now());
-        return;
-      }
-      if (mode === "live" && armedAt !== undefined && Date.now() - armedAt < LIVE_CONFIRM_MIN_MS) {
-        // A held Enter delivers repeats every ~30ms, which would arm and commit a live run inside
-        // one keypress. A confirmation nobody had time to read is not a confirmation.
-        return;
-      }
-      setConfirming(undefined);
-      setArmedAt(undefined);
+      // The first Enter arms. The prompt restates what a live run costs, and the operator presses
+      // again having read it.
+      if (mode === "live" && pressArmed("live-start") !== "confirmed") return;
       setLaunchError(undefined);
       setLaunchNote({ studyKey: row.key, text: `starting ${row.name}…` });
       const started = await startStudy(options, row, mode);
@@ -268,7 +250,7 @@ export function App({
         });
       }
     },
-    [confirming, armedAt, options, summary],
+    [pressArmed, options, summary],
   );
 
   /**
@@ -283,17 +265,9 @@ export function App({
       if (action === "stop" || action === "cancel-analysis") {
         // Armed like a live start, and for the same reason: it ends work that has already been paid
         // for, and a single keystroke should not be able to do that by accident.
-        if (stopArmedAt === undefined) {
-          setStopArmedAt(Date.now());
-          setActionNote(
-            action === "cancel-analysis"
-              ? "cancel analysis? ⏎ again to confirm · esc keep analyzing"
-              : "stop this run? ⏎ again to confirm · esc cancel",
-          );
-          return;
-        }
-        if (Date.now() - stopArmedAt < LIVE_CONFIRM_MIN_MS) return;
-        setStopArmedAt(undefined);
+        const pressed = pressArmed(action);
+        if (pressed === "armed") setActionNote(undefined);
+        if (pressed !== "confirmed") return;
         setActionNote(action === "cancel-analysis" ? "cancelling analysis…" : "stopping…");
         const result = await options.capabilities.stopRun(
           options.cwd,
@@ -339,14 +313,10 @@ export function App({
       }
       if (mode === "live") {
         // Armed like a live start from the study screen: the prompt below the actions restates
-        // the cost, and only a second Enter, after the auto-repeat floor, spends it.
-        if (againArmedAt === undefined) {
-          setAgainArmedAt(Date.now());
-          setActionNote(undefined);
-          return;
-        }
-        if (Date.now() - againArmedAt < LIVE_CONFIRM_MIN_MS) return;
-        setAgainArmedAt(undefined);
+        // the cost, and only a second Enter spends it.
+        const pressed = pressArmed("run-again");
+        if (pressed === "armed") setActionNote(undefined);
+        if (pressed !== "confirmed") return;
       }
       setActionNote(`starting ${row.name}…`);
       const started = await options.capabilities.startRun({
@@ -359,7 +329,7 @@ export function App({
         started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message,
       );
     },
-    [detail, options, data, stopArmedAt, againArmedAt, summary],
+    [detail, options, data, pressArmed, summary],
   );
 
   useInput(
@@ -385,6 +355,10 @@ export function App({
           if (input === "q") exit();
           return;
         }
+        // Only Enter or → on the armed action confirms it. Any other key cancels it, and escape
+        // cancels before it means "go back": the nearer meaning of "no" wins, so a confirmation is
+        // never dismissed by accidentally leaving the screen.
+        if (!(key.return || key.rightArrow) && disarm() && (key.escape || key.leftArrow)) return;
         if (input === "?") {
           setShowHelp(true);
           return;
@@ -394,57 +368,19 @@ export function App({
           return;
         }
         if (input === "c" && hasAccounts) {
-          setConfirming(undefined);
-          setArmedAt(undefined);
-          setStopArmedAt(undefined);
-          setAgainArmedAt(undefined);
-          setInitArmedAt(undefined);
           setKeysCursor(0);
           setAccounts("keys");
           return;
         }
         if (input === "g" || input === "G") {
-          if (confirming !== undefined) {
-            setConfirming(undefined);
-            setArmedAt(undefined);
-          }
           dispatch({ type: "move", delta: input === "g" ? -rowCount : rowCount, total: rowCount });
           return;
         }
         if (key.upArrow || input === "k" || key.downArrow || input === "j") {
-          // Moving off the armed row disarms it. Otherwise the banner keeps claiming Enter will
-          // confirm a live run while the cursor sits somewhere Enter does something else entirely.
-          if (confirming !== undefined) {
-            setConfirming(undefined);
-            setArmedAt(undefined);
-          }
-          setAgainArmedAt(undefined);
           dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
         }
         if (key.escape || key.leftArrow) {
-          // Escape cancels an armed confirmation before it means "go back": the nearer meaning of
-          // "no" wins, so a confirmation can never be dismissed by accidentally leaving the screen.
-          // Both kinds (starting a live run, and stopping one) are armed, and both are undone
-          // here rather than carried to whatever screen you land on next.
-          if (confirming !== undefined) {
-            setConfirming(undefined);
-            setArmedAt(undefined);
-            return;
-          }
-          if (stopArmedAt !== undefined) {
-            setStopArmedAt(undefined);
-            setActionNote(undefined);
-            return;
-          }
-          if (againArmedAt !== undefined) {
-            setAgainArmedAt(undefined);
-            return;
-          }
-          if (initArmedAt !== undefined) {
-            setInitArmedAt(undefined);
-            return;
-          }
           dispatch({ type: "back" });
           return;
         }
@@ -452,12 +388,7 @@ export function App({
           // The empty-project screen has exactly one action, so Enter means it. Armed, because it
           // writes into the operator's directory and touches package.json.
           if (screen.name === "studies" && !initialized) {
-            if (initArmedAt === undefined) {
-              setInitArmedAt(Date.now());
-              return;
-            }
-            if (Date.now() - initArmedAt < LIVE_CONFIRM_MIN_MS) return;
-            setInitArmedAt(undefined);
+            if (pressArmed("init") !== "confirmed") return;
             void (async () => {
               const outcome = await options.capabilities.initProject(options.cwd);
               setActionNote(outcome.message);
@@ -476,7 +407,6 @@ export function App({
                 // analysis ends, Stop when the run does), and this key was meant for it. Acting on
                 // the row now there would start or stop something nobody chose.
                 chosenRef.current.set(key, identity);
-                setStopArmedAt(undefined);
                 setActionNote("nothing was done: this run's actions changed before that key");
                 return;
               }
@@ -504,16 +434,14 @@ export function App({
         screen,
         data,
         selected,
-        confirming,
         start,
         detail,
         act,
-        stopArmedAt,
-        againArmedAt,
+        pressArmed,
+        disarm,
         showHelp,
         accounts,
         hasAccounts,
-        initArmedAt,
         initialized,
         options,
       ],
@@ -529,14 +457,12 @@ export function App({
   const openRunId = screen.name === "run" ? screen.runId : undefined;
   // What belongs to the open run starts over when another run opens or the run screen closes. It is
   // adjusted during render (react.dev, "Adjusting some state when a prop changes"), so no frame
-  // shows the previous run's detail, note or armed stop.
+  // shows the previous run's detail or note.
   const [detailRunId, setDetailRunId] = useState(openRunId);
   if (detailRunId !== openRunId) {
     setDetailRunId(openRunId);
     setDetail(undefined);
     setActionNote(undefined);
-    setStopArmedAt(undefined);
-    setAgainArmedAt(undefined);
   }
   useEffect(() => {
     if (openRunId === undefined) return;
@@ -706,10 +632,14 @@ export function App({
       tick,
       initialized,
       actionNote:
-        againArmedAt !== undefined && openStudyRow !== undefined
-          ? `run again live? ${liveCostText(openStudyRow, summary)} · ⏎ again to confirm · esc cancel`
-          : actionNote,
-      initArmed: initArmedAt !== undefined,
+        armed === "stop"
+          ? "stop this run? ⏎ again to confirm · esc cancel"
+          : armed === "cancel-analysis"
+            ? "cancel analysis? ⏎ again to confirm · esc keep analyzing"
+            : armed === "run-again" && openStudyRow !== undefined
+              ? `run again live? ${liveCostText(openStudyRow, summary)} · ⏎ again to confirm · esc cancel`
+              : actionNote,
+      initArmed: armed === "init",
     });
   }, [
     showHelp,
@@ -735,7 +665,7 @@ export function App({
     tick,
     initialized,
     actionNote,
-    againArmedAt,
+    armed,
     openStudyRow,
   ]);
 
