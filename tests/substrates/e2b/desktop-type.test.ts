@@ -49,7 +49,6 @@ function makeFakeDesktop(
     scroll: noop,
     drag: noop,
     wait: noop,
-    press: noop,
     write: async (text: string) => {
       rec.writeCalls.push(text);
       if (opts.write) await opts.write(text);

@@ -297,7 +297,14 @@ export function writeResult<T>(
     io.writeOut(`${JSON.stringify(withQueuedWarnings(command, output), null, 2)}\n`);
   } else {
     writeHuman(command, io, formatHuman(output));
-    if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
+    // A run refused before it was created has no analysis to report, so its output ends with the
+    // refusal. Its JSON keeps the skip record.
+    if (
+      output !== null &&
+      typeof output === "object" &&
+      "automaticAnalysis" in output &&
+      (output as { runId?: unknown }).runId !== "not-created"
+    ) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
       const cost = analysis?.result?.admission && refusedCost(analysis.result.admission);
       const refusal = cost && costRefusal(cost, `--run ${analysis.result?.run ?? "latest"}`, cli);
