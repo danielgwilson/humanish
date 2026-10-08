@@ -260,16 +260,20 @@ export function inOrder(kept: string, text: string): boolean {
 /**
  * The transient literal scrub as one global regex of the values of four characters or more,
  * longest first: at each position the longest value that starts there becomes the marker, and the
- * search goes on after it. V8 refuses a value of 32,768 characters or more.
+ * search goes on after it. V8 refuses to run it once the regex alternates and a value has 32,768
+ * characters or more.
  */
-export function modelLiteralScrub(values: readonly string[], text: string): string {
+export function modelLiteralScrub(values: readonly string[]): (text: string) => string {
   const kept = [...new Set(values)].filter((value) => value.length >= 4);
-  if (kept.length === 0) return text;
-  const pattern = kept
-    .sort((left, right) => right.length - left.length)
-    .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("|");
-  return text.replace(new RegExp(pattern, "g"), REDACTION_MARKERS.secret);
+  if (kept.length === 0) return (text) => text;
+  const pattern = new RegExp(
+    kept
+      .sort((left, right) => right.length - left.length)
+      .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|"),
+    "g",
+  );
+  return (text) => text.replace(pattern, REDACTION_MARKERS.secret);
 }
 
 /**

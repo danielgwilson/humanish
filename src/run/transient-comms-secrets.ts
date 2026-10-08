@@ -11,6 +11,8 @@ import {
 type SecretScope = {
   values: Set<string>;
   bytes: number;
+  /** The literal scrub of `values`, built at its first use after they change. */
+  literal?: (text: string) => string;
   closed: boolean;
   failed: boolean;
 };
@@ -26,6 +28,7 @@ function usable(scope: SecretScope): void {
 function fail(scope: SecretScope): never {
   scope.failed = true;
   scope.values.clear();
+  delete scope.literal;
   throw new Error("TRANSIENT_NARRATION_SECRET_LIMIT");
 }
 
@@ -40,6 +43,7 @@ export async function withTransientCommsSecrets<T>(work: () => Promise<T>): Prom
     scope.closed = true;
     scope.values.clear();
     scope.bytes = 0;
+    delete scope.literal;
   }
 }
 
@@ -60,6 +64,7 @@ export function registerTransientCommsSecrets(values: string[]): void {
       fail(scope);
     scope.values.add(value);
     scope.bytes += bytes;
+    delete scope.literal;
   }
 }
 
@@ -68,7 +73,8 @@ export function scrubTransientCommsText(text: string): string {
   const scope = scopes.getStore();
   if (!scope) return text;
   usable(scope);
-  return scrubValuesAsWritten([...scope.values])(text);
+  scope.literal ??= scrubValuesAsWritten([...scope.values]);
+  return scope.literal(text);
 }
 
 const REDACTED = REDACTION_MARKERS.secret;

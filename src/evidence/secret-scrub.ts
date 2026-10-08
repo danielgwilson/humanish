@@ -136,32 +136,55 @@ function eachOccurrence(text: string, form: string, found: (at: number) => void)
 }
 
 /**
+ * Each value's occurrences, the longest value that starts at a position replaced from the start of
+ * the text on, in time linear in the text for each value.
+ */
+function replaceLongestFirst(text: string, values: readonly string[]): string {
+  // The length of the longest value that starts at each position, allocated at the first find.
+  let longest: Uint32Array | undefined;
+  for (const value of values)
+    eachOccurrence(text, value, (at) => {
+      longest ??= new Uint32Array(text.length);
+      longest[at] = Math.max(longest[at]!, value.length);
+    });
+  if (longest === undefined) return text;
+  let result = "";
+  let cursor = 0;
+  for (let at = 0; at < text.length; at += 1) {
+    if (longest[at] === 0) continue;
+    result += text.slice(cursor, at) + REDACTED;
+    cursor = at + longest[at]!;
+    at = cursor - 1;
+  }
+  return result + text.slice(cursor);
+}
+
+/**
  * A scrub that replaces each non-empty value as written with `[REDACTED_SECRET]`, markers
  * included. From the start of the text, the longest value that starts at a position is replaced
- * and the search goes on after it, so the marker it writes is never searched. That is the output
- * of one global regex of the values, longest first, without its size limit: V8 refuses a value of
- * 32,768 characters. Each value is found in time linear in the text.
+ * and the search goes on after it, so the marker it writes is never searched. One global regex of
+ * the values, longest first, does that fastest. V8 compiles it at its first use and refuses it
+ * once a value has 32,768 characters; the scrub then finds each value itself, with the same
+ * output, in time linear in the text for each value.
  */
 export function scrubValuesAsWritten(values: readonly string[]): (text: string) => string {
   const written = [...new Set(values)].filter((value) => value.length > 0);
+  if (written.length === 0) return (text) => text;
+  let pattern: RegExp | undefined = new RegExp(
+    [...written]
+      .sort((left, right) => right.length - left.length)
+      .map(escapeRegExp)
+      .join("|"),
+    "g",
+  );
   return (text) => {
-    // The length of the longest value that starts at each position, allocated at the first find.
-    let longest: Uint32Array | undefined;
-    for (const value of written)
-      eachOccurrence(text, value, (at) => {
-        longest ??= new Uint32Array(text.length);
-        longest[at] = Math.max(longest[at]!, value.length);
-      });
-    if (longest === undefined) return text;
-    let result = "";
-    let cursor = 0;
-    for (let at = 0; at < text.length; at += 1) {
-      if (longest[at] === 0) continue;
-      result += text.slice(cursor, at) + REDACTED;
-      cursor = at + longest[at]!;
-      at = cursor - 1;
-    }
-    return result + text.slice(cursor);
+    if (pattern !== undefined)
+      try {
+        return text.replace(pattern, REDACTED);
+      } catch {
+        pattern = undefined;
+      }
+    return replaceLongestFirst(text, written);
   };
 }
 
