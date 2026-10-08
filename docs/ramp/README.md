@@ -73,7 +73,7 @@ Implemented:
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
   drives a study-owner loopback app in a hosted desktop, and `subject.source:
-clone` + `serve` clones, installs, and serves a real app in-sandbox from
+  clone` + `serve` clones, installs, and serves a real app in-sandbox from
   config before the actor drives it (`src/routes/computer-use/route.ts`);
 - seven declared subject sources: `this-repo` (dry-run-only), `clone`, `app-url`,
   `local-app` (library-assisted, in-process, no desktop), `terminal-product`,

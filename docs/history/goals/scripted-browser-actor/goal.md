@@ -18,7 +18,7 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
 - **Registry entry** `scripted-browser` with capability-lane dispatch:
   `isScriptedBrowserActorDescriptor` (mirror of `isCuaActorDescriptor`) — lane
   `"scripted-browser"` ⇒ `runSession(ScriptedBrowserSessionOptions) →
-ScriptedBrowserSessionResult` with a fully-formed `humanish.actor-trace.v1` at
+  ScriptedBrowserSessionResult` with a fully-formed `humanish.actor-trace.v1` at
   `result.trace`. Trace vocabulary additions (ratified): lane `"scripted-browser"`, protocol
   `"scripted-steps"`, completionReason `"step_failed"` (the subject failed the script's
   predicate — distinct from `actor_error`/`harness_error`, where the harness failed).
