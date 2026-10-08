@@ -14,7 +14,10 @@ it.each(["cuAppUrl", "sharedExternal"] as const)(
   async (base) => {
     const cwd = await makeTestTempDir("humanish-persona-order-");
     await mkdir(path.join(cwd, "humanish/personas"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish/personas/first-time-visitor.yaml"), "background: 123\n");
+    await writeFile(
+      path.join(cwd, "humanish/personas/first-time-visitor.yaml"),
+      "background: 123\n",
+    );
     const parsed = parseStudy(lab(base, { mode: "live" }));
     if (!parsed.ok) throw new Error(parsed.error.message);
     await expect(runStudy(parsed.config, { cwd, env: {} })).rejects.toThrow("background");

@@ -400,7 +400,10 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
  */
 export function recordedStudyWarnings(config: StudyConfig): string[] {
   const egressIgnored = egressAllowIgnoredWarning(config);
-  return [...(egressIgnored === undefined ? [] : [egressIgnored]), ...scriptedMissionWarnings(config)];
+  return [
+    ...(egressIgnored === undefined ? [] : [egressIgnored]),
+    ...scriptedMissionWarnings(config),
+  ];
 }
 
 const UI_ACTION = /\b(?:click|tap|press|type\b[^.!?\n]*?\binto|select\b[^.!?\n]*?\bfrom)\b/gi;
