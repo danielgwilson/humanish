@@ -8,76 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
-- `analyze --json` reports `admission.admittedCostUsd`: the expected cost plus the 10% margin, or
-  the worst case when that is lower. Admission compares it with the cap, so it is the smallest
-  `--max-cost` that admits the analysis.
+humanish 0.115.0 asks the OpenAI computer-use participant for its closing report and impressions
+within the limits its reply is checked against, keeps every reviewer note added at the same time,
+and finds more encoded forms of a registered secret. The participant's request schema now carries
+the limits the parser already enforced: a summary of up to 4,000 characters, up to 8 friction
+reports of up to 2,000 characters and up to 6 impressions of up to 500 characters, so a longer
+reply is no longer requested and then dropped. `analyze --json` adds `admission.admittedCostUsd`,
+the smallest `--max-cost` that admits the analysis, and `humanish analyze` names its refusal
+command as `npx humanish analyze` where humanish is a dev dependency. A reviewer note is created
+under its own name, so notes added together from the Observer and `humanish notes --add` are all
+kept. `export --local-only` keeps a `blocked` run `blocked` when its analysis fails the export's
+own check. The known-value scrub exempts only the markers humanish writes, reads text in the same
+five ways as `verify`, and finds a value that overlaps itself in time linear in the text. The TUI's
+study screen shows the expected analysis cost line that `study check` prints, telemetry reads
+`CI=false` as off, and `humanish keys set constructor` is refused with the list of provider keys.
 
-### Fixed
-
-- The TUI's study screen shows the analysis budget line that `humanish run` and `study check`
-  print: the expected cost range for the study's participants and the rule that refuses an
-  analysis whose expected cost plus 10% is over the cap. It still showed the wording from before
-  0.114.0, "admission estimate limit", with no expected cost.
-- The warning for a participant with no persona background names `study show` the way the
-  install runs humanish, such as `npx humanish study show <id> --json` where humanish is a dev
-  dependency. It printed `humanish study show`, which reaches a stale global install or nothing.
-- Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
-  and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
-  marked an event as coming from CI.
-- `humanish keys set constructor` and `humanish keys set __proto__` now refuse the name with the
-  list of provider keys the store holds. Both names matched a built-in object property in the alias
-  table and printed `Not a valid env name: function Object() { [native code] }`.
-- `humanish analyze` names its refusal command the way the rest of the CLI does, so a project
-  that installs humanish as a dev dependency is told `npx humanish analyze --run <id> --max-cost <n>`.
-- `humanish export --local-only` keeps a `blocked` run `blocked` when the export's own analysis
-  check fails. It wrote `local_only` into the result and the file's share record, a better grade
-  than `verify` gave the run. Export now applies `verify`'s rule: a failed check can only move a
-  run toward `blocked`.
-- When `humanish notes --add` refuses a run with no readable run.json, the `verify` command it
-  suggests names this install's invocation, such as `npx humanish` in a project.
-- Adding reviewer notes at the same time, from the Observer or `humanish notes --add`, no longer
-  refuses one of them. A note was published with a hard link, so for a moment it had two links,
-  and another add's run directory check refused the run as having "no run.json humanish can read
-  safely". A note is now created under its own name, and a refusal from that check names what it
-  found (#1679).
-- The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
-  (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
-  humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
-  `[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`), and only text wholly inside one. It still
-  returns the decoded text with the values replaced, and replaces the whole text when another
-  reading of that result still holds a value: decoded once more, with percent escapes as UTF-8,
-  with transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes. That covers a
-  value encoded twice and a value with one of two non-ASCII characters percent-encoded, which came
-  out encoded once or as `éÃ\u00a0` for `éà`. It also finds a value such as `xÃ©z€` written as
-  `xéz€`. A value that overlaps itself is found in time linear in the text; 1 MiB of one letter
-  with a registered value half as long took 93 s (#1646).
-- `verify` and bundle export read text in the same ways everywhere: as written, decoded, with
-  percent escapes as UTF-8, with transfer escapes expanded and with Latin-1 characters read as
-  UTF-8 bytes. Text decoded from base64 two levels deep was read only as written and decoded, and
-  percent escapes that a `\u0025` wrote were not read as UTF-8 (#1646).
-- `&constructor;` and the other names only a JavaScript object's prototype defines stay as written
-  in `verify` and the known-value scrub. They decoded to a JavaScript function's source text, so a
-  made-up text such as `/home/&constructor;` graded as holding a local path; it now reads as clean
-  (#1646).
-
-### Changed
-
-- A feedback draft for an amended finding opens with the sentence `humanish review` and the
-  Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
-  and account." It had its own wording of that sentence.
-- The OpenAI computer-use participant is now asked for its closing report and impressions within
-  the limits its reply is checked against: a summary of up to 4,000 characters, up to 8 friction
-  reports of up to 2,000 characters each, and up to 6 impressions of up to 500 characters each.
-  Its request schema had no limits before, so a longer reply was asked for and then dropped as
-  invalid. The Codex participant was already sent these limits. The Observer reads a recorded
-  closing account with more than 8 friction reports or more than 6 impressions as unreadable; no
-  humanish version records more.
-- An HTML export and a feedback draft give the same share-safety reason for reviewer notes: "The
-  reviewer notes being shared match secret, token or local-path patterns." for a secret-shaped
-  value, and "The reviewer notes being shared hold encoded text the scan cannot read." for text
-  the scan cannot read.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.115.0)
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 
