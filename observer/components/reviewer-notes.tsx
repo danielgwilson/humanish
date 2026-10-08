@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { formatElapsed } from "@/lib/player-model";
 import type { RunNote, SaveRunNoteResult } from "@/lib/run-notes";
 import { ReviewIcon } from "./review-icon";
 import { Popover } from "./ui/popover";
 import "@/styles/reviewer-notes.css";
-// note-shape.ts has no runtime imports, so the artifact stays self-contained
+// note-shape.ts and run-clock.ts have no runtime imports, so the artifact stays self-contained
 // (observer/tests/contract-lock.test.ts).
 import { byRunTime, MAX_NOTE_TEXT } from "../../src/run/note-shape.js";
+import { formatRunTime } from "../../src/run/run-clock.js";
 
 /**
  * "Add a note at 02:31": a form for a note at the paused moment of the study timeline, for the
@@ -26,7 +26,7 @@ export function AddNote({
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const at = formatElapsed(atMs);
+  const at = formatRunTime(atMs);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!text.trim() || saving) return;
@@ -96,7 +96,7 @@ export function NoteMarkers({
     <span
       key={note.id}
       className="scrub-note"
-      title={`Reviewer note at ${formatElapsed(note.atMs)}`}
+      title={`Reviewer note at ${formatRunTime(note.atMs)}`}
       style={{
         left: `${durationMs ? (Math.min(note.atMs, durationMs) / durationMs) * 100 : 0}%`,
       }}
@@ -147,10 +147,10 @@ export function ReviewerNotes({
                 <button
                   type="button"
                   className="review-tool"
-                  aria-label={`Open ${formatElapsed(note.atMs)} on the study timeline`}
+                  aria-label={`Open ${formatRunTime(note.atMs)} on the study timeline`}
                   onClick={() => onOpen(note)}
                 >
-                  {formatElapsed(note.atMs)}
+                  {formatRunTime(note.atMs)}
                 </button>
                 <span>
                   {note.participant === null

@@ -53,6 +53,27 @@ describe("execution.egressAllow off the terminal route", () => {
     expect(parsed(base).warnings.filter(ignoredOn(route))).toHaveLength(1);
   });
 
+  it("parses the warning after the roster warnings, next to the other warning a run records", () => {
+    const result = parseStudy(
+      lab(
+        "cuAppUrl",
+        { participants: { count: 2 }, execution: { ...allow.execution, concurrency: 1 } },
+        { mission: 'Click "New".' },
+      ),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    const kinds = result.warnings.map((warning) =>
+      warning.startsWith("execution.concurrency 1 caps a 2-participant roster")
+        ? "concurrency"
+        : ignoredOn("computer-use")(warning)
+          ? "egressAllow"
+          : warning.startsWith("actor.mission reads like a script")
+            ? "scripted mission"
+            : warning,
+    );
+    expect(kinds).toEqual(["concurrency", "egressAllow", "scripted mission"]);
+  });
+
   it.each(routes)("records the warning in a %s run's bundle", async (base, route) => {
     const warnings = (await dryRunEvents(base)).filter(
       (event) => event.type === "study.warning" && ignoredOn(route)(event.message),

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
+import { formatDuration, keyframeHref } from "@/lib/artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { completionLabel } from "@/lib/signal";
 import { participantLabels } from "@/lib/participant-label";

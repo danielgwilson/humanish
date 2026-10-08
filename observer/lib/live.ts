@@ -1,4 +1,5 @@
-import { historyRunHref, traceItems } from "./artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
+import { historyRunHref } from "./artifact-href";
 import type { ObserverData, ObserverStream } from "./observer-data";
 import { isObserverData, runDisplay } from "./validate";
 

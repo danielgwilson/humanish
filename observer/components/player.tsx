@@ -10,7 +10,6 @@ import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import {
   boundedWindow,
-  formatElapsed,
   frameAtElapsedMs,
   frameElapsedMs,
   frameHoldMs,
@@ -30,10 +29,11 @@ import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
+import { recordingContains } from "@/lib/grid-recording";
 import {
-  recordingContains,
+  formatRunTime,
   recordingInterval as streamRecordingInterval,
-} from "@/lib/grid-recording";
+} from "../../src/run/run-clock.js";
 import { RecordingVideo } from "./recording-video";
 import { ParticipantAnalysis } from "./participant-analysis";
 import { ParticipantFeedback } from "./participant-feedback";
@@ -249,7 +249,7 @@ export function Player({
     studyPlayback?.moment.kind === "capture" && current?.atMs !== undefined
       ? current.atMs + studyPlayback.moment.ageMs
       : null;
-  const recordingInterval = studyPlayback ? streamRecordingInterval(stream) : null;
+  const recordingInterval = studyPlayback ? streamRecordingInterval(stream.recording) : null;
   const recordingKey = recordingInterval
     ? `${stream.id}:${recordingInterval.recording.path}`
     : null;
@@ -533,7 +533,7 @@ export function Player({
           ? `${lifecycle} · Latest capture`
           : controlled
             ? `${lifecycle} · Study replay`
-            : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
+            : `${lifecycle} · Replay at ${formatRunTime(elapsed)}`
       : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
   const participantName = participantLabels(data.streams).get(stream.id) ?? stream.label;
   // The study note below already says when a selected frame has no capture time.
@@ -637,7 +637,7 @@ export function Player({
                         ? "Recorded wait"
                         : "Recorded entry"}
                   {selectedRow.atMs !== undefined
-                    ? ` · ${model.paced === "recorded" ? formatElapsed(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}`
+                    ? ` · ${model.paced === "recorded" ? formatRunTime(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}`
                     : " · Time unavailable"}
                 </span>
                 <span className="entry-title">{selectedRow.title}</span>
@@ -649,7 +649,7 @@ export function Player({
                 ) : null}
                 <span className="entry-capture">
                   {current?.atMs !== undefined
-                    ? `Capture ${model.paced === "recorded" ? formatElapsed(elapsed) : new Date(current.atMs).toISOString()}`
+                    ? `Capture ${model.paced === "recorded" ? formatRunTime(elapsed) : new Date(current.atMs).toISOString()}`
                     : `Capture ${frame + 1} · time unavailable`}
                   {current?.atMs !== undefined && selectedRow.atMs !== undefined
                     ? current.atMs === selectedRow.atMs
@@ -728,14 +728,14 @@ export function Player({
               <ReviewIcon name="next-frame" />
             </IconButton>
             <span className="elapsed">
-              {formatElapsed(elapsed)} <span>/ {formatElapsed(duration)}</span>
+              {formatRunTime(elapsed)} <span>/ {formatRunTime(duration)}</span>
             </span>
             <div className="scrubwrap" onPointerLeave={() => setScrubPreview(null)}>
               {scrubPreview !== null && frames[scrubPreview] ? (
                 <div className="scrub-preview" aria-hidden="true">
                   <img src={frames[scrubPreview]?.href} alt="" />
                   <span>
-                    {formatElapsed(frameElapsedMs(model, scrubPreview))} · frame {scrubPreview + 1}
+                    {formatRunTime(frameElapsedMs(model, scrubPreview))} · frame {scrubPreview + 1}
                   </span>
                 </div>
               ) : null}
@@ -755,7 +755,7 @@ export function Player({
                 value={elapsed}
                 disabled={frames.length < 2}
                 aria-label="Seek recording time"
-                aria-valuetext={`${formatElapsed(elapsed)} of ${formatElapsed(duration)}, frame ${Math.max(0, frame + 1)} of ${frames.length}`}
+                aria-valuetext={`${formatRunTime(elapsed)} of ${formatRunTime(duration)}, frame ${Math.max(0, frame + 1)} of ${frames.length}`}
                 onKeyDown={(event) => {
                   if (event.altKey || event.ctrlKey || event.metaKey) return;
                   const next =
@@ -979,7 +979,7 @@ export function Player({
               ) : (
                 <>
                   {studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} ·{" "}
-                  {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.
+                  {formatRunTime(studyPlayback.moment.ageMs)} before study cursor.
                 </>
               )}
             </span>
@@ -1031,14 +1031,14 @@ export function Player({
                 type="button"
                 className="fs"
                 {...(f.index === frame ? { "data-on": "" } : {})}
-                aria-label={`Frame ${f.index + 1}, ${formatElapsed(frameElapsedMs(model, f.index))}, ${f.title}`}
+                aria-label={`Frame ${f.index + 1}, ${formatRunTime(frameElapsedMs(model, f.index))}, ${f.title}`}
                 onClick={() => seek(f.index)}
               >
                 <span className="im">
                   <img src={f.href} alt="" loading="lazy" decoding="async" />
                 </span>
                 <span className="lab">
-                  {formatElapsed(frameElapsedMs(model, f.index))} · {f.index + 1}
+                  {formatRunTime(frameElapsedMs(model, f.index))} · {f.index + 1}
                 </span>
               </button>
             ))}
@@ -1151,7 +1151,7 @@ export function Player({
                 {groups
                   .slice(feedWindow.start, feedWindow.end)
                   .map(({ first: row, last, count }) => {
-                    const stamp = formatElapsed(rowElapsedMs(model, row));
+                    const stamp = formatRunTime(rowElapsedMs(model, row));
                     const text = row.text || row.title;
                     const attrs = {
                       "data-entry-id": row.id,
@@ -1196,7 +1196,7 @@ export function Player({
                         <span className="tc">{stamp}</span>
                         <span className="atext">
                           {count > 1
-                            ? `${count} recorded waits · ${stamp}–${formatElapsed(rowElapsedMs(model, last))}`
+                            ? `${count} recorded waits · ${stamp}–${formatRunTime(rowElapsedMs(model, last))}`
                             : `${row.title}${row.text ? `: ${row.text}` : ""}`}
                         </span>
                       </button>
