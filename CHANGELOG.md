@@ -10,6 +10,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The TUI's study screen shows the analysis budget line that `humanish run` and `study check`
+  print: the expected cost range for the study's participants and the rule that refuses an
+  analysis whose expected cost plus 10% is over the cap. It still showed the wording from before
+  0.114.0, "admission estimate limit", with no expected cost.
 - Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
   and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
   marked an event as coming from CI.
