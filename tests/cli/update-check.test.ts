@@ -31,13 +31,13 @@ describe("the update notice", () => {
   function check(now: number, overrides: Partial<Parameters<typeof checkForUpdate>[0]> = {}) {
     return checkForUpdate({
       installed: "0.105.0",
-      env: { XDG_CONFIG_HOME: configHome },
       terminal: true,
       json: false,
       ownCheckout: false,
       now,
       startRefresh: (cachePath) => refreshes.push(cachePath),
       ...overrides,
+      env: { ...overrides.env, XDG_CONFIG_HOME: configHome },
     });
   }
 
@@ -60,22 +60,24 @@ describe("the update notice", () => {
     ["with DO_NOT_TRACK", { env: { DO_NOT_TRACK: "1" } }],
     ["with HUMANISH_TELEMETRY_DISABLED", { env: { HUMANISH_TELEMETRY_DISABLED: "1" } }],
     ["with HUMANISH_NO_UPDATE_CHECK=1", { env: { HUMANISH_NO_UPDATE_CHECK: "1" } }],
+    ["with update-notifier's NO_UPDATE_NOTIFIER=1", { env: { NO_UPDATE_NOTIFIER: "1" } }],
+    // update-notifier turns off when the variable is present at all, so its users expect that here.
+    ["with NO_UPDATE_NOTIFIER empty", { env: { NO_UPDATE_NOTIFIER: "" } }],
+    ["with NO_UPDATE_NOTIFIER=0", { env: { NO_UPDATE_NOTIFIER: "0" } }],
+    ["with NO_UPDATE_NOTIFIER=false", { env: { NO_UPDATE_NOTIFIER: "false" } }],
     ["for a study participant", { env: { HUMANISH_STUDY_PARTICIPANT: "1" } }],
     ["from humanish's own checkout", { ownCheckout: true }],
   ] as const)("says nothing and asks the registry nothing %s", async (_case, overrides) => {
     await writeCache({ checkedAt: new Date(NOW - 2 * 24 * HOUR).toISOString(), latest: "0.112.0" });
-    const env = "env" in overrides ? { ...overrides.env, XDG_CONFIG_HOME: configHome } : undefined;
 
-    expect(check(NOW, { ...overrides, ...(env === undefined ? {} : { env }) })).toBeUndefined();
+    expect(check(NOW, overrides)).toBeUndefined();
     expect(refreshes).toEqual([]);
   });
 
   it("still tells a person when CI is set to false or 0", async () => {
     await writeCache({ checkedAt: new Date(NOW - HOUR).toISOString(), latest: "0.112.0" });
-    expect(check(NOW, { env: { CI: "false", XDG_CONFIG_HOME: configHome } })).toContain("0.112.0");
-    expect(check(NOW + 25 * HOUR, { env: { CI: "0", XDG_CONFIG_HOME: configHome } })).toContain(
-      "0.112.0",
-    );
+    expect(check(NOW, { env: { CI: "false" } })).toContain("0.112.0");
+    expect(check(NOW + 25 * HOUR, { env: { CI: "0" } })).toContain("0.112.0");
   });
 
   it("starts one background registry check a day and none while the cache is fresh", async () => {

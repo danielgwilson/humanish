@@ -132,4 +132,10 @@ participant, and when any of these is set:
 DO_NOT_TRACK=1
 HUMANISH_TELEMETRY_DISABLED=1
 HUMANISH_NO_UPDATE_CHECK=1
+NO_UPDATE_NOTIFIER=1
 ```
+
+`NO_UPDATE_NOTIFIER` is the variable the update-notifier package reads, so a
+machine set up to silence the CLIs built on it gets no humanish notice either.
+humanish reads it as update-notifier does: any value turns the check off,
+including an empty one, `0` or `false`.

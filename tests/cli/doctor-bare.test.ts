@@ -5,10 +5,13 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stringify } from "yaml";
 
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
 import { doctor, type DoctorResult } from "../../src/cli/doctor.js";
+import { saveCommsConnection } from "../../src/comms/connections.js";
 import { runInit } from "../../src/study/init.js";
+import { STUDY_SCHEMA } from "../../src/study/types.js";
 
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
@@ -53,6 +56,35 @@ describe("doctor without --lab", () => {
       "key E2B_API_KEY: missing; used by try-live; run `e2b auth login`, or `humanish keys set e2b`",
       "key GH_TOKEN: missing; not used by any study in this project; run `gh auth login`, or `humanish keys set github`",
       "key CODEX_API_KEY: missing; not used by any study in this project; run `humanish keys set CODEX_API_KEY`",
+    ]);
+  });
+
+  it("adds the key a study's email connection names after the same four rows", async () => {
+    await saveCommsConnection(cwd);
+    await writeFile(
+      path.join(cwd, "humanish", "studies", "signup.yaml"),
+      stringify({
+        schema: STUDY_SCHEMA,
+        id: "signup",
+        route: "computer-use",
+        mode: "live",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
+        actor: { type: "openai-computer-use", mission: "Create an account." },
+        execution: { target: "e2b-desktop" },
+        comms: { email: { kind: "real", connection: "agentmail" } },
+      }),
+    );
+    const result = await doctor(cwd, { study: "signup", env: keyless, localAgents: noAgents });
+    expect(
+      result.checks
+        .filter((check) => check.name.startsWith("key "))
+        .map((check) => `${check.name}: ${check.message}`),
+    ).toEqual([
+      "key OPENAI_API_KEY: missing from every source; run `humanish keys set openai`",
+      "key E2B_API_KEY: missing from every source; run `e2b auth login`, or `humanish keys set e2b`",
+      "key GH_TOKEN: not required for the selected participant route; run `gh auth login`, or `humanish keys set github`",
+      "key CODEX_API_KEY: not required for the selected participant route; run `humanish keys set CODEX_API_KEY`",
+      "key AGENTMAIL_API_KEY: missing from every source; provide AGENTMAIL_API_KEY through process env or --dotenv",
     ]);
   });
 
