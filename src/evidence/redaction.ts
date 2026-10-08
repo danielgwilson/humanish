@@ -227,10 +227,18 @@ function redactLocalPaths(text: string, label?: string): string {
     (current, [pattern, replacement]) =>
       current.replace(
         pattern,
-        (match: string) => (label ?? replacement) + (match.match(/\\+$/)?.[0] ?? ""),
+        (match: string) => (label ?? replacement) + trailingBackslashes(match),
       ),
     text,
   );
+}
+
+// Read from the end: `/\\+$/` retries a run of backslashes from each of its characters when
+// something follows the run, which took 1.4 s on a path holding 40,000 of them.
+function trailingBackslashes(text: string): string {
+  let start = text.length;
+  while (start > 0 && text.charCodeAt(start - 1) === 0x5c) start -= 1;
+  return text.slice(start);
 }
 
 /**

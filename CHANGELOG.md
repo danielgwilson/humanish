@@ -123,6 +123,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `HUMANISH_E2B_MAX_SANDBOX_MINUTES` can set to 24 hours. The kills, checks and tag search of
   `humanish reclaim` and of the run's interrupt handler now carry `E2B_API_KEY` and `E2B_DOMAIN`
   from the environment by name (#1708).
+- Redacting a local path that holds a long run of backslashes takes time linear in the run. A path
+  holding 40,000 backslashes and then a letter took 1.4 s.
+- A terminal run's review, its no-spend statement and the provider line of
+  `terminal-ledgers.json` now give the participant's token estimate that run.json's cost summary
+  gives, for example "Provider tokens (382,595 input, ...) are estimated at 0.37157 USD, the
+  participant's model cost, which caps.maxUsd does not count." They used to call the tokens
+  unpriced. The provider line keeps `usd: null` and adds `estimatedUsd` with source
+  `estimated-token-usage`, so `knownTotalUsd`, the `maxUsd` check and `noSpend.satisfied` are
+  unchanged. Tokens of a declared model with no rate are still unpriced, and the note now names
+  that model (#1703).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
