@@ -98,6 +98,37 @@ describe("RunSecrets", () => {
     expect(forms).toContain(value("address"));
   });
 
+  // Replacing `YWJjZA` (abcd in base64) puts a marker before `x`, which spells the other value.
+  it("replaces the whole text when its replacements spell a value again", () => {
+    const secrets = new RunSecrets(["abcd", "SECRET]x"]);
+    expect(secrets.scrub("SECRET]x YWJjZAx")).toBe("[REDACTED_SECRET]");
+    secrets.add([value("address")]);
+    expect(secrets.scrub(`SECRET]x YWJjZAx ${value("address")}`)).toBe("[REDACTED_SECRET]");
+    expect(secrets.scrub(`mail ${value("address")}`)).toBe("mail [REDACTED_SECRET]");
+  });
+
+  // An operating-system command with no terminator was searched for one to the end of the text
+  // from every start: 361 ms at 16 KiB and 3.4 s at 64 KiB. Eight times the length takes about
+  // eight times as long when linear; the 20 ms floor keeps timer noise out of the ratio.
+  it.each([
+    ["unterminated operating-system commands", (n: number) => "\x1b]".repeat(n / 2)],
+    ["unterminated JSON-escaped commands", (n: number) => "\\u001b]".repeat(n / 7)],
+    ["unfinished control sequences", (n: number) => "\x1b[0;".repeat(n / 4)],
+  ])("scrubs %s in time linear in their length", (_shape, build) => {
+    const secrets = new RunSecrets(["abcd"]);
+    const fastest = (text: string): number => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const started = performance.now();
+        expect(secrets.scrub(text)).toBe(text);
+        best = Math.min(best, performance.now() - started);
+      }
+      return best;
+    };
+    const [small, large] = [build(8_192), build(65_536)];
+    expect(fastest(large) / Math.max(20, fastest(small))).toBeLessThan(16);
+  });
+
   it("leaves its values out of JSON and object spread", () => {
     const secrets = new RunSecrets([value("key")]);
     expect(JSON.stringify({ secrets })).not.toContain(value("key"));
