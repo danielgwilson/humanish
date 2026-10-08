@@ -886,6 +886,7 @@ async function writeCuaRunFixture(
     verdict: session ? verdictForStatus(session.status) : "contract_proof_only",
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
+    subject: { source: "app-url", state: { provenance: "undeclared" } },
     run: { runId, mode: args.dryRun ? "dry-run" : "live", createdAt: "2026-01-01T00:00:00.000Z" },
     dryRun: args.dryRun,
     studyId: "verify-hardening-proof",

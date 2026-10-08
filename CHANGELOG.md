@@ -36,6 +36,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - An adapter artifact larger than 32 MiB (state, log, trace or filesystem output) now grades a run
   `local_only` when nothing in the bundle cites it, and `blocked` when the bundle cites it as
   evidence. `verify` read and scanned such a file whole before.
+- A computer-use run of a `desktop-cli` study records `subject.source: "desktop-cli"` and the
+  declared product name as `subject.product` in run.json, the JSON result and each participant's
+  `lanes[].subject`. It recorded `app-url` before. Its subject event names the product, where it
+  said `Subject app declared at ` with no URL. `verify`, `observe`, `review` and `export` read
+  both, so runs saved with `app-url` still open.
 
 ### Fixed
 
@@ -53,6 +58,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   list reordered. When the action the person chose on a run's screen goes away under the cursor
   (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
   so; it used to act on the row now there, which could be Run again (#1696).
+- On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
+  punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
+  to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,
+  `PAGEDOWN`, `?`) to xdotool unchanged; xdotool ignored them and exited 0, and the run recorded
+  the keypress as completed. Both the hosted and the local desktop now translate key names
+  through one table, which also gains the shifted punctuation (`?`, `!`, `:` and the rest), so
+  `?` works on the local desktop too. One name joined with `+`, such as `Control+a`, is split into
+  its keys on both desktops. A name outside the table is refused, and the participant is
+  told the action was rejected. A key xdotool still reports as unknown is recorded as a failed
+  desktop command. Hosted findings from earlier runs about arrow keys, Page Up, Page Down or
+  punctuation keys may come from this defect (#1697).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read
@@ -100,6 +116,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   bundle` already refused a run with more than 10,000 entries (#1669).
 - `humanish comms configure` refuses a local study copy over 1 MiB that it would replace, where
   it now cannot read the copy whole.
+- A route's kill of the E2B sandbox it created now carries the API key the create used. It carried
+  none, so the E2B SDK used `E2B_API_KEY` from `process.env`: a library caller whose key was only
+  in `RunStudyOptions.env`, or whose `process.env` held another key, got a kill that failed or
+  reached another account, and the sandbox ran until its create-time timeout, which
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES` can set to 24 hours. The kills, checks and tag search of
+  `humanish reclaim` and of the run's interrupt handler now carry `E2B_API_KEY` and `E2B_DOMAIN`
+  from the environment by name (#1708).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

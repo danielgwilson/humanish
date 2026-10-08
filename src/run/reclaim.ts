@@ -8,6 +8,7 @@
 // reclaim-receipt.json is written before the first kill and after each one, so an exit at any
 // point leaves a record of every sandbox not yet confirmed gone. `--check` asks E2B the same
 // questions and kills nothing.
+import { e2bAccount, e2bConnection, type E2BAccount } from "../substrates/e2b/connection.js";
 import {
   E2B_DEBUG_ENV,
   e2bDebugMode,
@@ -96,6 +97,11 @@ export interface ReclaimResult {
 export interface ReclaimHooks {
   /** Tests inject a fake @e2b/desktop module; default loads the real one. */
   loadModule?: () => Promise<E2BDesktopModule>;
+  /**
+   * The env whose E2B_API_KEY and E2B_DOMAIN every E2B call carries. Defaults to process.env, where
+   * the CLI put the run's key before the run started.
+   */
+  env?: Readonly<Record<string, string | undefined>>;
   requestTimeoutMs?: number;
   /** Ask E2B whether each sandbox still exists, and kill nothing. */
   check?: boolean;
@@ -425,10 +431,11 @@ async function reclaimRoot(
 
   // The SDK lists by tag as well as killing by id, so it is needed even with no receipt. Without
   // it, an E2B receipt cannot be acted on; with no E2B receipt, only the tag search is lost.
-  let e2b: E2BDesktopModule | undefined;
+  let e2b: E2BAccount | undefined;
   let moduleError: string | undefined;
   try {
-    e2b = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    const module = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    e2b = e2bAccount(module, e2bConnection(hooks.env ?? process.env));
   } catch (error) {
     moduleError = `Cannot load @e2b/desktop to reach E2B: ${redactText(toErrorMessage(error))}`;
     if (receipts.some((receipt) => receipt.provider === "e2b") || hooks.creates !== undefined)

@@ -67,6 +67,7 @@ async function writeRun(cwd: string, runId: string, createdAt: string): Promise<
     verdict: verdictForStatus(session.status),
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
+    subject: { source: "app-url", state: { provenance: "undeclared" } },
     run: { runId, mode: "live", createdAt },
     dryRun: false,
     studyId: FIXTURE_STUDY,

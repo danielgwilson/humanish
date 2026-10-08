@@ -222,7 +222,7 @@ export interface CuaParticipantResult {
     killed: boolean;
     streamUrlPresent: boolean;
   };
-  subject: CuaSubjectProjection;
+  subject: RunSubjectProvenance;
   diagnostics?: CuaDiagnostics;
   /** Set when the participant was skipped (pinned reason string). */
   skippedReason?: string;
@@ -295,47 +295,6 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_SERVE_TUNNEL_NOT_FOUND"
   | "HUMANISH_SERVE_TUNNEL_START_FAILED";
 
-/** Subject provenance projection: what the actor actually drove. */
-export interface CuaSubjectProjection {
-  source: "app-url" | "clone" | "local-tree";
-  /** Clone-route only: the (possibly redacted) owner/repo slug. */
-  repo?: string;
-  /** Cloned commit SHA (clone route) or host-side HEAD at pack time (local-tree route, when
-   *  the packed root was a git work tree). */
-  commit?: string;
-  /** Local-tree-route only: 64-hex sha256 over the sorted packed-entries list: the content
-   *  pin for a tree that cannot be commit-pinned. Absent on dry-run (nothing was packed). */
-  archiveSha256?: string;
-  /** Local-tree-route only: host-side porcelain status at pack time (true when the working
-   *  tree had uncommitted changes). Absent when the packed root was not a git work tree. */
-  dirty?: boolean;
-  /** Declared env names provisioned for the subject (values never surface anywhere). */
-  envNames?: string[];
-  /** The subject's state story (seeded digests / unpinned external / declared-not-run /
-   *  undeclared): the same block the run bundle records. */
-  state: RunSubjectProvenance["state"];
-}
-
-/** The provisioned-route-only shape threaded through as buildSingleParticipantBundle's
- *  subjectProvenance arg (clone or local-tree; an app-url subject stays undeclared, which that
- *  builder's own default branch already handles without this type). */
-export type CuaSubjectProvenanceArg =
-  | {
-      source: "clone";
-      repo: string;
-      commit?: string;
-      envNames: string[];
-      state: RunSubjectProvenance["state"];
-    }
-  | {
-      source: "local-tree";
-      archiveSha256?: string;
-      commit?: string;
-      dirty?: boolean;
-      envNames: string[];
-      state: RunSubjectProvenance["state"];
-    };
-
 export interface CuaActorStudyResult
   extends AutomaticAnalysisResult, StudyResultIdentity<"computer-use"> {
   /** True when the Observer verified the bundle, all live participants passed credibility checks
@@ -367,7 +326,7 @@ export interface CuaActorStudyResult
   };
   /** Subject provenance: what the actor actually drove. At N>1 this is the
    *  unanimity-gated aggregate (top-level `commit` only when every participant resolved the same one). */
-  subject?: CuaSubjectProjection;
+  subject?: RunSubjectProvenance;
   /** The pre-flight participant plan (present once participants resolve; absent on early validation errors). */
   plan?: CuaParticipantPlan;
   /** Per-participant results, always present once participants resolve (length 1 at N=1). */
@@ -624,8 +583,8 @@ export interface CuaFanoutBundleArgs {
   run: BundleRun;
   specs: DesktopParticipantRun[];
   outcomes?: ParticipantRunOutcome[];
-  subjects: CuaSubjectProjection[];
-  aggregateSubject: CuaSubjectProjection;
+  subjects: RunSubjectProvenance[];
+  aggregateSubject: RunSubjectProvenance;
   descriptor: CuaActorDescriptor;
   appUrl: string;
   dryRun: boolean;
