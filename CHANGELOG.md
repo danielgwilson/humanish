@@ -16,8 +16,27 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The TUI's study screen shows the analysis budget line that `humanish run` and `study check`
+  print: the expected cost range for the study's participants and the rule that refuses an
+  analysis whose expected cost plus 10% is over the cap. It still showed the wording from before
+  0.114.0, "admission estimate limit", with no expected cost.
+- The warning for a participant with no persona background names `study show` the way the
+  install runs humanish, such as `npx humanish study show <id> --json` where humanish is a dev
+  dependency. It printed `humanish study show`, which reaches a stale global install or nothing.
+- Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
+  and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
+  marked an event as coming from CI.
+- `humanish keys set constructor` and `humanish keys set __proto__` now refuse the name with the
+  list of provider keys the store holds. Both names matched a built-in object property in the alias
+  table and printed `Not a valid env name: function Object() { [native code] }`.
 - `humanish analyze` names its refusal command the way the rest of the CLI does, so a project
   that installs humanish as a dev dependency is told `npx humanish analyze --run <id> --max-cost <n>`.
+
+### Changed
+
+- A feedback draft for an amended finding opens with the sentence `humanish review` and the
+  Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
+  and account." It had its own wording of that sentence.
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

@@ -622,7 +622,7 @@ describe("ordinary study analysis flow", () => {
     const amended = (await draftFeedback(cwd, "analysis-flow", options)).draft!;
     expect(amended.summary).toBe("Creation stalled once.");
     expect(amended.actual.split("\n")[0]).toBe(
-      "This finding was corrected in human review. The reviewer's claim above replaces its original headline and account.",
+      "Corrected in human review. The reviewer's claim replaces the original headline and account.",
     );
     expect(amended.actual).not.toContain("They were trying to add an item.");
   });

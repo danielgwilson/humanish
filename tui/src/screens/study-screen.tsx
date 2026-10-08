@@ -110,13 +110,7 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
           </Text>
         )}
       </Box>
-      {summary?.analysis === undefined ? null : (
-        <Text wrap="wrap">
-          {summary.analysis.provider === "codex"
-            ? `After live runs: Codex account analyst · ${summary.analysis.model} · remote inference · account limits apply; dollar cost unknown`
-            : `After live runs: analysis · ${summary.analysis.model} · separate $${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap`}
-        </Text>
-      )}
+      {summary?.analysis === undefined ? null : <Text wrap="wrap">{summary.analysis.line}</Text>}
       {summary?.runtime ? (
         <Text color={summary.runtime.ok ? PALETTE.ok : PALETTE.warn}>
           {summary.runtime.message}
