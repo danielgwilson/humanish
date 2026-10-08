@@ -14,6 +14,13 @@ import { LABS, NOW, RUNS } from "./fixtures.js";
 // Starting a run is the only thing this surface does that spends money, so the interaction is
 // pinned rather than left to a golden: what is armed, what commits, and what cancels.
 
+// Lines formatAutomaticAnalysisBudget printed for these budgets, captured from `humanish run`'s
+// formatter, which readStudySummary carries to the screen.
+const OPENAI_BUDGET_LINE =
+  "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over $3; this is not a billing cap. Set review.analysis: false to disable.";
+const CODEX_BUDGET_LINE =
+  "After live runs: Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.";
+
 function harness(overrides: Partial<TuiCapabilities> = {}) {
   const started: Omit<LaunchRunOptions, "spawn" | "cliPath" | "now">[] = [];
   const capabilities: TuiCapabilities = {
@@ -154,14 +161,17 @@ describe("starting a run", () => {
             billing: "account-unknown",
             model: "gpt-6-astra",
             maxCostUsd: null,
+            trigger: "explicit",
+            line: CODEX_BUDGET_LINE,
           },
         }),
       });
       const { surface } = await openLab(options, columns);
       try {
-        const frame = await surface.press(KEY.down, (candidate) => candidate.includes("unknown"));
-        expect(frame.replace(/\s+/g, " ")).toContain("dollar cost unknown");
-        expect(frame).toContain("Codex");
+        const frame = await surface.press(KEY.down, (candidate) =>
+          candidate.includes("analysis: false"),
+        );
+        expect(frame.replace(/\s+/g, " ")).toContain(CODEX_BUDGET_LINE);
         expect(frame).not.toMatch(/\$null|\$3/);
         expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
@@ -182,16 +192,22 @@ describe("starting a run", () => {
           schema: "humanish.study-summary.v1",
           studyId: "signup-flow",
           caps: { laneUsd: 1 },
-          analysis: { model: "gpt-6-astra", maxCostUsd: 3 },
+          analysis: {
+            model: "gpt-6-astra",
+            maxCostUsd: 3,
+            trigger: "default",
+            participants: 2,
+            expectedCostUsd: { low: 0.8032, high: 3.8392 },
+            line: OPENAI_BUDGET_LINE,
+          },
         }),
       });
       const { surface } = await openLab(options, columns);
       try {
         const frame = await surface.press(KEY.down, (candidate) =>
-          candidate.includes("billing cap"),
+          candidate.includes("analysis: false"),
         );
-        expect(frame.replace(/\s+/g, " ")).toContain("separate $3 admission estimate limit");
-        expect(frame.replace(/\s+/g, " ")).toContain("not a billing cap");
+        expect(frame.replace(/\s+/g, " ")).toContain(OPENAI_BUDGET_LINE);
         expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
         expect(armed.replace(/\s+/g, " ")).toContain(

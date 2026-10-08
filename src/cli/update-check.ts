@@ -5,11 +5,11 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { disabledByEnvironment } from "./telemetry.js";
+import { envFlag, humanishConfigFile } from "./user-config.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REGISTRY_DIST_TAGS = "https://registry.npmjs.org/-/package/humanish/dist-tags";
@@ -38,16 +38,6 @@ export interface UpdateCheckContext {
   home?: string;
   /** Starts the background registry request that writes the cache. Never awaited. */
   startRefresh: (cachePath: string) => void;
-}
-
-/** Next to telemetry.json, under the same XDG rule the key store uses. */
-function updateCachePath(env: NodeJS.ProcessEnv, home = homedir()): string {
-  const declared = env.XDG_CONFIG_HOME?.trim();
-  const configHome =
-    declared !== undefined && declared !== "" && path.isAbsolute(declared)
-      ? declared
-      : path.join(home, ".config");
-  return path.join(configHome, "humanish", "update-check.json");
 }
 
 function readUpdateCache(cachePath: string): UpdateCache {
@@ -96,12 +86,6 @@ function dayPassed(timestamp: string | undefined, now: number): boolean {
   return Number.isNaN(then) || now - then >= DAY_MS;
 }
 
-const truthy = (value: string | undefined): boolean =>
-  value !== undefined &&
-  value.trim() !== "" &&
-  value.trim() !== "0" &&
-  value.trim().toLowerCase() !== "false";
-
 /**
  * Only a person at a terminal is told, and only when nothing has switched the check off. A pipe,
  * CI and a JSON document have a program reading them. A study participant runs the version the
@@ -114,9 +98,9 @@ function checkAllowed(context: UpdateCheckContext): boolean {
     context.terminal &&
     !context.json &&
     !context.ownCheckout &&
-    !truthy(env.CI) &&
-    !truthy(env.HUMANISH_NO_UPDATE_CHECK) &&
-    !truthy(env.HUMANISH_STUDY_PARTICIPANT) &&
+    !envFlag(env.CI) &&
+    !envFlag(env.HUMANISH_NO_UPDATE_CHECK) &&
+    !envFlag(env.HUMANISH_STUDY_PARTICIPANT) &&
     !disabledByEnvironment(env)
   );
 }
@@ -129,7 +113,7 @@ function checkAllowed(context: UpdateCheckContext): boolean {
 export function checkForUpdate(context: UpdateCheckContext): string | undefined {
   try {
     if (!checkAllowed(context)) return undefined;
-    const cachePath = updateCachePath(context.env, context.home);
+    const cachePath = humanishConfigFile(context.env, "update-check.json", context.home);
     const cache = readUpdateCache(cachePath);
     const stamp = new Date(context.now).toISOString();
     const next: UpdateCache = { ...cache };
@@ -162,7 +146,7 @@ export function recordedVersion(
   env: NodeJS.ProcessEnv,
   home?: string,
 ): { newer: boolean; message: string } | undefined {
-  const cache = readUpdateCache(updateCachePath(env, home));
+  const cache = readUpdateCache(humanishConfigFile(env, "update-check.json", home));
   if (cache.latest === undefined) return undefined;
   const checked = cache.checkedAt === undefined ? "" : ` (checked ${cache.checkedAt.slice(0, 10)})`;
   return isNewer(cache.latest, installed)

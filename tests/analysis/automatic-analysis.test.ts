@@ -283,7 +283,7 @@ describe("automatic analysis admission and producer boundary", () => {
       const preflight = await runStudyPreflight({ cwd, study: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
       expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use", 1));
-      expect((await readStudySummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
+      const summary = (await readStudySummary(cwd, "budget"))?.analysis;
       let stdout = "";
       const program = createProgram({
         writeOut: (text) => {
@@ -293,8 +293,13 @@ describe("automatic analysis admission and producer boundary", () => {
         setExitCode: () => {},
       });
       await program.parseAsync(["node", "humanish", "study", "check", "budget", "--cwd", cwd]);
-      if (setting === false) expect(stdout).not.toContain("After live runs:");
-      else {
+      if (setting === false) {
+        expect(stdout).not.toContain("After live runs:");
+        expect(summary).toBeUndefined();
+      } else {
+        // The TUI study screen shows the line `study check` prints.
+        const printed = stdout.split("\n").find((line) => line.startsWith("After live runs:"));
+        expect(summary).toEqual({ ...preflight.analysis, line: printed });
         const { low, high } = preflight.analysis!.expectedCostUsd!;
         expect(stdout).toContain(
           `expected $${low.toFixed(2)} to $${high.toFixed(2)} for 1 participant`,

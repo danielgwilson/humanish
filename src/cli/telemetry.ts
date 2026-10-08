@@ -16,9 +16,9 @@ import {
 } from "../routes/computer-use/diagnostics.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
 import { STUDY_RESULT_SCHEMA } from "../run/study-result.js";
+import { envFlag, humanishConfigFile } from "./user-config.js";
 
 /** Write-only PostHog project key. Public by design: it can ingest, and can read nothing. */
 const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
@@ -64,15 +64,8 @@ export interface TelemetryState {
   noticed: boolean;
 }
 
-export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home = homedir()): string {
-  const declared = env.XDG_CONFIG_HOME?.trim();
-  // Same XDG rule the key store uses: a relative value must be ignored, or state becomes
-  // cwd-relative and follows people between projects.
-  const configHome =
-    declared !== undefined && declared !== "" && path.isAbsolute(declared)
-      ? declared
-      : path.join(home, ".config");
-  return path.join(configHome, "humanish", "telemetry.json");
+export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home?: string): string {
+  return humanishConfigFile(env, "telemetry.json", home);
 }
 
 /**
@@ -80,14 +73,9 @@ export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home = 
  * `DO_NOT_TRACK` standard, our own env var, and the persisted opt-out.
  */
 export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
-  const truthy = (value: string | undefined): boolean =>
-    value !== undefined &&
-    value.trim() !== "" &&
-    value.trim() !== "0" &&
-    value.trim().toLowerCase() !== "false";
   return (
-    truthy(env.DO_NOT_TRACK) ||
-    truthy(env.HUMANISH_TELEMETRY_DISABLED) ||
+    envFlag(env.DO_NOT_TRACK) ||
+    envFlag(env.HUMANISH_TELEMETRY_DISABLED) ||
     // Our own development and test runs must never reach the adoption dataset. In the first two
     // days after telemetry shipped, 82% of events (4,042 of 4,932, from 49 of 59 anonymous ids)
     // came from humanish's own CI and suite: ~50 ids each running nearly every subcommand about
@@ -97,7 +85,7 @@ export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
     // Deliberately not keyed on CI. An adopter running humanish in their pipeline is real usage
     // and stays countable; the `ci` property already separates it, which is what Next.js does.
     // This keys on being inside the humanish source tree, which only we ever are.
-    truthy(env.HUMANISH_DEV)
+    envFlag(env.HUMANISH_DEV)
   );
 }
 
@@ -155,7 +143,7 @@ export function isOwnCheckoutRun(
 
 export async function readTelemetryState(
   env: NodeJS.ProcessEnv = process.env,
-  home = homedir(),
+  home?: string,
 ): Promise<TelemetryState> {
   try {
     const raw = await readFile(telemetryStatePath(env, home), "utf8");
@@ -173,7 +161,7 @@ export async function readTelemetryState(
 export async function writeTelemetryState(
   state: TelemetryState,
   env: NodeJS.ProcessEnv = process.env,
-  home = homedir(),
+  home?: string,
 ): Promise<void> {
   const file = telemetryStatePath(env, home);
   await mkdir(path.dirname(file), { recursive: true });
@@ -232,16 +220,13 @@ export function buildPayload(args: {
     version: args.version,
     os: args.platform ?? process.platform,
     node: (args.nodeVersion ?? process.version).split(".")[0]!.replace("v", ""),
-    ci: env.CI !== undefined && env.CI !== "" && env.CI !== "0",
+    ci: envFlag(env.CI),
     // A humanish study participant is a real cold install on a machine we do not own, so it emits
     // like any other new adopter and is indistinguishable from one. It is also the exact
     // population we are trying to count, so a busy self-study day reads as an adoption spike.
     // Stamped rather than suppressed, the same shape as `ci`: participant runs stay visible and
     // stay separable, and we keep a genuine measurement of what a cold install does.
-    studyParticipant:
-      env.HUMANISH_STUDY_PARTICIPANT !== undefined &&
-      env.HUMANISH_STUDY_PARTICIPANT !== "" &&
-      env.HUMANISH_STUDY_PARTICIPANT !== "0",
+    studyParticipant: envFlag(env.HUMANISH_STUDY_PARTICIPANT),
   };
   const given = args.properties ?? {};
   if (given.command !== undefined) properties.command = given.command;

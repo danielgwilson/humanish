@@ -504,7 +504,6 @@ describe("plain headlines and design findings", () => {
       headline: "One participant could not tell whether their form was sent.",
       experience: expect.stringMatching(/^They filled in the fictional form/),
     });
-    expect(report.findings[0]!.corrected).toBeUndefined();
     expect(report.designFindings?.map((finding) => [finding.id, finding.severity])).toEqual([
       ["D2", "major"],
       ["D1", "minor"],
@@ -524,9 +523,9 @@ describe("plain headlines and design findings", () => {
     const report = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
     expect(report.findings[0]).toMatchObject({
       headline: "The form was sent, but its confirmation appeared late.",
-      corrected: true,
+      experience:
+        "Corrected in human review. The reviewer's claim replaces the original headline and account.",
     });
-    expect(report.findings[0]!.experience).toBeUndefined();
     expect(report.findings[1]).toMatchObject({
       headline: "A participant said the second step's wording was unclear.",
     });

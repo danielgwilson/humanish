@@ -1,3 +1,4 @@
+import { cli } from "../cli/invocation.js";
 import type { ResolvedPersona } from "./persona.js";
 import {
   isComputerUseComposition,
@@ -485,7 +486,7 @@ export function personaBackgroundWarnings(
       ? `persona ${personaId} has no readable background`
       : "no persona is assigned";
     return [
-      `Participant ${id} has no persona background because ${reason}. Add a short, fictional background describing their experience and situation. Run humanish study show ${config.id} --json to see what the participant receives.`,
+      `Participant ${id} has no persona background because ${reason}. Add a short, fictional background describing their experience and situation. Run ${cli(`study show ${config.id} --json`)} to see what the participant receives.`,
     ];
   });
 }
