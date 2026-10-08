@@ -21,7 +21,7 @@ import {
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
-import { readBoundedFileResult, type BoundedFileResult } from "./evidence-files.js";
+import { readUnchangedFile, type BoundedFileResult } from "./evidence-files.js";
 
 /** The run input that resolves through latest.json rather than naming a run directory. */
 export const LATEST_RUN_ALIAS = "latest";
@@ -67,7 +67,7 @@ export async function readLatest(
     if (read.reason === "too-large")
       throw new ContainedReadRefusedError(path.join(RUNS_RELATIVE_ROOT, "latest.json"), read);
     throw new Error(
-      read.reason === "not-regular"
+      read.reason === "not-regular" || read.reason === "directory"
         ? "Latest run pointer must be a single-link regular file."
         : "Latest run pointer changed while it was being read.",
     );
@@ -126,7 +126,7 @@ export async function readRunTextIfExists(
 }
 
 /**
- * A run file, read whole through the bounded evidence reader: `limit` when it holds more than
+ * A run file, read whole through readUnchangedFile: `limit` when it holds more than
  * RUN_ARTIFACT_MAX_BYTES, `unavailable` when it is missing, unsafe, or changes while it is read.
  * A `\` in the path reads as `/`.
  */
@@ -134,7 +134,7 @@ export async function readSafeRunArtifact(
   runPaths: PreparedRunArtifactPaths,
   relativePath: string,
 ): Promise<BoundedFileResult> {
-  return readBoundedFileResult(runPaths, relativePath.replace(/\\/g, "/"), RUN_ARTIFACT_MAX_BYTES);
+  return readUnchangedFile(runPaths, relativePath.replace(/\\/g, "/"), RUN_ARTIFACT_MAX_BYTES);
 }
 
 /** readSafeRunArtifact's bytes, or null for any file it does not read. */

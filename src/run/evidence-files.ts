@@ -5,6 +5,7 @@ import path from "node:path";
 import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
+  isSafeRelativeFilePath,
   readOpenedAtMost,
   type PreparedOutputRoot,
 } from "./contained-output.js";
@@ -111,13 +112,34 @@ export type BoundedFileResult =
   | { state: "unavailable" };
 const unavailable = { state: "unavailable" } as const;
 
-/** Size refusals are distinguished only after the same contained regular-file checks. */
+/** readUnchangedFile for an analysis input, whose path must also be an evidence path. */
 export async function readBoundedFileResult(
   root: PreparedOutputRoot,
   relativePath: string,
   maxBytes: number,
 ): Promise<BoundedFileResult> {
-  if (!isEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
+  return isEvidencePath(relativePath)
+    ? readUnchangedFile(root, relativePath, maxBytes)
+    : unavailable;
+}
+
+/**
+ * At most `maxBytes` of a contained single-link regular file that stays the same file, with the
+ * same size and times, from the first check to the last. Size refusals are distinguished only after
+ * the same checks. `relativePath` uses `/`, and any name a contained read accepts
+ * (isSafeRelativeFilePath) is read: verify and export read the names they always did.
+ */
+export async function readUnchangedFile(
+  root: PreparedOutputRoot,
+  relativePath: string,
+  maxBytes: number,
+): Promise<BoundedFileResult> {
+  if (
+    !isSafeRelativeFilePath(relativePath) ||
+    relativePath.includes("\\") ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 1
+  )
     return unavailable;
   const validateRoot = async (): Promise<string> => {
     if ("physicalRunRoot" in root) {

@@ -185,7 +185,9 @@ describe("selected output path containment", () => {
     expect(await readContainedRegularFile(prepared, "absent-folder/x.txt", 1024)).toEqual({
       status: "missing",
     });
+    await mkdir(path.join(selectedRoot, "folder.txt"));
     for (const [file, reason] of [
+      ["folder.txt", "directory"],
       ["../run-sibling/secret.txt", "unsafe-path"],
       ["leaf-link.txt", "not-regular"],
       ["dir-link/secret.txt", "unsafe-path"],

@@ -283,6 +283,22 @@ describe("verify reads a run file by its bytes, not its name", () => {
     expect(bytes).toBeLessThan(OVER_READ_LIMIT);
   });
 
+  it("scans a file whose name has a colon or a percent escape, as it always did", async () => {
+    const dir = await makeTestTempDir("humanish-scan-names-");
+    const { runId, runDir } = await shareSafetyDryRun(dir);
+    await mkdir(path.join(runDir, "extras"));
+    await writeFile(path.join(runDir, "extras", "build:summary.txt"), "Build passed.\n");
+    await writeFile(path.join(runDir, "extras", "a%2Fb.txt"), "Plain text.\n");
+    expect((await verifyRun(dir, runId)).shareSafety).toEqual({
+      status: "share_ready",
+      reasons: [],
+    });
+    // The scan read them: the same names holding the secret block the run.
+    await writeFile(path.join(runDir, "extras", "build:summary.txt"), STATE);
+    await writeFile(path.join(runDir, "extras", "a%2Fb.txt"), STATE);
+    expect((await verifyRun(dir, runId)).shareSafety.status).toBe("blocked");
+  });
+
   it("blocks a file name with a backslash as an unsafe leaf", async () => {
     const verified = await verifyRun(backslash.project, backslash.runId);
     expect(verified.shareSafety.status).toBe("blocked");

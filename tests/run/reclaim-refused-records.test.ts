@@ -1,5 +1,6 @@
-// The receipt an earlier reclaim wrote is replaced by the next one, so a receipt reclaim cannot read
-// stops it before it kills or writes anything: the outcomes it records are kept.
+// A run record reclaim cannot read decides nothing. The receipt an earlier reclaim wrote is replaced
+// by the next one, so one it cannot read stops reclaim before it kills or writes anything. A
+// run.json or status.json it cannot read cannot agree that the run made no sandbox.
 import { cp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { expect, it } from "vitest";
@@ -13,7 +14,7 @@ import { makeTestTempDir } from "../helpers/temp-dir.js";
 const RUN = "reclaim-receipt-limit";
 
 /** An E2B module that lists no sandbox and records every kill. */
-function emptyE2B(killed: string[]): E2BDesktopModule {
+function emptyE2B(killed: string[] = []): E2BDesktopModule {
   return {
     Sandbox: {
       async kill(sandboxId: string) {
@@ -36,10 +37,37 @@ function emptyE2B(killed: string[]): E2BDesktopModule {
   } as unknown as E2BDesktopModule;
 }
 
-it("refuses before it kills or writes when the earlier receipt is over the read limit", async () => {
-  const cwd = await makeTestTempDir("humanish-reclaim-receipt-limit-");
+async function dryRun(): Promise<{ cwd: string; runDir: string }> {
+  const cwd = await makeTestTempDir("humanish-reclaim-refused-");
   await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
   await runDryRun({ cwd, dryRun: true, runId: RUN });
+  return { cwd, runDir: path.join(cwd, ".humanish", "runs", RUN) };
+}
+
+it("reclaims in full when run.json is over the read limit and status.json says dry-run", async () => {
+  const { cwd, runDir } = await dryRun();
+  // A live run.json, which trailing whitespace takes past the 32 MiB a run file is read to. The
+  // status.json beside it still says dry-run.
+  const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as object;
+  await writeFile(
+    path.join(runDir, "run.json"),
+    `${JSON.stringify({ ...bundle, mode: "live" })}${" ".repeat(32 * 1024 * 1024)}`,
+  );
+  let loaded = false;
+
+  const result = await reclaimRunSandboxes(cwd, RUN, {
+    loadModule: async () => {
+      loaded = true;
+      return emptyE2B();
+    },
+  });
+
+  expect(result.reason).toBeUndefined();
+  expect(loaded).toBe(true);
+});
+
+it("refuses before it kills or writes when the earlier receipt is over the read limit", async () => {
+  const { cwd } = await dryRun();
   const receiptFile = path.join(cwd, ".humanish", "runs", RUN, RECLAIM_RECEIPT_ARTIFACT);
   // A valid receipt, which trailing whitespace takes past the 32 MiB a run file is read to.
   const earlier = JSON.stringify({

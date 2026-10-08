@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -9,7 +9,8 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type FinishOutcome, type RunScope } from "../../src/run/run.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import type { PreparedOutputRoot } from "../../src/run/contained-output.js";
-import { holdsKeyedSandboxId } from "../../src/run/sandbox-ids.js";
+import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
+import { holdsKeyedSandboxId, scrubRunSandboxIds } from "../../src/run/sandbox-ids.js";
 import { appendedSandboxIds, appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 
 // A finished run names its sandboxes by digest in every file but sandbox-receipts.ndjson, including
@@ -18,6 +19,7 @@ import { appendedSandboxIds, appendSandboxReceipt } from "../../src/run/sandbox-
 // Shaped like E2B ids and built at run time, so this file holds none at a sandbox-id key.
 const RAW = ["i", "q7m2x9k4w8", "n1p3v6z5a"].join("");
 const UNJOURNALED = ["i", "z5a8c3e1g7", "k2m4o6q9b"].join("");
+const LINKED = ["i", "w4k8m2q6s1", "t3v5x7z9c"].join("");
 type Run = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 const label = (id: string): string => `[redacted-sandbox-id ${sandboxIdDigest(id)}]`;
 
@@ -166,5 +168,26 @@ describe("the ids a run's records hold", () => {
       await appendSandboxReceipt(root(index), receipt(`${UNJOURNALED}-${index}`));
     expect(appendedSandboxIds(root(0))).toEqual([]);
     expect(appendedSandboxIds(root(64))).toEqual([`${UNJOURNALED}-64`]);
+  });
+});
+
+describe("a receipts journal the sweep cannot read", () => {
+  it("stops the sweep at a hard-linked journal whose ids this process does not hold", async () => {
+    await runDryRun({ cwd, dryRun: true, runId: "linked" });
+    const paths = await bindExistingRunArtifactPaths(cwd, "linked");
+    const runDir = path.join(cwd, ".humanish", "runs", "linked");
+    // The journal is linked in after the run was bound, from a file that names a sandbox.
+    const outside = path.join(cwd, "receipts-elsewhere.ndjson");
+    await writeFile(
+      outside,
+      `${JSON.stringify({ at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: LINKED })}\n`,
+    );
+    await link(outside, path.join(runDir, "sandbox-receipts.ndjson"));
+    await writeFile(path.join(runDir, "notes.txt"), `${LINKED}\n`);
+
+    await expect(scrubRunSandboxIds(paths)).rejects.toThrow(
+      "sandbox-receipts.ndjson is not a single-link regular file.",
+    );
+    expect(await readFile(path.join(runDir, "notes.txt"), "utf8")).toBe(`${LINKED}\n`);
   });
 });

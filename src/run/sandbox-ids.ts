@@ -19,7 +19,6 @@ import {
   refusalText,
   RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
-  type ContainedRefusalReason,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import {
@@ -124,19 +123,12 @@ export function holdsKeyedSandboxId(file: string, text: string): boolean {
   return jsonRecords(file, text).some((record) => collectSandboxIds(record).size > 0);
 }
 
-/** Refusals of a journal file whose ids are there and could not be read. */
-const UNREAD_JOURNAL: ReadonlySet<ContainedRefusalReason> = new Set([
-  "too-large",
-  "changed",
-  "unreadable",
-]);
-
 /**
  * The raw sandbox ids a run's receipts journal, with any this process receipted whose append
- * failed; none from the journal when it is missing or malformed, or is not a regular file (a
- * failed append can leave a folder there). A journal file that is there and too large, changing
- * or refused by the system throws ContainedReadRefusedError: every caller would otherwise write
- * or grade a run's files without the ids it holds.
+ * failed; none from the journal when it is missing or malformed, or when a folder is where it goes
+ * (a failed append can leave one, and the process still holds those ids). A journal refused for
+ * any other reason, a link or one too large to read say, throws ContainedReadRefusedError: every
+ * caller would otherwise write or grade a run's files without the ids it may hold.
  */
 export async function readRunSandboxIds(root: PreparedOutputRoot): Promise<string[]> {
   const read = await readContainedRegularFile(
@@ -144,7 +136,7 @@ export async function readRunSandboxIds(root: PreparedOutputRoot): Promise<strin
     SANDBOX_RECEIPTS_ARTIFACT,
     RUN_ARTIFACT_MAX_BYTES,
   );
-  if (read.status === "refused" && UNREAD_JOURNAL.has(read.reason))
+  if (read.status === "refused" && read.reason !== "directory")
     throw new ContainedReadRefusedError(SANDBOX_RECEIPTS_ARTIFACT, read);
   let journaled: string[] = [];
   try {

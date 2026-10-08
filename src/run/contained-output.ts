@@ -275,13 +275,14 @@ export const PROJECT_FILE_MAX_BYTES = 4 * 1024 * 1024;
 /**
  * Why a contained read did not read a file that is there. `too-large`: it holds more than the
  * limit. `changed`: it, its folder or the root changed while it was opened or read, which
- * includes growing past the limit. `not-regular`: a link, a hard link, a folder or a special file.
- * `unsafe-path`: the path leaves the root or passes through a link. `unreadable`: the system
- * refused the open or the read.
+ * includes growing past the limit. `directory`: a folder is at the path. `not-regular`: a link, a
+ * hard link or a special file. `unsafe-path`: the path leaves the root or passes through a link.
+ * `unreadable`: the system refused the open or the read.
  */
 export type ContainedRefusalReason =
   | "too-large"
   | "changed"
+  | "directory"
   | "not-regular"
   | "unsafe-path"
   | "unreadable";
@@ -306,6 +307,8 @@ export function refusalText(relativePath: string, refusal: ContainedRefusal): st
       return `${relativePath} is larger than ${refusal.limit} bytes, the most humanish reads of it`;
     case "changed":
       return `${relativePath} changed while humanish read it`;
+    case "directory":
+      return `${relativePath} is a folder`;
     case "not-regular":
       return `${relativePath} is not a single-link regular file`;
     case "unsafe-path":
@@ -424,6 +427,7 @@ async function openContained(
   } catch (error) {
     return missingOr(error, "unsafe-path");
   }
+  if (before.isDirectory()) return refused("directory");
   if (before.isSymbolicLink() || !before.isFile() || before.nlink > 1n)
     return refused("not-regular");
   let handle: FileHandle;
@@ -466,6 +470,16 @@ export function assertSafeOutputPathSegment(value: string, label = "Output path 
     value.includes("\0")
   ) {
     throw new Error(`${label} must be one non-empty path segment.`);
+  }
+}
+
+/** A non-empty relative path with no empty, `.` or `..` segment: the names a contained read accepts. */
+export function isSafeRelativeFilePath(value: string): boolean {
+  try {
+    assertSafeRelativeOutputPath(value, false);
+    return true;
+  } catch {
+    return false;
   }
 }
 

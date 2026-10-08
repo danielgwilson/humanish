@@ -208,9 +208,13 @@ type NoSandboxReason = "dry-run" | "no-sandbox";
 async function recordedNoSandbox(
   runPaths: PreparedRunArtifactPaths,
 ): Promise<NoSandboxReason | undefined> {
-  // A record it refuses agrees with nothing, as a missing one does, so reclaim runs in full.
-  const bundle = runJsonValue(await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE));
-  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
+  const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  const statusRead = await readRunJsonIfExists(runPaths, RUN_STATUS_FILE);
+  // A record that is there and refused could say anything, so neither shortcut applies and
+  // reclaim runs in full. A missing one says nothing, as before.
+  if (bundleRead.status === "refused" || statusRead.status === "refused") return undefined;
+  const bundle = runJsonValue(bundleRead);
+  const status = runJsonValue(statusRead);
   const records = [bundle, status].filter(isRecord);
   const reason: NoSandboxReason | undefined =
     records.length > 0 && records.every((record) => record.mode === "dry-run")

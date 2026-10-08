@@ -32,7 +32,7 @@ import {
 } from "../run/paths.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { LOCAL_ONLY_RUN_FILES } from "../run/local-only-files.js";
-import { readBoundedFileResult } from "../run/evidence-files.js";
+import { readUnchangedFile } from "../run/evidence-files.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -139,7 +139,7 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
           );
         // At most what is left of --max-bytes, so a file that grows after this lstat is refused
         // unread. With nothing left, an empty file still reads and any other is refused.
-        const read = await readBoundedFileResult(root, rel, Math.max(1, maxBytes - total));
+        const read = await readUnchangedFile(root, rel, Math.max(1, maxBytes - total));
         if (read.state === "unavailable")
           throw new Error("Source artifact could not be read through its bound identity.");
         if (read.state === "limit") throw new Error("Source inventory exceeds --max-bytes.");
@@ -710,7 +710,7 @@ async function buildDerivative(
   if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
   const generated = [];
   for (const relative of ["observer/index.html", "observer/observer-data.json"]) {
-    const read = await readBoundedFileResult(stagePaths, relative, maxBytes);
+    const read = await readUnchangedFile(stagePaths, relative, maxBytes);
     if (read.state === "limit") throw new Error("The regenerated Observer exceeds --max-bytes.");
     if (read.state === "unavailable")
       throw new Error("Regenerated Observer artifact could not be read safely.");

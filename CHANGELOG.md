@@ -60,7 +60,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   - A persona or scenario file that cannot be read stops the study with an error naming it. It
     used to be skipped for a lower-priority file of the same name, or for the persona id alone.
   - `--run latest` with a larger pointer and `feedback list` with a larger draft say so. The
-    sandbox id sweep at the end of a run fails, naming each text file it could not read.
+    sandbox id sweep at the end of a run fails, naming each text file it could not read, and so
+    does a run whose `sandbox-receipts.ndjson` is a link or cannot be read: without its ids, the
+    sweep cannot find them in the run's other files.
   - `export --format bundle` reads each source file within what is left of `--max-bytes` and
     refuses one that changes as it is read.
   - A run file swapped for a FIFO while a command reads it no longer leaves the command waiting

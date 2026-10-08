@@ -2,7 +2,7 @@
 // changes as it is opened: one swapped for a FIFO, or one that grows.
 import { execFileSync } from "node:child_process";
 import { closeSync, constants, openSync } from "node:fs";
-import { cp, realpath, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
@@ -71,6 +71,19 @@ describe("bundle export source reads", () => {
         // No reader is waiting.
       }
     }
+  });
+
+  it("exports a file whose name has a colon or a percent escape, as it always did", async () => {
+    const { cwd, runDir } = await exportableRun();
+    await mkdir(path.join(runDir, "extras"));
+    for (const name of ["build:summary.txt", "a%2Fb.txt"])
+      await writeFile(path.join(runDir, "extras", name), "Plain text.\n");
+
+    const result = await exportRun(cwd, RUN, OPTIONS);
+
+    expect(result).toMatchObject({ ok: true });
+    const shared = path.join(cwd, "shared", ".humanish", "runs", RUN, "extras");
+    expect((await readdir(shared)).sort()).toEqual(["a%2Fb.txt", "build:summary.txt"]);
   });
 
   it("refuses a source file that grows as it is opened without reading the growth", async () => {
