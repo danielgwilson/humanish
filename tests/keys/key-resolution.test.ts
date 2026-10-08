@@ -360,6 +360,16 @@ describe("the user key store (`humanish keys`)", () => {
     expect(resolveKeyName("not a name")).toBeNull();
   });
 
+  it.each(["constructor", "__proto__"])(
+    "reads %s as a raw env name, so the store refuses it by name",
+    (name) => {
+      expect(resolveKeyName(name)).toBe(name);
+      expect(() => setUserKey(resolveKeyName(name)!, "x", {}, deps())).toThrow(
+        /^The store holds provider keys only/,
+      );
+    },
+  );
+
   it("the store holds provider keys only: an arbitrary-name store would be env injection with extra steps", () => {
     expect(() => setUserKey("NODE_OPTIONS", "--require /tmp/x.js", {}, deps())).toThrow(
       /provider keys only/,

@@ -10,6 +10,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The TUI's study screen shows the analysis budget line that `humanish run` and `study check`
+  print: the expected cost range for the study's participants and the rule that refuses an
+  analysis whose expected cost plus 10% is over the cap. It still showed the wording from before
+  0.114.0, "admission estimate limit", with no expected cost.
+- The warning for a participant with no persona background names `study show` the way the
+  install runs humanish, such as `npx humanish study show <id> --json` where humanish is a dev
+  dependency. It printed `humanish study show`, which reaches a stale global install or nothing.
+- Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
+  and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
+  marked an event as coming from CI.
+- `humanish keys set constructor` and `humanish keys set __proto__` now refuse the name with the
+  list of provider keys the store holds. Both names matched a built-in object property in the alias
+  table and printed `Not a valid env name: function Object() { [native code] }`.
 - The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
   (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
   humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
@@ -24,6 +37,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   percent escapes as UTF-8 and with transfer escapes expanded. Text decoded from base64 two levels
   deep was read only as written and decoded, and percent escapes that a `\u0025` wrote were not
   read as UTF-8 (#1646).
+
+### Changed
+
+- A feedback draft for an amended finding opens with the sentence `humanish review` and the
+  Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
+  and account." It had its own wording of that sentence.
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

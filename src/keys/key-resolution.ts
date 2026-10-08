@@ -35,6 +35,7 @@ import path from "node:path";
 
 import { loadEnvFile } from "./env-file.js";
 import { cli } from "../cli/invocation.js";
+import { humanishConfigFile } from "../cli/user-config.js";
 import { OPENAI_EGRESS_PLACEHOLDER } from "../routes/terminal/runtime-auth.js";
 
 /** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
@@ -57,14 +58,15 @@ function withoutProviderKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(env).filter(([name]) => !PROVIDER_KEY_SET.has(name)));
 }
 
-/** `humanish keys set <vendor>` aliases; a raw ENV_NAME is also accepted. */
-const KEY_VENDOR_ALIASES: Record<string, string> = {
-  openai: "OPENAI_API_KEY",
-  e2b: "E2B_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-  github: "GH_TOKEN",
-  agentmail: "AGENTMAIL_API_KEY",
-};
+/** `humanish keys set <vendor>` aliases; a raw ENV_NAME is also accepted. A Map, so a name such as
+ * `constructor` is no alias. */
+const KEY_VENDOR_ALIASES = new Map([
+  ["openai", "OPENAI_API_KEY"],
+  ["e2b", "E2B_API_KEY"],
+  ["anthropic", "ANTHROPIC_API_KEY"],
+  ["github", "GH_TOKEN"],
+  ["agentmail", "AGENTMAIL_API_KEY"],
+]);
 
 export interface ResolvedKeyFill {
   name: string;
@@ -87,15 +89,7 @@ export interface KeyResolutionDeps {
 const PROJECT_OVERLAY_RELATIVE = path.join(".humanish", "local", "provider.env");
 
 export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): string {
-  const home = deps.homeDir ?? homedir();
-  const declared = env.XDG_CONFIG_HOME?.trim();
-  // The XDG spec: a relative XDG_CONFIG_HOME must be ignored. Honoring one would make the
-  // key store cwd-relative: `humanish keys set` would write a secret into the current repo.
-  const configHome =
-    declared !== undefined && declared !== "" && path.isAbsolute(declared)
-      ? declared
-      : path.join(home, ".config");
-  return path.join(configHome, "humanish", "keys.env");
+  return humanishConfigFile(env, "keys.env", deps.homeDir);
 }
 
 function e2bConfigPath(deps: KeyResolutionDeps): string {
@@ -388,7 +382,7 @@ const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** Resolve a `humanish keys set` target: a vendor alias or a raw env name. Null = invalid. */
 export function resolveKeyName(vendorOrName: string): string | null {
-  const alias = KEY_VENDOR_ALIASES[vendorOrName.toLowerCase()];
+  const alias = KEY_VENDOR_ALIASES.get(vendorOrName.toLowerCase());
   if (alias !== undefined) return alias;
   return ENV_NAME.test(vendorOrName) ? vendorOrName : null;
 }
