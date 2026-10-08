@@ -29,6 +29,7 @@ import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.
 import { participantRun } from "../../helpers/participant-run.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { runAdmitted } from "../../helpers/route-run.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 let cwd: string;
 beforeEach(async () => {
@@ -63,6 +64,7 @@ function planOf(config: StudyConfig, deps: StudyDeps): ComputerUsePlan {
   const planned = planComputerUseStudy(config, {
     dryRun: false,
     hasRunSession: deps.runSession !== undefined,
+    sandboxCeiling: sandboxCeiling({}),
   });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
@@ -174,7 +176,10 @@ describe("computer-use run reads the plan's residual fields", () => {
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const planned = planComputerUseStudy(parsed.config, { dryRun: true });
+    const planned = planComputerUseStudy(parsed.config, {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan = { ...planned.plan, caps: { maxUsd: 4 } };
     const result = await runAdmitted(admitComputerUsePlan(plan, { cwd }, parsed.config));

@@ -67,6 +67,7 @@ import { participantRun, participantPlanOf } from "../../helpers/participant-run
 import type { ProviderContext } from "../../../src/study/run-study-homes.js";
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a distinct sandbox per create()
@@ -350,7 +351,10 @@ describe("computer-use participants come from the plan", () => {
 
   it("runs the plan's participants, bound and budgets", async () => {
     const config = fanoutConfig({ concurrency: 2 });
-    const planned = planComputerUseStudy(config, { dryRun: true });
+    const planned = planComputerUseStudy(config, {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const [first, second] = planned.plan.runner.participants;
     if (first === undefined || second === undefined) throw new Error("expected four participants");
@@ -609,7 +613,10 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
 
 /** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
 function planOf(config: StudyConfig): ComputerUsePlan {
-  const planned = planComputerUseStudy(config, { dryRun: true });
+  const planned = planComputerUseStudy(config, {
+    dryRun: true,
+    sandboxCeiling: sandboxCeiling({}),
+  });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
 }

@@ -2977,7 +2977,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "execution.timeoutMs 55m derives a 95m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 40m of provisioning and teardown headroom (this route clones, installs, builds and serves the subject before the actor starts). Lower execution.timeoutMs to at most 20m, or set execution.desktop.sandboxTimeoutMs explicitly."
+          "message": "execution.timeoutMs 55m derives a 95m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 40m of provisioning and teardown headroom (this route clones, installs, builds and serves the subject before the actor starts). Lower execution.timeoutMs to at most 20m, or set execution.desktop.sandboxTimeoutMs explicitly. If your E2B plan allows longer sandboxes (Pro allows 1440 minutes), set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 95 or more."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3055,7 +3055,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_CAPS_INVALID",
-          "message": "caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower caps.maxMinutes to at most 49. No sandbox was created and the runtime key was not used."
+          "message": "caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower caps.maxMinutes to at most 49. If your E2B plan allows longer sandboxes (Pro allows 1440 minutes), set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 67 or more. No sandbox was created and the runtime key was not used."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

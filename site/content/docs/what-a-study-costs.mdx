@@ -93,7 +93,22 @@ Inspect the run's estimated model and desktop costs, rates, and missing-usage fi
 
 The terminal route reads `caps.maxUsd`, `caps.maxJobs` and `caps.maxMinutes` from the same top-level `caps` block, and refuses `caps.maxTotalUsd`. humanish has no cost source for a terminal study. Codex tokens are counted but unpriced, and humanish measures no product, media or payment spend, so a positive `maxUsd` could never trip. A live terminal run refuses it with `HUMANISH_TERMINAL_UNPRICED_CAP`. Adopter-supplied cost sources are planned in [issue 347](https://github.com/danielgwilson/humanish/issues/347).
 
-Set `maxUsd: 0` and bound the run with `caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and its timeout adds the setup before the agent command (up to 6 minutes, or 11 with `subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`. A live run therefore refuses a `maxMinutes` above 49, or 44 with a product install (`HUMANISH_TERMINAL_CAPS_INVALID`). The run's cost summary prices the terminal sandbox's compute time the way it prices a computer-use desktop, from its span and size; that estimate is not counted against `maxUsd`. A terminal run that exceeds its spend cap keeps the agent's own verdict and still fails, with `HUMANISH_TERMINAL_CAPS_EXCEEDED`; the review and `status.json` name the cap.
+Set `maxUsd: 0` and bound the run with `caps.maxMinutes`, which stops the agent command. The sandbox's timeout adds the setup before the agent command (up to 6 minutes, or 11 with `subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`, and it may not pass the [sandbox ceiling](#set-the-sandbox-lifetime-your-e2b-plan-allows). At the default 60-minute ceiling a live run therefore refuses a `maxMinutes` above 49, or 44 with a product install (`HUMANISH_TERMINAL_CAPS_INVALID`). The run's cost summary prices the terminal sandbox's compute time the way it prices a computer-use desktop, from its span and size; that estimate is not counted against `maxUsd`. A terminal run that exceeds its spend cap keeps the agent's own verdict and still fails, with `HUMANISH_TERMINAL_CAPS_EXCEEDED`; the review and `status.json` name the cap.
+
+### Set the sandbox lifetime your E2B plan allows
+
+E2B ends a sandbox after 1 hour on its Hobby plan and after 24 hours on Pro. Its API does not say which plan a key belongs to, so humanish keeps every hosted sandbox under a ceiling of 60 minutes unless `HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets another. On Pro, set it to 1440, or to any whole number of minutes from 1 to 1440:
+
+```bash
+export HUMANISH_E2B_MAX_SANDBOX_MINUTES=1440
+npx humanish doctor
+```
+
+`doctor` prints the ceiling in use on its `e2b sandbox ceiling` row. A computer-use, shared-world or live terminal study whose sandbox deadline passes the ceiling is refused before any sandbox is created; the refusal gives the deadline and the setting value that would admit it. A value outside 1 to 1440 refuses those studies too. The key store holds provider keys only, so set the ceiling in your shell or in a `--dotenv` file.
+
+A higher ceiling lets you declare longer sessions, and a session you declared keeps its length. It changes one default: a computer-use `clone` or `local-tree` study without `execution.timeoutMs` gets what the ceiling leaves after provisioning and seeding, up to 30 minutes, where the 60-minute ceiling leaves 20. Every minute of a desktop is billed, so declare `execution.timeoutMs` when you want a fixed session.
+
+Pro's higher concurrency needs no setting. A study runs all its participants at once unless `execution.concurrency` sets fewer, and a computer-use study runs at most 16 participants on any plan.
 
 ## Choose a model
 

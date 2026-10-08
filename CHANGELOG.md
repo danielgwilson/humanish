@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest E2B sandbox lifetime the planners allow: 60
+  minutes (E2B's Hobby limit) when unset, up to 1440 for E2B's Pro plan. A study whose sandbox
+  deadline passes it is refused before any sandbox is created, and the refusal gives the setting
+  value that would admit it. `humanish doctor` shows the ceiling on a new `e2b sandbox ceiling` row,
+  and a value outside 1 to 1440 fails that row and refuses hosted studies. Raising it also raises
+  the default session of a computer-use clone or local-tree study without `execution.timeoutMs`,
+  from 20 minutes to as much as 30.
+
 ### Changed
 
 - A shared-world study whose persona file has an invalid background now stops with that error
