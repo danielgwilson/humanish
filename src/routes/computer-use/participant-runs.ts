@@ -29,7 +29,6 @@ import {
   MIN_DERIVED_SESSION_TIMEOUT_MS,
 } from "./types.js";
 import {
-  MAX_SANDBOX_MS,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SUBJECT_PROVISION_BUDGET_MS,
 } from "../../substrates/e2b/lifetime.js";
@@ -39,7 +38,11 @@ import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-p
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
 import { plural } from "../../run/text.js";
 
-export function defaultSessionTimeoutMs(config: StudyConfig): number {
+/**
+ * The session budget of a study that declares no execution.timeoutMs. On a provisioned route it is
+ * what the `ceilingMs` sandbox ceiling leaves after provisioning, seeding and the teardown buffer.
+ */
+export function defaultSessionTimeoutMs(config: StudyConfig, ceilingMs: number): number {
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
   if (!provisionedRoute) return DEFAULT_APP_URL_SESSION_TIMEOUT_MS;
@@ -47,8 +50,7 @@ export function defaultSessionTimeoutMs(config: StudyConfig): number {
     (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
     0,
   );
-  const room =
-    MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  const room = ceilingMs - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
   return Math.max(
     MIN_DERIVED_SESSION_TIMEOUT_MS,
     Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room),
@@ -61,9 +63,9 @@ export function defaultSessionTimeoutMs(config: StudyConfig): number {
  *  reclamation buffer. Local-tree shares the clone route's provisioning budget: it swaps a
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
-export function resolveParticipantSandboxMs(config: StudyConfig): number {
+export function resolveParticipantSandboxMs(config: StudyConfig, ceilingMs: number): number {
   if (isLocalBrowserStudy(config)) return LOCAL_BROWSER_LIFETIME_MS;
-  const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
+  const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
   const stateBudgetMs = provisionedRoute

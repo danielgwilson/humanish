@@ -1616,7 +1616,9 @@ describe("the run header when the requested analysis is refused", () => {
         setExitCode: () => {},
       };
       const run = createProgram(io).commands.find((command) => command.name() === "run")!;
-      writeResult(run, io, outcome.result, formatScriptedStudyHuman);
+      writeResult(run, io, outcome.result, (result) =>
+        formatScriptedStudyHuman(result, parsed.config.subject),
+      );
       expect(stdout.join("").split("\n")[0]).toBe(header);
     });
   });

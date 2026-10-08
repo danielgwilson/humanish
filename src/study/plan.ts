@@ -7,6 +7,7 @@ import { callerDrivingOf, planComputerUseStudy } from "../routes/computer-use/pl
 import { injectedBrowser, planScriptedStudy } from "../routes/scripted/plan.js";
 import { planSharedWorldStudy } from "../routes/shared-world/plan.js";
 import { planTerminalStudy } from "../routes/terminal/plan.js";
+import { sandboxCeiling, type SandboxCeiling } from "../substrates/e2b/lifetime.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyDeps } from "./study-deps.js";
@@ -83,9 +84,11 @@ type RoutePlanResult =
   | { readonly ok: false; readonly refusal: PlanRefusal };
 
 /**
- * The plan a study runs under, built without reading files, env or the network. Each route's planner
- * makes every refusal that route makes, in the route's order and with its codes and messages; the
- * route's exported runner calls the same planner.
+ * The plan a study runs under, built without reading files or the network. From the environment
+ * (options.env, else process.env, as the routes read it) it reads one value, the E2B sandbox
+ * ceiling, which no study file can know. Each route's planner makes every refusal that route
+ * makes, in the route's order and with its codes and messages; the route's exported runner calls
+ * the same planner.
  */
 export function planStudy(
   config: StudyConfig,
@@ -94,7 +97,8 @@ export function planStudy(
 ): PlanResult {
   const study = localBrowserDefaults(config);
   const input = { dryRun: resolveStudyDryRun(study, options.dryRun, true) ?? true };
-  const result = planRoute(routeOf(config), study, options, input, deps);
+  const ceiling = sandboxCeiling(options.env ?? process.env);
+  const result = planRoute(routeOf(config), study, options, input, deps, ceiling);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
@@ -113,6 +117,7 @@ function planRoute(
   options: InternalRunStudyOptions,
   input: { readonly dryRun: boolean },
   deps: StudyDeps,
+  sandboxCeiling: SandboxCeiling,
 ): RoutePlanResult {
   switch (route) {
     case "preview":
@@ -124,14 +129,20 @@ function planRoute(
         driving: callerDrivingOf(options),
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+        sandboxCeiling,
       });
     case "shared-world":
       return planSharedWorldStudy(study, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
+        sandboxCeiling,
       });
     case "terminal":
-      return planTerminalStudy(study, { ...input, hasCostProbe: deps.costProbe !== undefined });
+      return planTerminalStudy(study, {
+        ...input,
+        hasCostProbe: deps.costProbe !== undefined,
+        sandboxCeiling,
+      });
     case "scripted":
       return planScriptedStudy(study, { ...input, injectedBrowser: injectedBrowser(deps) });
   }

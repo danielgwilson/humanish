@@ -45,7 +45,7 @@ import {
   defaultSessionTimeoutMs,
   resolveParticipantSandboxMs,
 } from "./participant-runs.js";
-import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
+import { ceilingAdvice, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
 import { type ComputerUseRunInput, type CuaActorStudyErrorCode } from "./types.js";
 
 /** The error a computer-use study returns before a run starts. */
@@ -169,13 +169,14 @@ function cuaStudyRejection(
   hasRunSession: boolean,
   driving: CallerDriving,
   subjectRoute: DeclaredSubjectRoute,
+  ceilingMs: number,
 ): Rejection {
   return (
     unsupportedDeclarationReason(config, hasRunSession, driving, subjectRoute) ??
     subjectStructureReason(config, subjectRoute) ??
     entryTargetReason(config, subjectRoute) ??
     driverReason(driving, subjectRoute) ??
-    rosterShapeReason(config)
+    rosterShapeReason(config, ceilingMs)
   );
 }
 
@@ -296,7 +297,7 @@ function driverReason(
 }
 
 /** The participant roster, then the sandbox deadline its session budget derives. */
-function rosterShapeReason(config: StudyConfig): Rejection {
+function rosterShapeReason(config: StudyConfig, ceilingMs: number): Rejection {
   // Device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one participant, clone.fanout.
   const fanoutReason = computerUseValidationReason(config);
@@ -304,14 +305,14 @@ function rosterShapeReason(config: StudyConfig): Rejection {
   // The sandbox deadline is derived from the session budget, so a study can ask for a session that
   // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
   // but not which knob produced it.
-  const derivedSandboxMs = resolveParticipantSandboxMs(config);
-  if (derivedSandboxMs <= MAX_SANDBOX_MS) return undefined;
+  const derivedSandboxMs = resolveParticipantSandboxMs(config, ceilingMs);
+  if (derivedSandboxMs <= ceilingMs) return undefined;
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
-  const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
+  const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
   const headroomMs = derivedSandboxMs - sessionMs;
   return invalid(
-    `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
+    `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${ceilingMs / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((ceilingMs - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.${ceilingAdvice(derivedSandboxMs)}`,
   );
 }
 
@@ -340,6 +341,8 @@ export function planComputerUseStudy(
     readonly driving?: CallerDriving;
     readonly countOverride?: number;
     readonly rerun?: ComputerUseRunInput["rerun"];
+    /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
+    readonly sandboxCeiling: SandboxCeiling;
   },
 ): ComputerUsePlanResult {
   const hasRunSession = input.hasRunSession === true;
@@ -376,11 +379,15 @@ export function planComputerUseStudy(
       `actor.type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
+  const ceiling = input.sandboxCeiling;
+  if (!ceiling.ok)
+    return refuse("in-scope", "HUMANISH_COMPUTER_USE_SUBJECT_INVALID", ceiling.message, actor);
   const rejection = cuaStudyRejection(
     config,
     hasRunSession,
     driving,
     declaredSubjectRoute(config, driving),
+    ceiling.ms,
   );
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
   // A shared world runs every participant against one app; this route would run them as separate
@@ -469,8 +476,8 @@ export function planComputerUseStudy(
       actor,
       runner,
       concurrency: boundedConcurrency(declared, n),
-      sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
-      sandboxMs: resolveParticipantSandboxMs(config),
+      sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceiling.ms),
+      sandboxMs: resolveParticipantSandboxMs(config, ceiling.ms),
       caps: planCaps(config),
       ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:

@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest E2B sandbox lifetime the planners allow: 60
+  minutes (E2B's Hobby limit) when unset, up to 1440 for E2B's Pro plan. A study whose sandbox
+  deadline passes it is refused before any sandbox is created, and the refusal gives the setting
+  value that would admit it. `humanish doctor` shows the ceiling on a new `e2b sandbox ceiling` row,
+  and a value outside 1 to 1440 fails that row and refuses hosted studies. Raising it also raises
+  the default session of a computer-use clone or local-tree study without `execution.timeoutMs`,
+  from 20 minutes to as much as 30.
+
 ### Changed
 
 - A shared-world study whose persona file has an invalid background now stops with that error
@@ -29,6 +39,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A run refused before it was created, such as a live study with no keys, no longer ends its
+  `humanish run` output with `analysis: skipped because the run's evidence could not be read`. The
+  output ends with the refusal and its code. The JSON keeps the `automaticAnalysis` record (#1704).
+- The `subject:` line of `humanish run` names a `desktop-cli` subject by its product and source,
+  as in `subject: humanish (desktop-cli)`. It was empty, as it was for every computer-use study the
+  CLI refused for an option such as `--port 99999`; those now print the study's URL (#1705).
+- In `humanish tui`, the cursor stays on the row the person selected when a refresh reorders the
+  rows: a study that goes live and moves to the top of the studies list, a newer run listed above
+  the selected run, or a run that finishes, where Open in Observer moves up a row and Run again
+  takes its place. The cursor used to keep its row number, so Enter could open a different study
+  or start a new run. Escape back to the studies list also returns to the selected study after the
+  list reordered. When the action the person chose on a run's screen goes away under the cursor
+  (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
+  so; it used to act on the row now there, which could be Run again (#1696).
 - On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
   punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
   to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,
