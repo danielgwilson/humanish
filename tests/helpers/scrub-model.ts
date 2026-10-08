@@ -294,3 +294,21 @@ export function survivingForm(values: readonly string[], text: string): string |
   }
   return undefined;
 }
+
+// The regex RunSecrets used to find what a value's view drops or decodes: operating-system
+// commands, control sequences and two-byte escapes, raw and JSON-escaped, and percent runs.
+const VIEW_SEQUENCE = new RegExp(
+  [
+    "\\x1b\\][^\\x07]*(?:\\x07|\\x1b\\\\)",
+    "\\x1b\\[[0-?]*[ -/]*[@-~]",
+    "\\x1b[78=>]",
+    "\\\\u001b\\][^\\\\]*(?:\\\\u0007|\\\\u001b\\\\\\\\)",
+    "\\\\u001b\\[[0-?]*[ -/]*[@-~]",
+    "(?:%[0-9A-Fa-f]{2})+",
+  ].join("|"),
+  "g",
+);
+
+/** Each match of that regex as [start, end), in order. Quadratic on unterminated commands. */
+export const modelEscapeSequences = (text: string): [number, number][] =>
+  [...text.matchAll(VIEW_SEQUENCE)].map((match) => [match.index, match.index + match[0].length]);

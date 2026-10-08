@@ -6,6 +6,7 @@
 
 import { scrubLiterals } from "../evidence/redaction.js";
 import { encodedForms, holdsSecretValue } from "../evidence/secret-scrub.js";
+import { escapeSequences } from "./escape-sequences.js";
 
 /** Each route's seed list, marker and floor are its own; the defaults are what most routes use. */
 interface RunSecretsOptions {
@@ -89,24 +90,9 @@ export class RunSecrets {
   }
 }
 
-// What a terminal draws with (operating-system commands, control sequences and two-byte escapes,
-// as written or JSON-escaped, as a JSON event carries a command's colored output) and what a URL
-// encodes with (runs of percent escapes). The view a value is looked for in drops the first and
-// decodes the second.
-const VIEW_SEQUENCE = new RegExp(
-  [
-    "\\x1b\\][^\\x07]*(?:\\x07|\\x1b\\\\)",
-    "\\x1b\\[[0-?]*[ -/]*[@-~]",
-    "\\x1b[78=>]",
-    "\\\\u001b\\][^\\\\]*(?:\\\\u0007|\\\\u001b\\\\\\\\)",
-    "\\\\u001b\\[[0-?]*[ -/]*[@-~]",
-    "(?:%[0-9A-Fa-f]{2})+",
-  ].join("|"),
-  "g",
-);
-
 /**
- * Where a value is found in the text's view. A browser encodes a space or a quote in a URL path
+ * Where a value is found in the text's view, which drops terminal escape sequences and decodes
+ * percent escapes (escapeSequences). A browser encodes a space or a quote in a URL path
  * and leaves a `/` or a `:` as written, so a value with both matches no single encoded form, and a
  * color code inside a value splits it. Each found value maps back to the span of `text` it came
  * from, so the text keeps every other character as written.
@@ -127,20 +113,20 @@ function viewSpans(text: string, values: readonly string[]): Array<[number, numb
   };
   let cursor = 0;
   let changed = false;
-  for (const sequence of text.matchAll(VIEW_SEQUENCE)) {
+  for (const [start, end] of escapeSequences(text)) {
     let plain = "";
-    if (sequence[0].startsWith("%")) {
+    if (text[start] === "%") {
       try {
-        plain = decodeURIComponent(sequence[0]);
+        plain = decodeURIComponent(text.slice(start, end));
       } catch {
         // Not UTF-8: the run stays as written and is copied with the text after it.
         continue;
       }
     }
-    copy(cursor, sequence.index);
-    cursor = sequence.index + sequence[0].length;
+    copy(cursor, start);
+    cursor = end;
     for (let unit = 0; unit < plain.length; unit += 1) {
-      starts.push(sequence.index);
+      starts.push(start);
       ends.push(cursor);
     }
     view += plain;

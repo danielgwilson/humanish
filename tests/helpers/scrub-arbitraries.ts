@@ -326,3 +326,50 @@ export function scrubInputs(shape: ScrubInputShape): fc.Arbitrary<ScrubInput> {
       return { values, text: text.join("") };
     });
 }
+
+// Pieces of terminal escape sequences, raw and JSON-escaped, and of percent escapes, each whole
+// or cut, so that a text holds sequences that end, end late or never end. The starts and ends of
+// commands come first and are drawn more often.
+const COMMAND_PIECES = ["\x1b]", "\x1b\\", "\\u001b]", "\\u001b\\\\", "\\u0007"];
+const ESCAPE_PIECES = [
+  "\x1b",
+  "\x1b]",
+  "\x1b[",
+  "\x07",
+  "\x1b\\",
+  "\x1b7",
+  "\x1b>",
+  "\\u001b]",
+  "\\u001b[",
+  "\\u0007",
+  "\\u001b\\\\",
+  "\\",
+  "0;2",
+  "?",
+  " ",
+  "/",
+  "m",
+  "~",
+  "@",
+  "]",
+  "[",
+  "%",
+  "%4",
+  "%41",
+  "%e2%80",
+  "%zz",
+  "title",
+  "\n",
+];
+
+/** Text of escape pieces and words, for the search of what a value's view drops or decodes. */
+export const escapeTexts = (): fc.Arbitrary<string> =>
+  fc
+    .array(
+      fc.oneof(
+        { weight: 1, arbitrary: fc.constantFrom(...COMMAND_PIECES) },
+        { weight: 3, arbitrary: fc.constantFrom(...ESCAPE_PIECES) },
+      ),
+      { maxLength: 32 },
+    )
+    .map((pieces) => pieces.join(""));
