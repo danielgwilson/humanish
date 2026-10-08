@@ -60,7 +60,7 @@ export interface RunRecord {
     state: AnalysisState;
     analysisId: string | null;
     estimatedUsd: number | null;
-    /** The CLI's admission estimate, the analysis's worst case under the cap. */
+    /** The CLI's `admission.estimatedCostUsd`: the expected cost since 0.114.0, the worst case before. */
     admissionUsd: number | null;
     /** The applied per-analysis cap; older manifests use budget.analysisMaxUsd. */
     maxCostUsd?: number;

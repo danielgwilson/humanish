@@ -1,12 +1,11 @@
+import { costRefusal } from "../../src/analysis/admission.js";
 import type { AutomaticAnalysisView } from "../../src/analysis/job";
 
 export type { AutomaticAnalysisView } from "../../src/analysis/job";
 
-// Browser-only mirrors: runtime imports from the producer are forbidden. The contract test pins
-// these against src/analysis/job.ts' AUTOMATIC_ANALYSIS_STALE_MS and src/analysis/admission.ts'
-// ADMISSION_MARGIN.
+// A browser-only mirror: job.ts imports zod and node modules, so the Observer cannot import it.
+// The contract test pins this against src/analysis/job.ts' AUTOMATIC_ANALYSIS_STALE_MS.
 export const AUTOMATIC_ANALYSIS_STALE_MS = 15_000;
-export const ADMISSION_MARGIN = 1.1;
 export const ANALYSIS_ADMISSION_EXCEEDED_DETAIL =
   "Reported usage exceeded an admission estimate or configured limit. Findings and known usage were retained. Review the saved usage before making another request.";
 const states = new Set([
@@ -116,11 +115,6 @@ export interface AutomaticAnalysisNotice {
   command?: string;
 }
 
-/** The costs of an analysis refused for its cost, worded as the CLI words them. */
-function refusedCostDetail(cost: NonNullable<AutomaticAnalysisView["admission"]>): string {
-  return `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent. To run it, raise the cap:`;
-}
-
 /** A heartbeat is a display hint, never authority to resume or dispatch work. */
 export function automaticAnalysisNotice(
   automatic: AutomaticAnalysisView,
@@ -129,14 +123,17 @@ export function automaticAnalysisNotice(
   runId?: string,
 ): AutomaticAnalysisNotice {
   const value = parseAutomaticAnalysis(automatic)!;
-  if (value.state === "skipped" && value.admission && runId)
+  if (value.state === "skipped" && value.admission && runId) {
+    // The page cannot tell how humanish was installed, so the command names it plainly.
+    const refusal = costRefusal(value.admission, `--run ${runId}`, (rest) => `humanish ${rest}`);
     return {
       state: "skipped",
       message: "Automatic analysis did not run.",
-      detail: refusedCostDetail(value.admission),
+      detail: refusal.text,
       pending: false,
-      command: `humanish analyze --run ${runId} --max-cost ${Math.max(1, Math.ceil(value.admission.worstCaseCostUsd))}`,
+      command: refusal.command,
     };
+  }
   const nonterminal = value.state === "queued" || value.state === "running";
   const updated = Date.parse(value.updatedAt);
   if (nonterminal && snapshot && updated <= now)

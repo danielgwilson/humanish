@@ -50,8 +50,12 @@ export const TYPICAL_DESKTOP_USD = 0.02;
  * the four runs in docs/evidence/benchmark/2026-10-04-0.110.0-neutral-openai-computer-use.json.
  */
 export const TYPICAL_ANALYSIS_USD = 0.7;
-/** The admission estimate `humanish analyze --dry-run` gave the same four runs: $1.44 to $1.68. */
-export const TYPICAL_ADMISSION_USD = 1.55;
+/**
+ * Typical analysis worst case: the mean of the `worstCaseCostUsd` `humanish analyze --dry-run`
+ * reports for the six 0.114.0 benchmark runs with the benchmark's 16,384-token output allowance,
+ * $1.21 to $1.35 (tests/fixtures/bench/analyze-dry-run/README.md).
+ */
+export const TYPICAL_ANALYSIS_WORST_CASE_USD = 1.26;
 
 export interface BudgetSettings {
   maxUsdPerBrain: number;
@@ -114,7 +118,7 @@ export function projectBrain(brain: Brain, runs: number, settings: BudgetSetting
     if (!canStartParticipant(spent, brain, settings)) break;
     spent += typicalParticipant;
     participantsFit++;
-    if (canStartAnalysis(spent, settings, TYPICAL_ADMISSION_USD)) {
+    if (canStartAnalysis(spent, settings, TYPICAL_ANALYSIS_WORST_CASE_USD)) {
       spent += TYPICAL_ANALYSIS_USD;
       analysesFit++;
     }
@@ -146,16 +150,16 @@ export function canStartParticipant(spentUsd: number, brain: Brain, settings: Bu
 
 /**
  * An analysis starts only when its worst case still fits under the cap. The worst case is the
- * CLI's admission estimate for that run (`humanish analyze --dry-run`), which never exceeds
- * `--max-cost`, or `--max-cost` itself when no estimate is known.
+ * `worstCaseCostUsd` that `humanish analyze --dry-run` reports for that run: the cost if the
+ * analyst writes its whole output allowance. `--max-cost` does not bound it, since admission
+ * compares the expected cost plus 10% with `--max-cost`.
  */
 export function canStartAnalysis(
   spentUsd: number,
   settings: BudgetSettings,
-  admissionUsd: number = settings.analysisMaxUsd,
+  worstCaseUsd: number,
 ): boolean {
-  const bound = Math.min(admissionUsd, settings.analysisMaxUsd);
-  return settings.analysis && spentUsd + bound <= settings.maxUsdPerBrain;
+  return settings.analysis && spentUsd + worstCaseUsd <= settings.maxUsdPerBrain;
 }
 
 export function round(value: number): number {
