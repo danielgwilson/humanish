@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CLOSING_REPORT_LIMITS } from "../../src/actors/closing-report-limits.js";
 import { traceItems } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { RecordedEntryLink } from "./recorded-entry-link";
@@ -11,7 +12,7 @@ const closingAccount = (
   return (
     typeof report.summary === "string" &&
     Array.isArray(report.frictionReports) &&
-    report.frictionReports.length <= 1000 &&
+    report.frictionReports.length <= CLOSING_REPORT_LIMITS.frictionReports &&
     report.frictionReports.every((item) => typeof item === "string")
   );
 };
@@ -35,7 +36,7 @@ const readImpressions = (value: unknown): Impressions | null => {
     return typeof record.reason === "string" ? (record as Impressions) : null;
   return record.status === "collected" &&
     Array.isArray(record.items) &&
-    record.items.length <= 1000 &&
+    record.items.length <= CLOSING_REPORT_LIMITS.impressions &&
     record.items.every((item: unknown) => {
       const entry = item as Record<string, unknown> | null;
       return (

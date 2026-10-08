@@ -29,6 +29,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A feedback draft for an amended finding opens with the sentence `humanish review` and the
   Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
   and account." It had its own wording of that sentence.
+- The OpenAI computer-use participant is now asked for its closing report and impressions within
+  the limits its reply is checked against: a summary of up to 4,000 characters, up to 8 friction
+  reports of up to 2,000 characters each, and up to 6 impressions of up to 500 characters each.
+  Its request schema had no limits before, so a longer reply was asked for and then dropped as
+  invalid. The Codex participant was already sent these limits. The Observer reads a recorded
+  closing account with more than 8 friction reports or more than 6 impressions as unreadable; no
+  humanish version records more.
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

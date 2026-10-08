@@ -5,12 +5,13 @@ import {
   browserOnlyControlActionSchema,
   validateBrowserControlAction,
 } from "../../browser-control/protocol.js";
-import { validClosingReport, type CuaTurn, type ShortenedWait } from "../computer-use/loop.js";
 import {
-  PARTICIPANT_IMPRESSION_KINDS,
-  type ActorExecutionProfile,
+  closingReportSchema,
+  strictOutputSchema,
   type ParticipantClosingReport,
-} from "../contract.js";
+} from "../closing-report.js";
+import type { CuaTurn, ShortenedWait } from "../computer-use/loop.js";
+import type { ActorExecutionProfile } from "../contract.js";
 
 /** The declared profile. A participant replaces cliVersion with its detected CLI release, or with
  * this host's newest qualified release before its first launch. */
@@ -49,33 +50,12 @@ export function participantToolSchema(speechEnabled = false): Record<string, unk
   return z.toJSONSchema(toolInput(speechEnabled), { io: "input" }) as Record<string, unknown>;
 }
 export const PARTICIPANT_TOOL_SCHEMA = participantToolSchema();
-export const PARTICIPANT_FINAL_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["outcome", "summary", "frictionReports", "impressions"],
-  properties: {
-    outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
-    summary: { type: "string", minLength: 1, maxLength: 4000 },
-    frictionReports: {
-      type: "array",
-      maxItems: 8,
-      items: { type: "string", minLength: 1, maxLength: 2000 },
-    },
-    impressions: {
-      type: "array",
-      maxItems: 6,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["kind", "text"],
-        properties: {
-          kind: { type: "string", enum: [...PARTICIPANT_IMPRESSION_KINDS] },
-          text: { type: "string", minLength: 1, maxLength: 500 },
-        },
-      },
-    },
-  },
-};
+/** The participant's final account: how the task went, then its closing report. */
+const participantFinal = z.strictObject({
+  outcome: z.enum(["reached", "not_reached", "blocked"]),
+  ...closingReportSchema.shape,
+});
+export const PARTICIPANT_FINAL_SCHEMA = strictOutputSchema(participantFinal);
 /**
  * Shorten each wait longer than one browser-control request may wait. A failed tool call ends the
  * native run, so a wait that asks too much would otherwise end the whole session.
@@ -122,24 +102,15 @@ export function parseParticipantTool(value: unknown, speechEnabled = false): Cua
 export function parseParticipantFinal(
   value: unknown,
 ): CuaTurn & { closingReport: ParticipantClosingReport } {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("invalid_response");
-  const { outcome, ...report } = value as Record<string, unknown>;
-  if (
-    (outcome !== "reached" && outcome !== "not_reached" && outcome !== "blocked") ||
-    !validClosingReport(report)
-  )
-    throw new Error("invalid_response");
+  const final = participantFinal.safeParse(value);
+  if (!final.success) throw new Error("invalid_response");
+  const { outcome, ...closingReport } = final.data;
   return {
     actions: [],
     pendingSafetyChecks: [],
     done: true,
     outcome,
-    message: [report.summary, ...report.frictionReports].join("\n"),
-    closingReport: {
-      summary: report.summary,
-      frictionReports: [...report.frictionReports],
-      ...(report.impressions === undefined ? {} : { impressions: [...report.impressions] }),
-    },
+    message: [closingReport.summary, ...closingReport.frictionReports].join("\n"),
+    closingReport,
   };
 }

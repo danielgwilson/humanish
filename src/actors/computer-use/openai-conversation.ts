@@ -1,6 +1,11 @@
 import type { CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import { PARTICIPANT_IMPRESSION_KINDS, type ActorConversation } from "../contract.js";
+import {
+  closingReportSchema,
+  impressionsReplySchema,
+  strictOutputSchema,
+} from "../closing-report.js";
+import type { ActorConversation } from "../contract.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   buildCallOutput,
@@ -61,45 +66,18 @@ const CLOSING_OUTPUT_LIMIT = 3072;
  */
 export type ClosingRequest = "report" | "impressions";
 
-const IMPRESSIONS_SCHEMA = {
-  type: "array",
-  items: {
-    type: "object",
-    additionalProperties: false,
-    required: ["kind", "text"],
-    properties: {
-      kind: { type: "string", enum: [...PARTICIPANT_IMPRESSION_KINDS] },
-      text: { type: "string" },
-    },
-  },
-};
-
 const CLOSING_FORMATS: Record<ClosingRequest, Record<string, unknown>> = {
   report: {
     type: "json_schema",
     name: "participant_closing_report",
     strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["summary", "frictionReports", "impressions"],
-      properties: {
-        summary: { type: "string" },
-        frictionReports: { type: "array", items: { type: "string" } },
-        impressions: IMPRESSIONS_SCHEMA,
-      },
-    },
+    schema: strictOutputSchema(closingReportSchema),
   },
   impressions: {
     type: "json_schema",
     name: "participant_impressions",
     strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["impressions"],
-      properties: { impressions: IMPRESSIONS_SCHEMA },
-    },
+    schema: strictOutputSchema(impressionsReplySchema),
   },
 };
 
