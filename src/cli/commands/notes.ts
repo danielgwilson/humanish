@@ -4,9 +4,10 @@ import { renderObserver } from "../../observer/render.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../../run/locate.js";
 import { readRunNotes } from "../../run/note-files.js";
 import { byRunTime, type RunNote } from "../../run/note-shape.js";
-import { addRunNote, formatRunTime, type RunNoteErrorCode } from "../../run/notes.js";
+import { addRunNote, type RunNoteErrorCode } from "../../run/notes.js";
 import { runParticipantCaptions, streamParticipantIdOf } from "../../run/participant-records.js";
 import { resolvePhysicalCwd, runIdOf, type PreparedRunArtifactPaths } from "../../run/paths.js";
+import { formatRunTime } from "../../run/run-clock.js";
 import { runNotFoundMessage } from "../../run/run-not-found.js";
 import { cli } from "../invocation.js";
 import {

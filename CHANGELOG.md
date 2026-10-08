@@ -8,11 +8,27 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-`humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
-shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
-value not given from the default size of a new VM, which could change the VM's CPUs or memory.
-The refusal of `humanish keys set` for a name that is not a provider key now lists E2B_API_KEY
-before ANTHROPIC_API_KEY.
+### Changed
+
+- A shared-world study whose persona file has an invalid background now stops with that error
+  before the route checks its keys, as a computer-use study already did.
+- When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
+  concurrency cap below the roster or about participants without an inbox, the `egressAllow`
+  warning now comes after those two.
+- `humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
+  shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
+  value not given from the default size of a new VM, which could change the VM's CPUs or memory.
+- The refusal of `humanish keys set` for a name that is not a provider key now lists
+  `E2B_API_KEY` before `ANTHROPIC_API_KEY`.
+
+### Fixed
+
+- When a study's analysis does not complete (refused at admission, failed or cancelled) and the
+  run's own result is ok, the first line of `humanish run` reads
+  `humanish run <study>: live run finished; the analysis did not complete`. It read
+  `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
+  keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
+  `live run failed` (#1673).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

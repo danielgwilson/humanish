@@ -1,6 +1,6 @@
 import type { ObserverData } from "@/lib/observer-data";
 import { participantLabels } from "@/lib/participant-label";
-import { formatElapsed } from "@/lib/player-model";
+import { formatRunTime } from "../../src/run/run-clock.js";
 import {
   resolveReportMoment,
   type DesignSeverity,
@@ -81,7 +81,7 @@ export function StudyReportDesign({
                       const label = labels.get(capture.streamId) ?? capture.streamId;
                       const time =
                         capture.resolved?.elapsedMs != null
-                          ? formatElapsed(capture.resolved.elapsedMs)
+                          ? formatRunTime(capture.resolved.elapsedMs)
                           : "Time unavailable";
                       return (
                         <button

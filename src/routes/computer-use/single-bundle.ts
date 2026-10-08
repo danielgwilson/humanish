@@ -23,7 +23,7 @@ import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
   formatRunTaskFunnel,
-  sessionEndingInWords,
+  participantSummary,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import { participantCaption } from "../../run/participant-caption.js";
@@ -150,13 +150,15 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
     mode: "browser-sim",
     progress: args.inProgress === true ? 20 : 100,
     currentStep: reason,
-    summary: args.session
-      ? `${name} used the app ${browserPlace(args)}, and ${sessionEndingInWords(args.session.trace)}.`
-      : args.inProgress === true
-        ? `${name} is using the app ${browserPlace(args)}.`
-        : args.sessionError !== undefined
-          ? `${name} did not finish a session: ${args.sessionError}`
-          : `${name} would use ${publicAppUrl}; no session ran.`,
+    summary: participantSummary(
+      name,
+      { name: "the app", place: browserPlace(args), target: publicAppUrl },
+      {
+        trace: args.session?.trace,
+        sessionError: args.sessionError,
+        inProgress: args.inProgress === true,
+      },
+    ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });

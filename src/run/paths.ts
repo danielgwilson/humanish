@@ -51,6 +51,11 @@ export function resolveRunsRoot(cwdInput: string): string {
   return path.resolve(cwdInput, RUNS_RELATIVE_ROOT);
 }
 
+/** The latest-run pointer, `.humanish/runs/latest.json`, which the newest run writes. */
+export function resolveLatestRunPointer(cwdInput: string): string {
+  return path.resolve(cwdInput, LATEST_RUN_RELATIVE_PATH);
+}
+
 function resolveRunDirectory(cwdInput: string, runId: string): string {
   if (!isSafeRunIdSegment(runId)) {
     throw new Error("Run id must be one non-empty path segment.");
@@ -81,7 +86,7 @@ function resolveRunArtifactPaths(cwdInput: string, runId: string): RunArtifactPa
   return {
     absoluteRunRoot,
     relativeRunRoot: path.join(RUNS_RELATIVE_ROOT, runId),
-    absoluteLatestPointer: path.resolve(cwdInput, LATEST_RUN_RELATIVE_PATH),
+    absoluteLatestPointer: resolveLatestRunPointer(cwdInput),
     relativeLatestPointer: LATEST_RUN_RELATIVE_PATH,
   };
 }
