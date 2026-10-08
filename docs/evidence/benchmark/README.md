@@ -182,6 +182,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-05 | 0.111.0, src/ as of 0c4a6d70 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $5.10           | [summary](2026-10-05-0.111.0-neutral-openai-computer-use.md) |
 | 2026-10-07 | 0.112.0, src/ as of 4a132ed6 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $5.99           | [summary](2026-10-07-0.112.0-neutral-openai-computer-use.md) |
 | 2026-10-07 | 0.113.0, src/ as of 323e65a0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 6/10            | 0 and 0             | $5.83           | [summary](2026-10-07-0.113.0-neutral-openai-computer-use.md) |
+| 2026-10-08 | 0.114.0, src/ as of dabf6569 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $6.19           | [summary](2026-10-08-0.114.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -228,6 +229,20 @@ edit save button did nothing." (X4) is also D5. The third clean participant said
 the goal: a refresh emptied the list, which both builds do, and it would not keep using Taskly. The
 clean-arm analysis lines "Enter did not finish editing; clicking Save recovered" and "Enter did not
 exit editing; clicking Save applied the change" are true.
+
+The 0.114.0 run sized each analysis's cap from that run's admission estimate plus 10%: estimates
+$1.04 to $1.18 with the benchmark's 16,384-token output allowance, caps $1.14 to $1.30, bills $0.59
+to $0.88. No analysis was refused, so analysis recall counts all 15 planted chances. The OpenAI
+organization of this run accepts server-side conversation state, so every participant ran
+threaded; input grew every turn for all six. No planted participant typed more than 30 characters
+in one action, so none met D2. The first planted participant edited a task, said editing worked,
+and made no claim about Save, so its report misses D5. Two planted analysis lines the rubric left
+unresolved are planted defects: "Completed tasks remained after the clear attempt" in the second
+run is D1, and "Edited wording reverted despite repeated Save attempts" in the third is D5. Read by
+hand, analysis recall is 11/15. The clean-arm analysis line "Enter-to-save expectation was not met
+during editing" is true: the clean build's edit box has no Enter handler. "Five-task list absent
+from the first post-refresh view" is true on both builds. All six reports say the participant saw
+no terminal output, from the persona's `clear_terminal_output` trait.
 
 ## What these numbers are not
 
