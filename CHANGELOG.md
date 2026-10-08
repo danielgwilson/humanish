@@ -20,6 +20,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   value not given from the default size of a new VM, which could change the VM's CPUs or memory.
 - The refusal of `humanish keys set` for a name that is not a provider key now lists
   `E2B_API_KEY` before `ANTHROPIC_API_KEY`.
+- `NO_UPDATE_NOTIFIER=1`, the variable the update-notifier package reads, now turns off the update
+  check and its notice, as `HUMANISH_NO_UPDATE_CHECK=1` does. An empty value, `0` or `false` leaves
+  the check on.
 
 ### Fixed
 

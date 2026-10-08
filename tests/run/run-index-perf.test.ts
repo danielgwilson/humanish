@@ -14,13 +14,21 @@ import { writeFixtureRun } from "../helpers/run-fixtures.js";
 // right shape for a command that prints once and exits, and the wrong shape for a surface that
 // refreshes on a cadence over SSH, where the same work repeats every tick.
 //
-// These assertions are relative and generate their own tree, so they mean the same thing on a
-// laptop, in CI, and on a loaded machine. Absolute millisecond thresholds would only be measuring
-// the runner. Measured on the real 25-run/270MB project tree when this landed:
-// listRuns 167ms · index cold 16ms · index warm 2.8ms.
+// The bounds are ratios between readers measured in this test, on a tree it generates, so they
+// mean the same thing on a laptop, in CI, and on a loaded machine. Measured on the real
+// 25-run/270MB project tree when this landed: listRuns 167ms · index cold 16ms · index warm 2.8ms.
 
 const RUN_COUNT = 25;
 const SCREENSHOTS_PER_RUN = 40;
+const ROUNDS = 7;
+
+/** The CPU time, user and system, that this process spends on one read, in milliseconds. */
+async function cpuMs(read: () => Promise<unknown>): Promise<number> {
+  const before = process.cpuUsage();
+  await read();
+  const used = process.cpuUsage(before);
+  return (used.user + used.system) / 1000;
+}
 
 describe("run index cost, measured against the existing listing", () => {
   let cwd: string;
@@ -62,45 +70,34 @@ describe("run index cost, measured against the existing listing", () => {
       );
     }
 
-    // Warm the page cache for both readers, so this compares algorithms and not first-touch I/O.
-    await listRuns(cwd);
-    await readRunIndex(cwd);
-
-    // Best of five for each reader. A single sample at the millisecond scale is one gc pause away
-    // from inverting warm and cold (CI on 2026-09-03: warm 4.6 ms, cold 3.2 ms); the minimum
-    // is the algorithm's cost, the rest is the runner's.
-    const bestOf = async <T>(
-      reader: () => Promise<T>,
-      samples = 5,
-    ): Promise<{ result: T; ms: number }> => {
-      let best: { result: T; ms: number } | undefined;
-      for (let sample = 0; sample < samples; sample += 1) {
-        const started = performance.now();
-        const result = await reader();
-        const ms = performance.now() - started;
-        if (best === undefined || ms < best.ms) best = { result, ms };
-      }
-      return best!;
-    };
-
-    const { result: listed, ms: listRunsMs } = await bestOf(() => listRuns(cwd));
-    const { result: cold, ms: indexColdMs } = await bestOf(() => readRunIndex(cwd));
-
+    // Same runs: cheaper is only worth anything if it is also complete. These reads also warm the
+    // page cache and the index cache, so the rounds below compare the readers' own work.
     const cache = new RunIndexCache();
-    await readRunIndex(cwd, { cache });
-    const { result: warm, ms: indexWarmMs } = await bestOf(() => readRunIndex(cwd, { cache }));
-
-    // Same runs: cheaper is only worth anything if it is also complete.
+    const listed = await listRuns(cwd);
+    const cold = await readRunIndex(cwd);
+    const warm = await readRunIndex(cwd, { cache });
     expect(listed.ok).toBe(true);
     expect(listed.runs).toHaveLength(RUN_COUNT);
     expect(cold.runs).toHaveLength(RUN_COUNT);
     expect(warm.runs).toHaveLength(RUN_COUNT);
     expect(cold.unreadable).toEqual([]);
 
-    // The gate. Generous multiples on purpose: this must fail on a real regression (the index
-    // starting to parse bundles, or the cache silently not hitting) and never on a slow runner.
-    expect(indexColdMs).toBeLessThan(listRunsMs / 2);
-    expect(indexWarmMs).toBeLessThan(listRunsMs / 4);
-    expect(indexWarmMs).toBeLessThanOrEqual(indexColdMs);
+    // Each round reads with all three, so a change in the runner's load lands on all three alike,
+    // and each reader keeps its fastest round. Work is this process's CPU time: wall clock also
+    // counts the time a read waits for a core, which on a loaded runner can exceed the read itself.
+    const fastest = { listing: Infinity, cold: Infinity, warm: Infinity };
+    for (let round = 0; round < ROUNDS; round += 1) {
+      fastest.listing = Math.min(fastest.listing, await cpuMs(() => listRuns(cwd)));
+      fastest.cold = Math.min(fastest.cold, await cpuMs(() => readRunIndex(cwd)));
+      fastest.warm = Math.min(fastest.warm, await cpuMs(() => readRunIndex(cwd, { cache })));
+    }
+    const ms = (value: number) => `${value.toFixed(2)} ms`;
+    const work = `listing ${ms(fastest.listing)}, cold index ${ms(fastest.cold)}, warm index ${ms(fastest.warm)}`;
+
+    // The gate. On this tree the index measured about 0.1 of the listing's work and the warm index
+    // about 0.5 of the cold. An index that walks every run tree measured 0.44 on the first, and a
+    // cache that never hits measured 0.87 to 1.05 on the second.
+    expect(fastest.cold / fastest.listing, work).toBeLessThan(0.25);
+    expect(fastest.warm / fastest.cold, work).toBeLessThan(0.7);
   });
 });

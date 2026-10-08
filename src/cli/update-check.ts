@@ -90,7 +90,9 @@ function dayPassed(timestamp: string | undefined, now: number): boolean {
  * Only a person at a terminal is told, and only when nothing has switched the check off. A pipe,
  * CI and a JSON document have a program reading them. A study participant runs the version the
  * study chose, and a notice would send it to another. The telemetry switches turn this off too:
- * someone who opted out of telemetry expects no unprompted requests.
+ * someone who opted out of telemetry expects no unprompted requests. NO_UPDATE_NOTIFIER is the
+ * switch the update-notifier package reads, so someone who set it for the CLIs built on that
+ * package gets no notice here either.
  */
 function checkAllowed(context: UpdateCheckContext): boolean {
   const env = context.env;
@@ -100,6 +102,7 @@ function checkAllowed(context: UpdateCheckContext): boolean {
     !context.ownCheckout &&
     !envFlag(env.CI) &&
     !envFlag(env.HUMANISH_NO_UPDATE_CHECK) &&
+    !envFlag(env.NO_UPDATE_NOTIFIER) &&
     !envFlag(env.HUMANISH_STUDY_PARTICIPANT) &&
     !disabledByEnvironment(env)
   );
