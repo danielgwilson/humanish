@@ -1,17 +1,23 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { type Command, CommanderError } from "commander";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stringify } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { analysisOutcomeText } from "../../src/cli/io.js";
 import { runNotFoundMessage } from "../../src/run/run-not-found.js";
+import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
 
 async function runCli(args: string[]) {
   let exitCode = 0;
   const out: string[] = [];
+  const stdout: string[] = [];
   const program = createProgram({
-    writeOut: (text) => out.push(text),
+    writeOut: (text) => {
+      out.push(text);
+      stdout.push(text);
+    },
     writeErr: (text) => out.push(text),
     setExitCode: (code) => {
       exitCode = code;
@@ -28,7 +34,7 @@ async function runCli(args: string[]) {
     if (!(error instanceof CommanderError)) throw error;
     exitCode = error.exitCode;
   }
-  return { exitCode, output: out.join("") };
+  return { exitCode, output: out.join(""), stdout: stdout.join("") };
 }
 
 let dir: string | undefined;
@@ -37,6 +43,18 @@ afterEach(async () => {
   dir = undefined;
 });
 const freshProject = async () => (dir = await mkdtemp(path.join(tmpdir(), "humanish-run-output-")));
+
+/** A fresh project holding one admission fixture study, and that study's id. */
+async function fixtureStudy(base: BaseName, patch: Patch = {}) {
+  const cwd = await freshProject();
+  const raw = lab(base, patch);
+  const id = String(raw.id);
+  await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+  await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+  await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
+  await writeFile(path.join(cwd, "humanish", "studies", `${id}.yaml`), stringify(raw));
+  return { cwd, id };
+}
 
 describe("a run's review in human mode", () => {
   it("prints the verdict, summary, gaps and path, not JSON", async () => {
@@ -174,5 +192,81 @@ describe("the automatic analysis line", () => {
     expect(analysisOutcomeText({ state: "failed", reason: "SOMETHING_NEW" })).toBe(
       "failed (SOMETHING_NEW)",
     );
+  });
+});
+
+describe("the subject line of a run", () => {
+  it.each<[string, BaseName, string]>([
+    ["an app-url", "cuAppUrl", "subject: http://127.0.0.1:3000/"],
+    ["a clone", "cuClone", "subject: http://127.0.0.1:3000/"],
+    ["a local-tree", "cuLocalTree", "subject: http://127.0.0.1:3000/"],
+    ["a desktop-cli", "cuDesktopCli", "subject: widgetsmith-cli (desktop-cli)"],
+    ["a scripted app-url", "scriptedAppUrl", "subject: http://127.0.0.1:3000/"],
+    ["a scripted clone", "scriptedClone", "subject: [provisioned-subject]"],
+    ["a terminal-product", "terminal", "product: widgetsmith-cli"],
+  ])("names %s subject after the actor line", async (_kind, base, line) => {
+    const { cwd, id } = await fixtureStudy(base);
+    const { stdout } = await runCli(["run", id, "--cwd", cwd]);
+    expect(stdout.split("\n")[4]).toBe(line);
+  });
+
+  it.each<[string, BaseName, string]>([
+    ["an app-url", "cuAppUrl", "subject: http://127.0.0.1:3000/"],
+    ["a desktop-cli", "cuDesktopCli", "subject: widgetsmith-cli (desktop-cli)"],
+  ])("names %s subject when the CLI refuses an option", async (_kind, base, line) => {
+    const { cwd, id } = await fixtureStudy(base);
+    const { stdout } = await runCli(["run", id, "--port", "99999", "--cwd", cwd]);
+    expect(stdout.split("\n")[4]).toBe(line);
+  });
+});
+
+describe("the analysis line of a run that was not created", () => {
+  beforeEach(async () => {
+    for (const name of ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY"]) vi.stubEnv(name, "");
+    // The missing-key message names local agents it finds signed in; find none.
+    const empty = await mkdtemp(path.join(tmpdir(), "humanish-run-output-path-"));
+    vi.stubEnv("PATH", empty);
+    vi.stubEnv("HOME", empty);
+    return async () => {
+      vi.unstubAllEnvs();
+      await rm(empty, { recursive: true, force: true });
+    };
+  });
+
+  it.each<[string, BaseName, Patch, string]>([
+    [
+      "a live computer-use run without keys",
+      "cuAppUrl",
+      { mode: "live" },
+      "humanish run adm-cuappurl: live run failed\nroute: computer-use\nrun: not-created\nactor: openai-computer-use\nsubject: http://127.0.0.1:3000/\n",
+    ],
+    [
+      "a dry run with no executor",
+      "cuLocalApp",
+      {},
+      "humanish run adm-culocalapp: dry run failed\nroute: computer-use\nrun: not-created\nactor: openai-computer-use\nsubject: http://127.0.0.1:3000/\n",
+    ],
+    [
+      "a live scripted run without keys",
+      "scriptedClone",
+      { mode: "live" },
+      "humanish run adm-scriptedclone: live run failed\nroute: scripted\nrun: not-created\nactor: scripted-browser\nsubject: [provisioned-subject]\n",
+    ],
+    [
+      "a live terminal run without keys",
+      "terminal",
+      { mode: "live" },
+      "humanish run adm-terminal: live run failed\nroute: terminal\nrun: not-created\nactor: codex-exec\nproduct: widgetsmith-cli\n",
+    ],
+  ])("is left out for %s", async (_kind, base, patch, expected) => {
+    const { cwd, id } = await fixtureStudy(base, patch);
+    const { exitCode, stdout } = await runCli(["run", id, "--cwd", cwd]);
+    expect({ exitCode, stdout }).toEqual({ exitCode: 2, stdout: expected });
+  });
+
+  it("is still printed for a dry run that was created", async () => {
+    const { cwd, id } = await fixtureStudy("cuAppUrl");
+    const { stdout } = await runCli(["run", id, "--cwd", cwd]);
+    expect(stdout.split("\n").at(-2)).toBe("analysis: skipped for dry runs");
   });
 });
