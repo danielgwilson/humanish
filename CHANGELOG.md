@@ -36,6 +36,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - An adapter artifact larger than 32 MiB (state, log, trace or filesystem output) now grades a run
   `local_only` when nothing in the bundle cites it, and `blocked` when the bundle cites it as
   evidence. `verify` read and scanned such a file whole before.
+- A computer-use run of a `desktop-cli` study records `subject.source: "desktop-cli"` and the
+  declared product name as `subject.product` in run.json, the JSON result and each participant's
+  `lanes[].subject`. It recorded `app-url` before. Its subject event names the product, where it
+  said `Subject app declared at ` with no URL. `verify`, `observe`, `review` and `export` read
+  both, so runs saved with `app-url` still open.
 
 ### Fixed
 

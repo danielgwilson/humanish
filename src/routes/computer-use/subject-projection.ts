@@ -1,6 +1,6 @@
-// Each participant's subject projection and the subject-state marker, from the declared subject
-// and what the participants ran; the run-level subject aggregated from them; and the provenance argument the
-// bundle builders take.
+// How a computer-use run records its subject: each participant's subject and the subject-state
+// marker, from the declared subject and what the participants ran, and the run-level subject
+// aggregated from them. Both bundle shapes and the JSON result write what this module returns.
 
 import { commandDigestOf } from "../../subject/state.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
@@ -10,8 +10,6 @@ import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../..
 import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import {
   type DesktopParticipantRun,
-  type CuaSubjectProjection,
-  type CuaSubjectProvenanceArg,
   type ParticipantRunOutcome,
   participantSubjectEnv,
 } from "./types.js";
@@ -28,7 +26,7 @@ export function projectParticipantSubjects(args: {
   runs: readonly DesktopParticipantRun[];
   outcomes: readonly ParticipantRunOutcome[] | undefined;
   dryRun: boolean;
-}): CuaSubjectProjection[] {
+}): RunSubjectProvenance[] {
   const { publicRepo, localTreeArchive } = args;
   const { subject } = args.plan.runner;
   const subjectEnvNames = [...participantSubjectEnv(subject)];
@@ -42,7 +40,7 @@ export function projectParticipantSubjects(args: {
       executed: outcome?.stateStepRecords ?? [],
     });
     return participantSubjectProjection({
-      kind: subject.kind,
+      subject,
       ...(publicRepo === undefined ? {} : { publicRepo }),
       subjectEnvNames,
       ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
@@ -104,14 +102,14 @@ export function resolveSubjectState(args: {
  *  commit/dirty (no divergence is possible, unlike the clone route's per-participant
  *  in-sandbox commit). */
 function participantSubjectProjection(args: {
-  kind: ComputerUsePlan["runner"]["subject"]["kind"];
+  subject: ComputerUsePlan["runner"]["subject"];
   publicRepo?: string;
   subjectEnvNames: string[];
   subjectCommit?: string;
   localTreeArchive?: LocalTreeArchive;
   subjectState: RunSubjectProvenance["state"];
-}): CuaSubjectProjection {
-  if (args.kind === "clone" && args.publicRepo) {
+}): RunSubjectProvenance {
+  if (args.subject.kind === "clone" && args.publicRepo) {
     return {
       source: "clone",
       repo: args.publicRepo,
@@ -120,7 +118,7 @@ function participantSubjectProjection(args: {
       state: args.subjectState,
     };
   }
-  if (args.kind === "local-tree") {
+  if (args.subject.kind === "local-tree") {
     const archive = args.localTreeArchive;
     return {
       source: "local-tree",
@@ -132,37 +130,10 @@ function participantSubjectProjection(args: {
       state: args.subjectState,
     };
   }
+  if (args.subject.kind === "desktop-cli") {
+    return { source: "desktop-cli", product: args.subject.product.name, state: args.subjectState };
+  }
   return { source: "app-url", state: args.subjectState };
-}
-
-/** Narrow a resolved CuaSubjectProjection into the shape buildSingleParticipantBundle's
- *  subjectProvenance param wants (provisioned-route sources only; app-url stays undeclared, the
- *  default branch that builder already handles). */
-export function subjectProvenanceArg(
-  subject: CuaSubjectProjection,
-  publicRepo: string | undefined,
-  subjectEnvNames: string[],
-): CuaSubjectProvenanceArg | undefined {
-  if (subject.source === "clone" && publicRepo) {
-    return {
-      source: "clone",
-      repo: publicRepo,
-      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
-      envNames: subjectEnvNames,
-      state: subject.state,
-    };
-  }
-  if (subject.source === "local-tree") {
-    return {
-      source: "local-tree",
-      ...(subject.archiveSha256 === undefined ? {} : { archiveSha256: subject.archiveSha256 }),
-      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
-      ...(subject.dirty === undefined ? {} : { dirty: subject.dirty }),
-      envNames: subjectEnvNames,
-      state: subject.state,
-    };
-  }
-  return undefined;
 }
 
 /**
@@ -172,11 +143,11 @@ export function subjectProvenanceArg(
  * commit; the aggregate carries it only when every participant agrees, and warns when they diverge.
  */
 export function aggregateCuaSubject(args: {
-  subjects: readonly CuaSubjectProjection[];
+  subjects: readonly RunSubjectProvenance[];
   outcomes: readonly ParticipantRunOutcome[] | undefined;
   participantCount: number;
   dryRun: boolean;
-}): { subject: CuaSubjectProjection; warnings: string[] } {
+}): { subject: RunSubjectProvenance; warnings: string[] } {
   const { subjects, outcomes, participantCount, dryRun } = args;
   const first = subjects[0]!;
   if (first.source !== "clone") return { subject: first, warnings: [] };

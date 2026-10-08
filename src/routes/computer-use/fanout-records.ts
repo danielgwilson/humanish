@@ -265,7 +265,10 @@ function fanoutSubjectEvents(
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.subject.declared",
-      message: `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the participant's own desktop sandbox).`,
+      message:
+        subject.source === "desktop-cli"
+          ? `Participant ${spec.planned.id}: subject product declared: ${subject.product}, used from a terminal window inside the participant's own desktop sandbox.`
+          : `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the participant's own desktop sandbox).`,
     });
   }
   return events;

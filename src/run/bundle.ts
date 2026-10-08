@@ -189,9 +189,11 @@ export interface RunSubjectStateStepRecord {
  * pre-existing bundles).
  */
 export interface RunSubjectProvenance {
-  source: "clone" | "app-url" | "local-tree";
+  source: "clone" | "app-url" | "local-tree" | "desktop-cli";
   /** Clone-route only. Honors policies.redactRepos exactly as the provenance event does. */
   repo?: string;
+  /** Desktop-cli only: the product the study declares in `subject.product.name`. */
+  product?: string;
   /** Clone-route: the cloned commit SHA. Local-tree route: the host-side HEAD at pack time,
    *  when the packed root was a git work tree. */
   commit?: string;
@@ -215,8 +217,8 @@ export interface RunSubjectProvenance {
      *   an external DB is still unpinned overall).
      * declared-not-run: steps declared but not (all) executed ok: dry-run contract bundles
      *   and failed live provisioning.
-     * undeclared: no subject.state block (stateless apps, app-url subjects), the explicit
-     *   "absence declared" marker that provenance requires when there is none.
+     * undeclared: no subject.state block (stateless apps, app-url and desktop-cli subjects),
+     *   the explicit "absence declared" marker that provenance requires when there is none.
      * external-public: an operator-declared, operator-owned public deployment used
      *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
