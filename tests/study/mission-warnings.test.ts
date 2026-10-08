@@ -5,8 +5,11 @@ import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { runStudy } from "../../src/run-study.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
+import { inspectStudyManifest } from "../../src/study/discover.js";
 import { describe, expect, it } from "vitest";
 import { parseStudy } from "../../src/study/config.js";
+import { parseResolvedPersona } from "../../src/study/persona.js";
+import { personaBackgroundWarnings } from "../../src/study/warnings.js";
 import { lab, type BaseName } from "../admission/fixtures.js";
 
 function parsed(mission: string, base: BaseName = "cuAppUrl") {
@@ -168,6 +171,10 @@ it.each(["cuAppUrl", "sharedExternal"] as const)(
     expect(warnings[0]).toContain("without-persona");
     expect(warnings[1]).toContain("without-background");
     expect(warnings.join("\n")).toContain(`humanish study show adm-${base.toLowerCase()} --json`);
+    const shown = await inspectStudyManifest(cwd, "example");
+    expect(
+      shown.warnings.filter((warning) => warning.includes("has no persona background")),
+    ).toEqual(warnings);
     const result = parseStudy(raw);
     if (!result.ok) throw new Error(result.error.message);
     const outcome = await runStudy(result.config, { cwd, dryRun: true });
@@ -242,6 +249,43 @@ it("uses inherited and overridden persona backgrounds for each participant", asy
   );
   expect(warnings).toHaveLength(1);
   expect(warnings[0]).toContain("overridden");
+});
+
+it("words a warning for each participant record whose persona has no background", () => {
+  const personas = new Map([
+    [
+      "experienced",
+      parseResolvedPersona(
+        { background: "Plans volunteer shifts in a notebook." },
+        { id: "experienced", name: "Experienced" },
+      ),
+    ],
+    [
+      "short-profile",
+      parseResolvedPersona(
+        { summary: "Tries a new planning app." },
+        { id: "short-profile", name: "Short Profile" },
+      ),
+    ],
+  ]);
+  const advice =
+    "Add a short, fictional background describing their experience and situation. Run humanish study show planning --json to see what the participant receives.";
+  expect(
+    personaBackgroundWarnings(
+      "planning",
+      [
+        { id: "inherited", personaId: "experienced" },
+        { id: "without-background", personaId: "short-profile" },
+        { id: "unread", personaId: "missing" },
+        { id: "lane-04", personaId: undefined },
+      ],
+      personas,
+    ),
+  ).toEqual([
+    `Participant without-background has no persona background because persona short-profile has no readable background. ${advice}`,
+    `Participant unread has no persona background because persona missing has no readable background. ${advice}`,
+    `Participant lane-04 has no persona background because no persona is assigned. ${advice}`,
+  ]);
 });
 
 it("warns for every participant added by a run count override", async () => {

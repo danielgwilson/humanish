@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A shared-world study whose persona file has an invalid background now stops with that error
+  before the route checks its keys, as a computer-use study already did.
+- When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
+  concurrency cap below the roster or about participants without an inbox, the `egressAllow`
+  warning now comes after those two.
+
 ### Fixed
 
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
