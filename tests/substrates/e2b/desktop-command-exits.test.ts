@@ -2,6 +2,7 @@ import { CommandExitError, SandboxNotFoundError, TimeoutError } from "@e2b/deskt
 import { PNG } from "pngjs";
 import { describe, expect, it, vi } from "vitest";
 
+import { e2bAccount } from "../../../src/substrates/e2b/connection.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { createE2BDesktopExecutor } from "../../../src/substrates/e2b/desktop-executor.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
@@ -121,7 +122,11 @@ describe("releasing an E2B sandbox that is already gone", () => {
       receipt: null,
     });
     expect(await allocation.close()).toEqual({ status: "released", reason: "already_gone" });
-    expect(await destroyE2BSandbox(module, "fake-sb-gone", { requestTimeoutMs: 1_000 })).toEqual({
+    expect(
+      await destroyE2BSandbox(e2bAccount(module, { apiKey: "synthetic" }), "fake-sb-gone", {
+        requestTimeoutMs: 1_000,
+      }),
+    ).toEqual({
       state: "already-gone",
     });
   });
@@ -135,7 +140,9 @@ describe("releasing an E2B sandbox that is already gone", () => {
     });
     expect(await allocation.close()).toEqual({ status: "unconfirmed", reason: "invalid_result" });
     expect(
-      await destroyE2BSandbox(module, "fake-sb-gone", { requestTimeoutMs: 1_000 }),
+      await destroyE2BSandbox(e2bAccount(module, { apiKey: "synthetic" }), "fake-sb-gone", {
+        requestTimeoutMs: 1_000,
+      }),
     ).toMatchObject({
       state: "kill-failed",
     });

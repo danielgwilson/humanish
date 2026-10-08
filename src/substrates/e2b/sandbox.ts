@@ -23,6 +23,7 @@ import {
   type OwnedDesktopAllocation,
 } from "../desktop-session.js";
 import type { StudyConfig } from "../../study/types.js";
+import { e2bAccount, type E2BAccount } from "./connection.js";
 import {
   E2B_DEBUG_KILL_DETAIL,
   E2BDesktopStartupError,
@@ -130,7 +131,8 @@ async function acquire(
       { ...request.retry, canRetry: () => ticket?.stopping() !== true },
     );
     ticket?.created(sandbox.sandboxId);
-    const allocation = ownE2BSandbox(module, sandbox.sandboxId, ticket);
+    // The release reaches the account the create used, whatever process.env names.
+    const allocation = ownE2BSandbox(e2bAccount(module, options), sandbox.sandboxId, ticket);
     try {
       // Best effort by contract: a failed write leaves the owner tags and the TTL as the
       // backstops and never fails the participant. One line per sandbox: a receipt the guard's
@@ -151,15 +153,6 @@ async function acquire(
   }
 }
 
-type SandboxKill = NonNullable<E2BDesktopModule["Sandbox"]["kill"]>;
-
-/** The provider's kill method bound to its class, or undefined when the SDK has none. */
-function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
-  return typeof module.Sandbox.kill === "function"
-    ? module.Sandbox.kill.bind(module.Sandbox)
-    : undefined;
-}
-
 /**
  * Kill one sandbox by exact id and read the answer in the release vocabulary both callers share.
  * The SDK resolves false for an id it no longer knows (a 404), and a SandboxNotFoundError,
@@ -169,7 +162,7 @@ function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
  * request, so it confirms nothing.
  */
 async function killById(
-  kill: SandboxKill | undefined,
+  kill: E2BAccount["kill"],
   sandboxId: string,
   options: { requestTimeoutMs: number },
 ): Promise<Exclude<DesktopReleaseResult, { status: "retained" }>> {
@@ -194,12 +187,11 @@ async function killById(
 }
 
 function ownE2BSandbox(
-  module: E2BDesktopModule,
+  account: E2BAccount,
   resourceId: string,
   ticket: SandboxCreateTicket | undefined,
 ): OwnedDesktopAllocation {
-  // Bind the provider method now, before any hook can replace it on the shared module.
-  const kill = boundKill(module);
+  const { kill } = account;
   return ownDesktopAllocation({
     resourceId,
     release: async () => {
@@ -275,11 +267,11 @@ export type E2BSandboxDestroyOutcome =
 /** Kill one sandbox by its exact id, for reclaim, and map the shared release result onto
  *  reclaim's persisted outcome. */
 export async function destroyE2BSandbox(
-  module: E2BDesktopModule,
+  account: E2BAccount,
   sandboxId: string,
   options: { requestTimeoutMs: number },
 ): Promise<E2BSandboxDestroyOutcome> {
-  const released = await killById(boundKill(module), sandboxId, options);
+  const released = await killById(account.kill, sandboxId, options);
   if (released.status === "released")
     return { state: released.reason === "terminated" ? "killed" : "already-gone" };
   switch (released.reason) {
@@ -305,17 +297,17 @@ export type E2BSandboxPresence =
  * type, means gone; any other error leaves the answer open.
  */
 export async function inspectE2BSandbox(
-  module: E2BDesktopModule,
+  account: E2BAccount,
   sandboxId: string,
   options: { requestTimeoutMs: number },
 ): Promise<E2BSandboxPresence> {
-  if (typeof module.Sandbox.getInfo !== "function")
+  if (account.getInfo === undefined)
     return {
       state: "check-failed",
       detail: "the installed @e2b/desktop SDK has no Sandbox.getInfo",
     };
   try {
-    await module.Sandbox.getInfo(sandboxId, options);
+    await account.getInfo(sandboxId, options);
     return { state: "running" };
   } catch (error) {
     if (isSandboxNotFoundError(error)) return { state: "already-gone" };
@@ -341,11 +333,11 @@ const TAG_SEARCH_MAX_PAGES = 3;
  * another run's sandbox, and the search stops after a few pages instead of walking the account.
  */
 export async function findE2BSandboxesByTags(
-  module: E2BDesktopModule,
+  account: E2BAccount,
   tags: Record<string, string>,
   options: { requestTimeoutMs: number },
 ): Promise<E2BTagSearch> {
-  if (typeof module.Sandbox.list !== "function")
+  if (account.list === undefined)
     return {
       status: "unavailable",
       sandboxes: [],
@@ -353,7 +345,7 @@ export async function findE2BSandboxesByTags(
     };
   const sandboxes: E2BListedSandbox[] = [];
   try {
-    const pages = module.Sandbox.list({
+    const pages = account.list({
       query: { metadata: tags },
       limit: TAG_SEARCH_PAGE_SIZE,
       requestTimeoutMs: options.requestTimeoutMs,

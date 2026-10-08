@@ -18,6 +18,7 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
+import { e2bAccount } from "../../../src/substrates/e2b/connection.js";
 import {
   acquireE2BDesktopSandbox,
   acquireE2BShellSandbox,
@@ -124,7 +125,10 @@ describe("E2B sandbox acquisition", () => {
     f.module.Sandbox.kill = replacement;
     expect(acquired.allocation.resourceId).toBe("fake-owned-desktop");
     expect(await acquired.allocation.close()).toEqual({ status: "released", reason: "terminated" });
-    expect(f.kill).toHaveBeenCalledWith("fake-owned-desktop", { requestTimeoutMs: 60_000 });
+    expect(f.kill).toHaveBeenCalledWith("fake-owned-desktop", {
+      requestTimeoutMs: 60_000,
+      apiKey: "synthetic",
+    });
     expect(replacement).not.toHaveBeenCalled();
     expect(f.list).not.toHaveBeenCalled();
   });
@@ -339,6 +343,7 @@ describe("E2B sandbox receipts", () => {
       expect(f.create).toHaveBeenCalledOnce();
       expect(f.kill).toHaveBeenCalledExactlyOnceWith("fake-owned-desktop", {
         requestTimeoutMs: 60_000,
+        apiKey: "synthetic",
       });
       expect(f.list).not.toHaveBeenCalled();
     },
@@ -524,7 +529,9 @@ describe("E2B sandbox owner tags", () => {
         }),
       },
     } as unknown as E2BDesktopModule;
-    const search = await findE2BSandboxesByTags(module, tags, { requestTimeoutMs: 1_000 });
+    const search = await findE2BSandboxesByTags(e2bAccount(module, { apiKey: "synthetic" }), tags, {
+      requestTimeoutMs: 1_000,
+    });
     expect(search.status).toBe("failed");
     expect(pages).toHaveLength(3);
     expect(search.sandboxes.map((listed) => listed.sandboxId)).toEqual([
@@ -546,7 +553,9 @@ describe("destroyE2BSandbox", () => {
         },
       },
     } as unknown as E2BDesktopModule;
-    return destroyE2BSandbox(module, "fake-sb-1", { requestTimeoutMs: 5_000 });
+    return destroyE2BSandbox(e2bAccount(module, { apiKey: "synthetic" }), "fake-sb-1", {
+      requestTimeoutMs: 5_000,
+    });
   };
 
   it.each(THROWN_KILL_MESSAGES)(
@@ -563,7 +572,10 @@ describe("destroyE2BSandbox", () => {
   it("maps each kill result to the reclaim outcome", async () => {
     const kill = vi.fn(async () => true);
     expect(await destroy(kill)).toEqual({ state: "killed" });
-    expect(kill).toHaveBeenCalledWith("fake-sb-1", { requestTimeoutMs: 5_000 });
+    expect(kill).toHaveBeenCalledWith("fake-sb-1", {
+      requestTimeoutMs: 5_000,
+      apiKey: "synthetic",
+    });
     expect(await destroy(async () => false)).toEqual({ state: "already-gone" });
     expect(
       await destroy(async () => {
@@ -685,9 +697,11 @@ describe("E2B debug mode", () => {
     vi.stubEnv("E2B_DEBUG", "true");
     const module = { Sandbox: { create: vi.fn(), kill: async () => true } };
     expect(
-      await destroyE2BSandbox(module as unknown as E2BDesktopModule, "fake-sb-1", {
-        requestTimeoutMs: 5_000,
-      }),
+      await destroyE2BSandbox(
+        e2bAccount(module as unknown as E2BDesktopModule, { apiKey: "synthetic" }),
+        "fake-sb-1",
+        { requestTimeoutMs: 5_000 },
+      ),
     ).toEqual({ state: "kill-failed", detail: expect.stringContaining("E2B_DEBUG=true") });
   });
 

@@ -14,7 +14,7 @@ import {
   inspectE2BSandbox,
   type E2BTagSearch,
 } from "../substrates/e2b/sandbox.js";
-import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
+import type { E2BAccount } from "../substrates/e2b/connection.js";
 import {
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
@@ -87,7 +87,7 @@ export interface Target {
  * kills leaves a record of each one not yet confirmed gone.
  */
 export function targetSet(options: {
-  e2b: E2BDesktopModule | undefined;
+  e2b: E2BAccount | undefined;
   check: boolean;
   requestTimeoutMs: number;
   earlier: ReclaimOutcome[];
@@ -160,7 +160,7 @@ export function targetSet(options: {
 
 /** Search E2B by each distinct tag set; done only when every search finished. */
 export async function searchTagSets(
-  e2b: E2BDesktopModule | undefined,
+  e2b: E2BAccount | undefined,
   tagSets: readonly Record<string, string>[],
   options: { requestTimeoutMs: number; unavailable: string },
 ): Promise<E2BTagSearch> {
@@ -190,7 +190,7 @@ export async function searchTagSets(
 
 /** Kill (or look up) one sandbox, and say what happened in reclaim's vocabulary. */
 async function actOn(
-  e2b: E2BDesktopModule | undefined,
+  e2b: E2BAccount | undefined,
   target: Target,
   options: { check: boolean; requestTimeoutMs: number },
 ): Promise<ReclaimOutcome> {

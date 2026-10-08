@@ -111,6 +111,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   bundle` already refused a run with more than 10,000 entries (#1669).
 - `humanish comms configure` refuses a local study copy over 1 MiB that it would replace, where
   it now cannot read the copy whole.
+- A route's kill of the E2B sandbox it created now carries the API key the create used. It carried
+  none, so the E2B SDK used `E2B_API_KEY` from `process.env`: a library caller whose key was only
+  in `RunStudyOptions.env`, or whose `process.env` held another key, got a kill that failed or
+  reached another account, and the sandbox ran until its create-time timeout, which
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES` can set to 24 hours. The kills, checks and tag search of
+  `humanish reclaim` and of the run's interrupt handler now carry `E2B_API_KEY` and `E2B_DOMAIN`
+  from the environment by name (#1708).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
