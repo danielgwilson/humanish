@@ -8,57 +8,27 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 
-- Reviewer notes. Pause the study timeline in an Observer served on 127.0.0.1 and choose
-  **Add a note at 02:31** to write what you saw at that moment, for the open participant or
-  the whole study. Notes show as marks on the study timeline and in a **Reviewer notes** list
-  in **Findings**, marked as written by a person, and reloading the Observer shows them at the
-  same moment. Each note is saved in the run directory as its own file, `notes/<id>.json`
-  (`humanish.run-note.v1`), and never rewritten, so notes added at the same time from the
-  Observer and the CLI are all kept. `humanish notes <run>` lists them and
-  `humanish notes <run> --add --at <mm:ss> [--participant <id>] "text"` adds one; `--json`
-  works for both. `--participant` takes the participant's id from the study, such as
-  `charge-nurse`, or its stream id, and listings name each participant by its caption. The
-  server takes a note only with the token in the page it rendered and from that page's own
-  address, and an Observer shared with `--expose` takes none. Text that looks like a secret or
-  a local path is replaced before it is saved, and `verify` scans the note files like other
-  run text. Feedback drafts include the notes under **Reviewer notes**; a draft or an HTML export
-  checks the notes again as it reads them and refuses ones that look like a secret.
+humanish 0.114.0 lets a reviewer note a moment of a recorded run, admits post-run analysis on its
+expected cost, and reads percent escapes as UTF-8 when it checks a run for secrets. Pause the study
+timeline in an Observer served on 127.0.0.1 and choose "Add a note at 02:31", or run
+`humanish notes <run> --add --at 02:31 "text"`. Each note is saved as its own file under `notes/`
+in the run directory, marked on the study timeline and listed under "Reviewer notes" in Findings,
+and `verify`, HTML export and feedback drafts read it. Analysis admission now prices input at 3
+bytes per token and output at 12,000 tokens plus 1,000 per participant, and runs an analysis when
+that expected cost plus 10% is within the cap, so the default $3 cap no longer refuses analyses
+billed at $1 to $2. A refusal names the expected cost, the worst case, the cap and the
+`humanish analyze --max-cost` command that admits it, and `study check` and live starts give the
+expected cost range for the study's participant count. In `analyze --json`,
+`admission.estimatedCostUsd` is now the expected cost. OpenAI computer-use traces list the
+impressions request in `conversation.requests` with `kind: impressions`. `verify` and bundle
+export also read percent escapes as UTF-8, so a percent-encoded password that starts with a
+non-ASCII letter grades its run blocked, and the known-value scrub finds a percent-encoded value
+with non-ASCII characters. The scrub also checks its matches against redaction markers by binary
+search, so 1 MiB of markers and values takes well under a second instead of about 5 s.
 
-### Fixed
-
-- Post-run analysis is no longer refused on an estimate several times its real cost. Admission
-  now prices input at 3 bytes per token and output at the size expected for the participant
-  count, and compares that expected cost plus a 10% margin with the cap. On 148 billed analyses
-  the expected cost was at or above the bill every time. The eight-participant run that the old
-  estimate put at $11.38 and that was billed $2.29 is now expected at $2.72 and admitted under the
-  default $3 cap.
-- A refused analysis says what it would cost and how to run it. The run output, `humanish review`
-  and the Observer give the expected cost, the worst case, the cap and
-  `humanish analyze --run <id> --max-cost <n>`, with `n` the worst case rounded up.
-- OpenAI computer-use traces now list the impressions-only request in `conversation.requests`,
-  marked with `kind: impressions`. In explicit-context mode its record includes the carried
-  exchanges, screenshots and estimated input tokens, using the same context budget and summaries
-  as a participant turn.
-- Benchmark analysis caps now follow each run's admission estimate with 10% headroom within the
-  remaining budget. `--analysis-max-usd` still sets a fixed cap. Results list cost refusals with
-  their estimate and cap, and state that those analyses are excluded from recall.
-- `verify` and bundle export also read percent escapes as UTF-8, and the known-value scrub finds a
-  percent-encoded value with non-ASCII characters. Each escape was read as one character, so
-  `caf%C3%A9` read as `cafÃ©`, and a percent-encoded redirect holding a password that starts
-  `Voilà` graded a run share-ready. The byte-by-byte reading is still scanned too: read as UTF-8,
-  `%E2%80%80` is a space that can end a match the byte reading keeps whole (#1645).
-- The known-value scrub checks each match against the `[REDACTED_...]` markers in the text by
-  binary search. It compared every match with every marker, so 1 MiB of alternating markers and
-  values took about 5 s; it now takes well under a second (#1646).
-
-### Changed
-
-- `study check` and live starts give the expected analysis cost range for the study's
-  participant count. `analyze --dry-run` prints the expected cost, the worst case and the cap.
-  In `analyze --json`, `admission.estimatedCostUsd` is now the expected cost, and `admission`
-  adds `worstCaseCostUsd` and `maxCostUsd`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.114.0)
 
 ## 0.113.0: Participant impressions, mission and persona warnings, local desktop capacity, key status, update notice (2026-10-07)
 
