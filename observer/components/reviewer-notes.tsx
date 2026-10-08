@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { formatElapsed } from "@/lib/player-model";
-import { byRunTime, type RunNote, type SaveRunNoteResult } from "@/lib/run-notes";
+import type { RunNote, SaveRunNoteResult } from "@/lib/run-notes";
 import { ReviewIcon } from "./review-icon";
 import { Popover } from "./ui/popover";
 import "@/styles/reviewer-notes.css";
+// note-shape.ts has no runtime imports, so the artifact stays self-contained
+// (observer/tests/contract-lock.test.ts).
+import { byRunTime, MAX_NOTE_TEXT } from "../../src/run/note-shape.js";
 
 /**
  * "Add a note at 02:31": a form for a note at the paused moment of the study timeline, for the
@@ -64,7 +67,7 @@ export function AddNote({
           <textarea
             name="note"
             rows={4}
-            maxLength={2000}
+            maxLength={MAX_NOTE_TEXT}
             value={text}
             onChange={(event) => setText(event.target.value)}
           />

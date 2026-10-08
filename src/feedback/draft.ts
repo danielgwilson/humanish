@@ -19,8 +19,10 @@ import {
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
-import { runNoteFile } from "../run/note-files.js";
-import { formatRunTime, runParticipantCaptions, type RunNotes } from "../run/notes.js";
+import { runNoteFile, type RunNotes } from "../run/note-files.js";
+import { byRunTime } from "../run/note-shape.js";
+import { formatRunTime } from "../run/notes.js";
+import { runParticipantCaptions } from "../run/participant-records.js";
 import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
@@ -343,9 +345,7 @@ export function withReviewerNotes(
 ): FeedbackDraft {
   if (notes === null || notes.notes.length === 0) return draft;
   const captions = runParticipantCaptions(bundle);
-  const ordered = [...notes.notes].sort(
-    (left, right) => left.atMs - right.atMs || left.createdAt.localeCompare(right.createdAt),
-  );
+  const ordered = byRunTime(notes.notes);
   return {
     ...draft,
     evidence: [

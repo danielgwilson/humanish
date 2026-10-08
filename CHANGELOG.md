@@ -31,6 +31,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   table and printed `Not a valid env name: function Object() { [native code] }`.
 - `humanish analyze` names its refusal command the way the rest of the CLI does, so a project
   that installs humanish as a dev dependency is told `npx humanish analyze --run <id> --max-cost <n>`.
+- `humanish export --local-only` keeps a `blocked` run `blocked` when the export's own analysis
+  check fails. It wrote `local_only` into the result and the file's share record, a better grade
+  than `verify` gave the run. Export now applies `verify`'s rule: a failed check can only move a
+  run toward `blocked`.
+- When `humanish notes --add` refuses a run with no readable run.json, the `verify` command it
+  suggests names this install's invocation, such as `npx humanish` in a project.
+- Adding reviewer notes at the same time, from the Observer or `humanish notes --add`, no longer
+  refuses one of them. A note was published with a hard link, so for a moment it had two links,
+  and another add's run directory check refused the run as having "no run.json humanish can read
+  safely". A note is now created under its own name, and a refusal from that check names what it
+  found (#1679).
 
 ### Changed
 
@@ -44,6 +55,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   invalid. The Codex participant was already sent these limits. The Observer reads a recorded
   closing account with more than 8 friction reports or more than 6 impressions as unreadable; no
   humanish version records more.
+- An HTML export and a feedback draft give the same share-safety reason for reviewer notes: "The
+  reviewer notes being shared match secret, token or local-path patterns." for a secret-shaped
+  value, and "The reviewer notes being shared hold encoded text the scan cannot read." for text
+  the scan cannot read.
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

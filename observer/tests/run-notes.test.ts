@@ -6,7 +6,7 @@ import { readInlineRunNotes, saveRunNote, RUN_NOTES_PLACEHOLDER } from "../lib/r
 const RUN = "noted-run";
 const TOKEN = "t".repeat(43);
 const note = {
-  id: "note-one",
+  id: "note-20260501t100000000z-000000000001",
   atMs: 4500,
   participant: null,
   nearest: null,
@@ -66,6 +66,19 @@ describe("reading the run-notes slot", () => {
       unreadable: true,
     });
     expect(readInlineRunNotes(page("{ not json"), RUN).unreadable).toBe(true);
+  });
+
+  it("refuses notes past the server's limits and an id the server never writes", () => {
+    const unreadable = (notes: unknown[]): boolean =>
+      readInlineRunNotes(page({ notes: { runId: RUN, notes, skipped: 0 }, write: null }), RUN)
+        .unreadable;
+
+    expect(unreadable([{ ...note, text: "x".repeat(2000) }])).toBe(false);
+    expect(unreadable(Array.from({ length: 500 }, () => note))).toBe(false);
+    expect(unreadable([{ ...note, text: "x".repeat(2001) }])).toBe(true);
+    expect(unreadable(Array.from({ length: 501 }, () => note))).toBe(true);
+    expect(unreadable([{ ...note, id: "note-one" }])).toBe(true);
+    expect(unreadable([{ ...note, createdAt: "yesterday" }])).toBe(true);
   });
 
   it("says when the server skipped note files it could not read", () => {

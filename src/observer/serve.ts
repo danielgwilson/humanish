@@ -5,7 +5,8 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import path from "node:path";
 
 import { pinDirectChildDirectory, pinDirectory } from "./pinned-files.js";
-import { createNotesWriter, NOTES_PATH, type NotesWriter } from "./notes-route.js";
+import { NOTES_PATH } from "../run/note-shape.js";
+import { createNotesWriter, type NotesWriter } from "./notes-route.js";
 import { renderObserver } from "./render.js";
 import { buildHistoryIndex, matchRunRoute, servedRunPaths, serveRunPath } from "./run-routes.js";
 import type { PinnedDirectory } from "./pinned-files.js";

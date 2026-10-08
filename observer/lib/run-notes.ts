@@ -1,6 +1,16 @@
-import type { RunNote } from "../../src/run/notes";
+// The note shape, its limits and the request path come from note-shape.ts, which has no runtime
+// imports, so no CLI code reaches the artifact (observer/tests/contract-lock.test.ts).
+import {
+  MAX_NOTE_TEXT,
+  MAX_RUN_NOTES,
+  NOTE_FIELD_LIMITS,
+  NOTE_ID,
+  NOTES_PATH,
+  NOTES_TOKEN_HEADER,
+  type RunNote,
+} from "../../src/run/note-shape.js";
 
-export type { RunNote } from "../../src/run/notes";
+export type { RunNote } from "../../src/run/note-shape.js";
 
 // Assembled at runtime so the literal appears once in the built artifact, in the index.html slot.
 export const RUN_NOTES_PLACEHOLDER = ["__HUMANISH", "RUN_NOTES__"].join("_");
@@ -19,23 +29,27 @@ const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 const text = (value: unknown, max: number): value is string =>
   typeof value === "string" && value.length > 0 && value.length <= max;
+const timestamp = (value: unknown): value is string =>
+  text(value, NOTE_FIELD_LIMITS.timestamp) && Number.isFinite(Date.parse(value));
 
+/** The server's note file schema (src/run/note-files.ts), without zod, which the Observer leaves out. */
 function isRunNote(value: unknown): value is RunNote {
   return (
     object(value) &&
-    text(value.id, 128) &&
+    typeof value.id === "string" &&
+    NOTE_ID.test(value.id) &&
     typeof value.atMs === "number" &&
     Number.isSafeInteger(value.atMs) &&
     value.atMs >= 0 &&
-    (value.participant === null || text(value.participant, 256)) &&
+    (value.participant === null || text(value.participant, NOTE_FIELD_LIMITS.participant)) &&
     (value.nearest === null ||
       (object(value.nearest) &&
-        text(value.nearest.participant, 256) &&
-        text(value.nearest.itemId, 256))) &&
-    text(value.text, 2000) &&
-    text(value.author, 80) &&
-    text(value.createdAt, 64) &&
-    (value.editedAt === null || text(value.editedAt, 64))
+        text(value.nearest.participant, NOTE_FIELD_LIMITS.participant) &&
+        text(value.nearest.itemId, NOTE_FIELD_LIMITS.itemId))) &&
+    text(value.text, MAX_NOTE_TEXT) &&
+    text(value.author, NOTE_FIELD_LIMITS.author) &&
+    timestamp(value.createdAt) &&
+    (value.editedAt === null || timestamp(value.editedAt))
   );
 }
 
@@ -47,7 +61,7 @@ function parseNotes(value: unknown, runId: string): { notes: RunNote[]; skipped:
   if (
     !object(value) ||
     !Array.isArray(value.notes) ||
-    value.notes.length > 500 ||
+    value.notes.length > MAX_RUN_NOTES ||
     !value.notes.every(isRunNote) ||
     typeof value.skipped !== "number" ||
     !Number.isSafeInteger(value.skipped) ||
@@ -82,13 +96,6 @@ export function readInlineRunNotes(doc: Document, runId: string): RunNotesState 
     : { notes: notes.notes, token, unreadable: notes.skipped > 0 };
 }
 
-/** Notes in run clock order, the earliest added first at the same moment. */
-export function byRunTime(notes: readonly RunNote[]): RunNote[] {
-  return [...notes].sort(
-    (left, right) => left.atMs - right.atMs || left.createdAt.localeCompare(right.createdAt),
-  );
-}
-
 export type SaveRunNoteResult =
   | { ok: true; note: RunNote; scrubbed: boolean }
   | { ok: false; message: string };
@@ -101,9 +108,9 @@ export async function saveRunNote(
 ): Promise<SaveRunNoteResult> {
   let response: Response;
   try {
-    response = await fetchImpl("/api/notes", {
+    response = await fetchImpl(NOTES_PATH, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-humanish-notes-token": token },
+      headers: { "content-type": "application/json", [NOTES_TOKEN_HEADER]: token },
       body: JSON.stringify(note),
     });
   } catch {

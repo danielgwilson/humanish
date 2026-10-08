@@ -7,6 +7,9 @@ import scriptedLive from "../../tests/golden/routes/scripted-live.json";
 import fanoutLive from "../../tests/golden/routes/computer-use-fanout-live.json";
 import sharedWorldLive from "../../tests/golden/routes/shared-world-concurrent-live.json";
 import { inflateProjections } from "../../tests/helpers/run-golden-projections";
+import { buildObserverData } from "../../src/observer/data";
+import type { RunBundle } from "../../src/run/bundle";
+import { runParticipantCaptions } from "../../src/run/participant-records";
 import { participantLabels } from "../lib/participant-label";
 import type { ObserverData } from "../lib/observer-data";
 
@@ -80,4 +83,43 @@ describe("participant labels", () => {
       "Persona 03",
     ]);
   });
+});
+
+describe("participants whose captions read the same", () => {
+  it("adds the participant id, then the stream id, where two captions would read the same", () => {
+    const { streams } = observerData(fanoutLive);
+    const recorded = streams.map((stream, index) => ({
+      ...stream,
+      label: "Same reader",
+      laneId: index < 2 ? "shared-lane" : stream.laneId!,
+    }));
+
+    expect([...participantLabels(recorded).entries()]).toEqual([
+      ["stream-001", "Same reader · shared-lane · stream-001"],
+      ["stream-002", "Same reader · shared-lane · stream-002"],
+      ["stream-003", "Same reader · desktop-power"],
+      ["stream-004", "Same reader · wide-researcher"],
+    ]);
+  });
+
+  it.each([
+    ["computer-use fan-out", fanoutLive],
+    ["shared world", sharedWorldLive],
+    ["terminal", terminalLive],
+    ["scripted", scriptedDry],
+  ] as const)(
+    "names each %s participant in notes and drafts as the Observer does",
+    (_route, golden) => {
+      const bundle = inflateProjections(golden)["run.json"] as RunBundle;
+      const repeated = {
+        ...bundle,
+        streams: bundle.streams.map((stream) => ({ ...stream, label: "Same reader" })),
+      };
+
+      for (const run of [bundle, repeated])
+        expect(runParticipantCaptions(run)).toEqual(
+          participantLabels(buildObserverData(run).streams),
+        );
+    },
+  );
 });

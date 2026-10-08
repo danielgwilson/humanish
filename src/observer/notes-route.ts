@@ -7,21 +7,29 @@
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { z } from "zod";
 
-import {
-  addRunNote,
-  MAX_NOTE_TEXT,
-  type RunNoteErrorCode,
-  type RunNoteInput,
-} from "../run/notes.js";
+import { MAX_NOTE_TEXT, NOTES_TOKEN_HEADER } from "../run/note-shape.js";
+import { addRunNote, type RunNoteErrorCode } from "../run/notes.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { isRecord } from "../run/type-guards.js";
 import { cli } from "../cli/invocation.js";
-import { hostAllowed } from "./http.js";
+import { hostAllowed, readBodyAtMost } from "./http.js";
 
-export const NOTES_PATH = "/api/notes";
-const TOKEN_HEADER = "x-humanish-notes-token";
 const MAX_BODY_BYTES = 16 * 1024;
+
+/**
+ * A request to add a note. Its text, time and participant are checked by addRunNote, which says
+ * what is wrong with each, so this checks only their types.
+ */
+const noteRequestSchema = z.object({
+  runId: z.string(),
+  atMs: z.number(),
+  participant: z
+    .string()
+    .nullish()
+    .transform((participant) => participant ?? null),
+  text: z.string(),
+});
 
 type NotesRefusalCode =
   | RunNoteErrorCode
@@ -89,27 +97,6 @@ function refuse(
   reply(response, status, { ok: false, error: { code, message } }, true);
 }
 
-/** The body, or null once it passes MAX_BODY_BYTES; reading stops there. */
-function readBody(request: IncomingMessage): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    const onData = (chunk: Buffer): void => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        request.off("data", onData);
-        request.pause();
-        resolve(null);
-        return;
-      }
-      chunks.push(chunk);
-    };
-    request.on("data", onData);
-    request.once("end", () => resolve(Buffer.concat(chunks)));
-    request.once("error", reject);
-  });
-}
-
 function sameToken(sent: string | string[] | undefined, token: string): boolean {
   if (typeof sent !== "string") return false;
   const left = Buffer.from(sent);
@@ -117,32 +104,16 @@ function sameToken(sent: string | string[] | undefined, token: string): boolean 
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-/** The note in a request body, or null when the body is not one. */
-function noteInput(body: Buffer): (RunNoteInput & { runId: string }) | null {
+/** The note request in a body, or null when the body is not one. */
+function noteRequest(body: Buffer): z.output<typeof noteRequestSchema> | null {
   let value: unknown;
   try {
     value = JSON.parse(body.toString("utf8"));
   } catch {
     return null;
   }
-  if (
-    !isRecord(value) ||
-    typeof value.runId !== "string" ||
-    typeof value.atMs !== "number" ||
-    typeof value.text !== "string" ||
-    !(
-      value.participant === undefined ||
-      value.participant === null ||
-      typeof value.participant === "string"
-    )
-  )
-    return null;
-  return {
-    runId: value.runId,
-    atMs: value.atMs,
-    participant: typeof value.participant === "string" ? value.participant : null,
-    text: value.text,
-  };
+  const parsed = noteRequestSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 export function createNotesWriter(options: NotesWriterOptions): NotesWriter {
@@ -179,7 +150,7 @@ export function createNotesWriter(options: NotesWriterOptions): NotesWriter {
           "HUMANISH_NOTES_ORIGIN",
           "A note can only come from the Observer page this server rendered, at the address it was opened from. Open the Observer from the address humanish printed and add the note there.",
         );
-      if (!sameToken(request.headers[TOKEN_HEADER], token))
+      if (!sameToken(request.headers[NOTES_TOKEN_HEADER], token))
         return refuse(
           response,
           403,
@@ -201,10 +172,10 @@ export function createNotesWriter(options: NotesWriterOptions): NotesWriter {
           `The request is larger than ${MAX_BODY_BYTES / 1024} KiB. A note holds at most ${MAX_NOTE_TEXT} characters.`,
         );
       if (Number(request.headers["content-length"] ?? 0) > MAX_BODY_BYTES) return tooLarge();
-      const body = await readBody(request);
+      const body = await readBodyAtMost(request, MAX_BODY_BYTES);
       if (body === null) return tooLarge();
 
-      const input = noteInput(body);
+      const input = noteRequest(body);
       if (input === null)
         return refuse(
           response,
