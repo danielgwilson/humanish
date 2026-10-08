@@ -25,7 +25,8 @@ expected cost range for the study's participant count. In `analyze --json`,
 impressions request in `conversation.requests` with `kind: impressions`. `verify` and bundle
 export also read percent escapes as UTF-8, so a percent-encoded password that starts with a
 non-ASCII letter grades its run blocked, and the known-value scrub finds a percent-encoded value
-with non-ASCII characters.
+with non-ASCII characters. The scrub also checks its matches against redaction markers by binary
+search, so 1 MiB of markers and values takes well under a second instead of about 5 s.
 
 [Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.114.0)
 
