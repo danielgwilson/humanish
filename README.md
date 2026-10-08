@@ -276,9 +276,10 @@ sensitive to capture in the first place.
 **What the automated gate enforces.** `humanish verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
 path shapes. It reads text only, judged by a file's bytes rather than its name:
-any file in the run folder that is not UTF-8 text, other than a stream
-screenshot or recording, keeps the run `local_only` (`UNSCANNED_ARTIFACT`). It
-matches after undoing escapes, percent-encoding, HTML entities and base64. It
+any file in the run folder that is not UTF-8 text or is larger than 32 MiB,
+other than a stream screenshot or recording, keeps the run `local_only`
+(`UNSCANNED_ARTIFACT`). It matches after undoing escapes, percent-encoding, HTML
+entities and base64. It
 does not yet detect free-form PII or PHI such as names, emails,
 phone numbers, dates of birth, or medical identifiers. Keeping those out depends
 on using synthetic data and on review, so `redaction: passed` means the
@@ -483,9 +484,9 @@ At most once a day, a command run at a terminal also asks the npm registry for
 the latest humanish version, and a later command prints one line on stderr when
 yours is older. That request is a plain `GET` of humanish's dist-tags with no
 machine id, version, command or path. It is skipped in CI, without a terminal,
-for `--json`, and with `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1` or
-`HUMANISH_NO_UPDATE_CHECK=1`. [TELEMETRY.md](TELEMETRY.md#the-update-check)
-describes it.
+for `--json`, and with `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1`,
+`HUMANISH_NO_UPDATE_CHECK=1` or update-notifier's `NO_UPDATE_NOTIFIER=1`.
+[TELEMETRY.md](TELEMETRY.md#the-update-check) describes it.
 
 ## Contribute
 

@@ -8,6 +8,8 @@ import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
   readContainedRegularFile,
+  refusalText,
+  PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import { isNodeError, isRecord } from "./type-guards.js";
@@ -81,11 +83,18 @@ export async function readImplicitProjectFile(
   if (!stats.isFile() || stats.nlink !== 1n) {
     throw new Error(`Implicit project file must be a single-link regular file: ${relativePath}`);
   }
-  const bytes = await readContainedRegularFile(projectRoot, relativePath.replace(/\\/g, "/"));
-  if (!bytes) {
+  const read = await readContainedRegularFile(
+    projectRoot,
+    relativePath.replace(/\\/g, "/"),
+    PROJECT_FILE_MAX_BYTES,
+  );
+  if (read.status === "refused" && read.reason === "too-large")
+    throw new Error(`Implicit project file ${refusalText(relativePath, read)}.`);
+  // Gone or swapped since it was inspected above.
+  if (read.status !== "read") {
     throw new Error(`Implicit project file changed while it was being read: ${relativePath}`);
   }
-  return bytes.toString("utf8");
+  return read.bytes.toString("utf8");
 }
 
 export async function readPackageName(

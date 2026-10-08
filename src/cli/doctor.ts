@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
+  DOCTOR_KEYS,
   probeKeySources,
   type KeyResolutionDeps,
   type DotenvLoad,
@@ -389,7 +390,7 @@ async function probeDoctorKeys(
   keyDeps: KeyResolutionDeps | undefined,
   dotenv: DotenvLoad | undefined,
 ): Promise<{ probes: KeySourceProbe[]; receivingKey: string | null }> {
-  const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
+  const keyNames = new Set(DOCTOR_KEYS);
   let receivingKey: string | null = null;
   if (study) {
     const { resolveStudyManifest } = await import("../study/discover.js");

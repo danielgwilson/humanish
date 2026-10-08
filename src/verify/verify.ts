@@ -6,8 +6,17 @@ import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js
 import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
+import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
-import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
+import {
+  readRunJsonIfExists,
+  readRunTextIfExists,
+  resolveRunPath,
+  runJsonValue,
+  type RunJsonRead,
+  type RunTextRead,
+} from "../run/locate.js";
+import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { isRecord } from "../run/type-guards.js";
 import { runNotFoundMessage } from "../run/run-not-found.js";
 import {
@@ -139,20 +148,26 @@ export async function verifyResolvedRun(
   }
 
   const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
-  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
-  const cleanupJson = await readRunJsonIfExists(runPaths, "cleanup.json");
-  const reviewJson = await readRunJsonIfExists(runPaths, "review.json");
-  const reviewMarkdown = await readRunTextIfExists(runPaths, "review.md");
+  const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  const bundle = runJsonValue(bundleRead);
+  const cleanupRead = await readRunJsonIfExists(runPaths, "cleanup.json");
+  const review = {
+    json: await readRunJsonIfExists(runPaths, "review.json"),
+    markdown: await readRunTextIfExists(runPaths, "review.md"),
+  };
 
-  checks.push(
-    ...bundlePresenceChecks(bundle, {
-      json: reviewJson !== null,
-      markdown: reviewMarkdown !== null,
-    }),
-  );
+  checks.push(...bundlePresenceChecks(bundleRead, review));
   const derivedPublicSafetyFindings: string[] = [];
   const unscannedArtifacts: string[] = [];
   const sandboxIdFiles: string[] = [];
+  let journaledSandboxIds: string[] = [];
+  try {
+    journaledSandboxIds = await readRunSandboxIds(runPaths);
+  } catch (error) {
+    if (!(error instanceof ContainedReadRefusedError)) throw error;
+    // Without the journal's ids, verify cannot clear any file of naming one.
+    unscannedArtifacts.push(SANDBOX_RECEIPTS_ARTIFACT);
+  }
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
     runPaths,
     derivedPublicSafetyFindings,
@@ -164,9 +179,7 @@ export async function verifyResolvedRun(
       ),
       screenshotPaths: isRunBundle(bundle) ? streamScreenshotPaths(bundle) : new Set(),
       // A run from before 0.110 with no receipts still names its ids in run.json.
-      sandboxIds: [
-        ...new Set([...(await readRunSandboxIds(runPaths)), ...keyedSandboxIds(bundle)]),
-      ],
+      sandboxIds: [...new Set([...journaledSandboxIds, ...keyedSandboxIds(bundle)])],
       sandboxIdFiles,
     },
     unscannedArtifacts,
@@ -207,7 +220,7 @@ export async function verifyResolvedRun(
           ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
           : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`,
   });
-  checks.push(...(await evidenceChecks(runPaths, bundle, cleanupJson)));
+  checks.push(...(await evidenceChecks(runPaths, bundle, cleanupRead)));
 
   const recordingOk = checks.every((check) => check.ok);
   if (derivedPublicSafetyFindings.length > 0)
@@ -310,9 +323,10 @@ const REQUIRED_SECTIONS = [
  * check says what it found, so a failing row never prints the rule it enforces.
  */
 function bundlePresenceChecks(
-  bundle: unknown,
-  review: { json: boolean; markdown: boolean },
+  bundleRead: RunJsonRead,
+  review: { json: RunJsonRead; markdown: RunTextRead },
 ): VerifyCheck[] {
+  const bundle = runJsonValue(bundleRead);
   const record = isRecord(bundle) ? bundle : undefined;
   const schema = record?.schema;
   const schemaOk = schema === RUN_BUNDLE_SCHEMA;
@@ -320,14 +334,27 @@ function bundlePresenceChecks(
   const redaction = isRecord(redactionRecord) ? redactionRecord.status : undefined;
   const missingSections = REQUIRED_SECTIONS.filter((key) => record?.[key] === undefined);
   const missingReview = [
-    ...(review.json ? [] : ["review.json is missing or not valid JSON"]),
-    ...(review.markdown ? [] : ["review.md is missing"]),
+    ...(review.json.status === "refused"
+      ? [refusalText("review.json", review.json)]
+      : runJsonValue(review.json) === null
+        ? ["review.json is missing or not valid JSON"]
+        : []),
+    ...(review.markdown.status === "refused"
+      ? [refusalText("review.md", review.markdown)]
+      : review.markdown.status === "missing"
+        ? ["review.md is missing"]
+        : []),
   ];
   return [
     {
       name: "run.json exists",
       ok: bundle !== null,
-      message: bundle === null ? "run.json is missing or not valid JSON" : "run.json is present",
+      message:
+        bundleRead.status === "refused"
+          ? refusalText(RUN_BUNDLE_FILE, bundleRead)
+          : bundle === null
+            ? "run.json is missing or not valid JSON"
+            : "run.json is present",
     },
     {
       name: "run schema",
@@ -424,8 +451,9 @@ const SHAPE_UNCHECKED = "not checked, because run.json failed the shape check";
 async function evidenceChecks(
   runPaths: PreparedRunArtifactPaths,
   bundle: unknown,
-  cleanupJson: unknown,
+  cleanupRead: RunJsonRead,
 ): Promise<VerifyCheck[]> {
+  const cleanupJson = runJsonValue(cleanupRead);
   const valid = isRunBundle(bundle) ? bundle : null;
   const pass = (message: string) => (valid ? message : SHAPE_UNCHECKED);
   const checks: VerifyCheck[] = [
@@ -473,15 +501,19 @@ async function evidenceChecks(
     ),
     {
       name: "cleanup receipt",
-      ok: cleanupJson === null || (isCleanupResult(cleanupJson) && cleanupJson.ok),
+      ok:
+        cleanupRead.status !== "refused" &&
+        (cleanupJson === null || (isCleanupResult(cleanupJson) && cleanupJson.ok)),
       message:
-        cleanupJson === null
-          ? "no cleanup.json; cleanup was not requested"
-          : !isCleanupResult(cleanupJson)
-            ? "cleanup.json is malformed"
-            : cleanupJson.ok
-              ? "cleanup.json records a successful cleanup"
-              : "cleanup.json records a failed cleanup",
+        cleanupRead.status === "refused"
+          ? `${refusalText("cleanup.json", cleanupRead)}, so verify cannot say how cleanup went`
+          : cleanupJson === null
+            ? "no cleanup.json; cleanup was not requested"
+            : !isCleanupResult(cleanupJson)
+              ? "cleanup.json is malformed"
+              : cleanupJson.ok
+                ? "cleanup.json records a successful cleanup"
+                : "cleanup.json records a failed cleanup",
     },
     findingsCheck(
       "rerun lineage",
@@ -554,7 +586,7 @@ function buildShareSafety(args: {
     });
   }
   if (args.unscannedArtifacts.length > 0) {
-    const paths = [...args.unscannedArtifacts].sort();
+    const paths = [...new Set(args.unscannedArtifacts)].sort();
     const shown = paths.slice(0, MAX_LISTED_UNSCANNED).join(", ");
     const more = paths.length - MAX_LISTED_UNSCANNED;
     reasons.push({

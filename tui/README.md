@@ -27,7 +27,12 @@ From the repo root (pnpm workspace):
 
 - `src/entry.tsx`: the bundle's only export (`startTui`); everything else is reached through
   it.
-- `src/app.tsx`: data load, keyboard handling, and the frame chrome.
+- `src/app.tsx`: the surface's state, the refresh timers, and keyboard handling.
+- `src/project.ts`: what the surface has read (`ProjectData`) and the per-screen row questions
+  over it: how many rows, which row is which, what Enter opens.
+- `src/frame-text.ts`: the header context, breadcrumb and key legend for the current screen.
+- `src/screen-body.tsx`: which screen component draws, and with which props.
+- `src/start-study.ts`: starts a study detached and waits for the run record it writes.
 - `src/navigation.ts`: the screen stack as a pure reducer, so the whole navigation model is
   testable without a terminal.
 - `src/screens/`: six screens. `labs`, `lab` and `run` are the main path; `all-runs` opens from

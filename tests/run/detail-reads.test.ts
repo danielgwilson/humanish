@@ -61,7 +61,9 @@ describe("run detail reads", () => {
       await unlink(runJson);
       await symlink(outside, runJson);
     };
-    expect(await readRunDetail(project, runId)).toBeNull();
+    await expect(readRunDetail(project, runId)).rejects.toThrow(
+      "run.json is not a single-link regular file.",
+    );
   });
 
   it("refuses a run.json swapped for a hardlink after the run resolved", async () => {
@@ -70,7 +72,9 @@ describe("run detail reads", () => {
       await unlink(runJson);
       await link(outside, runJson);
     };
-    expect(await readRunDetail(project, runId)).toBeNull();
+    await expect(readRunDetail(project, runId)).rejects.toThrow(
+      "run.json is not a single-link regular file.",
+    );
   });
 
   it("shows an observer outside the cwd as an absolute path, even with a shared name prefix", async () => {
