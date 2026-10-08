@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { decodeEscapes } from "../evidence/encoded-text.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { escapeRegExp } from "./text.js";
 
@@ -86,7 +85,7 @@ export function scrubTransientCommsText(text: string): string {
 
 /**
  * The scope's values as a scrubSecretValues scrub, which also finds them percent-encoded, escaped or
- * base64-encoded and returns decoded text. Outside a scope it changes nothing.
+ * base64-encoded. Outside a scope it changes nothing.
  */
 function transientCommsEncodedScrub(): (text: string) => string {
   const scope = scopes.getStore();
@@ -95,25 +94,14 @@ function transientCommsEncodedScrub(): (text: string) => string {
   return scrubSecretValues([...scope.values]);
 }
 
-const REDACTED = "[REDACTED_SECRET]";
-const markers = (text: string): number => text.split(REDACTED).length - 1;
-
 /**
  * A scrub for text a model writes: each scope value as written and in its encoded forms
- * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Text that
- * holds an encoded value is returned decoded with each value replaced. Text without one keeps its
- * original spelling, so an exact quote that holds an escape still matches its evidence. The literal
- * scrub runs first, before decoding can rewrite a value that itself holds an escape, and last,
- * because the encoded scrub leaves text inside marker-shaped spans alone. Outside a scope it
- * changes nothing.
+ * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Each value
+ * is replaced where it is written, so the rest of the text keeps its spelling and an exact quote
+ * that holds an escape still matches its evidence. The literal scrub runs first and last, so text
+ * is never scrubbed less than scrubTransientCommsText scrubs it. Outside a scope it changes nothing.
  */
 export function transientCommsKnownValueScrub(): (text: string) => string {
   const encoded = transientCommsEncodedScrub();
-  return (text) => {
-    const literal = scrubTransientCommsText(text);
-    const found = encoded(literal);
-    return scrubTransientCommsText(
-      markers(found) > markers(decodeEscapes(literal)) ? found : literal,
-    );
-  };
+  return (text) => scrubTransientCommsText(encoded(scrubTransientCommsText(text)));
 }

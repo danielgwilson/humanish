@@ -53,6 +53,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   binary search. It compared every match with every marker, so 1 MiB of alternating markers and
   values took about 5 s; it now takes well under a second (#1646).
 
+- The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
+  (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
+  humanish writes, `[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]` and `[REDACTED_RUNTIME_PATH]`,
+  and only text wholly inside one. It replaces each value where it is written, so analysis text
+  around a value keeps its escapes: `a%20b 7%343921` is stored as `a%20b [REDACTED_SECRET]`
+  where it was `a b [REDACTED_SECRET]`. If replacing a value spells one again, as a value holding
+  part of a marker can, the whole text is replaced (#1646).
+
 ### Changed
 
 - `study check` and live starts give the expected analysis cost range for the study's

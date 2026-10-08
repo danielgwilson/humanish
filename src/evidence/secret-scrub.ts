@@ -3,11 +3,15 @@
 // a JSON body gives it, so a token that reaches the text percent-encoded or base64-encoded is still
 // removed. Pattern redaction (redactText) runs after this and finds secrets by shape.
 
-import { decodeEscapes } from "./encoded-text.js";
+import { decodeEscapesWithOrigins, type DecodedWithOrigins } from "./encoded-text.js";
 
 const REDACTED = "[REDACTED_SECRET]";
-// A marker already in the text, from this scrub or from redactText. No value is matched inside one.
-const MARKER = /\[REDACTED_[A-Z0-9_]+\]/g;
+// The markers this scrub and redactText write. A form wholly inside one is the marker's own text,
+// as when a value is part of the marker's name. Other bracketed text, such as
+// `[REDACTED_373433393231]`, is searched like any text.
+const MARKER = /\[REDACTED_(?:SECRET|LOCAL_PATH|RUNTIME_PATH)\]/g;
+// Every escape decodeEscapes undoes starts with one of these.
+const ESCAPE_START = /[\\%&]/;
 // The shortest encoded form searched for. Shorter base64 or hex runs are ordinary text often enough
 // that matching them would redact words. A value itself is searched for at any length.
 const MIN_ENCODED_FORM = 8;
@@ -66,10 +70,10 @@ export function encodedForms(value: string): string[] {
 }
 
 /**
- * Whether [at, end) overlaps a marker. The markers are one regex's matches, so they are sorted and
- * disjoint: only the first marker that ends after `at` can also start before `end`.
+ * Whether [at, end) lies wholly inside one marker. The markers are one regex's matches, so they are
+ * sorted and disjoint: only the first marker that ends after `at` can hold it.
  */
-function overlapsMarker(markers: readonly [number, number][], at: number, end: number): boolean {
+function insideMarker(markers: readonly [number, number][], at: number, end: number): boolean {
   let low = 0;
   let high = markers.length;
   while (low < high) {
@@ -77,23 +81,48 @@ function overlapsMarker(markers: readonly [number, number][], at: number, end: n
     if (markers[middle]![1] > at) high = middle;
     else low = middle + 1;
   }
-  return low < markers.length && markers[low]![0] < end;
+  return low < markers.length && markers[low]![0] <= at && end <= markers[low]![1];
 }
 
-/** Every occurrence of every form, outside the markers, merged where they overlap or touch. */
-function secretSpans(text: string, forms: readonly string[]): [number, number][] {
+/** Each occurrence of each form in `text` that is not wholly inside a marker, passed to `found`. */
+function findForms(
+  text: string,
+  forms: readonly string[],
+  found: (at: number, end: number) => void,
+): void {
   const markers: [number, number][] = [];
   for (const match of text.matchAll(MARKER)) {
     const start = match.index ?? 0;
     markers.push([start, start + match[0].length]);
   }
-  const spans: [number, number][] = [];
-  for (const form of forms) {
+  for (const form of forms)
     for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + 1)) {
       const end = at + form.length;
-      if (!overlapsMarker(markers, at, end)) spans.push([at, end]);
+      if (!insideMarker(markers, at, end)) found(at, end);
+    }
+}
+
+/**
+ * Every stretch of the text that holds a form as written, in decodeEscapes or in decodeEscapesUtf8,
+ * merged where they overlap or touch. A form found in a decoding covers every character of the
+ * text its decoded characters came from, so a value split by escapes is covered whole.
+ */
+function secretSpans(text: string, forms: readonly string[]): [number, number][] {
+  const spans: [number, number][] = [];
+  findForms(text, forms, (at, end) => spans.push([at, end]));
+  const decodings: DecodedWithOrigins[] = [];
+  if (ESCAPE_START.test(text)) {
+    const decoded = decodeEscapesWithOrigins(text);
+    if (decoded.text !== text) decodings.push(decoded);
+    // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
+    // the byte reading writes as a character from U+0080 to U+00FF.
+    if (/[\x80-\xff]/.test(decoded.text)) {
+      const utf8 = decodeEscapesWithOrigins(text, true);
+      if (utf8.text !== decoded.text) decodings.push(utf8);
     }
   }
+  for (const { text: decoded, starts, ends } of decodings)
+    findForms(decoded, forms, (at, end) => spans.push([starts[at]!, ends[end - 1]!]));
   spans.sort((left, right) => left[0] - right[0]);
   const merged: [number, number][] = [];
   for (const span of spans) {
@@ -107,22 +136,26 @@ function secretSpans(text: string, forms: readonly string[]): [number, number][]
 /**
  * A scrub that replaces each non-empty value and its encoded forms with `[REDACTED_SECRET]`. Every
  * occurrence of every form is found on its own, and overlapping finds are merged into one span, so
- * a value that overlaps another is removed whole wherever each starts. The scrub reads the text
- * through decodeEscapes, the decoder verify uses, and returns the decoded text: a warning with
- * percent-encoding, JSON escapes or HTML references shows them decoded, with the values removed.
- * That finds a value written partly encoded, which no single encoded form matches.
+ * a value that overlaps another is removed whole wherever each starts. The scrub reads the text as
+ * written and through decodeEscapes and decodeEscapesUtf8, the decoders verify uses, which finds a
+ * value written partly encoded that no single encoded form matches. Each value is replaced where
+ * it is written, and the rest of the text keeps its spelling.
  */
 export function scrubSecretValues(values: readonly string[]): (text: string) => string {
   const forms = [...new Set(values.filter((value) => value.length > 0).flatMap(encodedForms))];
   if (forms.length === 0) return (text) => text;
   return (text) => {
-    const decoded = decodeEscapes(text);
+    const spans = secretSpans(text, forms);
+    if (spans.length === 0) return text;
     let result = "";
     let cursor = 0;
-    for (const [start, end] of secretSpans(decoded, forms)) {
-      result += decoded.slice(cursor, start) + REDACTED;
+    for (const [start, end] of spans) {
+      result += text.slice(cursor, start) + REDACTED;
       cursor = end;
     }
-    return result + decoded.slice(cursor);
+    result += text.slice(cursor);
+    // A value that holds part of a marker, such as `ET]x`, can be spelled again by the marker
+    // that replaced it and the text after it. The scrub then replaces the whole text.
+    return secretSpans(result, forms).length === 0 ? result : REDACTED;
   };
 }

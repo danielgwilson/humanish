@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { redactText } from "../../src/evidence/redaction.js";
 import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
   transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
+import { survivingForm } from "../helpers/scrub-model.js";
+
+/** The known-value scrub of `text` in a scope that holds `values`. */
+const knownValueScrub = (values: string[], text: string): Promise<string> =>
+  withTransientCommsSecrets(async () => {
+    registerTransientCommsSecrets(values);
+    return transientCommsKnownValueScrub()(text);
+  });
+const HEX = Buffer.from("743921").toString("hex");
 
 describe("transient run narration secrets", () => {
   it("matches literal overlapping values longest-first without altering ordinary text", async () => {
@@ -111,5 +121,46 @@ describe("transient run narration secrets", () => {
       expect(scrubbed).not.toContain("passAword");
       expect(scrubbed).not.toContain(hex);
     });
+  });
+
+  it("finds a value hex-encoded or split inside a marker-shaped span", async () => {
+    for (const text of [`[REDACTED_${HEX}]`, "[REDACTED_74%33921]"])
+      expect(await knownValueScrub(["743921"], text)).toBe("[REDACTED_[REDACTED_SECRET]]");
+  });
+
+  it("keeps the spelling of the text around an encoded value", async () => {
+    expect(await knownValueScrub(["743921"], "a%20b 7%343921 c%2Fd")).toBe(
+      "a%20b [REDACTED_SECRET] c%2Fd",
+    );
+    expect(await knownValueScrub(["743921"], `%5BREDACTED_SECRET%5D ${HEX}`)).toBe(
+      "%5BREDACTED_SECRET%5D [REDACTED_SECRET]",
+    );
+  });
+
+  it("removes a percent-encoded value with a non-ASCII character", async () => {
+    expect(await knownValueScrub(["café-secret"], "refused caf%C3%A9-secret here")).toBe(
+      "refused [REDACTED_SECRET] here",
+    );
+  });
+
+  it("leaves no value that holds a marker when decoding puts text next to the marker", async () => {
+    const values = ["[REDACTED_SECRET]x", "743921"];
+    const scrubbed = await knownValueScrub(values, `[REDACTED_SECRET]x%78%78 ${HEX}`);
+    expect(survivingForm(values, scrubbed)).toBeUndefined();
+  });
+
+  it("shows a value that is part of a marker only inside markers", async () => {
+    for (const text of ["[REDACTED_SECRET]", "SECRET [REDACTED_SECRET]"])
+      expect(survivingForm(["SECRET"], await knownValueScrub(["SECRET"], text))).toBeUndefined();
+    // redactText writes [REDACTED_LOCAL_PATH] after the scrub; the value is the marker's own text.
+    const redacted = redactText(await knownValueScrub(["LOCAL_PATH"], "/tmp/work LOCAL_PATH"));
+    expect(redacted).toBe("[REDACTED_LOCAL_PATH] [REDACTED_SECRET]");
+    expect(survivingForm(["LOCAL_PATH"], redacted)).toBeUndefined();
+  });
+
+  it("leaves a marker as it is when a value is the whole marker, which shows nothing more", async () => {
+    expect(await knownValueScrub(["[REDACTED_SECRET]"], "[REDACTED_SECRET]")).toBe(
+      "[REDACTED_SECRET]",
+    );
   });
 });
