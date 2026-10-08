@@ -46,13 +46,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   text becomes `[REDACTED_SECRET]` (#1646).
 - Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
   operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
-- A local path in JSON text, such as a terminal transcript, now ends at an escaped line break,
-  tab, carriage return, form feed or quote, or at a `\u` escape of whitespace, a quote, a backtick,
-  `<`, `>` or `)`, as it ends at the character itself. Redaction used to remove the text after the
-  path up to the next space, so `humanish init` read `cwd: [REDACTED_RUNTIME_PATH]  AGENTS.md`
-  without its line break and `created:` header. An escaped backslash (`\\`) is still part of the
-  path. In text that is not JSON, a path holding one backslash followed by `n`, `r`, `t`, `f`, `"`
-  or such a `\u` escape now ends at that backslash as well (#1702).
+- A terminal run's transcript and event stream keep the text after a local path in the agent's
+  Codex output. Each complete stdout line that is JSON is redacted string by string, keys
+  included: secrets first in the line as written, then each string as the text it decodes to,
+  then the whole line again. A path inside a string now ends at a line break or tab in that string.
+  Redaction used to read the encoded line, so `humanish init` read
+  `cwd: [REDACTED_RUNTIME_PATH]  AGENTS.md` without its line break and `created:` header. Stderr,
+  lines that are not JSON and an unfinished line are redacted as before, and JSON written inside a
+  string is read as raw text, as before (#1702).
+- Redacting a local path that holds a long run of backslashes takes time linear in the run. A path
+  holding 40,000 backslashes and then a letter took 1.4 s.
 - A terminal run's review, its no-spend statement and the provider line of
   `terminal-ledgers.json` now give the participant's token estimate that run.json's cost summary
   gives, for example "Provider tokens (382,595 input, ...) are estimated at 0.37157 USD, the

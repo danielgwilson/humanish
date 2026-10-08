@@ -169,79 +169,25 @@ export const REDACTION_MARKERS = {
   lobbyCode: "[REDACTED_LOBBY_CODE]",
 } as const;
 
-// Where a POSIX local path starts. A start that ends in `/` runs on through the path's tail
-// (posixPathEnd); a home directory with nothing after its name ends at the name.
-const POSIX_PATH_STARTS: Array<[RegExp, string]> = [
-  [/\/private\/var\/folders\//g, REDACTION_MARKERS.localPath],
-  [/\/var\/folders\//g, REDACTION_MARKERS.localPath],
-  [/\/private\/tmp\//g, REDACTION_MARKERS.localPath],
-  [/\/tmp\//g, REDACTION_MARKERS.localPath],
-  [/\/Users\/[A-Za-z0-9._-]+\/?/g, REDACTION_MARKERS.localPath],
-  [/\/home\/[A-Za-z0-9._-]+\/?/g, REDACTION_MARKERS.runtimePath],
-];
-
-// A Windows profile path, with `\`, `\\` (JSON-escaped) or `/` between segments. A match never
-// ends in a backslash, so it cannot swallow the escape of a closing quote. Its separator is a
-// backslash, so it reads no escapes: `\notes` is a folder there.
-const WINDOWS_PROFILE_PATH =
-  /\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:\\\\|\\|\/)[^\\/\s"'`<>)]+[^\s"'`<>)]*/g;
-
-const LOCAL_PATH_PATTERNS: readonly RegExp[] = [
-  ...POSIX_PATH_STARTS.map(([start]) => start),
-  WINDOWS_PROFILE_PATH,
+const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
+  [/\/private\/var\/folders\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/var\/folders\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/private\/tmp\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/tmp\/[^\s"'`<>)]*/g, REDACTION_MARKERS.localPath],
+  [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, REDACTION_MARKERS.localPath],
+  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, REDACTION_MARKERS.runtimePath],
+  // A Windows profile path, with `\`, `\\` (JSON-escaped) or `/` between segments. A match never
+  // ends in a backslash, so it cannot swallow the escape of a closing quote.
+  [
+    /\b[A-Za-z]:(?:\\\\|\\|\/)Users(?:\\\\|\\|\/)[^\\/\s"'`<>)]+[^\s"'`<>)]*/g,
+    REDACTION_MARKERS.localPath,
+  ],
 ];
 
 /** Every pattern containsSensitive tests. A test pins each to ASCII, which scanEncodedText relies on. */
 export function sensitivePatterns(): readonly RegExp[] {
-  return [...SECRET_PATTERNS, ...LOCAL_PATH_PATTERNS];
+  return [...SECRET_PATTERNS, ...LOCAL_PATH_PATTERNS.map(([pattern]) => pattern)];
 }
-
-// A path's tail runs to whitespace, a quote, a backtick, `<`, `>` or `)`. Much of the text redacted
-// is JSON (a terminal transcript is JSON lines), so the tail also ends where one backslash escapes
-// one of those characters: `\n`, `\r`, `\t`, `\f`, `\"` or a `\u` escape. An escaped backslash
-// (`\\`) is a backslash in the path, so the tail reads backslashes in pairs: an even run is path
-// content at any nesting depth, and only an odd run can end the path. The tail is read by a loop
-// over sticky runs: a regex that repeats a group with alternatives keeps a backtrack entry per
-// repeat, and overflows V8's stack on a path several megabytes long.
-const PATH_RUN = /[^\s"'`<>)\\]*/y;
-const ENDING_ESCAPE =
-  /\\(?:[nrtf"]|u(?:000[9a-dA-D]|002[0279]|003[ceCE]|0060|00[aA]0|1680|200[0-9aA]|202[89fF]|205[fF]|3000|[fF][eE][fF][fF]))/y;
-
-/** Where a POSIX path whose tail starts at `from` ends. */
-function posixPathEnd(text: string, from: number): number {
-  let at = from;
-  for (;;) {
-    PATH_RUN.lastIndex = at;
-    PATH_RUN.test(text);
-    at = PATH_RUN.lastIndex;
-    if (text[at] !== "\\") return at;
-    ENDING_ESCAPE.lastIndex = at;
-    if (ENDING_ESCAPE.test(text)) return at;
-    at += text[at + 1] === "\\" ? 2 : 1;
-  }
-}
-
-/** `text` with each POSIX path that starts at a `start` match replaced by `marker`. */
-function redactPosixPaths(text: string, start: RegExp, marker: string): string {
-  let redacted = "";
-  let copied = 0;
-  start.lastIndex = 0;
-  for (let found = start.exec(text); found !== null; found = start.exec(text)) {
-    const startEnd = found.index + found[0].length;
-    const end = found[0].endsWith("/") ? posixPathEnd(text, startEnd) : startEnd;
-    redacted +=
-      text.slice(copied, found.index) + withClosingEscape(marker, text.slice(found.index, end));
-    copied = end;
-    start.lastIndex = end;
-  }
-  return redacted + text.slice(copied);
-}
-
-// A redacted path may end in backslashes: escaped backslashes at its end, or the first half of an
-// escape whose second half, such as the quote it escapes, arrives in the next stream callback.
-// Keep them so redaction cannot turn a string's contents into JSON delimiters.
-const withClosingEscape = (marker: string, path: string): string =>
-  marker + (path.match(/\\+$/)?.[0] ?? "");
 
 // Sticky/global regexes carry lastIndex state across .test() calls. Always reset
 // before a detection test so the shared singletons are safe to reuse.
@@ -268,17 +214,31 @@ export function containsCredential(text: string): boolean {
 /** True if the text contains any secret-shaped token or known local path. */
 export function containsSensitive(text: string): boolean {
   return (
-    containsSecret(text) || LOCAL_PATH_PATTERNS.some((pattern) => matchesPattern(pattern, text))
+    containsSecret(text) || LOCAL_PATH_PATTERNS.some(([pattern]) => matchesPattern(pattern, text))
   );
 }
 
+// A local-path match may end in the backslashes escaping its closing quote in
+// serialized JSON (including JSON nested inside a terminal event). Keep that
+// suffix so redaction cannot turn a string's contents into JSON delimiters.
+// This also works when the closing quote arrives in a later stream callback.
 function redactLocalPaths(text: string, label?: string): string {
-  return POSIX_PATH_STARTS.reduce(
-    (current, [start, marker]) => redactPosixPaths(current, start, label ?? marker),
+  return LOCAL_PATH_PATTERNS.reduce(
+    (current, [pattern, replacement]) =>
+      current.replace(
+        pattern,
+        (match: string) => (label ?? replacement) + trailingBackslashes(match),
+      ),
     text,
-  ).replace(WINDOWS_PROFILE_PATH, (match: string) =>
-    withClosingEscape(label ?? REDACTION_MARKERS.localPath, match),
   );
+}
+
+// Read from the end: `/\\+$/` retries a run of backslashes from each of its characters when
+// something follows the run, which took 1.4 s on a path holding 40,000 of them.
+function trailingBackslashes(text: string): string {
+  let start = text.length;
+  while (start > 0 && text.charCodeAt(start - 1) === 0x5c) start -= 1;
+  return text.slice(start);
 }
 
 /**
@@ -397,6 +357,41 @@ function redactSecrets(text: string): string {
 /** Redact secrets to [REDACTED_SECRET] and local paths to their path labels. */
 export function redactText(text: string): string {
   return redactLocalPaths(redactSecrets(text));
+}
+
+/**
+ * Redact one line that may be JSON, such as a line of `codex exec --json` output, keeping the text
+ * after a local path inside a string. Secrets are redacted in the line as written first, as
+ * redactText does, so a credential's name still marks its value. When the line is still JSON,
+ * each string, keys included, is then redacted as the text it decodes to and written back, so a
+ * path ends at a line break or tab in the string, as it does in raw text. redactText then runs
+ * over the whole line. Any other line gets exactly what redactText gives it. JSON written inside a
+ * string is read as raw text, as redactText reads it.
+ */
+export function redactJsonLine(line: string): string {
+  const secretsRedacted = redactSecrets(line);
+  try {
+    JSON.parse(secretsRedacted);
+  } catch {
+    return redactLocalPaths(secretsRedacted);
+  }
+  return redactText(rewriteJsonStrings(secretsRedacted, redactText));
+}
+
+/** `json`, which JSON.parse accepts, with each string in it replaced by `rewrite` of its value. */
+function rewriteJsonStrings(json: string, rewrite: (value: string) => string): string {
+  let rewritten = "";
+  let copied = 0;
+  // In valid JSON every quote outside a string opens one, and an escape is a backslash and the
+  // character after it (a `\u` escape's four digits read as plain characters).
+  for (let open = json.indexOf('"'); open >= 0; open = json.indexOf('"', copied)) {
+    let close = open + 1;
+    while (json[close] !== '"') close += json[close] === "\\" ? 2 : 1;
+    const value = JSON.parse(json.slice(open, close + 1)) as string;
+    rewritten += json.slice(copied, open) + JSON.stringify(rewrite(value));
+    copied = close + 1;
+  }
+  return rewritten + json.slice(copied);
 }
 
 /** Redact every sensitive match (secrets and paths) to a single [REDACTED_SECRET] label. */

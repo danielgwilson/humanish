@@ -161,11 +161,13 @@ async function settleLiveLedgers(
   const runPaths = inputs.run.paths;
   const { recordLifecycle, lifecycle, commandLog, interventions, terminalEvents } = inputs.recorder;
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
-  // The cost ledger is derived, with the null discipline: the provider line carries the trace's
-  // token estimate with no measured charge, and product/media/payment are null by default (core
-  // has no signal). The costProbe hook lets tests inject known spend to exercise the fail-closed
-  // cap without a real billable run.
-  const injectedLines = costProbe?.();
+  // The cost ledger is derived, with the null discipline: provider spend from the trace's
+  // tokenUsage.costUsd when present, else null with the trace's token estimate beside it, and
+  // product/media/payment null by default (core has no signal). The costProbe hook lets tests
+  // inject known spend to exercise the fail-closed cap without a real billable run.
+  const injectedLines = costProbe?.(
+    trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
+  );
   if (costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({ trace, ...(injectedLines ? { injectedLines } : {}) });
   const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null, trace.tokenUsage);

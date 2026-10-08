@@ -9,7 +9,15 @@ import { parseStudy } from "../../../src/study/config.js";
 import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
+import {
+  estimateAggregatedTurnCost,
+  estimateAllocatedDesktopCost,
+} from "../../../src/run/pricing.js";
+import {
+  buildCostLedger,
+  buildNoSpendProof,
+  evaluateCapsAgainstLedger,
+} from "../../../src/routes/terminal/ledger.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
@@ -653,5 +661,22 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     const tokens = cost.breakdown.find((line: { kind: string }) => line.kind === "model-tokens");
     expect(cost.estimatedTotalUsd).toBe(tokens.estimatedCostUsd);
     expect(cost.fullyEstimated).toBe(false);
+  });
+});
+
+describe("a provider charge the trace measured", () => {
+  // The Codex usage parser records no costUsd today. A trace that carries one is a measured
+  // charge: it is the provider line's usd and counts against maxUsd.
+  it("is the provider line's usd and counts against the cap", () => {
+    const tokenUsage = { input: 20, output: 0, costUsd: 1 };
+    const trace = {
+      tokenUsage,
+      estimatedCost: estimateAggregatedTurnCost(tokenUsage, DEFAULT_OPENAI_CU_MODEL),
+    };
+    const ledger = buildCostLedger({ trace });
+    expect(ledger.lines.provider).toMatchObject({ usd: 1, source: "provider-token-usage" });
+    expect(ledger.knownTotalUsd).toBe(1);
+    expect(buildNoSpendProof(ledger, 0, tokenUsage).satisfied).toBe(false);
+    expect(evaluateCapsAgainstLedger(ledger, { maxUsd: 0 }).ok).toBe(false);
   });
 });

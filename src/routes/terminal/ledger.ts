@@ -7,10 +7,11 @@ import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
 /**
  * Build the spend ledger from the captured session. The null discipline:
- *   - The `provider` line has no measured charge, so its `usd` is null. When the trace's
- *     `estimatedCost` prices its tokens, the line carries that price as `estimatedUsd`: the figure
- *     run.json's model-tokens line gives, from the same object. Tokens with no rate, and a run
- *     with no token count, stay null with the reason in the note.
+ *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
+ *     carries it (a measured value, incl. a measured 0). Otherwise its `usd` is null = not
+ *     measured, and when the trace's `estimatedCost` prices the tokens, the line carries that
+ *     price as `estimatedUsd`: the figure run.json's model-tokens line gives, from the same
+ *     object. Tokens with no rate, and a run with no token count, say so in the note.
  *   - product/media/payment are `null` by default: core has no signal for those categories, and
  *     only a test can supply one, through `StudyDeps.costProbe`.
  * `injectedLines` lets a test supply known spend for a category,
@@ -57,14 +58,20 @@ function unmeasured(category: CostCategory): CostLine {
   };
 }
 
-/** The participant's model tokens: estimated from the trace's price, unpriced, or not counted. */
+/** The participant's model tokens: a measured charge, an estimate, unpriced, or not counted. */
 function providerLine(trace: Pick<ActorTrace, "tokenUsage" | "estimatedCost">): CostLine {
   const { tokenUsage, estimatedCost } = trace;
+  if (typeof tokenUsage?.costUsd === "number")
+    return {
+      usd: tokenUsage.costUsd,
+      source: "provider-token-usage",
+      note: `Provider spend metered from the actor trace tokenUsage.costUsd (${tokenUsage.costUsd} USD).`,
+    };
   if (tokenUsage === undefined)
     return {
       usd: null,
       source: "unmeasured",
-      note: "Provider spend not measured: the participant's output carried no token usage in this run, so it is recorded as null and not guessed as 0.",
+      note: "Provider spend not measured: the actor trace carried no tokenUsage.costUsd in this run, so it is recorded as null and not guessed as 0.",
     };
   if (estimatedCost !== undefined && estimatedCost.estimatedCostUsd !== null)
     return {

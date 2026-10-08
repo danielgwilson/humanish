@@ -1142,20 +1142,20 @@ discipline** that distinguishes three states and never conflates them:
 
 `knownTotalUsd` sums only the non-null lines (a `null` line contributes nothing
 and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
-Core measures no line: `product`/`media`/`payment` remain `null`, because no adopter can
-supply those signals until
-[issue 347](https://github.com/danielgwilson/humanish/issues/347) lands, and no provider charge
-is measured. The `provider` line counts the participant's tokens. The route passes Codex a model
-and prices the tokens once from it (the actor trace's `estimatedCost`); the line keeps
-`usd: null` and carries that price as `estimatedUsd` with `source: estimated-token-usage`, the
-same figure as the run bundle's `model-tokens` cost line. The estimate is not part of
-`knownTotalUsd`, so `caps.maxUsd` and the no-spend proof do not count it. Tokens of a model with
-no rate stay `usd: null` with `source: unpriced-token-usage` and the model named in the note, and
-a run whose output had no usage record has `source: unmeasured`. `knownTotalUsd: 0` with
-`fullyMeasured: false` means no line of this ledger was measured. E2B time for the terminal
-sandbox is not a line of this ledger, whose lines are checked against `caps.maxUsd`. The run
-bundle's `cost` summary prices it as a `desktop-minutes` line (see Run Cost Summary And
-Estimated Actor Cost below).
+Core meters only the `provider` line, from the actor trace's `tokenUsage.costUsd` when present
+(the Codex usage records the terminal route reads carry none today); `product`/`media`/`payment`
+remain `null`, because no adopter can supply those signals until
+[issue 347](https://github.com/danielgwilson/humanish/issues/347) lands. Without a measured
+charge the `provider` line keeps `usd: null` and counts the participant's tokens. The route
+passes Codex a model and prices the tokens once from it (the actor trace's `estimatedCost`); the
+line carries that price as `estimatedUsd` with `source: estimated-token-usage`, the same figure as
+the run bundle's `model-tokens` cost line. The estimate is not part of `knownTotalUsd`, so
+`caps.maxUsd` and the no-spend proof do not count it. Tokens of a model with no rate stay
+`source: unpriced-token-usage` with the model named in the note, and a run whose output had no
+usage record has `source: unmeasured`. `knownTotalUsd: 0` with `fullyMeasured: false` means no
+line of this ledger was measured. E2B time for the terminal sandbox is not a line of this ledger,
+whose lines are checked against `caps.maxUsd`. The run bundle's `cost` summary prices it as a
+`desktop-minutes` line (see Run Cost Summary And Estimated Actor Cost below).
 
 ```yaml
 schema: humanish.terminal-cost-ledger.v1

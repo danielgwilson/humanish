@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { redactJsonLine, redactText } from "../../evidence/redaction.js";
 import { createLocalActorVerdictScanner } from "../../run/terminal-contract.js";
 import { createTerminalParticipantReader } from "./participant-text.js";
 import { terminalUsageRecords } from "./token-usage.js";
@@ -13,16 +14,20 @@ import {
 
 /**
  * The terminal run's ledgers and capture buffers, mutated through the live lifecycle. Every chunk
- * is scrubbed and redacted as it is stored. Raw bytes leave the append functions only for the
- * in-memory participant reader, which keeps sanitized decoded text.
+ * is scrubbed of the run's known values and redacted as it is stored. Stdout is stored a line at a
+ * time, each line through redactJsonLine, so a path in the agent's Codex JSON ends where its
+ * decoded text ends; call endStdout when the command's output has ended. Raw bytes leave the
+ * append functions only for the in-memory participant reader, which keeps sanitized decoded text.
  */
 export function createTerminalRecorder(args: {
   nowIso: () => string;
-  sanitize: (text: string) => string;
+  /** Replaces the run's known values, before any pattern runs. */
+  scrub: (text: string) => string;
   knownSecretValues: readonly string[];
   verdictNonce: string;
 }) {
-  const { nowIso, sanitize, knownSecretValues, verdictNonce } = args;
+  const { nowIso, scrub, knownSecretValues, verdictNonce } = args;
+  const sanitize = (text: string): string => redactText(scrub(text));
   const lifecycle: LifecycleRecord[] = [];
   const commandLog: CommandLogRecord[] = [];
   const terminalEvents: TerminalEventRecord[] = [];
@@ -65,12 +70,63 @@ export function createTerminalRecorder(args: {
     if (laterLine.length > PENDING_LINE_CHARS) laterLine = undefined;
   };
 
+  // The received part of the stdout line in progress, raw, so a complete line can be redacted as
+  // JSON. Null while the rest of a line is stored a chunk at a time with redactText, as stderr is:
+  // after a stderr chunk arrived inside it, which keeps the events in arrival order for the
+  // known-value scrub across streams, or past PENDING_LINE_CHARS. Past the cap, or once the
+  // command's output has ended, stdout is stored a chunk at a time.
+  let stdoutLine: string | null = "";
+  let stdoutByLine = true;
+  const pushEvent = (stream: "stdout" | "stderr", chunk: string): void => {
+    terminalEvents.push({ at: nowIso(), stream, chunk });
+  };
+  const redactStdoutLine = (line: string): string =>
+    line.length > PENDING_LINE_CHARS ? sanitize(line) : redactJsonLine(scrub(line));
+  const cutStdoutLine = (): void => {
+    if (!stdoutLine) return;
+    pushEvent("stdout", sanitize(stdoutLine));
+    stdoutLine = null;
+  };
+  const storeStdout = (raw: string): void => {
+    let text = raw;
+    let stored = "";
+    if (stdoutLine === null) {
+      const end = text.indexOf("\n");
+      if (end < 0) return pushEvent("stdout", sanitize(text));
+      stored = sanitize(text.slice(0, end + 1));
+      text = text.slice(end + 1);
+      stdoutLine = "";
+    }
+    stdoutLine += text;
+    const end = stdoutLine.lastIndexOf("\n");
+    if (end >= 0) {
+      stored += `${stdoutLine.slice(0, end).split("\n").map(redactStdoutLine).join("\n")}\n`;
+      stdoutLine = stdoutLine.slice(end + 1);
+    }
+    if (stdoutLine.length > PENDING_LINE_CHARS) {
+      stored += sanitize(stdoutLine);
+      stdoutLine = null;
+    }
+    if (stored) pushEvent("stdout", stored);
+  };
+  const storeChunk = (stream: "stdout" | "stderr", raw: string): void => {
+    if (stream === "stdout" && stdoutByLine) return storeStdout(raw);
+    if (stream === "stderr" && stdoutByLine) cutStdoutLine();
+    pushEvent(stream, sanitize(raw));
+  };
+  const endStdoutLines = (): void => {
+    if (!stdoutByLine) return;
+    cutStdoutLine();
+    stdoutByLine = false;
+  };
+
   const recordLifecycle = (event: string, message: string): void => {
     lifecycle.push({ at: nowIso(), event, message: sanitize(message) });
   };
   const appendTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
     if (stream === "stdout") participantText.append(raw);
     if (transcriptBytes >= MAX_TRANSCRIPT_BYTES) {
+      endStdoutLines();
       for (const order of [stream, "combined"] as const) {
         const remaining = maxDiscardedPrefixChars - discardedPrefixes[order].length;
         if (remaining > 0) discardedPrefixes[order] += raw.slice(0, remaining);
@@ -89,7 +145,7 @@ export function createTerminalRecorder(args: {
     transcriptBytes += Buffer.byteLength(raw, "utf8");
     // Scrub, then redact, at the source. Only the participant reader and the readers of output
     // past the cap see raw bytes, and they store none of them.
-    terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
+    storeChunk(stream, raw);
     if (stream === "stdout" && raw) stdoutAtLineStart = raw.endsWith("\n");
   };
 
@@ -151,5 +207,7 @@ export function createTerminalRecorder(args: {
     recordLifecycle,
     recordStreamedTerminalChunk,
     appendReturnedTerminalOutput,
+    /** The command's output has ended: store the stdout line in progress as it is. */
+    endStdout: endStdoutLines,
   };
 }

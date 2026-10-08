@@ -100,12 +100,12 @@ export interface TerminalProductScoringContext {
 
 /**
  * Known spend lines for the terminal cost ledger. Core has no product, media or payment spend
- * signal, and no measured provider charge. A test injects known lines through
- * `StudyDeps.costProbe`; absent signals keep the null-discipline default.
+ * signal, so it fills only the provider line from trace tokenUsage when present. A test injects
+ * known lines through `StudyDeps.costProbe`; absent signals keep the null-discipline default.
  */
-export type TerminalCostProbe = () =>
-  | Partial<Record<"product" | "media" | "payment" | "provider", CostLine>>
-  | undefined;
+export type TerminalCostProbe = (context: {
+  tokenCostUsd?: number;
+}) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
 
 /** The scorer functions a terminal run calls: `RunStudyOptions.scorer` without `deriveArtifacts`. */
 export interface TerminalScorer {
@@ -293,9 +293,9 @@ export interface CostLine {
   /** known zero (0) | not measured (null). The key is always present when the line is applicable. */
   usd: number | null;
   /** The provider line's price for its counted tokens, from the trace's `estimatedCost` (the
-   *  figure run.json's model-tokens line gives). An estimate from a rate table: `usd` stays null,
-   *  and neither `knownTotalUsd` nor caps.maxUsd counts it. Present only with source
-   *  `estimated-token-usage`. */
+   *  figure run.json's model-tokens line gives), when no charge was measured. An estimate from a
+   *  rate table: `usd` stays null, and neither `knownTotalUsd` nor caps.maxUsd counts it. Present
+   *  only with source `estimated-token-usage`. */
   estimatedUsd?: number;
   /** Optional billable-unit count, same discipline: a known count, or null = not measured. */
   count?: number | null;

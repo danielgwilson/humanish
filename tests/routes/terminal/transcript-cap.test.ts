@@ -153,7 +153,7 @@ describe("the verdict scan over output that is not stored", () => {
   it("finds a marker the cap splits between the stored and the unstored output", () => {
     const recorder = createTerminalRecorder({
       nowIso: () => "2026-10-05T00:00:00.000Z",
-      sanitize: (text) => text,
+      scrub: (text) => text,
       knownSecretValues: [],
       verdictNonce: nonce,
     });
@@ -168,7 +168,7 @@ describe("the verdict scan over output that is not stored", () => {
   it("does not count a usage record the cap cut through", () => {
     const recorder = createTerminalRecorder({
       nowIso: () => "2026-10-05T00:00:00.000Z",
-      sanitize: (text) => text,
+      scrub: (text) => text,
       knownSecretValues: [],
       verdictNonce: nonce,
     });

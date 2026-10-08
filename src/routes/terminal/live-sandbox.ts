@@ -399,8 +399,12 @@ export class LiveTerminalSandbox {
     const { plan, now, nowIso, sanitize, runtimeEnv, runtime } = this.inputs;
     const { model, reasoningEffort } = plan.runtime;
     const { composedPrompt, verdictNonce, maxMinutes } = this.inputs;
-    const { recordLifecycle, recordStreamedTerminalChunk, appendReturnedTerminalOutput } =
-      this.inputs.recorder;
+    const {
+      recordLifecycle,
+      recordStreamedTerminalChunk,
+      appendReturnedTerminalOutput,
+      endStdout,
+    } = this.inputs.recorder;
     const { commandLog, terminalEvents } = this.inputs.recorder;
     const { requestTimeoutMs, wallClockMs } = this;
     // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
@@ -457,6 +461,9 @@ export class LiveTerminalSandbox {
       runError = toErrorMessage(error);
     }
     const durationMs = Math.max(0, now() - startedAt);
+    // Output that arrives after this, from a command the wall clock stopped, is stored a chunk at
+    // a time.
+    endStdout();
 
     commandLog.push({
       at: nowIso(),
