@@ -39,9 +39,11 @@ high-detail image tokens, and prices input at the model's highest input rate.
 The expected output is 12,000 tokens plus 1,000 per participant, at most the
 output allowance; the worst case spends the whole allowance. `admission` in
 `--json` output has `estimatedCostUsd` (the expected cost), `worstCaseCostUsd`,
-`maxCostUsd`, `inputTokenAllowance` (the input tokens priced) and
-`outputTokenAllowance`. On 148 billed gpt-6-astra analyses the expected cost was
-1.08 to 7.3 times the bill, and 1.08 to 1.32 times for those billed $1 or more.
+`admittedCostUsd` (the figure compared with the cap: the expected cost plus 10%,
+or the worst case when that is lower), `maxCostUsd`, `inputTokenAllowance` (the
+input tokens priced) and `outputTokenAllowance`. On 148 billed gpt-6-astra
+analyses the expected cost was 1.08 to 7.3 times the bill, and 1.08 to 1.32
+times for those billed $1 or more.
 A refusal's message gives the expected cost, the worst case, the cap, and
 `humanish analyze --run <id> --max-cost <n>` with `n` the worst case rounded up.
 

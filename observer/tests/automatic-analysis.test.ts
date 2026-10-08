@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ADMISSION_MARGIN as SERVER_ADMISSION_MARGIN } from "../../src/analysis/admission";
 import { AUTOMATIC_ANALYSIS_STALE_MS as SERVER_STALE_MS } from "../../src/analysis/job";
 import {
-  ADMISSION_MARGIN,
   AUTOMATIC_ANALYSIS_STALE_MS,
   automaticAnalysisNotice,
   parseAutomaticAnalysis,
@@ -59,9 +57,8 @@ describe("independent automatic analysis metadata", () => {
       automatic: { state: "failed" },
     });
   });
-  it("pins the browser freshness threshold and admission margin to the producer contract", () => {
+  it("pins the browser freshness threshold to the producer contract", () => {
     expect(AUTOMATIC_ANALYSIS_STALE_MS).toBe(SERVER_STALE_MS);
-    expect(ADMISSION_MARGIN).toBe(SERVER_ADMISSION_MARGIN);
   });
   it.each(["queued", "running"] as const)(
     "never presents a stale/future %s heartbeat as live",

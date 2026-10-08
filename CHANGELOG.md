@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `analyze --json` reports `admission.admittedCostUsd`: the expected cost plus the 10% margin, or
+  the worst case when that is lower. Admission compares it with the cap, so it is the smallest
+  `--max-cost` that admits the analysis.
+
+### Fixed
+
+- `humanish analyze` names its refusal command the way the rest of the CLI does, so a project
+  that installs humanish as a dev dependency is told `npx humanish analyze --run <id> --max-cost <n>`.
+
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 
 humanish 0.114.0 lets a reviewer note a moment of a recorded run, admits post-run analysis on its

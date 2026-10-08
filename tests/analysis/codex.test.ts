@@ -163,6 +163,7 @@ describe("explicit Codex account analysis", () => {
       outputTokenAllowance: null,
       estimatedCostUsd: null,
       worstCaseCostUsd: null,
+      admittedCostUsd: null,
       maxCostUsd: null,
       ratesAsOf: null,
     });

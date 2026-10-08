@@ -4,7 +4,7 @@
 
 import path from "node:path";
 import type { Command } from "commander";
-import { admittingMaxCost, costRefusalText } from "../analysis/admission.js";
+import { costRefusal } from "../analysis/admission.js";
 import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { loadAnalysis } from "../analysis/load.js";
@@ -407,16 +407,16 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       ),
     );
   }
-  if (job?.state === "skipped" && job.admission)
+  if (job?.state === "skipped" && job.admission) {
+    const refusal = costRefusal(job.admission, `--run ${source.runId}${source.cwdFlag}`, cli);
     return withoutFindings(
       source,
       "skipped",
       job.reason,
-      `The automatic analysis was refused before it started. ${costRefusalText(job.admission)}`,
-      cli(
-        `analyze --run ${source.runId}${source.cwdFlag} --max-cost ${admittingMaxCost(job.admission)}`,
-      ),
+      `The automatic analysis was refused before it started. ${refusal.text}`,
+      refusal.command,
     );
+  }
   if (job?.state === "skipped") {
     const refused = job.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED";
     return withoutFindings(

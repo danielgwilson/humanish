@@ -2,12 +2,7 @@ import {
   automaticAnalysisSucceeded,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import {
-  admittingMaxCost,
-  costRefusalText,
-  refusedCost,
-  type RefusedAnalysisCost,
-} from "../analysis/admission.js";
+import { costRefusal, refusedCost } from "../analysis/admission.js";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
 import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
@@ -305,10 +300,9 @@ export function writeResult<T>(
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
       const cost = analysis?.result?.admission && refusedCost(analysis.result.admission);
-      if (cost)
-        io.writeOut(
-          `analysis: refused before it started. ${refusedAnalysisText(cost, analysis.result?.run ?? "latest")}\n`,
-        );
+      const refusal = cost && costRefusal(cost, `--run ${analysis.result?.run ?? "latest"}`, cli);
+      if (refusal)
+        io.writeOut(`analysis: refused before it started. ${refusal.text} ${refusal.command}\n`);
       else if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
       const rejected = analysis?.result?.rejectedOutputPath;
       if (rejected)
@@ -457,11 +451,6 @@ const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
 export function analysisOutcomeText(analysis: { state: string; reason: string | null }): string {
   if (analysis.reason === null) return analysis.state;
   return ANALYSIS_REASON_TEXT[analysis.reason] ?? `${analysis.state} (${analysis.reason})`;
-}
-
-/** What a refused analysis would cost and the command that runs it with a cap that admits it. */
-function refusedAnalysisText(cost: RefusedAnalysisCost, runId: string): string {
-  return `${costRefusalText(cost)} To run it, raise the cap: ${cli(`analyze --run ${runId} --max-cost ${admittingMaxCost(cost)}`)}`;
 }
 
 /** Preserve the run's own result while making requested post-processing failures machine-visible. */
