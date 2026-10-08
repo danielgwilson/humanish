@@ -224,11 +224,11 @@ describe("redactJsonLines on Codex lines built from known parts", () => {
 // ---------------------------------------------------------------------------
 
 describe("the backslashes a redacted path ends in", () => {
-  // They may escape the closing quote of a JSON string, so redaction keeps them. The expression
-  // main used to find them is the reference.
+  // They may escape the closing quote of a JSON string, so redaction keeps them. This regular
+  // expression is the reference for which backslashes those are.
   const trailingBackslashes = (text: string): string => text.match(/\\+$/)?.[0] ?? "";
 
-  it("are the ones the earlier expression found", () => {
+  it("are the ones the reference expression finds", () => {
     fc.assert(
       fc.property(
         fc.constantFrom(
