@@ -207,8 +207,10 @@ percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes spli
 with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
 value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
 humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
-`[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If the stored field would still hold a value as written or decoded once more, as a
-value encoded twice does once the field is decoded, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
+`[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If another reading of
+the stored field still holds a value (decoded once more, with percent escapes as UTF-8, with
+transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes), as for a value encoded
+twice, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
 these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.

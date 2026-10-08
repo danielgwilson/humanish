@@ -115,9 +115,9 @@ describe("scrubSecretValues on encoded and marker-shaped text", () => {
     expect(scrubSecretValues(["PPQM"])("%50%50%51%254d")).toBe("[REDACTED_SECRET]");
   });
 
-  it("returns the UTF-8 reading when it finds more values", () => {
+  it("replaces the whole text when only the UTF-8 reading holds the value", () => {
     // Only é is percent-encoded, so the byte reading shows Ã© next to a literal à.
-    expect(scrubSecretValues(["tango-é-à"])("x tango-%C3%A9-à y")).toBe("x [REDACTED_SECRET] y");
+    expect(scrubSecretValues(["tango-é-à"])("x tango-%C3%A9-à y")).toBe("[REDACTED_SECRET]");
   });
 
   it("finds a value inside a marker-shaped span that no scrub writes", () => {
@@ -193,15 +193,28 @@ describe("scrubSecretValues on encoded and marker-shaped text", () => {
     expect(scrubSecretValues(["value"])("a%20&xvaluey;z")).toBe("a &x[REDACTED_SECRET]y;z");
   });
 
-  it("removes a value whose UTF-8 reading is its own bytes read as Latin-1", () => {
-    // xÃ©z is the bytes of xéz read one per character; reading them as UTF-8 recovers xéz.
+  it("removes a value written as the UTF-8 reading of its own characters", () => {
+    // xÃ©z is the bytes of xéz read one per character. No reading of `xéz` gives xÃ©z, so only
+    // this form of the value finds it.
     expect(encodedForms("xÃ©z")).toContain("xéz");
     expect(encodedForms("Ãz")).not.toContain("z");
-    const scrub = scrubSecretValues(["xÃ©z", "éàxx"]);
-    expect(scrub("x%C3%A9z é%C3%A0xx é%C3%A0xx")).toBe(
-      "[REDACTED_SECRET] [REDACTED_SECRET] [REDACTED_SECRET]",
+    expect(scrubSecretValues(["xÃ©z"])("refused xéz here")).toBe("refused [REDACTED_SECRET] here");
+    // Only the Ã© of xÃ©z€ is UTF-8 read one byte per character.
+    expect(scrubSecretValues(["xÃ©z€"])("refused xéz€ here")).toBe(
+      "refused [REDACTED_SECRET] here",
     );
-    expect(scrub("x%C3%A9z é%C3%A0xx")).toBe("[REDACTED_SECRET] [REDACTED_SECRET]");
+  });
+
+  it("returns the byte reading, or the whole-text marker when another reading still holds a value", () => {
+    // Each byte reading leaves éàxx as éÃ\u00a0xx, and the transfer reading turns =39 into 9.
+    for (const [values, text] of [
+      [["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx"],
+      [["xÃ©z€", "éàxx"], "x%C3%A9z€ é%C3%A0xx é%C3%A0xx"],
+      [["éÃ©zz", "éàxx"], "é%C3%A9zz é%C3%A0xx é%C3%A0xx"],
+      [["ab\\ncd", "743921"], "ab%5Cncd 743=39=32=31 743=39=32=31"],
+    ] as const)
+      expect(scrubSecretValues([...values])(text)).toBe("[REDACTED_SECRET]");
+    expect(scrubSecretValues(["éàxx"])("a%20b éàxx")).toBe("a b [REDACTED_SECRET]");
   });
 
   it("keeps the text of every marker humanish writes", () => {

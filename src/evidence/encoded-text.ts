@@ -60,11 +60,10 @@ function sequenceLength(lead: number): number {
 }
 
 /**
- * A run of percent escapes read as UTF-8, as a browser reads a URL. A byte that starts no valid
- * sequence stands for itself, the character with that code, as decodeEscapes reads every byte.
+ * Bytes read as UTF-8, as a browser reads a URL. A byte that starts no valid sequence stands for
+ * itself, the character with that code, as decodeEscapes reads every byte.
  */
-function decodePercentRun(run: string): string {
-  const bytes = Buffer.from(run.replace(/%/g, ""), "hex");
+function utf8Characters(bytes: Buffer): string {
   if (isUtf8(bytes)) return bytes.toString("utf8");
   let text = "";
   for (let at = 0; at < bytes.length;) {
@@ -81,6 +80,17 @@ function decodePercentRun(run: string): string {
   }
   return text;
 }
+
+const decodePercentRun = (run: string): string =>
+  utf8Characters(Buffer.from(run.replace(/%/g, ""), "hex"));
+
+// A character from U+0080 to U+00FF, which a byte of 0x80 or more becomes when read one per
+// character.
+const HIGH_BYTE = /[\x80-\xff]/;
+
+/** Each run of characters U+0080 to U+00FF read as the UTF-8 bytes they may be: Ã© as é. */
+export const latin1RunsAsUtf8 = (text: string): string =>
+  text.replace(/[\x80-\xff]+/g, (run) => utf8Characters(Buffer.from(run, "latin1")));
 
 function decodePercentBytes(run: string): string {
   return Buffer.from(run.replace(/%/g, ""), "hex").toString("latin1");
@@ -101,15 +111,22 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
   // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
   // decodeEscapes writes as a character from U+0080 to U+00FF. Testing the decoded text also
   // catches a `%` that a `\u0025` wrote.
-  const utf8 = /[\x80-\xff]/.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
+  const utf8 = HIGH_BYTE.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
   const expanded = decodeTransferEscapes(decoded);
-  return { decoded, expanded, all: [...new Set([text, decoded, utf8, expanded])] };
+  const recovered = [text, decoded].filter((reading) => HIGH_BYTE.test(reading));
+  return {
+    decoded,
+    expanded,
+    all: [...new Set([text, decoded, utf8, expanded, ...recovered.map(latin1RunsAsUtf8)])],
+  };
 }
 
 /**
  * Every reading of the text a scan matches, each once: as written, decodeEscapes, with percent
- * escapes read as UTF-8, and decodeEscapes with transfer escapes expanded. Either percent reading
- * can split a value that the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
+ * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, and the text as written and
+ * decoded with each run of U+0080 to U+00FF characters read as UTF-8 bytes, which undoes text that
+ * a reader already decoded one byte per character. Either percent reading can split a value that
+ * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
  */
 export function readingsOf(text: string): string[] {
   return readings(text).all;

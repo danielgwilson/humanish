@@ -199,10 +199,14 @@ describe("the known-value scrub on encoded and marker-shaped text", () => {
     expect(await knownValueScrub(["value"], "a%20&xvaluey;z")).toBe("a%20&x[REDACTED_SECRET]y;z");
   });
 
-  it("removes a value whose UTF-8 reading is its own bytes read as Latin-1", async () => {
-    expect(await knownValueScrub(["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx")).toBe(
-      "[REDACTED_SECRET] [REDACTED_SECRET] [REDACTED_SECRET]",
-    );
+  it("replaces the whole text when a reading other than the byte reading still holds a value", async () => {
+    for (const [values, text] of [
+      [["xÃ©z", "éàxx"], "x%C3%A9z é%C3%A0xx é%C3%A0xx"],
+      [["xÃ©z€", "éàxx"], "x%C3%A9z€ é%C3%A0xx é%C3%A0xx"],
+      [["éÃ©zz", "éàxx"], "é%C3%A9zz é%C3%A0xx é%C3%A0xx"],
+      [["ab\\ncd", "743921"], "ab%5Cncd 743=39=32=31 743=39=32=31"],
+    ] as const)
+      expect(await knownValueScrub([...values], text)).toBe("[REDACTED_SECRET]");
   });
 
   // A value that overlaps itself, in a text of growing length. Comparing the value again at every

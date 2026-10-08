@@ -43,6 +43,17 @@ describe("readingsOf", () => {
     expect(readingsOf("a\\nb %41=42")).toEqual(["a\\nb %41=42", "a\\nb A=42", "a\nb AB"]);
   });
 
+  it("reads each run of U+0080 to U+00FF characters as the UTF-8 bytes they may be", () => {
+    // Ã© is é decoded one byte per character; é alone is no UTF-8 sequence and stays.
+    expect(readingsOf("Ã© é %C3%A0")).toEqual([
+      "Ã© é %C3%A0",
+      "Ã© é Ã\u00a0",
+      "Ã© é à",
+      "é é %C3%A0",
+      "é é à",
+    ]);
+  });
+
   it("reads percent escapes as UTF-8 when a \\u escape writes their percent signs", () => {
     expect(readingsOf("\\u0025C3\\u0025A9")).toEqual(["\\u0025C3\\u0025A9", "\u00c3\u00a9", "é"]);
   });

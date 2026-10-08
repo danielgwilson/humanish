@@ -1,7 +1,7 @@
 // A reference model for the known-value scrubs, scrubSecretValues and
 // transientCommsKnownValueScrub. It writes each value's forms with its own encoders and reads text
-// with its own decoders, built on the platform's (JSON.parse, decodeURIComponent, TextDecoder,
-// Buffer), so a form the production encoder omits or a reading its decoder gets wrong shows up as
+// with its own decoders, built on the platform's (JSON.parse, decodeURIComponent, Buffer), so a
+// form the production encoder omits or a reading its decoder gets wrong shows up as
 // a disagreement. Only the list of markers comes from production, as data.
 
 import { REDACTION_MARKERS } from "../../src/evidence/redaction.js";
@@ -12,17 +12,6 @@ export const WRITTEN_MARKERS: readonly string[] = Object.values(REDACTION_MARKER
 // The shortest base64 or hex form a scrub must find, as documented for encodedForms. A value
 // itself and its escaped forms are found at any length.
 const MIN_BINARY_FORM = 8;
-
-const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-
-/** The bytes as UTF-8, or undefined when they are not valid UTF-8. */
-function utf8Text(bytes: Uint8Array): string | undefined {
-  try {
-    return strictUtf8.decode(bytes);
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * The characters of the value's base64 that do not depend on its neighbours, for 0, 1 and 2 bytes
@@ -63,18 +52,15 @@ export function modelForms(value: string): string[] {
   } catch {
     // A lone surrogate has no percent-encoding.
   }
-  forms.push(bytes.toString("latin1"));
-  if ([...value].every((char) => char.codePointAt(0)! <= 0xff)) {
-    const mirrored = utf8Text(Buffer.from(value, "latin1"));
-    if (mirrored !== undefined) forms.push(mirrored);
-  }
+  forms.push(bytes.toString("latin1"), recoverLatin1(value));
+  const padded = [bytes.toString("base64"), bytes.toString("base64url")];
   const binary = [
     bytes.toString("hex"),
-    bytes.toString("base64"),
-    bytes.toString("base64url"),
+    ...padded,
+    ...padded.map((form) => form.replace(/=+$/, "")),
     ...stableBase64(bytes, "base64"),
     ...stableBase64(bytes, "base64url"),
-  ].map((form) => form.replace(/=+$/, ""));
+  ];
   return [
     ...new Set([...forms, ...binary.filter((form) => form.length >= MIN_BINARY_FORM)]),
   ].filter((form) => form.length > 0);
@@ -188,10 +174,28 @@ const expandTransfer = (text: string): string =>
       String.fromCharCode(Number.parseInt(digits, 16)),
     );
 
-/** The text as written, decoded with percent escapes as bytes and as UTF-8, and expanded. */
+/** Each run of characters U+0080 to U+00FF read as UTF-8 bytes, as percent escapes would be. */
+const recoverLatin1 = (text: string): string =>
+  text.replace(/[\x80-\xff]+/g, (run) =>
+    percentAsUtf8([...run].map((char) => `%${char.charCodeAt(0).toString(16)}`).join("")),
+  );
+
+/**
+ * The text as written, decoded with percent escapes as bytes and as UTF-8, expanded, and the text
+ * as written and decoded with Latin-1 runs read as UTF-8.
+ */
 export function modelReadings(text: string): string[] {
   const decoded = modelDecode(text);
-  return [...new Set([text, decoded, decode(text, percentAsUtf8), expandTransfer(decoded)])];
+  return [
+    ...new Set([
+      text,
+      decoded,
+      decode(text, percentAsUtf8),
+      expandTransfer(decoded),
+      recoverLatin1(text),
+      recoverLatin1(decoded),
+    ]),
+  ];
 }
 
 function markerSpans(text: string): [number, number][] {
@@ -200,6 +204,56 @@ function markerSpans(text: string): [number, number][] {
     for (let at = text.indexOf(marker); at !== -1; at = text.indexOf(marker, at + 1))
       spans.push([at, at + marker.length]);
   return spans;
+}
+
+/** The reading with each character of an occurrence of a value's form, outside the markers, removed. */
+export function outsideValues(values: readonly string[], reading: string): string {
+  const markers = markerSpans(reading);
+  const covered = new Uint8Array(reading.length);
+  for (const value of values)
+    for (const form of modelForms(value))
+      for (let at = reading.indexOf(form); at !== -1; at = reading.indexOf(form, at + 1)) {
+        const end = at + form.length;
+        if (!markers.some(([start, stop]) => start <= at && end <= stop)) covered.fill(1, at, end);
+      }
+  // By code unit, the unit indexOf finds occurrences in.
+  let kept = "";
+  for (let at = 0; at < reading.length; at += 1) if (covered[at] === 0) kept += reading[at];
+  return kept;
+}
+
+// Everything the documented decoder rewrites, in the order it rewrites it.
+const ESCAPES = [
+  /\\u[0-9a-f]{4}/gi,
+  /\\x[0-9a-f]{2}/gi,
+  /\\\//g,
+  /(?:%[0-9a-f]{2})+/gi,
+  /&#x[0-9a-f]{1,6};?/gi,
+  /&#[0-9]{1,7};?/g,
+  /&[a-z]+;/gi,
+];
+
+/** Whether a value as written overlaps an escape in the text, as `0000` does in `%200000`. */
+export function touchesEscape(values: readonly string[], text: string): boolean {
+  const escapes = ESCAPES.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) => [match.index, match.index + match[0].length]),
+  );
+  return values.some((value) => {
+    for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + 1))
+      if (escapes.some(([start, end]) => at < end! && start! < at + value.length)) return true;
+    return false;
+  });
+}
+
+/** Whether every character of `kept` appears in `text` in the same order. */
+export function inOrder(kept: string, text: string): boolean {
+  let at = 0;
+  for (const char of kept) {
+    at = text.indexOf(char, at);
+    if (at === -1) return false;
+    at += char.length;
+  }
+  return true;
 }
 
 /**

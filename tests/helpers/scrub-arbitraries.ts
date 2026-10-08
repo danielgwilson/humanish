@@ -229,10 +229,12 @@ export interface ScrubInputShape {
   /** Whether a value may be encoded twice, which one decoding leaves encoded once. */
   readonly twiceEncoded?: boolean;
   /**
-   * Whether a value may hold `[`, `]`, `%`, `\` or `&`. With a bracket it can overlap a marker's
-   * edge; with an escape character its own decoding differs from it.
+   * Whether a value may hold characters other than ASCII letters, digits and punctuation, or `[`,
+   * `]`, `%`, `\` or `&`. With a bracket a value can overlap a marker's edge, with an escape
+   * character its own decoding differs from it, and a non-ASCII character can be percent-encoded
+   * in a way that only the UTF-8 or Latin-1 reading shows.
    */
-  readonly markerOrEscapeCharacters?: boolean;
+  readonly unusualCharacters?: boolean;
 }
 
 /**
@@ -243,8 +245,8 @@ export interface ScrubInputShape {
  */
 export function scrubInputs(shape: ScrubInputShape): fc.Arbitrary<ScrubInput> {
   const values = fc.uniqueArray(
-    shape.markerOrEscapeCharacters === false
-      ? valueArbitrary.map((value) => value.replace(/[[\]%\\&]/g, "x"))
+    shape.unusualCharacters === false
+      ? valueArbitrary.map((value) => value.replace(/[^\x20-\x7e]|[[\]%\\&]/g, "x"))
       : valueArbitrary,
     { minLength: 1, maxLength: 3 },
   );
