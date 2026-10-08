@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- When a study's analysis does not complete (refused at admission, failed or cancelled) and the
+  run's own result is ok, the first line of `humanish run` reads
+  `humanish run <study>: live run finished; the analysis did not complete`. It read
+  `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
+  keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
+  `live run failed` (#1673).
+
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
 humanish 0.115.0 asks the OpenAI computer-use participant for its closing report and impressions
