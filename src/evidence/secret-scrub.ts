@@ -31,7 +31,7 @@ function base64Middles(bytes: Buffer, encoding: "base64" | "base64url"): string[
 
 /**
  * A value as written, and percent-encoded, JSON-escaped once (also with non-ASCII characters as
- * `\u` escapes) and twice, base64 at each byte offset, base64url and hex. Twice, because a JSON event can carry a command's JSON output as a string. An
+ * `\u` escapes) and twice, its UTF-8 bytes read one per character, base64 at each byte offset, base64url and hex. Twice, because a JSON event can carry a command's JSON output as a string. An
  * escaped form is searched for at any length, as the value is: it holds a backslash or a `%`, so it
  * is not ordinary text.
  */
@@ -58,7 +58,26 @@ export function encodedForms(value: string): string[] {
     ...base64Middles(bytes, "base64"),
     ...base64Middles(bytes, "base64url"),
   ];
+  // decodeEscapes reads each percent escape as one character, so a percent-encoded non-ASCII value
+  // reads as its UTF-8 bytes one per character, é as Ã©.
+  const bytewise = bytes.toString("latin1");
+  if (bytewise !== value) escaped.push(bytewise);
   return [value, ...escaped, ...binary.filter((form) => form.length >= MIN_ENCODED_FORM)];
+}
+
+/**
+ * Whether [at, end) overlaps a marker. The markers are one regex's matches, so they are sorted and
+ * disjoint: only the first marker that ends after `at` can also start before `end`.
+ */
+function overlapsMarker(markers: readonly [number, number][], at: number, end: number): boolean {
+  let low = 0;
+  let high = markers.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (markers[middle]![1] > at) high = middle;
+    else low = middle + 1;
+  }
+  return low < markers.length && markers[low]![0] < end;
 }
 
 /** Every occurrence of every form, outside the markers, merged where they overlap or touch. */
@@ -72,7 +91,7 @@ function secretSpans(text: string, forms: readonly string[]): [number, number][]
   for (const form of forms) {
     for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + 1)) {
       const end = at + form.length;
-      if (!markers.some(([start, stop]) => at < stop && end > start)) spans.push([at, end]);
+      if (!overlapsMarker(markers, at, end)) spans.push([at, end]);
     }
   }
   spans.sort((left, right) => left[0] - right[0]);

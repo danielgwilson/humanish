@@ -110,6 +110,7 @@ describe("secret formats", () => {
   it.each([
     ["wrapped base64", `${"a".repeat(16)}\n${"aaaa\n".repeat(1 << 21)}`],
     ["a Windows path", `C:\\Users\\${"a\\".repeat(4 << 20)}`],
+    ["percent escapes", "%C3%A9%41".repeat(1 << 20)],
   ])("reads 8 MB of %s without overflowing the stack", (_name, text) => {
     expect(() => containsSensitive(text)).not.toThrow();
     expect(() => redactText(text)).not.toThrow();
@@ -154,6 +155,23 @@ describe("verify against secret formats", () => {
       file,
       `opened https://${E2B_APP_HOST}/api/sign-in?origin=${encodeURIComponent(`https://${E2B_APP_HOST}`)}\n`,
     );
+    try {
+      const verified = await verifyRun(cwd, runId);
+      expect(verified.shareSafety.status).toBe("blocked");
+      expect(verified.shareSafety.reasons.map((reason) => reason.code)).toContain(
+        "PUBLIC_SAFETY_FINDINGS",
+      );
+    } finally {
+      await rm(file);
+    }
+  });
+
+  // A password with a non-ASCII character, inside a percent-encoded redirect. Read one byte at a
+  // time, `à` (C3 A0) becomes `Ã` and a no-break space, which ends the value at five characters.
+  it("grades the run blocked for a percent-encoded password with a non-ASCII character", async () => {
+    const file = path.join(runDir, "notes.txt");
+    const target = `/login?password=Voil${"à"}Corr${"é"}lation7Battery`;
+    await writeFile(file, `opened https://app.example.com/?next=${encodeURIComponent(target)}\n`);
     try {
       const verified = await verifyRun(cwd, runId);
       expect(verified.shareSafety.status).toBe("blocked");
