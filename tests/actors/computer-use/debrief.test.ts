@@ -461,6 +461,15 @@ describe("participant impressions at the end of a session", () => {
       closingReport: { summary: "I renamed the item.", frictionReports: [], impressions: list },
     });
 
+  it("asks for up to six impressions of under 500 characters each", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(withImpressions());
+    await s.run();
+    expect(String(s.debrief.mock.calls[0]?.[0].contextHint)).toContain(
+      "In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none.",
+    );
+  });
+
   it("asks for each kind of impression, including how the persona does the same task", async () => {
     const s = setup();
     s.debrief.mockResolvedValue(withImpressions());

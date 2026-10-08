@@ -1,0 +1,19 @@
+{
+  "schema": "humanish.analyze-result.v1",
+  "run": "cua-2026-10-08T00-21-52-120Z-c53f9610",
+  "dryRun": true,
+  "reused": false,
+  "admission": {
+    "allowed": true,
+    "error": null,
+    "inputTokenAllowance": 42590,
+    "outputTokenAllowance": 32768,
+    "estimatedCostUsd": 1.182375,
+    "worstCaseCostUsd": 2.170775,
+    "admittedCostUsd": 1.300613,
+    "maxCostUsd": 1.31,
+    "ratesAsOf": "2026-09-03"
+  },
+  "warnings": [],
+  "ok": true
+}

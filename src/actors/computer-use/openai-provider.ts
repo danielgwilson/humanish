@@ -1,4 +1,4 @@
-import { validClosingReport, validImpressionsReply } from "./loop.js";
+import { closingReportSchema, impressionsReplySchema } from "../closing-report.js";
 import type { ActorCapabilities, ActorConversation } from "../contract.js";
 import {
   ComputerUseAdmissionLimitError,
@@ -612,10 +612,13 @@ export function createOpenAiResponsesProvider(
       try {
         const reply: unknown = JSON.parse(turn.message ?? "");
         if (asRecord(raw).status === "completed") {
-          if (closing === "report" && validClosingReport(reply))
-            return { ...turn, closingReport: reply };
-          if (closing === "impressions" && validImpressionsReply(reply))
-            return { ...turn, impressions: reply.impressions };
+          if (closing === "report") {
+            const report = closingReportSchema.safeParse(reply);
+            if (report.success) return { ...turn, closingReport: report.data };
+          } else {
+            const impressions = impressionsReplySchema.safeParse(reply);
+            if (impressions.success) return { ...turn, impressions: impressions.data.impressions };
+          }
         }
       } catch {
         /* A failed optional closing account keeps its usage and no report. */

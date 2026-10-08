@@ -40,7 +40,8 @@ import {
 import { beginAnalysisExecution, writeAnalysisExecutionReceipt } from "./store-executions.js";
 import { keepRejectedAnalysisOutput, type RejectedAnalysisOutput } from "./diagnostics.js";
 import { loadAnalysis } from "./load.js";
-import { admittingMaxCost, costRefusalText, refusedCost } from "./admission.js";
+import { costRefusal, refusedCost } from "./admission.js";
+import { cli } from "../cli/invocation.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
   ANALYSIS_CORRECTION_SCHEMA,
@@ -312,13 +313,14 @@ type AnalyzeBase = Omit<AnalyzeResult, "ok"> & { admission: AnalysisAdmission };
 function admissionOnlyResult(base: AnalyzeBase, config: AnalysisConfig): AnalyzeResult {
   if (!base.admission.allowed) {
     const cost = refusedCost(base.admission);
+    const refusal = cost && costRefusal(cost, `--run ${base.run}`, cli);
     return {
       ...base,
       ok: false,
       error: {
         code: base.admission.error ?? "analysis_admission_denied",
-        message: cost
-          ? `${costRefusalText(cost)} To run it, raise the cap: humanish analyze --run ${base.run} --max-cost ${admittingMaxCost(cost)}`
+        message: refusal
+          ? `${refusal.text} ${refusal.command}`
           : "The analysis input or configuration did not pass admission. No provider request was sent.",
       },
     };

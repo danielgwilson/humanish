@@ -1,10 +1,25 @@
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 
 import { analyzeWithinBudget } from "../../bench/lib/analyze.js";
 import type { CliResult, runCli } from "../../bench/lib/humanish-cli.js";
 
+// Captured `humanish analyze --dry-run --json` outputs for one 0.114.0 benchmark run
+// (tests/fixtures/bench/analyze-dry-run/README.md): expected cost $1.182375, admitted cost
+// $1.300613, worst case $1.351575 with the benchmark's 16,384-token output allowance.
+const captured = (name: string): Record<string, unknown> =>
+  JSON.parse(
+    readFileSync(
+      new URL(`../fixtures/bench/analyze-dry-run/${name}.json`, import.meta.url),
+      "utf8",
+    ),
+  ) as Record<string, unknown>;
+const autoCap = captured("auto-cap");
+const refused = captured("refused");
+const fixedCap = captured("fixed-cap");
+
 const options = {
-  runId: "run-planted",
+  runId: "cua-2026-10-08T00-21-52-120Z-c53f9610",
   spentUsd: 0.3,
   budget: {
     maxUsdPerBrain: 7,
@@ -24,51 +39,119 @@ function response(json: Record<string, unknown>): CliResult {
   return { code: json.ok ? 0 : 1, timedOut: false, json };
 }
 
-it("admits the grown prompt with headroom and the same output allowance", async () => {
-  const calls: string[][] = [];
-  const analyze: typeof runCli = async (_cli, args) => {
+const billed = {
+  ok: true,
+  analysisId: "analysis-planted",
+  usage: { estimatedCostUsd: 0.87955, dispatched: true },
+};
+
+/** The CLI for that run: the dry run answers with `dryRun`, and the analysis is billed $0.87955. */
+function cli(dryRun: Record<string, unknown>, calls: string[][] = []): typeof runCli {
+  return async (_cli, args) => {
     calls.push([...args]);
-    return response(
-      args.includes("--dry-run")
-        ? { ok: true, admission: { estimatedCostUsd: 1.81, outputTokenAllowance: 16384 } }
-        : {
-            ok: true,
-            analysisId: "analysis-planted",
-            usage: { estimatedCostUsd: 0.87, dispatched: true },
-          },
-    );
+    return response(args.includes("--dry-run") ? dryRun : billed);
   };
-  const result = await analyzeWithinBudget(options, analyze);
-  expect(result).toMatchObject({
-    analysis: { state: "complete", admissionUsd: 1.81, maxCostUsd: 1.9911, estimatedUsd: 0.87 },
-    chargeUsd: 0.87,
+}
+
+const capOf = (args: string[] | undefined): string | undefined =>
+  args?.[args.indexOf("--max-cost") + 1];
+
+it("runs the analysis at the admitted cost the dry run reports, with the same output allowance", async () => {
+  const calls: string[][] = [];
+  const result = await analyzeWithinBudget(options, cli(autoCap, calls));
+  expect(result).toEqual({
+    analysis: {
+      analysisId: "analysis-planted",
+      state: "complete",
+      admissionUsd: 1.182375,
+      maxCostUsd: 1.300613,
+      estimatedUsd: 0.87955,
+      error: null,
+    },
+    chargeUsd: 0.87955,
   });
   expect(calls).toHaveLength(2);
   expect(calls[1]).toEqual(
-    expect.arrayContaining(["--max-cost", "1.9911", "--max-output-tokens", "16384"]),
+    expect.arrayContaining(["--max-cost", "1.300613", "--max-output-tokens", "16384"]),
   );
 });
 
-it("rounds the headroom cap up, so admission's expected cost plus margin still fits", async () => {
-  // Admission compares the expected cost times 1.1, rounded up to the micro-dollar, with the cap.
-  // Rounding the bench cap to the nearest 1/10000 could put it just under that figure.
+it.each([
+  [5.64, "complete"],
+  [5.66, "skipped_budget"],
+])(
+  "starts the analysis after spending %s only when its worst case of 1.351575 fits the budget of 7",
+  async (spentUsd, state) => {
+    const calls: string[][] = [];
+    const result = await analyzeWithinBudget({ ...options, spentUsd }, cli(autoCap, calls));
+    expect(result.analysis.state).toBe(state);
+    expect(calls).toHaveLength(state === "complete" ? 2 : 1);
+  },
+);
+
+it("counts a fixed-cap analysis at its worst case, which the cap does not bound", async () => {
+  // At --max-cost 1.31 the CLI chose a 32,768-token allowance: admitted at $1.300613, worst case $2.170775.
+  const budget = { ...options.budget, analysisMaxUsd: 1.31, analysisAutoCap: false };
   const calls: string[][] = [];
-  const analyze: typeof runCli = async (_cli, args) => {
-    calls.push([...args]);
-    return response(
-      args.includes("--dry-run")
-        ? { ok: true, admission: { estimatedCostUsd: 1.234567, outputTokenAllowance: 16384 } }
-        : {
-            ok: true,
-            analysisId: "analysis-planted",
-            usage: { estimatedCostUsd: 0.5, dispatched: true },
-          },
-    );
+  const skipped = await analyzeWithinBudget(
+    { ...options, spentUsd: 4.9, budget },
+    cli(fixedCap, calls),
+  );
+  expect(skipped).toEqual({
+    analysis: {
+      analysisId: null,
+      state: "skipped_budget",
+      admissionUsd: 1.182375,
+      maxCostUsd: 1.31,
+      estimatedUsd: null,
+      error: null,
+    },
+    chargeUsd: 0,
+  });
+  const started = await analyzeWithinBudget(
+    { ...options, spentUsd: 4.8, budget },
+    cli(fixedCap, calls),
+  );
+  expect(started.analysis).toMatchObject({ state: "complete", maxCostUsd: 1.31 });
+  expect(calls.map(capOf)).toEqual(["1.31", "1.31", "1.31"]);
+  expect(calls.at(-1)).not.toContain("--max-output-tokens");
+});
+
+it("records the cap the dry run checked when admission refuses it", async () => {
+  const budget = { ...options.budget, analysisMaxUsd: 1.25 };
+  const calls: string[][] = [];
+  const result = await analyzeWithinBudget({ ...options, budget }, cli(refused, calls));
+  expect(result).toEqual({
+    analysis: {
+      analysisId: null,
+      state: "refused",
+      admissionUsd: 1.182375,
+      maxCostUsd: 1.25,
+      estimatedUsd: null,
+      error: "analysis_budget_exceeded",
+    },
+    chargeUsd: 0,
+  });
+  expect(calls.map(capOf)).toEqual(["1.25"]);
+});
+
+it("records the analysis call's own estimate when that call refuses", async () => {
+  const grown = {
+    ...refused,
+    admission: { ...(refused.admission as object), estimatedCostUsd: 1.25 },
   };
-  const result = await analyzeWithinBudget(options, analyze);
-  const cap = Number(calls[1]![calls[1]!.indexOf("--max-cost") + 1]);
-  expect(cap).toBeGreaterThanOrEqual(Math.ceil(1.234567 * 1.1 * 1e6) / 1e6);
-  expect(result.analysis).toMatchObject({ state: "complete" });
+  const result = await analyzeWithinBudget(options, async (_cli, args) =>
+    response(args.includes("--dry-run") ? autoCap : grown),
+  );
+  expect(result).toMatchObject({
+    analysis: {
+      state: "refused",
+      admissionUsd: 1.25,
+      maxCostUsd: 1.300613,
+      error: "analysis_budget_exceeded",
+    },
+    chargeUsd: 0,
+  });
 });
 
 it("refuses automatic sizing when admission has no usable estimate", async () => {
@@ -84,60 +167,16 @@ it("refuses automatic sizing when admission has no usable estimate", async () =>
   });
 });
 
-it("records the live admission estimate when evidence growth causes a cost refusal", async () => {
+it("charges a dispatched analysis with no reported usage its worst case", async () => {
   const result = await analyzeWithinBudget(options, async (_cli, args) =>
     response(
       args.includes("--dry-run")
-        ? { ok: true, admission: { estimatedCostUsd: 1.81 } }
-        : {
-            ok: false,
-            admission: { estimatedCostUsd: 2.2 },
-            error: { code: "analysis_budget_exceeded" },
-          },
+        ? autoCap
+        : { ok: false, usage: { dispatched: true }, error: { code: "analysis_timeout" } },
     ),
   );
   expect(result).toMatchObject({
-    analysis: {
-      state: "refused",
-      admissionUsd: 2.2,
-      maxCostUsd: 1.9911,
-      error: "analysis_budget_exceeded",
-    },
-    chargeUsd: 0,
+    analysis: { state: "failed", maxCostUsd: 1.300613, estimatedUsd: null },
+    chargeUsd: 1.351575,
   });
-});
-
-it("records the cap actually checked when automatic admission is refused", async () => {
-  const result = await analyzeWithinBudget(options, async () =>
-    response({
-      ok: false,
-      admission: { estimatedCostUsd: 8 },
-      error: { code: "analysis_budget_exceeded" },
-    }),
-  );
-  expect(result).toMatchObject({
-    analysis: { state: "refused", admissionUsd: 8, maxCostUsd: 7 },
-    chargeUsd: 0,
-  });
-});
-
-it("clips headroom to the remaining budget without refusing an estimate that fits exactly", async () => {
-  let cap: number | undefined;
-  const result = await analyzeWithinBudget({ ...options, spentUsd: 5.19 }, async (_cli, args) => {
-    if (args.includes("--dry-run"))
-      return response({ ok: true, admission: { estimatedCostUsd: 1.81 } });
-    cap = Number(args[args.indexOf("--max-cost") + 1]);
-    return cap < 1.81
-      ? response({
-          ok: false,
-          admission: { estimatedCostUsd: 1.81 },
-          error: { code: "analysis_budget_exceeded" },
-        })
-      : response({ ok: true, usage: { dispatched: true } });
-  });
-  expect(result).toMatchObject({
-    analysis: { state: "complete", maxCostUsd: 1.81 },
-    chargeUsd: 1.81,
-  });
-  expect(cap).toBe(1.81);
 });

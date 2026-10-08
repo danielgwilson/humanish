@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `analyze --json` reports `admission.admittedCostUsd`: the expected cost plus the 10% margin, or
+  the worst case when that is lower. Admission compares it with the cap, so it is the smallest
+  `--max-cost` that admits the analysis.
+
 ### Fixed
 
 - The TUI's study screen shows the analysis budget line that `humanish run` and `study check`
@@ -23,6 +29,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish keys set constructor` and `humanish keys set __proto__` now refuse the name with the
   list of provider keys the store holds. Both names matched a built-in object property in the alias
   table and printed `Not a valid env name: function Object() { [native code] }`.
+- `humanish analyze` names its refusal command the way the rest of the CLI does, so a project
+  that installs humanish as a dev dependency is told `npx humanish analyze --run <id> --max-cost <n>`.
 - The known-value scrub finds a value inside a bracketed span such as `[REDACTED_373433393231]`
   (`743921` in hex). It skipped every `[REDACTED_...]` span; it now keeps only the markers
   humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
@@ -48,6 +56,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A feedback draft for an amended finding opens with the sentence `humanish review` and the
   Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
   and account." It had its own wording of that sentence.
+- The OpenAI computer-use participant is now asked for its closing report and impressions within
+  the limits its reply is checked against: a summary of up to 4,000 characters, up to 8 friction
+  reports of up to 2,000 characters each, and up to 6 impressions of up to 500 characters each.
+  Its request schema had no limits before, so a longer reply was asked for and then dropped as
+  invalid. The Codex participant was already sent these limits. The Observer reads a recorded
+  closing account with more than 8 friction reports or more than 6 impressions as unreadable; no
+  humanish version records more.
 
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 

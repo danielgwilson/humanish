@@ -2,21 +2,13 @@ import { numberField, objectField, runCli, stringField } from "./humanish-cli.js
 import { canStartAnalysis, type BudgetSettings } from "./plan.js";
 import type { RunRecord } from "./report.js";
 
-/**
- * The smallest four-decimal cap admission accepts for an expected cost: admission rounds the
- * expected cost times its 10% margin up to the micro-dollar, so this rounds that figure up again.
- */
-function admittedCap(expectedUsd: number): number {
-  const admitted = Math.ceil(expectedUsd * 1.1 * 1e6) / 1e6;
-  return Math.ceil(Math.round(admitted * 1e6) / 100) / 10000;
-}
-
 const SHORT_TIMEOUT_MS = 5 * 60_000;
 const ANALYSIS_TIMEOUT_MS = 12 * 60_000;
 
 /**
- * Analyze one run when its admission estimate still fits under the cap. A dispatched request with
- * no recorded estimate is charged its whole limit.
+ * Analyze one run when its worst case still fits under the brain's budget. With automatic sizing
+ * the cap is the admitted cost the CLI's dry run reports, the smallest cap admission accepts. A
+ * dispatched request with no recorded estimate is charged its worst case.
  */
 export async function analyzeWithinBudget(
   options: {
@@ -31,32 +23,30 @@ export async function analyzeWithinBudget(
   analyze: typeof runCli = runCli,
 ): Promise<{ analysis: RunRecord["analysis"]; chargeUsd: number }> {
   const { runId, spentUsd, budget, cliPath, projectDir, logFile, analyzeNodeArgs } = options;
-  let maxCostUsd = budget.analysisMaxUsd;
   // Keep the benchmark's output allowance stable while its input prompt grows.
   const outputArgs = budget.analysisAutoCap ? ["--max-output-tokens", "16384"] : [];
   const args = (cap: number): string[] => [
     "analyze", "--run", runId, "--cwd", projectDir, "--max-cost", String(cap), "--json", ...outputArgs,
   ];
-  const admission = await analyze(cliPath, [...args(maxCostUsd), "--dry-run"], { logFile, timeoutMs: SHORT_TIMEOUT_MS });
-  const admissionUsd = numberField(objectField(admission.json, "admission"), "estimatedCostUsd");
-  if (budget.analysisAutoCap && admission.json?.ok === true && admissionUsd !== null) {
-    // Ten percent headroom follows prompt growth without raising the brain's spending limit.
-    // Admission compares the expected cost times 1.1, rounded up, with the cap, so the headroom is
-    // rounded up too. The budget gate below checks the estimate first.
-    maxCostUsd = Math.max(admissionUsd, Math.min(admittedCap(admissionUsd),
-      budget.analysisMaxUsd, budget.maxUsdPerBrain - spentUsd));
-  }
+  const dryRun = await analyze(cliPath, [...args(budget.analysisMaxUsd), "--dry-run"], { logFile, timeoutMs: SHORT_TIMEOUT_MS });
+  const admission = objectField(dryRun.json, "admission");
+  const admissionUsd = numberField(admission, "estimatedCostUsd");
+  const admittedUsd = numberField(admission, "admittedCostUsd");
+  // An analysis can bill up to its worst case, whatever its cap.
+  const worstCaseUsd = numberField(admission, "worstCaseCostUsd");
+  const sized = budget.analysisAutoCap && dryRun.json?.ok === true && admittedUsd !== null && admittedUsd > 0;
+  const maxCostUsd = sized ? admittedUsd : budget.analysisMaxUsd;
   const base = { analysisId: null, estimatedUsd: null, admissionUsd, maxCostUsd };
-  if (admission.json?.ok !== true) {
+  if (dryRun.json?.ok !== true) {
     return {
-      analysis: { ...base, state: "refused", error: stringField(objectField(admission.json, "error"), "code") },
+      analysis: { ...base, state: "refused", error: stringField(objectField(dryRun.json, "error"), "code") },
       chargeUsd: 0,
     };
   }
-  if (budget.analysisAutoCap && (admissionUsd === null || admissionUsd <= 0)) {
+  if ((budget.analysisAutoCap && !sized) || worstCaseUsd === null) {
     return { analysis: { ...base, state: "refused", error: "analysis_estimate_unavailable" }, chargeUsd: 0 };
   }
-  if (!canStartAnalysis(spentUsd, budget, admissionUsd ?? budget.analysisMaxUsd)) {
+  if (!canStartAnalysis(spentUsd, budget, worstCaseUsd)) {
     return { analysis: { ...base, state: "skipped_budget", error: null }, chargeUsd: 0 };
   }
   const result = await analyze(cliPath, args(maxCostUsd), {
@@ -76,7 +66,7 @@ export async function analyzeWithinBudget(
       estimatedUsd: estimated,
       error: stringField(objectField(result.json, "error"), "code"),
     },
-    chargeUsd: estimated ?? (dispatched ? maxCostUsd : 0),
+    chargeUsd: estimated ?? (dispatched ? worstCaseUsd : 0),
   };
 }
 

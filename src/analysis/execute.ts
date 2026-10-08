@@ -105,6 +105,11 @@ export interface AnalysisAdmission {
   estimatedCostUsd: number | null;
   /** The cost if the analyst spends its whole output allowance. */
   worstCaseCostUsd: number | null;
+  /**
+   * The expected cost plus the margin, or the worst case when that is lower: the figure admission
+   * compares with maxCostUsd, so the smallest cap that admits this analysis.
+   */
+  admittedCostUsd: number | null;
   maxCostUsd: number | null;
   ratesAsOf: string | null;
 }
@@ -208,6 +213,7 @@ export function estimateAnalysisAdmission(
     outputTokenAllowance: 0,
     estimatedCostUsd: null,
     worstCaseCostUsd: null,
+    admittedCostUsd: null,
     maxCostUsd: null,
     ratesAsOf: null,
   });
@@ -242,6 +248,7 @@ export function estimateAnalysisAdmission(
       outputTokenAllowance: null,
       estimatedCostUsd: null,
       worstCaseCostUsd: null,
+      admittedCostUsd: null,
       maxCostUsd: null,
       ratesAsOf: null,
     };
@@ -276,6 +283,7 @@ export function estimateAnalysisAdmission(
     outputTokenAllowance: config.maxOutputTokens,
     estimatedCostUsd: cost.expectedCostUsd,
     worstCaseCostUsd: cost.worstCaseCostUsd,
+    admittedCostUsd: cost.admittedCostUsd,
     maxCostUsd: config.maxCostUsd,
     ratesAsOf: rate.asOf,
   };

@@ -206,3 +206,76 @@ it("shows no impressions heading for a trace recorded before impressions", async
     container.remove();
   }
 });
+
+type Stream = Parameters<typeof ParticipantFeedback>[0]["stream"];
+
+async function inspectRendered(
+  prepare: (stream: Stream) => void,
+  inspect: (container: HTMLElement) => void,
+) {
+  const data = fixtures.fixture(),
+    stream = data.streams[0]!;
+  prepare(stream);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ParticipantFeedback data={data} stream={stream} />));
+    inspect(container);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+}
+
+it.each([
+  [6, 6, "Worked well"],
+  [7, 0, "The recorded impressions could not be read."],
+])(
+  "reads %i recorded impressions as %i listed, since a participant gives at most six",
+  async (count, listed, said) => {
+    await inspectRendered(
+      (stream) => {
+        stream.actor!.impressions = {
+          status: "collected",
+          items: Array.from({ length: count }, (_, i) => ({
+            kind: "liked" as const,
+            text: `Liked thing ${i}.`,
+            messageId: `impression-${i}`,
+          })),
+        };
+      },
+      (container) => {
+        const region = container.querySelector('[aria-label="What they said at the end"]');
+        expect(region?.querySelectorAll("li")).toHaveLength(listed);
+        expect(region?.textContent).toContain(said);
+      },
+    );
+  },
+);
+
+it.each([
+  [8, 8],
+  [9, 0],
+])(
+  "reads a closing account with %i friction reports as %i listed, since a report holds at most eight",
+  async (count, listed) => {
+    await inspectRendered(
+      (stream) => {
+        stream.actor!.debrief = {
+          trigger: "stop_when",
+          status: "completed",
+          reason: "Recorded ending.",
+          report: {
+            summary: "Original closing summary.",
+            frictionReports: Array.from({ length: count }, (_, i) => `Friction ${i}.`),
+          },
+        };
+      },
+      (container) => {
+        expect(container.querySelectorAll(".participant-feedback > .blk li")).toHaveLength(listed);
+        expect(container.querySelector('[role="status"]') === null).toBe(listed > 0);
+      },
+    );
+  },
+);

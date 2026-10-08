@@ -32,7 +32,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
 | `--participant-cap <usd>`  | 0.6                   | The generated study's `caps.maxUsd` for a priced participant                  |
-| `--analysis-max-usd <usd>` | admission plus 10% | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
+| `--analysis-max-usd <usd>` | the admitted cost     | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |
 | `--work-dir <dir>`         | a new temp directory  | The project, its `.humanish/runs`, `manifest.json` and `cli.log`              |
 | `--out <dir>`              | the work directory    | Where the results file and summary go                                         |
@@ -58,10 +58,10 @@ Every child process gets `DO_NOT_TRACK=1`.
    still exists and kills nothing, then `humanish reclaim` when the check's `state` is anything
    other than `clean` (`running`, `unconfirmed` or `unknown`). Results record both states. A run
    made by humanish 0.110.0 or earlier records no owner tags, so its check reports `unknown` even
-   when every receipted sandbox is gone. Then `humanish analyze --dry-run` for the admission
-   estimate. By default, the per-run cap is that estimate plus 10%, limited to the remaining
-   per-brain budget. `--analysis-max-usd` sets a fixed cap instead. Analysis starts only when its
-   estimate fits the budget.
+   when every receipted sandbox is gone. Then `humanish analyze --dry-run`, which reports the
+   analysis's expected cost, admitted cost and worst case. By default, the per-run cap is the
+   admitted cost, the smallest cap `analyze` accepts. `--analysis-max-usd` sets a fixed cap
+   instead. Analysis starts only when its worst case fits the budget.
 5. Scores every recorded run and writes the results file and summary.
 
 ## What it spends
@@ -71,30 +71,35 @@ Each step starts only when the spend so far plus that step's worst case fits und
 - A participant run's worst case is `--participant-cap` plus the CLI's worst-case desktop minutes
   at $0.00888 a minute (8 CPU, 8 GiB). The participant cap is checked between turns, so one turn
   can pass it.
-- An analysis's cap follows the expected cost `humanish analyze --dry-run` reports for that run,
-  with 10% headroom, bounded by the remaining per-brain budget and the CLI's $1,000 limit. A
-  missing estimate refuses automatic sizing. `--analysis-max-usd` keeps a fixed per-run cap.
-  `analyze` refuses before sending anything when the expected cost plus 10%, or its worst case
-  when that is lower, is over the cap. The cap does not bound the bill: an analysis can spend up
-  to its worst case, its whole output allowance.
+- An analysis's worst case is the `worstCaseCostUsd` `humanish analyze --dry-run` reports for that
+  run: the cost if the analyst writes its whole output allowance. `analyze` refuses before sending
+  anything when the expected cost plus 10%, or the worst case when that is lower, is over the cap.
+  The dry run reports that figure as `admittedCostUsd`, and the automatic cap is that figure. The
+  cap does not bound the bill, so the budget counts the worst case. A missing estimate refuses the
+  analysis. `--analysis-max-usd` keeps a fixed per-run cap. A dispatched analysis that reports no
+  usage is charged its worst case.
 - A `local-agent` participant's model spend has no price. It is recorded as unknown, and the cap
   bounds only its desktop and analysis spend.
 
 On 2026-10-04, four neutral-mission runs cost $3.49 in estimates: participants $0.14 to $0.28,
-desktops about $0.01 each, analyses $0.50 to $0.84. Their analysis admission estimates were $1.44
-to $1.68 with a 16,384 token output allowance, so `--analysis-max-usd` below that refuses every
-analysis.
+desktops about $0.01 each, analyses $0.50 to $0.84. On copies of the six 0.114.0 runs,
+`analyze --dry-run` with a 16,384-token output allowance reported expected costs of $1.04 to
+$1.18, admitted costs of $1.14 to $1.30 and worst cases of $1.21 to $1.35; those analyses billed
+$0.59 to $0.88. An `--analysis-max-usd` below a run's admitted cost refuses that run's analysis.
 
 The default plan, 3 runs per arm with analysis, is about $5.20 at those costs. The cap admits each
-step on its worst case, so the sixth analysis needs about $6.70 of headroom: at $6 the dry run
-projects 6 runs and 5 analyses, and the default of $7 fits all 12 steps. When a plan does not fit,
-the dry run names the smallest cap, in $0.50 steps, at which it does.
+step on its worst case. The dry run counts an analysis at $1.26, the mean of those six worst cases,
+so the sixth analysis needs about $6.40 of headroom: at $6 the dry run projects 6 runs and 5
+analyses, and the default of $7 fits all 12 steps. When a plan does not fit, the dry run names the
+smallest cap, in $0.50 steps, at which it does.
 
 The benchmark's automatic cap uses a fixed 16,384-token output allowance for both the admission
 check and the analysis, preserving the allowance of earlier benchmarks as the input prompt grows.
-For example, a $1.81 admission estimate gets a $1.991 cap when the remaining budget allows it.
-An explicit `--analysis-max-usd` keeps the CLI's admission-based output sizing. Automatic analysis
-after a user's run uses a $3 limit. Results record the analysis model, prompt version and limits;
+For example, the 0.114.0 run with a $1.182375 expected cost has a $1.300613 admitted cost, which
+becomes its cap, and a $1.351575 worst case, which the budget counts. An explicit
+`--analysis-max-usd` keeps the CLI's admission-based output sizing: `analyze` uses a
+32,768-token allowance when the cap admits it, which raises the worst case. At `--max-cost 1.31`
+the same run's worst case is $2.17. Automatic analysis after a user's run uses a $3 limit. Results record the analysis model, prompt version and limits;
 each run's manifest records the cap it used.
 
 ## Missions

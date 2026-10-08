@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { costRefusal, estimateAnalysisCost } from "../../src/analysis/admission.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
@@ -10,6 +11,7 @@ import {
 } from "../../src/analysis/execute.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
+import { MODEL_RATES } from "../../src/run/pricing.js";
 
 /** The first 33 bytes of a PNG: signature, then an IHDR chunk carrying the size. */
 function pngBytes(width: number, height: number, salt: number): Buffer {
@@ -243,5 +245,66 @@ describe("analysis admission estimate", () => {
     expect(range!.low).toBeLessThanOrEqual(smallest);
     expect(range!.high).toBeGreaterThanOrEqual(largest);
     expect(range!.high).toBeLessThan(largest * 1.5);
+  });
+});
+
+describe("the admitted cost", () => {
+  // gpt-6-astra bills input at up to $12.50 per million tokens (cache writes) and output at $50.
+  // 30,000 bytes are 10,000 tokens, and 2,048 framing tokens make 12,048 input tokens: $0.1506.
+  const rate = MODEL_RATES["gpt-6-astra"]!;
+  const size = { textBytes: 30_000, imageTokens: 0, participants: 1 };
+
+  it("is the expected cost plus 10%", () => {
+    expect(estimateAnalysisCost(rate, { ...size, outputAllowance: 16_384 })).toEqual({
+      inputTokens: 12_048,
+      expectedOutputTokens: 13_000,
+      expectedCostUsd: 0.8006,
+      worstCaseCostUsd: 0.9698,
+      admittedCostUsd: 0.88066,
+    });
+  });
+
+  it("is the worst case when that is lower", () => {
+    expect(estimateAnalysisCost(rate, { ...size, outputAllowance: 13_500 })).toMatchObject({
+      expectedCostUsd: 0.8006,
+      worstCaseCostUsd: 0.8256,
+      admittedCostUsd: 0.8256,
+    });
+  });
+
+  it.each([8192, 32_768])(
+    "is the smallest cap admission accepts, with a %i-token output allowance",
+    (maxOutputTokens) => {
+      const input = packet({ participants: 2, entries: 40, textBytes: 4000, captures: 2 });
+      const config = { ...defaultConfig(), maxOutputTokens };
+      const { admittedCostUsd } = estimateAnalysisAdmission(input, { ...config, maxCostUsd: 1000 });
+      expect(admittedCostUsd).toBeGreaterThan(0);
+      const at = (maxCostUsd: number) =>
+        estimateAnalysisAdmission(input, { ...config, maxCostUsd });
+      expect(at(admittedCostUsd!)).toMatchObject({ allowed: true, admittedCostUsd });
+      expect(at(admittedCostUsd! - 0.000001)).toMatchObject({
+        allowed: false,
+        error: "analysis_budget_exceeded",
+        admittedCostUsd,
+      });
+    },
+  );
+});
+
+describe("a cost refusal", () => {
+  const cost = { expectedCostUsd: 2.952275, worstCaseCostUsd: 3.360675, maxCostUsd: 3 };
+
+  it("gives the costs, the cap and the command with a cap that admits the analysis", () => {
+    expect(costRefusal(cost, "--run run-1", (rest) => `npx humanish ${rest}`)).toEqual({
+      text: "The expected cost is $2.95 and the worst case is $3.36. With a 10% margin the expected cost is over the $3 cap, so no request was sent. To run it, raise the cap:",
+      command: "npx humanish analyze --run run-1 --max-cost 4",
+    });
+  });
+
+  it("suggests at least a one-dollar cap", () => {
+    const cheap = { expectedCostUsd: 0.2, worstCaseCostUsd: 0.21, maxCostUsd: 0.000001 };
+    expect(costRefusal(cheap, "--run run-1 --cwd app", (rest) => `humanish ${rest}`).command).toBe(
+      "humanish analyze --run run-1 --cwd app --max-cost 1",
+    );
   });
 });

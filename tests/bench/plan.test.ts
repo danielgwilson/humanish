@@ -87,11 +87,15 @@ describe("the benchmark budget", () => {
     const bound = participantBoundUsd(brain, budget());
     expect(canStartParticipant(4 - bound, brain, budget())).toBe(true);
     expect(canStartParticipant(4 - bound + 0.01, brain, budget())).toBe(false);
-    expect(canStartAnalysis(2.25, budget())).toBe(true);
-    expect(canStartAnalysis(2.26, budget())).toBe(false);
-    expect(canStartAnalysis(0, budget({ analysis: false }))).toBe(false);
+    expect(canStartAnalysis(2.25, budget(), 1.75)).toBe(true);
+    expect(canStartAnalysis(2.26, budget(), 1.75)).toBe(false);
+    expect(canStartAnalysis(0, budget({ analysis: false }), 1.75)).toBe(false);
     expect(canStartAnalysis(2.5, budget(), 1.5)).toBe(true);
-    expect(canStartAnalysis(2.5, budget(), 3)).toBe(false);
+  });
+
+  it("counts an analysis at its worst case when that is above its $1.75 cap", () => {
+    expect(canStartAnalysis(1.9, budget(), 2.1)).toBe(true);
+    expect(canStartAnalysis(2, budget(), 2.1)).toBe(false);
   });
 
   it("leaves an unpriced participant's model spend out of its bound", () => {
@@ -106,7 +110,8 @@ describe("the benchmark budget", () => {
     expect(projectBrain(brain, 6, defaults)).toMatchObject({ participantsFit: 6, analysesFit: 6 });
     const six = projectBrain(brain, 6, budget({ maxUsdPerBrain: 6 }));
     expect([six.participantsFit, six.analysesFit]).toEqual([6, 5]);
-    expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 6 }))).toBe(7);
+    // The sixth analysis starts after $5.12 of typical spend and counts its $1.26 worst case.
+    expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 6 }))).toBe(6.5);
   });
 });
 
