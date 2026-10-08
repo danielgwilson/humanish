@@ -1,6 +1,7 @@
 import type { AffordanceUse } from "./affordance.js";
 import type { ActorEstimatedCost } from "../run/pricing.js";
 import type { TaskFunnel } from "../study/tasks.js";
+import type { ParticipantClosingReport, ParticipantImpression } from "./closing-report.js";
 import {
   isCuaProviderFailurePhase,
   type CuaProviderFailurePhase,
@@ -17,6 +18,8 @@ import {
 // their own modules.
 
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
+
+export type { ParticipantClosingReport, ParticipantImpression } from "./closing-report.js";
 
 /**
  * How a session ended, from the point of view of the study rather than the harness.
@@ -366,35 +369,6 @@ export function validActorProviderRequests(value: unknown): value is ActorProvid
           usage.input)
     );
   });
-}
-
-/** The participant's account, not an independently confirmed product diagnosis. */
-export interface ParticipantClosingReport {
-  summary: string;
-  frictionReports: string[];
-  /** Absent when the provider did not ask for impressions; empty when the participant had none. */
-  impressions?: ParticipantImpression[];
-}
-
-/**
- * What a participant can say about the product at the end of a session, beyond friction.
- * `unlike_my_work` compares the screen with how the persona does the same task in its own work or
- * life.
- */
-export const PARTICIPANT_IMPRESSION_KINDS = [
-  "unclear",
-  "unfinished",
-  "untrustworthy",
-  "liked",
-  "missing",
-  "unlike_my_work",
-] as const;
-type ParticipantImpressionKind = (typeof PARTICIPANT_IMPRESSION_KINDS)[number];
-
-/** One first-person impression about something the participant saw in the session. */
-export interface ParticipantImpression {
-  kind: ParticipantImpressionKind;
-  text: string;
 }
 
 /** An impression as the trace keeps it, with the message that quotes it. */

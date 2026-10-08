@@ -1,7 +1,8 @@
+import { closingReportSchema } from "../closing-report.js";
 import { ComputerUseProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
 import { advanceBackstop, startBackstop, type BackstopStep } from "./loop/backstop.js";
-import { requestDebrief, validClosingReport } from "./loop/debrief.js";
+import { requestDebrief } from "./loop/debrief.js";
 import * as stops from "./loop/ending.js";
 import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
 import { notCollected, recordImpressions } from "./loop/impressions.js";
@@ -39,7 +40,6 @@ export type {
 } from "./loop/types.js";
 export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
-export { validClosingReport, validImpressionsReply } from "./loop/debrief.js";
 export { IMPRESSIONS_ASK } from "./loop/impressions.js";
 
 // The computer-use (CUA) loop: drive a model over a desktop turn by turn, observe the screen, act,
@@ -177,7 +177,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );
-      const report = validClosingReport(turn.closingReport) ? turn.closingReport : undefined;
+      const report = closingReportSchema.safeParse(turn.closingReport).data;
       // A provider that can ask for impressions alone does so after the session, like a debrief.
       if (report?.impressions !== undefined || session.provider.requestImpressions === undefined) {
         session.impressions =
