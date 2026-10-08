@@ -9,9 +9,9 @@ export const CUA_WAIT_LIMITS = Object.freeze({
    */
   stepMs: 30_000,
   /**
-   * The longest one wait action lasts when a study does not set actor.maxWaitMs. Two minutes covers
-   * waiting in a lobby or for an email to arrive, and the participant still sees a fresh screenshot
-   * at least that often.
+   * The longest one wait action lasts when a study does not set actor.maxWaitMs and the desktop
+   * has no speech (defaultMaxWaitMs). Two minutes covers waiting in a lobby or for an email to
+   * arrive, and the participant still sees a fresh screenshot at least that often.
    */
   defaultMaxMs: 120_000,
   /** The smallest actor.maxWaitMs a study may set. */
@@ -28,4 +28,14 @@ export function isMaxWaitMs(value: unknown): value is number {
     value >= CUA_WAIT_LIMITS.leastMaxMs &&
     value <= CUA_WAIT_LIMITS.mostMaxMs
   );
+}
+
+/**
+ * The longest one wait action lasts when a study does not set actor.maxWaitMs. On a desktop with
+ * speech, heard speech reaches the participant only with a screenshot, and the desktop session ends
+ * when more utterances arrive between two screenshots than it holds. A wait takes no screenshot, so
+ * there the default keeps one wait to one desktop call.
+ */
+export function defaultMaxWaitMs(speechEnabled: boolean): number {
+  return speechEnabled ? CUA_WAIT_LIMITS.stepMs : CUA_WAIT_LIMITS.defaultMaxMs;
 }

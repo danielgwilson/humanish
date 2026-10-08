@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
+import { forwardDeclaredWarnings, inertFieldPaths } from "../../src/study/warnings.js";
+import { libraryConfig } from "../helpers/library-config.js";
 import {
   computerUseParticipants,
   sharedWorldParticipants,
@@ -48,13 +50,20 @@ describe("actor.maxWaitMs", () => {
   );
 
   it.each<BaseName>(["terminal", "scriptedAppUrl", "preview"])(
-    "refuses it on %s, whose participants take no wait actions",
+    "refuses it on %s, whose participants take no wait actions, as a field the route does not read",
     (base) => {
       const result = parsed(base, 60_000);
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error.message).toContain("actor.maxWaitMs is read only by");
+      if (!result.ok) expect(result.error.message).toMatch(/does not read actor\.maxWaitMs/);
     },
   );
+
+  it("is reported as having no effect to a library caller on a route without waits", () => {
+    const config = libraryConfig(lab("terminal", {}, { maxWaitMs: 60_000 }));
+    expect(inertFieldPaths(config)).toEqual(["actor.maxWaitMs"]);
+    expect(forwardDeclaredWarnings(config).join("\n")).toMatch(/actor\.maxWaitMs/);
+    expect(inertFieldPaths(libraryConfig(lab("cuAppUrl", {}, { maxWaitMs: 60_000 })))).toEqual([]);
+  });
 
   it("is not a participant entry field", () => {
     const result = parseStudy(

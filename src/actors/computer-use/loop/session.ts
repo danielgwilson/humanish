@@ -10,7 +10,7 @@ import type { DebriefTrigger, Stop } from "./ending.js";
 import { TraceRecorder } from "./trace.js";
 import type { CuaExecutor, CuaProvider, CuaSafetyCheck, LoopRunOptions } from "./types.js";
 import { UsageLedger } from "./usage.js";
-import { CUA_WAIT_LIMITS } from "../wait.js";
+import { CUA_WAIT_LIMITS, defaultMaxWaitMs, isMaxWaitMs } from "../wait.js";
 
 // The state one loop session shares across its phases: the options as read at entry, the session
 // clock, the trace being recorded, the usage ledger, and what the participant has done so far.
@@ -132,7 +132,7 @@ export class LoopSession {
       signal,
       idleSteps = DEFAULT_IDLE_STEPS,
       noProgressSteps = DEFAULT_NO_PROGRESS_STEPS,
-      maxWaitMs = CUA_WAIT_LIMITS.defaultMaxMs,
+      maxWaitMs = defaultMaxWaitMs(executor.speechEnabled === true),
       acknowledgeSafetyChecks = () => null,
       redactScreenshots = false,
       scrubText = (text) => text,
@@ -171,6 +171,10 @@ export class LoopSession {
     this.timeoutMs = timeoutMs;
     this.idleSteps = idleSteps;
     this.noProgressSteps = noProgressSteps;
+    if (!isMaxWaitMs(maxWaitMs))
+      throw new RangeError(
+        `maxWaitMs must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs} (got ${String(maxWaitMs)}).`,
+      );
     this.maxWaitMs = maxWaitMs;
     this.redactScreenshots = redactScreenshots;
     this.now = () => now();

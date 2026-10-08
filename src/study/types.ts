@@ -371,8 +371,9 @@ export interface StudyActor {
   maxOutputTokens?: number;
   /**
    * Computer-use and shared-world: the longest one `wait` action lasts, in whole milliseconds from
-   * 1000 to 600000. Default 120000. A longer wait is shortened to it, the trace records a
-   * `wait shortened` notice, and the participant is told on its next turn.
+   * 1000 to 600000. Default 120000, or 30000 on a desktop with speech. A longer wait is shortened
+   * to it, the trace records a `wait shortened` notice, and the participant is told on its next
+   * turn.
    */
   maxWaitMs?: number;
   /**

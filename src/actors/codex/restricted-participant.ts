@@ -17,7 +17,7 @@ import {
   type CuaProviderErrorCode,
 } from "../computer-use/provider-error.js";
 import { validateBrowserControlPng, validateHeardSpeech } from "../../browser-control/protocol.js";
-import { CUA_WAIT_LIMITS } from "../computer-use/wait.js";
+import { defaultMaxWaitMs } from "../computer-use/wait.js";
 import {
   createRestrictedCodexSession,
   type RestrictedCodexSession,
@@ -57,7 +57,7 @@ export interface RestrictedParticipantOptions {
   speechEnabled?: boolean;
   /**
    * The study's actor.maxWaitMs, which the loop applies and the tool description states. Default
-   * CUA_WAIT_LIMITS.defaultMaxMs.
+   * defaultMaxWaitMs(speechEnabled), the same default the loop applies.
    */
   maxWaitMs?: number;
 }
@@ -301,7 +301,7 @@ function participantSession(
         name: "humanish_ui",
         description: toolDescription(
           speechEnabled,
-          options.maxWaitMs ?? CUA_WAIT_LIMITS.defaultMaxMs,
+          options.maxWaitMs ?? defaultMaxWaitMs(speechEnabled),
         ),
         inputSchema: participantToolSchema(speechEnabled),
         call,

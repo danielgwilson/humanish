@@ -277,20 +277,13 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
 }
 
 /**
- * Refuse a wait limit out of range, or on a route whose participants take no wait actions. A route
- * that reads it passes `readsWaits` for a config that skipped the parser.
+ * Refuse a wait limit out of range. On a route whose participants take no wait actions the field
+ * is inert (warnings.ts).
  */
-export function waitLimitValidationReason(
-  config: StudyConfig,
-  readsWaits = isComputerUseComposition(config) || isSharedWorldComposition(config),
-): string | null {
+export function waitLimitValidationReason(config: StudyConfig): string | null {
   const maxWaitMs = config.actor?.maxWaitMs;
-  if (maxWaitMs === undefined) return null;
-  if (!isMaxWaitMs(maxWaitMs))
-    return `actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs}.`;
-  if (!readsWaits)
-    return "actor.maxWaitMs is read only by computer-use and shared-world participants. Terminal, scripted and preview participants take no wait actions, so remove it from this study.";
-  return null;
+  if (maxWaitMs === undefined || isMaxWaitMs(maxWaitMs)) return null;
+  return `actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs}.`;
 }
 
 /**

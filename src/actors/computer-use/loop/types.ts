@@ -291,8 +291,9 @@ export interface CuaLoopOptions {
   /**
    * The longest one `wait` action lasts, in ms: the study's actor.maxWaitMs. A longer wait is
    * shortened to it, the trace records a `wait shortened` notice, and the participant is told on its
-   * next request. A wait longer than one desktop call carries is sent in steps. Default
-   * CUA_WAIT_LIMITS.defaultMaxMs (120000).
+   * next request. A wait longer than one desktop call carries is sent in steps. A whole number from
+   * 1000 to 600000; any other value throws a RangeError before the session starts. Default
+   * defaultMaxWaitMs: 120000, or 30000 when the executor is speechEnabled.
    */
   maxWaitMs?: number;
   /**

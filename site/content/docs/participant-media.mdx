@@ -45,9 +45,10 @@ and duration. A participant can use the existing `wait` action while listening.
 Hearing something counts as progress even when the screen stays unchanged.
 Heard speech reaches the participant with its next screenshot. The desktop keeps
 at most 8 utterances until then, and one more ends the desktop session. A wait
-action lasts up to [`actor.maxWaitMs`](/docs/study-files#choose-the-actor-and-its-task-in-actor),
-two minutes unless the study sets it, so lower it when other callers talk while a
-participant waits.
+takes no screenshot, so on a desktop with speech one wait action lasts at most 30
+seconds unless the study sets
+[`actor.maxWaitMs`](/docs/study-files#choose-the-actor-and-its-task-in-actor).
+Raise it only when other callers say little while a participant waits.
 
 Transcription and synthetic speech run inside the Linux desktop, without a
 speech API key or a host Python installation. Codex inference still runs remotely

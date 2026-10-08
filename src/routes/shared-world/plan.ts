@@ -115,7 +115,7 @@ export function planSharedWorldStudy(
     // A library caller's config skips the parser, which refuses these first.
     studyUrlCredentialReason(config) ??
     outputTokenLimitValidationReason(config) ??
-    waitLimitValidationReason(config, true) ??
+    waitLimitValidationReason(config) ??
     (externalPublic
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));

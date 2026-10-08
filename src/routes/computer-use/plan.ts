@@ -191,7 +191,7 @@ function unsupportedDeclarationReason(
   const reason =
     desktopMediaValidationReason(config) ||
     outputTokenLimitValidationReason(config) ||
-    waitLimitValidationReason(config, true);
+    waitLimitValidationReason(config);
   if (reason) return invalid(reason);
   if (
     config.actor?.maxOutputTokens !== undefined &&

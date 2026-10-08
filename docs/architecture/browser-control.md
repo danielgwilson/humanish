@@ -105,7 +105,8 @@ runtime-only under the existing loop contract. Arbitrary `appState` is refused
 because v1 has no closed schema for it. The protocol does not truncate strings,
 round coordinates, or silently drop unsupported state. A participant may ask for a
 longer wait than one request carries. The computer-use loop shortens it to the study's
-`actor.maxWaitMs` (two minutes by default), records a `wait shortened` notice with both
+`actor.maxWaitMs` (by default two minutes, or 30 seconds on a desktop with speech, whose heard
+speech reaches the participant only with a screenshot), records a `wait shortened` notice with both
 durations when it does, and sends the rest as consecutive waits of at most 30 seconds. The Codex
 participant's `humanish_ui` schema leaves a wait's length open for that reason; the wire still
 refuses a single wait over 30 seconds.

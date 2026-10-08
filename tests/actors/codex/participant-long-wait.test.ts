@@ -92,19 +92,23 @@ function frame(shade: number): Buffer {
 async function waitInCall(
   waitMs: number,
   maxWaitMs?: number,
+  speechEnabled = false,
 ): Promise<{ result: CuaLoopResult; executed: CuaAction[]; firstReply: Record<string, unknown> }> {
   native.waitMs = waitMs;
   native.replies.length = 0;
   native.descriptions.length = 0;
-  const participant = createRestrictedCodexParticipant(
-    maxWaitMs === undefined ? {} : { maxWaitMs },
-  );
+  // As the routes build it: the participant and the loop read speech from the same desktop.
+  const participant = createRestrictedCodexParticipant({
+    ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+    ...(speechEnabled ? { speechEnabled: true } : {}),
+  });
   const executed: CuaAction[] = [];
   let shade = 0;
   const result = await runComputerUseLoop({
     instructions: "Join the call and wait for the other person.",
     provider: participant.provider,
     executor: {
+      ...(speechEnabled ? { speechEnabled: true } : {}),
       observe: async () => ({ screenshot: frame(shade), stateSignature: String(shade) }),
       execute: async (action) => {
         executed.push(action);
@@ -164,5 +168,18 @@ describe("a Codex participant that asks for a long wait", () => {
     expect(firstReply.acknowledgments).toEqual([{ index: 0, status: "completed" }]);
     expect(firstReply.contextHint).toContain("shortened to 90000ms");
     expect(native.descriptions[0]).toContain("at most 90000 ms");
+  });
+
+  it("is told and given 30 s on a desktop with speech when the study sets no longest wait", async () => {
+    const { result, executed, firstReply } = await waitInCall(60_000, undefined, true);
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(executed).toEqual([
+      { kind: "wait", ms: 30_000 },
+      { kind: "click", x: 1, y: 1 },
+    ]);
+    expect(shortenedNotices(result)).toHaveLength(1);
+    expect(firstReply.contextHint).toContain("shortened to 30000ms");
+    expect(native.descriptions[0]).toContain("at most 30000 ms");
   });
 });
