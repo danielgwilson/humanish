@@ -97,6 +97,21 @@ describe("transient run narration secrets", () => {
     });
   });
 
+  // A received email's raw link is registered at any length up to 65,536 bytes, next to the code
+  // it carries. One regex of the values refused a value of 32,768 characters, and the scope failed.
+  it("scrubs a registered value of every length the registry accepts", async () => {
+    for (const length of [32_768, 65_536]) {
+      const link = `https://example.test/${"t".repeat(length - 21)}`;
+      await withTransientCommsSecrets(async () => {
+        registerTransientCommsSecrets([link, "743921"]);
+        expect(scrubTransientCommsText(`opened ${link}, entered 743921.`)).toBe(
+          "opened [REDACTED_SECRET], entered [REDACTED_SECRET].",
+        );
+        expect(transientCommsKnownValueScrub()(`opened ${link}`)).toBe("opened [REDACTED_SECRET]");
+      });
+    }
+  });
+
   it("removes a literal value even when the text also holds an encoded one", async () => {
     const code = "743921";
     const hex = Buffer.from(code).toString("hex");

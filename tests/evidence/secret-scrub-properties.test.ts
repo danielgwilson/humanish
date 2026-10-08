@@ -3,13 +3,20 @@ import { describe, expect, it } from "vitest";
 import { scrubSecretValues } from "../../src/evidence/secret-scrub.js";
 import {
   registerTransientCommsSecrets,
+  scrubTransientCommsText,
   transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
-import { propertyParameters, scrubInputs, type ScrubInput } from "../helpers/scrub-arbitraries.js";
+import {
+  literalInputs,
+  propertyParameters,
+  scrubInputs,
+  type ScrubInput,
+} from "../helpers/scrub-arbitraries.js";
 import {
   inOrder,
   modelDecode,
+  modelLiteralScrub,
   outsideValues,
   survivingForm,
   touchesEscape,
@@ -174,5 +181,20 @@ describe.each(scrubs)("%s against the reference model", (_name, scrubUnderTest) 
       (await fastest(scrub, values, whole)) / Math.max(20, await fastest(scrub, values, quarter));
     expect(ratio).toBeLessThan(10);
     expect(survivingForm(values, await scrub(values, whole))).toBeUndefined();
+  });
+});
+
+describe("scrubTransientCommsText against the regex alternation it replaced", () => {
+  it("replaces the longest value that starts at each position and searches on after it", async () => {
+    await fc.assert(
+      fc.asyncProperty(literalInputs(), async ({ values, text }) => {
+        const scrubbed = await withTransientCommsSecrets(async () => {
+          registerTransientCommsSecrets([...values]);
+          return scrubTransientCommsText(text);
+        });
+        expect(scrubbed).toBe(modelLiteralScrub(values, text));
+      }),
+      parameters,
+    );
   });
 });

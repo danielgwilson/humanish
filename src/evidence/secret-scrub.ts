@@ -129,6 +129,36 @@ function eachOccurrence(text: string, form: string, found: (at: number) => void)
   }
 }
 
+/**
+ * A scrub that replaces each non-empty value as written with `[REDACTED_SECRET]`, markers
+ * included. From the start of the text, the longest value that starts at a position is replaced
+ * and the search goes on after it, so the marker it writes is never searched. That is the output
+ * of one global regex of the values, longest first, without its size limit: V8 refuses a value of
+ * 32,768 characters. Each value is found in time linear in the text.
+ */
+export function scrubValuesAsWritten(values: readonly string[]): (text: string) => string {
+  const written = [...new Set(values)].filter((value) => value.length > 0);
+  return (text) => {
+    // The length of the longest value that starts at each position, allocated at the first find.
+    let longest: Uint32Array | undefined;
+    for (const value of written)
+      eachOccurrence(text, value, (at) => {
+        longest ??= new Uint32Array(text.length);
+        longest[at] = Math.max(longest[at]!, value.length);
+      });
+    if (longest === undefined) return text;
+    let result = "";
+    let cursor = 0;
+    for (let at = 0; at < text.length; at += 1) {
+      if (longest[at] === 0) continue;
+      result += text.slice(cursor, at) + REDACTED;
+      cursor = at + longest[at]!;
+      at = cursor - 1;
+    }
+    return result + text.slice(cursor);
+  };
+}
+
 /** Every occurrence of every form not wholly inside a marker, in no order. */
 function occurrences(text: string, forms: readonly string[]): [number, number][] {
   const markers: [number, number][] = [];

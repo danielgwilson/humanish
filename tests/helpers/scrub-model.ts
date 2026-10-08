@@ -2,7 +2,8 @@
 // transientCommsKnownValueScrub. It writes each value's forms with its own encoders and reads text
 // with its own decoders, built on the platform's (JSON.parse, decodeURIComponent, Buffer), so a
 // form the production encoder omits or a reading its decoder gets wrong shows up as
-// a disagreement. Only the list of markers comes from production, as data.
+// a disagreement. The transient literal scrub's model is the platform's RegExp. Only the list of
+// markers comes from production, as data.
 
 import { REDACTION_MARKERS } from "../../src/evidence/redaction.js";
 
@@ -254,6 +255,21 @@ export function inOrder(kept: string, text: string): boolean {
     at += char.length;
   }
   return true;
+}
+
+/**
+ * The transient literal scrub as one global regex of the values of four characters or more,
+ * longest first: at each position the longest value that starts there becomes the marker, and the
+ * search goes on after it. V8 refuses a value of 32,768 characters or more.
+ */
+export function modelLiteralScrub(values: readonly string[], text: string): string {
+  const kept = [...new Set(values)].filter((value) => value.length >= 4);
+  if (kept.length === 0) return text;
+  const pattern = kept
+    .sort((left, right) => right.length - left.length)
+    .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  return text.replace(new RegExp(pattern, "g"), REDACTION_MARKERS.secret);
 }
 
 /**
