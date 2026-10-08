@@ -7,7 +7,12 @@ import {
   isTerminalProductComposition,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
-import { declaredParticipantIds } from "./plan-participants.js";
+import {
+  computerUseParticipants,
+  declaredParticipantIds,
+  sharedWorldParticipants,
+  type Participant,
+} from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
 import {
   participantList,
@@ -337,12 +342,11 @@ export function inertFieldPaths(config: StudyConfig): string[] {
 /**
  * The warning for `execution.egressAllow` on a route that ignores it, or undefined. Only the
  * terminal route creates its sandbox with the list as an outbound allowlist; on any other route the
- * study author would trust a list that blocks nothing. `humanish study check` and every run print
- * it, and the run records it in its bundle.
+ * study author would trust a list that blocks nothing.
  * Removed in the first minor release on or after 2026-11-04: deprecated on 2026-10-05. That release refuses the field off the terminal
  * route.
  */
-export function egressAllowIgnoredWarning(config: StudyConfig): string | undefined {
+function egressAllowIgnoredWarning(config: StudyConfig): string | undefined {
   if (config.execution?.egressAllow === undefined || config.route === "terminal") return undefined;
   return `\`execution.egressAllow\` is ignored on route: ${config.route}. Only route: terminal creates its sandbox with that outbound allowlist, and this route's browser desktops can reach any site. Remove the field: the first minor release on or after 2026-11-04 refuses it on every route except terminal.`;
 }
@@ -358,8 +362,6 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
       : [
           `These fields are set, but no route reads them yet, so they have no effect: ${inert.join(", ")}.`,
         ];
-  const egressIgnored = egressAllowIgnoredWarning(config);
-  if (egressIgnored !== undefined) warnings.push(egressIgnored);
   // A declared cap below the participant count is legal but loud: the roster promises N live actors
   // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
   // waves is otherwise indistinguishable from the all-live run the author meant.
@@ -387,7 +389,18 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
       );
     }
   }
-  return [...warnings, ...scriptedMissionWarnings(config)];
+  return [...warnings, ...recordedStudyWarnings(config)];
+}
+
+/**
+ * The warnings about a study's own fields that a run records in its bundle as `study.warning`
+ * events: `execution.egressAllow` off the terminal route, and participant text that reads like a
+ * script. parseStudy reports them too, after its other warnings, so `study check` and every run
+ * print them.
+ */
+export function recordedStudyWarnings(config: StudyConfig): string[] {
+  const egressIgnored = egressAllowIgnoredWarning(config);
+  return [...(egressIgnored === undefined ? [] : [egressIgnored]), ...scriptedMissionWarnings(config)];
 }
 
 const UI_ACTION = /\b(?:click|tap|press|type\b[^.!?\n]*?\binto|select\b[^.!?\n]*?\bfrom)\b/gi;
@@ -436,7 +449,7 @@ function actionChain(text: string): boolean {
 }
 
 /** Authored participant text is checked before runtime instructions or researcher criteria join it. */
-export function scriptedMissionWarnings(config: StudyConfig): string[] {
+function scriptedMissionWarnings(config: StudyConfig): string[] {
   if (config.route !== "computer-use" && config.route !== "shared-world") return [];
   const fields: Array<[string, string | undefined]> = [
     ["actor.mission", config.actor?.mission],
@@ -472,21 +485,34 @@ export function scriptedMissionWarnings(config: StudyConfig): string[] {
   });
 }
 
-/** Backgrounds give participants a reason to act beyond the assigned task. */
+/**
+ * A warning for each participant whose persona has no background, which gives a participant a
+ * reason to act beyond the assigned task. `participants` are the records the planner builds: a
+ * computer-use or shared-world plan's participants, or `plannedParticipants` before a plan exists.
+ */
 export function personaBackgroundWarnings(
-  config: StudyConfig,
+  studyId: string,
+  participants: readonly Pick<Participant, "id" | "personaId">[],
   personas: ReadonlyMap<string, ResolvedPersona>,
 ): string[] {
-  if (config.route !== "computer-use" && config.route !== "shared-world") return [];
-  const roster = participantList(config);
-  return declaredParticipantIds(config).flatMap((id, index) => {
-    const personaId = roster?.[index]?.persona ?? config.actor?.persona;
+  return participants.flatMap(({ id, personaId }) => {
     if (personaId && personas.get(personaId)?.background) return [];
     const reason = personaId
       ? `persona ${personaId} has no readable background`
       : "no persona is assigned";
     return [
-      `Participant ${id} has no persona background because ${reason}. Add a short, fictional background describing their experience and situation. Run ${cli(`study show ${config.id} --json`)} to see what the participant receives.`,
+      `Participant ${id} has no persona background because ${reason}. Add a short, fictional background describing their experience and situation. Run ${cli(`study show ${studyId} --json`)} to see what the participant receives.`,
     ];
   });
+}
+
+/**
+ * The participant records planStudy builds for a study's declared participants, for `study check`
+ * and `study show`, which run no plan. Only computer-use and shared-world studies have them; a run's
+ * `--count` is not applied.
+ */
+export function plannedParticipants(config: StudyConfig): readonly Participant[] {
+  if (config.route === "computer-use") return computerUseParticipants(config);
+  if (config.route === "shared-world") return sharedWorldParticipants(config).participants;
+  return [];
 }

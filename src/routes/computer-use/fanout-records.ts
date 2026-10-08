@@ -10,7 +10,7 @@ import {
 } from "../../run/participant-records.js";
 import type { RunDesktopGeometry, RunStream } from "../../run/streams.js";
 import { participantCaption } from "../../run/participant-caption.js";
-import { sessionEndingInWords } from "../../run/outcomes.js";
+import { participantSummary } from "../../run/outcomes.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import type { judgeParticipantRecords } from "../../run/judge.js";
@@ -99,15 +99,16 @@ function fanoutParticipantRecord(
     mode: "browser-sim",
     progress: args.inProgress === true && outcome === undefined ? 20 : 100,
     currentStep: reason,
-    summary: session
-      ? `${name} used the app and ${sessionEndingInWords(session.trace)}.`
-      : args.inProgress === true && outcome === undefined
-        ? `${name} is using the app.`
-        : outcome?.skippedReason !== undefined
-          ? `${name} was ${outcome.skippedReason}.`
-          : outcome?.sessionError !== undefined
-            ? `${name} did not finish a session: ${outcome.sessionError}`
-            : `${name} would use ${publicTargetUrl}; no session ran.`,
+    summary: participantSummary(
+      name,
+      { name: "the app", target: publicTargetUrl },
+      {
+        trace: session?.trace,
+        skippedReason: outcome?.skippedReason,
+        sessionError: outcome?.sessionError,
+        inProgress: args.inProgress === true && outcome === undefined,
+      },
+    ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });

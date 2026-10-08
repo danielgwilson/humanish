@@ -158,6 +158,44 @@ export function sessionEndingInWords(trace: ActorTrace): string {
   }
 }
 
+/** The app a participant summary says the participant used. */
+interface SummaryApp {
+  /** "the app", or "the shared app" when every participant uses one instance. */
+  name: string;
+  /** Where the participant's browser ran, such as "in a hosted desktop browser". */
+  place?: string;
+  /** What a participant that never ran would have used, such as the app's URL. Defaults to `name`. */
+  target?: string;
+}
+
+/** What one participant's session came to when the bundle is written. */
+interface SummarySession {
+  trace?: ActorTrace | undefined;
+  /** Why the run skipped the participant before its session started. */
+  skippedReason?: string | undefined;
+  sessionError?: string | undefined;
+  /** The run is still going and has no outcome for this participant. */
+  inProgress: boolean;
+}
+
+/**
+ * The sentence a participant's simulation record carries. An ended session, a skip and a session
+ * error each say what happened, in that order; a participant without one is still using the app or
+ * never ran.
+ */
+export function participantSummary(name: string, app: SummaryApp, session: SummarySession): string {
+  const where = app.place === undefined ? app.name : `${app.name} ${app.place}`;
+  if (session.trace !== undefined) {
+    const used = app.place === undefined ? where : `${where},`;
+    return `${name} used ${used} and ${sessionEndingInWords(session.trace)}.`;
+  }
+  if (session.skippedReason !== undefined) return `${name} was ${session.skippedReason}.`;
+  if (session.sessionError !== undefined)
+    return `${name} did not finish a session: ${session.sessionError}`;
+  if (session.inProgress) return `${name} is using ${where}.`;
+  return `${name} would use ${app.target ?? app.name}; no session ran.`;
+}
+
 /** "; the gaps list the other 2", or "all 3" when nobody passed. Empty when the gaps list nobody. */
 export function gapsListClause(listed: number, total: number): string {
   if (listed <= 0) return "";

@@ -1,4 +1,4 @@
-import { personaBackgroundWarnings } from "./warnings.js";
+import { personaBackgroundWarnings, plannedParticipants } from "./warnings.js";
 import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./persona-resolve.js";
 import path from "node:path";
 import type { AutomaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -159,10 +159,11 @@ export async function runStudyPreflight(
     };
   }
 
+  const participants = plannedParticipants(resolved.config);
   const personas =
-    resolved.config.route === "computer-use" || resolved.config.route === "shared-world"
-      ? (await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config))).personas
-      : new Map();
+    participants.length === 0
+      ? new Map()
+      : (await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config))).personas;
   const route = routeOf(resolved.config);
   const ctx: PreflightContext = {
     cwd,
@@ -182,7 +183,10 @@ export async function runStudyPreflight(
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },
-    warnings: [...resolved.warnings, ...personaBackgroundWarnings(resolved.config, personas)],
+    warnings: [
+      ...resolved.warnings,
+      ...personaBackgroundWarnings(resolved.config.id, participants, personas),
+    ],
   };
 
   const machine = machineCheck(ctx.config);
