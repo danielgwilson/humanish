@@ -360,22 +360,33 @@ export function redactText(text: string): string {
 }
 
 /**
- * Redact one line that may be JSON, such as a line of `codex exec --json` output, keeping the text
- * after a local path inside a string. Secrets are redacted in the line as written first, as
- * redactText does, so a credential's name still marks its value. When the line is still JSON,
- * each string, keys included, is then redacted as the text it decodes to and written back, so a
- * path ends at a line break or tab in the string, as it does in raw text. redactText then runs
- * over the whole line. Any other line gets exactly what redactText gives it. JSON written inside a
- * string is read as raw text, as redactText reads it.
+ * Redact complete lines of output that may be JSON, such as `codex exec --json` output, keeping
+ * the text after a local path inside a JSON string. Secrets are redacted in the text as written
+ * first, as redactText does, so a credential's name still marks its value and a pattern such as
+ * `Bearer\s+` still reaches across a line break. Each line that is still JSON then has each string,
+ * keys included, redacted as the text it decodes to and written back, so a path ends at a line
+ * break or tab in the string, as it does in raw text, and redactText runs over the whole text.
+ * Text with no JSON line gets exactly what redactText gives it. JSON written inside a string is
+ * read as raw text, as redactText reads it.
  */
-export function redactJsonLine(line: string): string {
-  const secretsRedacted = redactSecrets(line);
+export function redactJsonLines(text: string): string {
+  const secretsRedacted = redactSecrets(text);
+  let rewroteJson = false;
+  const lines = secretsRedacted.split("\n").map((line) => {
+    if (!isJson(line)) return line;
+    rewroteJson = true;
+    return rewriteJsonStrings(line, redactText);
+  });
+  return rewroteJson ? redactText(lines.join("\n")) : redactLocalPaths(secretsRedacted);
+}
+
+function isJson(text: string): boolean {
   try {
-    JSON.parse(secretsRedacted);
+    JSON.parse(text);
+    return true;
   } catch {
-    return redactLocalPaths(secretsRedacted);
+    return false;
   }
-  return redactText(rewriteJsonStrings(secretsRedacted, redactText));
 }
 
 /** `json`, which JSON.parse accepts, with each string in it replaced by `rewrite` of its value. */

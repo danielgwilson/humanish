@@ -120,6 +120,19 @@ describe("the recorder on Codex JSON stdout", () => {
     expect(stored([["stdout", `{"o":"${rawText}`]])).toBe(`{"o":"cwd: ${LOCAL} here`);
   });
 
+  it("matches a credential pattern across a line break between lines that are not JSON", () => {
+    // `Bearer\s+` reaches across a line break; main redacted a chunk of lines as one text.
+    const token = "abcdefghijklmnopqrstuvwxyz123456";
+    for (const lines of [
+      `curl -H 'Authorization: Bearer\n${token}'\n`,
+      `${said("item_1", "Calling the API.")}\nAuthorization: Bearer\n${token}\n`,
+    ]) {
+      const output = stored([["stdout", lines]]);
+      expect(output).not.toContain(token);
+      expect(output).toContain(REDACTION_MARKERS.secret);
+    }
+  });
+
   it("keeps arrival order, chunk by chunk, for a stdout line that stderr arrives inside", () => {
     // The known-value scrub across streams reads the events in arrival order.
     const recorder = recorderOf();
@@ -127,12 +140,16 @@ describe("the recorder on Codex JSON stdout", () => {
     recorder.recordStreamedTerminalChunk("stderr", "warning: slow network");
     recorder.recordStreamedTerminalChunk("stdout", 'b c"}');
     recorder.recordStreamedTerminalChunk("stdout", `\n${said("item_2", "/tmp/x\ndone")}\n`);
+    // That chunk ended at a line break, so the next line is read as JSON again.
+    recorder.recordStreamedTerminalChunk("stdout", `${said("item_3", "/tmp/y\nnext")}\n`);
     recorder.endStdout();
+    // Main's reading of the chunks of the cut line: the path runs on through the escaped `\n`.
     expect(recorder.terminalEvents.map(({ stream, chunk }) => [stream, chunk])).toEqual([
       ["stdout", `{"o":"${LOCAL}`],
       ["stderr", "warning: slow network"],
       ["stdout", 'b c"}'],
-      ["stdout", `\n${said("item_2", `${LOCAL}\ndone`)}\n`],
+      ["stdout", `\n${said("item_2", LOCAL)}\n`],
+      ["stdout", `${said("item_3", `${LOCAL}\nnext`)}\n`],
     ]);
   });
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { redactJsonLine, redactText } from "../../evidence/redaction.js";
+import { redactJsonLines, redactText } from "../../evidence/redaction.js";
 import { createLocalActorVerdictScanner } from "../../run/terminal-contract.js";
 import { createTerminalParticipantReader } from "./participant-text.js";
 import { terminalUsageRecords } from "./token-usage.js";
@@ -70,54 +70,15 @@ export function createTerminalRecorder(args: {
     if (laterLine.length > PENDING_LINE_CHARS) laterLine = undefined;
   };
 
-  // The received part of the stdout line in progress, raw, so a complete line can be redacted as
-  // JSON. Null while the rest of a line is stored a chunk at a time with redactText, as stderr is:
-  // after a stderr chunk arrived inside it, which keeps the events in arrival order for the
-  // known-value scrub across streams, or past PENDING_LINE_CHARS. Past the cap, or once the
-  // command's output has ended, stdout is stored a chunk at a time.
-  let stdoutLine: string | null = "";
-  let stdoutByLine = true;
-  const pushEvent = (stream: "stdout" | "stderr", chunk: string): void => {
-    terminalEvents.push({ at: nowIso(), stream, chunk });
-  };
-  const redactStdoutLine = (line: string): string =>
-    line.length > PENDING_LINE_CHARS ? sanitize(line) : redactJsonLine(scrub(line));
-  const cutStdoutLine = (): void => {
-    if (!stdoutLine) return;
-    pushEvent("stdout", sanitize(stdoutLine));
-    stdoutLine = null;
-  };
-  const storeStdout = (raw: string): void => {
-    let text = raw;
-    let stored = "";
-    if (stdoutLine === null) {
-      const end = text.indexOf("\n");
-      if (end < 0) return pushEvent("stdout", sanitize(text));
-      stored = sanitize(text.slice(0, end + 1));
-      text = text.slice(end + 1);
-      stdoutLine = "";
-    }
-    stdoutLine += text;
-    const end = stdoutLine.lastIndexOf("\n");
-    if (end >= 0) {
-      stored += `${stdoutLine.slice(0, end).split("\n").map(redactStdoutLine).join("\n")}\n`;
-      stdoutLine = stdoutLine.slice(end + 1);
-    }
-    if (stdoutLine.length > PENDING_LINE_CHARS) {
-      stored += sanitize(stdoutLine);
-      stdoutLine = null;
-    }
-    if (stored) pushEvent("stdout", stored);
-  };
+  const stdoutLines = createStdoutLines({
+    scrub,
+    sanitize,
+    push: (chunk) => terminalEvents.push({ at: nowIso(), stream: "stdout", chunk }),
+  });
   const storeChunk = (stream: "stdout" | "stderr", raw: string): void => {
-    if (stream === "stdout" && stdoutByLine) return storeStdout(raw);
-    if (stream === "stderr" && stdoutByLine) cutStdoutLine();
-    pushEvent(stream, sanitize(raw));
-  };
-  const endStdoutLines = (): void => {
-    if (!stdoutByLine) return;
-    cutStdoutLine();
-    stdoutByLine = false;
+    if (stream === "stdout") return stdoutLines.store(raw);
+    stdoutLines.cut();
+    terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
   };
 
   const recordLifecycle = (event: string, message: string): void => {
@@ -126,7 +87,7 @@ export function createTerminalRecorder(args: {
   const appendTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
     if (stream === "stdout") participantText.append(raw);
     if (transcriptBytes >= MAX_TRANSCRIPT_BYTES) {
-      endStdoutLines();
+      stdoutLines.end();
       for (const order of [stream, "combined"] as const) {
         const remaining = maxDiscardedPrefixChars - discardedPrefixes[order].length;
         if (remaining > 0) discardedPrefixes[order] += raw.slice(0, remaining);
@@ -208,6 +169,53 @@ export function createTerminalRecorder(args: {
     recordStreamedTerminalChunk,
     appendReturnedTerminalOutput,
     /** The command's output has ended: store the stdout line in progress as it is. */
-    endStdout: endStdoutLines,
+    endStdout: stdoutLines.end,
+  };
+}
+
+/**
+ * Stores stdout a block of complete lines at a time through redactJsonLines, so a path in the
+ * agent's Codex JSON ends where its decoded text ends. The rest goes chunk by chunk through
+ * `sanitize`, as stderr does: a line that a stderr chunk arrived inside (cut), which keeps the
+ * events in arrival order for the known-value scrub across streams, until a chunk ends at a line
+ * break; a line past PENDING_LINE_CHARS; and everything after `end`, when the transcript cap is
+ * reached or the command's output has ended.
+ */
+function createStdoutLines(args: {
+  scrub: (text: string) => string;
+  sanitize: (text: string) => string;
+  push: (chunk: string) => void;
+}): { store(raw: string): void; cut(): void; end(): void } {
+  const { scrub, sanitize, push } = args;
+  // The received part of the line in progress, raw; null while output is stored chunk by chunk.
+  let line: string | null = "";
+  let ended = false;
+  const cut = (): void => {
+    if (line) push(sanitize(line));
+    line = null;
+  };
+  return {
+    store(raw) {
+      if (line === null) {
+        push(sanitize(raw));
+        if (!ended && raw.endsWith("\n")) line = "";
+        return;
+      }
+      line += raw;
+      const end = line.lastIndexOf("\n");
+      const rest = line.slice(end + 1);
+      if (rest.length > PENDING_LINE_CHARS) return cut();
+      if (end < 0) return;
+      const lines = line.slice(0, end + 1);
+      push(lines.length > PENDING_LINE_CHARS ? sanitize(lines) : redactJsonLines(scrub(lines)));
+      line = rest;
+    },
+    cut() {
+      if (line) cut();
+    },
+    end() {
+      cut();
+      ended = true;
+    },
   };
 }

@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { REDACTION_MARKERS, redactJsonLine, redactText } from "../../src/evidence/redaction.js";
+import { REDACTION_MARKERS, redactJsonLines, redactText } from "../../src/evidence/redaction.js";
 import { propertyParameters } from "../helpers/scrub-arbitraries.js";
 
 const LOCAL = REDACTION_MARKERS.localPath;
@@ -11,23 +11,23 @@ const SECRET = REDACTION_MARKERS.secret;
 const characters = (from: readonly string[], minLength: number, maxLength: number) =>
   fc.array(fc.constantFrom(...from), { minLength, maxLength }).map((chars) => chars.join(""));
 
-describe("redactJsonLine", () => {
+describe("redactJsonLines", () => {
   it("keeps the text after a path that a line break in a string ends", () => {
     const line = JSON.stringify({ o: "cwd: /tmp/humanish-eval.k3f9qz\ncreated:\n  AGENTS.md\n" });
-    expect(JSON.parse(redactJsonLine(line))).toEqual({
+    expect(JSON.parse(redactJsonLines(line))).toEqual({
       o: `cwd: ${LOCAL}\ncreated:\n  AGENTS.md\n`,
     });
   });
 
   it("redacts a path that holds a backslash and an n whole, as redactText does", () => {
     const line = JSON.stringify({ o: "/tmp/a\\ncustomer.csv" });
-    expect(redactJsonLine(line)).toBe(`{"o":"${LOCAL}"}`);
+    expect(redactJsonLines(line)).toBe(`{"o":"${LOCAL}"}`);
     expect(redactText(line)).toBe(`{"o":"${LOCAL}"}`);
   });
 
   it("redacts a path in a key", () => {
     const line = JSON.stringify({ "/home/someone/notes.txt": 1, ok: true });
-    expect(redactJsonLine(line)).toBe(`{"${RUNTIME}":1,"ok":true}`);
+    expect(redactJsonLines(line)).toBe(`{"${RUNTIME}":1,"ok":true}`);
   });
 
   it("keeps a credential name's hold on its value when a path covers the name", () => {
@@ -37,19 +37,25 @@ describe("redactJsonLine", () => {
       ["API_KEY", "ab/tmp/cdefghij12345", `{"API_KEY":"${SECRET}"}`],
     ]) {
       const line = JSON.stringify({ [key!]: value });
-      expect(redactJsonLine(line), key).toBe(expected);
+      expect(redactJsonLines(line), key).toBe(expected);
       expect(redactText(line), key).toBe(expected);
     }
   });
 
+  it("matches a pattern across a line break, as redactText does on a chunk of lines", () => {
+    const token = "abcdefghijklmnopqrstuvwxyz123456";
+    const text = `${JSON.stringify({ o: "/tmp/x\nnext" })}\nAuthorization: Bearer\n${token}`;
+    expect(redactJsonLines(text)).toBe(`{"o":"${LOCAL}\\nnext"}\nAuthorization: ${SECRET}`);
+  });
+
   it("reads JSON inside a string as redactText does, so a path there runs on through `\\n`", () => {
     const line = JSON.stringify({ o: JSON.stringify({ cwd: "/tmp/x\nfoo", ok: true }) });
-    const inner = JSON.parse(JSON.parse(redactJsonLine(line)).o);
+    const inner = JSON.parse(JSON.parse(redactJsonLines(line)).o);
     expect(inner).toEqual({ cwd: LOCAL, ok: true });
     expect(JSON.parse(JSON.parse(redactText(line)).o)).toEqual(inner);
   });
 
-  it("gives a line that is not JSON, or a cut record, exactly what redactText gives it", () => {
+  it("gives text with no JSON line, or a cut record, exactly what redactText gives it", () => {
     const record = JSON.stringify({ o: "cwd: /tmp/x\ncreated:\n", API_KEY: "abcd1234abcd1234" });
     fc.assert(
       fc.property(
@@ -58,9 +64,9 @@ describe("redactJsonLine", () => {
           fc.nat({ max: record.length - 1 }).map((end) => record.slice(0, end)),
           fc.constant("cwd: /tmp/x\\ncreated:"),
         ),
-        (line) => {
-          fc.pre(!parses(line));
-          expect(redactJsonLine(line)).toBe(redactText(line));
+        (text) => {
+          fc.pre(text.split("\n").every((line) => !parses(line)));
+          expect(redactJsonLines(text)).toBe(redactText(text));
         },
       ),
       propertyParameters(),
@@ -157,7 +163,7 @@ const escapingAll = (value: unknown): string =>
           .join(",")}}`
       : JSON.stringify(value);
 
-describe("redactJsonLine on Codex lines built from known parts", () => {
+describe("redactJsonLines on Codex lines built from known parts", () => {
   it("redacts each string as its decoded text, keys included, and keeps everything else", () => {
     fc.assert(
       fc.property(
@@ -171,7 +177,7 @@ describe("redactJsonLine on Codex lines built from known parts", () => {
             item: { id: "item_1", type: "command_execution", command: command.text },
             fields: { [key.text]: output.text },
           });
-          expect(JSON.parse(redactJsonLine(line))).toEqual({
+          expect(JSON.parse(redactJsonLines(line))).toEqual({
             type: "item.completed",
             item: { id: "item_1", type: "command_execution", command: command.redacted },
             fields: { [key.redacted]: output.redacted },
@@ -207,7 +213,7 @@ describe("redactJsonLine on Codex lines built from known parts", () => {
         (text, key, [name, value], encode) => {
           const line = encode({ text, [key]: "x", [name]: value });
           expect(redactText(line)).not.toContain("q");
-          expect(redactJsonLine(line)).not.toContain("q");
+          expect(redactJsonLines(line)).not.toContain("q");
         },
       ),
       propertyParameters(),
