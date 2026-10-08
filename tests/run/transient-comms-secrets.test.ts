@@ -122,19 +122,28 @@ describe("transient run narration secrets", () => {
       expect(scrubbed).not.toContain(hex);
     });
   });
+});
 
+describe("the known-value scrub on encoded and marker-shaped text", () => {
   it("finds a value hex-encoded or split inside a marker-shaped span", async () => {
     for (const text of [`[REDACTED_${HEX}]`, "[REDACTED_74%33921]"])
       expect(await knownValueScrub(["743921"], text)).toBe("[REDACTED_[REDACTED_SECRET]]");
   });
 
-  it("keeps the spelling of the text around an encoded value", async () => {
+  it("returns text with a value decoded, and text without one as written", async () => {
     expect(await knownValueScrub(["743921"], "a%20b 7%343921 c%2Fd")).toBe(
-      "a%20b [REDACTED_SECRET] c%2Fd",
+      "a b [REDACTED_SECRET] c/d",
     );
+    expect(await knownValueScrub(["743921"], "a%20b c%2Fd")).toBe("a%20b c%2Fd");
+    // The decoded text holds one more marker-shaped span than it had, and the value is gone.
     expect(await knownValueScrub(["743921"], `%5BREDACTED_SECRET%5D ${HEX}`)).toBe(
-      "%5BREDACTED_SECRET%5D [REDACTED_SECRET]",
+      "[REDACTED_SECRET] [REDACTED_SECRET]",
     );
+  });
+
+  it("keeps a value encoded twice as written when the text holds no other value", async () => {
+    const twice = "%2537%2534%2533%2539%2532%2531";
+    expect(await knownValueScrub(["743921"], `code ${twice}`)).toBe(`code ${twice}`);
   });
 
   it("removes a percent-encoded value with a non-ASCII character", async () => {
@@ -162,5 +171,31 @@ describe("transient run narration secrets", () => {
     expect(await knownValueScrub(["[REDACTED_SECRET]"], "[REDACTED_SECRET]")).toBe(
       "[REDACTED_SECRET]",
     );
+  });
+
+  it("checks its output after the last literal pass", async () => {
+    // The literal pass rewrites the first value inside a marker, which then spells the second
+    // value across the marker's edge.
+    for (const [values, text] of [
+      [["CRET", "T]]x"], "CRET]x%78"],
+      [["CRET", "ET]]x"], "%43RETx"],
+    ] as const) {
+      const scrubbed = await knownValueScrub([...values], text);
+      expect(survivingForm(values, scrubbed)).toBeUndefined();
+    }
+  });
+
+  it("reads `&constructor;` as written and finds the value after it", async () => {
+    const run = (first: string, count: number): string =>
+      String.fromCharCode(...Array.from({ length: count }, (_, at) => first.charCodeAt(0) + at));
+    const value = run("a", 26) + run("0", 10) + run("A", 4);
+    const text = `&constructor; %61${value.slice(1)}${"!".repeat(40)}`;
+    expect(await knownValueScrub([value], text)).toBe(
+      `&constructor; [REDACTED_SECRET]${"!".repeat(40)}`,
+    );
+  });
+
+  it("keeps the text around a value inside an entity it does not know", async () => {
+    expect(await knownValueScrub(["value"], "a%20&xvaluey;z")).toBe("a%20&x[REDACTED_SECRET]y;z");
   });
 });

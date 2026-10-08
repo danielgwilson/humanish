@@ -203,13 +203,13 @@ analysis, and treats an analysis that breaks them as unavailable.
 
 The narrative scrub removes a run's known transient values, such as a received one-time code or
 link, from every generated text field. It finds each value as written and in its encoded forms:
-percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. Each value
-is replaced where it is written, and the rest of the field keeps its spelling. A value inside a
-bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers humanish writes
-(`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`) are left as they are. If
-replacing a value spells one again, which takes a value that holds part of a marker, the whole
-field becomes `[REDACTED_SECRET]`. A known value in any of these forms in an ID, enum or reference
-refuses the response.
+percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
+with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
+value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
+humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`) are left
+as they are. If the stored field would still hold a value as written or decoded once more, as a
+value encoded twice does once the field is decoded, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
+these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the
@@ -239,8 +239,8 @@ artifact. For diagnosis, humanish keeps it locally at
 - the allowlisted code and every failed rule code;
 - the response, scrubbed. Every string and key loses known transient secret
   values, including their percent-encoded, escaped and base64 forms, and then gets
-  shape redaction. A number or boolean equal to a known value is replaced. Each
-  value is replaced where it is written, and the rest of the string keeps its spelling.
+  shape redaction. A number or boolean equal to a known value is replaced. A
+  string with no known value keeps its original spelling.
 
 When validation ran, the response is the one validation saw, after the narrative
 scrub. A schema or scrub rejection keeps the parsed response. An unexpected

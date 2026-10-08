@@ -4,7 +4,6 @@
 // shape for pattern redaction to find.
 
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
-import { decodeEscapes } from "../evidence/encoded-text.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { addressedRecipients } from "../study/parse/comms.js";
 import type { StudyCommsEmail, StudyCommsExternal } from "../study/types.js";
@@ -73,9 +72,7 @@ export async function collectExternalCommsEvidence(args: {
       ...knownSecretValues,
       ...(authToken === undefined ? [] : [authToken]),
     ]);
-    // A warning shows its escapes decoded, so pattern redaction reads a token percent-encoded in
-    // a quoted URL. The scrub has left no value in the decoded text.
-    scrubbed = (warnings) => warnings.map((warning) => redactText(decodeEscapes(scrub(warning))));
+    scrubbed = (warnings) => warnings.map((warning) => redactText(scrub(warning)));
     const channel = new FakeInbox();
     const inboxes: CommsAddress[] = [];
     for (const recipient of addressedRecipients(email)) {

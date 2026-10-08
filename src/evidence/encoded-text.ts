@@ -58,64 +58,33 @@ function sequenceLength(lead: number): number {
   return 0;
 }
 
-/** Receives the text one match decodes to, piece by piece, with the match characters each came from. */
-type Emit = (decoded: string, length: number) => void;
-/** Decodes one match of a pass. `group` is its first capture group. */
-type Read = (match: string, group: string | undefined, emit: Emit) => void;
-
-const whole =
-  (decode: (match: string, group: string) => string): Read =>
-  (match, group, emit) =>
-    emit(decode(match, group ?? ""), match.length);
-const codePointOf = (radix: number): Read =>
-  whole((match, digits) => codePoint(Number.parseInt(digits, radix), match));
-
-/** A run of percent escapes, one character per escape: the byte's code. */
-const readPercentBytes: Read = (run, _group, emit) => {
-  for (let at = 0; at < run.length; at += 3)
-    emit(String.fromCharCode(Number.parseInt(run.slice(at + 1, at + 3), 16)), 3);
-};
-
 /**
  * A run of percent escapes read as UTF-8, as a browser reads a URL. A byte that starts no valid
- * sequence stands for itself, the character with that code, as readPercentBytes reads every byte.
+ * sequence stands for itself, the character with that code, as decodeEscapes reads every byte.
  */
-const readPercentUtf8: Read = (run, _group, emit) => {
+function decodePercentRun(run: string): string {
   const bytes = Buffer.from(run.replace(/%/g, ""), "hex");
+  let text = "";
   for (let at = 0; at < bytes.length;) {
-    const lead = bytes[at]!;
-    const length = sequenceLength(lead);
-    if (length <= 1) {
-      emit(String.fromCharCode(lead), 3);
-      at += 1;
-      continue;
-    }
-    const sequence = bytes.subarray(at, at + length);
-    const decoded = sequence.length === length ? sequence.toString("utf8") : undefined;
+    const length = sequenceLength(bytes[at]!);
+    const sequence = length > 0 ? bytes.subarray(at, at + length) : undefined;
+    const decoded = sequence?.length === length ? sequence.toString("utf8") : undefined;
     // Node writes the replacement character for an overlong form, a surrogate half or a bad
     // continuation byte, so a sequence counts only when its character encodes back to its bytes.
-    if (decoded !== undefined && Buffer.from(decoded, "utf8").equals(sequence)) {
-      emit(decoded, length * 3);
+    if (decoded !== undefined && Buffer.from(decoded, "utf8").equals(sequence!)) {
+      text += decoded;
       at += length;
     } else {
-      emit(String.fromCharCode(lead), 3);
+      text += String.fromCharCode(bytes[at]!);
       at += 1;
     }
   }
-};
+  return text;
+}
 
-/** The passes decodeEscapes applies in order, each to the output of the one before. */
-const escapePasses = (percent: Read): readonly (readonly [RegExp, Read])[] => [
-  [/\\u([0-9a-f]{4})/gi, codePointOf(16)],
-  [/\\x([0-9a-f]{2})/gi, codePointOf(16)],
-  [/\\\//g, whole(() => "/")],
-  [/(?:%[0-9a-f]{2})+/gi, percent],
-  [/&#x([0-9a-f]{1,6});?/gi, codePointOf(16)],
-  [/&#(\d{1,7});?/g, codePointOf(10)],
-  [/&([a-z]+);/gi, whole((match, name) => ASCII_ENTITIES[name.toLowerCase()] ?? match)],
-];
-const BYTE_PASSES = escapePasses(readPercentBytes);
-const UTF8_PASSES = escapePasses(readPercentUtf8);
+function decodePercentBytes(run: string): string {
+  return Buffer.from(run.replace(/%/g, ""), "hex").toString("latin1");
+}
 
 /**
  * Undoes JSON and JS escapes, percent-encoding and HTML character references, one pass each. Each
@@ -124,12 +93,12 @@ const UTF8_PASSES = escapePasses(readPercentUtf8);
  * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
  */
 export function decodeEscapes(text: string): string {
-  return decodeWith(text, BYTE_PASSES);
+  return decodeWith(text, decodePercentBytes);
 }
 
 /** decodeEscapes with each run of percent escapes read as UTF-8. */
 export function decodeEscapesUtf8(text: string): string {
-  return decodeWith(text, UTF8_PASSES);
+  return decodeWith(text, decodePercentRun);
 }
 
 /**
@@ -142,79 +111,29 @@ export function utf8ReadingOf(text: string, decoded: string): string | undefined
   return utf8 === decoded ? undefined : utf8;
 }
 
-function decodeWith(text: string, passes: readonly (readonly [RegExp, Read])[]): string {
-  let decoded = text;
-  for (const [pattern, read] of passes)
-    decoded = decoded.replace(pattern, (match: string, ...rest: unknown[]) => {
-      let replacement = "";
-      read(match, typeof rest[0] === "string" ? rest[0] : undefined, (piece) => {
-        replacement += piece;
-      });
-      return replacement;
-    });
-  return decoded;
+function decodeWith(text: string, percent: (match: string) => string): string {
+  return text
+    .replace(/\\u([0-9a-f]{4})/gi, (match, hex: string) =>
+      codePoint(Number.parseInt(hex, 16), match),
+    )
+    .replace(/\\x([0-9a-f]{2})/gi, (match, hex: string) =>
+      codePoint(Number.parseInt(hex, 16), match),
+    )
+    .replace(/\\\//g, "/")
+    .replace(/(?:%[0-9a-f]{2})+/gi, percent)
+    .replace(/&#x([0-9a-f]{1,6});?/gi, (match, hex: string) =>
+      codePoint(Number.parseInt(hex, 16), match),
+    )
+    .replace(/&#(\d{1,7});?/g, (match, digits: string) =>
+      codePoint(Number.parseInt(digits, 10), match),
+    )
+    .replace(/&([a-z]+);/gi, namedReference);
 }
 
-/** Decoded text, with the stretch of the original text each of its UTF-16 code units came from. */
-export interface DecodedWithOrigins {
-  readonly text: string;
-  /** Code unit `i` of `text` was decoded from `[starts[i], ends[i])` of the original. */
-  readonly starts: Uint32Array;
-  readonly ends: Uint32Array;
-}
-
-/**
- * decodeEscapes, or decodeEscapesUtf8 with `utf8`, with the stretch of `text` each decoded code
- * unit came from. A character an escape stands for comes from the whole escape, and from every
- * escape that wrote that escape in an earlier pass: the `A` of `\u002541` comes from all eight
- * characters. A scrub that finds a value in the decoded text replaces the stretches its characters
- * came from, so the text around it keeps its spelling.
- */
-export function decodeEscapesWithOrigins(text: string, utf8 = false): DecodedWithOrigins {
-  let current = { text, starts: new Uint32Array(text.length), ends: new Uint32Array(text.length) };
-  for (let at = 0; at < text.length; at += 1) {
-    current.starts[at] = at;
-    current.ends[at] = at + 1;
-  }
-  for (const [pattern, read] of utf8 ? UTF8_PASSES : BYTE_PASSES) {
-    const source = current;
-    // No escape decodes to more code units than it has, so a pass never lengthens the text.
-    const starts = new Uint32Array(source.text.length);
-    const ends = new Uint32Array(source.text.length);
-    const parts: string[] = [];
-    let length = 0;
-    let cursor = 0;
-    const copyTo = (end: number): void => {
-      starts.set(source.starts.subarray(cursor, end), length);
-      ends.set(source.ends.subarray(cursor, end), length);
-      parts.push(source.text.slice(cursor, end));
-      length += end - cursor;
-    };
-    for (const match of source.text.matchAll(pattern)) {
-      copyTo(match.index);
-      let at = match.index;
-      read(match[0], match[1], (piece, consumed) => {
-        const start = source.starts[at]!;
-        const end = source.ends[at + consumed - 1]!;
-        for (let unit = 0; unit < piece.length; unit += 1) {
-          starts[length + unit] = start;
-          ends[length + unit] = end;
-        }
-        parts.push(piece);
-        length += piece.length;
-        at += consumed;
-      });
-      cursor = match.index + match[0].length;
-    }
-    if (cursor === 0 && parts.length === 0) continue;
-    copyTo(source.text.length);
-    current = {
-      text: parts.join(""),
-      starts: starts.subarray(0, length),
-      ends: ends.subarray(0, length),
-    };
-  }
-  return current;
+// Own names only: `&constructor;` would otherwise read Object.prototype.constructor.
+function namedReference(match: string, name: string): string {
+  const key = name.toLowerCase();
+  return Object.hasOwn(ASCII_ENTITIES, key) ? ASCII_ENTITIES[key]! : match;
 }
 
 // Sixteen characters hold twelve bytes, enough for the start of a key. Shorter runs are mostly
@@ -467,7 +386,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 4;
+const ENCODED_SCAN_VERSION = 5;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();

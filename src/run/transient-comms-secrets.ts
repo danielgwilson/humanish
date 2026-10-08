@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { scrubSecretValues } from "../evidence/secret-scrub.js";
+import { holdsSecretValue, scrubSecretValues } from "../evidence/secret-scrub.js";
 import { escapeRegExp } from "./text.js";
 
 /** Host-only, invocation-local exact values. No serializer, durable identifier or global fallback. */
@@ -83,25 +83,28 @@ export function scrubTransientCommsText(text: string): string {
   }
 }
 
-/**
- * The scope's values as a scrubSecretValues scrub, which also finds them percent-encoded, escaped or
- * base64-encoded. Outside a scope it changes nothing.
- */
-function transientCommsEncodedScrub(): (text: string) => string {
-  const scope = scopes.getStore();
-  if (!scope) return (text) => text;
-  usable(scope);
-  return scrubSecretValues([...scope.values]);
-}
+const REDACTED = "[REDACTED_SECRET]";
 
 /**
  * A scrub for text a model writes: each scope value as written and in its encoded forms
- * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Each value
- * is replaced where it is written, so the rest of the text keeps its spelling and an exact quote
- * that holds an escape still matches its evidence. The literal scrub runs first and last, so text
- * is never scrubbed less than scrubTransientCommsText scrubs it. Outside a scope it changes nothing.
+ * (percent-encoded, JSON-escaped, base64, base64url, hex), and where escapes split one. Text that
+ * holds a value is returned decoded with each value replaced. Text without one keeps its original
+ * spelling, so an exact quote that holds an escape still matches its evidence. The literal scrub
+ * runs first, before decoding can rewrite a value that itself holds an escape, and last. The
+ * result is checked last of all: if it still holds a value as written or decoded, as a value
+ * holding part of a marker can after the literal scrub, the whole text is replaced. Outside a
+ * scope it changes nothing.
  */
 export function transientCommsKnownValueScrub(): (text: string) => string {
-  const encoded = transientCommsEncodedScrub();
-  return (text) => scrubTransientCommsText(encoded(scrubTransientCommsText(text)));
+  const scope = scopes.getStore();
+  if (!scope) return scrubTransientCommsText;
+  usable(scope);
+  const values = [...scope.values];
+  const encoded = scrubSecretValues(values);
+  const holds = holdsSecretValue(values);
+  return (text) => {
+    const literal = scrubTransientCommsText(text);
+    const result = scrubTransientCommsText(holds(literal) ? encoded(literal) : literal);
+    return holds(result) ? REDACTED : result;
+  };
 }

@@ -48,9 +48,9 @@ const REDACTED = "[REDACTED_SECRET]";
 
 /**
  * Scrub every string, key and scalar in the output. The known-value scrub finds a value written
- * percent-encoded, escaped or base64-encoded and replaces it where it is written, so the rest of a
- * string keeps its spelling and an escape in a rejected quote stays visible. A number or boolean
- * equal to a known value becomes the marker.
+ * percent-encoded, escaped or base64-encoded; a string where it finds nothing keeps its original
+ * spelling, so an escape in a rejected quote stays visible. A number or boolean equal to a known
+ * value becomes the marker.
  */
 function scrubber(): (value: unknown) => unknown {
   const known = transientCommsKnownValueScrub();

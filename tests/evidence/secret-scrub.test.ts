@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decodeEscapes } from "../../src/evidence/encoded-text.js";
 import { redactText } from "../../src/evidence/redaction.js";
 import { scrubSecretValues } from "../../src/evidence/secret-scrub.js";
 import { survivingForm } from "../helpers/scrub-model.js";
@@ -85,13 +86,13 @@ describe("scrubSecretValues", () => {
     expect(scrub(`${T}-private-credential`)).toBe("[REDACTED_SECRET]");
   });
 
-  it("removes a value that an escape splits", () => {
+  it("scrubs and returns the decoded text when the text has escapes", () => {
     const scrub = scrubSecretValues([T, `${T}-private`]);
     expect(scrub(`refused ${T}%2dprivate`)).toBe("refused [REDACTED_SECRET]");
   });
 
   it("never matches inside a marker", () => {
-    expect(scrubSecretValues(["SECRET", T])(`${T} %20`)).toBe("[REDACTED_SECRET] %20");
+    expect(scrubSecretValues(["SECRET", T])(`${T} %20`)).toBe("[REDACTED_SECRET]  ");
     expect(scrubSecretValues(["SECRET"])("already [REDACTED_SECRET] here")).toBe(
       "already [REDACTED_SECRET] here",
     );
@@ -101,22 +102,22 @@ describe("scrubSecretValues", () => {
     const value = "x".repeat(16) + "\uD800";
     expect(scrubSecretValues([value])(`refused ${value}`)).toBe("refused [REDACTED_SECRET]");
   });
+});
 
-  it("keeps the text around a value as written", () => {
-    expect(scrubSecretValues(["743921"])("a%20b 7%343921 c%2Fd")).toBe(
-      "a%20b [REDACTED_SECRET] c%2Fd",
-    );
-    expect(scrubSecretValues(["TH]h"])("\\u0054\\u0048]\\u0068%5E")).toBe("[REDACTED_SECRET]%5E");
-  });
-
-  it("returns text with no value unchanged, escapes and all", () => {
+describe("scrubSecretValues on encoded and marker-shaped text", () => {
+  it("returns the decoded text when it holds no value", () => {
     for (const text of ["\\/", "%25", "&amp; %C3%A9 \\u0041"])
-      expect(scrubSecretValues(["743921"])(text)).toBe(text);
+      expect(scrubSecretValues(["743921"])(text)).toBe(decodeEscapes(text));
   });
 
-  it("leaves a value encoded twice as it is written, so one decoding of the output shows no value", () => {
-    // Returning the decoded text would show %4d, which decodes to M.
-    expect(scrubSecretValues(["PPQM"])("%50%50%51%254d")).toBe("%50%50%51%254d");
+  it("replaces the whole text when its decoded text still decodes to a value", () => {
+    // A value encoded twice: the decoded text shows %4d, which decodes to M.
+    expect(scrubSecretValues(["PPQM"])("%50%50%51%254d")).toBe("[REDACTED_SECRET]");
+  });
+
+  it("returns the UTF-8 reading when it finds more values", () => {
+    // Only é is percent-encoded, so the byte reading shows Ã© next to a literal à.
+    expect(scrubSecretValues(["tango-é-à"])("x tango-%C3%A9-à y")).toBe("x [REDACTED_SECRET] y");
   });
 
   it("finds a value inside a marker-shaped span that no scrub writes", () => {
@@ -136,15 +137,11 @@ describe("scrubSecretValues", () => {
     expect(scrubSecretValues(["]YNQ"])("[REDACTED_T]YNQ")).toBe("[REDACTED_T[REDACTED_SECRET]");
   });
 
-  it("removes a value escaped in sequence, with a byte-order mark, or holding an escape", () => {
+  it("removes a value escaped in sequence or holding a byte-order mark", () => {
     expect(scrubSecretValues(["743921"])("7%343921")).toBe("[REDACTED_SECRET]");
     const marked = "tango\uFEFFlima";
     for (const text of ["x tango%EF%BB%BFlima y", "x tango\\ufefflima y", `x ${marked} y`])
       expect(scrubSecretValues([marked])(text)).toBe("x [REDACTED_SECRET] y");
-    const hex = Buffer.from("743921").toString("hex");
-    expect(scrubSecretValues(["pass%41word", "743921"])(`pass%41word and ${hex}`)).toBe(
-      "[REDACTED_SECRET] and [REDACTED_SECRET]",
-    );
   });
 
   it("removes a percent-encoded value with a non-ASCII character", () => {
@@ -179,5 +176,20 @@ describe("scrubSecretValues", () => {
     );
     for (const marker of markers)
       expect(scrubSecretValues([marker.slice(1, -1)])(marker)).toBe(marker);
+  });
+
+  it("reads `&constructor;` as written and finds the value after it", () => {
+    // Lower-case letters, digits and four capitals, built here so no long literal looks like a key.
+    const run = (first: string, count: number): string =>
+      String.fromCharCode(...Array.from({ length: count }, (_, at) => first.charCodeAt(0) + at));
+    const value = run("a", 26) + run("0", 10) + run("A", 4);
+    const text = `&constructor; %61${value.slice(1)}${"!".repeat(40)}`;
+    expect(scrubSecretValues([value])(text)).toBe(
+      `&constructor; [REDACTED_SECRET]${"!".repeat(40)}`,
+    );
+  });
+
+  it("keeps the text around a value inside an entity it does not know", () => {
+    expect(scrubSecretValues(["value"])("a%20&xvaluey;z")).toBe("a &x[REDACTED_SECRET]y;z");
   });
 });

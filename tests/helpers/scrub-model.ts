@@ -12,7 +12,6 @@ export const WRITTEN_MARKERS = [
   "[REDACTED_LOCAL_PATH]",
   "[REDACTED_RUNTIME_PATH]",
 ] as const;
-const SCRUB_MARKER = "[REDACTED_SECRET]";
 
 /** Each form a value must not keep once it is scrubbed. */
 const valueForms = (value: string): string[] => encodedForms(value);
@@ -59,23 +58,6 @@ export function survivingForm(values: readonly string[], text: string): string |
   return undefined;
 }
 
-/** Whether the output is the input with zero or more stretches each replaced by the marker. */
-export function keepsSpelling(input: string, output: string): boolean {
-  const pieces = output.split(SCRUB_MARKER);
-  if (pieces.length === 1) return input === output;
-  const first = pieces[0]!;
-  const last = pieces.at(-1)!;
-  const end = input.length - last.length;
-  if (!input.startsWith(first) || !input.endsWith(last) || end < first.length) return false;
-  let at = first.length;
-  for (const piece of pieces.slice(1, -1)) {
-    const found = input.indexOf(piece, at);
-    if (found === -1 || found + piece.length > end) return false;
-    at = found + piece.length;
-  }
-  return true;
-}
-
 /** The characters from `first` to `last`. */
 const range = (first: string, last: string): string[] =>
   Array.from({ length: last.charCodeAt(0) - first.charCodeAt(0) + 1 }, (_, at) =>
@@ -86,7 +68,7 @@ const LETTERS = [...range("a", "z"), ...UPPER];
 const DIGITS = range("0", "9");
 const WORD = [...LETTERS, ...DIGITS];
 const PUNCTUATION = [..."-_.~+/=:?&#;%\\[]\"' "];
-const NON_ASCII = ["é", "à", "€", "😀", "﻿", " ", "Ã", "©"];
+const NON_ASCII = ["é", "à", "€", "😀", "\uFEFF", "\u2000", "Ã", "©"];
 const VALUE_CHARACTERS = [...WORD, ...WORD, ...PUNCTUATION, ...NON_ASCII];
 const MARKER_WORD = [...UPPER, ...DIGITS, "_"];
 // Escapes a value can hold as written, such as a token copied from a URL.
@@ -266,11 +248,6 @@ function twiceEncoded(random: Random, value: string): string {
   return once.map((digits) => percent + digits).join("");
 }
 
-function holdsValue(text: string, value: string): boolean {
-  const readings = [text, decodeEscapes(text), decodeEscapesUtf8(text)];
-  return valueForms(value).some((form) => readings.some((reading) => reading.includes(form)));
-}
-
 function base64AtOffset(random: Random, value: string): string {
   const bytes = (count: number): Buffer =>
     Buffer.from(Array.from({ length: count }, () => random.int(0, 255)));
@@ -283,16 +260,15 @@ function base64AtOffset(random: Random, value: string): string {
 
 /** The value written one way: an encoded form, split or nested escapes, or inside a marker shape. */
 function embedding(random: Random, value: string, kind = random.int(0, 6)): string {
-  const checked = (encoded: string): string => (holdsValue(encoded, value) ? encoded : value);
   switch (kind) {
     case 0:
       return random.pick(encodedForms(value));
     case 1:
       return base64AtOffset(random, value);
     case 2:
-      return checked(splitEscapes(random, value, ALL_KINDS));
+      return splitEscapes(random, value, ALL_KINDS);
     case 3:
-      return checked(nestedEscapes(random, value));
+      return nestedEscapes(random, value);
     case 4:
       return twiceEncoded(random, value);
     case 5:
