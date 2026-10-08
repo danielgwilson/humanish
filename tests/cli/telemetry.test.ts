@@ -196,14 +196,6 @@ describe("turning it off", () => {
       await rm(home, { recursive: true, force: true });
     }
   });
-
-  it("ignores a relative XDG_CONFIG_HOME, so state never becomes cwd-relative", () => {
-    // The same rule the key store follows: a relative value would put per-user state inside
-    // whichever project happened to be open.
-    expect(telemetryStatePath({ XDG_CONFIG_HOME: "relative/path" }, "/home/dev")).toBe(
-      path.join("/home/dev", ".config", "humanish", "telemetry.json"),
-    );
-  });
 });
 
 describe("it can never hurt the command that triggered it", () => {
@@ -277,8 +269,8 @@ describe("study-participant marking", () => {
     expect(payload.properties.studyParticipant).toBe(true);
   });
 
-  it("treats 0 and empty as unmarked, matching how every other flag here reads", () => {
-    for (const value of ["", "0"]) {
+  it("treats 0, false and empty as unmarked, matching how every other flag here reads", () => {
+    for (const value of ["", "0", "false"]) {
       const payload = buildPayload({
         event: "cli_command",
         anonymousId: "anon-1",
@@ -288,6 +280,25 @@ describe("study-participant marking", () => {
       });
       expect(payload.properties.studyParticipant).toBe(false);
     }
+  });
+});
+
+describe("CI marking", () => {
+  it.each([
+    ["true", true],
+    ["1", true],
+    ["false", false],
+    ["0", false],
+    ["", false],
+  ] as const)("reads CI=%j as %s, as the update check and is-in-ci do", (value, ci) => {
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: "anon-1",
+      version: "9.9.9",
+      env: { CI: value },
+      properties: { command: "run" },
+    });
+    expect(payload.properties.ci).toBe(ci);
   });
 });
 

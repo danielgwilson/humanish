@@ -3,6 +3,7 @@
 // The commands that resolve the run and read or write drafts are in feedback.ts.
 
 import path from "node:path";
+import { findingLead } from "../analysis/finding-lead.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { hashAnalysisValue } from "../analysis/validation.js";
@@ -210,8 +211,10 @@ export async function buildAnalysisDraft(
   const root = path.dirname(context.loaded.bundlePath);
   const evidenceIds = new Set(finding.observations.flatMap((item) => item.evidenceIds));
   const evidence = analysis.evidence.filter((item) => evidenceIds.has(item.id));
-  const amended = correction?.status === "amended";
-  const claim = amended ? correction.replacementClaim! : (finding.headline ?? finding.title);
+  const lead = findingLead(finding, correction);
+  // An analysis written before headlines has no lead, so the amended claim or the title names it.
+  const amendedClaim = correction?.status === "amended" ? correction.replacementClaim : null;
+  const claim = lead?.headline ?? amendedClaim ?? finding.title;
   const firstLine = claim.trim().split(/\r?\n/)[0] || `Reviewed finding ${finding.id}`;
   const summary =
     Array.from(firstLine).length > 160
@@ -237,19 +240,11 @@ export async function buildAnalysisDraft(
     expected:
       "Review the cited behavior against the participant assignment and confirm the expected product behavior.",
     actual: [
-      // The plain account leads; an amendment makes it stale, so the draft says so in its place.
-      ...(finding.headline === undefined
-        ? []
-        : amended
-          ? [
-              "This finding was corrected in human review. The reviewer's claim above replaces its original headline and account.",
-              "",
-            ]
-          : finding.experience === undefined
-            ? []
-            : [finding.experience, ""]),
+      ...(lead?.account ? [lead.account, ""] : []),
       "Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
-      amended ? `Amended claim: ${claim}. Original analysis: ${finding.summary}` : finding.summary,
+      amendedClaim === null
+        ? finding.summary
+        : `Amended claim: ${amendedClaim}. Original analysis: ${finding.summary}`,
       `Impact: ${finding.impact}. ${finding.affectedStreamIds.length} affected / ${finding.exposedStreamIds.length} observed exposed participants. ${finding.exposureReason}`,
       `Recovery: ${finding.recovery}. Confidence: ${finding.confidence}.`,
       ...finding.observations.map(

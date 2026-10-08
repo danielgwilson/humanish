@@ -13,7 +13,11 @@ import { resolveStudyDryRun } from "./plan.js";
 import { routeOf } from "./plan.js";
 import { localCodexParticipantCheck, planCliRun } from "./doctor.js";
 import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
-import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
+import {
+  automaticAnalysisBudget,
+  formatAutomaticAnalysisBudget,
+  type AutomaticAnalysisBudget,
+} from "../analysis/automatic-config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
@@ -38,11 +42,9 @@ export interface StudySummary {
   runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
   participantReadiness?: { ok: boolean; message: string };
   communications?: string;
-  analysis?: {
-    provider?: "openai" | "codex";
-    billing?: "api-estimate" | "account-unknown";
-    model: string;
-    maxCostUsd: number | null;
+  analysis?: AutomaticAnalysisBudget & {
+    /** The budget line `run` and `study check` print, from formatAutomaticAnalysisBudget. */
+    line: string;
   };
   schema: typeof STUDY_SUMMARY_SCHEMA;
   /** The study's `id`. */
@@ -224,7 +226,9 @@ export async function readStudySummary(
       : undefined;
 
   return {
-    ...(analysis ? { analysis } : {}),
+    ...(analysis
+      ? { analysis: { ...analysis, line: formatAutomaticAnalysisBudget(analysis) } }
+      : {}),
     ...(runtime
       ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } }
       : {}),
