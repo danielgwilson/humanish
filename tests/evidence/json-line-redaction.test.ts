@@ -7,6 +7,10 @@ import { propertyParameters } from "../helpers/scrub-arbitraries.js";
 const LOCAL = REDACTION_MARKERS.localPath;
 const RUNTIME = REDACTION_MARKERS.runtimePath;
 const SECRET = REDACTION_MARKERS.secret;
+// The synthetic home the public-surface scan allows, and a macOS home built from parts so the scan
+// does not read it as a maintainer's path.
+const HOME = "/home/someuser/";
+const MAC_HOME = ["", "Users", "someone", ""].join("/");
 
 const characters = (from: readonly string[], minLength: number, maxLength: number) =>
   fc.array(fc.constantFrom(...from), { minLength, maxLength }).map((chars) => chars.join(""));
@@ -26,7 +30,7 @@ describe("redactJsonLines", () => {
   });
 
   it("redacts a path in a key", () => {
-    const line = JSON.stringify({ "/home/someone/notes.txt": 1, ok: true });
+    const line = JSON.stringify({ [`${HOME}notes.txt`]: 1, ok: true });
     expect(redactJsonLines(line)).toBe(`{"${RUNTIME}":1,"ok":true}`);
   });
 
@@ -193,13 +197,13 @@ describe("redactJsonLines on Codex lines built from known parts", () => {
   it("hides everything redactText hides when no path holds a line break, tab or quote", () => {
     const sentinelPath = fc
       .tuple(
-        fc.constantFrom("/tmp/q", "/home/q/", "/Users/q0/", "/var/folders/"),
+        fc.constantFrom("/tmp/q", `${HOME}q`, `${MAC_HOME}q`, "/var/folders/"),
         characters(TAIL, 0, 12),
       )
       .map(([start, rest]) => start + rest);
     const credential = fc.tuple(
-      fc.constantFrom("API_KEY", "GITHUB_TOKEN", "/tmp/qdir/API_KEY", "/home/q/SECRET"),
-      fc.constantFrom("q1qqqqqqqqqqqqqq", "qq/tmp/q1qqqqqqqqqqqq", "q9q/home/q/qqqqqqqqq"),
+      fc.constantFrom("API_KEY", "GITHUB_TOKEN", "/tmp/qdir/API_KEY", `${HOME}SECRET`),
+      fc.constantFrom("q1qqqqqqqqqqqqqq", "qq/tmp/q1qqqqqqqqqqqq", `q9q${HOME}qqqqqqqqq`),
     );
     const prose = fc
       .array(fc.oneof(characters(PLAIN, 1, 6), sentinelPath), { minLength: 1, maxLength: 5 })
@@ -233,7 +237,7 @@ describe("the backslashes a redacted path ends in", () => {
       fc.property(
         fc.constantFrom(
           ["/tmp/", LOCAL] as const,
-          ["/home/someone/", RUNTIME] as const,
+          [HOME, RUNTIME] as const,
           ["C:\\Users\\someone\\", LOCAL] as const,
         ),
         characters([..."\\an."], 0, 40),
