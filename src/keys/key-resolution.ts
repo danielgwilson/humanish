@@ -49,6 +49,8 @@ interface ProviderKey {
   readonly spellingOf?: string;
   /** This key's place in the `humanish keys` list (1 is first) and what humanish uses it for. */
   readonly listed?: { readonly order: number; readonly use: string };
+  /** `humanish doctor` reports this key's source on every run, with or without `--study`. */
+  readonly doctor?: true;
 }
 
 /**
@@ -56,21 +58,24 @@ interface ProviderKey {
  * only these names and the user store holds only these. Everything else in an overlay or store file
  * is ignored and named: a repo-planted NODE_OPTIONS/LD_PRELOAD must never enter process env off a
  * file the operator did not explicitly pass (an explicit --dotenv remains the operator's own
- * full-file load). ANTHROPIC_API_KEY is not listed: a Claude Code participant runs on its own login
- * and never receives it. CODEX_API_KEY is an alternative spelling of the OpenAI key for terminal
- * studies.
+ * full-file load). ANTHROPIC_API_KEY is not listed, and doctor does not report it: a Claude Code
+ * participant runs on its own login and never receives it. CODEX_API_KEY is an alternative spelling
+ * of the OpenAI key for terminal studies. Doctor reports AGENTMAIL_API_KEY only under `--study`, for
+ * a study whose email connection names it, since a connection may name another variable.
  */
 const PROVIDER_KEYS: readonly ProviderKey[] = [
   {
     name: "OPENAI_API_KEY",
     vendor: "openai",
     listed: { order: 2, use: "participant model and analysis" },
+    doctor: true,
   },
   {
     name: "E2B_API_KEY",
     vendor: "e2b",
     login: "e2b auth login",
     listed: { order: 1, use: "hosted desktops" },
+    doctor: true,
   },
   { name: "ANTHROPIC_API_KEY", vendor: "anthropic" },
   {
@@ -78,9 +83,10 @@ const PROVIDER_KEYS: readonly ProviderKey[] = [
     vendor: "github",
     login: "gh auth login",
     listed: { order: 3, use: "private repository subjects" },
+    doctor: true,
   },
   { name: "GITHUB_TOKEN", spellingOf: "GH_TOKEN" },
-  { name: "CODEX_API_KEY" },
+  { name: "CODEX_API_KEY", doctor: true },
   { name: "AGENTMAIL_API_KEY", vendor: "agentmail", listed: { order: 4, use: "email in studies" } },
 ];
 const PROVIDER_KEY_SET = new Set(PROVIDER_KEYS.map((key) => key.name));
@@ -98,6 +104,9 @@ export const LISTED_KEYS = PROVIDER_KEYS.flatMap(({ name, listed }) =>
 )
   .sort((a, b) => a.order - b.order)
   .map(({ name, use }) => ({ name, use }));
+
+/** The keys `humanish doctor` reports on every run, in its row order. */
+export const DOCTOR_KEYS = PROVIDER_KEYS.flatMap(({ name, doctor }) => (doctor ? [name] : []));
 
 /** An env for a vendor CLI that discovery runs: the caller's, without any provider key name. */
 function withoutProviderKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {

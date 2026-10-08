@@ -180,6 +180,14 @@ participants:
           textIncludes: Queue
 ```
 
+A matched rule ends the session as `goal_satisfied`: the rule is your definition of done. The
+participant is never told a rule matched, so its closing report describes the session from its own
+mission. When the rule is narrower than the mission, for example "the first table exists" for a
+mission to design a whole schema, the participant can open its report with
+`DID NOT REACH THE GOAL.` while the run records the goal as met. Both are accurate: the grade says
+your condition was reached, and the report says where the person thought they were when the session
+ended.
+
 ## A participant with a camera
 
 `execution.desktop.media.camera: { source: synthetic }` gives a
