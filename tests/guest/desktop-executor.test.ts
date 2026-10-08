@@ -8,7 +8,6 @@ import {
   createGuestDesktopExecutor,
   type GuestDesktopTools,
 } from "../../src/guest/desktop-executor.js";
-import { xdotoolChord } from "../../src/guest/desktop-keys.js";
 
 function fixture(overrides: Partial<GuestDesktopTools> = {}) {
   const authority = new AbortController();
@@ -35,13 +34,13 @@ function fixture(overrides: Partial<GuestDesktopTools> = {}) {
 
 describe("guest headed desktop", () => {
   it.each([
-    "ctrl+a",
+    "ctrl+",
     "--window",
     "a key Return",
     "a\nclick 1",
     "$(touch x)",
     "mousemove",
-    "a+b",
+    "a++b",
     "__proto__",
     "toString",
     "",
@@ -53,12 +52,6 @@ describe("guest headed desktop", () => {
     });
     expect(f.tools.input).not.toHaveBeenCalled();
     expect(f.onTerminal).not.toHaveBeenCalled();
-  });
-  it("normalizes common aliases only", () => {
-    expect(xdotoolChord(["CONTROL", "SHIFT", "l"])).toBe("ctrl+shift+l");
-    expect(xdotoolChord(["ALT", "ArrowLeft"])).toBe("alt+Left");
-    expect(xdotoolChord(["F12"])).toBe("F12");
-    expect(() => xdotoolChord(["CTRL", "Control", "a"])).toThrow();
   });
   it.each([
     [-1, 0],

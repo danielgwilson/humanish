@@ -4,7 +4,7 @@ import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
-import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
+import { xdotoolChord, xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 
 // The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
 // backed by an E2B desktop sandbox. All of its behavior goes through a narrow injected port
@@ -25,7 +25,6 @@ import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 //   getCursorPosition(): Promise<{ x: number; y: number }>
 //   scroll(direction?: 'up' | 'down', amount?: number): Promise<void>
 //   write(text, options?): Promise<void>         // the text-typing method
-//   press(key: string | string[]): Promise<void>
 //   drag([x1, y1], [x2, y2]): Promise<void>      // tuple endpoints, not a path
 //   wait(ms): Promise<void>
 //
@@ -35,8 +34,11 @@ import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 //    amount.
 //  - drag takes two coordinate tuples (from, to), not an N-point path, so we drag
 //    from the first point of action.path to the last and drop intermediate points.
-//  - write is the typing method (there is no `type` method); press is the key
-//    method (there is no `keyPress`), and press accepts the keys array directly.
+//  - write is the typing method (there is no `type` method).
+//  - keys go through the command surface as `xdotool key`. The SDK's press() passes a name its
+//    own table lacks (`arrowdown`, `?`) to xdotool unchanged, and xdotool ignores it and exits
+//    0, so the executor translates names with the guest desktop's table
+//    (src/guest/desktop-keys.ts) and checks what xdotool reports.
 //
 // Public-safety: observe() returns the raw screenshot bytes in CuaObservation.screenshot. The
 // loop decides what to persist (raw frames, or blurred ones when redactScreenshots is set), so
@@ -50,7 +52,7 @@ import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
  * executor awaits every call, which is correct for both sync and async returns.
  */
 export interface E2BDesktopLike {
-  /** Optional command surface used only for best-effort substrate fallbacks. */
+  /** The sandbox's command surface: keypresses, held modifiers and typed text run xdotool here. */
   commands?: {
     run(
       command: string,
@@ -87,8 +89,6 @@ export interface E2BDesktopLike {
   scroll(direction?: "up" | "down", amount?: number): Promise<void> | void;
   /** Write text at the current cursor position (the SDK's typing method). */
   write(text: string): Promise<void> | void;
-  /** Press a key or chord (the SDK's key method); accepts the keys array. */
-  press(key: string | string[]): Promise<void> | void;
   /** Drag from one coordinate tuple to another. */
   drag(from: [number, number], to: [number, number]): Promise<void> | void;
   /** Wait for the given number of milliseconds. */
@@ -114,7 +114,7 @@ export interface E2BDesktopExecutorOptions {
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
 const TYPE_COMMAND_TIMEOUT_MS = 15_000;
-const HELD_KEYS_TIMEOUT_MS = 15_000;
+const KEY_COMMAND_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
 /**
@@ -360,11 +360,15 @@ export function createE2BDesktopExecutor(
         }
         return;
       }
-      case "keypress":
-        // The SDK press() accepts a string[] directly; pass the keys through so
-        // a chord (e.g. ["Control", "a"]) is pressed together, not in sequence.
-        await desktop.press(action.keys);
+      case "keypress": {
+        // One chord, so ctrl and a are pressed together. A name the table cannot map is
+        // refused here, before anything reaches the desktop.
+        const chord = xdotoolChord(action.keys);
+        if (!desktop.commands)
+          throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
+        await runKeyCommand(desktop.commands, `key --clearmodifiers ${chord}`);
         return;
+      }
       case "drag": {
         // The SDK drag takes two endpoints, not an N-point path: drag from the
         // first to the last point. 0 points is a safe no-op; 1 point has no
@@ -410,11 +414,10 @@ async function withHeldModifiers(
 ): Promise<void> {
   const commands = desktop.commands;
   if (!commands) throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-  const options = { requestTimeoutMs: HELD_KEYS_TIMEOUT_MS, timeoutMs: HELD_KEYS_TIMEOUT_MS };
   let failed = false;
   let failure: unknown;
   try {
-    await commands.run(`xdotool keydown ${chord}`, options);
+    await runKeyCommand(commands, `keydown ${chord}`);
     await run();
   } catch (error) {
     failed = true;
@@ -422,9 +425,45 @@ async function withHeldModifiers(
   }
   // A keydown that failed may still have pressed some keys, so the release always runs.
   try {
-    await commands.run(`xdotool keyup ${chord}`, options);
+    await runKeyCommand(commands, `keyup ${chord}`);
   } catch {
     throw new ComputerUseExecutorError("execution_failed", "outcome_uncertain");
   }
   if (failed) throw failure;
+}
+
+/**
+ * A key command xdotool did not complete. The loop reads `exitCode` and `stderr` the way it reads
+ * the SDK's CommandExitError, so it records the action as a failed desktop command and skips it.
+ */
+class ComputerUseKeyError extends Error {
+  readonly exitCode: number;
+  readonly stderr: string;
+
+  constructor(exitCode: number, stderr: string) {
+    super(`key command failed (exit ${exitCode})`);
+    this.name = "ComputerUseKeyError";
+    this.exitCode = exitCode;
+    this.stderr = stderr;
+  }
+}
+
+/**
+ * Run an xdotool key command: `key`, `keydown` or `keyup` with a chord from the key table, whose
+ * names are plain shell words, so the command and its stderr hold no participant text. The SDK
+ * throws its own error on a non-zero exit. xdotool skips a name it cannot resolve with a "No such
+ * key name" warning and still exits 0, so that warning fails the command too.
+ */
+async function runKeyCommand(
+  commands: NonNullable<E2BDesktopLike["commands"]>,
+  command: string,
+): Promise<void> {
+  const result = await commands.run(`xdotool ${command}`, {
+    requestTimeoutMs: KEY_COMMAND_TIMEOUT_MS,
+    timeoutMs: KEY_COMMAND_TIMEOUT_MS,
+  });
+  const exitCode = result.exitCode ?? 0;
+  const stderr = result.stderr ?? "";
+  if (exitCode !== 0 || stderr.includes("No such key name"))
+    throw new ComputerUseKeyError(exitCode, stderr);
 }

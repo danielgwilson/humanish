@@ -45,6 +45,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The `subject:` line of `humanish run` names a `desktop-cli` subject by its product and source,
   as in `subject: humanish (desktop-cli)`. It was empty, as it was for every computer-use study the
   CLI refused for an option such as `--port 99999`; those now print the study's URL (#1705).
+- In `humanish tui`, the cursor stays on the row the person selected when a refresh reorders the
+  rows: a study that goes live and moves to the top of the studies list, a newer run listed above
+  the selected run, or a run that finishes, where Open in Observer moves up a row and Run again
+  takes its place. The cursor used to keep its row number, so Enter could open a different study
+  or start a new run. Escape back to the studies list also returns to the selected study after the
+  list reordered. When the action the person chose on a run's screen goes away under the cursor
+  (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
+  so; it used to act on the row now there, which could be Run again (#1696).
+- On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
+  punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
+  to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,
+  `PAGEDOWN`, `?`) to xdotool unchanged; xdotool ignored them and exited 0, and the run recorded
+  the keypress as completed. Both the hosted and the local desktop now translate key names
+  through one table, which also gains the shifted punctuation (`?`, `!`, `:` and the rest), so
+  `?` works on the local desktop too. One name joined with `+`, such as `Control+a`, is split into
+  its keys on both desktops. A name outside the table is refused, and the participant is
+  told the action was rejected. A key xdotool still reports as unknown is recorded as a failed
+  desktop command. Hosted findings from earlier runs about arrow keys, Page Up, Page Down or
+  punctuation keys may come from this defect (#1697).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read

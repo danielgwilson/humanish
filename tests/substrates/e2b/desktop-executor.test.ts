@@ -42,7 +42,6 @@ function makeFakeDesktop(
     moveMouse: (x, y) => record("moveMouse", x, y),
     scroll: (direction, amount) => record("scroll", direction, amount),
     write: (text) => record("write", text),
-    press: (key) => record("press", key),
     drag: (from, to) => record("drag", from, to),
     wait: (ms) => record("wait", ms),
   };
@@ -182,11 +181,6 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ComputerUseTypeError);
     expect((error as ComputerUseTypeError).message).toBe("type failed at desktop-write");
-  });
-
-  it("maps keypress to press(keys array)", async () => {
-    const calls = await run({ kind: "keypress", keys: ["Control", "a"] });
-    expect(calls).toEqual([{ method: "press", args: [["Control", "a"]] }]);
   });
 
   it("maps wait with ms to wait(ms)", async () => {
@@ -386,7 +380,6 @@ describe("await-correctness across sync and async desktops", () => {
         completed = true;
         calls.push({ method: "write", args: [text] });
       },
-      press: () => Promise.resolve(),
       drag: () => Promise.resolve(),
       wait: () => Promise.resolve(),
     };
@@ -471,7 +464,6 @@ describe("createE2BDesktopExecutor held modifiers", () => {
       moveMouse: (x, y) => step(`moveMouse ${x} ${y}`),
       scroll: (direction, amount) => step(`scroll ${direction} ${amount}`),
       write: (text) => step(`write ${text}`),
-      press: (key) => step(`press ${String(key)}`),
       drag: (from, to) => step(`drag ${from.join(",")} ${to.join(",")}`),
       wait: (ms) => step(`wait ${ms}`),
       commands: {

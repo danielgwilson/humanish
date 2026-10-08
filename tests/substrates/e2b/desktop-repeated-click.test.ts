@@ -33,7 +33,6 @@ function desktop(read?: () => unknown) {
     moveMouse: vi.fn(async () => undefined),
     scroll: vi.fn(async () => undefined),
     write: vi.fn(async () => undefined),
-    press: vi.fn(async () => undefined),
     drag: vi.fn(async () => undefined),
     wait: vi.fn(async () => undefined),
     ...(read === undefined
