@@ -10,12 +10,16 @@ import type { BrowserScoringContext } from "../../src/study/adapter-extension.js
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import type { RunAdapterArtifact } from "../../src/run/bundle.js";
 import { verifyRun } from "../../src/verify/verify.js";
+import { bytesReadDuring } from "../helpers/bytes-read.js";
 import { shareSafetyDryRun, shareSafetyDryRunConfig } from "../helpers/share-safety-run.js";
+import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
 const PNG_4X4 = PNG.sync.write(new PNG({ width: 4, height: 4 }));
 const STATE = Buffer.from(`${JSON.stringify({ env: `OPENAI_API_KEY=${SYNTHETIC_SECRET}` })}\n`);
+// One byte past the 32 MiB verify reads of one run file.
+const OVER_READ_LIMIT = 32 * 1024 * 1024 + 1;
 
 interface AdapterFile {
   path: string;
@@ -100,6 +104,23 @@ describe("verify does not grade an unreadable adapter artifact share_ready", () 
     },
   );
 
+  it("fails the evidence check for a required artifact over the read limit and names the limit", async () => {
+    const project = await makeTestTempDir("humanish-over-limit-artifact-");
+    const runId = await runWithAdapterFile(project, {
+      path: "adapter/state.json",
+      kind: "state",
+      bytes: Buffer.alloc(OVER_READ_LIMIT, " "),
+    });
+
+    const verified = await verifyRun(project, runId);
+
+    expect(verified.shareSafety.status).toBe("blocked");
+    const evidence = verified.checks.find(
+      (check) => check.name === "local evidence artifacts exist",
+    );
+    expect(evidence?.message).toContain("adapter/state.json (larger than");
+  });
+
   it("keeps a text adapter artifact share_ready and blocks one that holds the secret", async () => {
     const clean = await verifyRun(cwd, runIds.get("text")!);
     expect(clean.shareSafety).toEqual({ status: "share_ready", reasons: [] });
@@ -162,6 +183,7 @@ describe("verify reads a run file by its bytes, not its name", () => {
   let backslash: Fixture;
   let unreadable: Fixture | undefined;
   let oversized: Fixture;
+  let overLimit: Fixture;
   async function project(): Promise<{ project: string; runId: string; runDir: string }> {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
     projects.push(dir);
@@ -196,6 +218,12 @@ describe("verify reads a run file by its bytes, not its name", () => {
       await handle.close();
       oversized = { project: dir, runId, path: "large.txt" };
     }
+    {
+      // Plain text one byte past the 32 MiB verify reads of one file.
+      const { project: dir, runId, runDir } = await project();
+      await writeFile(path.join(runDir, "long.txt"), Buffer.alloc(OVER_READ_LIMIT, " "));
+      overLimit = { project: dir, runId, path: "long.txt" };
+    }
   }, 60_000);
 
   afterAll(async () => {
@@ -224,6 +252,18 @@ describe("verify reads a run file by its bytes, not its name", () => {
       const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
       expect(reason?.message).toContain(run.path);
     }
+  });
+
+  it("grades a text file over the read limit local_only without reading it", async () => {
+    let verified!: Awaited<ReturnType<typeof verifyRun>>;
+    const bytes = await bytesReadDuring(async () => {
+      verified = await verifyRun(overLimit.project, overLimit.runId);
+    });
+
+    expect(verified.shareSafety.status).toBe("local_only");
+    const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
+    expect(reason?.message).toContain(overLimit.path);
+    expect(bytes).toBeLessThan(OVER_READ_LIMIT);
   });
 
   it("blocks a file name with a backslash as an unsafe leaf", async () => {

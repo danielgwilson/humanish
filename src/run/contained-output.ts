@@ -312,7 +312,12 @@ export async function openContainedRegularFile(
     if (!isPathInside(root, physicalFile)) {
       return null;
     }
-    handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
+    // O_NONBLOCK: a file swapped for a FIFO after the lstat opens at once and fails the fstat
+    // below, where a blocking open would wait for a writer.
+    handle = await open(
+      candidate,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
     const after = await handle.stat({ bigint: true });
     if (
       !after.isFile() ||

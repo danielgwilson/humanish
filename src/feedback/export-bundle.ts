@@ -32,11 +32,11 @@ import {
 } from "../run/paths.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { LOCAL_ONLY_RUN_FILES } from "../run/local-only-files.js";
+import { readBoundedFileResult } from "../run/evidence-files.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
   prepareSelectedOutputDirectory,
-  readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
@@ -138,14 +138,15 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
           throw new Error(
             "Continuous video/audio cannot be redacted by bundle export. Use --local-only HTML export for a snapshot-only copy.",
           );
-        if (info.size > BigInt(maxBytes - total))
-          throw new Error("Source inventory exceeds --max-bytes.");
-        const bytes = await readContainedRegularFile(root, rel);
-        if (bytes === null)
+        // At most what is left of --max-bytes, so a file that grows after this lstat is refused
+        // unread. With nothing left, an empty file still reads and any other is refused.
+        const read = await readBoundedFileResult(root, rel, Math.max(1, maxBytes - total));
+        if (read.state === "unavailable")
           throw new Error("Source artifact could not be read through its bound identity.");
-        total += bytes.length;
+        if (read.state === "limit") throw new Error("Source inventory exceeds --max-bytes.");
+        total += read.bytes.length;
         if (total > maxBytes) throw new Error("Source inventory exceeds --max-bytes.");
-        files.push({ path: rel, bytes, sha256: hash(bytes) });
+        files.push({ path: rel, bytes: read.bytes, sha256: hash(read.bytes) });
       }
     }
     const after = await lstat(directory, { bigint: true });
@@ -710,9 +711,11 @@ async function buildDerivative(
   if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
   const generated = [];
   for (const relative of ["observer/index.html", "observer/observer-data.json"]) {
-    const bytes = await readContainedRegularFile(stagePaths, relative);
-    if (bytes === null) throw new Error("Regenerated Observer artifact could not be read safely.");
-    generated.push({ path: relative, sha256: hash(bytes) });
+    const read = await readBoundedFileResult(stagePaths, relative, maxBytes);
+    if (read.state === "limit") throw new Error("The regenerated Observer exceeds --max-bytes.");
+    if (read.state === "unavailable")
+      throw new Error("Regenerated Observer artifact could not be read safely.");
+    generated.push({ path: relative, sha256: hash(read.bytes) });
   }
   await writeContainedOutputFile(
     stagePaths,

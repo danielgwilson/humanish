@@ -43,6 +43,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   text becomes `[REDACTED_SECRET]` (#1646).
 - Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
   operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
+- `humanish verify` reads at most 32 MiB of one run file. A larger file is listed under
+  `UNSCANNED_ARTIFACT`, so the run grades `local_only`; a larger file the bundle cites as evidence
+  fails the evidence check with the limit in its message. It read every file whole before.
+  `export --format bundle` reads each source file within what is left of `--max-bytes` and
+  refuses one that changes as it is read. A run file swapped for a FIFO while `verify` or
+  `export` reads it no longer leaves the command waiting for a writer (#1669).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

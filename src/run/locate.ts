@@ -17,6 +17,7 @@ import {
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
+import { readBoundedFileResult, type BoundedFileResult } from "./evidence-files.js";
 import { isNodeError } from "./type-guards.js";
 
 /** The run input that resolves through latest.json rather than naming a run directory. */
@@ -107,21 +108,31 @@ export async function readRunTextIfExists(
   return bytes?.toString("utf8") ?? null;
 }
 
+/**
+ * The most one run-artifact read returns. verify reads every run file whole to scan it, and a frame
+ * whole to check it, so this covers the largest screenshot src/evidence/image.ts accepts (32 MiB).
+ */
+export const RUN_ARTIFACT_MAX_BYTES = 32 * 1024 * 1024;
+
+/**
+ * A run file, read whole through the bounded evidence reader: `limit` when it holds more than
+ * RUN_ARTIFACT_MAX_BYTES, `unavailable` when it is missing, unsafe, or changes while it is read.
+ * A `\` in the path reads as `/`.
+ */
+export async function readSafeRunArtifact(
+  runPaths: PreparedRunArtifactPaths,
+  relativePath: string,
+): Promise<BoundedFileResult> {
+  return readBoundedFileResult(runPaths, relativePath.replace(/\\/g, "/"), RUN_ARTIFACT_MAX_BYTES);
+}
+
+/** readSafeRunArtifact's bytes, or null for any file it does not read. */
 export async function readSafeRunArtifactBytes(
   runPaths: PreparedRunArtifactPaths,
   relativePath: string,
 ): Promise<Buffer | null> {
-  const normalized = relativePath.replace(/\\/g, "/");
-  const segments = normalized.split("/");
-  if (
-    path.isAbsolute(relativePath) ||
-    path.win32.isAbsolute(relativePath) ||
-    segments.length === 0 ||
-    segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
-  ) {
-    return null;
-  }
-  return readContainedRegularFile(runPaths, normalized);
+  const read = await readSafeRunArtifact(runPaths, relativePath);
+  return read.state === "read" ? read.bytes : null;
 }
 
 export async function readSafeRunArtifactJson(

@@ -16,7 +16,12 @@ import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
-import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
+import {
+  RUN_ARTIFACT_MAX_BYTES,
+  readSafeRunArtifact,
+  readSafeRunArtifactBytes,
+  readSafeRunArtifactJson,
+} from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
@@ -132,14 +137,23 @@ export async function missingLocalEvidenceArtifacts(
       }
       continue;
     }
-    const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
-    if (!bytes || (bytes.length === 0 && !requirements.allowEmpty)) {
+    const artifact = await readSafeRunArtifact(runPaths, artifactPath);
+    if (artifact.state === "limit") {
+      missing.push(
+        `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`,
+      );
+      continue;
+    }
+    if (
+      artifact.state === "unavailable" ||
+      (artifact.bytes.length === 0 && !requirements.allowEmpty)
+    ) {
       missing.push(artifactPath);
       continue;
     }
 
     if (requirements.screenshot) {
-      const imageError = screenshotEvidenceError(artifactPath, bytes);
+      const imageError = screenshotEvidenceError(artifactPath, artifact.bytes);
       if (imageError) {
         missing.push(`${artifactPath} (${imageError})`);
       }
@@ -362,8 +376,9 @@ interface RegisteredStreamMedia {
 
 /**
  * Scans every run file for secret and path patterns and returns the findings. A file that is not
- * registered stream media and that the scan cannot read as text (readPlainText), or cannot read at
- * all, goes to `unscanned`, so the caller can keep the run from grading share_ready.
+ * registered stream media and that the scan cannot read as text (readPlainText), cannot read at
+ * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned`, so the caller can keep
+ * the run from grading share_ready.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -453,8 +468,8 @@ async function scanRunPublicSafetyDirectory(
     if (media.recordingPaths.has(relativePath) || media.screenshotPaths.has(relativePath)) {
       continue;
     }
-    // The scan reads a file by its bytes, not its name. A file that is not text, or that could
-    // not be read at all, holds bytes the scan never saw.
+    // The scan reads a file by its bytes, not its name. A file that is not text, that could not
+    // be read, or that is over the read limit holds bytes the scan never saw.
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath).catch(() => null);
     const decoded = bytes === null ? undefined : readPlainText(bytes);
     if (decoded === undefined || !decoded.ok) {

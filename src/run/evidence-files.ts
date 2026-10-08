@@ -11,7 +11,8 @@ import { isNodeError } from "./type-guards.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.
-// Evidence capture, analysis jobs, the analysis store, cost reading and export all read through here.
+// Evidence capture, analysis jobs, the analysis store, cost reading, verify and export all read
+// through here.
 
 /**
  * Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. The path is
