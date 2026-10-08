@@ -16,6 +16,7 @@ import {
   assertSafeOutputPathSegment,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  refusalText,
   PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
@@ -445,13 +446,16 @@ async function readManagedManifest(
     relativePath.replace(/\\/g, "/"),
     PROJECT_FILE_MAX_BYTES,
   );
-  if (!contents) {
+  if (contents.status === "refused" && contents.reason === "too-large")
+    return { status: "unsafe", message: `${refusalText("The study file", contents)}.` };
+  // Gone or swapped since it was inspected above.
+  if (contents.status !== "read") {
     return {
       status: "unsafe",
-      message: `The study file changed, is larger than ${PROJECT_FILE_MAX_BYTES} bytes, or failed containment validation.`,
+      message: "The study file changed or failed containment validation.",
     };
   }
-  return { status: "ok", contents: contents.toString("utf8") };
+  return { status: "ok", contents: contents.bytes.toString("utf8") };
 }
 
 async function readExplicitManifest(

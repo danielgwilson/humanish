@@ -48,13 +48,23 @@ The Unreleased section holds the full notes for the next version until it is tag
   operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
 - humanish reads at most 32 MiB of one run file, 64 KiB of `.humanish/runs/latest.json` and
   4 MiB of a project file (study, persona and scenario YAML, `package.json`, `AGENTS.md`, a scorer
-  entry), and refuses a larger file without reading it. It read every file whole before.
-  `humanish verify` lists a larger run file under `UNSCANNED_ARTIFACT`, says `run.json` may be
-  over the limit when it cannot read it, and names the limit for a larger file the bundle cites
-  as evidence. `--run latest` with a larger pointer says so. `export --format bundle` reads each
-  source file within what is left of `--max-bytes` and refuses one that changes as it is read.
-  A run file swapped for a FIFO while a command reads it no longer leaves the command waiting
-  for a writer (#1669).
+  entry), and refuses a larger file without reading it. It read every file whole before. A file
+  that is there and refused is never taken for a missing one, and the refusal names the file and
+  the limit:
+  - `humanish verify` lists a larger run file under `UNSCANNED_ARTIFACT`, names the limit for a
+    larger `run.json`, `review.json`, `review.md` or `cleanup.json` and for a larger file the
+    bundle cites as evidence, and calls an unfinished run's sandboxes `unconfirmed` when it
+    cannot read `sandbox-receipts.ndjson`.
+  - `humanish reclaim` stops before it kills or writes anything when the `reclaim-receipt.json`
+    an earlier reclaim wrote cannot be read, so its recorded outcomes are kept.
+  - A persona or scenario file that cannot be read stops the study with an error naming it. It
+    used to be skipped for a lower-priority file of the same name, or for the persona id alone.
+  - `--run latest` with a larger pointer and `feedback list` with a larger draft say so. The
+    sandbox id sweep at the end of a run fails, naming each text file it could not read.
+  - `export --format bundle` reads each source file within what is left of `--max-bytes` and
+    refuses one that changes as it is read.
+  - A run file swapped for a FIFO while a command reads it no longer leaves the command waiting
+    for a writer (#1669).
 - `humanish verify` lists a run folder it cannot list under `UNSCANNED_ARTIFACT`, and stops its
   public-safety scan after 10,000 files and folders with the stop listed there too, so neither
   run grades `share_ready`. A folder it could not list was skipped before. `export --format

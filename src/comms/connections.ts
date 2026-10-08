@@ -83,11 +83,12 @@ export async function readCommsConnections(cwd: string): Promise<CommsConnection
   const file = path.join(root.physicalPath, "comms.yaml");
   if (!(await exists(file))) return empty();
   if ((await lstat(file)).size > 65_536) throw new Error("Connection configuration is too large.");
-  const bytes = await readContainedRegularFile(root, "comms.yaml", 65_536);
-  if (!bytes) throw new Error("Cannot safely read connection configuration.");
+  const read = await readContainedRegularFile(root, "comms.yaml", 65_536);
+  // Gone since the check above, or refused: either way it cannot be read safely.
+  if (read.status !== "read") throw new Error("Cannot safely read connection configuration.");
   // YAML diagnostics may echo the offending value; do not let them reach a status or frame.
   try {
-    return parseConnections(parse(bytes.toString("utf8"), { maxAliasCount: 0 }));
+    return parseConnections(parse(read.bytes.toString("utf8"), { maxAliasCount: 0 }));
   } catch {
     throw new Error("Invalid connection configuration.");
   }

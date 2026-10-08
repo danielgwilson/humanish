@@ -1,26 +1,27 @@
-import { lstat } from "node:fs/promises";
 import path from "node:path";
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,
   resolveExistingRunDirectory,
   resolveLatestRunDirectory,
+  RUNS_RELATIVE_ROOT,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
+  ContainedReadRefusedError,
   LATEST_POINTER_MAX_BYTES,
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
+  type ContainedRefusal,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
 import { readBoundedFileResult, type BoundedFileResult } from "./evidence-files.js";
-import { isNodeError } from "./type-guards.js";
 
 /** The run input that resolves through latest.json rather than naming a run directory. */
 export const LATEST_RUN_ALIAS = "latest";
@@ -60,31 +61,20 @@ export async function resolveRunPath(
 export async function readLatest(
   runsRoot: PreparedSelectedOutputDirectory,
 ): Promise<RunPointer | null> {
-  const latestPath = path.join(runsRoot.physicalPath, "latest.json");
-  let latestStats;
-  try {
-    latestStats = await lstat(latestPath, { bigint: true });
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
-  if (latestStats.isSymbolicLink() || !latestStats.isFile() || latestStats.nlink !== 1n) {
-    throw new Error("Latest run pointer must be a single-link regular file.");
-  }
-  if (latestStats.size > BigInt(LATEST_POINTER_MAX_BYTES)) {
+  const read = await readContainedRegularFile(runsRoot, "latest.json", LATEST_POINTER_MAX_BYTES);
+  if (read.status === "missing") return null;
+  if (read.status === "refused") {
+    if (read.reason === "too-large")
+      throw new ContainedReadRefusedError(path.join(RUNS_RELATIVE_ROOT, "latest.json"), read);
     throw new Error(
-      `Latest run pointer is larger than ${LATEST_POINTER_MAX_BYTES} bytes, so humanish did not write it. Name the run with --run <id>, or delete .humanish/runs/latest.json and run a study again.`,
+      read.reason === "not-regular"
+        ? "Latest run pointer must be a single-link regular file."
+        : "Latest run pointer changed while it was being read.",
     );
-  }
-  const bytes = await readContainedRegularFile(runsRoot, "latest.json", LATEST_POINTER_MAX_BYTES);
-  if (!bytes) {
-    throw new Error("Latest run pointer changed while it was being read.");
   }
   let latest: unknown;
   try {
-    latest = JSON.parse(bytes.toString("utf8")) as unknown;
+    latest = JSON.parse(read.bytes.toString("utf8")) as unknown;
   } catch {
     return null;
   }
@@ -92,32 +82,47 @@ export async function readLatest(
   return isRunPointer(latest) ? latest : null;
 }
 
+/** A run file as text: its text, nothing at the path, or why it was refused. */
+export type RunTextRead =
+  | { status: "read"; text: string }
+  | { status: "missing" }
+  | ContainedRefusal;
+
+/** A run file as JSON. `value` is undefined when the file is there but is not valid JSON. */
+export type RunJsonRead =
+  | { status: "read"; value: unknown }
+  | { status: "missing" }
+  | ContainedRefusal;
+
+/**
+ * The JSON, or null for a file that is missing, refused or not valid JSON: for a caller that
+ * treats the three alike, as every reader did before a refusal had its own state.
+ */
+export function runJsonValue(read: RunJsonRead): unknown {
+  return read.status === "read" ? (read.value ?? null) : null;
+}
+
+/** A run file as JSON, within RUN_ARTIFACT_MAX_BYTES. */
 export async function readRunJsonIfExists(
   runPaths: PreparedRunArtifactPaths,
   ...segments: string[]
-): Promise<unknown> {
-  const text = await readRunTextIfExists(runPaths, ...segments);
-  if (text === null) {
-    return null;
-  }
+): Promise<RunJsonRead> {
+  const read = await readRunTextIfExists(runPaths, ...segments);
+  if (read.status !== "read") return read;
   try {
-    return JSON.parse(text) as unknown;
+    return { status: "read", value: JSON.parse(read.text) as unknown };
   } catch {
-    return null;
+    return { status: "read", value: undefined };
   }
 }
 
-/** A run file as text, or null when it is missing, unsafe or larger than RUN_ARTIFACT_MAX_BYTES. */
+/** A run file as text, within RUN_ARTIFACT_MAX_BYTES. */
 export async function readRunTextIfExists(
   runPaths: PreparedRunArtifactPaths,
   ...segments: string[]
-): Promise<string | null> {
-  const bytes = await readContainedRegularFile(
-    runPaths,
-    segments.join("/"),
-    RUN_ARTIFACT_MAX_BYTES,
-  );
-  return bytes?.toString("utf8") ?? null;
+): Promise<RunTextRead> {
+  const read = await readContainedRegularFile(runPaths, segments.join("/"), RUN_ARTIFACT_MAX_BYTES);
+  return read.status === "read" ? { status: "read", text: read.bytes.toString("utf8") } : read;
 }
 
 /**
@@ -178,7 +183,10 @@ export async function loadRunBundlePrepared(
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
   const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
-  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  const read = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  // A run.json it refuses is no reason to call the run absent: the caller reports why.
+  if (read.status === "refused") throw new ContainedReadRefusedError(RUN_BUNDLE_FILE, read);
+  const bundle = read.status === "read" ? read.value : null;
 
   if (!isRunBundle(bundle)) {
     return null;

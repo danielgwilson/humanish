@@ -7,6 +7,7 @@ import path from "node:path";
 import { runtimeDirectories, starterFiles } from "./init-templates.js";
 import {
   assertPreparedSelectedOutputDirectory,
+  ContainedReadRefusedError,
   readContainedRegularFile,
   PROJECT_FILE_MAX_BYTES,
   type PreparedSelectedOutputDirectory,
@@ -71,10 +72,11 @@ export async function readTextIfExists(
   projectRoot: PreparedSelectedOutputDirectory,
   relativePath: string,
 ): Promise<string | null> {
-  const bytes = await readContainedRegularFile(projectRoot, relativePath, PROJECT_FILE_MAX_BYTES);
-  if (bytes !== null) {
-    return bytes.toString("utf8");
-  }
+  const read = await readContainedRegularFile(projectRoot, relativePath, PROJECT_FILE_MAX_BYTES);
+  if (read.status === "read") return read.bytes.toString("utf8");
+  // A file over the limit is a size problem, not an unsafe path.
+  if (read.status === "refused" && read.reason === "too-large")
+    throw new ContainedReadRefusedError(relativePath, read);
   const target = path.join(projectRoot.physicalPath, relativePath);
   try {
     await lstat(target);

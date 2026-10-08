@@ -16,6 +16,7 @@ import {
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
+  type ContainedRead,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 
@@ -92,10 +93,11 @@ export async function openPreflightJournal(
   return { id, root, owner };
 }
 
-function parseOwner(bytes: Buffer | null): PreflightOwner | undefined {
-  if (bytes === null) return undefined;
+/** The owner record, or undefined when it is missing, refused or malformed: "missing or unreadable". */
+function parseOwner(read: ContainedRead): PreflightOwner | undefined {
+  if (read.status !== "read") return undefined;
   try {
-    const value = JSON.parse(bytes.toString("utf8")) as Partial<PreflightOwner>;
+    const value = JSON.parse(read.bytes.toString("utf8")) as Partial<PreflightOwner>;
     if (
       typeof value.hostname !== "string" ||
       typeof value.pid !== "number" ||
@@ -162,17 +164,24 @@ export async function preflightReclaimDecision(
   journal: PreflightJournal,
   nowMs: number,
 ): Promise<{ reclaim: true } | { reclaim: false; reason: string }> {
-  if (
-    (await readContainedRegularFile(journal.root, ABANDONED_MARKER, RUN_ARTIFACT_MAX_BYTES)) !==
-    null
-  )
-    return { reclaim: true };
+  // Only a marker that reads hands the journal over: one refused (a link, say) keeps it.
+  const marker = await readContainedRegularFile(
+    journal.root,
+    ABANDONED_MARKER,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (marker.status === "read") return { reclaim: true };
+  // Refused receipts give no lease, as missing ones do; the owner's lease still decides, and
+  // reclaim refuses the unreadable journal before it kills anything.
   const receipts = await readContainedRegularFile(
     journal.root,
     SANDBOX_RECEIPTS_ARTIFACT,
     RUN_ARTIFACT_MAX_BYTES,
   );
-  const endsAt = leaseEndsAt(journal, receipts === null ? null : receipts.toString("utf8"));
+  const endsAt = leaseEndsAt(
+    journal,
+    receipts.status === "read" ? receipts.bytes.toString("utf8") : null,
+  );
   if (endsAt !== undefined && nowMs > endsAt) return { reclaim: true };
   const until = endsAt === undefined ? "" : `; its lease ends at ${new Date(endsAt).toISOString()}`;
   const owner = journal.owner;

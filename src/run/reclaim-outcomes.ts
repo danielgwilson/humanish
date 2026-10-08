@@ -19,6 +19,7 @@ import {
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
+  type ContainedRefusal,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import { scrubSandboxIds } from "./sandbox-ids.js";
@@ -221,21 +222,24 @@ const OUTCOME_STATES = new Set<string>([
 
 /**
  * The outcomes an earlier reclaim of this directory recorded, by digest. A receipt written before
- * 0.110 names raw ids, which are digested; an unreadable or foreign receipt carries nothing.
+ * 0.110 names raw ids, which are digested; a missing, malformed or foreign receipt carries
+ * nothing. A receipt that is there and refused is returned as the refusal, so reclaim stops
+ * before its own receipt replaces one it could not read.
  */
 export async function earlierOutcomes(
   root: PreparedOutputRoot,
   label: string,
-): Promise<ReclaimOutcome[]> {
+): Promise<ReclaimOutcome[] | ContainedRefusal> {
+  const read = await readContainedRegularFile(
+    root,
+    RECLAIM_RECEIPT_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (read.status === "refused") return read;
+  if (read.status === "missing") return [];
   let parsed: unknown;
   try {
-    const bytes = await readContainedRegularFile(
-      root,
-      RECLAIM_RECEIPT_ARTIFACT,
-      RUN_ARTIFACT_MAX_BYTES,
-    );
-    if (bytes === null) return [];
-    parsed = JSON.parse(bytes.toString("utf8"));
+    parsed = JSON.parse(read.bytes.toString("utf8"));
   } catch {
     return [];
   }

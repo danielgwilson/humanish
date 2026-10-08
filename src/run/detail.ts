@@ -19,7 +19,11 @@ import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { savedCaption } from "./participant-caption.js";
 import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
 import type { RunStream } from "./streams.js";
-import { readContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "./contained-output.js";
+import {
+  ContainedReadRefusedError,
+  readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
+} from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
@@ -186,7 +190,8 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
 
 /**
  * Read one run's participants. Returns null when the run has no readable bundle yet, an ordinary
- * state for a run that has just started, not a failure.
+ * state for a run that has just started, not a failure. Throws when run.json is there and cannot
+ * be read: larger than RUN_ARTIFACT_MAX_BYTES, a link, or refused by the system.
  *
  * Reads the bundle narrowly rather than through `loadRunBundle`, which applies the strict
  * evidence-of-record guard. That guard is right for verification and wrong here: a mid-run flush is
@@ -203,12 +208,16 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     streams?: StreamFacts[];
     runId?: string;
   };
+  // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
+  const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE, RUN_ARTIFACT_MAX_BYTES);
+  // One that changed while it was read is being written now, as a torn one is below. One that is
+  // there and refused for another reason is not a run that has yet to write it.
+  if (raw.status === "refused" && raw.reason !== "changed")
+    throw new ContainedReadRefusedError(RUN_BUNDLE_FILE, raw);
+  if (raw.status !== "read") return null;
   let bundle: BundleFacts;
   try {
-    // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
-    const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE, RUN_ARTIFACT_MAX_BYTES);
-    if (raw === null) return null;
-    const parsed: unknown = JSON.parse(raw.toString("utf8"));
+    const parsed: unknown = JSON.parse(raw.bytes.toString("utf8"));
     if (parsed === null || typeof parsed !== "object") return null;
     bundle = parsed as BundleFacts;
   } catch {

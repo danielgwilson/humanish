@@ -39,7 +39,7 @@ import {
   type RunInterruptSignal,
   type RunStatusHandle,
 } from "./status.js";
-import { readRunJsonIfExists } from "./locate.js";
+import { readRunJsonIfExists, runJsonValue } from "./locate.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
 interface StartRunOptions {
@@ -386,8 +386,11 @@ function runPublisher(args: {
     });
     await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
     await afterBundle(publicBundle);
+    // The run writes its own status.json; one it refuses renders as a missing one does.
     const status =
-      recorded === undefined ? await readRunJsonIfExists(paths, RUN_STATUS_FILE) : undefined;
+      recorded === undefined
+        ? runJsonValue(await readRunJsonIfExists(paths, RUN_STATUS_FILE))
+        : undefined;
     await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
     await writeContainedOutputFile(
       paths,

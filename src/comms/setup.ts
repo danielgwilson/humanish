@@ -22,17 +22,24 @@ import { parseStudy } from "../study/config.js";
 import { resolveStudyManifest } from "../study/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
-  containedPathAbsent,
   prepareManagedHumanishOutputDirectory,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
+  type ContainedRead,
 } from "../run/contained-output.js";
 import { otherStudyFiles } from "../study/files.js";
 import { isNodeError } from "../run/type-guards.js";
 
 /** The most of a study file the receiving copy reads, for its source and its destination. */
 const MAX_STUDY_COPY_BYTES = 1024 * 1024;
+
+/** The read found exactly `expected`, or found nothing where `expected` is null. */
+function readsAs(read: ContainedRead, expected: Buffer | null): boolean {
+  return expected === null
+    ? read.status === "missing"
+    : read.status === "read" && read.bytes.equals(expected);
+}
 
 export interface CommsCheckResult {
   schema: "humanish.comms-check.v1";
@@ -213,8 +220,10 @@ export async function configureCommsStudy(args: {
     const rel = path
       .relative(root.requestedPath, path.resolve(args.cwd, source.path))
       .replace(/\\/g, "/");
-    const bytes = await readContainedRegularFile(root, rel, MAX_STUDY_COPY_BYTES);
-    if (!bytes) return { ...base, message: "The study file is missing or too large." };
+    const sourceRead = await readContainedRegularFile(root, rel, MAX_STUDY_COPY_BYTES);
+    if (sourceRead.status !== "read")
+      return { ...base, message: "The study file is missing or too large." };
+    const bytes = sourceRead.bytes;
     const text = bytes.toString("utf8");
     const raw: unknown = parse(text);
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
@@ -274,9 +283,10 @@ export async function configureCommsStudy(args: {
       };
     // An existing destination is replaced only when its bytes are in the plan token, so one that
     // cannot be read whole is refused instead of being taken as absent.
-    const prior = await readContainedRegularFile(root, destination, MAX_STUDY_COPY_BYTES);
-    if (prior === null && !(await containedPathAbsent(root, destination)))
+    const destinationRead = await readContainedRegularFile(root, destination, MAX_STUDY_COPY_BYTES);
+    if (destinationRead.status === "refused")
       return { ...base, message: "The local destination could not be read safely." };
+    const prior = destinationRead.status === "read" ? destinationRead.bytes : null;
     const content = String(study);
     const token = createHash("sha256")
       .update(bytes)
@@ -310,14 +320,8 @@ export async function configureCommsStudy(args: {
     );
     const identity = await lock.stat();
     try {
-      const currentSource = await readContainedRegularFile(root, rel, MAX_STUDY_COPY_BYTES);
-      const destinationUnchanged =
-        prior === null
-          ? await containedPathAbsent(root, destination)
-          : (await readContainedRegularFile(root, destination, MAX_STUDY_COPY_BYTES))?.equals(
-              prior,
-            ) === true;
-      if (!currentSource?.equals(bytes) || !destinationUnchanged)
+      const reread = (file: string) => readContainedRegularFile(root, file, MAX_STUDY_COPY_BYTES);
+      if (!readsAs(await reread(rel), bytes) || !readsAs(await reread(destination), prior))
         return { ...base, message: "Files changed while saving. Preview again." };
       await writeContainedOutputFile(directory, filename, content, "utf8");
     } finally {

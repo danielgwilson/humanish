@@ -44,7 +44,7 @@ describe("a contained file swapped for a FIFO", () => {
         new Promise((resolve) => setTimeout(() => resolve("still waiting"), 3000)),
       ]);
 
-      expect(read).toBeNull();
+      expect(read).toEqual({ status: "refused", reason: "changed", limit: 1024 });
     } finally {
       // Releases a reader the open left waiting, so a failing run still ends.
       try {

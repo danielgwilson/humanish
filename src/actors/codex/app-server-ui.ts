@@ -17,6 +17,7 @@ import {
   prepareSelectedOutputDirectory,
   prepareSelectedOutputFile,
   readContainedRegularFile,
+  refusalText,
   RUN_ARTIFACT_MAX_BYTES,
   type PreparedOutputRoot,
   type PreparedSelectedOutputFile,
@@ -220,17 +221,24 @@ async function serveArtifact(args: {
   response: ServerResponse;
   runRoot: PreparedOutputRoot;
 }): Promise<void> {
-  const body = await readContainedRegularFile(
+  const read = await readContainedRegularFile(
     args.runRoot,
     args.requestPath,
     RUN_ARTIFACT_MAX_BYTES,
   );
-  if (body) {
+  if (read.status === "read") {
     args.response.writeHead(200, {
       "cache-control": "no-store",
       "content-type": contentTypeFor(args.requestPath),
     });
-    args.response.end(body);
+    args.response.end(read.bytes);
+    return;
+  }
+  // A file over the limit is there: a 404 would tell the page it does not exist. A link, or a
+  // path outside the run, is served as absent, as it always was.
+  if (read.status === "refused" && read.reason === "too-large") {
+    args.response.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
+    args.response.end(`${refusalText(args.requestPath, read)}.`);
     return;
   }
   args.response.writeHead(404);

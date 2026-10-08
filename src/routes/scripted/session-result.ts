@@ -6,7 +6,11 @@ import path from "node:path";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserSurface } from "../../actors/scripted-browser/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { readContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../../run/contained-output.js";
+import {
+  readContainedRegularFile,
+  refusalText,
+  RUN_ARTIFACT_MAX_BYTES,
+} from "../../run/contained-output.js";
 
 export class UnsafeScriptedSessionResultError extends Error {
   constructor(message: string) {
@@ -30,7 +34,12 @@ export async function existingScreenshots(
       step.screenshotPath,
       RUN_ARTIFACT_MAX_BYTES,
     );
-    if (screenshot && screenshot.byteLength > 0) {
+    // A screenshot that is there and refused would leave the bundle without a frame it took.
+    if (screenshot.status === "refused")
+      throw new UnsafeScriptedSessionResultError(
+        `Scripted session screenshot ${refusalText(step.screenshotPath, screenshot)}.`,
+      );
+    if (screenshot.status === "read" && screenshot.bytes.byteLength > 0) {
       existing.push(step.screenshotPath);
     }
   }

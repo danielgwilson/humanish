@@ -14,8 +14,10 @@ import {
 } from "../run/paths.js";
 import {
   bindExistingManagedHumanishOutputDirectory,
+  ContainedReadRefusedError,
   LATEST_POINTER_MAX_BYTES,
   readContainedRegularFile,
+  refusalText,
   RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
@@ -332,10 +334,13 @@ async function isSafeFeedbackEvidenceFile(
   ) {
     return false;
   }
-  return (
-    (await readContainedRegularFile(context.preparedRunPaths, relative, RUN_ARTIFACT_MAX_BYTES)) !==
-    null
+  // Evidence a draft cites must be readable: a refused file is listed with the missing ones.
+  const read = await readContainedRegularFile(
+    context.preparedRunPaths,
+    relative,
+    RUN_ARTIFACT_MAX_BYTES,
   );
+  return read.status === "read";
 }
 
 export async function renderIssueMarkdown(
@@ -411,14 +416,27 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
     };
   }
 
-  const draftBytes = await readContainedRegularFile(
+  const draftRead = await readContainedRegularFile(
     context.preparedRunPaths,
     path.join("feedback", "draft.json"),
     RUN_ARTIFACT_MAX_BYTES,
   );
-  const draft =
-    draftBytes === null ? undefined : (JSON.parse(draftBytes.toString("utf8")) as FeedbackDraft);
   const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
+  if (draftRead.status === "refused")
+    return {
+      schema: FEEDBACK_RESULT_SCHEMA,
+      ok: false,
+      cwd,
+      run: runInput,
+      error: {
+        code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
+        message: `The feedback draft could not be read: ${refusalText(draftPath, draftRead)}.`,
+      },
+    };
+  const draft =
+    draftRead.status === "missing"
+      ? undefined
+      : (JSON.parse(draftRead.bytes.toString("utf8")) as FeedbackDraft);
 
   return {
     schema: FEEDBACK_RESULT_SCHEMA,
@@ -450,13 +468,19 @@ async function resolveFeedbackRunContext(
   if (runInput === "latest") {
     const runsRoot = await bindExistingManagedHumanishOutputDirectory(physicalCwd, "runs");
     if (!runsRoot) return null;
-    const pointerBytes = await readContainedRegularFile(
+    const pointerRead = await readContainedRegularFile(
       runsRoot,
       "latest.json",
       LATEST_POINTER_MAX_BYTES,
     );
-    if (!pointerBytes) return null;
-    const pointer = JSON.parse(pointerBytes.toString("utf8")) as {
+    if (pointerRead.status === "missing") return null;
+    // A pointer that is there and refused names no run, and saying so beats "run not found".
+    if (pointerRead.status === "refused")
+      throw new ContainedReadRefusedError(
+        path.join(".humanish", "runs", "latest.json"),
+        pointerRead,
+      );
+    const pointer = JSON.parse(pointerRead.bytes.toString("utf8")) as {
       path?: unknown;
       runId?: unknown;
     };

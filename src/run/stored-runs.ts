@@ -11,6 +11,7 @@ import {
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
+  refusalText,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import { RUN_BUNDLE_FILE, type ReviewSummary } from "./bundle.js";
@@ -24,7 +25,7 @@ import {
   type RunDisplay,
 } from "./display.js";
 import { RUN_STATUS_FILE } from "./status.js";
-import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
+import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./type-guards.js";
 import {
@@ -116,7 +117,8 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
         new Error("humanish runs root changed physical destination."),
       );
     }
-    const bundle = await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE);
+    // A listing shows what it can read: a run.json it refuses lists like a missing one.
+    const bundle = runJsonValue(await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE));
     runs.push({
       runId: entryName,
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
@@ -156,7 +158,7 @@ async function listedRunDisplay(
   if (displayed === undefined) return {};
   const status =
     displayed.outcome === undefined
-      ? await readRunJsonIfExists(runPaths, RUN_STATUS_FILE)
+      ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE))
       : undefined;
   return { display: runDisplay(bundleDisplayFacts(displayed, status)) };
 }
@@ -212,7 +214,8 @@ export async function readReview(
     return verified;
   }
 
-  const review = runPaths ? await readRunJsonIfExists(runPaths, "review.json") : null;
+  const reviewRead = runPaths ? await readRunJsonIfExists(runPaths, "review.json") : undefined;
+  const review = reviewRead === undefined ? null : runJsonValue(reviewRead);
 
   if (!isReviewSummary(review)) {
     return {
@@ -220,12 +223,18 @@ export async function readReview(
       ok: false,
       error: {
         code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: "review.json is missing or invalid.",
+        message:
+          reviewRead?.status === "refused"
+            ? `${refusalText("review.json", reviewRead)}.`
+            : "review.json is missing or invalid.",
       },
     };
   }
 
-  const bundle = runPaths ? await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE) : null;
+  // The display reads what it can: a run.json refused here shows as a missing one does.
+  const bundle = runPaths
+    ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE))
+    : null;
   const projected =
     isRecord(bundle) && Array.isArray(bundle.streams)
       ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord))
