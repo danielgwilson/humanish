@@ -1,6 +1,6 @@
 # tui/: the terminal app behind `humanish tui`
 
-An Ink 7 + React 19 app, bundled by esbuild into one file (`dist/tui-app.js`)
+An Ink 8 + React 19 app, bundled by esbuild into one file (`dist/tui-app.js`)
 that ships inside the humanish package and is loaded on demand by
 `humanish tui`. Every other humanish command is built so an agent can drive it;
 this is the one that takes the screen and waits for a person.
@@ -112,9 +112,10 @@ So, if a real terminal is genuinely needed:
 - Put spaces that matter in terminal output inside a string literal:
   `<Text>{"  none yet"}</Text>`. oxfmt, like Prettier, collapses runs of spaces in
   JSX text, which is harmless in a browser and changes an Ink layout.
-- Measure terminal size from Ink's own `useStdout`, never from a prop. Two
-  different stdout objects means laying out to one width and drawing into
-  another, silently, and only visibly at narrow widths.
+- Read terminal size from Ink's `useWindowSize`, never from a prop. It measures
+  the stream Ink renders into and re-reads it on `resize`. Two different stdout
+  objects means laying out to one width and drawing into another, silently, and
+  only visibly at narrow widths.
 - Two bundling workarounds in `build.mjs` are load-bearing; removing either
   produces a bundle that builds and then crashes on first run:
   `react-devtools-core` is an optional peer Ink imports at module scope and

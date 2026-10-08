@@ -1,4 +1,4 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useWindowSize } from "ink";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CommsCheckResult,
@@ -12,7 +12,6 @@ import { fitLabelToWidth } from "../fit-text.js";
 import { gutter } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
-import { useTerminalSize } from "../use-terminal-size.js";
 
 type Study = { title: string; path: string };
 type View =
@@ -49,7 +48,7 @@ export function ConnectionsScreen({
   const [check, setCheck] = useState<CommsCheckResult>();
   const [studies, setStudies] = useState<Study[]>([]);
   const [recovery, setRecovery] = useState<CommsRecoveryEntry[]>([]);
-  const { rows } = useTerminalSize();
+  const { rows } = useWindowSize();
   const read = useCallback(async () => {
     setLoading(true);
     try {
