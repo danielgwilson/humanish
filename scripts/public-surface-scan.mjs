@@ -15,6 +15,7 @@ const skippedExtensions = new Set([
   ".ico",
   ".pdf",
   ".tgz",
+  ".ttf",
   ".woff2",
 ]);
 
@@ -148,6 +149,23 @@ const approvedBinaryAssets = new Map([
   [
     "site/app/fonts/0-display-geist-600.woff2",
     "1cba40e360183117988926de0f2cea6504c9cc3ed8afaa20309045853257607b",
+  ],
+  // The OG image font subsets (site/scripts/fetch-og-fonts.mjs refetches them).
+  [
+    "site/lib/og-fonts/geist-600-human.ttf",
+    "36bf78caeaea22f1374086e2a01daf49e79e6095db305d77be0bf89bc963758d",
+  ],
+  [
+    "site/lib/og-fonts/newsreader-300-parens.ttf",
+    "1afe9876c88cb1db543b16706a90da60ee52882c4feeea993968941206fd60a1",
+  ],
+  [
+    "site/lib/og-fonts/newsreader-italic-300-lines.ttf",
+    "49ee4fe0d3877ff24871f1269eb452405bc217396bb6b8fa1df63f45b2a568e5",
+  ],
+  [
+    "site/lib/og-fonts/newsreader-italic-400-ish.ttf",
+    "2e3e756841766e802d85fb8517a2c0d28b7299099a3dc136a55da03cf2428d47",
   ],
   // The humanish.dev landing page's study keyframes: crops from the live
   // Excalidraw study run (cua-2026-08-07T17-44-48-760Z-87389419), manually
