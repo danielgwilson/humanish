@@ -4,7 +4,7 @@ import type {
   AnalysisCorrection,
 } from "../../src/analysis/types";
 import { bySeverity, findingLead } from "../../src/analysis/finding-lead.js";
-import { traceItems } from "./artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";

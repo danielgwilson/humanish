@@ -1,3 +1,4 @@
+import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverStream } from "./observer-data";
 import { exportScreenshotHref } from "./export-assets";
 
@@ -72,14 +73,6 @@ export function screenshotHref(screenshotPath: string): string | null {
   }
   if (/^[a-z][a-z0-9+.-]*:/i.test(screenshotPath)) return null;
   return runArtifactHref(screenshotPath);
-}
-
-/** A stream's recorded trace items: the finished actor's, else the mid-run `liveActor`
- *  partial's (the incremental flush): one accessor so every reader grows live. */
-export function traceItems(
-  stream: ObserverStream,
-): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
-  return stream.actor?.items ?? stream.liveActor?.items ?? [];
 }
 
 /** The stream's keyframe: its last recorded screenshot (the state the persona left behind). */

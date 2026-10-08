@@ -1,8 +1,7 @@
 // Reviewer notes: free text a person adds at a moment of a recorded run. Each note is its own file
-// in the run directory (note-files.ts). A note's time counts from the run clock's start, the
-// first timed capture or desktop video of any participant, which is the Observer's study clock.
+// in the run directory (note-files.ts). A note's time counts from the start of the run clock
+// (run-clock.ts), which is the Observer's study timeline.
 
-import type { ActorTraceItem } from "../actors/contract.js";
 import { cli } from "../cli/invocation.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
@@ -12,6 +11,7 @@ import { countRunNotes, encodeRunNote, newRunNoteId, runNoteFile } from "./note-
 import { MAX_NOTE_TEXT, MAX_RUN_NOTES, type RunNote } from "./note-shape.js";
 import { runParticipantCaptions, streamParticipantIdOf } from "./participant-records.js";
 import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
+import { formatRunTime, runClock, traceItems } from "./run-clock.js";
 import type { RunStream } from "./streams.js";
 import { transientCommsKnownValueScrub } from "./transient-comms-secrets.js";
 import { isNodeError } from "./type-guards.js";
@@ -76,68 +76,12 @@ function participantStreamId(bundle: RunBundle, named: string): string | AddRunN
   );
 }
 
-/** A run clock time as the Observer shows it: whole minutes and seconds, `02:31`. */
-export function formatRunTime(ms: number): string {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-/** The run clock: the first and last timed capture or desktop video moment, in epoch ms. */
-export function runClock(bundle: RunBundle): { startMs: number; endMs: number } | null {
-  const moments = bundle.streams.flatMap((stream) => [
-    ...(captureTimes(stream) ?? []),
-    ...recordingMoments(stream),
-  ]);
-  if (moments.length === 0) return null;
-  // A loop, since spreading a long recording's capture times into Math.min can overflow the stack.
-  let startMs = Infinity;
-  let endMs = -Infinity;
-  for (const moment of moments) {
-    startMs = Math.min(startMs, moment);
-    endMs = Math.max(endMs, moment);
-  }
-  return { startMs, endMs };
-}
-
-function traceItems(stream: RunStream): ActorTraceItem[] {
-  return stream.actor?.items ?? stream.liveActor?.items ?? [];
-}
-
-const stamp = (item: ActorTraceItem): number =>
-  item.at === undefined ? Number.NaN : Date.parse(item.at);
-
-/**
- * A participant's capture times, as the Observer's study clock reads them: only when every capture
- * is stamped and the stamps never go back. Otherwise the participant adds nothing to the clock.
- */
-function captureTimes(stream: RunStream): number[] | null {
-  const times = traceItems(stream)
-    .filter(
-      (item) => (item.kind === "screenshot" || item.kind === "ui_action") && item.screenshotRef,
-    )
-    .map(stamp);
-  const ordered = times.every(
-    (time, index) => Number.isFinite(time) && (index === 0 || time >= times[index - 1]!),
-  );
-  return ordered ? times : null;
-}
-
-function recordingMoments(stream: RunStream): number[] {
-  const recording = stream.recording;
-  if (!recording) return [];
-  const startMs = Date.parse(recording.startedAt);
-  const endMs = startMs + recording.durationMs;
-  return Number.isFinite(startMs) && Number.isFinite(endMs) && recording.durationMs > 0
-    ? [startMs, endMs]
-    : [];
-}
-
 /** The latest stamped trace item at or before `moment`, among the given participants. */
 function nearestItem(streams: readonly RunStream[], moment: number): RunNote["nearest"] {
   let best: { participant: string; itemId: string; time: number } | null = null;
   for (const stream of streams)
     for (const item of traceItems(stream)) {
-      const time = stamp(item);
+      const time = item.at === undefined ? Number.NaN : Date.parse(item.at);
       if (Number.isFinite(time) && time <= moment && (best === null || time >= best.time))
         best = { participant: stream.id, itemId: item.id, time };
     }
@@ -198,7 +142,7 @@ export async function addRunNote(
       `Run ${runIdOf(prepared)} has no run.json humanish can read safely, so no note was added. \`${cli(`verify --run ${runIdOf(prepared)}`)}\` says what is wrong with it.`,
     );
   const { bundle } = loaded;
-  const clock = runClock(bundle);
+  const clock = runClock(bundle.streams);
   if (!clock)
     return refuse(
       "HUMANISH_NOTE_NO_CLOCK",

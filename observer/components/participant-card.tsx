@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
+import { formatDuration, keyframeHref } from "@/lib/artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import {
   ageLabel,
   frameUpdatedAt,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
 import type { GridMoment } from "@/lib/grid-recording";
-import { formatElapsed } from "@/lib/player-model";
+import { formatRunTime } from "../../src/run/run-clock.js";
 import { useDecodedImage } from "@/lib/use-decoded-image";
 import { useSettled } from "@/lib/use-settled";
 import { completionLabel, signalFor } from "@/lib/signal";
@@ -139,7 +140,7 @@ export function ParticipantCard({
         : null;
   const captureLabel =
     replay?.kind === "capture"
-      ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
+      ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatRunTime(replay.ageMs)} before cursor`
       : replay?.kind === "before-first"
         ? "No capture yet"
         : replay?.kind === "timing-unavailable"
