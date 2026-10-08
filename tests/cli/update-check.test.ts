@@ -61,6 +61,10 @@ describe("the update notice", () => {
     ["with HUMANISH_TELEMETRY_DISABLED", { env: { HUMANISH_TELEMETRY_DISABLED: "1" } }],
     ["with HUMANISH_NO_UPDATE_CHECK=1", { env: { HUMANISH_NO_UPDATE_CHECK: "1" } }],
     ["with update-notifier's NO_UPDATE_NOTIFIER=1", { env: { NO_UPDATE_NOTIFIER: "1" } }],
+    // update-notifier turns off when the variable is present at all, so its users expect that here.
+    ["with NO_UPDATE_NOTIFIER empty", { env: { NO_UPDATE_NOTIFIER: "" } }],
+    ["with NO_UPDATE_NOTIFIER=0", { env: { NO_UPDATE_NOTIFIER: "0" } }],
+    ["with NO_UPDATE_NOTIFIER=false", { env: { NO_UPDATE_NOTIFIER: "false" } }],
     ["for a study participant", { env: { HUMANISH_STUDY_PARTICIPANT: "1" } }],
     ["from humanish's own checkout", { ownCheckout: true }],
   ] as const)("says nothing and asks the registry nothing %s", async (_case, overrides) => {
@@ -70,12 +74,10 @@ describe("the update notice", () => {
     expect(refreshes).toEqual([]);
   });
 
-  it("still tells a person when CI or NO_UPDATE_NOTIFIER is set to false or 0", async () => {
+  it("still tells a person when CI is set to false or 0", async () => {
     await writeCache({ checkedAt: new Date(NOW - HOUR).toISOString(), latest: "0.112.0" });
     expect(check(NOW, { env: { CI: "false" } })).toContain("0.112.0");
     expect(check(NOW + 25 * HOUR, { env: { CI: "0" } })).toContain("0.112.0");
-    expect(check(NOW + 50 * HOUR, { env: { NO_UPDATE_NOTIFIER: "false" } })).toContain("0.112.0");
-    expect(check(NOW + 75 * HOUR, { env: { NO_UPDATE_NOTIFIER: "0" } })).toContain("0.112.0");
   });
 
   it("starts one background registry check a day and none while the cache is fresh", async () => {

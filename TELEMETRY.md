@@ -137,5 +137,5 @@ NO_UPDATE_NOTIFIER=1
 
 `NO_UPDATE_NOTIFIER` is the variable the update-notifier package reads, so a
 machine set up to silence the CLIs built on it gets no humanish notice either.
-humanish reads it like the other switches: an empty value, `0` or `false` leaves
-the check on, where update-notifier turns off for any value.
+humanish reads it as update-notifier does: any value turns the check off,
+including an empty one, `0` or `false`.
