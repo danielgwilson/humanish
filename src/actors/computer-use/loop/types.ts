@@ -46,16 +46,6 @@ export type CuaAction =
   | { kind: "speak"; text: string }
   | { kind: "screenshot" };
 
-/** A wait action whose duration the provider shortened before the loop dispatched it. */
-export interface ShortenedWait {
-  /** The action's index in its turn. */
-  index: number;
-  /** What the participant asked for. */
-  requestedMs: number;
-  /** What the action waits: the `ms` it carries. */
-  ms: number;
-}
-
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
 export interface CuaObservation {
   /**
@@ -167,11 +157,6 @@ export interface CuaTurn {
   message?: string;
   /** Actions to perform this turn. Empty means the model is done. */
   actions: CuaAction[];
-  /**
-   * Waits the provider shortened to the longest wait its desktop accepts, by index into
-   * `actions`. The loop records each one and tells the participant on its next request.
-   */
-  shortenedWaits?: ReadonlyArray<ShortenedWait>;
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
@@ -303,6 +288,13 @@ export interface CuaLoopOptions {
   idleSteps?: number;
   /** No-progress streak that trips the backstop. Default 20. */
   noProgressSteps?: number;
+  /**
+   * The longest one `wait` action lasts, in ms: the study's actor.maxWaitMs. A longer wait is
+   * shortened to it, the trace records a `wait shortened` notice, and the participant is told on its
+   * next request. A wait longer than one desktop call carries is sent in steps. Default
+   * CUA_WAIT_LIMITS.defaultMaxMs (120000).
+   */
+  maxWaitMs?: number;
   /**
    * If the model flags safety checks, decide which to acknowledge. Returning the
    * list proceeds (the acks are echoed back on the next turn's request); returning

@@ -37,6 +37,7 @@ import {
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
+  waitLimitValidationReason,
 } from "../../study/validation.js";
 import { desktopCliProductReason } from "../../study/composition-rules.js";
 import { isLocalBrowserStudy } from "../../substrates/local/runtime-config.js";
@@ -187,7 +188,10 @@ function unsupportedDeclarationReason(
   driving: CallerDriving,
   { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
-  const reason = desktopMediaValidationReason(config) || outputTokenLimitValidationReason(config);
+  const reason =
+    desktopMediaValidationReason(config) ||
+    outputTokenLimitValidationReason(config) ||
+    waitLimitValidationReason(config, true);
   if (reason) return invalid(reason);
   if (
     config.actor?.maxOutputTokens !== undefined &&

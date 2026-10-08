@@ -103,10 +103,12 @@ Observation requires a PNG and state signature. It may include bounded URL,
 title, text, fractional scroll position and heard speech; those remain
 runtime-only under the existing loop contract. Arbitrary `appState` is refused
 because v1 has no closed schema for it. The protocol does not truncate strings,
-round coordinates, or silently drop unsupported state. A Codex participant's
-`humanish_ui` call is checked before it reaches the protocol: a wait longer than 30 seconds is
-shortened to 30 seconds there, and the trace records a `wait shortened` notice with both
-durations.
+round coordinates, or silently drop unsupported state. A participant may ask for a
+longer wait than one request carries. The computer-use loop shortens it to the study's
+`actor.maxWaitMs` (two minutes by default), records a `wait shortened` notice with both
+durations when it does, and sends the rest as consecutive waits of at most 30 seconds. The Codex
+participant's `humanish_ui` schema leaves a wait's length open for that reason; the wire still
+refuses a single wait over 30 seconds.
 
 Click, double-click, move, scroll and drag may carry `heldKeys`, which the
 OpenAI provider maps from its computer tool's `keys`. The Codex participant's

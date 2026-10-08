@@ -2,6 +2,7 @@ import { PNG } from "pngjs";
 import { z } from "zod";
 import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
+import { CUA_WAIT_LIMITS } from "../actors/computer-use/wait.js";
 import {
   ComputerUseExecutorError,
   CUA_REJECTION_REASONS,
@@ -30,7 +31,7 @@ export const BROWSER_CONTROL_LIMITS = Object.freeze({
   chordKeys: 16,
   keyCharacters: 64,
   dragPoints: 1024,
-  waitMs: 30_000,
+  waitMs: CUA_WAIT_LIMITS.stepMs,
   requestTimeoutMs: 35_000,
   maxRequestTimeoutMs: 60_000,
 });
@@ -84,13 +85,18 @@ const dragAction = z.strictObject({
 });
 const typeAction = z.strictObject({ kind: z.literal("type"), text });
 const keypressAction = z.strictObject({ kind: z.literal("keypress"), keys: chord });
+const waitMs = z.number().finite().min(0);
+// One request carries one wait, so the wire bounds it by the request deadline.
 const waitAction = z.strictObject({
   kind: z.literal("wait"),
-  ms: z.number().finite().min(0).max(BROWSER_CONTROL_LIMITS.waitMs).optional(),
+  ms: waitMs.max(BROWSER_CONTROL_LIMITS.waitMs).optional(),
 });
+// A participant may ask for any wait: the loop shortens it to the study's longest and sends it in
+// steps the wire accepts.
+const participantWaitAction = z.strictObject({ kind: z.literal("wait"), ms: waitMs.optional() });
 const screenshotAction = z.strictObject({ kind: z.literal("screenshot") });
 const speakAction = z.strictObject({ kind: z.literal("speak"), text: speechText });
-const browserActionSchemas = [
+const participantActionSchemas = [
   clickAction,
   doubleClickAction,
   moveAction,
@@ -98,13 +104,15 @@ const browserActionSchemas = [
   typeAction,
   keypressAction,
   dragAction,
-  waitAction,
+  participantWaitAction,
   screenshotAction,
 ] as const;
 // The Codex participant's tool schema: no held keys, so its tool surface stays as published.
-export const browserOnlyControlActionSchema = z.discriminatedUnion("kind", browserActionSchemas);
-export const browserControlActionSchema = z
-  .discriminatedUnion("kind", [...browserActionSchemas, speakAction])
+export const participantActionSchema = z
+  .discriminatedUnion("kind", participantActionSchemas)
+  .transform(toCuaAction);
+export const participantSpeechActionSchema = z
+  .discriminatedUnion("kind", [...participantActionSchemas, speakAction])
   .transform(toCuaAction);
 // What crosses the host-guest wire: the participant actions plus held keys on pointer actions,
 // which the OpenAI provider maps from its computer tool.

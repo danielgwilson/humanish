@@ -35,6 +35,7 @@ import {
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
+  waitLimitValidationReason,
 } from "../../study/validation.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
@@ -114,6 +115,7 @@ export function planSharedWorldStudy(
     // A library caller's config skips the parser, which refuses these first.
     studyUrlCredentialReason(config) ??
     outputTokenLimitValidationReason(config) ??
+    waitLimitValidationReason(config, true) ??
     (externalPublic
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));

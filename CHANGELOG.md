@@ -17,9 +17,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   and a value outside 1 to 1440 fails that row and refuses hosted studies. Raising it also raises
   the default session of a computer-use clone or local-tree study without `execution.timeoutMs`,
   from 20 minutes to as much as 30.
+- `actor.maxWaitMs` sets how long one `wait` action of a computer-use or shared-world participant
+  may last: 120000 (two minutes) when unset, from 1000 to 600000. A longer wait is shortened to it,
+  the trace records a `wait shortened` notice with the requested and applied durations, and the
+  participant is told on its next turn. Terminal, scripted and preview studies refuse the field.
 
 ### Changed
 
+- A participant's wait longer than 30 seconds now lasts as long as it asked, up to
+  `actor.maxWaitMs`. humanish sends it to the desktop as consecutive waits of at most 30 seconds,
+  the longest one browser-control request carries. A Codex participant's wait was shortened to 30
+  seconds before. Its `humanish_ui` tool description now states the study's longest wait, and the
+  tool's input schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
+  removed: the loop shortens a wait itself, for every provider.
 - A shared-world study whose persona file has an invalid background now stops with that error
   before the route checks its keys, as a computer-use study already did.
 - When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
