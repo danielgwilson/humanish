@@ -26,7 +26,7 @@ import {
 import { declaredOriginDigestOf } from "./external-public.js";
 import { packSubjectTree, type ProvisionedPlaneSetup } from "./provisioned.js";
 import { emptyPlaneResults } from "./result.js";
-import { buildParticipantSpecs, defaultSessionTimeoutMs } from "./participant-specs.js";
+import { buildParticipantSpecs } from "./participant-specs.js";
 import type {
   ConcurrentSharedWorldStudyErrorCode,
   ConcurrentSharedWorldStudyResult,
@@ -183,7 +183,7 @@ export async function prepareConcurrentRun(
   const { run } = started;
   const { runId, createdAt, paths: runPaths, source } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
-  const timeoutMs = plan.sessionTimeoutMs ?? defaultSessionTimeoutMs(plan);
+  const timeoutMs = plan.sessionTimeoutMs;
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
   const timers: DetachedTimers = deps.detachedTimers ?? {};

@@ -2064,40 +2064,43 @@ describe("run writes the same bundle watch does", () => {
 
 describe("CUA ending output", () => {
   it("shows distinct participant causes without calling the first participant the whole session", () => {
-    const output = formatCuaStudyHuman({
-      schema: "humanish.study-result.v1",
-      route: "computer-use",
-      studyId: "synthetic",
-      ok: false,
-      cwd: "/synthetic",
-      actor: "openai-computer-use",
-      appUrl: "http://127.0.0.1:3000/",
-      dryRun: false,
-      runId: "synthetic",
-      warnings: [],
-      diagnostics: { category: "mixed", stopCause: "mixed" },
-      session: {
-        status: "incomplete",
-        completionReason: "budget_reached",
-        stopCause: "provider_output_limit",
-        reason: "Synthetic",
-        screenshots: 0,
-      },
-      lanes: ["provider_output_limit", "time_limit"].map((stopCause, index) => ({
-        id: `lane-${index + 1}`,
-        index: index + 1,
-        persona: "synthetic",
-        device: "desktop",
-        resolution: [1440, 950] as [number, number],
-        status: "incomplete" as const,
+    const output = formatCuaStudyHuman(
+      {
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
+        studyId: "synthetic",
         ok: false,
-        subject: { source: "app-url" as const, state: { provenance: "undeclared" as const } },
-        diagnostics: {
-          category: "session_interrupted" as const,
-          stopCause: stopCause as "provider_output_limit" | "time_limit",
+        cwd: "/synthetic",
+        actor: "openai-computer-use",
+        appUrl: "http://127.0.0.1:3000/",
+        dryRun: false,
+        runId: "synthetic",
+        warnings: [],
+        diagnostics: { category: "mixed", stopCause: "mixed" },
+        session: {
+          status: "incomplete",
+          completionReason: "budget_reached",
+          stopCause: "provider_output_limit",
+          reason: "Synthetic",
+          screenshots: 0,
         },
-      })),
-    });
+        lanes: ["provider_output_limit", "time_limit"].map((stopCause, index) => ({
+          id: `lane-${index + 1}`,
+          index: index + 1,
+          persona: "synthetic",
+          device: "desktop",
+          resolution: [1440, 950] as [number, number],
+          status: "incomplete" as const,
+          ok: false,
+          subject: { source: "app-url" as const, state: { provenance: "undeclared" as const } },
+          diagnostics: {
+            category: "session_interrupted" as const,
+            stopCause: stopCause as "provider_output_limit" | "time_limit",
+          },
+        })),
+      },
+      { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+    );
     expect(output).toContain("diagnostic: mixed endings (mixed)");
     expect(output).toContain(
       "participant lane-1: incomplete · session interrupted (provider output limit)",

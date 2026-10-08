@@ -15,6 +15,7 @@ import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import { runComputerUse } from "../helpers/route-run.js";
+import { sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
 
 const live = { mode: "live" };
 
@@ -323,6 +324,7 @@ describe("requirements with a local study's desktop and a caller's provider", ()
     const planned = planComputerUseStudy(parsed.config, {
       dryRun: false,
       driving: { inProcess: false, createProvider: true },
+      sandboxCeiling: sandboxCeiling({}),
     });
     if (!planned.ok) throw new Error(planned.refusal.message);
     expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);

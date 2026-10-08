@@ -14,6 +14,7 @@ import {
   humanishInstall,
   type HumanishInstall,
 } from "../substrates/e2b/peer-install.js";
+import { describeSandboxCeiling, sandboxCeiling } from "../substrates/e2b/lifetime.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
@@ -194,6 +195,7 @@ export async function doctor(
   const checks: DoctorCheck[] = [
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
+    sandboxCeilingCheck(env),
     terminalSurfaceCheck(),
     ...versionCheck(env),
     ...localAgentChecks(agents),
@@ -298,6 +300,12 @@ async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) 
       ? ".gitignore lists .humanish/"
       : `.gitignore does not list .humanish/; run ${cli("init --yes")}`,
   };
+}
+
+/** The longest sandbox lifetime the E2B planners allow, and where that number came from. */
+function sandboxCeilingCheck(env: NodeJS.ProcessEnv): DoctorCheck {
+  const ceiling = sandboxCeiling(env);
+  return { name: "e2b sandbox ceiling", ok: ceiling.ok, message: describeSandboxCeiling(ceiling) };
 }
 
 /**

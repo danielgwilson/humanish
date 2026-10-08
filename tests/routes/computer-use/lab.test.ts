@@ -91,6 +91,7 @@ import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.j
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves both faces of the sandbox: the
@@ -1092,7 +1093,10 @@ describe("runCuaActorLab", () => {
 
   it("runs a plan alone: the result and bundle take the plan's app URL and lab provenance", async () => {
     const config = cuaConfig();
-    const planned = planComputerUseStudy(config, { dryRun: true });
+    const planned = planComputerUseStudy(config, {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok || planned.plan.runner.subject.kind !== "app-url")
       throw new Error("expected an app-url computer-use plan");
     const plan = {
