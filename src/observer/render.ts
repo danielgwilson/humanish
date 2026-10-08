@@ -19,7 +19,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
-import { loadRunBundlePrepared, readRunJsonIfExists } from "../run/locate.js";
+import { loadRunBundlePrepared, readRunJsonIfExists, runJsonValue } from "../run/locate.js";
 import { readRunNotes } from "../run/note-files.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
@@ -210,9 +210,10 @@ export async function renderObserver(
   };
   // A run.json without an outcome is in progress, interrupted, or older than the field: its
   // status.json says which, and holds an older run's ok.
+  // A status.json it refuses says nothing, as a missing one does: the bundle's own facts show.
   const statusRecord =
     loaded.bundle.outcome === undefined
-      ? await readRunJsonIfExists(preparedRunPaths, RUN_STATUS_FILE)
+      ? runJsonValue(await readRunJsonIfExists(preparedRunPaths, RUN_STATUS_FILE))
       : undefined;
   const observerData = buildObserverData(loaded.bundle, undefined, statusRecord);
   observerData.publicSafety.share = {

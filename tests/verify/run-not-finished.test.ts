@@ -2,7 +2,7 @@
 // warning and the result's `unfinished` say what verify saw, including whether anything records
 // the run's sandboxes stopped. The run index decides liveness by the same rule, so both agree.
 
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -226,6 +226,36 @@ describe("verify's sandbox state for a run that did not finish", () => {
     const result = await notFinished();
     expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "clean" });
     expect(result.warnings[0]).toContain("Sandboxes clean: reclaim-receipt.json records 2 of 2");
+  });
+
+  it("calls the sandboxes unconfirmed when the journal is over the read limit", async () => {
+    await kill(stopped);
+    await writeJson("reclaim-receipt.json", {
+      schema: "humanish.reclaim-result.v1",
+      at: "2026-10-04T13:38:14.809Z",
+      runId: RUN,
+      state: "clean",
+      receiptCount: 2,
+      outcomes: ["synthetic-sandbox-a", "synthetic-sandbox-b"].map((id, index) => ({
+        sandboxId: REDACTED_SANDBOX_ID,
+        sandboxIdDigest: sandboxIdDigest(id),
+        laneId: `lane-0${index + 1}`,
+        source: "receipt",
+        state: "killed",
+      })),
+    });
+    // A third sandbox the receipt does not cover, then whitespace past the 32 MiB limit.
+    await appendFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ sandboxId: "synthetic-sandbox-c", laneId: "lane-03", provider: "e2b" })}\n${" ".repeat(32 * 1024 * 1024)}`,
+    );
+
+    const result = await notFinished();
+
+    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "unconfirmed" });
+    expect(result.warnings[0]).toContain(
+      "Sandboxes unconfirmed: sandbox-receipts.ndjson is larger than 33554432 bytes",
+    );
   });
 
   it("calls the sandboxes unknown when nothing journaled one and no reclaim searched", async () => {

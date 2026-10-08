@@ -7,7 +7,7 @@ import { constants as fsConstants } from "node:fs";
 import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
-import { readOpenedAtMost } from "../run/evidence-files.js";
+import { readOpenedAtMost } from "../run/contained-output.js";
 import { isPathInside, isSafeRunIdSegment } from "../run/paths.js";
 
 /** internal: consumed by src/observer/serve.ts */

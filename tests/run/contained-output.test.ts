@@ -25,6 +25,7 @@ import {
   writeContainedOutputFile,
   writePreparedSelectedOutputFile,
 } from "../../src/run/contained-output.js";
+import { bytesReadDuring } from "../helpers/bytes-read.js";
 
 describe("selected output path containment", () => {
   let root: string;
@@ -174,12 +175,47 @@ describe("selected output path containment", () => {
     await symlink(outside, path.join(selectedRoot, "dir-link"), "dir");
 
     const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
-    expect((await readContainedRegularFile(prepared, "ordinary.txt"))?.toString("utf8")).toBe(
-      "ordinary\n",
-    );
-    expect(await readContainedRegularFile(prepared, "../run-sibling/secret.txt")).toBeNull();
-    expect(await readContainedRegularFile(prepared, "leaf-link.txt")).toBeNull();
-    expect(await readContainedRegularFile(prepared, "dir-link/secret.txt")).toBeNull();
+    expect(await readContainedRegularFile(prepared, "ordinary.txt", 1024)).toEqual({
+      status: "read",
+      bytes: Buffer.from("ordinary\n"),
+    });
+    expect(await readContainedRegularFile(prepared, "absent.txt", 1024)).toEqual({
+      status: "missing",
+    });
+    expect(await readContainedRegularFile(prepared, "absent-folder/x.txt", 1024)).toEqual({
+      status: "missing",
+    });
+    await mkdir(path.join(selectedRoot, "folder.txt"));
+    for (const [file, reason] of [
+      ["folder.txt", "directory"],
+      ["../run-sibling/secret.txt", "unsafe-path"],
+      ["leaf-link.txt", "not-regular"],
+      ["dir-link/secret.txt", "unsafe-path"],
+    ])
+      expect(await readContainedRegularFile(prepared, file!, 1024), file).toEqual({
+        status: "refused",
+        reason,
+        limit: 1024,
+      });
+  });
+
+  it("reads a file of at most maxBytes and refuses a larger one without reading it whole", async () => {
+    const selectedRoot = path.join(root, "run");
+    await mkdir(selectedRoot);
+    await writeFile(path.join(selectedRoot, "fits.txt"), "x".repeat(1024));
+    await writeFile(path.join(selectedRoot, "over.txt"), "x".repeat(64 * 1024));
+    const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
+
+    expect(await readContainedRegularFile(prepared, "fits.txt", 1024)).toEqual({
+      status: "read",
+      bytes: Buffer.from("x".repeat(1024)),
+    });
+    let over: unknown;
+    const bytes = await bytesReadDuring(async () => {
+      over = await readContainedRegularFile(prepared, "over.txt", 1024);
+    });
+    expect(over).toEqual({ status: "refused", reason: "too-large", limit: 1024 });
+    expect(bytes).toBeLessThan(64 * 1024);
   });
 
   it("rejects a selected-root alias retarget and same-path directory recreation", async () => {
@@ -231,7 +267,11 @@ describe("selected output path containment", () => {
       throw error;
     }
     const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
-    expect(await readContainedRegularFile(prepared, "hardlink.txt")).toBeNull();
+    expect(await readContainedRegularFile(prepared, "hardlink.txt", 1024)).toEqual({
+      status: "refused",
+      reason: "not-regular",
+      limit: 1024,
+    });
     await expect(
       writeContainedOutputFile(prepared, "hardlink.txt", "mutated\n", "utf8"),
     ).rejects.toThrow(/hardlinks|single-link/i);
