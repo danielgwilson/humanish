@@ -189,6 +189,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-07 | 0.112.0, src/ as of 4a132ed6 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $5.99           | [summary](2026-10-07-0.112.0-neutral-openai-computer-use.md) |
 | 2026-10-07 | 0.113.0, src/ as of 323e65a0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 6/10            | 0 and 0             | $5.83           | [summary](2026-10-07-0.113.0-neutral-openai-computer-use.md) |
 | 2026-10-08 | 0.114.0, src/ as of dabf6569 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $6.19           | [summary](2026-10-08-0.114.0-neutral-openai-computer-use.md) |
+| 2026-10-08 | 0.115.0, src/ as of 0b3df523 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $6.20           | [summary](2026-10-08-0.115.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -249,6 +250,21 @@ hand, analysis recall is 11/15. The clean-arm analysis line "Enter-to-save expec
 during editing" is true: the clean build's edit box has no Enter handler. "Five-task list absent
 from the first post-refresh view" is true on both builds. All six reports say the participant saw
 no terminal output, from the persona's `clear_terminal_output` trait.
+
+The 0.115.0 run took each analysis's cap from the dry run's `admittedCostUsd`, the expected cost
+plus 10%: expected $1.03 to $1.21, caps $1.14 to $1.33, bills $0.59 to $1.01. The budget gate
+counted each analysis at its worst case, and every planned run and analysis still fit under $7, so
+no analysis was refused or skipped and analysis recall counts all 15 planted chances. Every
+participant ran threaded and ended on its own; each was sent the impressions request and gave 5 or
+6 impressions, all within the closing report's limits. Input grew every turn except in the first
+planted run, whose first reply hit its 1,024-token limit and was asked again with the same input.
+No planted participant typed more than 30 characters in one action, so none met D2. Two planted
+analysis lines the rubric left unresolved are D5: "Save left editing open; Enter finished the
+edit" in the first run and "New wording did not survive the rename attempts" in the third. Read
+by hand, analysis recall is 10/15. The clean-arm analysis line "Reported edit-focus uncertainty
+resolved by clicking the field" is true: the clean build's edit box is not focused when it opens.
+Five of six reports say the participant saw no terminal output, from the persona's
+`clear_terminal_output` trait.
 
 ## What these numbers are not
 
