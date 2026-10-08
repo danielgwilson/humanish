@@ -26,6 +26,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- In `humanish tui`, the cursor stays on the row the person selected when a refresh reorders the
+  rows: a study that goes live and moves to the top of the studies list, a newer run listed above
+  the selected run, or a run that finishes, where Open in Observer moves up a row and Run again
+  takes its place. The cursor used to keep its row number, so Enter could open a different study
+  or start a new run. Escape back to the studies list also returns to the selected study after the
+  list reordered (#1696).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read

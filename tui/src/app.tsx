@@ -9,7 +9,14 @@ import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry } from "../../src/run/run-index.js";
 import type { StudyRow } from "../../src/run/projection.js";
 import type { TuiOptions } from "../../src/tui/contract.js";
-import { currentScreen, initialNav, navigate, selectedIndex } from "./navigation.js";
+import {
+  currentScreen,
+  initialNav,
+  navigate,
+  screenKey,
+  selectedIndex,
+  type Screen,
+} from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
 import { frameText } from "./frame-text.js";
 import {
@@ -115,13 +122,15 @@ export function App({
   const initialized = projectState.initialized || (data?.retired.length ?? 0) > 0;
   const clock = now ?? Date.now();
 
-  // Identity of the selected row, kept current so a refresh that reorders the list can put the
-  // cursor back on the same thing. A live study sorts to the top the moment a run starts, so an index
-  // held across a refresh silently points at a different study, and that is how someone opens, or
-  // starts, the wrong one.
-  const selectedIdRef = useRef<string | undefined>(undefined);
+  // The row the person chose on each screen, by identity, keyed like the navigation's per-screen
+  // index. A live study sorts to the top the moment a run starts, and a run that finishes swaps Stop
+  // for Run again, so an index held across a refresh silently points at a different row, and that
+  // is how someone opens, or starts, the wrong one.
+  const chosenRef = useRef(new Map<string, string>());
+  /** The cursor at the last commit, which tells the person's moves apart from refreshes. */
+  const cursorRef = useRef<{ screen: Screen; selected: number } | undefined>(undefined);
   /** Where the operator is right now, readable from an async launch that started long ago. */
-  const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "studies" });
+  const screenRef = useRef<Screen>({ name: "studies" });
 
   useEffect(() => {
     let cancelled = false;
@@ -163,26 +172,30 @@ export function App({
   const selected = selectedIndex(nav);
   const rowCount = countRows(screen, data, detail);
 
+  // A move on the same screen records the row the cursor is on. Anything else (a refresh, arriving
+  // at a screen, coming back to one) puts the cursor on the recorded row. When that row is gone
+  // (a run deleted, a Stop that no longer applies) the cursor keeps its index, and the row now
+  // under it is recorded, because that is the row the person sees chosen.
   useEffect(() => {
     screenRef.current = screen;
-    const identity = identityOf(screen, data, selected);
-    if (identity !== undefined) selectedIdRef.current = identity;
-  }, [screen, data, selected]);
-
-  // After a refresh, put the cursor back on the same row rather than the same index. When the row
-  // is gone entirely (a run deleted underneath us) the index is left where it was and clamped by
-  // the reducer, which keeps the cursor near where the operator left it.
-  useEffect(() => {
     if (data === undefined) return;
-    const identity = selectedIdRef.current;
-    if (identity === undefined) return;
-    const next = indexOfIdentity(screen, data, identity);
-    if (next >= 0 && next !== selected) {
-      dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
+    const last = cursorRef.current;
+    cursorRef.current = { screen, selected };
+    const key = screenKey(screen);
+    const chosen = chosenRef.current.get(key);
+    const moved = last?.screen === screen && last.selected !== selected;
+    if (!moved && chosen !== undefined) {
+      const next = indexOfIdentity(screen, data, chosen, detail);
+      if (next === selected) return;
+      if (next >= 0) {
+        dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
+        return;
+      }
     }
-    // `selected` is deliberately absent: this reacts to data changing, not to the operator moving.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, screen]);
+    const identity = identityOf(screen, data, selected, detail);
+    if (identity === undefined) chosenRef.current.delete(key);
+    else chosenRef.current.set(key, identity);
+  }, [screen, data, selected, detail]);
 
   const start = useCallback(
     async (row: StudyRow, mode: "dry-run" | "live"): Promise<void> => {
