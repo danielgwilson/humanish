@@ -554,6 +554,8 @@ describe("plain headlines and design findings", () => {
     "an empty reason",
     "an empty suggestion",
     "a headline over 240 characters",
+    "a notice over 1500 characters",
+    "a control character in its notice",
   ])("refuses a design finding with %s", (kind) => {
     const saved = fixtures.plainFindingsFixture(data);
     const [minor, major] = saved.analysis!.result!.designFindings!;
@@ -574,7 +576,15 @@ describe("plain headlines and design findings", () => {
     if (kind === "an empty reason") minor!.whyItMatters = "";
     if (kind === "an empty suggestion") minor!.suggestion = "";
     if (kind === "a headline over 240 characters") minor!.headline = "x".repeat(241);
+    if (kind === "a notice over 1500 characters") minor!.notice = "x".repeat(1501);
+    if (kind === "a control character in its notice") minor!.notice = "A bell \u0007 rang.";
     expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+  });
+
+  it("admits a design finding notice of 1500 characters with tabs and line breaks", () => {
+    const saved = fixtures.plainFindingsFixture(data);
+    saved.analysis!.result!.designFindings![0]!.notice = "Columns\tand\r\nrows ".padEnd(1500, "x");
+    expect(parseStudyAnalysis(saved, data).state).toBe("ready");
   });
 
   it.each([

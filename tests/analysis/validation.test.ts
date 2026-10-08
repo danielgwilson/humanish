@@ -202,6 +202,49 @@ describe("study analysis validation", () => {
     };
     visit(analysisResultJsonSchema);
   });
+  it("sends providers the limits the Observer also checks", () => {
+    const label = { minLength: 1, maxLength: 240 };
+    expect(analysisResultJsonSchema).toMatchObject({
+      properties: {
+        findings: {
+          maxItems: 100,
+          items: {
+            properties: {
+              title: label,
+              headline: label,
+              experience: { minLength: 1, maxLength: 1200 },
+              observations: { items: { properties: { evidenceIds: { maxItems: 100 } } } },
+            },
+          },
+        },
+        designFindings: {
+          maxItems: 40,
+          items: {
+            properties: {
+              headline: label,
+              screen: label,
+              notice: { minLength: 1, maxLength: 1500 },
+              whyItMatters: { minLength: 1, maxLength: 1000 },
+              suggestion: { minLength: 1, maxLength: 1000 },
+              evidenceIds: { minItems: 1, maxItems: 100 },
+            },
+          },
+        },
+        concernReviews: { maxItems: 60 },
+      },
+    });
+  });
+  it("rejects generated text with a control character and keeps tabs and line breaks", () => {
+    const input = syntheticInput();
+    const result = syntheticResult(input);
+    result.designFindings![0]!.notice = "Columns\tline\r\nbreak";
+    expect(checkAnalysisResult(input, result).ok).toBe(true);
+    result.designFindings![0]!.notice = "A bell \u0007 in the notice";
+    expect(checkAnalysisResult(input, result)).toEqual({
+      ok: false,
+      errors: ["ANALYSIS_RESULT_SCHEMA_INVALID"],
+    });
+  });
   it("rejects unknown properties, invented evidence, and unsupported visual claims", () => {
     const input = syntheticInput();
     const extra = { ...syntheticResult(), command: "synthetic" };

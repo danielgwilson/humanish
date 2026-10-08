@@ -2,6 +2,7 @@ import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
+import { ANALYSIS_LIMITS, hasControlCharacter, hasRevisionFields } from "./analysis-limits.js";
 import {
   SHA256_HEX_PATTERN,
   ACTION_CAPTURE_VERSION,
@@ -18,8 +19,8 @@ const text = (max: number) =>
   z
     .string()
     .max(max)
-    .refine((value) => !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value), "Invalid text.");
-const label = text(240).min(1);
+    .refine((value) => !hasControlCharacter(value), "Invalid text.");
+const label = text(ANALYSIS_LIMITS.labelChars).min(1);
 const id = z
   .string()
   .min(1)
@@ -29,7 +30,7 @@ const sourceId = text(256).min(1);
 const digest = z.string().regex(SHA256_HEX_PATTERN);
 const timestamp = z.string().datetime({ offset: true });
 const sourceIds = z.array(sourceId).max(128);
-const refs = z.array(id).min(1).max(100);
+const refs = z.array(id).min(1).max(ANALYSIS_LIMITS.evidenceRefs);
 const limitations = z.array(text(2000).min(1)).max(100);
 const observationSchema = z
   .object({
@@ -45,9 +46,9 @@ const designFindingSchema = z
     id,
     headline: label,
     screen: label,
-    notice: text(1500).min(1),
-    whyItMatters: text(1000).min(1),
-    suggestion: text(1000).min(1),
+    notice: text(ANALYSIS_LIMITS.noticeChars).min(1),
+    whyItMatters: text(ANALYSIS_LIMITS.whyItMattersChars).min(1),
+    suggestion: text(ANALYSIS_LIMITS.suggestionChars).min(1),
     severity: z.enum(["minor", "moderate", "major"]),
     confidence: z.enum(["low", "medium", "high"]),
     seenByStreamIds: sourceIds.min(1),
@@ -83,7 +84,7 @@ const analysisResultSchema = z
             id,
             title: label,
             headline: label.optional(),
-            experience: text(1200).min(1).optional(),
+            experience: text(ANALYSIS_LIMITS.experienceChars).min(1).optional(),
             summary: text(4000).min(1),
             impact: z.enum(["blocked_task", "friction", "recovery", "uncertain"]),
             affectedStreamIds: sourceIds.min(1),
@@ -97,8 +98,8 @@ const analysisResultSchema = z
           })
           .strict(),
       )
-      .max(100),
-    designFindings: z.array(designFindingSchema).max(40).optional(),
+      .max(ANALYSIS_LIMITS.findings),
+    designFindings: z.array(designFindingSchema).max(ANALYSIS_LIMITS.designFindings).optional(),
     concernReviews: z
       .array(
         observationSchema
@@ -109,7 +110,7 @@ const analysisResultSchema = z
           })
           .strict(),
       )
-      .max(60)
+      .max(ANALYSIS_LIMITS.concernReviews)
       .optional(),
     limitations,
   })
@@ -123,8 +124,8 @@ export const analysisResponseSchema = analysisResultSchema
       .array(
         analysisResultSchema.shape.findings.element.required({ headline: true, experience: true }),
       )
-      .max(100),
-    designFindings: z.array(designFindingSchema).max(40),
+      .max(ANALYSIS_LIMITS.findings),
+    designFindings: z.array(designFindingSchema).max(ANALYSIS_LIMITS.designFindings),
   })
   .required({ concernReviews: true });
 export const analysisResultJsonSchema = z.toJSONSchema(analysisResponseSchema);
@@ -561,19 +562,7 @@ export function validateAnalysisArtifact(value: unknown): AnalysisArtifact {
   )
     throw new Error("ANALYSIS_STATUS_INVALID");
   if (artifact.result !== null) {
-    // Concern accounting became required with revision 5, and headlines, experiences and design
-    // findings with revision 7. Keep each boundary stable when the prompt version advances; a later
-    // prompt must not regain legacy omissions.
-    const revision = Number(/^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1] ?? 0);
-    const result = artifact.result;
-    if (
-      (revision >= 5 && result.concernReviews === undefined) ||
-      (revision >= 7 &&
-        (result.designFindings === undefined ||
-          result.findings.some(
-            (finding) => finding.headline === undefined || finding.experience === undefined,
-          )))
-    )
+    if (!hasRevisionFields(artifact.promptVersion, artifact.result))
       throw new Error("ANALYSIS_RESULT_SCHEMA_INVALID");
     validateAnalysisResult({ ...artifact, images: [] }, artifact.result);
   }
