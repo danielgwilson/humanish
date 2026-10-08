@@ -11,18 +11,28 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { openContainedRegularFile } from "../run/contained-output.js";
+import { openContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
-import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
+import {
+  readSafeRunArtifact,
+  readSafeRunArtifactBytes,
+  readSafeRunArtifactJson,
+} from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
 
 /** Public-safety and evidence-reference findings stop at this many per list. */
 export const MAX_REPORTED_FINDINGS = 50;
+
+/**
+ * The most entries, files and directories, the public-safety scan visits in one run. Bundle export
+ * refuses a run with more, so the scan never passes a run whose files it did not all read.
+ */
+export const MAX_RUN_ENTRIES = 10_000;
 
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -132,14 +142,23 @@ export async function missingLocalEvidenceArtifacts(
       }
       continue;
     }
-    const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
-    if (!bytes || (bytes.length === 0 && !requirements.allowEmpty)) {
+    const artifact = await readSafeRunArtifact(runPaths, artifactPath);
+    if (artifact.state === "limit") {
+      missing.push(
+        `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`,
+      );
+      continue;
+    }
+    if (
+      artifact.state === "unavailable" ||
+      (artifact.bytes.length === 0 && !requirements.allowEmpty)
+    ) {
       missing.push(artifactPath);
       continue;
     }
 
     if (requirements.screenshot) {
-      const imageError = screenshotEvidenceError(artifactPath, bytes);
+      const imageError = screenshotEvidenceError(artifactPath, artifact.bytes);
       if (imageError) {
         missing.push(`${artifactPath} (${imageError})`);
       }
@@ -362,8 +381,10 @@ interface RegisteredStreamMedia {
 
 /**
  * Scans every run file for secret and path patterns and returns the findings. A file that is not
- * registered stream media and that the scan cannot read as text (readPlainText), or cannot read at
- * all, goes to `unscanned`, so the caller can keep the run from grading share_ready.
+ * registered stream media and that the scan cannot read as text (readPlainText), cannot read at
+ * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned`, so the caller can keep
+ * the run from grading share_ready. So does a directory it cannot list, and the rest of the run
+ * after MAX_RUN_ENTRIES entries.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -373,7 +394,9 @@ export async function scanRunPublicSafetyArtifacts(
 ): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
-  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned, {
+    entries: 0,
+  });
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
@@ -385,6 +408,7 @@ async function scanRunPublicSafetyDirectory(
   derivedFindings: string[],
   media: RegisteredStreamMedia,
   unscanned: string[],
+  walk: { entries: number },
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -395,8 +419,20 @@ async function scanRunPublicSafetyDirectory(
   const current = relativeDirectory
     ? path.join(runPaths.physicalRunRoot, ...relativeDirectory.split("/"))
     : runPaths.physicalRunRoot;
-  const entries = await readdir(current).catch(() => []);
+  const entries = await readdir(current).catch(() => null);
+  if (entries === null) {
+    unscanned.push(`${relativeDirectory || "."}/ (could not be listed)`);
+    return;
+  }
   for (const entryName of entries) {
+    walk.entries += 1;
+    if (walk.entries > MAX_RUN_ENTRIES) {
+      if (walk.entries === MAX_RUN_ENTRIES + 1)
+        unscanned.push(
+          `${relativeDirectory || "."}/ (the scan stops after ${MAX_RUN_ENTRIES} entries)`,
+        );
+      return;
+    }
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
     const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     const selectedFindings =
@@ -436,6 +472,7 @@ async function scanRunPublicSafetyDirectory(
         derivedFindings,
         media,
         unscanned,
+        walk,
       );
       continue;
     }
@@ -453,8 +490,8 @@ async function scanRunPublicSafetyDirectory(
     if (media.recordingPaths.has(relativePath) || media.screenshotPaths.has(relativePath)) {
       continue;
     }
-    // The scan reads a file by its bytes, not its name. A file that is not text, or that could
-    // not be read at all, holds bytes the scan never saw.
+    // The scan reads a file by its bytes, not its name. A file that is not text, that could not
+    // be read, or that is over the read limit holds bytes the scan never saw.
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath).catch(() => null);
     const decoded = bytes === null ? undefined : readPlainText(bytes);
     if (decoded === undefined || !decoded.ok) {

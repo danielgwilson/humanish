@@ -1,5 +1,6 @@
 import {
   access,
+  appendFile,
   link,
   mkdir,
   mkdtemp,
@@ -24,6 +25,8 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { writePreparedRunLatestPointer } from "../../src/run/contained-output.js";
+import { resolveRunPath } from "../../src/run/locate.js";
+import { bytesReadDuring } from "../helpers/bytes-read.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -159,6 +162,26 @@ describe("run path containment", () => {
         expect((await verifyRun(cwd, "latest")).ok, invalidPath).toBe(false);
       }
       expect((await verifyRun(cwd, "safe-run")).ok).toBe(true);
+    });
+  });
+
+  it("refuses a latest pointer over 64 KiB without reading it whole", async () => {
+    await withTempProject(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "safe-run" });
+      const pointerPath = path.join(cwd, ".humanish", "runs", "latest.json");
+      // A pointer that names the run and then pads past 64 KiB with whitespace JSON allows.
+      const padding = 64 * 1024;
+      await appendFile(pointerPath, Buffer.alloc(padding, " "));
+
+      let resolved: Promise<unknown> = Promise.resolve();
+      const bytes = await bytesReadDuring(async () => {
+        resolved = resolveRunPath(cwd, "latest");
+        await resolved.catch(() => undefined);
+      });
+
+      await expect(resolved).rejects.toThrow(/larger than 65536 bytes/);
+      expect(bytes).toBeLessThan(padding);
+      expect((await verifyRun(cwd, "latest")).ok).toBe(false);
     });
   });
 

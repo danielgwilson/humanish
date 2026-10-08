@@ -179,7 +179,12 @@ async function stopActiveRuns(
     Promise.all(
       stopping
         .filter((stop) => stop.report !== null)
-        .map((stop) => scrubRunSandboxIds(stop.run.paths).catch(() => undefined)),
+        .map((stop) =>
+          scrubRunSandboxIds(stop.run.paths).catch((error: unknown) => {
+            // A file the sweep refused to read may still name a sandbox; say which.
+            if (error instanceof Error) say(io, `humanish: ${signal}: ${error.message}`);
+          }),
+        ),
     ),
   );
   const finished = await withDeadline(work, deadlineMs, options.deadline);

@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { constants, type BigIntStats } from "node:fs";
 import { lstat, mkdir, open, realpath, rename, unlink, type FileHandle } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -256,37 +256,128 @@ export async function createContainedOutputFile(
   await handle.close();
 }
 
-/** Read one regular file only when both lexical and physical paths stay in root. */
+// The most humanish reads of one file of each kind. A larger file is refused unread.
+
+/**
+ * A file in a run directory or a preflight journal. verify reads every run file whole to scan it,
+ * and a frame whole to check it, so this covers the largest screenshot src/evidence/image.ts
+ * accepts (32 MiB). Every other reader of a run file uses the same limit, so no command reads a
+ * run file that verify could not scan.
+ */
+export const RUN_ARTIFACT_MAX_BYTES = 32 * 1024 * 1024;
+
+/** `.humanish/runs/latest.json`: a run id and a path. */
+export const LATEST_POINTER_MAX_BYTES = 64 * 1024;
+
+/** A file a person writes in the project: study, persona and scenario YAML, package.json, agent instructions. */
+export const PROJECT_FILE_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Why a contained read did not read a file that is there. `too-large`: it holds more than the
+ * limit. `changed`: it, its folder or the root changed while it was opened or read, which
+ * includes growing past the limit. `directory`: a folder is at the path. `not-regular`: a link, a
+ * hard link or a special file. `unsafe-path`: the path leaves the root or passes through a link.
+ * `unreadable`: the system refused the open or the read.
+ */
+export type ContainedRefusalReason =
+  | "too-large"
+  | "changed"
+  | "directory"
+  | "not-regular"
+  | "unsafe-path"
+  | "unreadable";
+
+/** A file that is there and was not read: why, and the most the read would have taken. */
+export interface ContainedRefusal {
+  readonly status: "refused";
+  readonly reason: ContainedRefusalReason;
+  readonly limit: number;
+}
+
+/** What a contained read found: the bytes, nothing at the path, or a file it refused. */
+export type ContainedRead =
+  | { readonly status: "read"; readonly bytes: Buffer }
+  | { readonly status: "missing" }
+  | ContainedRefusal;
+
+/** `relativePath` and why it was refused, as a clause: "x.yaml is larger than 4194304 bytes, ...". */
+export function refusalText(relativePath: string, refusal: ContainedRefusal): string {
+  switch (refusal.reason) {
+    case "too-large":
+      return `${relativePath} is larger than ${refusal.limit} bytes, the most humanish reads of it`;
+    case "changed":
+      return `${relativePath} changed while humanish read it`;
+    case "directory":
+      return `${relativePath} is a folder`;
+    case "not-regular":
+      return `${relativePath} is not a single-link regular file`;
+    case "unsafe-path":
+      return `${relativePath} leaves its folder or passes through a link`;
+    case "unreadable":
+      return `${relativePath} could not be read`;
+  }
+}
+
+/** A refused contained read, for a caller that stops on one. The message names the file. */
+export class ContainedReadRefusedError extends Error {
+  constructor(
+    readonly relativePath: string,
+    readonly refusal: ContainedRefusal,
+  ) {
+    super(`${refusalText(relativePath, refusal)}.`);
+    this.name = "ContainedReadRefusedError";
+  }
+}
+
+/**
+ * Read one regular file only when both lexical and physical paths stay in root and it holds at
+ * most `maxBytes`. A larger file is refused without being read, and one that grows past
+ * `maxBytes` while it is read is refused after at most `maxBytes + 1` bytes. `missing` means
+ * nothing is at the path, or a folder on it is missing.
+ */
 export async function readContainedRegularFile(
   rootInput: PreparedOutputRoot,
   relativePath: string,
-): Promise<Buffer | null> {
-  const handle = await openContainedRegularFile(rootInput, relativePath);
-  if (!handle) return null;
+  maxBytes: number,
+): Promise<ContainedRead> {
+  const opened = await openContained(rootInput, relativePath);
+  if (opened.status === "missing") return opened;
+  const refused = (reason: ContainedRefusalReason): ContainedRefusal => ({
+    status: "refused",
+    reason,
+    limit: maxBytes,
+  });
+  if (opened.status === "refused") return refused(opened.reason);
+  const { handle } = opened;
   try {
-    return await handle.readFile();
+    if ((await handle.stat()).size > maxBytes) return refused("too-large");
+    const bytes = await readOpenedAtMost(handle, maxBytes);
+    return bytes === null ? refused("changed") : { status: "read", bytes };
   } catch {
-    return null;
+    return refused("unreadable");
   } finally {
     await handle.close().catch(() => {});
   }
 }
 
 /**
- * Whether a contained path is confirmed absent. A present entry that readContainedRegularFile
- * refuses or fails to read is not absent.
+ * At most `maxBytes` from the start of an opened file, or null when it holds more. It reads by
+ * position, in chunks of up to 64 KiB, and stops one byte past the limit, so a file that grew
+ * after it was opened is never read whole.
  */
-export async function containedPathAbsent(
-  rootInput: PreparedOutputRoot,
-  relativePath: string,
-): Promise<boolean> {
-  try {
-    assertSafeRelativeOutputPath(relativePath, false);
-    const root = await resolveOutputRoot(rootInput);
-    await lstat(path.resolve(root, normalizeRelativeOutputPath(relativePath)));
-    return false;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "ENOENT";
+export async function readOpenedAtMost(
+  handle: FileHandle,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
+    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
+    if (bytesRead === 0) return Buffer.concat(chunks, total);
+    total += bytesRead;
+    if (total > maxBytes) return null;
+    chunks.push(chunk.subarray(0, bytesRead));
   }
 }
 
@@ -295,42 +386,77 @@ export async function openContainedRegularFile(
   rootInput: PreparedOutputRoot,
   relativePath: string,
 ): Promise<FileHandle | null> {
-  let handle: FileHandle | undefined;
+  const opened = await openContained(rootInput, relativePath);
+  return opened.status === "open" ? opened.handle : null;
+}
+
+type ContainedOpen =
+  | { status: "open"; handle: FileHandle }
+  | { status: "missing" }
+  | { status: "refused"; reason: ContainedRefusalReason };
+
+/** The open behind both readers: every check, and what stopped it when one failed. */
+async function openContained(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+): Promise<ContainedOpen> {
+  const refused = (reason: ContainedRefusalReason) => ({ status: "refused", reason }) as const;
+  const missingOr = (error: unknown, reason: ContainedRefusalReason): ContainedOpen =>
+    isNodeError(error) && error.code === "ENOENT"
+      ? { status: "missing" }
+      : isNodeError(error) && (error.code === "EACCES" || error.code === "EPERM")
+        ? refused("unreadable")
+        : refused(reason);
   try {
     assertSafeRelativeOutputPath(relativePath, false);
-    const root = await resolveOutputRoot(rootInput);
-    const candidate = path.resolve(root, normalizeRelativeOutputPath(relativePath));
-    if (!isPathInside(root, candidate) || candidate === root) {
-      return null;
-    }
+  } catch {
+    return refused("unsafe-path");
+  }
+  let root: string;
+  try {
+    root = await resolveOutputRoot(rootInput);
+  } catch {
+    return refused("changed");
+  }
+  const candidate = path.resolve(root, normalizeRelativeOutputPath(relativePath));
+  if (!isPathInside(root, candidate) || candidate === root) return refused("unsafe-path");
+  let before: BigIntStats;
+  try {
     await assertContainedDirectoryChain(root, path.dirname(candidate));
-    const before = await lstat(candidate, { bigint: true });
-    if (before.isSymbolicLink() || !before.isFile() || before.nlink > 1n) {
-      return null;
-    }
-    const physicalFile = await realpath(candidate);
-    if (!isPathInside(root, physicalFile)) {
-      return null;
-    }
-    handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
+    before = await lstat(candidate, { bigint: true });
+  } catch (error) {
+    return missingOr(error, "unsafe-path");
+  }
+  if (before.isDirectory()) return refused("directory");
+  if (before.isSymbolicLink() || !before.isFile() || before.nlink > 1n)
+    return refused("not-regular");
+  let handle: FileHandle;
+  try {
+    if (!isPathInside(root, await realpath(candidate))) return refused("unsafe-path");
+    // O_NONBLOCK: a file swapped for a FIFO after the lstat opens at once and fails the fstat
+    // below, where a blocking open would wait for a writer.
+    handle = await open(
+      candidate,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+  } catch (error) {
+    return missingOr(error, "changed");
+  }
+  try {
     const after = await handle.stat({ bigint: true });
     if (
       !after.isFile() ||
       after.nlink > 1n ||
       after.dev !== before.dev ||
-      after.ino !== before.ino
-    ) {
+      after.ino !== before.ino ||
+      (await resolveOutputRoot(rootInput)) !== root
+    )
       throw new Error("Artifact identity changed.");
-    }
-    const revalidatedRoot = await resolveOutputRoot(rootInput);
-    if (revalidatedRoot !== root) {
-      throw new Error("Artifact root changed.");
-    }
     await assertContainedDirectoryChain(root, path.dirname(candidate));
-    return handle;
+    return { status: "open", handle };
   } catch {
-    await handle?.close().catch(() => {});
-    return null;
+    await handle.close().catch(() => {});
+    return refused("changed");
   }
 }
 
@@ -344,6 +470,16 @@ export function assertSafeOutputPathSegment(value: string, label = "Output path 
     value.includes("\0")
   ) {
     throw new Error(`${label} must be one non-empty path segment.`);
+  }
+}
+
+/** A non-empty relative path with no empty, `.` or `..` segment: the names a contained read accepts. */
+export function isSafeRelativeFilePath(value: string): boolean {
+  try {
+    assertSafeRelativeOutputPath(value, false);
+    return true;
+  } catch {
+    return false;
   }
 }
 

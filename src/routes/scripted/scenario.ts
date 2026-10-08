@@ -9,6 +9,9 @@ import type { BrowserPersonaJourney } from "../../actors/scripted-browser/types.
 import { digestText } from "../../evidence/redaction.js";
 import {
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
+  refusalText,
+  type ContainedRead,
   type PreparedSelectedOutputDirectory,
 } from "../../run/contained-output.js";
 
@@ -39,6 +42,7 @@ export async function resolveScriptedScenario(
 
   let absolutePath: string;
   let source: string;
+  let read: ContainedRead | undefined;
   if (scenarioRefLooksLikePath(trimmed)) {
     absolutePath = path.resolve(projectRoot.physicalPath, trimmed);
     const relative = path.relative(projectRoot.physicalPath, absolutePath);
@@ -60,23 +64,41 @@ export async function resolveScriptedScenario(
       path.posix.join("humanish", "scenarios", `${trimmed}.yaml`),
       path.posix.join("humanish", "scenarios", `${trimmed}.yml`),
     ];
-    const found = await firstExistingFile(projectRoot, candidates);
-    if (!found) {
+    const found = await firstScenarioFile(projectRoot, candidates);
+    if (found === null) {
       return {
         ok: false,
         message: `scenario "${trimmed}" was not found (looked for ${candidates.join(", ")}).`,
       };
     }
-    source = found;
-    absolutePath = path.join(projectRoot.physicalPath, found);
+    // A candidate that is there and refused stops the search: the next one is not the scenario.
+    if (found.read.status === "refused") {
+      return {
+        ok: false,
+        message: `scenario "${trimmed}" could not be read: ${refusalText(found.candidate, found.read)}.`,
+      };
+    }
+    source = found.candidate;
+    read = found.read;
+    absolutePath = path.join(projectRoot.physicalPath, found.candidate);
   }
 
   const relativeScenarioPath = path.relative(projectRoot.physicalPath, absolutePath);
-  const scenarioBytes = await readContainedRegularFile(projectRoot, relativeScenarioPath);
-  if (!scenarioBytes) {
+  read ??= await readContainedRegularFile(
+    projectRoot,
+    relativeScenarioPath,
+    PROJECT_FILE_MAX_BYTES,
+  );
+  if (read.status === "refused" && read.reason === "too-large") {
+    return {
+      ok: false,
+      message: `scenario "${trimmed}" could not be read: ${refusalText(source, read)}.`,
+    };
+  }
+  if (read.status !== "read") {
     return { ok: false, message: `scenario "${trimmed}" could not be read (${source}).` };
   }
-  const text = scenarioBytes.toString("utf8");
+  const text = read.bytes.toString("utf8");
 
   let raw: unknown;
   try {
@@ -117,14 +139,14 @@ function scenarioRefLooksLikePath(ref: string): boolean {
   );
 }
 
-async function firstExistingFile(
+/** The first candidate that is there, read or refused; null when none is. */
+async function firstScenarioFile(
   projectRoot: PreparedSelectedOutputDirectory,
   candidates: string[],
-): Promise<string | null> {
+): Promise<{ candidate: string; read: ContainedRead } | null> {
   for (const candidate of candidates) {
-    if ((await readContainedRegularFile(projectRoot, candidate)) !== null) {
-      return candidate;
-    }
+    const read = await readContainedRegularFile(projectRoot, candidate, PROJECT_FILE_MAX_BYTES);
+    if (read.status !== "missing") return { candidate, read };
   }
   return null;
 }
