@@ -9,6 +9,7 @@ import {
   type CuaProvider,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
+import { CUA_WAIT_LIMITS } from "../../../src/actors/computer-use/wait.js";
 import { BROWSER_CONTROL_LIMITS } from "../../../src/browser-control/protocol.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
@@ -95,6 +96,10 @@ const shortenedNotices = (result: CuaLoopResult) =>
 afterEach(() => vi.useRealTimers());
 
 describe("a participant's long wait", () => {
+  it("sends steps no longer than one desktop call accepts", () => {
+    expect(CUA_WAIT_LIMITS.stepMs).toBe(BROWSER_CONTROL_LIMITS.waitMs);
+  });
+
   it("runs as consecutive desktop calls no longer than one browser-control request carries", async () => {
     const { result, calls, seen } = await runWait(70_000);
 

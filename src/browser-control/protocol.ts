@@ -2,7 +2,6 @@ import { PNG } from "pngjs";
 import { z } from "zod";
 import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
-import { CUA_WAIT_LIMITS } from "../actors/computer-use/wait.js";
 import {
   ComputerUseExecutorError,
   CUA_REJECTION_REASONS,
@@ -31,7 +30,7 @@ export const BROWSER_CONTROL_LIMITS = Object.freeze({
   chordKeys: 16,
   keyCharacters: 64,
   dragPoints: 1024,
-  waitMs: CUA_WAIT_LIMITS.stepMs,
+  waitMs: 30_000,
   requestTimeoutMs: 35_000,
   maxRequestTimeoutMs: 60_000,
 });
