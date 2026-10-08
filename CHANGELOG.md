@@ -29,6 +29,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
+  punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
+  to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,
+  `PAGEDOWN`, `?`) to xdotool unchanged; xdotool ignored them and exited 0, and the run recorded
+  the keypress as completed. Both the hosted and the local desktop now translate key names
+  through one table, which also gains the shifted punctuation (`?`, `!`, `:` and the rest), so
+  `?` works on the local desktop too. One name joined with `+`, such as `Control+a`, is split into
+  its keys on both desktops. A name outside the table is refused, and the participant is
+  told the action was rejected. A key xdotool still reports as unknown is recorded as a failed
+  desktop command. Hosted findings from earlier runs about arrow keys, Page Up, Page Down or
+  punctuation keys may come from this defect (#1697).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read
