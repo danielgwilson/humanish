@@ -11,7 +11,7 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { RunSecrets } from "../../run/secrets.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
-import { type RunRerunLineage } from "../../run/bundle.js";
+import { type RunRerunLineage, type RunSubjectProvenance } from "../../run/bundle.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
@@ -34,15 +34,13 @@ import { phaseEvent, planEvent } from "../../study/run-study-events.js";
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
-import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-projection.js";
+import { projectParticipantSubjects } from "./subject-projection.js";
 import {
   type CuaActorStudyErrorCode,
   type CuaActorStudyResult,
   type CuaParticipantDeps,
   type CuaParticipantPlan,
   type DesktopParticipantRun,
-  type CuaSubjectProjection,
-  type CuaSubjectProvenanceArg,
   type ComputerUseRunInput,
   participantSubjectEnv,
 } from "./types.js";
@@ -119,9 +117,8 @@ export interface CuaParticipantsSetup {
   externalComms: { config: StudyCommsExternal; email: StudyCommsEmail } | undefined;
   /** The subjects of the in-progress bundle, written before any participant starts. */
   inProgress: {
-    subjects: CuaSubjectProjection[];
-    aggregateSubject: CuaSubjectProjection;
-    provenance: CuaSubjectProvenanceArg | undefined;
+    subjects: RunSubjectProvenance[];
+    aggregateSubject: RunSubjectProvenance;
   };
   /** The refusal envelope, for a run that stops before its bundle. */
   fail: (code: CuaActorStudyErrorCode, message: string, actorLabel?: string) => CuaActorStudyResult;
@@ -130,7 +127,6 @@ export interface CuaParticipantsSetup {
 /** What only finishCuaRun reads besides the participants' outcomes. */
 export interface CuaFinishFacts {
   rerunLineage: RunRerunLineage | undefined;
-  publicRepo: string | undefined;
   subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
 }
 
@@ -382,9 +378,6 @@ export async function startCuaRun(
     dryRun: false,
   });
   const inProgressAggregateSubject = inProgressSubjects[0]!;
-  const inProgressProvenance = subjectProvenanceArg(inProgressAggregateSubject, publicRepo, [
-    ...participantSubjectEnv(plan.runner.subject),
-  ]);
 
   const bundleBase: CuaRunBundleBase = {
     run,
@@ -424,11 +417,10 @@ export async function startCuaRun(
       inProgress: {
         subjects: inProgressSubjects,
         aggregateSubject: inProgressAggregateSubject,
-        provenance: inProgressProvenance,
       },
       fail: admitted.fail,
     },
-    finish: { rerunLineage: admitted.rerunLineage, publicRepo, subjectArgs },
+    finish: { rerunLineage: admitted.rerunLineage, subjectArgs },
   };
 }
 

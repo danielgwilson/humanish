@@ -305,14 +305,16 @@ exactly; this hosted-desktop rule does not change that contract.
 `subject` is an optional, additive top-level field: structured provenance for
 what the computer-use, shared-world or scripted route actually drove (code pin plus state story). It
 is absent on pre-existing bundles and on bundles from routes that have not
-adopted it. The field shape, its three sources (`clone`, `app-url`,
-`local-tree`), and the `humanish verify` checks that guard it are the schema doc's
+adopted it. The field shape, its four sources (`clone`, `app-url`,
+`local-tree`, `desktop-cli`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under
 [`schemas.md`](schemas.md#run-bundle). In short, `clone` carries a
 `repo`/`commit` pin, `local-tree` carries an `archiveSha256`/`dirty` pin
-instead (a dirty working tree cannot be commit-pinned), and `app-url` carries
-no code pin at all. No path, basename, or other host-machine string ever
-enters this field; identity is digests, a sha, a boolean, and counts.
+instead (a dirty working tree cannot be commit-pinned), `desktop-cli` carries the
+declared `product` name, and `app-url` carries no code pin at all. A computer-use run
+of a desktop-cli study saved before `desktop-cli` was recorded says `app-url`, and
+readers accept it. No path, basename, or other host-machine string ever
+enters this field; identity is digests, a sha, a boolean, counts and the declared product name.
 
 ## Cost Estimate (advisory)
 

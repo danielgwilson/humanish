@@ -16,6 +16,7 @@ import {
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSimulation,
+  type RunSubjectProvenance,
   type RunTaskFunnel,
 } from "../../run/bundle.js";
 import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
@@ -43,7 +44,6 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
-import type { CuaSubjectProvenanceArg } from "./types.js";
 import { plural } from "../../run/text.js";
 
 type SingleParticipantBundleArgs = Parameters<typeof buildSingleParticipantBundle>[0];
@@ -238,6 +238,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
 
 function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView): RunEvent[] {
   const { publicAppUrl, desktopGeometry } = view;
+  const { subject } = args;
   const events: RunEvent[] = [
     {
       id: "event-000-created",
@@ -246,31 +247,33 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
       type: "cua-lab.run.created",
       message: `Created a computer-use run for ${args.studyId} (actor ${args.actorId}).`,
     },
-    args.subjectProvenance
+    subject.source === "clone" || subject.source === "local-tree"
       ? participantEvent(SINGLE, {
           id: "event-001-subject",
           at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.provenance",
           // Claim "cloned/packed and served" only when it actually happened.
-          message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
+          message: `${subjectProvenanceMessage(subject, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${subject.envNames !== undefined && subject.envNames.length > 0 ? subject.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
         })
       : participantEvent(SINGLE, {
           id: "event-001-subject",
           at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.declared",
-          // Declare what the subject was, including the absence of a pin. A
-          // local-app / in-process subject is an already-running local dev server the caller
-          // provisioned; it cannot be commit-pinned, so its provenance is unpinned and
-          // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox, or,
-          // on the local VM, reaches the host's loopback from the VM's browser.
+          // Declare what the subject was, including the absence of a pin. A desktop-cli product
+          // is named, since it has no URL. A local-app / in-process subject is an already-running
+          // local dev server the caller provisioned; it cannot be commit-pinned, so its provenance
+          // is unpinned and no E2B desktop was created. A plain app-url entry runs inside the
+          // desktop sandbox, or, on the local VM, reaches the host's loopback from the VM's browser.
           message:
-            args.entryKind === "local-app"
-              ? `Subject app declared at ${publicAppUrl}: a running local dev server driven in this process, with no clone and no E2B desktop. Provenance: provided by the caller and unpinned, because a running dev server has no commit to pin.`
-              : runnerSubstrate(args) === "local-desktop"
-                ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
-                : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
+            subject.source === "desktop-cli"
+              ? `Subject product declared: ${subject.product}, used from a terminal window inside the desktop sandbox.`
+              : args.entryKind === "local-app"
+                ? `Subject app declared at ${publicAppUrl}: a running local dev server driven in this process, with no clone and no E2B desktop. Provenance: provided by the caller and unpinned, because a running dev server has no commit to pin.`
+                : runnerSubstrate(args) === "local-desktop"
+                  ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
+                  : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
         }),
     args.session
       ? participantEvent(SINGLE, {
@@ -475,9 +478,9 @@ export function buildSingleParticipantBundle(args: {
    */
   credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
   source: RunBundle["source"];
-  /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
-   * + digests only, never values or command text), including the subject's state story. */
-  subjectProvenance?: CuaSubjectProvenanceArg;
+  /** The subject as subject-projection.ts projects it (names and digests only, never values or
+   * command text): run.json records it as `subject`, and the subject event describes it. */
+  subject: RunSubjectProvenance;
   /**
    * Entry kind for the non-clone subject.declared event, which declares what the subject
    * was. "local-app": an already-running local dev server driven in-process, un-pinnable, and
@@ -585,11 +588,7 @@ export function buildSingleParticipantBundle(args: {
     ...(args.providerResources === undefined || args.providerResources.length === 0
       ? {}
       : { providerResources: args.providerResources }),
-    // Structured subject provenance: code pin + state story. Uniform, and
-    // stated on app-url bundles too: the caller minted the URL, its state is the caller's.
-    // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
-    // shaped, so no reconstruction is needed beyond the app-url fallback.
-    subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },
+    subject: args.subject,
     ...(cost === undefined ? {} : { cost }),
   };
 }
