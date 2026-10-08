@@ -121,6 +121,7 @@ const SHARED_CLI_MODULES = [
   path.join(CLI_ROOT, "actors", "closing-report-limits.ts"),
   path.join(CLI_ROOT, "analysis", "admission.ts"),
   path.join(CLI_ROOT, "run", "note-shape.ts"),
+  path.join(CLI_ROOT, "run", "run-clock.ts"),
 ];
 
 function runtimeCliEdges(file: string, source: string): string[] {

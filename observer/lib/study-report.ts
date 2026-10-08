@@ -1,5 +1,5 @@
 import type { ObserverData } from "./observer-data";
-import { traceItems } from "./artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import { buildPlayerModel, rowElapsedMs, type PlayerFrame } from "./player-model";
 
 /** An optional review projection. It does not change the recorded Observer contract. */
