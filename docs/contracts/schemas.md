@@ -529,8 +529,8 @@ Core-owned fields:
   an older run, else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
-  `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
-  dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
+  `{ source: clone | app-url | local-tree | desktop-cli, repo?, product?, commit?,
+  archiveSha256?, dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
   unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
   commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
   }`. Emitted by the computer-use and shared-world routes and the clone
@@ -538,7 +538,10 @@ Core-owned fields:
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
   `humanish.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
-  the archive content digest stands in for it. `commandDigest` is the
+  the archive content digest stands in for it. `product` is the desktop-cli field: the
+  `subject.product.name` the study declares, with state `undeclared`. A computer-use
+  run of a desktop-cli study saved before this field existed records `app-url` with no
+  `product`. `commandDigest` is the
   sha256-16 of the exact seed command; command text and env values never
   appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state

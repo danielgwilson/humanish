@@ -8,6 +8,7 @@
 // reclaim-receipt.json is written before the first kill and after each one, so an exit at any
 // point leaves a record of every sandbox not yet confirmed gone. `--check` asks E2B the same
 // questions and kills nothing.
+import { e2bAccount, e2bConnection, type E2BAccount } from "../substrates/e2b/connection.js";
 import {
   E2B_DEBUG_ENV,
   e2bDebugMode,
@@ -15,8 +16,10 @@ import {
   type E2BDesktopModule,
 } from "../substrates/e2b/sdk.js";
 import {
-  containedPathAbsent,
   readContainedRegularFile,
+  refusalText,
+  RUN_ARTIFACT_MAX_BYTES,
+  type ContainedRefusal,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import {
@@ -24,7 +27,7 @@ import {
   listPreflightJournals,
   preflightReclaimDecision,
 } from "./preflight-receipts.js";
-import { readRunJsonIfExists, resolveRunPath } from "./locate.js";
+import { readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 import { RUN_STATUS_FILE } from "./status.js";
 import { isRecord } from "./type-guards.js";
@@ -94,6 +97,11 @@ export interface ReclaimResult {
 export interface ReclaimHooks {
   /** Tests inject a fake @e2b/desktop module; default loads the real one. */
   loadModule?: () => Promise<E2BDesktopModule>;
+  /**
+   * The env whose E2B_API_KEY and E2B_DOMAIN every E2B call carries. Defaults to process.env, where
+   * the CLI put the run's key before the run started.
+   */
+  env?: Readonly<Record<string, string | undefined>>;
   requestTimeoutMs?: number;
   /** Ask E2B whether each sandbox still exists, and kill nothing. */
   check?: boolean;
@@ -176,7 +184,7 @@ async function reclaimRun(
     return {
       ...base,
       runId,
-      error: { code: "HUMANISH_RECLAIM_RECEIPTS_UNREADABLE", message: UNREADABLE_MESSAGE },
+      error: { code: "HUMANISH_RECLAIM_RECEIPTS_UNREADABLE", message: reclaimed.message },
     };
   const { state, receiptCount, outcomes, tagSearch, createsInFlight } = reclaimed;
   return {
@@ -206,8 +214,13 @@ type NoSandboxReason = "dry-run" | "no-sandbox";
 async function recordedNoSandbox(
   runPaths: PreparedRunArtifactPaths,
 ): Promise<NoSandboxReason | undefined> {
-  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
-  const status = await readRunJsonIfExists(runPaths, RUN_STATUS_FILE);
+  const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
+  const statusRead = await readRunJsonIfExists(runPaths, RUN_STATUS_FILE);
+  // A record that is there and refused could say anything, so neither shortcut applies and
+  // reclaim runs in full. A missing one says nothing, as before.
+  if (bundleRead.status === "refused" || statusRead.status === "refused") return undefined;
+  const bundle = runJsonValue(bundleRead);
+  const status = runJsonValue(statusRead);
   const records = [bundle, status].filter(isRecord);
   const reason: NoSandboxReason | undefined =
     records.length > 0 && records.every((record) => record.mode === "dry-run")
@@ -219,14 +232,21 @@ async function recordedNoSandbox(
         ? "no-sandbox"
         : undefined;
   if (reason === undefined) return undefined;
-  if (!(await containedPathAbsent(runPaths, RECLAIM_RECEIPT_ARTIFACT))) {
-    const earlier = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
+  const earlierRead = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
+  if (earlierRead.status !== "missing") {
+    const earlier = runJsonValue(earlierRead);
     if (!isRecord(earlier) || !Array.isArray(earlier.outcomes) || earlier.outcomes.length > 0)
       return undefined;
   }
-  if (await containedPathAbsent(runPaths, SANDBOX_RECEIPTS_ARTIFACT)) return reason;
-  const journal = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
-  return journal !== null && journal.toString("utf8").trim() === "" ? reason : undefined;
+  const journal = await readContainedRegularFile(
+    runPaths,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (journal.status === "missing") return reason;
+  return journal.status === "read" && journal.bytes.toString("utf8").trim() === ""
+    ? reason
+    : undefined;
 }
 
 /** The execution failure kinds that leave a sandbox or a provider's resources unconfirmed. */
@@ -298,7 +318,7 @@ export async function reclaimPreflightSandboxes(
     const reclaimed = await reclaimRoot(journal.root, journal.id, hooks, warnings);
     if (reclaimed.kind === "unreadable") {
       // The receipt may name a live sandbox; the journal stays for a later reclaim.
-      warnings.push(`Preflight ${journal.id} left alone: ${UNREADABLE_MESSAGE}`);
+      warnings.push(`Preflight ${journal.id} left alone: ${reclaimed.message}`);
       states.push("unknown");
       continue;
     }
@@ -356,8 +376,20 @@ const E2B_DEBUG_REFUSAL = {
 const UNREADABLE_MESSAGE =
   "sandbox-receipts.ndjson is present but could not be read safely (not a single regular file, or a read error). Nothing was killed and the receipts were kept; check the file, then run reclaim again.";
 
+/**
+ * Why reclaim stopped before it killed or wrote anything: the receipts journal, or the receipt an
+ * earlier reclaim wrote, is there and cannot be read.
+ */
+function unreadableMessage(file: string, refusal: ContainedRefusal): string {
+  if (file === SANDBOX_RECEIPTS_ARTIFACT && refusal.reason !== "too-large")
+    return UNREADABLE_MESSAGE;
+  const kept =
+    file === SANDBOX_RECEIPTS_ARTIFACT ? "the receipts were kept" : "the receipt was kept";
+  return `${refusalText(file, refusal)}. Nothing was killed and ${kept}; check the file, then run reclaim again.`;
+}
+
 type RootReclaim =
-  | { kind: "unreadable" }
+  | { kind: "unreadable"; message: string }
   | { kind: "module-unavailable"; receiptCount: number; message: string }
   | {
       kind: "done";
@@ -381,10 +413,17 @@ async function reclaimRoot(
   hooks: ReclaimHooks,
   warnings: string[],
 ): Promise<RootReclaim> {
-  const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
-  if (bytes === null && !(await containedPathAbsent(root, SANDBOX_RECEIPTS_ARTIFACT)))
-    return { kind: "unreadable" };
-  const journal = bytes === null ? "" : bytes.toString("utf8");
+  const journalRead = await readContainedRegularFile(
+    root,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (journalRead.status === "refused")
+    return {
+      kind: "unreadable",
+      message: unreadableMessage(SANDBOX_RECEIPTS_ARTIFACT, journalRead),
+    };
+  const journal = journalRead.status === "read" ? journalRead.bytes.toString("utf8") : "";
   const receipts = parseSandboxReceipts(journal);
   const owners = parseSandboxOwners(journal, label);
   const check = hooks.check === true;
@@ -392,10 +431,11 @@ async function reclaimRoot(
 
   // The SDK lists by tag as well as killing by id, so it is needed even with no receipt. Without
   // it, an E2B receipt cannot be acted on; with no E2B receipt, only the tag search is lost.
-  let e2b: E2BDesktopModule | undefined;
+  let e2b: E2BAccount | undefined;
   let moduleError: string | undefined;
   try {
-    e2b = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    const module = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    e2b = e2bAccount(module, e2bConnection(hooks.env ?? process.env));
   } catch (error) {
     moduleError = `Cannot load @e2b/desktop to reach E2B: ${redactText(toErrorMessage(error))}`;
     if (receipts.some((receipt) => receipt.provider === "e2b") || hooks.creates !== undefined)
@@ -404,6 +444,9 @@ async function reclaimRoot(
   // An earlier reclaim may have killed a sandbox no receipt names (the signal handler's creates
   // and tag finds). Its outcome is carried forward, so a later reclaim never erases that record.
   const earlier = check ? [] : await earlierOutcomes(root, label);
+  // The new receipt replaces the old one, so an old one that cannot be read stops reclaim here.
+  if (!Array.isArray(earlier))
+    return { kind: "unreadable", message: unreadableMessage(RECLAIM_RECEIPT_ARTIFACT, earlier) };
   const set = targetSet({
     e2b,
     check,

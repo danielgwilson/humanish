@@ -26,14 +26,14 @@ export interface E2BDesktopModule {
      * killed, false otherwise (the SDK's own doc comment). This boolean is the primary by-id
      * cleanup proof: a caller never needs to re-list to confirm reclamation.
      */
-    kill?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<boolean>;
+    kill?(sandboxId: string, options?: E2BRequestOptions): Promise<boolean>;
     /**
      * Fetch one sandbox by its exact id (never account-wide). Throws a SandboxNotFoundError-
      * shaped error (see isSandboxNotFoundError below) when the id no longer exists; that thrown
      * error is the by-id confirmation that a killed sandbox is gone. Optional: older SDKs may
      * lack it, so callers fall back to kill()'s own boolean rather than ever calling Sandbox.list.
      */
-    getInfo?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo>;
+    getInfo?(sandboxId: string, options?: E2BRequestOptions): Promise<E2BSandboxInfo>;
     /**
      * List sandboxes whose metadata matches every `query.metadata` pair, filtered server-side.
      * Reclaim calls it only with a run's owner tags (sandboxOwnerTags in src/run/sandbox-creates.ts)
@@ -44,10 +44,23 @@ export interface E2BDesktopModule {
   };
 }
 
-interface E2BSandboxListOptions {
+/**
+ * Which E2B account a call reaches. The SDK reads E2B_API_KEY and E2B_DOMAIN from process.env for
+ * a call that names neither, and an empty value counts as none.
+ */
+export interface E2BConnection {
+  apiKey?: string;
+  domain?: string;
+}
+
+/** The options of a call on a sandbox that exists: its account, and how long the request may take. */
+interface E2BRequestOptions extends E2BConnection {
+  requestTimeoutMs?: number;
+}
+
+interface E2BSandboxListOptions extends E2BRequestOptions {
   query?: { metadata?: Record<string, string> };
   limit?: number;
-  requestTimeoutMs?: number;
 }
 
 interface E2BSandboxPaginator {
@@ -85,7 +98,11 @@ export interface E2BNetworkOptions {
   rules?: Record<string, { transform?: { headers?: Record<string, string> } }[]>;
 }
 
-export interface E2BDesktopCreateOptions {
+/**
+ * A create names its account. e2bAccount (connection.ts) gives every later call on the sandbox the
+ * same one.
+ */
+export interface E2BDesktopCreateOptions extends E2BConnection {
   apiKey: string;
   dpi?: number;
   envs?: Record<string, string>;

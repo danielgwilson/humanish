@@ -282,9 +282,15 @@ export const ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
   if (!isRecord(value)) return false;
-  if (value.source !== "clone" && value.source !== "app-url" && value.source !== "local-tree")
+  if (
+    value.source !== "clone" &&
+    value.source !== "app-url" &&
+    value.source !== "local-tree" &&
+    value.source !== "desktop-cli"
+  )
     return false;
   if (value.repo !== undefined && typeof value.repo !== "string") return false;
+  if (value.product !== undefined && typeof value.product !== "string") return false;
   if (value.commit !== undefined && typeof value.commit !== "string") return false;
   if (
     value.archiveSha256 !== undefined &&

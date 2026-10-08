@@ -25,6 +25,7 @@ import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 import { runSharedWorld } from "../helpers/route-run.js";
+import { sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const cleanup: string[] = [];
@@ -175,6 +176,7 @@ describe("computerUseParticipants", () => {
       const planned = planComputerUseStudy(config, {
         dryRun: true,
         ...(countOverride === undefined ? {} : { countOverride }),
+        sandboxCeiling: sandboxCeiling({}),
       });
       if (!planned.ok) throw new Error(`${name}: ${planned.refusal.message}`);
       const lanes = await loadCuaParticipants({

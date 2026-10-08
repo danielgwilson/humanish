@@ -765,6 +765,7 @@ describe("serve library: labeled cost estimate", () => {
       verdict: verdictForStatus(session.status),
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
+      subject: { source: "app-url", state: { provenance: "undeclared" } },
       run: { runId, mode: "live", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
       studyId: "serve-cost-proof",

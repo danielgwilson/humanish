@@ -14,7 +14,7 @@ import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
-import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
+import { ceilingAdvice, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
 import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
 import { isExactRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./runtime.js";
@@ -44,6 +44,8 @@ export function planTerminalStudy(
     readonly dryRun: boolean;
     /** A test's costProbe can measure spend lines, so a positive maxUsd can trip. */
     readonly hasCostProbe?: boolean;
+    /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
+    readonly sandboxCeiling: SandboxCeiling;
   },
 ): TerminalPlanResult {
   const refuse = (
@@ -169,15 +171,17 @@ export function planTerminalStudy(
       descriptor.id,
     );
   // The sandbox's timeout covers the steps before the codex command, maxMinutes and the teardown
-  // buffer, and E2B refuses a sandbox over an hour. Refuse here, with the arithmetic, rather than
-  // after the plan prints, from a provider 400 that names neither knob.
+  // buffer, and E2B refuses a sandbox past the plan's ceiling. Refuse here, with the arithmetic,
+  // rather than after the plan prints, from a provider 400 that names neither knob.
+  const ceiling = input.sandboxCeiling;
+  if (!ceiling.ok) return refuse("HUMANISH_TERMINAL_CAPS_INVALID", ceiling.message, descriptor.id);
   const productInstall = shared.product.install !== undefined;
   const sandboxTimeoutMs = terminalSandboxTimeoutMs({ maxMinutes, productInstall });
-  if (sandboxTimeoutMs > MAX_SANDBOX_MS) {
+  if (sandboxTimeoutMs > ceiling.ms) {
     const headroomMinutes = (sandboxTimeoutMs - maxMinutes * 60_000) / 60_000;
     return refuse(
       "HUMANISH_TERMINAL_CAPS_INVALID",
-      `caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower caps.maxMinutes to at most ${MAX_SANDBOX_MS / 60_000 - headroomMinutes}. No sandbox was created and the runtime key was not used.`,
+      `caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${ceiling.ms / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower caps.maxMinutes to at most ${ceiling.ms / 60_000 - headroomMinutes}.${ceilingAdvice(sandboxTimeoutMs)} No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
   }

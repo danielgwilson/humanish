@@ -305,14 +305,16 @@ exactly; this hosted-desktop rule does not change that contract.
 `subject` is an optional, additive top-level field: structured provenance for
 what the computer-use, shared-world or scripted route actually drove (code pin plus state story). It
 is absent on pre-existing bundles and on bundles from routes that have not
-adopted it. The field shape, its three sources (`clone`, `app-url`,
-`local-tree`), and the `humanish verify` checks that guard it are the schema doc's
+adopted it. The field shape, its four sources (`clone`, `app-url`,
+`local-tree`, `desktop-cli`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under
 [`schemas.md`](schemas.md#run-bundle). In short, `clone` carries a
 `repo`/`commit` pin, `local-tree` carries an `archiveSha256`/`dirty` pin
-instead (a dirty working tree cannot be commit-pinned), and `app-url` carries
-no code pin at all. No path, basename, or other host-machine string ever
-enters this field; identity is digests, a sha, a boolean, and counts.
+instead (a dirty working tree cannot be commit-pinned), `desktop-cli` carries the
+declared `product` name, and `app-url` carries no code pin at all. A computer-use run
+of a desktop-cli study saved before `desktop-cli` was recorded says `app-url`, and
+readers accept it. No path, basename, or other host-machine string ever
+enters this field; identity is digests, a sha, a boolean, counts and the declared product name.
 
 ## Cost Estimate (advisory)
 
@@ -723,11 +725,17 @@ a file for secret and path patterns only when the bytes are strict UTF-8 with no
 control bytes other than tab, line feed and carriage return, the rule bundle
 export uses for text. `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream
 screenshots that actor traces reference under `screenshots/`, where the harness
-writes every frame, and the recordings `streams[].recording` registers. Every other file the scan cannot read as text, or cannot read at all,
-contributes `UNSCANNED_ARTIFACT`. The reason's message lists the paths, and it keeps
-otherwise valid evidence `local_only`. This includes images that only feedback
-candidates, adapter artifacts or stream artifact entries cite, and a PNG an actor
-trace references outside `screenshots/`. An unregistered
+writes every frame, and the recordings `streams[].recording` registers. Every
+other file the scan cannot read as text, cannot read at all, or that is larger
+than 32 MiB (verify reads at most that much of one file) contributes
+`UNSCANNED_ARTIFACT`. So does a folder the scan cannot list, and the rest of a
+run past its first 10,000 files and folders, the most `export --format bundle`
+takes. The reason's message lists the paths, and it keeps otherwise valid
+evidence `local_only`. This includes images that only feedback candidates,
+adapter artifacts or stream artifact entries cite, and a PNG an actor trace
+references outside `screenshots/`. An adapter artifact larger than 32 MiB grades
+the run `local_only` when nothing cites it, and `blocked` when the bundle cites
+it as evidence, because the evidence check cannot read it. An unregistered
 `.mp4`, and a file or directory whose name contains `\`, are public-safety
 findings and block the run.
 

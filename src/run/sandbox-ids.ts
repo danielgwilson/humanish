@@ -14,7 +14,10 @@ import {
   REDACTED_SANDBOX_ID,
 } from "../evidence/redaction.js";
 import {
+  ContainedReadRefusedError,
   readContainedRegularFile,
+  refusalText,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "./contained-output.js";
@@ -122,13 +125,22 @@ export function holdsKeyedSandboxId(file: string, text: string): boolean {
 
 /**
  * The raw sandbox ids a run's receipts journal, with any this process receipted whose append
- * failed; empty when there are none or the journal cannot be read.
+ * failed; none from the journal when it is missing or malformed, or when a folder is where it goes
+ * (a failed append can leave one, and the process still holds those ids). A journal refused for
+ * any other reason, a link or one too large to read say, throws ContainedReadRefusedError: every
+ * caller would otherwise write or grade a run's files without the ids it may hold.
  */
 export async function readRunSandboxIds(root: PreparedOutputRoot): Promise<string[]> {
+  const read = await readContainedRegularFile(
+    root,
+    SANDBOX_RECEIPTS_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (read.status === "refused" && read.reason !== "directory")
+    throw new ContainedReadRefusedError(SANDBOX_RECEIPTS_ARTIFACT, read);
   let journaled: string[] = [];
   try {
-    const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
-    if (bytes) journaled = receiptSandboxIds(bytes);
+    if (read.status === "read") journaled = receiptSandboxIds(read.bytes);
   } catch {
     // The ids this process receipted still apply.
   }
@@ -165,7 +177,9 @@ const MAX_SWEPT_ENTRIES = 10_000;
  * Rewrite each file of a finished run that names one of its raw sandbox ids, apart from the
  * receipts, with the label in place of the id. Writers such as a participant's actor.json can
  * quote an SDK error that names the sandbox. Run.finish calls it before analysis reads the run.
- * Best effort: verify grades a file this misses.
+ * Best effort for writes and listings: verify grades a file this misses. A text file it refuses
+ * to read, or a journal it refuses, throws once the sweep ends, naming each, since such a file
+ * may still hold an id.
  */
 export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promise<void> {
   const ids = await readRunSandboxIds(paths);
@@ -175,11 +189,13 @@ export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promi
     () => false,
   );
   if (!valid) return;
+  const refused: string[] = [];
   const scrub = async (file: string): Promise<void> => {
-    const bytes = await readContainedRegularFile(paths, file);
-    if (bytes === null) return;
-    const scrubbed = scrubSandboxIdBytes(file, bytes, ids);
-    if (scrubbed !== bytes) await writeContainedOutputFile(paths, file, scrubbed);
+    const read = await readContainedRegularFile(paths, file, RUN_ARTIFACT_MAX_BYTES);
+    if (read.status === "refused") refused.push(refusalText(file, read));
+    if (read.status !== "read") return;
+    const scrubbed = scrubSandboxIdBytes(file, read.bytes, ids);
+    if (scrubbed !== read.bytes) await writeContainedOutputFile(paths, file, scrubbed);
   };
   let seen = 0;
   const walk = async (relative: string): Promise<void> => {
@@ -201,6 +217,10 @@ export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promi
   await walk("").catch(() => {
     // A directory that changed while it was listed ends the sweep; verify names what it missed.
   });
+  if (refused.length > 0)
+    throw new Error(
+      `The sandbox id sweep could not read every run file, so these may still name a sandbox: ${refused.join("; ")}.`,
+    );
 }
 
 /**
@@ -213,11 +233,14 @@ export async function publicRunResult<T extends { runId?: string }>(
 ): Promise<T> {
   let ids: string[] = [];
   if (typeof result.runId === "string" && isSafeRunIdSegment(result.runId)) {
+    let paths: PreparedRunArtifactPaths | undefined;
     try {
-      ids = await readRunSandboxIds(await bindExistingRunArtifactPaths(cwd, result.runId));
+      paths = await bindExistingRunArtifactPaths(cwd, result.runId);
     } catch {
       // A run that never created its directory has no receipts; the keys are still redacted.
     }
+    // A journal that is there and refused throws: the result cannot be printed without its ids.
+    if (paths !== undefined) ids = await readRunSandboxIds(paths);
   }
   return publicSandboxView(result, ids);
 }

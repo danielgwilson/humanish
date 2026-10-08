@@ -14,10 +14,12 @@ import {
   inspectE2BSandbox,
   type E2BTagSearch,
 } from "../substrates/e2b/sandbox.js";
-import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
+import type { E2BAccount } from "../substrates/e2b/connection.js";
 import {
   readContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
+  type ContainedRefusal,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import { scrubSandboxIds } from "./sandbox-ids.js";
@@ -85,7 +87,7 @@ export interface Target {
  * kills leaves a record of each one not yet confirmed gone.
  */
 export function targetSet(options: {
-  e2b: E2BDesktopModule | undefined;
+  e2b: E2BAccount | undefined;
   check: boolean;
   requestTimeoutMs: number;
   earlier: ReclaimOutcome[];
@@ -158,7 +160,7 @@ export function targetSet(options: {
 
 /** Search E2B by each distinct tag set; done only when every search finished. */
 export async function searchTagSets(
-  e2b: E2BDesktopModule | undefined,
+  e2b: E2BAccount | undefined,
   tagSets: readonly Record<string, string>[],
   options: { requestTimeoutMs: number; unavailable: string },
 ): Promise<E2BTagSearch> {
@@ -188,7 +190,7 @@ export async function searchTagSets(
 
 /** Kill (or look up) one sandbox, and say what happened in reclaim's vocabulary. */
 async function actOn(
-  e2b: E2BDesktopModule | undefined,
+  e2b: E2BAccount | undefined,
   target: Target,
   options: { check: boolean; requestTimeoutMs: number },
 ): Promise<ReclaimOutcome> {
@@ -220,17 +222,24 @@ const OUTCOME_STATES = new Set<string>([
 
 /**
  * The outcomes an earlier reclaim of this directory recorded, by digest. A receipt written before
- * 0.110 names raw ids, which are digested; an unreadable or foreign receipt carries nothing.
+ * 0.110 names raw ids, which are digested; a missing, malformed or foreign receipt carries
+ * nothing. A receipt that is there and refused is returned as the refusal, so reclaim stops
+ * before its own receipt replaces one it could not read.
  */
 export async function earlierOutcomes(
   root: PreparedOutputRoot,
   label: string,
-): Promise<ReclaimOutcome[]> {
+): Promise<ReclaimOutcome[] | ContainedRefusal> {
+  const read = await readContainedRegularFile(
+    root,
+    RECLAIM_RECEIPT_ARTIFACT,
+    RUN_ARTIFACT_MAX_BYTES,
+  );
+  if (read.status === "refused") return read;
+  if (read.status === "missing") return [];
   let parsed: unknown;
   try {
-    const bytes = await readContainedRegularFile(root, RECLAIM_RECEIPT_ARTIFACT);
-    if (bytes === null) return [];
-    parsed = JSON.parse(bytes.toString("utf8"));
+    parsed = JSON.parse(read.bytes.toString("utf8"));
   } catch {
     return [];
   }

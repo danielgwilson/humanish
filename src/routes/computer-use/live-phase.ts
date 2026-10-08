@@ -41,7 +41,6 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       outcomes: undefined,
       subjects: inProgress.subjects,
       aggregateSubject: inProgress.aggregateSubject,
-      subjectProvenance: inProgress.provenance,
       inProgress: true,
     });
     await run.writeSnapshot(inProgressBundle);

@@ -14,8 +14,14 @@ export default defineConfig({
     // credentials never reach an assertion; discovery is tested against injected temp homes.
     // HUMANISH_TELEMETRY_DISABLED and DO_NOT_TRACK keep the suite out of the adoption dataset.
     // src/cli/telemetry.ts also skips a source checkout, but a test that builds its cwd in a temp
-    // dir would pass that check.
-    env: { HUMANISH_STRICT_KEYS: "1", HUMANISH_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" },
+    // dir would pass that check. A blank HUMANISH_E2B_MAX_SANDBOX_MINUTES keeps the plans at the
+    // default sandbox ceiling on a machine whose shell raises it for an E2B Pro plan.
+    env: {
+      HUMANISH_STRICT_KEYS: "1",
+      HUMANISH_TELEMETRY_DISABLED: "1",
+      DO_NOT_TRACK: "1",
+      HUMANISH_E2B_MAX_SANDBOX_MINUTES: "",
+    },
     // A file named *.scratch.test.ts is a local experiment and never runs in the suite.
     exclude: ["**/node_modules/**", "**/*.scratch.test.ts"],
     restoreMocks: true,

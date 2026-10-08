@@ -19,7 +19,7 @@ import {
 } from "../evidence/redaction.js";
 import { decodeEscapes, readingsOf } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
-import { streamScreenshotPaths } from "../verify/artifacts.js";
+import { MAX_RUN_ENTRIES, streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
@@ -32,17 +32,16 @@ import {
 } from "../run/paths.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { LOCAL_ONLY_RUN_FILES } from "../run/local-only-files.js";
+import { readUnchangedFile } from "../run/evidence-files.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
   prepareSelectedOutputDirectory,
-  readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 
 const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
-const MAX_FILES = 10_000;
 const TEXT_EXTENSIONS = new Set([
   ".json",
   ".ndjson",
@@ -118,8 +117,8 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
     if (!before.isDirectory() || before.isSymbolicLink())
       throw new Error("Source contains an unsafe directory.");
     for (const name of (await readdir(directory)).sort()) {
-      if (++entriesSeen > MAX_FILES)
-        throw new Error(`Source exceeds ${MAX_FILES} inventory entries.`);
+      if (++entriesSeen > MAX_RUN_ENTRIES)
+        throw new Error(`Source exceeds ${MAX_RUN_ENTRIES} inventory entries.`);
       if (name.includes("\\") || name.includes("\0"))
         throw new Error("Source contains an unsafe path segment.");
       const rel = relative ? `${relative}/${name}` : name;
@@ -138,14 +137,15 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
           throw new Error(
             "Continuous video/audio cannot be redacted by bundle export. Use --local-only HTML export for a snapshot-only copy.",
           );
-        if (info.size > BigInt(maxBytes - total))
-          throw new Error("Source inventory exceeds --max-bytes.");
-        const bytes = await readContainedRegularFile(root, rel);
-        if (bytes === null)
+        // At most what is left of --max-bytes, so a file that grows after this lstat is refused
+        // unread. With nothing left, an empty file still reads and any other is refused.
+        const read = await readUnchangedFile(root, rel, Math.max(1, maxBytes - total));
+        if (read.state === "unavailable")
           throw new Error("Source artifact could not be read through its bound identity.");
-        total += bytes.length;
+        if (read.state === "limit") throw new Error("Source inventory exceeds --max-bytes.");
+        total += read.bytes.length;
         if (total > maxBytes) throw new Error("Source inventory exceeds --max-bytes.");
-        files.push({ path: rel, bytes, sha256: hash(bytes) });
+        files.push({ path: rel, bytes: read.bytes, sha256: hash(read.bytes) });
       }
     }
     const after = await lstat(directory, { bigint: true });
@@ -710,9 +710,11 @@ async function buildDerivative(
   if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
   const generated = [];
   for (const relative of ["observer/index.html", "observer/observer-data.json"]) {
-    const bytes = await readContainedRegularFile(stagePaths, relative);
-    if (bytes === null) throw new Error("Regenerated Observer artifact could not be read safely.");
-    generated.push({ path: relative, sha256: hash(bytes) });
+    const read = await readUnchangedFile(stagePaths, relative, maxBytes);
+    if (read.state === "limit") throw new Error("The regenerated Observer exceeds --max-bytes.");
+    if (read.state === "unavailable")
+      throw new Error("Regenerated Observer artifact could not be read safely.");
+    generated.push({ path: relative, sha256: hash(read.bytes) });
   }
   await writeContainedOutputFile(
     stagePaths,

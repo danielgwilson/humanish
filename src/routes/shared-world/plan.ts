@@ -37,6 +37,12 @@ import {
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
+import {
+  SANDBOX_TIMEOUT_BUFFER_MS,
+  SUBJECT_PROVISION_BUDGET_MS,
+  type SandboxCeiling,
+} from "../../substrates/e2b/lifetime.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
 /** The error a shared-world study returns before a run starts. */
@@ -68,6 +74,8 @@ export function planSharedWorldStudy(
     readonly dryRun: boolean;
     /** Whether deps.runSession is set: a caller's session runner cannot enforce maxOutputTokens. */
     readonly hasRunSession?: boolean;
+    /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
+    readonly sandboxCeiling: SandboxCeiling;
   },
 ): SharedWorldPlanResult {
   const refuse = (
@@ -148,6 +156,8 @@ export function planSharedWorldStudy(
       actor,
     );
 
+  const ceiling = input.sandboxCeiling;
+  if (!ceiling.ok) return refuse(invalid, ceiling.message, actor);
   const plane = planeOf(config);
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
@@ -165,9 +175,7 @@ export function planSharedWorldStudy(
       actor,
       plane,
       concurrency: config.execution?.concurrency ?? plane.participants.length,
-      ...(config.execution?.timeoutMs === undefined
-        ? {}
-        : { sessionTimeoutMs: config.execution.timeoutMs }),
+      sessionTimeoutMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms),
       brain,
       caps: planCaps(config),
       requirements: base.dryRun
@@ -187,6 +195,29 @@ export function planSharedWorldStudy(
           ],
     },
   };
+}
+
+// The default per-participant session budget is derived from the plane. On a provisioned plane the
+// binding constraint is the subject sandbox (it must outlive every participant: timeoutMs +
+// provisioning + seeding + teardown buffer, under the sandbox ceiling), so the derivation hands each
+// participant the most the ceiling allows, capped at 15 minutes, floored at the historical 300s so
+// a seed-heavy study never gets less room than it always had. App-url participants have no subject
+// sandbox and default to 30 minutes (participant sandbox: 30m + 10m buffer stays under the hour).
+// An explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
+const MAX_DERIVED_SESSION_MS = 15 * 60_000;
+
+const MIN_DERIVED_SESSION_MS = 300_000;
+
+const DEFAULT_APP_URL_SESSION_MS = 30 * 60_000;
+
+function defaultSessionTimeoutMs(plane: SharedWorldPlane, ceilingMs: number): number {
+  if (plane.kind !== "provisioned") return DEFAULT_APP_URL_SESSION_MS;
+  const stateBudgetMs = (plane.subject.state.seed ?? []).reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+    0,
+  );
+  const room = ceilingMs - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
 }
 
 /** The provisioned plane's declared subject state. The external-public plane declares none. */

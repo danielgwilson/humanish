@@ -1,17 +1,20 @@
 import { constants, type BigIntStats } from "node:fs";
-import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
+import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
+  isSafeRelativeFilePath,
+  readOpenedAtMost,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import { isNodeError } from "./type-guards.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.
-// Evidence capture, analysis jobs, the analysis store, cost reading and export all read through here.
+// Evidence capture, analysis jobs, the analysis store, cost reading, verify and export all read
+// through here.
 
 /**
  * Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. The path is
@@ -103,40 +106,40 @@ export async function pathMissing(filePath: string): Promise<boolean> {
   }
 }
 
-/**
- * At most `maxBytes` from the start of an opened file, or null when it holds more. It reads by
- * position, in chunks of up to 64 KiB, and stops one byte past the limit, so a file that grew
- * after it was opened is never read whole.
- */
-export async function readOpenedAtMost(
-  handle: FileHandle,
-  maxBytes: number,
-): Promise<Buffer | null> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for (;;) {
-    const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
-    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
-    if (bytesRead === 0) return Buffer.concat(chunks, total);
-    total += bytesRead;
-    if (total > maxBytes) return null;
-    chunks.push(chunk.subarray(0, bytesRead));
-  }
-}
-
 export type BoundedFileResult =
   | { state: "read"; bytes: Buffer }
   | { state: "limit"; size: bigint }
   | { state: "unavailable" };
 const unavailable = { state: "unavailable" } as const;
 
-/** Size refusals are distinguished only after the same contained regular-file checks. */
+/** readUnchangedFile for an analysis input, whose path must also be an evidence path. */
 export async function readBoundedFileResult(
   root: PreparedOutputRoot,
   relativePath: string,
   maxBytes: number,
 ): Promise<BoundedFileResult> {
-  if (!isEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
+  return isEvidencePath(relativePath)
+    ? readUnchangedFile(root, relativePath, maxBytes)
+    : unavailable;
+}
+
+/**
+ * At most `maxBytes` of a contained single-link regular file that stays the same file, with the
+ * same size and times, from the first check to the last. Size refusals are distinguished only after
+ * the same checks. `relativePath` uses `/`, and any name a contained read accepts
+ * (isSafeRelativeFilePath) is read: verify and export read the names they always did.
+ */
+export async function readUnchangedFile(
+  root: PreparedOutputRoot,
+  relativePath: string,
+  maxBytes: number,
+): Promise<BoundedFileResult> {
+  if (
+    !isSafeRelativeFilePath(relativePath) ||
+    relativePath.includes("\\") ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 1
+  )
     return unavailable;
   const validateRoot = async (): Promise<string> => {
     if ("physicalRunRoot" in root) {

@@ -22,6 +22,7 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { admitTerminalPlan } from "../../../src/routes/terminal/route.js";
 import { planTerminalStudy } from "../../../src/routes/terminal/plan.js";
 import { runAdmitted, runTerminal } from "../../helpers/route-run.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 const ROOT = process.cwd();
 
@@ -391,7 +392,10 @@ describe("runTerminalProductLab (dry-run)", () => {
   });
 
   it("runs a plan alone: the bundle records the plan's title, mission, stdin and runtime auth", async () => {
-    const planned = planTerminalStudy(parsedTerminalConfig(), { dryRun: true });
+    const planned = planTerminalStudy(parsedTerminalConfig(), {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok || !planned.plan.dryRun) throw new Error("expected a dry terminal plan");
     const plan = {
       ...planned.plan,

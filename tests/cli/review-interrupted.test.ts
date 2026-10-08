@@ -53,6 +53,7 @@ async function interruptedRun(cwd: string): Promise<RunBundle> {
       verdict: "contract_proof_only",
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
+      subject: { source: "app-url", state: { provenance: "undeclared" } },
       run: started.run,
       dryRun: false,
       studyId: "interrupted-review",

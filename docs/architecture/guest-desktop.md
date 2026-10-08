@@ -18,8 +18,13 @@ Progress detection uses the same coarse frame signature as the hosted desktop.
 The actor receives the existing finite action union. Native tool paths, display,
 Xauthority and guest temporary directory come from the owner. Key names map to a
 closed list before reaching xdotool, whose own command syntax must never receive
-arbitrary participant strings. A native wheel step is not an exact pixel-scroll
-promise; one action permits at most 100 wheel steps. The entire drag is checked
+arbitrary participant strings. The list is `src/guest/desktop-keys.ts`, and the hosted
+E2B desktop translates through it too, so a key name works on both desktops or is
+refused on both. It holds OpenAI's computer-use key names, the names `@e2b/desktop`'s
+`press()` mapped, and every printable ASCII punctuation character as its keysym
+(`?` is `question`). A refused name reaches the participant as a rejected action.
+A native wheel step is not an exact pixel-scroll promise; one action permits at most
+100 wheel steps. The entire drag is checked
 before its first input. A pointer action's held keys must be modifiers (Shift,
 Ctrl, Alt, Super). They go down with one `keydown` before the action and up with
 one `keyup` after it. When an input fails, the `keyup` is still sent once, unless
