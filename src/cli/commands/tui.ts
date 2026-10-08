@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { setUserKey } from "../../keys/key-resolution.js";
+import { LISTED_KEYS, setUserKey } from "../../keys/key-resolution.js";
+import { keyStatus, keyStatusLine } from "../../keys/key-status.js";
 import { saveCommsConnection } from "../../comms/connections.js";
 import { readCommsSetup } from "../../comms/setup.js";
 import {
@@ -253,13 +254,11 @@ async function runTuiSession(
     runIndexCache: new RunIndexCache(),
     observerSession: createTuiObserverSession(cwd),
   };
-  let connectionNotice: string | undefined;
+  let returnTo: { initialScreen: "keys" | "connections"; connectionNotice: string } | undefined;
   try {
     for (;;) {
       const outcome = await loaded.startTui({
-        ...(connectionNotice === undefined
-          ? {}
-          : { initialScreen: "connections" as const, connectionNotice }),
+        ...returnTo,
         cwd,
         version: { cli: CLI_VERSION },
         capabilities: tuiCapabilities(session),
@@ -267,8 +266,16 @@ async function runTuiSession(
         stdout: runtime.stdout,
       });
       if (typeof outcome === "number") return outcome;
-      if (outcome.action !== "agentmail-key") return 1;
-      connectionNotice = await storeAgentmailKey(session);
+      returnTo =
+        outcome.action === "agentmail-key"
+          ? { initialScreen: "connections", connectionNotice: await storeAgentmailKey(session) }
+          : outcome.action === "provider-key"
+            ? {
+                initialScreen: "keys",
+                connectionNotice: await storeProviderKey(session, outcome.name),
+              }
+            : undefined;
+      if (returnTo === undefined) return 1;
     }
   } finally {
     await session.observerSession.close();
@@ -288,6 +295,15 @@ function connectionEnv(session: TuiSession): NodeJS.ProcessEnv {
 function tuiCapabilities(session: TuiSession): TuiCapabilities {
   const { cwd, runtime, sessionEnv, runIndexCache, observerSession } = session;
   return {
+    keys: {
+      // The project's overlay and the stores, as `humanish keys` reads them from this directory.
+      status: async () =>
+        (await keyStatus({ cwd, env: connectionEnv(session) })).map((row) => ({
+          name: row.name,
+          set: row.source !== null,
+          line: keyStatusLine(row),
+        })),
+    },
     comms: {
       read: async () => ({
         ...(await readCommsSetup(cwd, connectionEnv(session))),
@@ -369,19 +385,53 @@ function tuiCapabilities(session: TuiSession): TuiCapabilities {
   };
 }
 
+const ENTRY_CANCELLED = "Key entry cancelled. Nothing was changed.";
+const ENTRY_FAILED =
+  "Could not store the key. Use a single non-empty line and check key-store permissions.";
+
+/**
+ * Asks for one key with hidden input, after the surface has unmounted, and stores it in the user
+ * store. Only the host reads the credential. A value that discovery filled into this session is
+ * dropped so the stored one is read; an explicit env or file value still wins.
+ */
+async function promptAndStoreKey(
+  session: TuiSession,
+  name: string,
+  label: string,
+): Promise<"stored" | "cancelled"> {
+  const { runtime, sessionEnv } = session;
+  const value = await runtime.promptSecret(label, runtime.stdin, runtime.stdout);
+  if (value === null || value === "") return "cancelled";
+  setUserKey(name, value, sessionEnv);
+  if (session.discoveredKeys.has(name)) delete sessionEnv[name];
+  return "stored";
+}
+
+/**
+ * A key from the keys screen, asked for and stored as `humanish keys set <vendor>` does. Resolves to
+ * the notice the remounted keys screen shows.
+ */
+async function storeProviderKey(session: TuiSession, name: string): Promise<string> {
+  if (!LISTED_KEYS.some((key) => key.name === name))
+    return `${name} is not a key humanish keys lists. Nothing was changed.`;
+  try {
+    return (await promptAndStoreKey(session, name, `Value for ${name}`)) === "stored"
+      ? `${name} stored.`
+      : ENTRY_CANCELLED;
+  } catch {
+    return ENTRY_FAILED;
+  }
+}
+
 /**
  * Prompts for the AgentMail key after the surface has unmounted, stores it and checks it. Resolves
  * to the notice the remounted connections screen shows.
  */
 async function storeAgentmailKey(session: TuiSession): Promise<string> {
-  const { cwd, runtime, sessionEnv } = session;
-  // startTui has unmounted: only the host reads the credential, then remounts the view.
-  const value = await runtime.promptSecret("AgentMail API key", runtime.stdin, runtime.stdout);
-  if (value === null || value === "") return "Key entry cancelled. Nothing was changed.";
+  const { cwd, runtime } = session;
   try {
-    setUserKey("AGENTMAIL_API_KEY", value, sessionEnv);
-    // Refresh only a value filled implicitly by discovery; explicit env/file wins.
-    if (session.discoveredKeys.has("AGENTMAIL_API_KEY")) delete sessionEnv.AGENTMAIL_API_KEY;
+    if ((await promptAndStoreKey(session, "AGENTMAIL_API_KEY", "AgentMail API key")) !== "stored")
+      return ENTRY_CANCELLED;
     const saved = await saveCommsConnection(cwd);
     const storedNotice = saved.ok
       ? "Key stored. Project connection saved."
@@ -397,6 +447,6 @@ async function storeAgentmailKey(session: TuiSession): Promise<string> {
           : "Key stored. Authentication unknown; test it to retry."
       : `${storedNotice} ${check.message}`;
   } catch {
-    return "Could not store the key. Use a single non-empty line and check key-store permissions.";
+    return ENTRY_FAILED;
   }
 }

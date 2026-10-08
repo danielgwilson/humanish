@@ -32,6 +32,14 @@ interface TuiVersionInfo {
   cli: string;
 }
 
+/** One provider key as `humanish keys` lists it. Never its value. */
+export interface TuiKeyStatus {
+  name: string;
+  set: boolean;
+  /** The line `humanish keys` prints for this key: what it is for, and its source or how to add it. */
+  line: string;
+}
+
 /**
  * What the surface may do to the project. Deliberately a small, explicit list rather than a handle
  * to the whole library: the set of verbs a stakeholder surface can perform should be readable in
@@ -48,6 +56,8 @@ export interface TuiCapabilities {
     recovery?(): Promise<CommsRecoveryEntry[]>;
     recover?(runId: string, connectionName: string): Promise<{ ok: boolean; message: string }>;
   };
+  /** The provider keys `humanish keys` lists, in its order. A key is entered through the host. */
+  keys?: { status(): Promise<TuiKeyStatus[]> };
   /** Read every run in the project, cheapest source first. */
   readRunIndex(cwd: string, options?: ReadRunIndexOptions): Promise<RunIndexResult>;
   /**
@@ -99,8 +109,11 @@ export interface TuiCapabilities {
 }
 
 export interface TuiOptions {
-  /** Return to setup after the host-owned hidden prompt has finished. */
-  initialScreen?: "connections";
+  /**
+   * Return to the keys list or the email connection after the host-owned hidden prompt has
+   * finished, showing `connectionNotice`.
+   */
+  initialScreen?: "keys" | "connections";
   connectionNotice?: string;
   /** The project the surface is reading. Already resolved by the CLI. */
   cwd: string;
@@ -118,10 +131,15 @@ export interface TuiOptions {
 }
 
 /**
- * Start the surface. Resolves with the process exit code when the operator quits; the TUI owns the
- * screen until then, so the CLI must not write to stdout while this is pending.
+ * A key the person asked to enter. The surface unmounts, the host asks for the value with hidden
+ * input and stores it, then mounts the surface again on `initialScreen`.
  */
-export type TuiHandoff = { action: "agentmail-key" };
+export type TuiHandoff = { action: "agentmail-key" } | { action: "provider-key"; name: string };
+/**
+ * Start the surface. Resolves with the process exit code when the operator quits, or with a key
+ * handoff; the TUI owns the screen until then, so the CLI must not write to stdout while this is
+ * pending.
+ */
 export type StartTui = (options: TuiOptions) => Promise<number | TuiHandoff>;
 
 /** The shape `dist/tui-app.js` exports. Asserted at the load boundary in cli/commands/tui.ts. */

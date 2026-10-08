@@ -20,6 +20,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Before a live start, the `humanish tui` study screen shows what a live run of the study is known
+  to cost: the median of its live runs, its participant caps, or `no participant cap set` for a
+  computer-use study that declares none, and the analysis line `humanish run` prints at a live
+  start. The confirm prompt restates all three, in place of its own `$3 admission estimate limit`
+  wording (#1699).
 - A shared-world study whose persona file has an invalid background now stops with that error
   before the route checks its keys, as a computer-use study already did.
 - When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
@@ -44,6 +49,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The `humanish tui` study screen no longer shows `keys ✓` for a study whose file sets
+  `mode: dry-run` on a machine with no keys. It checks the keys a live run of the study needs,
+  whatever its mode, and shows the live plan's refusal for a study that can only run dry, such as
+  `first-run`. `humanish run` runs a file in the mode it sets, so "Start a live run" on a dry-run
+  file armed, restated a spend and then started a dry run. That row now reads `needs mode: live`,
+  and Enter on it names the file to change; Run again on a live run of such a study does the same
+  (#1698).
+- "Run again" on a live run in `humanish tui` asks for a second Enter, as a live start does, and
+  its prompt shows the same cost. It started a live run on one Enter. A dry rerun still starts on
+  one Enter (#1710).
+- The `humanish tui` study screen wraps the study's whole description within the content width.
+  It cut the description to one line of at most 96 columns, even in a wide terminal. A description
+  longer than the rows the terminal leaves it ends in `…`; the studies list keeps its one-line
+  preview (#1700).
+- `c keys and accounts` in `humanish tui` lists each provider key `humanish keys` lists, with the
+  line `humanish keys` prints for it, and Enter on a key asks for its value with hidden input and
+  stores it as `humanish keys set` does. The AgentMail email connection is a row of that screen.
+  `c` opened the AgentMail screen only, so the OpenAI and E2B keys a study needs could not be set
+  there (#1706).
 - A run refused before it was created, such as a live study with no keys, no longer ends its
   `humanish run` output with `analysis: skipped because the run's evidence could not be read`. The
   output ends with the refusal and its code. The JSON keeps the `automaticAnalysis` record (#1704).

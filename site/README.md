@@ -57,6 +57,10 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
 - `public/llms.txt`: agent briefing with a generated command index.
 - `lib/docs-source.ts`: the Fumadocs MDX source shared by pages, navigation, sitemap, and
   search.
+- `lib/og-image.tsx`: the Open Graph image both `opengraph-image.tsx` routes render; each route
+  passes its alt text and line. It reads the TrueType subsets in `lib/og-fonts/` (with their OFL
+  texts), so the build needs no network. After a line gains a character, refetch them with
+  `node site/scripts/fetch-og-fonts.mjs` and update their sha256 pins.
 - `pnpm docs:generate` / `pnpm docs:check` (repo root) generate and check the CLI reference and
   llms command coverage. CI rejects drift.
 
@@ -81,7 +85,8 @@ Or run `pnpm dev` / `pnpm build` / `pnpm start` from `site/` directly.
   one word alone at 390, 768 or 1440 px.
 - Keep dependencies minimal: Next, React, Tailwind, Vercel Analytics, Fumadocs UI/Core/MDX (docs
   only) with its `zod` schema peer, `posthog-js`, and `shadcn` as a dev dependency. No motion
-  libraries. The only committed font binaries are the three subsets in `app/fonts/`.
+  libraries. The only committed font binaries are the three subsets in `app/fonts/` and the
+  four OG image subsets in `lib/og-fonts/`.
 - `app/globals.css` stays the single source of truth for all styling. The registry's per-item
   stylesheets are extracted from it by `scripts/extract-registry-css.mjs`; if a style change
   touches registry classes, run `registry:build` and commit the regenerated output, or CI fails.

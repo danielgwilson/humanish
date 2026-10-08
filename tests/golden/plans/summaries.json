@@ -19,7 +19,8 @@
         "participants": "first-time-visitor · impatient-skimmer",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "caps": {},
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -53,7 +54,8 @@
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -83,7 +85,8 @@
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -113,7 +116,8 @@
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -144,7 +148,8 @@
         "caps": {
           "laneUsd": 2,
           "studyUsd": 2
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -174,7 +179,8 @@
         "reasoningEffort": "per-lane",
         "caps": {
           "laneUsd": 15
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -202,7 +208,8 @@
         "participants": "first-time-visitor · impatient-skimmer · power-user · comparison-shopper",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "caps": {},
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -231,7 +238,7 @@
         "participants": "1 × autonomous-coding-agent",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -248,7 +255,7 @@
         "participants": "4 participants",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": []
     },
@@ -271,7 +278,7 @@
         "participants": "1 × autonomous-coding-agent",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -288,7 +295,7 @@
         "participants": "1 × autonomous-coding-agent",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -319,7 +326,8 @@
         "caps": {
           "laneUsd": 1,
           "studyUsd": 1
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -347,7 +355,8 @@
         "participants": "party-host · competitive-friend · casual-friend",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "caps": {},
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -386,7 +395,8 @@
         "caps": {
           "laneUsd": 1,
           "studyUsd": 1
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -416,7 +426,8 @@
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 15
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -437,7 +448,7 @@
         "participants": "2 × synthetic-new-user",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -465,7 +476,8 @@
         "participants": "contributor · reviewer · impatient-skimmer",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "caps": {},
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -501,7 +513,8 @@
         "participants": "weekly-planner · ops-coordinator · on-the-go-contributor",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "caps": {},
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -540,7 +553,8 @@
         "caps": {
           "laneUsd": 15,
           "studyUsd": 25
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -572,7 +586,7 @@
         "participants": "1 × autonomous-creative-agent",
         "model": "gpt-5.6-sol",
         "reasoningEffort": "medium",
-        "caps": {}
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -602,7 +616,8 @@
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 5
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
@@ -633,7 +648,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "caps": {},
+          "mode": "dry-run"
         },
         "personas": [
           {
@@ -650,7 +666,7 @@
           "participants": "4 participants",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "mode": "dry-run"
         },
         "personas": []
       },
@@ -670,7 +686,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-6-astra",
           "reasoningEffort": "low",
-          "caps": {}
+          "caps": {},
+          "mode": "live"
         },
         "personas": [
           {
@@ -700,7 +717,8 @@
           "reasoningEffort": "medium",
           "caps": {
             "laneUsd": 2
-          }
+          },
+          "mode": "live"
         },
         "personas": [
           {
@@ -730,7 +748,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "caps": {},
+          "mode": "dry-run"
         },
         "personas": [
           {
@@ -747,7 +766,7 @@
           "participants": "4 participants",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "mode": "dry-run"
         },
         "personas": []
       },
@@ -767,7 +786,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-6-astra",
           "reasoningEffort": "low",
-          "caps": {}
+          "caps": {},
+          "mode": "live"
         },
         "personas": [
           {
@@ -795,7 +815,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "caps": {},
+          "mode": "live"
         },
         "personas": [
           {
@@ -825,7 +846,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "caps": {},
+          "mode": "dry-run"
         },
         "personas": [
           {
@@ -842,7 +864,7 @@
           "participants": "4 participants",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "mode": "dry-run"
         },
         "personas": []
       },
@@ -862,7 +884,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-6-astra",
           "reasoningEffort": "low",
-          "caps": {}
+          "caps": {},
+          "mode": "live"
         },
         "personas": [
           {
@@ -890,7 +913,8 @@
           "participants": "1 × synthetic-new-user",
           "model": "gpt-5.6-sol",
           "reasoningEffort": "medium",
-          "caps": {}
+          "caps": {},
+          "mode": "live"
         },
         "personas": [
           {
@@ -924,7 +948,8 @@
         "caps": {
           "laneUsd": 2,
           "studyUsd": 5
-        }
+        },
+        "mode": "dry-run"
       },
       "personas": [
         {
