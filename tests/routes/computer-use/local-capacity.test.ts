@@ -5,29 +5,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runStudyWith } from "../../../src/run-study.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
-import { localCapacity } from "../../../src/substrates/local/capacity.js";
+import { localCapacity, type LocalCapacity } from "../../../src/substrates/local/capacity.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { captureStderr } from "../../helpers/run-golden.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
 import type { CuaExecutor } from "../../../src/actors/computer-use/loop.js";
+import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
+import type { LocalVmInput } from "../../../src/routes/computer-use/types.js";
+import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 
 const GiB = 1024 ** 3;
-const seams = vi.hoisted(() => ({
-  capacity: vi.fn(),
-  createDesktop: vi.fn(),
-  prepareRuntime: vi.fn(),
-}));
-vi.mock("../../../src/substrates/local/runtime.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../../src/substrates/local/runtime.js")>()),
-  prepareLocalRuntime: seams.prepareRuntime,
-  localRuntimeCapacity: seams.capacity,
-}));
+const createDesktop = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/substrates/local/firecracker-desktop.js", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("../../../src/substrates/local/firecracker-desktop.js")
   >()),
-  createLocalFirecrackerDesktop: seams.createDesktop,
+  createLocalFirecrackerDesktop: createDesktop,
 }));
 
 function localStudy(execution: Record<string, unknown> = {}): StudyConfig {
@@ -43,6 +37,31 @@ function localStudy(execution: Record<string, unknown> = {}): StudyConfig {
   });
 }
 
+/** A local VM of this capacity whose desktops fail to start, so an admitted run stops there. */
+function localVm(capacity: LocalCapacity) {
+  const desktop = vi.fn((): ParticipantDesktop => ({
+    prepare: async () => {
+      throw new Error("synthetic desktop start failure");
+    },
+    openSession: async () => {
+      throw new Error("synthetic desktop start failure");
+    },
+    finalize: async () => undefined,
+    snapshot: () => ({
+      released: false,
+      streamUrlPresent: false,
+      stateStepRecords: [],
+      phaseRecords: [],
+    }),
+  }));
+  const input: LocalVmInput = {
+    desktop,
+    capacity: async () => capacity,
+    analysisRefusal: () => undefined,
+  };
+  return { desktop, input };
+}
+
 describe("local desktop admission", () => {
   let cwd: string;
   beforeEach(async () => {
@@ -53,12 +72,12 @@ describe("local desktop admission", () => {
   });
 
   it("refuses a study that needs more desktops than the Lima VM holds, before any desktop", async () => {
-    seams.capacity.mockResolvedValue(localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 }));
+    const vm = localVm(localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 }));
     const runSession = vi.fn();
     const stderr = captureStderr();
     const outcome = await runStudyWith(
       localStudy(),
-      { cwd, env: { OPENAI_API_KEY: "test-openai-key" } },
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key" }, localVm: vm.input },
       { runSession },
     ).finally(stderr.stop);
 
@@ -76,41 +95,34 @@ describe("local desktop admission", () => {
     expect(message).toContain("runtime setup --memory 10");
     expect(message).toContain("concurrency: 2");
     expect(message.indexOf("e2b-desktop")).toBeLessThan(message.indexOf("runtime setup"));
-    expect(seams.prepareRuntime).not.toHaveBeenCalled();
-    expect(seams.createDesktop).not.toHaveBeenCalled();
+    expect(vm.desktop).not.toHaveBeenCalled();
     expect(runSession).not.toHaveBeenCalled();
   });
 
   it("admits the same study when it runs no more desktops at once than fit", async () => {
-    seams.capacity.mockResolvedValue(localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 }));
-    seams.createDesktop.mockRejectedValue(new Error("synthetic desktop start failure"));
-    seams.prepareRuntime.mockResolvedValue({ image: "synthetic", runtimeRevision: "synthetic" });
+    const vm = localVm(localCapacity("lima-vm", { memoryBytes: 8 * GiB, cpus: 6 }));
     const stderr = captureStderr();
     const outcome = await runStudyWith(
       localStudy({ concurrency: 2 }),
-      { cwd, env: { OPENAI_API_KEY: "test-openai-key" } },
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key" }, localVm: vm.input },
       { runSession: vi.fn() },
     ).finally(stderr.stop);
 
     expect(outcome.result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED");
-    expect(seams.createDesktop).toHaveBeenCalled();
+    expect(vm.desktop).toHaveBeenCalled();
   });
 
   it("warns on a Linux host that holds fewer desktops than the study runs, and starts it", async () => {
-    seams.capacity.mockResolvedValue(
-      localCapacity("linux-host", { memoryBytes: 7 * GiB, cpus: 8 }),
-    );
-    seams.createDesktop.mockRejectedValue(new Error("synthetic desktop start failure"));
-    seams.prepareRuntime.mockResolvedValue({ image: "synthetic", runtimeRevision: "synthetic" });
+    const vm = localVm(localCapacity("linux-host", { memoryBytes: 7 * GiB, cpus: 8 }));
     const stderr = captureStderr();
     const outcome = await runStudyWith(
       localStudy(),
-      { cwd, env: { OPENAI_API_KEY: "test-openai-key" } },
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key" }, localVm: vm.input },
       { runSession: vi.fn() },
     ).finally(stderr.stop);
 
     expect(outcome.result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED");
-    expect(seams.createDesktop).toHaveBeenCalled();
+    expect(vm.desktop).toHaveBeenCalled();
     expect(stderr.text()).toContain("this machine holds 2");
   });
 });
@@ -125,9 +137,7 @@ describe("a local desktop killed for memory", () => {
   });
 
   it("says in the participant's outcome, the review and the run's error that memory ran out", async () => {
-    seams.capacity.mockResolvedValue(localCapacity("lima-vm", { memoryBytes: 13 * GiB, cpus: 8 }));
-    seams.prepareRuntime.mockResolvedValue({ image: "synthetic", runtimeRevision: "synthetic" });
-    seams.createDesktop.mockImplementation(async () => ({
+    createDesktop.mockImplementation(async () => ({
       ...ownDesktopAllocation({
         resourceId: "d".repeat(12),
         release: async () => ({ status: "released", reason: "terminated" }),
@@ -137,10 +147,24 @@ describe("a local desktop killed for memory", () => {
       },
       killedForMemory: async () => true,
     }));
+    // The study's own local VM, with a prepared runtime image so none is pulled, and a fixed size.
+    const study = localStudy({ concurrency: 1 });
+    const prepared = prepareLocalVmRun({
+      cwd,
+      config: study,
+      assets: { image: "synthetic-image", runtimeRevision: "synthetic-revision" },
+    });
     const stderr = captureStderr();
     const outcome = await runStudyWith(
-      localStudy({ concurrency: 1 }),
-      { cwd, env: { OPENAI_API_KEY: "test-openai-key" } },
+      study,
+      {
+        cwd,
+        env: { OPENAI_API_KEY: "test-openai-key" },
+        localVm: {
+          ...prepared.localVm,
+          capacity: async () => localCapacity("lima-vm", { memoryBytes: 13 * GiB, cpus: 8 }),
+        },
+      },
       {
         // The browser closed under the participant: the desktop's transport failed mid-session.
         runSession: async () => {
@@ -148,6 +172,7 @@ describe("a local desktop killed for memory", () => {
         },
       },
     ).finally(stderr.stop);
+    await prepared.close();
 
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY");
