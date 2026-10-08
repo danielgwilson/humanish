@@ -50,7 +50,6 @@ function screenDesktop(): E2BDesktopLike {
     moveMouse: () => undefined,
     scroll: () => undefined,
     write: () => undefined,
-    press: () => undefined,
     drag: () => undefined,
     wait: () => undefined,
   };
