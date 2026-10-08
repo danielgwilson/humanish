@@ -46,6 +46,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   text becomes `[REDACTED_SECRET]` (#1646).
 - Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
   operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
+- A local path in JSON text, such as a terminal transcript, now ends at an escaped line break,
+  tab, carriage return, form feed or quote, or at a `\u` escape of whitespace, a quote, a backtick,
+  `<`, `>` or `)`, as it ends at the character itself. Redaction used to remove the text after the
+  path up to the next space, so `humanish init` read `cwd: [REDACTED_RUNTIME_PATH]  AGENTS.md`
+  without its line break and `created:` header. An escaped backslash (`\\`) is still part of the
+  path. In text that is not JSON, a path holding one backslash followed by `n`, `r`, `t`, `f`, `"`
+  or such a `\u` escape now ends at that backslash as well (#1702).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
