@@ -2,7 +2,8 @@
 // transientCommsKnownValueScrub. It writes each value's forms with its own encoders and reads text
 // with its own decoders, built on the platform's (JSON.parse, decodeURIComponent, Buffer), so a
 // form the production encoder omits or a reading its decoder gets wrong shows up as
-// a disagreement. Only the list of markers comes from production, as data.
+// a disagreement. The transient literal scrub's model is the platform's RegExp. Only the list of
+// markers comes from production, as data.
 
 import { REDACTION_MARKERS } from "../../src/evidence/redaction.js";
 
@@ -11,7 +12,7 @@ export const WRITTEN_MARKERS: readonly string[] = Object.values(REDACTION_MARKER
 
 // The shortest base64 or hex form a scrub must find, as documented for encodedForms. A value
 // itself and its escaped forms are found at any length.
-const MIN_BINARY_FORM = 8;
+const MIN_BINARY_FORM = 6;
 
 /**
  * The characters of the value's base64 that do not depend on its neighbours, for 0, 1 and 2 bytes
@@ -257,6 +258,25 @@ export function inOrder(kept: string, text: string): boolean {
 }
 
 /**
+ * The transient literal scrub as one global regex of the values of four characters or more,
+ * longest first: at each position the longest value that starts there becomes the marker, and the
+ * search goes on after it. V8 refuses to run it once the regex alternates and a value has 32,768
+ * characters or more.
+ */
+export function modelLiteralScrub(values: readonly string[]): (text: string) => string {
+  const kept = [...new Set(values)].filter((value) => value.length >= 4);
+  if (kept.length === 0) return (text) => text;
+  const pattern = new RegExp(
+    kept
+      .sort((left, right) => right.length - left.length)
+      .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|"),
+    "g",
+  );
+  return (text) => text.replace(pattern, REDACTION_MARKERS.secret);
+}
+
+/**
  * Where a reading of the text holds a form of a value outside the written markers, or undefined
  * when none does.
  */
@@ -274,3 +294,22 @@ export function survivingForm(values: readonly string[], text: string): string |
   }
   return undefined;
 }
+
+// The regex escapeSequences replaced, which finds what a value's view drops or decodes:
+// operating-system commands, control sequences and two-byte escapes, raw and JSON-escaped, and
+// percent runs.
+const VIEW_SEQUENCE = new RegExp(
+  [
+    "\\x1b\\][^\\x07]*(?:\\x07|\\x1b\\\\)",
+    "\\x1b\\[[0-?]*[ -/]*[@-~]",
+    "\\x1b[78=>]",
+    "\\\\u001b\\][^\\\\]*(?:\\\\u0007|\\\\u001b\\\\\\\\)",
+    "\\\\u001b\\[[0-?]*[ -/]*[@-~]",
+    "(?:%[0-9A-Fa-f]{2})+",
+  ].join("|"),
+  "g",
+);
+
+/** Each match of that regex as [start, end), in order. Quadratic on unterminated commands. */
+export const modelEscapeSequences = (text: string): [number, number][] =>
+  [...text.matchAll(VIEW_SEQUENCE)].map((match) => [match.index, match.index + match[0].length]);

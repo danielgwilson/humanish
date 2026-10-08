@@ -3,13 +3,20 @@ import { describe, expect, it } from "vitest";
 import { scrubSecretValues } from "../../src/evidence/secret-scrub.js";
 import {
   registerTransientCommsSecrets,
+  scrubTransientCommsText,
   transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
-import { propertyParameters, scrubInputs, type ScrubInput } from "../helpers/scrub-arbitraries.js";
+import {
+  literalInputs,
+  propertyParameters,
+  scrubInputs,
+  type ScrubInput,
+} from "../helpers/scrub-arbitraries.js";
 import {
   inOrder,
   modelDecode,
+  modelLiteralScrub,
   outsideValues,
   survivingForm,
   touchesEscape,
@@ -175,4 +182,29 @@ describe.each(scrubs)("%s against the reference model", (_name, scrubUnderTest) 
     expect(ratio).toBeLessThan(10);
     expect(survivingForm(values, await scrub(values, whole))).toBeUndefined();
   });
+});
+
+// With a value of 32,768 characters registered, V8 refuses the regex and the scrub searches each
+// value itself. No generated text holds a `~`, so that value changes no output.
+describe.each([
+  ["V8's regex", []],
+  ["the search it falls back to", ["~".repeat(32_768)]],
+])("scrubTransientCommsText through %s", (_path, extra: string[]) => {
+  it(
+    "replaces the longest value that starts at each position and searches on after it",
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(literalInputs(), async ({ values, text }) => {
+          const scrubbed = await withTransientCommsSecrets(async () => {
+            registerTransientCommsSecrets([...values, ...extra]);
+            return scrubTransientCommsText(text);
+          });
+          expect(scrubbed).toBe(modelLiteralScrub(values)(text));
+        }),
+        parameters,
+      );
+      // V8 takes about a millisecond to refuse the regex in each case.
+    },
+    Math.max(20_000, parameters.numRuns * 5),
+  );
 });

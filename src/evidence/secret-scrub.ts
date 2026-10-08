@@ -12,9 +12,12 @@ const REDACTED = REDACTION_MARKERS.secret;
 // of the marker's name. Other bracketed text, such as `[REDACTED_373433393231]`, is searched like
 // any text.
 const MARKER = new RegExp(Object.values(REDACTION_MARKERS).map(escapeRegExp).join("|"), "g");
-// The shortest encoded form searched for. Shorter base64 or hex runs are ordinary text often enough
-// that matching them would redact words. A value itself is searched for at any length.
-const MIN_ENCODED_FORM = 8;
+// The shortest encoded form searched for: the unpadded base64 of a four-byte value, such as a
+// four-digit code. A given form of n characters turns up by chance in random base64 about once in
+// 64^n characters, once in 69 billion at 6 and once in 17 million at 4. In the text of 9 real runs
+// (2.5 million characters) no 6- or 7-character form of any 4-, 5- or 6-digit code occurred. A
+// value itself is searched for at any length.
+const MIN_ENCODED_FORM = 6;
 
 /**
  * The characters of a value's base64 encoding that do not depend on its neighbours, with 0, 1 or
@@ -35,11 +38,12 @@ function base64Middles(bytes: Buffer, encoding: "base64" | "base64url"): string[
 
 /**
  * A value as written, and percent-encoded, JSON-escaped once (also with non-ASCII characters as
- * `\u` escapes) and twice, its UTF-8 bytes read one per character and the reverse, base64 at each
- * byte offset, base64url and hex. Twice, because a JSON event can carry a command's JSON output as
- * a string. An
- * escaped form is searched for at any length, as the value is: it holds a backslash or a `%`, so it
- * is not ordinary text.
+ * `\u` escapes) and twice, its UTF-8 bytes read one per character and the reverse, base64 padded,
+ * unpadded and at each byte offset, base64url and hex. Twice, because a JSON event can carry a
+ * command's JSON output as a string. An escaped form is searched for at any length, as the value
+ * is: it holds a backslash or a `%`, so it is not ordinary text. A base64 or hex form is searched
+ * for from MIN_ENCODED_FORM characters, so a four-byte value is found in base64 written whole and
+ * not inside a longer run, where four or five of its characters do not depend on its neighbours.
  */
 export function encodedForms(value: string): string[] {
   const bytes = Buffer.from(value, "utf8");
@@ -57,8 +61,10 @@ export function encodedForms(value: string): string[] {
   } catch {
     // no percent-encoded form
   }
+  const base64 = bytes.toString("base64");
   const binary = [
-    bytes.toString("base64"),
+    base64,
+    base64.replace(/=+$/, ""),
     bytes.toString("base64url"),
     bytes.toString("hex"),
     ...base64Middles(bytes, "base64"),
@@ -127,6 +133,59 @@ function eachOccurrence(text: string, form: string, found: (at: number) => void)
     }
     at = matched > 0 ? -1 : text.indexOf(form, next);
   }
+}
+
+/**
+ * Each value's occurrences, the longest value that starts at a position replaced from the start of
+ * the text on, in time linear in the text for each value.
+ */
+function replaceLongestFirst(text: string, values: readonly string[]): string {
+  // The length of the longest value that starts at each position, allocated at the first find.
+  let longest: Uint32Array | undefined;
+  for (const value of values)
+    eachOccurrence(text, value, (at) => {
+      longest ??= new Uint32Array(text.length);
+      longest[at] = Math.max(longest[at]!, value.length);
+    });
+  if (longest === undefined) return text;
+  let result = "";
+  let cursor = 0;
+  for (let at = 0; at < text.length; at += 1) {
+    if (longest[at] === 0) continue;
+    result += text.slice(cursor, at) + REDACTED;
+    cursor = at + longest[at]!;
+    at = cursor - 1;
+  }
+  return result + text.slice(cursor);
+}
+
+/**
+ * A scrub that replaces each non-empty value as written with `[REDACTED_SECRET]`, markers
+ * included. From the start of the text, the longest value that starts at a position is replaced
+ * and the search goes on after it, so the marker it writes is never searched. One global regex of
+ * the values, longest first, does that fastest. V8 compiles it at its first use and refuses it
+ * once a value has 32,768 characters; the scrub then finds each value itself, with the same
+ * output, in time linear in the text for each value.
+ */
+export function scrubValuesAsWritten(values: readonly string[]): (text: string) => string {
+  const written = [...new Set(values)].filter((value) => value.length > 0);
+  if (written.length === 0) return (text) => text;
+  let pattern: RegExp | undefined = new RegExp(
+    [...written]
+      .sort((left, right) => right.length - left.length)
+      .map(escapeRegExp)
+      .join("|"),
+    "g",
+  );
+  return (text) => {
+    if (pattern !== undefined)
+      try {
+        return text.replace(pattern, REDACTED);
+      } catch {
+        pattern = undefined;
+      }
+    return replaceLongestFirst(text, written);
+  };
 }
 
 /** Every occurrence of every form not wholly inside a marker, in no order. */

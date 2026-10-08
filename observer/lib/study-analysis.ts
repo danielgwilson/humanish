@@ -3,6 +3,11 @@ import type {
   AnalysisArtifact,
   AnalysisCorrection,
 } from "../../src/analysis/types";
+import {
+  ANALYSIS_LIMITS,
+  hasControlCharacter,
+  hasRevisionFields,
+} from "../../src/analysis/analysis-limits.js";
 import { bySeverity, findingLead } from "../../src/analysis/finding-lead.js";
 import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverData } from "./observer-data";
@@ -107,19 +112,16 @@ const participant = (v: unknown) =>
   ids(v.evidenceIds) &&
   list(v.feedback, quote) &&
   list(v.limitations, text);
-// Generated text with the producer's bounds (src/analysis/validation.ts): non-empty, at most
-// `max` characters and no control characters.
+// Generated text with the producer's bounds: non-empty, at most `max` characters and no control
+// characters.
 const bounded = (v: unknown, max: number) =>
-  typeof v === "string" &&
-  v.length > 0 &&
-  v.length <= max &&
-  !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
+  typeof v === "string" && v.length > 0 && v.length <= max && !hasControlCharacter(v);
 const finding = (v: unknown) =>
   object(v) &&
   id(v.id) &&
   strings(v, ["title", "summary", "exposureReason", "nextStep", "priorityReason"]) &&
-  (v.headline === undefined || bounded(v.headline, 240)) &&
-  (v.experience === undefined || bounded(v.experience, 1200)) &&
+  (v.headline === undefined || bounded(v.headline, ANALYSIS_LIMITS.labelChars)) &&
+  (v.experience === undefined || bounded(v.experience, ANALYSIS_LIMITS.experienceChars)) &&
   enumeration(v.impact, ["blocked_task", "friction", "recovery", "uncertain"]) &&
   enumeration(v.recovery, ["recovered", "not_observed", "unknown"]) &&
   enumeration(v.confidence, ["low", "medium", "high"]) &&
@@ -129,16 +131,16 @@ const finding = (v: unknown) =>
 const designFinding = (v: unknown) =>
   object(v) &&
   id(v.id) &&
-  bounded(v.headline, 240) &&
-  bounded(v.screen, 240) &&
-  bounded(v.notice, 1500) &&
-  bounded(v.whyItMatters, 1000) &&
-  bounded(v.suggestion, 1000) &&
+  bounded(v.headline, ANALYSIS_LIMITS.labelChars) &&
+  bounded(v.screen, ANALYSIS_LIMITS.labelChars) &&
+  bounded(v.notice, ANALYSIS_LIMITS.noticeChars) &&
+  bounded(v.whyItMatters, ANALYSIS_LIMITS.whyItMattersChars) &&
+  bounded(v.suggestion, ANALYSIS_LIMITS.suggestionChars) &&
   enumeration(v.severity, ["major", "moderate", "minor"]) &&
   enumeration(v.confidence, ["low", "medium", "high"]) &&
   ids(v.seenByStreamIds) &&
   ids(v.evidenceIds) &&
-  (v.evidenceIds as string[]).length <= 100;
+  (v.evidenceIds as string[]).length <= ANALYSIS_LIMITS.evidenceRefs;
 const correction = (v: unknown): v is AnalysisCorrection =>
   object(v) &&
   v.schema === "humanish.study-analysis-correction.v1" &&
@@ -261,11 +263,12 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
       (object(a.result) &&
         text(a.result.summary) &&
         list(a.result.participants, participant) &&
-        list(a.result.findings, finding, 100) &&
+        list(a.result.findings, finding, ANALYSIS_LIMITS.findings) &&
         (a.result.designFindings === undefined ||
-          list(a.result.designFindings, designFinding, 40)) &&
+          list(a.result.designFindings, designFinding, ANALYSIS_LIMITS.designFindings)) &&
         list(a.result.limitations, text) &&
-        (a.result.concernReviews === undefined || list(a.result.concernReviews, concernReview, 60)))
+        (a.result.concernReviews === undefined ||
+          list(a.result.concernReviews, concernReview, ANALYSIS_LIMITS.concernReviews)))
     )
   )
     return invalid();
@@ -341,16 +344,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
       )
         return invalid();
     }
-    // The producer's revision boundaries: concern reviews are required from study-evidence-5, and
-    // headlines, experiences and design findings from study-evidence-7.
-    const revision = Number(/^study-evidence-(\d+)$/.exec(analysis.promptVersion)?.[1] ?? 0);
-    if (
-      (revision >= 5 && result.concernReviews === undefined) ||
-      (revision >= 7 &&
-        (result.designFindings === undefined ||
-          result.findings.some((f) => f.headline === undefined || f.experience === undefined)))
-    )
-      return invalid();
+    if (!hasRevisionFields(analysis.promptVersion, result)) return invalid();
     const design = result.designFindings ?? [];
     if (new Set(design.map((d) => d.id)).size !== design.length) return invalid();
     for (const d of design) {

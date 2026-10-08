@@ -6,7 +6,7 @@ import {
   transientCommsKnownValueScrub,
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
-import { survivingForm } from "../helpers/scrub-model.js";
+import { modelLiteralScrub, survivingForm } from "../helpers/scrub-model.js";
 
 /** The known-value scrub of `text` in a scope that holds `values`. */
 const knownValueScrub = (values: string[], text: string): Promise<string> =>
@@ -95,6 +95,21 @@ describe("transient run narration secrets", () => {
         /^TRANSIENT_NARRATION_SECRET_LIMIT$/,
       );
     });
+  });
+
+  // A received email's raw link is registered at any length up to 65,536 bytes, next to the code
+  // it carries. One regex of the values refused a value of 32,768 characters, and the scope failed.
+  it("scrubs a registered value of every length the registry accepts", async () => {
+    for (const length of [32_768, 65_536]) {
+      const link = `https://example.test/${"t".repeat(length - 21)}`;
+      await withTransientCommsSecrets(async () => {
+        registerTransientCommsSecrets([link, "743921"]);
+        expect(scrubTransientCommsText(`opened ${link}, entered 743921.`)).toBe(
+          "opened [REDACTED_SECRET], entered [REDACTED_SECRET].",
+        );
+        expect(transientCommsKnownValueScrub()(`opened ${link}`)).toBe("opened [REDACTED_SECRET]");
+      });
+    }
   });
 
   it("removes a literal value even when the text also holds an encoded one", async () => {
@@ -225,4 +240,47 @@ describe("the known-value scrub on encoded and marker-shaped text", () => {
     };
     expect((await elapsed(32_768)) / Math.max(5, await elapsed(8_192))).toBeLessThan(8);
   });
+});
+
+// Registries at the limits registration accepts: 8192 values, 1 MiB in total.
+const hex = (n: number, width: number): string => n.toString(16).padStart(width, "0");
+const AT_THE_LIMIT: [string, string[]][] = [
+  // Every value misses the text by its last four characters.
+  ["values that nearly match", Array.from({ length: 8192 }, (_, n) => "a".repeat(124) + hex(n, 4))],
+  // Values that overlap at every position of the text.
+  [
+    "values that overlap at every position",
+    [
+      ...Array.from({ length: 1400 }, (_, n) => "a".repeat(n + 4)),
+      ...Array.from({ length: 6792 }, (_, n) => `z${hex(n, 8)}${n < 2548 ? "z" : ""}`),
+    ],
+  ],
+];
+
+describe("the literal scrub at the registration limits", () => {
+  // Searching each of 8192 values on its own took 729 ms and 2,065 ms on these registries, where
+  // V8's regex takes a few milliseconds. The scrub and a regex built here are timed in turn, so a
+  // loaded runner slows both; the 5 ms floor keeps timer noise out of the ratio.
+  it.each(AT_THE_LIMIT)(
+    "scrubs 64 KiB against %s about as fast as V8's regex",
+    async (_registry, values) => {
+      expect(values.reduce((bytes, value) => bytes + value.length, 0)).toBe(1024 * 1024);
+      const text = "a".repeat(65_536);
+      const regex = modelLiteralScrub(values);
+      await withTransientCommsSecrets(async () => {
+        registerTransientCommsSecrets(values);
+        expect(scrubTransientCommsText(text)).toBe(regex(text));
+        let [scrub, reference] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          let started = performance.now();
+          scrubTransientCommsText(text);
+          scrub = Math.min(scrub, performance.now() - started);
+          started = performance.now();
+          regex(text);
+          reference = Math.min(reference, performance.now() - started);
+        }
+        expect(scrub / Math.max(5, reference)).toBeLessThan(10);
+      });
+    },
+  );
 });

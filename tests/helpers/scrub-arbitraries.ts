@@ -222,6 +222,57 @@ export interface ScrubInput {
   readonly text: string;
 }
 
+// Few characters, so values overlap each other and themselves, with regex syntax and a lone
+// surrogate half among them.
+const LITERAL_CHARACTERS = ["a", "b", "[", "]", ".", "*", "\\", "$", "|", "(", "\ud83d", "é"];
+
+/**
+ * Values of four to seven characters, and text of whole values, their prefixes and suffixes,
+ * written markers and single characters, for the literal scrub.
+ */
+export function literalInputs(): fc.Arbitrary<ScrubInput> {
+  const value = fc
+    .oneof(chars(["a", "b"], 4, 7), chars(LITERAL_CHARACTERS, 4, 7), markerDrawn)
+    .map((drawn) => drawn.padEnd(4, "a"));
+  // Prefixes and suffixes of one string, so that several values start or end at one position.
+  const related = fc
+    .tuple(
+      chars(["a", "b"], 6, 9),
+      fc.array(fc.tuple(fc.boolean(), fc.integer({ min: 4, max: 9 }))),
+    )
+    .map(([base, cuts]) => [
+      ...new Set([
+        base,
+        ...cuts.map(([prefix, length]) => (prefix ? base.slice(0, length) : base.slice(-length))),
+      ]),
+    ]);
+  return fc
+    .record({
+      values: fc.oneof(fc.uniqueArray(value, { minLength: 1, maxLength: 5 }), related),
+      pieces: fc.array(fc.tuple(fc.nat(4), fc.nat(), fc.nat()), { maxLength: 12 }),
+    })
+    .map(({ values, pieces }) => ({
+      values,
+      text: pieces
+        .map(([kind, which, cut]) => {
+          const drawn = values[which % values.length]!;
+          switch (kind) {
+            case 0:
+              return drawn;
+            case 1:
+              return drawn.slice(0, cut % drawn.length);
+            case 2:
+              return drawn.slice(cut % drawn.length);
+            case 3:
+              return WRITTEN_MARKERS[which % WRITTEN_MARKERS.length]!;
+            default:
+              return LITERAL_CHARACTERS[cut % LITERAL_CHARACTERS.length]!;
+          }
+        })
+        .join(""),
+    }));
+}
+
 /** Inputs that `scrubInputs` draws, and which ways of writing a value they use. */
 export interface ScrubInputShape {
   /** Whether the text holds at least one value. */
@@ -275,3 +326,50 @@ export function scrubInputs(shape: ScrubInputShape): fc.Arbitrary<ScrubInput> {
       return { values, text: text.join("") };
     });
 }
+
+// Pieces of terminal escape sequences, raw and JSON-escaped, and of percent escapes, each whole
+// or cut, so that a text holds sequences that end, end late or never end. The starts and ends of
+// commands come first and are drawn more often.
+const COMMAND_PIECES = ["\x1b]", "\x1b\\", "\\u001b]", "\\u001b\\\\", "\\u0007"];
+const ESCAPE_PIECES = [
+  "\x1b",
+  "\x1b]",
+  "\x1b[",
+  "\x07",
+  "\x1b\\",
+  "\x1b7",
+  "\x1b>",
+  "\\u001b]",
+  "\\u001b[",
+  "\\u0007",
+  "\\u001b\\\\",
+  "\\",
+  "0;2",
+  "?",
+  " ",
+  "/",
+  "m",
+  "~",
+  "@",
+  "]",
+  "[",
+  "%",
+  "%4",
+  "%41",
+  "%e2%80",
+  "%zz",
+  "title",
+  "\n",
+];
+
+/** Text of escape pieces and words, for the search of what a value's view drops or decodes. */
+export const escapeTexts = (): fc.Arbitrary<string> =>
+  fc
+    .array(
+      fc.oneof(
+        { weight: 1, arbitrary: fc.constantFrom(...COMMAND_PIECES) },
+        { weight: 3, arbitrary: fc.constantFrom(...ESCAPE_PIECES) },
+      ),
+      { maxLength: 32 },
+    )
+    .map((pieces) => pieces.join(""));
