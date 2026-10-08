@@ -102,7 +102,9 @@ accepted. Known usage is retained; missing usage remains unknown.
 
 The CLI's JSON keeps `runOk` for the route's own result, `automaticAnalysis`
 for post-run analysis, and `ok` for the overall request. Failed, cancelled or
-unknown analysis produces exit code 2 without discarding the recording. A missing
+unknown analysis produces exit code 2 without discarding the recording. When the
+run's own result is ok, the first line of the human output reads
+`humanish run <study>: live run finished; the analysis did not complete`. A missing
 `OPENAI_API_KEY` skips default analysis and preserves a successful run exit;
 `automaticAnalysisTrigger: "default"` distinguishes that case in JSON. So does a
 default analysis whose expected cost, plus the margin, is over the default $3 cap:

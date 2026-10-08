@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RecordingVideo } from "../components/recording-video";
-import type { RecordingInterval } from "../lib/grid-recording";
+import type { RecordingInterval } from "../../src/run/run-clock";
 
 const startMs = Date.parse("2026-09-26T10:00:00.000Z");
 const interval: RecordingInterval = {

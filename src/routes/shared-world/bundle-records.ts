@@ -15,7 +15,7 @@ import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.j
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantCaption } from "../../run/participant-caption.js";
-import { sessionEndingInWords } from "../../run/outcomes.js";
+import { participantSummary } from "../../run/outcomes.js";
 import type { ConcurrentBundleArgs } from "./types.js";
 
 /** What every participant's records share. */
@@ -117,13 +117,11 @@ function sharedWorldSimulation(
     mode: "browser-sim",
     progress: inProgress ? 35 : 100,
     currentStep: view.reason,
-    summary: session
-      ? `${name} used the shared app and ${sessionEndingInWords(session.trace)}.`
-      : outcome?.sessionError !== undefined
-        ? `${name} did not finish a session: ${outcome.sessionError}`
-        : inProgress
-          ? `${name} is using the shared app.`
-          : `${name} would use the shared app; no session ran.`,
+    summary: participantSummary(
+      name,
+      { name: "the shared app" },
+      { trace: session?.trace, sessionError: outcome?.sessionError, inProgress },
+    ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
   });

@@ -1,3 +1,4 @@
+import { recordingInterval, runClock, type RecordingInterval } from "../../src/run/run-clock.js";
 import { comparisonFrame, frameTimes } from "./comparison";
 import type { ObserverStream } from "./observer-data";
 import { buildPlayerModel, type PlayerFrame, type PlayerModel } from "./player-model";
@@ -19,12 +20,6 @@ export interface GridRecording {
   >;
 }
 
-export interface RecordingInterval {
-  startMs: number;
-  endMs: number;
-  recording: NonNullable<ObserverStream["recording"]>;
-}
-
 export type GridMoment =
   | { kind: "no-captures" | "timing-unavailable" | "before-first" }
   | {
@@ -34,45 +29,30 @@ export type GridMoment =
       coverage: "within" | "after-last";
     };
 
-/** Pass every study stream. Visible cards must not redefine the recording clock. */
+/**
+ * Pass every study stream. Visible cards must not redefine the recording clock. The clock is the
+ * run clock a reviewer note counts from. Each participant's times follow the frames its player
+ * shows.
+ */
 export function buildGridRecording(allStreams: readonly ObserverStream[]): GridRecording {
   const lanes: GridRecording["lanes"] = new Map();
-  const boundaries = new Set<number>();
   for (const stream of allStreams) {
     const model = buildPlayerModel(stream);
     const times = model ? frameTimes(model, "shared") : null;
-    const media = recordingInterval(stream);
     lanes.set(stream.id, {
       model,
       times,
-      media,
+      media: recordingInterval(stream.recording),
       timing: !model ? "no-captures" : times ? "recorded" : "unavailable",
     });
-    // A one-frame recording can have a valid stamp even when the player cannot
-    // calculate a recorded pace. Never manufacture stamps from actor duration.
-    if (times) for (const time of times) boundaries.add(time);
-    if (media) {
-      boundaries.add(media.startMs);
-      boundaries.add(media.endMs);
-    }
   }
-  const boundariesMs = [...boundaries].sort((a, b) => a - b);
+  const clock = runClock(allStreams);
   return {
-    startMs: boundariesMs[0] ?? null,
-    endMs: boundariesMs.at(-1) ?? null,
-    boundariesMs,
+    startMs: clock?.startMs ?? null,
+    endMs: clock?.endMs ?? null,
+    boundariesMs: clock?.boundariesMs ?? [],
     lanes,
   };
-}
-
-export function recordingInterval(stream: ObserverStream): RecordingInterval | null {
-  const recording = stream.recording;
-  if (!recording) return null;
-  const startMs = Date.parse(recording.startedAt);
-  const endMs = startMs + recording.durationMs;
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || recording.durationMs <= 0)
-    return null;
-  return { startMs, endMs, recording };
 }
 
 export function recordingContains(

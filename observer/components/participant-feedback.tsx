@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CLOSING_REPORT_LIMITS } from "../../src/actors/closing-report-limits.js";
-import { traceItems } from "@/lib/artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { RecordedEntryLink } from "./recorded-entry-link";
 

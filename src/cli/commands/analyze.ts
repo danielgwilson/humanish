@@ -28,10 +28,10 @@ import {
 import {
   type AnalysisFindings,
   analysisFindings,
-  formatFindings,
   missingRunFindings,
   readRunAnalysis,
 } from "../findings.js";
+import { formatFindings } from "../findings-text.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
