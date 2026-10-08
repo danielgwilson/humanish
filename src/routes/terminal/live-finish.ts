@@ -161,19 +161,13 @@ async function settleLiveLedgers(
   const runPaths = inputs.run.paths;
   const { recordLifecycle, lifecycle, commandLog, interventions, terminalEvents } = inputs.recorder;
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
-  // The cost ledger is derived, with the null discipline: provider spend from the trace's
-  // tokenUsage.costUsd when present (else null = not measured), product/media/payment null by
-  // default (core has no signal). The costProbe hook lets tests inject known
-  // spend to exercise the fail-closed cap without a real billable run.
-  const injectedLines = costProbe?.(
-    trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
-  );
+  // The cost ledger is derived, with the null discipline: the provider line carries the trace's
+  // token estimate with no measured charge, and product/media/payment are null by default (core
+  // has no signal). The costProbe hook lets tests inject known spend to exercise the fail-closed
+  // cap without a real billable run.
+  const injectedLines = costProbe?.();
   if (costProbe) await validatePreparedRunArtifactPaths(runPaths);
-  const cost = buildCostLedger({
-    ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
-    ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
-    ...(injectedLines ? { injectedLines } : {}),
-  });
+  const cost = buildCostLedger({ trace, ...(injectedLines ? { injectedLines } : {}) });
   const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null, trace.tokenUsage);
   const proofVerdict = !noSpendProof.satisfied
     ? `No-spend proof not satisfied for maxUsd=${maxUsd ?? "null"}.`
@@ -233,8 +227,9 @@ export async function finishLiveTerminalSession(
   const judgment = judgeTerminal({ dryRun: false, participant });
 
   // The run cost summary, as the computer-use route records it: the sandbox's compute time from
-  // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
-  // of the cap ledger above, whose lines sum against caps.maxUsd.
+  // its span and observed size, and the participant's tokens at trace.estimatedCost, the price the
+  // ledger's provider line also carries. It is not part of the cap ledger above, whose lines sum
+  // against caps.maxUsd.
   const desktops = session.runCostDesktops();
   const runCost = buildRunCostSummary({
     participants: [{ trace }],

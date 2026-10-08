@@ -53,6 +53,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   without its line break and `created:` header. An escaped backslash (`\\`) is still part of the
   path. In text that is not JSON, a path holding one backslash followed by `n`, `r`, `t`, `f`, `"`
   or such a `\u` escape now ends at that backslash as well (#1702).
+- A terminal run's review, its no-spend statement and the provider line of
+  `terminal-ledgers.json` now give the participant's token estimate that run.json's cost summary
+  gives, for example "Provider tokens (382,595 input, ...) are estimated at 0.37157 USD, the
+  participant's model cost, which caps.maxUsd does not count." They used to call the tokens
+  unpriced. The provider line keeps `usd: null` and adds `estimatedUsd` with source
+  `estimated-token-usage`, so `knownTotalUsd`, the `maxUsd` check and `noSpend.satisfied` are
+  unchanged. Tokens of a declared model with no rate are still unpriced, and the note now names
+  that model (#1703).
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

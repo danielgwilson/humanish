@@ -1,5 +1,5 @@
 import { describeTokenUsage } from "./token-usage.js";
-import type { ActorTokenUsage } from "../../actors/contract.js";
+import type { ActorTokenUsage, ActorTrace } from "../../actors/contract.js";
 import type { StudyCaps } from "../../study/types.js";
 import { round6 } from "../../run/pricing.js";
 import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.js";
@@ -7,58 +7,24 @@ import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
 /**
  * Build the spend ledger from the captured session. The null discipline:
- *   - The `provider` line is populated from the actor trace's tokenUsage.costUsd when the trace
- *     carries it (a measured value, incl. a measured 0). When the trace carries no costUsd, the
- *     provider line is `null` = not measured (never guessed to 0 just because no-spend was intended).
+ *   - The `provider` line has no measured charge, so its `usd` is null. When the trace's
+ *     `estimatedCost` prices its tokens, the line carries that price as `estimatedUsd`: the figure
+ *     run.json's model-tokens line gives, from the same object. Tokens with no rate, and a run
+ *     with no token count, stay null with the reason in the note.
  *   - product/media/payment are `null` by default: core has no signal for those categories, and
  *     only a test can supply one, through `StudyDeps.costProbe`.
  * `injectedLines` lets a test supply known spend for a category,
  * exercising the fail-closed cap enforcement deterministically without a real billable run.
  */
 export function buildCostLedger(args: {
-  tokenCostUsd?: number;
-  /** Measured token counts, when the run produced them but no rate could price them. */
-  tokenUsage?: ActorTokenUsage;
+  trace: Pick<ActorTrace, "tokenUsage" | "estimatedCost">;
   injectedLines?: Partial<Record<CostCategory, CostLine>>;
 }): TerminalCostLedger {
-  const providerLine: CostLine =
-    typeof args.tokenCostUsd === "number"
-      ? {
-          usd: args.tokenCostUsd,
-          source: "provider-token-usage",
-          note: `Provider spend metered from the actor trace tokenUsage.costUsd (${args.tokenCostUsd} USD).`,
-        }
-      : args.tokenUsage
-        ? {
-            // Tokens counted, no rate to price them. This stays `usd: null` because a guessed
-            // dollar figure would be worse than none, but the note carries the measured fact so a
-            // reader never mistakes "no charge recorded" for "nothing was consumed".
-            usd: null,
-            source: "unpriced-token-usage",
-            note:
-              `Provider spend unpriced: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
-              "but the terminal participant records the model as `codex` and humanish has no rate " +
-              "for it, so no dollar figure is given. The token count is measured; the price is " +
-              "not known. Recorded as null, never guessed as 0.",
-          }
-        : {
-            usd: null,
-            source: "unmeasured",
-            note: "Provider spend not measured: the actor trace carried no tokenUsage.costUsd in this run, so it is recorded as null and not guessed as 0.",
-          };
-
-  const unmeasured = (category: CostCategory): CostLine => ({
-    usd: null,
-    count: null,
-    source: "unmeasured",
-    note: `${category} spend not measured: humanish has no ${category} spend signal, and a study cannot supply one. Recorded as null, never guessed as 0.`,
-  });
-
   const lines: Record<CostCategory, CostLine> = {
     product: args.injectedLines?.product ?? unmeasured("product"),
     media: args.injectedLines?.media ?? unmeasured("media"),
     payment: args.injectedLines?.payment ?? unmeasured("payment"),
-    provider: args.injectedLines?.provider ?? providerLine,
+    provider: args.injectedLines?.provider ?? providerLine(args.trace),
   };
 
   // knownTotalUsd sums only the non-null lines. A null line contributes nothing and is never
@@ -82,6 +48,49 @@ export function buildCostLedger(args: {
   };
 }
 
+function unmeasured(category: CostCategory): CostLine {
+  return {
+    usd: null,
+    count: null,
+    source: "unmeasured",
+    note: `${category} spend not measured: humanish has no ${category} spend signal, and a study cannot supply one. Recorded as null, never guessed as 0.`,
+  };
+}
+
+/** The participant's model tokens: estimated from the trace's price, unpriced, or not counted. */
+function providerLine(trace: Pick<ActorTrace, "tokenUsage" | "estimatedCost">): CostLine {
+  const { tokenUsage, estimatedCost } = trace;
+  if (tokenUsage === undefined)
+    return {
+      usd: null,
+      source: "unmeasured",
+      note: "Provider spend not measured: the participant's output carried no token usage in this run, so it is recorded as null and not guessed as 0.",
+    };
+  if (estimatedCost !== undefined && estimatedCost.estimatedCostUsd !== null)
+    return {
+      usd: null,
+      estimatedUsd: estimatedCost.estimatedCostUsd,
+      source: "estimated-token-usage",
+      note:
+        `Provider spend estimated at ${estimatedCost.estimatedCostUsd} USD: the run consumed ` +
+        `${describeTokenUsage(tokenUsage)}, priced at ${estimatedCost.modelId ?? "the participant model's"} ` +
+        `rates as of ${estimatedCost.ratesAsOf}, as run.json's cost summary prices them. No provider ` +
+        "charge was measured, so usd stays null and caps.maxUsd does not count the estimate.",
+    };
+  // Tokens counted, no rate to price them. A guessed dollar figure would be worse than none, but
+  // the note carries the measured fact so a reader never mistakes "no charge recorded" for
+  // "nothing was consumed".
+  return {
+    usd: null,
+    source: "unpriced-token-usage",
+    note:
+      `Provider spend unpriced: the run consumed ${describeTokenUsage(tokenUsage)}, but humanish ` +
+      `has no rate for ${estimatedCost?.modelId === undefined ? "the participant's model" : `the model ${estimatedCost.modelId}`}, ` +
+      "so no dollar figure is given. The token count is measured; the price is not known. " +
+      "Recorded as null, never guessed as 0.",
+  };
+}
+
 /** True when no cost line carries a dollar value, so a no-spend proof has nothing to stand on. */
 export function noSpendLineMeasured(
   proof: Pick<NoSpendProof, "knownZeroLines" | "knownNonZeroLines">,
@@ -98,9 +107,9 @@ export function noSpendNotEstablished(maxUsd: number): string {
 }
 
 /**
- * What the ledger measured, in words: the dollar lines it knows, provider tokens it counted but
- * could not price, and the lines it has no signal for. A reader of a maxUsd=0 run must not take
- * an all-null ledger for a proven $0.
+ * What the ledger measured, in words: the dollar lines it knows, the provider tokens it counted
+ * with their estimate or as unpriced, and the lines it has no signal for. A reader of a maxUsd=0
+ * run must not take an all-null ledger for a proven $0.
  */
 export function describeMeasuredSpend(
   ledger: TerminalCostLedger,
@@ -109,15 +118,21 @@ export function describeMeasuredSpend(
   const measured = COST_CATEGORIES.filter((c) => ledger.lines[c].usd !== null).map(
     (c) => `${c} ${ledger.lines[c].usd} USD`,
   );
-  const unpricedProvider = ledger.lines.provider.source === "unpriced-token-usage";
+  const provider = ledger.lines.provider;
+  const countedProvider =
+    provider.usd === null &&
+    (provider.source === "unpriced-token-usage" || provider.source === "estimated-token-usage");
   const unmeasured = COST_CATEGORIES.filter(
-    (c) => ledger.lines[c].usd === null && !(c === "provider" && unpricedProvider),
+    (c) => ledger.lines[c].usd === null && !(c === "provider" && countedProvider),
   );
+  const counts = tokenUsage === undefined ? "" : ` (${describeTokenUsage(tokenUsage)})`;
   return [
     measured.length > 0 ? `Measured: ${measured.join(", ")}.` : "",
-    unpricedProvider
-      ? `Provider tokens were consumed${tokenUsage === undefined ? "" : ` (${describeTokenUsage(tokenUsage)})`} and are unpriced, not zero.`
-      : "",
+    !countedProvider
+      ? ""
+      : provider.estimatedUsd === undefined
+        ? `Provider tokens were consumed${counts} and are unpriced, not zero.`
+        : `Provider tokens${counts} are estimated at ${provider.estimatedUsd} USD, the participant's model cost, which caps.maxUsd does not count.`,
     unmeasured.length > 0 ? `Not measured (null, not claimed zero): ${unmeasured.join(", ")}.` : "",
   ]
     .filter((part) => part.length > 0)

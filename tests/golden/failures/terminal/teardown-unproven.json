@@ -929,7 +929,7 @@
         "provider": {
           "usd": null,
           "source": "unmeasured",
-          "note": "Provider spend not measured: the actor trace carried no tokenUsage.costUsd in this run, so it is recorded as null and not guessed as 0."
+          "note": "Provider spend not measured: the participant's output carried no token usage in this run, so it is recorded as null and not guessed as 0."
         }
       },
       "knownTotalUsd": 0,

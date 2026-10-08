@@ -91,7 +91,7 @@ function nonceFrom(command: string): string {
   return m?.[1] ?? "unknown-nonce";
 }
 
-function liveConfig(caps: Record<string, number>): StudyConfig {
+function liveConfig(caps: Record<string, number>, model?: string): StudyConfig {
   const raw: Record<string, unknown> = {
     schema: STUDY_SCHEMA,
     id: "terminal-cost-proof",
@@ -106,6 +106,7 @@ function liveConfig(caps: Record<string, number>): StudyConfig {
       type: "codex-exec",
       persona: "autonomous-creative-agent",
       mission: "Discover widgetsmith-cli from public surfaces.",
+      ...(model === undefined ? {} : { model }),
     },
     caps,
     execution: {
@@ -189,9 +190,68 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(verified.checks.find((c) => c.name === "terminal-product evidence")?.ok).toBe(true);
   });
 
-  it("(a2) counted-but-unpriced provider tokens are reported as such, never as no signal", async () => {
+  it("(a3) the ledger, the review and run.json give the participant's tokens one price", async () => {
+    const killed: string[] = [];
+    // The usage record of terminal-2026-10-08T19-37-41-516Z-d85572b8, whose run.json priced it at
+    // 0.37157 USD. At the gpt-5.6-sol sheet ($4 input, $0.40 cached, $5 cache write and $20 output
+    // per 1M): 45 x 4 + 36,176 x 5 + 346,374 x 0.4 + 2,598 x 20 = 371,569.6 micro-dollars.
+    const codexWithUsage = (cmd: string) => ({
+      exitCode: 0,
+      stdout:
+        '{"type":"turn.completed","usage":{"input_tokens":382595,"cached_input_tokens":346374,' +
+        '"cache_write_input_tokens":36176,"output_tokens":2598,"reasoning_output_tokens":445}}\n' +
+        `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`,
+    });
+    const result = await runTerminal({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      env: baseEnv(),
+      deps: {
+        now: () => 1_000,
+        desktopModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage }),
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const read = async (file: string) =>
+      JSON.parse(await readFile(path.join(runDir, file), "utf8"));
+    const bundle = await read("run.json");
+    const ledgers = await read("terminal-ledgers.json");
+    const review = await read("review.json");
+
+    const tokens = bundle.cost.breakdown.find(
+      (line: { kind: string }) => line.kind === "model-tokens",
+    );
+    expect(tokens.estimatedCostUsd).toBe(0.37157);
+    // The estimate is the operator's model cost. No charge was measured, so the cap comparison and
+    // the no-spend proof read the same lines as before.
+    expect(ledgers.cost.lines.provider).toMatchObject({
+      usd: null,
+      estimatedUsd: 0.37157,
+      source: "estimated-token-usage",
+    });
+    expect(ledgers.cost.knownTotalUsd).toBe(0);
+    expect(ledgers.noSpendProof.satisfied).toBe(true);
+    const costEvent = ledgers.lifecycle.find(
+      (entry: { event: string }) => entry.event === "terminal-lab.cost.measured",
+    );
+    const spendGap = review.gaps.find((gap: string) => gap.startsWith("No-spend proof"));
+    for (const text of [ledgers.noSpendProof.statement, costEvent.message, spendGap]) {
+      expect(text).toContain("estimated at 0.37157 USD");
+      expect(text).not.toMatch(/unpriced/);
+    }
+
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("(a2) tokens of a model with no rate are reported as counted and unpriced, never as no signal", async () => {
     const killed: string[] = [];
     // A codex stream that emits real turn.completed usage records, the shape a live run produces.
+    // The study declares a model the rate table does not hold.
     const codexWithUsage = (cmd: string) => ({
       exitCode: 0,
       stdout:
@@ -210,7 +270,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     };
     const result = await runTerminal({
       cwd,
-      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }, "gpt-unrated-test"),
       dryRun: false,
       open: false,
       ...inputs,
@@ -227,7 +287,12 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.cost.lines.provider.note).toContain("343,072 input");
     expect(ledgers.cost.lines.provider.note).toContain("276,814 of them cached");
     expect(ledgers.cost.lines.provider.note).toContain("3,692 output");
-    expect(ledgers.cost.lines.provider.note).not.toContain("NOT MEASURED");
+    expect(ledgers.cost.lines.provider.note).toContain("no rate for the model gpt-unrated-test");
+    expect(ledgers.cost.lines.provider).not.toHaveProperty("estimatedUsd");
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.cost.breakdown).toContainEqual(
+      expect.objectContaining({ kind: "model-tokens", estimatedCostUsd: null }),
+    );
 
     // `satisfied` keeps its contract meaning (no known line over the cap). The statement and the
     // lifecycle line must not read as a proven $0: nothing was measured, and the provider tokens
