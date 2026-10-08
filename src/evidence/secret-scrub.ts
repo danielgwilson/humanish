@@ -12,9 +12,12 @@ const REDACTED = REDACTION_MARKERS.secret;
 // of the marker's name. Other bracketed text, such as `[REDACTED_373433393231]`, is searched like
 // any text.
 const MARKER = new RegExp(Object.values(REDACTION_MARKERS).map(escapeRegExp).join("|"), "g");
-// The shortest encoded form searched for. Shorter base64 or hex runs are ordinary text often enough
-// that matching them would redact words. A value itself is searched for at any length.
-const MIN_ENCODED_FORM = 8;
+// The shortest encoded form searched for: the unpadded base64 of a four-byte value, such as a
+// four-digit code. A given form of n characters turns up by chance in random base64 about once in
+// 64^n characters, once in 69 billion at 6 and once in 17 million at 4. In the text of 9 real runs
+// (2.5 million characters) no 6- or 7-character form of any 4-, 5- or 6-digit code occurred. A
+// value itself is searched for at any length.
+const MIN_ENCODED_FORM = 6;
 
 /**
  * The characters of a value's base64 encoding that do not depend on its neighbours, with 0, 1 or
@@ -35,11 +38,12 @@ function base64Middles(bytes: Buffer, encoding: "base64" | "base64url"): string[
 
 /**
  * A value as written, and percent-encoded, JSON-escaped once (also with non-ASCII characters as
- * `\u` escapes) and twice, its UTF-8 bytes read one per character and the reverse, base64 at each
- * byte offset, base64url and hex. Twice, because a JSON event can carry a command's JSON output as
- * a string. An
- * escaped form is searched for at any length, as the value is: it holds a backslash or a `%`, so it
- * is not ordinary text.
+ * `\u` escapes) and twice, its UTF-8 bytes read one per character and the reverse, base64 padded,
+ * unpadded and at each byte offset, base64url and hex. Twice, because a JSON event can carry a
+ * command's JSON output as a string. An escaped form is searched for at any length, as the value
+ * is: it holds a backslash or a `%`, so it is not ordinary text. A base64 or hex form is searched
+ * for from MIN_ENCODED_FORM characters, so a four-byte value is found in base64 written whole and
+ * not inside a longer run, where four or five of its characters do not depend on its neighbours.
  */
 export function encodedForms(value: string): string[] {
   const bytes = Buffer.from(value, "utf8");
@@ -57,8 +61,10 @@ export function encodedForms(value: string): string[] {
   } catch {
     // no percent-encoded form
   }
+  const base64 = bytes.toString("base64");
   const binary = [
-    bytes.toString("base64"),
+    base64,
+    base64.replace(/=+$/, ""),
     bytes.toString("base64url"),
     bytes.toString("hex"),
     ...base64Middles(bytes, "base64"),

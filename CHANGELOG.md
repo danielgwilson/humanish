@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A run whose received email held a link of 32,768 characters or more no longer fails its analysis
+  with `analysis_validation_failed_unexpected`. The scrub of the run's known values built one
+  regular expression of them, which Node refuses once a value is that long; it now searches each
+  value directly and replaces the same text (#1646).
+- The known-value scrubs find the base64 of a value of 4 or 5 bytes, such as the code `7439`
+  written `NzQzOQ`, and a 5-byte value inside a longer base64 run. Base64 and hex forms are
+  searched from 6 characters instead of 8. A 4-byte value inside a longer base64 run is still not
+  found (#1646).
+
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
 humanish 0.115.0 asks the OpenAI computer-use participant for its closing report and impressions

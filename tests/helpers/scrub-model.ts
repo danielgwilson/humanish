@@ -12,7 +12,7 @@ export const WRITTEN_MARKERS: readonly string[] = Object.values(REDACTION_MARKER
 
 // The shortest base64 or hex form a scrub must find, as documented for encodedForms. A value
 // itself and its escaped forms are found at any length.
-const MIN_BINARY_FORM = 8;
+const MIN_BINARY_FORM = 6;
 
 /**
  * The characters of the value's base64 that do not depend on its neighbours, for 0, 1 and 2 bytes

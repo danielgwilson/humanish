@@ -80,6 +80,36 @@ describe("scrubSecretValues", () => {
       }
   });
 
+  it("removes the unpadded base64 of a value of four bytes", () => {
+    expect(scrubSecretValues(["abcd"])("sent YWJjZA and YWJjZA== here")).toBe(
+      "sent [REDACTED_SECRET] and [REDACTED_SECRET] here",
+    );
+    // Standard base64 spells this value with a slash, base64url with an underscore.
+    expect(scrubSecretValues(["????"])("Pz8/Pw Pz8_Pw")).toBe(
+      "[REDACTED_SECRET] [REDACTED_SECRET]",
+    );
+  });
+
+  it("removes base64 of a value of five bytes at any byte offset", () => {
+    const scrub = scrubSecretValues(["74392"]);
+    expect(scrub("code NzQzOTI here")).toBe("code [REDACTED_SECRET] here");
+    for (const prefix of ["", "x", "xy"])
+      for (const encoding of ["base64", "base64url"] as const)
+        expect(scrub(Buffer.from(`${prefix}74392!`).toString(encoding))).toMatch(
+          /^[A-Za-z0-9+/_-]{0,3}\[REDACTED_SECRET\][A-Za-z0-9+/_=-]{0,4}$/,
+        );
+  });
+
+  // The characters of a four-byte value's base64 that its neighbours do not change number four or
+  // five, which ordinary base64 holds by chance; the contract lists this limit.
+  it("does not find a value of four bytes inside a longer base64 run", () => {
+    const scrub = scrubSecretValues(["7439"]);
+    for (const written of ["x7439!", "xy7439!", "7439!"]) {
+      const encoded = Buffer.from(written).toString("base64");
+      expect(scrub(encoded)).toBe(encoded);
+    }
+  });
+
   it("removes overlapping values that start at different places", () => {
     const scrub = scrubSecretValues([T, "catch-01-private-credential"]);
     expect(scrub(Buffer.from(`${T}-private-credential`).toString("hex"))).toBe("[REDACTED_SECRET]");

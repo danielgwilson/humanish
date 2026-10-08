@@ -205,7 +205,11 @@ analysis, and treats an analysis that breaks them as unavailable.
 
 The narrative scrub removes a run's known transient values, such as a received one-time code or
 link, from every generated text field. It finds each value as written and in its encoded forms:
-percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. A field
+percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes split it. Base64 and
+hex forms are searched from 6 characters. A value of 4 bytes, such as the code `7439`, is found
+in base64 written whole (`NzQzOQ` or `NzQzOQ==`) and not inside a longer base64 run, where 4 or 5
+characters of its encoding do not depend on the bytes around it;
+`tests/evidence/secret-scrub.test.ts` records the case. A field
 with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
 value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
 humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
