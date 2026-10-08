@@ -48,9 +48,13 @@ function study(): ObserverData {
   return data;
 }
 
+/** A stored note id (`note-<creation time>-<12 hex digits>`), numbered by the note's moment. */
+const noteId = (atMs: number): string =>
+  `note-20260901t110000000z-${String(atMs).padStart(12, "0")}`;
+
 function note(atMs: number, participant: string | null, text: string): RunNote {
   return {
-    id: `note-${atMs}`,
+    id: noteId(atMs),
     atMs,
     participant,
     nearest: null,
@@ -216,7 +220,7 @@ describe("reading reviewer notes", () => {
     await render({ notes: [note(6000, "late", "They gave up.")], token: null, unreadable: false });
     await click(container.querySelector('a[href="#/report"]'));
 
-    await click(container.querySelector('[data-note="note-6000"] button'));
+    await click(container.querySelector(`[data-note="${noteId(6000)}"] button`));
 
     expect(scrub().value).toBe("6000");
     expect(window.location.hash).toContain("late");

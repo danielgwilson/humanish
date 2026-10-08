@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { projectShareCheckedAnalysis, analysisSharingProblems } from "../analysis/sharing.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
-import type { RunNotes } from "../run/notes.js";
+import type { RunNotes } from "../run/note-files.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
 
 const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";

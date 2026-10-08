@@ -2,7 +2,8 @@ import { cp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { addRunNote, readRunNotes } from "../../src/run/notes.js";
+import { readRunNotes } from "../../src/run/note-files.js";
+import { addRunNote } from "../../src/run/notes.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import {

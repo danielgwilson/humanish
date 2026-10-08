@@ -6,7 +6,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { addRunNote, readRunNotes } from "../../src/run/notes.js";
+import { readRunNotes } from "../../src/run/note-files.js";
+import { addRunNote } from "../../src/run/notes.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import { bytesReadDuring } from "../helpers/bytes-read.js";
 import { noteEntries, noteId, writeNoteFile } from "../helpers/note-files.js";

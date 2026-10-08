@@ -3,33 +3,18 @@
 // first timed capture or desktop video of any participant, which is the Observer's study clock.
 
 import type { ActorTraceItem } from "../actors/contract.js";
+import { cli } from "../cli/invocation.js";
 import { redactText } from "../evidence/redaction.js";
 import type { RunBundle } from "./bundle.js";
 import { writeNewContainedOutputFile } from "./contained-output.js";
 import { loadRunBundlePrepared } from "./locate.js";
-import {
-  countRunNotes,
-  encodeRunNote,
-  MAX_NOTE_TEXT,
-  MAX_RUN_NOTES,
-  newRunNoteId,
-  runNoteFile,
-  type RunNote,
-} from "./note-files.js";
-import { streamCaptions } from "./participant-caption.js";
-import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
+import { countRunNotes, encodeRunNote, newRunNoteId, runNoteFile } from "./note-files.js";
+import { MAX_NOTE_TEXT, MAX_RUN_NOTES, type RunNote } from "./note-shape.js";
+import { runParticipantCaptions, streamParticipantIdOf } from "./participant-records.js";
 import { physicalCwdOf, runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import type { RunStream } from "./streams.js";
 import { transientCommsKnownValueScrub } from "./transient-comms-secrets.js";
 import { isNodeError } from "./type-guards.js";
-
-export {
-  MAX_NOTE_TEXT,
-  readNotesForSharing,
-  readRunNotes,
-  type RunNote,
-  type RunNotes,
-} from "./note-files.js";
 
 const DEFAULT_AUTHOR = "you";
 /** New ids a note tries when the one before was taken. */
@@ -60,22 +45,6 @@ const refuse = (code: RunNoteErrorCode, message: string): AddRunNoteResult => ({
   ok: false,
   error: { code, message },
 });
-
-/** Each participant's caption, by stream id, as the Observer and the TUI name them. */
-export function runParticipantCaptions(bundle: RunBundle): Map<string, string> {
-  return streamCaptions(
-    bundle.streams.map((stream) => {
-      const participantId = streamParticipantIdOf(stream);
-      const personaId = recordedPersonaId(bundle, stream);
-      return {
-        id: stream.id,
-        label: stream.label,
-        ...(participantId === undefined ? {} : { participantId }),
-        ...(personaId === undefined ? {} : { personaId }),
-      };
-    }),
-  );
-}
 
 /**
  * The stream id a note's participant names: a stream id, or the participant's own id from the study
@@ -217,7 +186,7 @@ export async function addRunNote(
   if (!loaded)
     return refuse(
       "HUMANISH_INVALID_RUN_BUNDLE",
-      `Run ${runIdOf(prepared)} has no run.json humanish can read safely, so no note was added. \`humanish verify --run ${runIdOf(prepared)}\` says what is wrong with it.`,
+      `Run ${runIdOf(prepared)} has no run.json humanish can read safely, so no note was added. \`${cli(`verify --run ${runIdOf(prepared)}`)}\` says what is wrong with it.`,
     );
   const { bundle } = loaded;
   const clock = runClock(bundle);

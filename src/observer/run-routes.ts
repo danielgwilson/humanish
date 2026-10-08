@@ -19,14 +19,10 @@ import {
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
 import {
-  decodeRunNote,
-  listNoteEntries,
   MAX_NOTE_FILE_BYTES,
-  noteListing,
+  readRunNotes,
   RUN_NOTES_DIR,
-  runNoteFile,
-  type RunNote,
-  type RunNotes,
+  type RunNoteFiles,
 } from "../run/note-files.js";
 import type { RunDisplay } from "../run/display.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
@@ -111,33 +107,19 @@ async function readServedAnalysisSpend(
 }
 
 /**
- * The run's reviewer notes as served: notes/ listed, and each note file read within
- * MAX_NOTE_FILE_BYTES through the root's checks, so a --safe root's admission and hash checks
- * apply to every note. A file that is not a readable note of the run is skipped and counted.
+ * The run's note files as served: each read through the root's checks, so a --safe root's
+ * admission and hash checks apply to every note.
  */
-async function readServedNotes(runRoot: PinnedDirectory): Promise<RunNotes> {
-  const runId = path.basename(runRoot.physicalPath);
-  let listing;
-  try {
-    await assertPinnedDirectory(runRoot);
-    listing = await listNoteEntries(path.join(runRoot.physicalPath, RUN_NOTES_DIR));
-  } catch {
-    return { runId, notes: [], skipped: [`${RUN_NOTES_DIR} is not a plain folder.`] };
-  }
-  if (listing === null) return { runId, notes: [], skipped: [] };
-  const { ids, skipped } = noteListing(listing);
-  const notes: RunNote[] = [];
-  for (const id of ids) {
-    const bytes = await readContainedFile(
-      runRoot,
-      path.join(runRoot.physicalPath, runNoteFile(id)),
-      { maxBytes: MAX_NOTE_FILE_BYTES },
-    );
-    const note = bytes === null ? null : decodeRunNote(bytes, runId, id);
-    if (note === null) skipped.push(`${runNoteFile(id)} was skipped.`);
-    else notes.push(note);
-  }
-  return { runId, notes, skipped };
+function servedNoteFiles(runRoot: PinnedDirectory): RunNoteFiles {
+  return {
+    runId: path.basename(runRoot.physicalPath),
+    async directory() {
+      await assertPinnedDirectory(runRoot);
+      return runRoot.physicalPath;
+    },
+    read: (relativePath, maxBytes) =>
+      readContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath), { maxBytes }),
+  };
 }
 
 /**
@@ -184,7 +166,7 @@ export async function serveRunPath(
       return;
     }
     const analysis = await readObserverAnalysis(runRoot);
-    const notes = await readServedNotes(runRoot);
+    const notes = await readRunNotes(servedNoteFiles(runRoot));
     writeResponse(
       response,
       200,

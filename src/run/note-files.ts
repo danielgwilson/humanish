@@ -9,38 +9,56 @@
 import { randomBytes } from "node:crypto";
 import { lstat, opendir } from "node:fs/promises";
 import path from "node:path";
+import { z } from "zod";
 
 import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { readBoundedFileResult } from "./evidence-files.js";
-import { runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
-import { isNodeError, isRecord } from "./type-guards.js";
+import {
+  MAX_NOTE_TEXT,
+  MAX_RUN_NOTES,
+  NOTE_FIELD_LIMITS,
+  NOTE_ID,
+  type RunNote,
+} from "./note-shape.js";
+import {
+  runIdOf,
+  validatePreparedRunRootIdentity,
+  type PreparedRunArtifactPaths,
+} from "./paths.js";
+import { isNodeError } from "./type-guards.js";
 
 const RUN_NOTE_SCHEMA = "humanish.run-note.v1";
 export const RUN_NOTES_DIR = "notes";
 /** The bytes one note file may hold: 2000 characters of text with JSON escapes, and its fields. */
 export const MAX_NOTE_FILE_BYTES = 16 * 1024;
-/** The notes one run keeps. A reader reads this many and names the rest. */
-export const MAX_RUN_NOTES = 500;
-export const MAX_NOTE_TEXT = 2000;
 /** The entries a reader lists in notes/ before it stops. */
 const MAX_LISTED_ENTRIES = 2 * MAX_RUN_NOTES;
-const NOTE_ID = /^note-\d{8}t\d{9}z-[0-9a-f]{12}$/;
 /** A temporary file of a write in progress, or of one a stopped writer left. Never a note. */
 const WRITE_IN_PROGRESS = /^\.humanish-write-/;
 
-export interface RunNote {
-  id: string;
-  /** Milliseconds from the run clock's start. */
-  atMs: number;
-  /** The participant's stream id, or null for a note on the whole run. */
-  participant: string | null;
-  /** The latest timed capture or event at or before the moment, with its participant. */
-  nearest: { participant: string; itemId: string } | null;
-  text: string;
-  author: string;
-  createdAt: string;
-  editedAt: string | null;
-}
+const text = (max: number) => z.string().min(1).max(max);
+const timestamp = text(NOTE_FIELD_LIMITS.timestamp).refine((value) =>
+  Number.isFinite(Date.parse(value)),
+);
+
+/** A note file. Fields a later release adds are dropped on reading, so they never hide a note. */
+const runNoteFileSchema = z.object({
+  schema: z.literal(RUN_NOTE_SCHEMA),
+  runId: z.string(),
+  id: z.string().regex(NOTE_ID),
+  atMs: z.int().min(0),
+  participant: text(NOTE_FIELD_LIMITS.participant).nullable(),
+  nearest: z
+    .object({
+      participant: text(NOTE_FIELD_LIMITS.participant),
+      itemId: text(NOTE_FIELD_LIMITS.itemId),
+    })
+    .nullable(),
+  text: text(MAX_NOTE_TEXT),
+  author: text(NOTE_FIELD_LIMITS.author),
+  createdAt: timestamp,
+  editedAt: timestamp.nullable(),
+}) satisfies z.ZodType<RunNote>;
 
 /** A run's notes as read, in the order they were added, and why any file was skipped. */
 export interface RunNotes {
@@ -65,61 +83,25 @@ export function encodeRunNote(note: RunNote, runId: string): string {
   return `${JSON.stringify({ schema: RUN_NOTE_SCHEMA, runId, ...note }, null, 2)}\n`;
 }
 
-const text = (value: unknown, max: number): value is string =>
-  typeof value === "string" && value.length > 0 && value.length <= max;
-const timestamp = (value: unknown): value is string =>
-  text(value, 64) && Number.isFinite(Date.parse(value));
-
 /** The note in a note file's bytes, when it is a note of `runId` stored under its own `id`. */
-export function decodeRunNote(bytes: Buffer, runId: string, id: string): RunNote | null {
+function decodeRunNote(bytes: Buffer, runId: string, id: string): RunNote | null {
   let value: unknown;
   try {
     value = JSON.parse(bytes.toString("utf8"));
   } catch {
     return null;
   }
-  if (
-    !isRecord(value) ||
-    value.schema !== RUN_NOTE_SCHEMA ||
-    value.runId !== runId ||
-    value.id !== id ||
-    typeof value.atMs !== "number" ||
-    !Number.isSafeInteger(value.atMs) ||
-    value.atMs < 0 ||
-    !(value.participant === null || text(value.participant, 256)) ||
-    !(
-      value.nearest === null ||
-      (isRecord(value.nearest) &&
-        text(value.nearest.participant, 256) &&
-        text(value.nearest.itemId, 256))
-    ) ||
-    !text(value.text, MAX_NOTE_TEXT) ||
-    !text(value.author, 80) ||
-    !timestamp(value.createdAt) ||
-    !(value.editedAt === null || timestamp(value.editedAt))
-  )
-    return null;
-  const nearest = isRecord(value.nearest) ? value.nearest : null;
-  return {
-    id,
-    atMs: value.atMs,
-    participant: value.participant,
-    nearest:
-      nearest === null
-        ? null
-        : { participant: String(nearest.participant), itemId: String(nearest.itemId) },
-    text: value.text,
-    author: value.author,
-    createdAt: value.createdAt,
-    editedAt: value.editedAt,
-  };
+  const parsed = runNoteFileSchema.safeParse(value);
+  if (!parsed.success || parsed.data.runId !== runId || parsed.data.id !== id) return null;
+  const { schema: _schema, runId: _runId, ...note } = parsed.data;
+  return note;
 }
 
 /**
  * Up to MAX_LISTED_ENTRIES names in the notes directory at `dir`, or null when there is none.
  * Throws when `dir` is there and is not a plain directory.
  */
-export async function listNoteEntries(
+async function listNoteEntries(
   dir: string,
 ): Promise<{ names: string[]; truncated: boolean } | null> {
   try {
@@ -144,7 +126,7 @@ export async function listNoteEntries(
 }
 
 /** The note ids to read from a listing of notes/, in creation order, and what was left out. */
-export function noteListing(listing: { names: readonly string[]; truncated: boolean }): {
+function noteListing(listing: { names: readonly string[]; truncated: boolean }): {
   ids: string[];
   skipped: string[];
 } {
@@ -178,15 +160,46 @@ export async function countRunNotes(prepared: PreparedRunArtifactPaths): Promise
 }
 
 /**
- * The run's notes. Each file is read through the bounded reader, which refuses a link, a special
- * file or anything over MAX_NOTE_FILE_BYTES before reading past the limit; a file it refuses, or
- * that is not a note of this run, is skipped and named in `skipped`.
+ * Where a run's notes are read from: the run's id, its directory, and a reader of the files under
+ * it that refuses a link or a special file and stops at `maxBytes`.
  */
-export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<RunNotes> {
-  const runId = runIdOf(prepared);
+export interface RunNoteFiles {
+  readonly runId: string;
+  /** The run directory's physical path, once it is checked to be the directory bound. Throws otherwise. */
+  directory(): Promise<string>;
+  /** A file under the run directory: its bytes, "limit" when it holds more than `maxBytes`, or null. */
+  read(relativePath: string, maxBytes: number): Promise<Buffer | "limit" | null>;
+}
+
+/** The run's note files through the bounded reader, which rechecks the run directory on each read. */
+function boundedNoteFiles(prepared: PreparedRunArtifactPaths): RunNoteFiles {
+  return {
+    runId: runIdOf(prepared),
+    async directory() {
+      await validatePreparedRunRootIdentity(prepared);
+      return prepared.physicalRunRoot;
+    },
+    async read(relativePath, maxBytes) {
+      const read = await readBoundedFileResult(prepared, relativePath, maxBytes);
+      return read.state === "read" ? read.bytes : read.state === "limit" ? "limit" : null;
+    },
+  };
+}
+
+/**
+ * The run's notes, read from its prepared paths through the bounded reader or through `from`, the
+ * files of a run the caller already holds (the served Observer passes its pinned root's). Each file
+ * is read within MAX_NOTE_FILE_BYTES; a file the reader refuses, or that is not a note of this run,
+ * is skipped and named in `skipped`.
+ */
+export async function readRunNotes(
+  from: PreparedRunArtifactPaths | RunNoteFiles,
+): Promise<RunNotes> {
+  const files = "physicalRunRoot" in from ? boundedNoteFiles(from) : from;
+  const { runId } = files;
   let listing;
   try {
-    listing = await listNoteEntries(path.join(prepared.physicalRunRoot, RUN_NOTES_DIR));
+    listing = await listNoteEntries(path.join(await files.directory(), RUN_NOTES_DIR));
   } catch {
     return {
       runId,
@@ -198,12 +211,12 @@ export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<
   const { ids, skipped } = noteListing(listing);
   const notes: RunNote[] = [];
   for (const id of ids) {
-    const read = await readBoundedFileResult(prepared, runNoteFile(id), MAX_NOTE_FILE_BYTES);
-    const note = read.state === "read" ? decodeRunNote(read.bytes, runId, id) : null;
+    const read = await files.read(runNoteFile(id), MAX_NOTE_FILE_BYTES);
+    const note = Buffer.isBuffer(read) ? decodeRunNote(read, runId, id) : null;
     if (note !== null) notes.push(note);
     else
       skipped.push(
-        read.state === "limit"
+        read === "limit"
           ? `${runNoteFile(id)} is over ${MAX_NOTE_FILE_BYTES / 1024} KiB, so it was skipped.`
           : `${runNoteFile(id)} is not a readable note of run ${runId}, so it was skipped.`,
       );
@@ -211,8 +224,11 @@ export async function readRunNotes(prepared: PreparedRunArtifactPaths): Promise<
   return { runId, notes, skipped };
 }
 
-/** What verify's text scan finds in shared notes: a secret-shaped value, or text it cannot read. */
-type NotesFinding = "sensitive" | "opaque";
+/** What verify's text scan finds in notes about to be shared, and the share safety that gives them. */
+export interface NotesSharingProblem {
+  status: "local_only" | "blocked";
+  reason: { code: "PUBLIC_SAFETY_FINDINGS" | "UNSCANNED_ARTIFACT"; message: string };
+}
 
 /**
  * The run's notes as a caller is about to share them, read once, with what verify's text scan
@@ -221,9 +237,31 @@ type NotesFinding = "sensitive" | "opaque";
  */
 export async function readNotesForSharing(
   prepared: PreparedRunArtifactPaths,
-): Promise<{ notes: RunNotes; finding: NotesFinding | null }> {
+): Promise<{ notes: RunNotes; problem: NotesSharingProblem | null }> {
   const notes = await readRunNotes(prepared);
-  if (notes.notes.length === 0) return { notes, finding: null };
+  if (notes.notes.length === 0) return { notes, problem: null };
   const scan = scanEncodedTextCached(JSON.stringify(notes.notes));
-  return { notes, finding: scan.sensitive ? "sensitive" : scan.opaque ? "opaque" : null };
+  if (scan.sensitive)
+    return {
+      notes,
+      problem: {
+        status: "blocked",
+        reason: {
+          code: "PUBLIC_SAFETY_FINDINGS",
+          message: "The reviewer notes being shared match secret, token or local-path patterns.",
+        },
+      },
+    };
+  if (scan.opaque)
+    return {
+      notes,
+      problem: {
+        status: "local_only",
+        reason: {
+          code: "UNSCANNED_ARTIFACT",
+          message: "The reviewer notes being shared hold encoded text the scan cannot read.",
+        },
+      },
+    };
+  return { notes, problem: null };
 }

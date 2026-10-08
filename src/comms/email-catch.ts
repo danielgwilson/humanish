@@ -12,6 +12,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
+import { readBodyAtMost } from "../observer/http.js";
 import { capturedInlineImages } from "./images.js";
 import type { CommsChannel, CommsInlineImage, InboundRaw } from "./types.js";
 
@@ -165,27 +166,6 @@ export const DEFAULT_EMAIL_PROFILES: EmailSendProfile[] = [
 
 // ---------------------------------------------------------------- server
 
-class BodyTooLargeError extends Error {}
-
-function readBody(req: IncomingMessage, limit: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let size = 0;
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > limit) {
-        // Reject without destroying the socket here: the handler responds 413 cleanly first (a
-        // write-after-destroy would otherwise reset the connection), then tears the request down.
-        reject(new BodyTooLargeError("request body too large"));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
-}
-
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 
 /**
@@ -228,20 +208,16 @@ export async function startEmailCatchServer(
       respondJson(res, 404, { error: "not found" });
       return;
     }
-    let raw: string;
-    try {
-      raw = await readBody(req, MAX_BODY_BYTES);
-    } catch (error) {
-      if (!res.headersSent)
-        respondJson(res, error instanceof BodyTooLargeError ? 413 : 400, {
-          error: "request body could not be read",
-        });
-      req.destroy();
+    const body = await readBodyAtMost(req, MAX_BODY_BYTES).catch(() => undefined);
+    if (body === null || body === undefined) {
+      // The rest of the body is never read, so the connection closes after this answer.
+      res.setHeader("connection", "close");
+      respondJson(res, body === null ? 413 : 400, { error: "request body could not be read" });
       return;
     }
     let parsed: unknown;
     try {
-      parsed = JSON.parse(raw.length > 0 ? raw : "{}");
+      parsed = JSON.parse(body.length > 0 ? body.toString("utf8") : "{}");
     } catch {
       respondJson(res, 422, { error: "invalid JSON body" });
       return;

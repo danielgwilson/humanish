@@ -1,9 +1,11 @@
 // The run bundle's participant records, written and read. A route describes each participant (its
 // record and stream fields, its events) and these functions give them the bundle's saved shape and
-// field names; readers ask them for the ids a saved record carries. This module and run/bundle.ts
-// (its types and bundleHead) and run/streams.ts are where those contract spellings live.
+// field names; readers ask them for the ids a saved record carries and the caption it shows. This
+// module and run/bundle.ts (its types and bundleHead) and run/streams.ts are where those contract
+// spellings live.
 
 import type { RunBundle, RunEvent, RunProviderResource, RunSimulation } from "./bundle.js";
+import { streamCaptions } from "./participant-caption.js";
 import type { RunStream } from "./streams.js";
 
 /** The ids a participant's saved records carry: its record id and its stream id. */
@@ -101,4 +103,22 @@ export function recordedPersonaId(
 ): string | undefined {
   if (stream.simId === undefined || !Array.isArray(bundle.simulations)) return undefined;
   return bundle.simulations.find((record) => record?.id === stream.simId)?.personaId;
+}
+
+/** Each participant's caption, by stream id, as the Observer and the TUI name them. */
+export function runParticipantCaptions(
+  bundle: Pick<RunBundle, "streams" | "simulations">,
+): Map<string, string> {
+  return streamCaptions(
+    bundle.streams.map((stream) => {
+      const participantId = streamParticipantIdOf(stream);
+      const personaId = recordedPersonaId(bundle, stream);
+      return {
+        id: stream.id,
+        label: stream.label,
+        ...(participantId === undefined ? {} : { participantId }),
+        ...(personaId === undefined ? {} : { personaId }),
+      };
+    }),
+  );
 }

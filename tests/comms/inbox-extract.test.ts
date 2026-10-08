@@ -1,3 +1,4 @@
+import http from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { extractLinks, extractOtpCodes } from "../../src/comms/extract.js";
@@ -261,5 +262,37 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     expect(malformed.status).toBe(422); // parsed to zero recipients → bad request, not a crash
     // The server is still healthy afterwards.
     expect((await fetch(`${server.url}/health`)).status).toBe(200);
+  });
+
+  it("answers 413 to a send over 5 MiB, streamed without a length, and delivers nothing", async () => {
+    const bus = new FakeInbox();
+    const user = await bus.provision("user-11");
+    server = await startEmailCatchServer(bus);
+    const body = JSON.stringify({
+      from: "app",
+      to: [user.value],
+      subject: "large",
+      html: "x".repeat(5 * 1024 * 1024),
+    });
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const request = http.request(
+        `${server!.url}/emails`,
+        { method: "POST", headers: { "content-type": "application/json" } },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode ?? 0);
+        },
+      );
+      // The server stops reading at the limit; a write it never reads may fail after it answers.
+      request.on("error", reject);
+      // A write before end() sends the body chunked, with no content-length.
+      request.write(body);
+      request.end();
+    });
+
+    expect(status).toBe(413);
+    expect(server.received).toEqual([]);
+    expect(await bus.poll(user)).toEqual([]);
   });
 });

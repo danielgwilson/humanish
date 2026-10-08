@@ -18,7 +18,7 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
-import { readNotesForSharing } from "../run/notes.js";
+import { readNotesForSharing, type NotesSharingProblem } from "../run/note-files.js";
 import { cli } from "../cli/invocation.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import {
@@ -177,10 +177,10 @@ async function draftFeedbackBound(
   // The notes the draft includes are this set, checked here: a note can be added or changed after
   // verify read the run.
   const shared = await readNotesForSharing(context.preparedRunPaths);
-  if (shared.finding !== null)
+  if (shared.problem !== null)
     return {
       context,
-      result: notesRefusal(cwd, runInput, context.storedRunId, verified, shared.finding),
+      result: notesRefusal(cwd, runInput, context.storedRunId, verified, shared.problem),
     };
 
   const candidates = summarizeCandidates(context.loaded.bundle);
@@ -257,30 +257,15 @@ function notesRefusal(
   runInput: string,
   runId: string,
   verified: VerifyResult,
-  finding: "sensitive" | "opaque",
+  problem: NotesSharingProblem,
 ): FeedbackResult {
   return {
     schema: FEEDBACK_RESULT_SCHEMA,
     ok: false,
     cwd,
     run: runInput,
-    shareSafety: {
-      status: "blocked",
-      reasons: [
-        ...verified.shareSafety.reasons,
-        finding === "sensitive"
-          ? {
-              code: "PUBLIC_SAFETY_FINDINGS",
-              message:
-                "The reviewer notes the draft would include match secret, token or local-path patterns.",
-            }
-          : {
-              code: "UNSCANNED_ARTIFACT",
-              message:
-                "The reviewer notes the draft would include hold encoded text the scan cannot read.",
-            },
-      ],
-    },
+    // A draft is written only from share_ready evidence, so any problem in its notes refuses it.
+    shareSafety: { status: "blocked", reasons: [...verified.shareSafety.reasons, problem.reason] },
     error: {
       code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
       message: `The run's reviewer notes hold text that looks like a secret, a token or a local path, so no draft was written. Run \`${cli(`verify --run ${runId}`)}\` and fix the note files in notes/.`,
