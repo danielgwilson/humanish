@@ -43,8 +43,8 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number | 
     <App
       options={options}
       onReady={ready}
-      onKeyEntry={() => {
-        outcome = { action: "agentmail-key" };
+      onKeyEntry={(handoff) => {
+        outcome = handoff;
       }}
     />,
     {

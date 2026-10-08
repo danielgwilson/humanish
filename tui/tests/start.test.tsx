@@ -18,6 +18,15 @@ import { LABS, NOW, RUNS } from "./fixtures.js";
 // formatter, which readStudySummary carries to the screen.
 const OPENAI_BUDGET_LINE =
   "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over $3; this is not a billing cap. Set review.analysis: false to disable.";
+/** The OpenAI budget that line describes, as readStudySummary returns it. */
+const OPENAI_ANALYSIS = {
+  model: "gpt-6-astra",
+  maxCostUsd: 3,
+  trigger: "default" as const,
+  participants: 2,
+  expectedCostUsd: { low: 0.8032, high: 3.8392 },
+  line: OPENAI_BUDGET_LINE,
+};
 const CODEX_BUDGET_LINE =
   "After live runs: Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.";
 
@@ -116,6 +125,7 @@ describe("starting a run", () => {
         schema: "humanish.study-summary.v1",
         studyId: "signup-flow",
         caps: {},
+        mode: "live",
         keysReady: true,
         runtime: {
           ok: true,
@@ -156,6 +166,7 @@ describe("starting a run", () => {
           schema: "humanish.study-summary.v1",
           studyId: "signup-flow",
           caps: {},
+          mode: "live",
           analysis: {
             provider: "codex",
             billing: "account-unknown",
@@ -175,8 +186,12 @@ describe("starting a run", () => {
         expect(frame).not.toMatch(/\$null|\$3/);
         expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
-        expect(armed.replace(/\s+/g, " ")).toContain("Codex account analysis");
-        expect(armed.replace(/\s+/g, " ")).toContain("dollar cost unknown");
+        // The prompt restates the same line `humanish run` prints at a live start, once.
+        expect(armed.replace(/\s+/g, " ")).toContain(
+          `start a live run? 2m · ~$1.20 median · 1 run · no participant cap set. ${CODEX_BUDGET_LINE} · ⏎ confirm · esc cancel`,
+        );
+        expect(armed.replace(/\s+/g, " ").split("After live runs:")).toHaveLength(2);
+        expect(armed.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         expect(started).toHaveLength(0);
       } finally {
         surface.unmount();
@@ -192,14 +207,8 @@ describe("starting a run", () => {
           schema: "humanish.study-summary.v1",
           studyId: "signup-flow",
           caps: { laneUsd: 1 },
-          analysis: {
-            model: "gpt-6-astra",
-            maxCostUsd: 3,
-            trigger: "default",
-            participants: 2,
-            expectedCostUsd: { low: 0.8032, high: 3.8392 },
-            line: OPENAI_BUDGET_LINE,
-          },
+          mode: "live",
+          analysis: OPENAI_ANALYSIS,
         }),
       });
       const { surface } = await openLab(options, columns);
@@ -211,8 +220,10 @@ describe("starting a run", () => {
         expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
         expect(armed.replace(/\s+/g, " ")).toContain(
-          "analysis ($3 admission estimate limit, separate from participant spend)",
+          `start a live run? 2m · ~$1.20 median · 1 run · caps $1 per participant. ${OPENAI_BUDGET_LINE} · ⏎ confirm · esc cancel`,
         );
+        expect(armed.replace(/\s+/g, " ").split("After live runs:")).toHaveLength(2);
+        expect(armed.split("\n").every((line) => [...line].length <= columns)).toBe(true);
         expect(started).toHaveLength(0);
       } finally {
         surface.unmount();
@@ -542,6 +553,7 @@ describe("what the surface says about the run it just started", () => {
         schema: "humanish.study-summary.v1" as const,
         studyId: "signup-flow",
         caps: {},
+        mode: "live" as const,
         keysReady: false,
         missingKeys: ["OPENAI_API_KEY"],
       }),
@@ -613,6 +625,158 @@ describe("a lab whose live plan is refused", () => {
       }
     },
   );
+});
+
+describe("Run again", () => {
+  const liveSummary = {
+    schema: "humanish.study-summary.v1" as const,
+    studyId: "signup-flow",
+    caps: { laneUsd: 1 },
+    mode: "live" as const,
+    analysis: OPENAI_ANALYSIS,
+  };
+  const dryRun = {
+    runId: "cua-2026-08-19T09-00-00-000Z-dd00dd00",
+    derivedFrom: "status" as const,
+    liveness: "finished" as const,
+    mode: "dry-run" as const,
+    study: { id: "signup-flow" },
+    startedAt: "2026-08-19T09:00:00.000Z",
+    completedAt: "2026-08-19T09:00:01.000Z",
+    verdict: "contract_proof_only",
+    estimatedCostUsd: 0,
+  };
+
+  /** The run card of the study's run whose row matches, with the cursor on Run again. */
+  async function openRunCard(options: TuiOptions, row: RegExp) {
+    const { surface } = await openLab(options);
+    await pressUntilFrame(surface, KEY.down, (frame) => row.test(frame));
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Run again"));
+    return surface;
+  }
+
+  it("arms a live rerun, shows what it costs, and starts it on the second Enter", async () => {
+    const { options, started } = harness({ readStudySummary: async () => liveSummary });
+    const surface = await openRunCard(options, /❯[^\n]*2\/2 reached the goal/);
+    try {
+      const armed = await surface.press(KEY.enter, (frame) => frame.includes("run again live?"));
+      expect(armed.replace(/\s+/g, " ")).toContain(
+        `run again live? 2m · ~$1.20 median · 1 run · caps $1 per participant. ${OPENAI_BUDGET_LINE} · ⏎ again to confirm · esc cancel`,
+      );
+      expect(started).toHaveLength(0);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await surface.press(KEY.enter, (frame) => frame.includes("started"));
+      expect(started).toHaveLength(1);
+      expect(started[0]?.mode).toBe("live");
+    } finally {
+      surface.unmount();
+    }
+  });
+
+  it("escape cancels an armed live rerun and starts nothing", async () => {
+    const { options, started } = harness({ readStudySummary: async () => liveSummary });
+    const surface = await openRunCard(options, /❯[^\n]*2\/2 reached the goal/);
+    try {
+      await surface.press(KEY.enter, (frame) => frame.includes("run again live?"));
+      const cancelled = await surface.press(
+        KEY.escape,
+        (frame) => frame.includes("❯ Run again") && !frame.includes("run again live?"),
+      );
+      expect(cancelled).toContain("2/2 reached the goal");
+      expect(started).toHaveLength(0);
+    } finally {
+      surface.unmount();
+    }
+  });
+
+  it("starts nothing when the live run's study file now runs as a dry run", async () => {
+    const { options, started } = harness({
+      readStudySummary: async () => ({ ...liveSummary, mode: "dry-run" as const }),
+    });
+    const surface = await openRunCard(options, /❯[^\n]*2\/2 reached the goal/);
+    try {
+      const note = await surface.press(KEY.enter, (frame) => frame.includes("Set mode: live"));
+      expect(note.replace(/\s+/g, " ")).toContain(
+        "Set mode: live in humanish/labs/signup-flow.yaml to start a live run.",
+      );
+      expect(note).not.toContain("run again live?");
+      expect(started).toHaveLength(0);
+    } finally {
+      surface.unmount();
+    }
+  });
+
+  it("starts a dry rerun on one Enter", async () => {
+    const { options, started } = harness({
+      readStudySummary: async () => liveSummary,
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: [...RUNS, dryRun],
+        unreadable: [],
+      }),
+    });
+    const surface = await openRunCard(options, /❯[^\n]*08-19 09:00/);
+    try {
+      await surface.press(KEY.enter, (frame) => frame.includes("started"));
+      expect(started).toHaveLength(1);
+      expect(started[0]?.mode).toBe("dry-run");
+    } finally {
+      surface.unmount();
+    }
+  });
+});
+
+describe("a study whose file runs as a dry run", () => {
+  it("checks the live run's keys and starts nothing from the live row", async () => {
+    // The cua-browser starter's shape: computer-use, `mode: dry-run`. `humanish run` runs this file
+    // as a dry run, so a live start from here would start a dry run.
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-dry-file-"));
+    try {
+      await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+      await writeFile(
+        path.join(cwd, "humanish/studies/browser.yaml"),
+        JSON.stringify({
+          schema: "humanish.study.v3",
+          id: "browser",
+          route: "computer-use",
+          mode: "dry-run",
+          subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+          actor: { type: "openai-computer-use", mission: "Use the app." },
+          execution: { target: "e2b-desktop" },
+        }),
+      );
+      const { options, started } = harness({
+        // An empty key store: strict keys read only this env, which holds none.
+        readStudySummary: (_cwd, _study, summaryOptions) =>
+          readStudySummary(cwd, "browser", {
+            ...summaryOptions,
+            env: { HUMANISH_STRICT_KEYS: "1" },
+          }),
+      });
+      const { surface } = await openLab(options);
+      try {
+        const live = await surface.press(
+          KEY.down,
+          (frame) => frame.includes("❯ Start a live run") && frame.includes("keys ✗"),
+        );
+        expect(live).toContain("E2B_API_KEY, OPENAI_API_KEY not found");
+        expect(live).toMatch(/Start a live run .*needs mode: live/);
+        expect(live).not.toContain("keys ✓");
+        const pressed = await surface.press(KEY.enter, (frame) => frame.includes("Set mode: live"));
+        expect(pressed.replace(/\s+/g, " ")).toContain(
+          "Set mode: live in humanish/labs/signup-flow.yaml to start a live run.",
+        );
+        expect(pressed).not.toContain("start a live run?");
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        expect(started).toHaveLength(0);
+      } finally {
+        surface.unmount();
+      }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });
 
 /** Local copy of the intent-based navigation helper (this file predates the shared one). */

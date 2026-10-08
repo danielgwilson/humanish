@@ -35,8 +35,9 @@ From the repo root (pnpm workspace):
 - `src/start-study.ts`: starts a study detached and waits for the run record it writes.
 - `src/navigation.ts`: the screen stack as a pure reducer, so the whole navigation model is
   testable without a terminal.
-- `src/screens/`: six screens. `labs`, `lab` and `run` are the main path; `all-runs` opens from
-  the row below the last lab; `help` opens on `?`; `connections` opens on `c`.
+- `src/screens/`: seven screens. `studies`, `study` and `run` are the main path; `all-runs` opens
+  from the row below the last study; `help` opens on `?`; `keys` opens on `c`, and its email row
+  opens `connections`.
 - `src/testing/render-to-text.tsx`: the in-repo render harness.
 - `tests/golden/*.txt`: committed frames at 80 and 45 columns.
 - `build.mjs`: esbuild config, including the two bundling workarounds below.
