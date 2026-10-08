@@ -293,15 +293,58 @@ describe("provider-key discovery", () => {
       deps: deps(),
     });
     expect(probes).toEqual([
-      { name: "OPENAI_API_KEY", source: "process env", hint: missingKeyHint("OPENAI_API_KEY") },
+      { name: "OPENAI_API_KEY", source: "process env", hint: "run `humanish keys set openai`" },
       {
         name: "E2B_API_KEY",
         source: path.join(".humanish", "local", "provider.env"),
-        hint: missingKeyHint("E2B_API_KEY"),
+        hint: "run `e2b auth login`, or `humanish keys set e2b`",
       },
-      { name: "GH_TOKEN", source: null, hint: missingKeyHint("GH_TOKEN") },
+      {
+        name: "GH_TOKEN",
+        source: null,
+        hint: "run `gh auth login`, or `humanish keys set github`",
+      },
     ]);
     expect(env.E2B_API_KEY).toBeUndefined(); // probe did not fill
+  });
+
+  it("reports GITHUB_TOKEN in the env as the source of GH_TOKEN, and not the other way round", async () => {
+    const [ghFromGithub] = await probeKeySources(["GH_TOKEN"], {
+      cwd,
+      env: { GITHUB_TOKEN: "synthetic-github-value" },
+      deps: deps(),
+    });
+    expect(ghFromGithub?.source).toBe("process env (GITHUB_TOKEN)");
+    const [githubFromGh] = await probeKeySources(["GITHUB_TOKEN"], {
+      cwd,
+      env: { GH_TOKEN: "synthetic-gh-value" },
+      deps: deps(),
+    });
+    expect(githubFromGh?.source).toBeNull();
+  });
+
+  it("names the vendor login and the `keys set` argument that fill each key", () => {
+    expect(
+      [
+        "OPENAI_API_KEY",
+        "E2B_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "CODEX_API_KEY",
+        "AGENTMAIL_API_KEY",
+        "EXAMPLE_CONNECTION_KEY",
+      ].map((name) => `${name}: ${missingKeyHint(name)}`),
+    ).toEqual([
+      "OPENAI_API_KEY: run `humanish keys set openai`",
+      "E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`",
+      "ANTHROPIC_API_KEY: run `humanish keys set anthropic`",
+      "GH_TOKEN: run `gh auth login`, or `humanish keys set github`",
+      "GITHUB_TOKEN: run `gh auth login`, or `humanish keys set github`",
+      "CODEX_API_KEY: run `humanish keys set CODEX_API_KEY`",
+      "AGENTMAIL_API_KEY: run `humanish keys set agentmail`",
+      "EXAMPLE_CONNECTION_KEY: run `humanish keys set EXAMPLE_CONNECTION_KEY`",
+    ]);
   });
 
   it("describeMissingKeys names the fill command per key, and says so when discovery is off", () => {
@@ -356,6 +399,10 @@ describe("the user key store (`humanish keys`)", () => {
   it("resolveKeyName maps vendor aliases and accepts raw env names only", () => {
     expect(resolveKeyName("openai")).toBe("OPENAI_API_KEY");
     expect(resolveKeyName("E2B")).toBe("E2B_API_KEY");
+    expect(resolveKeyName("anthropic")).toBe("ANTHROPIC_API_KEY");
+    expect(resolveKeyName("github")).toBe("GH_TOKEN");
+    expect(resolveKeyName("agentmail")).toBe("AGENTMAIL_API_KEY");
+    expect(resolveKeyName("gh")).toBe("gh");
     expect(resolveKeyName("MY_CUSTOM_KEY")).toBe("MY_CUSTOM_KEY");
     expect(resolveKeyName("not a name")).toBeNull();
   });
@@ -374,7 +421,9 @@ describe("the user key store (`humanish keys`)", () => {
     expect(() => setUserKey("NODE_OPTIONS", "--require /tmp/x.js", {}, deps())).toThrow(
       /provider keys only/,
     );
-    expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(/provider keys only/);
+    expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(
+      "The store holds provider keys only (OPENAI_API_KEY, E2B_API_KEY, ANTHROPIC_API_KEY, GH_TOKEN, GITHUB_TOKEN, CODEX_API_KEY, AGENTMAIL_API_KEY). For anything else, use an explicit --dotenv.",
+    );
   });
 
   it("awkward values ('#'-leading, embedded '=') round-trip set -> discovery byte-identically", async () => {

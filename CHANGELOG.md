@@ -8,6 +8,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+The refusal of `humanish keys set` for a name that is not a provider key now lists E2B_API_KEY
+before ANTHROPIC_API_KEY.
+
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 
 humanish 0.115.0 asks the OpenAI computer-use participant for its closing report and impressions
