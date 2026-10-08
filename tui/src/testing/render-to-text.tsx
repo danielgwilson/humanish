@@ -25,6 +25,16 @@ export interface RenderedFrames {
   /** Send a keystroke, then wait for the frame it produces. Keys are in `KEY`. */
   press(input: string, until?: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
   /**
+   * Change the terminal size the way Node's tty stream does (new `columns` and `rows`, then a
+   * `resize` event), then wait for the frame laid out for it.
+   */
+  resize(
+    columns: number,
+    rows: number,
+    until?: (frame: string) => boolean,
+    timeoutMs?: number,
+  ): Promise<string>;
+  /**
    * Wait for a matching frame without sending input, searching every frame written so far and any
    * still to come. A render caused by data loading can land before or after the caller looks, so
    * waiting only for frames after a keypress races it.
@@ -170,6 +180,23 @@ export async function renderToText(
       // A keypress that changes nothing would hang forever on a "frame differs" predicate, so the
       // default waits for any non-blank frame written after the key: Ink re-renders on input.
       return waitForFrame(until ?? ((frame) => frame.trim().length > 0), from, timeoutMs);
+    },
+    resize: async (nextColumns, nextRows, until, timeoutMs) => {
+      const from = frames.length;
+      stdout.columns = nextColumns;
+      stdout.rows = nextRows;
+      stdout.emit("resize");
+      // Ink redraws the old tree at the new width before the size hook's update lands, so the
+      // first frame after the event is not the answer; the default waits for one that fits.
+      return waitForFrame(
+        until ??
+          ((frame) =>
+            frame.trim().length > 0 &&
+            frame.split("\n").every((line) => line.trimEnd().length <= nextColumns)),
+        from,
+        timeoutMs,
+        "after the resize ",
+      );
     },
     waitFor: (until, timeoutMs) => waitForFrame(until, 0, timeoutMs, ""),
     unmount: () => instance.unmount(),

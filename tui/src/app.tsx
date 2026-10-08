@@ -1,4 +1,4 @@
-import { Text, useApp, useInput } from "ink";
+import { Text, useApp, useInput, useWindowSize } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
@@ -18,7 +18,6 @@ import { StudyScreen, studyItems } from "./screens/study-screen.js";
 import { runActions } from "./screens/run-screen.js";
 import { StudiesScreen } from "./screens/studies-screen.js";
 import { RunScreen } from "./screens/run-screen.js";
-import { useTerminalSize } from "./use-terminal-size.js";
 
 /** What the surface has read. `undefined` means "not yet", which is never rendered as "none". */
 interface ProjectData {
@@ -82,7 +81,7 @@ export function App({
   tick: frozenTick,
 }: AppProps): React.ReactElement {
   const { exit } = useApp();
-  const size = useTerminalSize();
+  const size = useWindowSize();
   const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
   const [data, setData] = useState<ProjectData | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
