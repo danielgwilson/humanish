@@ -129,7 +129,10 @@ export interface TuiModule {
   startTui: StartTui;
 }
 
-/** Node version the Ink runtime requires (ink@7 declares `engines.node >= 22`). */
+/**
+ * Node version the Ink runtime requires: ink 8.0.0, which tui/package.json pins, declares
+ * `engines.node` `>=22`.
+ */
 export const TUI_MIN_NODE_MAJOR = 22;
 
 /**

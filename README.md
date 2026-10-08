@@ -484,9 +484,9 @@ At most once a day, a command run at a terminal also asks the npm registry for
 the latest humanish version, and a later command prints one line on stderr when
 yours is older. That request is a plain `GET` of humanish's dist-tags with no
 machine id, version, command or path. It is skipped in CI, without a terminal,
-for `--json`, and with `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1` or
-`HUMANISH_NO_UPDATE_CHECK=1`. [TELEMETRY.md](TELEMETRY.md#the-update-check)
-describes it.
+for `--json`, and with `DO_NOT_TRACK=1`, `HUMANISH_TELEMETRY_DISABLED=1`,
+`HUMANISH_NO_UPDATE_CHECK=1` or update-notifier's `NO_UPDATE_NOTIFIER=1`.
+[TELEMETRY.md](TELEMETRY.md#the-update-check) describes it.
 
 ## Contribute
 

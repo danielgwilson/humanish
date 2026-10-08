@@ -227,18 +227,23 @@ describe("the known-value scrub on encoded and marker-shaped text", () => {
   // A value that overlaps itself, in a text of growing length. Comparing the value again at every
   // overlapping start took 153 ms at 32,768 characters and grew fourfold per doubling.
   it("scrubs a value that overlaps itself in time linear in the text", async () => {
-    const elapsed = async (n: number): Promise<number> => {
-      let best = Number.POSITIVE_INFINITY;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const started = performance.now();
+    // CPU time of the fastest of five interleaved rounds per size, so time spent waiting for a
+    // core on a loaded runner counts against neither size.
+    const best = new Map<number, number>([
+      [8_192, Number.POSITIVE_INFINITY],
+      [32_768, Number.POSITIVE_INFINITY],
+    ]);
+    for (let round = 0; round < 5; round += 1) {
+      for (const n of best.keys()) {
+        const started = process.cpuUsage();
         expect(await knownValueScrub(["éà".repeat(n / 4)], "é%C3%A0".repeat(n / 2))).toBe(
           "[REDACTED_SECRET]",
         );
-        best = Math.min(best, performance.now() - started);
+        const used = process.cpuUsage(started);
+        best.set(n, Math.min(best.get(n)!, (used.user + used.system) / 1000));
       }
-      return best;
-    };
-    expect((await elapsed(32_768)) / Math.max(5, await elapsed(8_192))).toBeLessThan(8);
+    }
+    expect(best.get(32_768)! / Math.max(5, best.get(8_192)!)).toBeLessThan(8);
   });
 });
 

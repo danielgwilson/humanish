@@ -91,7 +91,7 @@
     "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "node scripts/check-lint-cap.mjs --max-warnings=438",
+    "lint": "node scripts/check-lint-cap.mjs --max-warnings=437",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs",
     "vocabulary:check": "tsx scripts/check-retired-words.ts",

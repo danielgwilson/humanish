@@ -4,34 +4,27 @@ import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
 import { PALETTE } from "./palette.js";
 
-import type { StudyListEntry, StudyListResult } from "../../src/study/discover.js";
-import { studyFileStem } from "../../src/study/files.js";
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
-import type { RunIndexEntry, RunIndexResult } from "../../src/run/run-index.js";
-import { studyRows, type StudyRow } from "../../src/run/projection.js";
+import type { RunIndexEntry } from "../../src/run/run-index.js";
+import type { StudyRow } from "../../src/run/projection.js";
 import type { TuiOptions } from "../../src/tui/contract.js";
-import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
+import { currentScreen, initialNav, navigate, selectedIndex } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
-import { AllRunsScreen } from "./screens/all-runs-screen.js";
-import { StudyScreen, studyItems } from "./screens/study-screen.js";
+import { frameText } from "./frame-text.js";
+import {
+  countRows,
+  identityOf,
+  indexOfIdentity,
+  itemsForStudy,
+  openSelected,
+  projectData,
+  retiredFileOf,
+  type ProjectData,
+} from "./project.js";
+import { renderScreen } from "./screen-body.js";
 import { runActions } from "./screens/run-screen.js";
-import { StudiesScreen } from "./screens/studies-screen.js";
-import { RunScreen } from "./screens/run-screen.js";
-
-/** What the surface has read. `undefined` means "not yet", which is never rendered as "none". */
-interface ProjectData {
-  rows: StudyRow[];
-  unattributed: RunIndexEntry[];
-  runsByStudy: Map<string, RunIndexEntry[]>;
-  runsById: Map<string, RunIndexEntry>;
-  unreadable: string[];
-  /**
-   * Study files humanish no longer reads. The home screen says how to fix them, and a study whose
-   * runs outlived its file says why it cannot run.
-   */
-  retired: StudyListResult["retired"];
-}
+import { startStudy } from "./start-study.js";
 
 export interface AppProps {
   onKeyEntry?: () => void;
@@ -59,10 +52,6 @@ const CHROME_ROWS = 6;
  * carefully-gated one.
  */
 const REFRESH_MS = 2_000;
-
-/** How long to wait for a started run to write its first record, and how often to look. */
-const LAUNCH_RECORD_TIMEOUT_MS = 5_000;
-const LAUNCH_RECORD_POLL_MS = 100;
 
 /**
  * The shortest gap between arming a live run and committing it. Key auto-repeat delivers around one
@@ -148,7 +137,7 @@ export function App({
         ]);
         if (cancelled) return;
         setError(undefined);
-        setData(project(index, studies.studies, studies.retired));
+        setData(projectData(index, studies.studies, studies.retired));
       } catch (cause) {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -213,68 +202,26 @@ export function App({
       setArmedAt(undefined);
       setLaunchError(undefined);
       setLaunchNote({ studyKey: row.key, text: `starting ${row.name}…` });
-      const result = await options.capabilities.startRun({
-        cwd: options.cwd,
-        study: row.name,
-        ...(row.path ? { manifestPath: row.path } : {}),
-        mode,
-      });
-      if (!result.ok) {
-        setLaunchNote(undefined);
-        setLaunchError({ studyKey: row.key, text: result.error.message });
+      const started = await startStudy(options, row, mode);
+      setLaunchNote(undefined);
+      if (!started.ok) {
+        setLaunchError({ studyKey: row.key, text: started.message });
         return;
       }
-
-      // Find the run this launch produced. A pid alone is not an identity: pids are recycled, and a
-      // finished run keeps its pid in status.json forever, so a week-old record can carry the pid
-      // the kernel just handed this child. The record must also be newer than the launch.
-      const launchedMs = Date.parse(result.run.launchedAt);
-      const isOurs = (run: RunIndexEntry): boolean => {
-        if (run.pid !== result.run.pid) return false;
-        const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
-        if (!Number.isFinite(started) || !Number.isFinite(launchedMs)) return false;
-        // A second of slack for clock granularity between the two processes.
-        return started >= launchedMs - 1_000;
-      };
-
-      const deadline = Date.now() + LAUNCH_RECORD_TIMEOUT_MS;
-      for (;;) {
-        const index = await options.capabilities.readRunIndex(options.cwd);
-        const started = index.runs.find(isOurs);
-        if (started !== undefined) {
-          // Publish what was just read before navigating. Reading the index into a local and then
-          // navigating leaves `data` on its pre-launch snapshot, so the run screen looks the new run
-          // up in a map that does not contain it and reports the run it just started as "no longer
-          // on disk": on every single start.
-          const studies = await options.capabilities.listStudies(options.cwd);
-          setData(project(index, studies.studies, studies.retired));
-          setLaunchNote(undefined);
-          // Only follow the run if the operator is still where they launched from. This resolves up
-          // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and
-          // yanking the screen out from under them is worse than not following.
-          if (screenRef.current.name === "study" && screenRef.current.studyKey === row.key) {
-            dispatch({
-              type: "enter",
-              screen: { name: "run", studyId: row.studyId, runId: started.runId },
-            });
-          }
-          return;
-        }
-        if (Date.now() >= deadline) break;
-        await new Promise((resolve) => setTimeout(resolve, LAUNCH_RECORD_POLL_MS));
+      // Publish what was just read before navigating. Reading the index into a local and then
+      // navigating leaves `data` on its pre-launch snapshot, so the run screen looks the new run
+      // up in a map that does not contain it and reports the run it just started as "no longer
+      // on disk": on every single start.
+      setData(started.data);
+      // Only follow the run if the operator is still where they launched from. This resolves up
+      // to five seconds later, by which time they may have gone somewhere else, and yanking the
+      // screen out from under them is worse than not following.
+      if (screenRef.current.name === "study" && screenRef.current.studyKey === row.key) {
+        dispatch({
+          type: "enter",
+          screen: { name: "run", studyId: row.studyId, runId: started.runId },
+        });
       }
-
-      // Still nothing. The process may have died before writing anything, and the launch log is the
-      // only account of that, so show it rather than leaving a silent gap.
-      const log = await options.capabilities.readLaunchLog(result.run.logPath);
-      setLaunchNote(undefined);
-      setLaunchError({
-        studyKey: row.key,
-        text:
-          log === ""
-            ? `${row.name} started (pid ${result.run.pid}) but has not reported in. Check ${result.run.logPath}.`
-            : `${row.name} did not report in. Its log ends:\n${log.split("\n").slice(-3).join("\n")}`,
-      });
     },
     [confirming, armedAt, options],
   );
@@ -694,438 +641,19 @@ export function App({
   return (
     <Frame
       columns={size.columns}
-      context={contextLine(screen, data, options)}
-      breadcrumb={showConnections ? "‹ connections" : breadcrumbOf(screen, data)}
-      hints={
-        showConnections
-          ? "↑↓ move  ⏎ select  esc back  q quit"
-          : showHelp
-            ? "any key returns   q quit"
-            : keyHints(
-                screen,
-                data,
-                selected,
-                confirming,
-                contentWidth(size.columns),
-                initialized,
-              ) + (options.capabilities.comms ? "   c keys and accounts" : "")
-      }
+      {...frameText({
+        screen,
+        data,
+        selected,
+        confirming,
+        initialized,
+        overlay: showConnections ? "connections" : showHelp ? "help" : undefined,
+        connections: !!options.capabilities.comms,
+        cwd: options.cwd,
+        columns: size.columns,
+      })}
     >
       {body}
     </Frame>
-  );
-}
-
-/**
- * The right of the header: the project, and whether anyone is working in it. The two things a
- * stakeholder wants without reading anything else.
- */
-function contextLine(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  options: TuiOptions,
-): string | undefined {
-  const project = options.cwd.split("/").filter(Boolean).pop();
-  // On a run card the context carries which run, because the card itself leads with the verdict:
-  // the id still has to be somewhere, and this is where the mock puts it.
-  if (screen.name === "run" && data !== undefined) {
-    const run = data.runsById.get(screen.runId);
-    const short = screen.runId.split("-").pop() ?? screen.runId;
-    return [run?.study?.id, short].filter(Boolean).join(" · ");
-  }
-  if (data === undefined) return project;
-  const live = liveRunsOf(data).length;
-  if (live === 0) return project;
-  return `${project} · ${live} participant${live === 1 ? "" : "s"} working`;
-}
-
-/** Where you are, as a path back. */
-function breadcrumbOf(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-): string | undefined {
-  if (screen.name === "studies") return undefined;
-  if (screen.name === "all-runs") return "‹ studies / all runs";
-  if (screen.name === "study") {
-    const row = data?.rows.find((candidate) => candidate.key === screen.studyKey);
-    return `‹ studies / ${row?.name ?? screen.studyKey}`;
-  }
-  const study = screen.studyId;
-  return study === undefined ? "‹ studies / run" : `‹ studies / ${study} / run`;
-}
-
-/**
- * Only the keys that do something here, and named for what they do to the current row. Enter starts
- * a run on one row and opens a run on the next, so a fixed legend would be wrong half the time:
- * and a legend that lists inert keys teaches the wrong model of the surface.
- */
-function keyHints(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  selected: number,
-  confirming: "live" | undefined,
-  width: number,
-  initialized?: boolean,
-): string {
-  // A legend that wraps leaves a lone "quit" on its own line. The arrows read as movement without
-  // the word, so a narrow terminal drops it first.
-  const full = legendFor(screen, data, selected, confirming, "↑↓ move", initialized);
-  return [...full].length <= width
-    ? full
-    : legendFor(screen, data, selected, confirming, "↑↓", initialized);
-}
-
-function legendFor(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  selected: number,
-  confirming: "live" | undefined,
-  move: string,
-  initialized?: boolean,
-): string {
-  switch (screen.name) {
-    case "studies":
-      // Nothing to move through or open on an empty screen, and a legend that lists inert keys
-      // teaches the wrong model of the surface.
-      if ((data?.rows.length ?? 0) > 0) return `${move}  ⏎ open  ? shortcuts  q quit`;
-      // An empty screen with one action still has that action; a legend that omits it makes the
-      // row look decorative.
-      return initialized === false
-        ? "⏎ set up humanish here  ? shortcuts  q quit"
-        : "? shortcuts  q quit";
-    case "study": {
-      if (confirming !== undefined) return "⏎ confirm  esc cancel";
-      const item =
-        data === undefined ? undefined : itemsForStudy(data, screen.studyKey).items[selected];
-      const enter = item?.kind === "start" ? "⏎ start" : "⏎ open";
-      return `${move}  ${enter}  esc back  ? shortcuts  q quit`;
-    }
-    case "all-runs":
-      return `${move}  ⏎ open  esc back  ? shortcuts  q quit`;
-    default: {
-      // Only when the card actually has actions: an empty legend beats one promising a key that
-      // does nothing on a run still in flight.
-      const run =
-        data === undefined
-          ? undefined
-          : data.runsById.get(screen.name === "run" ? screen.runId : "");
-      const hasActions = run !== undefined && runActions(run, undefined).length > 0;
-      return hasActions
-        ? `${move}  ⏎ select  esc back  ? shortcuts  q quit`
-        : "esc back  ? shortcuts  q quit";
-    }
-  }
-}
-
-/**
- * The file humanish no longer reads that this study's runs came from. A run records its study file's
- * project-relative path, and the declared id need not match the file name, so a recorded path is
- * matched exactly. Runs that recorded no path fall back to the file name.
- */
-function retiredFileOf(
-  data: ProjectData,
-  studyId: string | undefined,
-): StudyListResult["retired"][number] | undefined {
-  if (studyId === undefined) return undefined;
-  const slashed = (value: string): string => value.replace(/\\/g, "/");
-  const recorded = new Set(
-    (data.runsByStudy.get(studyId) ?? []).flatMap((run) =>
-      run.study?.path === undefined ? [] : [slashed(run.study.path)],
-    ),
-  );
-  if (recorded.size > 0) return data.retired.find((file) => recorded.has(slashed(file.path)));
-  return data.retired.find(
-    (file) => studyFileStem(slashed(file.path).split("/").pop() ?? "") === studyId,
-  );
-}
-
-function project(
-  index: RunIndexResult,
-  studies: readonly StudyListEntry[],
-  retired: StudyListResult["retired"],
-): ProjectData {
-  const { rows, unattributed } = studyRows(
-    studies.map((study) => ({
-      id: study.id,
-      ...(study.title === undefined ? {} : { title: study.title }),
-      ...(study.description === undefined ? {} : { description: study.description }),
-      path: study.path,
-      origin: study.origin,
-    })),
-    index.runs,
-  );
-  const runsByStudy = new Map<string, RunIndexEntry[]>();
-  const runsById = new Map<string, RunIndexEntry>();
-  for (const run of index.runs) {
-    runsById.set(run.runId, run);
-    const studyId = run.study?.id;
-    if (studyId === undefined) continue;
-    const bucket = runsByStudy.get(studyId);
-    if (bucket === undefined) runsByStudy.set(studyId, [run]);
-    else bucket.push(run);
-  }
-  return { rows, unattributed, runsByStudy, runsById, unreadable: index.unreadable, retired };
-}
-
-/**
- * Every live run in the project, once.
- *
- * Not a flatMap over study rows: two manifests can declare the same study id, so a run belonging to
- * that id is reachable from both rows and would be listed twice: the same participant, twice, at
- * the same elapsed time, which reads as two people working.
- */
-function liveRunsOf(data: ProjectData): RunIndexEntry[] {
-  const seen = new Set<string>();
-  const out: RunIndexEntry[] = [];
-  for (const run of data.rows.flatMap((row) => row.liveRuns)) {
-    if (seen.has(run.runId)) continue;
-    seen.add(run.runId);
-    out.push(run);
-  }
-  return out;
-}
-
-/** A study's display name from its id, for screens that only carry the id. */
-function labelForStudy(data: ProjectData, studyId: string | undefined): string {
-  if (studyId === undefined) return "";
-  return data.rows.find((row) => row.studyId === studyId)?.label ?? studyId;
-}
-
-/** The study screen's rows, from the one definition both counting and opening share. */
-function itemsForStudy(
-  data: ProjectData,
-  studyKey: string,
-): { row?: StudyRow; items: ReturnType<typeof studyItems> } {
-  const row = data.rows.find((candidate) => candidate.key === studyKey);
-  if (row === undefined) return { items: [] };
-  return { row, items: studyItems(data.runsByStudy.get(row.studyId) ?? [], row.declared) };
-}
-
-function countRows(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  detail?: RunDetail | null,
-): number {
-  if (data === undefined) return 0;
-  switch (screen.name) {
-    case "studies":
-      // The labs, plus the "All runs" peer beneath them.
-      return data.rows.length + 1;
-    case "all-runs":
-      return liveRunsOf(data).length;
-    case "study":
-      return itemsForStudy(data, screen.studyKey).items.length;
-    case "run": {
-      const run = data.runsById.get(screen.runId);
-      return run === undefined ? 0 : runActions(run, detail).length;
-    }
-    default:
-      return 0;
-  }
-}
-
-/**
- * A stable identity for whatever is selected, so a refresh that reorders the list can restore the
- * cursor to the same thing rather than the same index.
- */
-function identityOf(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  selected: number,
-): string | undefined {
-  if (data === undefined) return undefined;
-  if (screen.name === "studies") return data.rows[selected]?.key ?? "peer:all-runs";
-  if (screen.name === "all-runs") return liveRunsOf(data)[selected]?.runId;
-  if (screen.name === "study") {
-    const item = itemsForStudy(data, screen.studyKey).items[selected];
-    if (item === undefined) return undefined;
-    return item.kind === "start" ? `start:${item.mode}` : `run:${item.run.runId}`;
-  }
-  return undefined;
-}
-
-/** Where that identity sits now. -1 when it is gone (a run deleted, a manifest removed). */
-function indexOfIdentity(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData,
-  identity: string,
-): number {
-  if (screen.name === "studies") {
-    return identity === "peer:all-runs"
-      ? data.rows.length
-      : data.rows.findIndex((row) => row.key === identity);
-  }
-  if (screen.name === "all-runs") {
-    return liveRunsOf(data).findIndex((run) => run.runId === identity);
-  }
-  if (screen.name === "study") {
-    return itemsForStudy(data, screen.studyKey).items.findIndex((item) =>
-      item.kind === "start"
-        ? identity === `start:${item.mode}`
-        : `run:${item.run.runId}` === identity,
-    );
-  }
-  return -1;
-}
-
-function openSelected(
-  screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined,
-  selected: number,
-): NavState["stack"][number] | undefined {
-  if (data === undefined) return undefined;
-  if (screen.name === "studies") {
-    const row = data.rows[selected];
-    // Past the last study is the peer.
-    if (row === undefined) return selected === data.rows.length ? { name: "all-runs" } : undefined;
-    return { name: "study", studyKey: row.key };
-  }
-  if (screen.name === "all-runs") {
-    const run = liveRunsOf(data)[selected];
-    return run === undefined
-      ? undefined
-      : {
-          name: "run",
-          ...(run.study?.id === undefined ? {} : { studyId: run.study.id }),
-          runId: run.runId,
-        };
-  }
-  if (screen.name === "study") {
-    // Indexed through the same item list that counting uses. Reading `selected` as an index into
-    // runs alone is off by the number of action rows above them: selecting the first run then
-    // opens nothing at all, silently.
-    const { row, items } = itemsForStudy(data, screen.studyKey);
-    const item = items[selected];
-    if (row === undefined || item === undefined || item.kind !== "run") return undefined;
-    return { name: "run", studyId: row.studyId, runId: item.run.runId };
-  }
-  return undefined;
-}
-
-function renderScreen(args: {
-  screen: ReturnType<typeof currentScreen>;
-  data: ProjectData;
-  selected: number;
-  columns: number;
-  viewport: number;
-  now: number;
-  confirming: "live" | undefined;
-  launchError: { studyKey: string; text: string } | undefined;
-  launchNote: { studyKey: string; text: string } | undefined;
-  detail: RunDetail | null | undefined;
-  summary: StudySummary | null | undefined;
-  liveDetails: Map<string, RunDetail>;
-  tick: number;
-  initialized: boolean;
-  actionNote: string | undefined;
-  initArmed?: boolean;
-}): React.ReactElement {
-  const {
-    screen,
-    data,
-    selected,
-    columns,
-    viewport,
-    now,
-    confirming,
-    launchError,
-    launchNote,
-    detail,
-  } = args;
-  const { summary, liveDetails, tick, initialized, actionNote } = args;
-  if (screen.name === "studies") {
-    return (
-      <StudiesScreen
-        rows={data.rows}
-        selected={selected}
-        columns={columns}
-        viewport={viewport}
-        unattributed={data.unattributed.length}
-        tick={tick}
-        initialized={initialized}
-        retired={data.retired}
-        peerSelected={selected === data.rows.length}
-        liveTotal={liveRunsOf(data).length}
-        {...(args.initArmed === true ? { initArmed: true } : {})}
-        {...(args.actionNote === undefined ? {} : { actionNote: args.actionNote })}
-        liveParticipants={
-          new Map(
-            [...liveDetails.entries()]
-              .map(([runId, value]): [string, string] | null => {
-                const who = value.participants[0]?.label;
-                return who === undefined ? null : [runId, who];
-              })
-              .filter((entry): entry is [string, string] => entry !== null),
-          )
-        }
-        now={now}
-      />
-    );
-  }
-  if (screen.name === "study") {
-    const row = data.rows.find((candidate) => candidate.key === screen.studyKey);
-    if (row === undefined)
-      return <Text color={PALETTE.warn}>that study is no longer in this project</Text>;
-    const retired = row.declared ? undefined : retiredFileOf(data, row.studyId)?.message;
-    return (
-      <StudyScreen
-        row={row}
-        summary={summary}
-        runs={data.runsByStudy.get(row.studyId) ?? []}
-        liveDetail={liveDetails.get(
-          row.liveRuns[0]?.runId ?? data.runsByStudy.get(row.studyId)?.[0]?.runId ?? "",
-        )}
-        selected={selected}
-        columns={columns}
-        viewport={viewport}
-        now={now}
-        tick={tick}
-        canStart={row.declared}
-        {...(retired === undefined ? {} : { retired })}
-        confirming={confirming}
-        launchError={launchError?.studyKey === row.key ? launchError.text : undefined}
-        launchNote={launchNote?.studyKey === row.key ? launchNote.text : undefined}
-      />
-    );
-  }
-  if (screen.name === "all-runs") {
-    const live = liveRunsOf(data);
-    return (
-      <AllRunsScreen
-        runs={live}
-        details={liveDetails}
-        labels={new Map(live.map((run) => [run.runId, labelForStudy(data, run.study?.id)]))}
-        expected={
-          new Map(
-            data.rows
-              .map((row): [string, number] | null =>
-                row.liveExpectation.medianDurationMs === undefined
-                  ? null
-                  : [row.studyId, row.liveExpectation.medianDurationMs],
-              )
-              .filter((entry): entry is [string, number] => entry !== null),
-          )
-        }
-        selected={selected}
-        columns={columns}
-        viewport={viewport}
-        tick={tick}
-        now={now}
-      />
-    );
-  }
-  const run = data.runsById.get(screen.runId);
-  if (run === undefined) return <Text color={PALETTE.warn}>that run is no longer on disk</Text>;
-  return (
-    <RunScreen
-      run={run}
-      detail={detail}
-      columns={columns}
-      viewport={viewport}
-      selected={selected}
-      tick={tick}
-      now={now}
-      actionNote={actionNote}
-    />
   );
 }
