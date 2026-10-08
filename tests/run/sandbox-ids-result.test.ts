@@ -103,18 +103,18 @@ describe("a run's result as it is returned and printed", () => {
       },
       cwd,
     );
-    const stdout = formatCuaStudyHuman(live as unknown as CuaActorStudyResult);
+    const subject = { source: "app-url", appUrl: "http://127.0.0.1:3000/" } as const;
+    const stdout = formatCuaStudyHuman(live as unknown as CuaActorStudyResult, subject);
     const text = typeof stdout === "string" ? stdout : (stdout.stdout ?? "");
     expect(text).toContain(
       `sandbox: [redacted-sandbox-id ${sandboxIdDigest(HOST_ID)}] stream=connected killed=yes`,
     );
     expect(text.match(/^sandbox ids: /gm)).toHaveLength(1);
 
-    const dry = formatCuaStudyHuman({
-      ...live,
-      dryRun: true,
-      sandbox: undefined,
-    } as unknown as CuaActorStudyResult);
+    const dry = formatCuaStudyHuman(
+      { ...live, dryRun: true, sandbox: undefined } as unknown as CuaActorStudyResult,
+      subject,
+    );
     expect(typeof dry === "string" ? dry : dry.stdout).not.toContain("sandbox ids:");
   });
 

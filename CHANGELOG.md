@@ -39,6 +39,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A run refused before it was created, such as a live study with no keys, no longer ends its
+  `humanish run` output with `analysis: skipped because the run's evidence could not be read`. The
+  output ends with the refusal and its code. The JSON keeps the `automaticAnalysis` record (#1704).
+- The `subject:` line of `humanish run` names a `desktop-cli` subject by its product and source,
+  as in `subject: humanish (desktop-cli)`. It was empty, as it was for every computer-use study the
+  CLI refused for an option such as `--port 99999`; those now print the study's URL (#1705).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read

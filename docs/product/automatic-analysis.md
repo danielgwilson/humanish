@@ -146,5 +146,9 @@ outcomes and the deterministic review verdict are never rewritten by analysis.
 | `AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE` | `unknown`                 | A cancellation could not be recorded                                  |
 | `AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN`          | `unknown`                 | The outcome could not be determined                                   |
 
+A run refused before it was created (`run: not-created`) prints no `analysis:` line, since there
+is no run to analyze and the refusal says why. Its JSON keeps the record, with
+`AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE`, or `AUTOMATIC_ANALYSIS_DRY_RUN` for a dry run.
+
 See the [analysis contract](../contracts/study-analysis.md) for selection limits,
 evidence validation, actual usage, corrections and share-safe export behavior.

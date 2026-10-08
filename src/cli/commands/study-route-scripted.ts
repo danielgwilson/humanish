@@ -45,7 +45,9 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
         throw new Error(`Expected the scripted route, got ${outcome.route}.`);
       }
       const result = outcome.result;
-      writeResult(args.command, args.io, result, formatScriptedStudyHuman);
+      writeResult(args.command, args.io, result, (value) =>
+        formatScriptedStudyHuman(value, args.config.subject),
+      );
       args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
       await writeRunFindings(args.command, args.io, args.options.cwd, result);
 

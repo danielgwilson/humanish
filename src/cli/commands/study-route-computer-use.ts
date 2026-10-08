@@ -127,7 +127,9 @@ function refuseCua(
       runId: args.options.runId ?? "not-created",
     },
   );
-  writeResult(args.command, args.io, result, formatCuaStudyHuman);
+  writeResult(args.command, args.io, result, (value) =>
+    formatCuaStudyHuman(value, args.config.subject),
+  );
   args.io.setExitCode(2);
 }
 
@@ -355,7 +357,9 @@ async function reportCuaRun(
       ],
     };
   }
-  writeResult(args.command, args.io, output, formatCuaStudyHuman);
+  writeResult(args.command, args.io, output, (value) =>
+    formatCuaStudyHuman(value, args.config.subject),
+  );
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
   await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
