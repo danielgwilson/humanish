@@ -166,7 +166,7 @@ name). The implementation must satisfy every one.
   it (unlike `stream.getUrl`, no authKey may be recorded — invariant 1).
 - **FIX-3 (synthetic-subject = verify mechanism, NOT a "route invariant").** Humanish can't tell
   synthetic from real data, so enforce: (a) verify FAIL-CLOSED that `subject.state.provenance ==
-"seeded"` on the getHost route (reject external/unpinned/undeclared — real/external data behind
+  "seeded"` on the getHost route (reject external/unpinned/undeclared — real/external data behind
   an internet-reachable URL is the hazard, and this IS checkable); (b) a REQUIRED author
   attestation field (e.g. `subject.exposure: synthetic`) recorded in the bundle, verify fails
   closed if absent; (c) docs say plainly this is author-trust + a provenance gate, NOT a
@@ -190,7 +190,7 @@ name). The implementation must satisfy every one.
   digest; reject all else). "Not causation" is enforced by schema, not just disclaimed.
 - **FIX-8 (validator dispatch fail-closed + discriminator rename).** Rename the discriminator —
   `sharedWorld.mode` collides with `RunBundle.mode` (dry-run|live); use **`topologyMode:
-"sequential" | "concurrent"`**. Branch on it FIRST; a concurrent bundle has no `timeline` and a
+  "sequential" | "concurrent"`**. Branch on it FIRST; a concurrent bundle has no `timeline` and a
   sequential one has no `laneWindows`. Unknown/missing `topologyMode` → FAIL CLOSED; mismatched
   shape (timeline on concurrent, or laneWindows on sequential) → FAIL CLOSED.
 - **FIX-9 (teardown edges, N+1 by id).** Outermost by-id `finally` for the +1 subject sandbox

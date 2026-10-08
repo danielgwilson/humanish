@@ -86,7 +86,7 @@ action**, not a fatal error:
   uniformly. When the caught error `isCommandExitError`
   (`src/substrates/command-failure.ts`; it matches the SDK class name or any object carrying
   a numeric `exitCode`), the loop records a `notice` item (`status: "error"`, title `action
-skipped: desktop command failed`, text = the public-safe action label + exit code + a
+  skipped: desktop command failed`, text = the public-safe action label + exit code + a
   redacted `stderrTail`), does **not** count the action as a material action, and
   **continues**. The next `observe()` hands the model a fresh screenshot/state to adapt to.
 - An executor error declared as `action_rejected` with disposition `not_dispatched` also

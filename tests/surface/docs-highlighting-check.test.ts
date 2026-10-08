@@ -24,12 +24,21 @@ const lightCutShort = [
 ].join("");
 const plainText = token("#24292e", "#e1e4e8", "plain output");
 
+// Where next build writes the docs pages with a deployment adapter, as on Vercel: the hash is the
+// sha256 of the route source, /docs/[[...slug]]/page.
+const ADAPTER_ROOT =
+  "server/route-cache/APP_PAGE/966fe5664d321b90e424723b799fc8695a949991066b442a630706cfc863a243/$";
+
 /** A .next directory whose docs pages hold the given code, and the checker's exit status on it. */
-async function check(pages: Record<string, string>): Promise<{ status: number; output: string }> {
+async function check(
+  pages: Record<string, string>,
+  root = "server/app",
+): Promise<{ status: number; output: string }> {
   const dist = await makeTestTempDir("humanish-docs-highlighting-");
-  await mkdir(path.join(dist, "server/app/docs"), { recursive: true });
-  for (const [file, code] of Object.entries(pages))
-    await writeFile(path.join(dist, "server/app", file), `<pre><code>${code}</code></pre>`);
+  for (const [file, code] of Object.entries(pages)) {
+    await mkdir(path.dirname(path.join(dist, root, file)), { recursive: true });
+    await writeFile(path.join(dist, root, file), `<pre><code>${code}</code></pre>`);
+  }
   try {
     const output = execFileSync(process.execPath, [SCRIPT, dist], {
       encoding: "utf8",
@@ -45,6 +54,14 @@ async function check(pages: Record<string, string>): Promise<{ status: number; o
 describe("the docs highlighting check", () => {
   it("passes a build whose code keeps its colors in both themes", async () => {
     const result = await check({ "docs.html": highlighted, "docs/cli.html": plainText });
+    expect(result.status).toBe(0);
+  });
+
+  it("passes a build that an adapter wrote to the route cache", async () => {
+    const result = await check(
+      { "docs.html": highlighted, "docs/cli.html": plainText },
+      ADAPTER_ROOT,
+    );
     expect(result.status).toBe(0);
   });
 
@@ -64,5 +81,16 @@ describe("the docs highlighting check", () => {
 
   it("fails a build with no highlighted docs code", async () => {
     expect((await check({ "docs/cli.html": "" })).status).toBe(1);
+    expect((await check({ "docs/cli.html": "" }, ADAPTER_ROOT)).status).toBe(1);
+  });
+
+  it("fails a build directory with no docs pages", async () => {
+    expect((await check({})).status).toBe(1);
+  });
+
+  it("fails a route cache entry whose light colors belong to other scopes", async () => {
+    const misassigned = token("#005CC5", "#F97583", " =");
+    const pages = { "docs.html": highlighted, "docs/library.html": misassigned };
+    expect((await check(pages, ADAPTER_ROOT)).status).toBe(1);
   });
 });

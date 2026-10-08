@@ -169,7 +169,7 @@ The rest of this section names keys by their v3 spelling:
 - `subject.state` (clone or local-tree subjects, computer-use route): the
   subject's state story. `state.seed[]` declares ordered, bounded
   seed/migration/fixture steps (`{ name, command, when: before-build |
-before-start | after-ready, timeoutMs }`) executed in-sandbox around the
+  before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   serve sequence; `state.external[]` declares env var names (each must also
   appear in `subject.env`) pointing at state the study does not control,
   recorded as unpinned in provenance. Commands persist in evidence as
@@ -189,7 +189,7 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   single participant (no E2B to fan out);
 - a `participants` list (computer-use E2B route): a differentiated fan-out,
   each entry `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
-instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` becoming one independent E2B desktop (or, on the
+  instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one participant against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
@@ -530,10 +530,10 @@ Core-owned fields:
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
-dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
-unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
-commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
-}`. Emitted by the computer-use and shared-world routes and the clone
+  dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
+  unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
+  commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
+  }`. Emitted by the computer-use and shared-world routes and the clone
   scripted-browser route; absent on pre-existing and other bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
@@ -542,7 +542,7 @@ commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
   sha256-16 of the exact seed command; command text and env values never
   appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state
-provenance` check.
+  provenance` check.
 - `desktopTemplate` (optional, additive): the custom E2B desktop template (image)
   the run's sandbox(es) launched on, from `execution.desktop.template`, so the
   evidence shows which image ran. Present only when a template was configured;
@@ -665,7 +665,7 @@ A shared-world bundle adds two additive, optional fields to `humanish.run-bundle
   0.106.0):
   - `sequence: [roleId, …]`: the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only): `{ afterRoleId, roles,
-cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
+    cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     `{ roleId, simId, streamId }` for an unstarted participant. Together with the
     executed prefix it must account for the full declared denominator. The
     predecessor must have a matching `harness_error`, explicit `session_error`,
@@ -700,7 +700,7 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     the internet-reachable getHost URL is synthetic seeded data (author-trust + a
     provenance gate, not a no-real-data guarantee).
   - `laneWindows: [{ roleId, simId, streamId, startedAt, endedAt, verdict, routeHostDigest,
-commit?, seedDigest }]`: one harness-clocked window per actor; overlapping windows
+    commit?, seedDigest }]`: one harness-clocked window per actor; overlapping windows
     prove ≥2 personas were active simultaneously. `routeHostDigest` == `plane.hostDigest`
     (every actor drove exactly the harness-minted host).
   - `stateSeries: [{ timestamp, digest }]`: cadence digests of the shared world under
@@ -1029,7 +1029,7 @@ Core-owned fields:
   (the Codex participant), or, when the participant ended the session itself
   without them, one impressions-only request (OpenAI computer-use, threaded or
   `explicit_context`). That request is recorded as `debrief` with `trigger:
-participant_end` and never has a `report` or `messageId`; it leaves the
+  participant_end` and never has a `report` or `messageId`; it leaves the
   participant's `reason`, outcome and friction as they were. An empty `items`
   list means the participant named none. `status: not_collected` carries a
   `reason`: the closing report or impressions request was skipped or failed
@@ -1374,7 +1374,7 @@ Three new `.v1` schema tags ship, all additive and optional so
   the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
   one `model-tokens` line for the Codex participant, priced from the model the route passed
   to Codex (`gpt-5.6-sol` unless the study declares one) with `basis:
-aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
+  aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record
   `no_rate_for_model` (model `codex`). The terminal trace records the same `estimatedCost`. The sandbox line is not part of the
   terminal cost ledger, whose lines are checked against `caps.maxUsd`.
 
@@ -1674,7 +1674,7 @@ record its own:
 
 - **Adapter score** (`humanish.adapter-score.v1`, `RunBundle.adapterScore`).
   A namespaced summary the adapter's `score` hook returns: `{ schema, namespace,
-status, score, summary, data? }`. Core never reads `data`, where the adopter's
+  status, score, summary, data? }`. Core never reads `data`, where the adopter's
   component rubric rides; `namespace` (an adopter slug) scopes the whole
   record so a future inert-field audit never misfires.
 - **Namespaced product-noun block** (`RunFeedbackCandidate.adapter`). The
