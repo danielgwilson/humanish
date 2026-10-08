@@ -65,10 +65,9 @@ interface StudyFinding {
   /** The plain headline, or the reviewer's claim when an amendment replaced it. Absent in older
    * analyses, which lead with the title. */
   headline?: string;
-  /** The plain account of the experience. Absent in older analyses and after an amendment. */
+  /** The plain account of the experience, or after an amendment the sentence saying the reviewer's
+   * claim replaced it. Absent in older analyses. */
   experience?: string;
-  /** The headline is a reviewer's amended claim. */
-  corrected?: boolean;
   shortTitle?: string;
   impact: string;
   summary: string;

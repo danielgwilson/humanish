@@ -285,12 +285,8 @@ export function StudyReport({
                       evidence
                     ) : (
                       <>
-                        {finding.corrected || finding.experience ? (
-                          <p className="report-experience">
-                            {finding.corrected
-                              ? "Corrected in human review. The reviewer's claim replaces the original headline and account."
-                              : finding.experience}
-                          </p>
+                        {finding.experience ? (
+                          <p className="report-experience">{finding.experience}</p>
                         ) : null}
                         <details className="finding-evidence">
                           <summary>Evidence: {finding.title}</summary>
