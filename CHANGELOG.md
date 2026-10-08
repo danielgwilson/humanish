@@ -31,7 +31,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   the selected run, or a run that finishes, where Open in Observer moves up a row and Run again
   takes its place. The cursor used to keep its row number, so Enter could open a different study
   or start a new run. Escape back to the studies list also returns to the selected study after the
-  list reordered (#1696).
+  list reordered. When the action the person chose on a run's screen goes away under the cursor
+  (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
+  so; it used to act on the row now there, which could be Run again (#1696).
 - When a study's analysis does not complete (refused at admission, failed or cancelled) and the
   run's own result is ok, the first line of `humanish run` reads
   `humanish run <study>: live run finished; the analysis did not complete`. It read

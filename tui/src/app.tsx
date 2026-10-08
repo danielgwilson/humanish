@@ -120,7 +120,12 @@ export function App({
   const projectState = useMemo(() => options.capabilities.readProjectState(options.cwd), [options]);
   // Study files humanish no longer reads make this a project, even one with only .humanish/labs/.
   const initialized = projectState.initialized || (data?.retired.length ?? 0) > 0;
-  const clock = now ?? Date.now();
+  /**
+   * The time this frame measures elapsed durations against. Held in state and advanced by the
+   * spinner timer below, because a clock read during render renders the same state differently.
+   */
+  const [wallClock, setWallClock] = useState(() => Date.now());
+  const clock = now ?? wallClock;
 
   // The row the person chose on each screen, by identity, keyed like the navigation's per-screen
   // index. A live study sorts to the top the moment a run starts, and a run that finishes swaps Stop
@@ -174,8 +179,8 @@ export function App({
 
   // A move on the same screen records the row the cursor is on. Anything else (a refresh, arriving
   // at a screen, coming back to one) puts the cursor on the recorded row. When that row is gone
-  // (a run deleted, a Stop that no longer applies) the cursor keeps its index, and the row now
-  // under it is recorded, because that is the row the person sees chosen.
+  // (a run deleted, a Stop that no longer applies) the cursor keeps its index and the record stays
+  // until the person moves, so Enter on the run screen can tell that nobody chose the row under it.
   useEffect(() => {
     screenRef.current = screen;
     if (data === undefined) return;
@@ -186,11 +191,10 @@ export function App({
     const moved = last?.screen === screen && last.selected !== selected;
     if (!moved && chosen !== undefined) {
       const next = indexOfIdentity(screen, data, chosen, detail);
-      if (next === selected) return;
-      if (next >= 0) {
+      if (next >= 0 && next !== selected) {
         dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
-        return;
       }
+      return;
     }
     const identity = identityOf(screen, data, selected, detail);
     if (identity === undefined) chosenRef.current.delete(key);
@@ -430,6 +434,18 @@ export function App({
             const run = data.runsById.get(screen.runId);
             if (run !== undefined) {
               const action = runActions(run, detail)[selected];
+              const key = screenKey(screen);
+              const chosen = chosenRef.current.get(key);
+              const identity = identityOf(screen, data, selected, detail);
+              if (identity !== undefined && chosen !== undefined && identity !== chosen) {
+                // The action the person chose went away under the cursor (Cancel analysis when the
+                // analysis ends, Stop when the run does), and this key was meant for it. Acting on
+                // the row now there would start or stop something nobody chose.
+                chosenRef.current.set(key, identity);
+                setStopArmedAt(undefined);
+                setActionNote("nothing was done: this run's actions changed before that key");
+                return;
+              }
               if (action !== undefined) {
                 void act(run, action);
                 return;
@@ -475,15 +491,19 @@ export function App({
   // Detail is fetched only for the run being looked at. It opens that run's bundle, which the index
   // deliberately does not: affordable for one run, not for a listing.
   const openRunId = screen.name === "run" ? screen.runId : undefined;
-  useEffect(() => {
+  // What belongs to the open run starts over when another run opens or the run screen closes. It is
+  // adjusted during render (react.dev, "Adjusting some state when a prop changes"), so no frame
+  // shows the previous run's detail, note or armed stop.
+  const [detailRunId, setDetailRunId] = useState(openRunId);
+  if (detailRunId !== openRunId) {
+    setDetailRunId(openRunId);
+    setDetail(undefined);
     setActionNote(undefined);
     setStopArmedAt(undefined);
-    if (openRunId === undefined) {
-      setDetail(undefined);
-      return;
-    }
+  }
+  useEffect(() => {
+    if (openRunId === undefined) return;
     let cancelled = false;
-    setDetail(undefined);
     const read = async (): Promise<void> => {
       try {
         const next = await options.capabilities.readRunDetail(options.cwd, openRunId);
@@ -503,14 +523,17 @@ export function App({
     };
   }, [openRunId, options]);
 
-  // The spinner clock. Independent of the data refresh, because motion is what says "live" and a
-  // 2s heartbeat does not read as motion.
+  // The spinner and the clock. Independent of the data refresh, because motion is what says "live"
+  // and a 2s heartbeat does not read as motion.
   useEffect(() => {
-    if (frozenTick !== undefined) return;
-    const timer = setInterval(() => setTick((previous) => previous + 1), SPINNER_MS);
+    if (frozenTick !== undefined && now !== undefined) return;
+    const timer = setInterval(() => {
+      setTick((previous) => previous + 1);
+      setWallClock(Date.now());
+    }, SPINNER_MS);
     timer.unref?.();
     return () => clearInterval(timer);
-  }, [frozenTick]);
+  }, [frozenTick, now]);
 
   // Live participants plus the latest run of the open study, so its post-run analysis stays visible.
   // Never open all historical bundles merely to populate a list.
@@ -526,11 +549,15 @@ export function App({
       ...(watchedLatestId === undefined ? [] : [watchedLatestId]),
     ]),
   ].join(",");
+  // With no live run and no study open to watch, what was read for earlier runs is dropped, so a run
+  // that comes back into view starts unread. Adjusted during render, as the run detail is above.
+  const [liveDetailRunIds, setLiveDetailRunIds] = useState(liveRunIds);
+  if (liveDetailRunIds !== liveRunIds) {
+    setLiveDetailRunIds(liveRunIds);
+    if (liveRunIds === "") setLiveDetails(new Map());
+  }
   useEffect(() => {
-    if (liveRunIds === "") {
-      setLiveDetails(new Map());
-      return;
-    }
+    if (liveRunIds === "") return;
     let cancelled = false;
     let reading = false;
     const read = async (): Promise<void> => {
@@ -566,13 +593,16 @@ export function App({
   const openStudyRow =
     openStudyKey === undefined ? undefined : data?.rows.find((row) => row.key === openStudyKey);
   const openStudyName = openStudyRow?.path ?? openStudyRow?.name;
-  useEffect(() => {
-    if (openStudyName === undefined) {
-      setSummary(undefined);
-      return;
-    }
-    let cancelled = false;
+  // A summary belongs to one study, so it starts unread whenever the open study changes. Adjusted
+  // during render, as the run detail is above.
+  const [summaryStudyName, setSummaryStudyName] = useState(openStudyName);
+  if (summaryStudyName !== openStudyName) {
+    setSummaryStudyName(openStudyName);
     setSummary(undefined);
+  }
+  useEffect(() => {
+    if (openStudyName === undefined) return;
+    let cancelled = false;
     void (async () => {
       const read = await options.capabilities
         .readStudySummary(options.cwd, openStudyName, { checkKeys: true })

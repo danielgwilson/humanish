@@ -87,14 +87,31 @@ const BETA_DETAIL: RunDetail = {
   participants: [],
 };
 
+const ANALYZING: RunDetail = {
+  ...BETA_DETAIL,
+  automaticAnalysis: {
+    state: "running",
+    analysisId: null,
+    reason: null,
+    updatedAt: new Date(NOW).toISOString(),
+  },
+};
+
+const ANALYZED: RunDetail = {
+  ...BETA_DETAIL,
+  automaticAnalysis: { ...ANALYZING.automaticAnalysis!, state: "complete" },
+};
+
 /**
  * A project whose run index the test changes between refreshes, recording what Enter asked the
  * capabilities to do.
  */
-function project(initialRuns: RunIndexEntry[]) {
+function project(initialRuns: RunIndexEntry[], initialDetail: RunDetail = BETA_DETAIL) {
   let runs = initialRuns;
+  let detail = initialDetail;
   const started: string[] = [];
   const opened: string[] = [];
+  const stopped: string[] = [];
   const capabilities: TuiCapabilities = {
     readRunIndex: async () => ({
       schema: "humanish.run-index.v1",
@@ -118,7 +135,7 @@ function project(initialRuns: RunIndexEntry[]) {
       };
     },
     readLaunchLog: async () => "",
-    readRunDetail: async (_cwd, runId) => (runId === BETA_RUN_ID ? BETA_DETAIL : null),
+    readRunDetail: async (_cwd, runId) => (runId === BETA_RUN_ID ? detail : null),
     readStudySummary: async () => null,
     readProjectState: () => ({
       schema: "humanish.tui-project.v1" as const,
@@ -132,11 +149,10 @@ function project(initialRuns: RunIndexEntry[]) {
     reclaimRun: async () => {
       throw new Error("no run here needs reclaiming");
     },
-    stopRun: async () => ({
-      schema: "humanish.tui-action.v1" as const,
-      ok: true,
-      message: "asked the run to stop",
-    }),
+    stopRun: async (_cwd, runId, intent) => {
+      stopped.push(`${intent ?? "run"}:${runId}`);
+      return { schema: "humanish.tui-action.v1" as const, ok: true, message: "asked it to stop" };
+    },
     initProject: async () => ({
       schema: "humanish.tui-action.v1" as const,
       ok: true,
@@ -154,8 +170,12 @@ function project(initialRuns: RunIndexEntry[]) {
     options,
     started,
     opened,
+    stopped,
     setRuns: (next: RunIndexEntry[]) => {
       runs = next;
+    },
+    setDetail: (next: RunDetail) => {
+      detail = next;
     },
   };
 }
@@ -294,6 +314,32 @@ describe("the cursor through a refresh that reorders the rows", () => {
       await surface.press(KEY.enter, (frame) => frame.includes("opened") || frame.includes("pid"));
       expect(lab.opened).toEqual([BETA_DETAIL.observerPath]);
       expect(lab.started).toEqual([]);
+    } finally {
+      surface.unmount();
+    }
+  }, 20_000);
+  it("does nothing on the Enter that was to confirm Cancel analysis once the analysis has ended", async () => {
+    const lab = project([BETA_FINISHED], ANALYZING);
+    const surface = await openSurface(lab.options);
+    try {
+      // Beta has a run and Alpha has none, so Beta is the first row.
+      await surface.press(KEY.enter, (frame) => frame.includes("‹ studies / beta"));
+      await pressUntil(surface, KEY.down, (frame) =>
+        cursorLine(frame).includes("1/1 reached the goal"),
+      );
+      await surface.press(KEY.enter, (frame) => frame.includes("Cancel analysis"));
+      await surface.press(KEY.down, (frame) => cursorLine(frame).includes("Cancel analysis"));
+      await surface.press(KEY.enter, (frame) => frame.includes("cancel analysis?"));
+      lab.setDetail(ANALYZED);
+      // Run again replaces Cancel analysis once a refresh reads the finished analysis.
+      await surface.waitFor((frame) => frame.includes("Run again"), REFRESH_WAIT_MS);
+
+      const pressed = await surface.press(KEY.enter, (frame) =>
+        /start(ed|ing) beta|nothing was done/.test(frame),
+      );
+      expect(lab.started).toEqual([]);
+      expect(lab.stopped).toEqual([]);
+      expect(pressed).toContain("nothing was done");
     } finally {
       surface.unmount();
     }
