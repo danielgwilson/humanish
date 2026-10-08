@@ -13,6 +13,8 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  refusalText,
+  RUN_ARTIFACT_MAX_BYTES,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
@@ -515,13 +517,20 @@ async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Bu
     if (Buffer.isBuffer(returned) || returned instanceof Uint8Array) {
       return stripPngMetadataChunks(browserScreenshotBytes(returned));
     }
-    const stagedBytes = await readContainedRegularFile(stagingRoot, "capture.png");
-    if (!stagedBytes) {
+    const staged = await readContainedRegularFile(
+      stagingRoot,
+      "capture.png",
+      RUN_ARTIFACT_MAX_BYTES,
+    );
+    if (staged.status === "missing")
       throw new Error(
         "Browser screenshot did not return bytes or write a single-link staging file.",
       );
-    }
-    return stripPngMetadataChunks(stagedBytes);
+    if (staged.status === "refused")
+      throw new Error(
+        `Browser screenshot did not return bytes, and ${refusalText("its staging file capture.png", staged)}.`,
+      );
+    return stripPngMetadataChunks(staged.bytes);
   } finally {
     await assertPreparedSelectedOutputDirectory(stagingRoot)
       .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))

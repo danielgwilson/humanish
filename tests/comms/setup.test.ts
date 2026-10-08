@@ -293,3 +293,29 @@ describe("receiving lab selection", () => {
     expect(real.ok && real.config.comms?.email?.recipients).toBeUndefined();
   });
 });
+
+describe("the receiving copy's destination", () => {
+  it("refuses a destination it cannot read whole and leaves it in place", async () => {
+    await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish/studies/signup.yaml"), stringify(study));
+    const destination = path.join(cwd, ".humanish/local/studies/signup-receiving.yaml");
+    await mkdir(path.dirname(destination), { recursive: true });
+    // A study file one byte past the 1 MiB the copy reads.
+    const large = `# ${"x".repeat(1024 * 1024 - 2)}\n`;
+    await writeFile(destination, large);
+
+    const result = await configureCommsStudy({
+      cwd,
+      study: "signup",
+      connection: "agentmail",
+      apply: true,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      applied: false,
+      message: "The local destination could not be read safely.",
+    });
+    expect(await readFile(destination, "utf8")).toBe(large);
+  });
+});

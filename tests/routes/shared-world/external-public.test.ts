@@ -65,6 +65,7 @@ import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { runAdmitted, runSharedWorld } from "../../helpers/route-run.js";
 import { formatConcurrentSharedWorldStudyHuman } from "../../../src/cli/commands/study-format.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -912,7 +913,10 @@ describe("observed-origin convergence (redirect tolerated)", () => {
 describe("admitSharedWorldPlan", () => {
   it("runs a plan alone: the bundle records the plan's lab id, title and owner", async () => {
     const config = parseExternal();
-    const planned = planSharedWorldStudy(config, { dryRun: true });
+    const planned = planSharedWorldStudy(config, {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok || planned.plan.plane.kind !== "external-public")
       throw new Error("expected an external-public shared-world plan");
     const plan = {

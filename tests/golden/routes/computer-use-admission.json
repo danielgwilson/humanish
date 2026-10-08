@@ -382,7 +382,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly. If your E2B plan allows longer sandboxes (Pro allows 1440 minutes), set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 65 or more."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -993,7 +993,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly. If your E2B plan allows longer sandboxes (Pro allows 1440 minutes), set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 65 or more."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1015,7 +1015,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly. If your E2B plan allows longer sandboxes (Pro allows 1440 minutes), set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 65 or more."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

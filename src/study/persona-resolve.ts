@@ -6,6 +6,8 @@ import { parseResolvedPersona, PersonaConfigError, type ResolvedPersona } from "
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  PROJECT_FILE_MAX_BYTES,
+  refusalText,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { digestText, redactText } from "../evidence/redaction.js";
@@ -33,8 +35,8 @@ const PERSONA_DIRECTORIES = [
 
 /**
  * Resolve one persona from `humanish/personas/`, then the ignored `.humanish/local/personas/`.
- * Returns `null` with a warning when the id is unsafe or no file exists. Invalid rich backgrounds
- * reject the study before execution.
+ * Returns `null` with a warning when the id is unsafe or no file exists. Invalid rich backgrounds,
+ * and a persona file that is there and cannot be read, reject the study before execution.
  */
 export async function resolveCommittedPersona(
   projectRoot: PreparedSelectedOutputDirectory,
@@ -50,8 +52,14 @@ export async function resolveCommittedPersona(
     path.posix.join(directory, `${personaId}.yaml`),
     path.posix.join(directory, `${personaId}.yml`),
   ])) {
-    const bytes = await readContainedRegularFile(projectRoot, candidate);
-    if (!bytes) continue;
+    const read = await readContainedRegularFile(projectRoot, candidate, PROJECT_FILE_MAX_BYTES);
+    if (read.status === "missing") continue;
+    // A candidate that is there and refused stops resolution: the next file is another persona.
+    if (read.status === "refused")
+      throw new PersonaConfigError(
+        `Persona ${redactText(personaId)}: ${refusalText(candidate, read)}. Fix or remove that file; a lower-priority persona file is not used in its place.`,
+      );
+    const bytes = read.bytes;
     let raw: unknown;
     try {
       raw = parseYaml(bytes.toString("utf8"));

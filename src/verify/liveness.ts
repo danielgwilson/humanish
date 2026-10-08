@@ -7,7 +7,8 @@ import { sandboxIdDigest } from "../evidence/redaction.js";
 import path from "node:path";
 
 import type { RunBundle } from "../run/bundle.js";
-import { readRunJsonIfExists, readRunTextIfExists } from "../run/locate.js";
+import { refusalText } from "../run/contained-output.js";
+import { readRunJsonIfExists, readRunTextIfExists, runJsonValue } from "../run/locate.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
@@ -46,7 +47,8 @@ export async function runNotFinished(
   nowMs: number = Date.now(),
 ): Promise<{ warnings: string[]; unfinished?: UnfinishedRun }> {
   const runId = path.basename(runPaths.absoluteRunRoot);
-  const status = await readRunJsonIfExists(runPaths, RUN_STATUS_FILE);
+  // A status.json it refuses is no usable status, as a missing one is: the bundle decides.
+  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
   const { liveness, record } = runLiveness(runId, status, bundle, nowMs);
   if (liveness === "finished") return { warnings: [] };
 
@@ -89,18 +91,27 @@ async function reclaimState(
   runId: string,
 ): Promise<{ sandboxes: UnfinishedRun["sandboxes"]; text: string }> {
   const journal = await readRunTextIfExists(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
+  const command = `\`${cli(`reclaim --run ${runId}`)}\``;
+  // A journal it cannot read hides which sandboxes the run made, so no receipt can cover them.
+  if (journal.status === "refused")
+    return {
+      sandboxes: "unconfirmed",
+      text: `Sandboxes unconfirmed: ${refusalText(SANDBOX_RECEIPTS_ARTIFACT, journal)}, so the sandboxes it journaled are not known; check the file, then run ${command}.`,
+    };
   // Matched by digest: a reclaim receipt names each sandbox by digest, and one written before it
   // did holds the raw id, which is digested here.
   const journaled = new Set(
-    (journal === null ? [] : parseSandboxReceipts(journal)).map((receipt) =>
+    (journal.status === "missing" ? [] : parseSandboxReceipts(journal.text)).map((receipt) =>
       sandboxIdDigest(receipt.sandboxId),
     ),
   );
-  const command = `\`${cli(`reclaim --run ${runId}`)}\``;
-  const receipt = reclaimReceipt(
-    await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT),
-    runId,
-  );
+  const receiptRead = await readRunJsonIfExists(runPaths, RECLAIM_RECEIPT_ARTIFACT);
+  if (receiptRead.status === "refused")
+    return {
+      sandboxes: "unknown",
+      text: `Sandboxes unknown: ${refusalText(RECLAIM_RECEIPT_ARTIFACT, receiptRead)}, and the run journaled ${plural(journaled.size, "sandbox", "sandboxes")}; check the file, then run ${command}.`,
+    };
+  const receipt = reclaimReceipt(runJsonValue(receiptRead), runId);
   if (receipt === undefined)
     return {
       sandboxes: "unknown",

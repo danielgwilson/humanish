@@ -6,6 +6,7 @@ import {
   terminalSandboxTimeoutMs,
 } from "../../../src/routes/terminal/lifetime.js";
 import { terminalConfig } from "../../helpers/terminal-live-fake.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 const minutes = (value: number) => value * 60_000;
 
@@ -29,7 +30,7 @@ describe("the terminal sandbox's lifetime", () => {
         caps: { maxUsd: 0, maxJobs: 0, maxMinutes },
       });
       if (install) config.subject.product!.install = "synthetic-product-install --yes";
-      return planTerminalStudy(config, { dryRun: false });
+      return planTerminalStudy(config, { dryRun: false, sandboxCeiling: sandboxCeiling({}) });
     };
     expect(planWith(largest).ok).toBe(true);
     const refused = planWith(largest + 1);

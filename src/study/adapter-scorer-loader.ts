@@ -32,6 +32,8 @@ import type {
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  refusalText,
+  PROJECT_FILE_MAX_BYTES,
 } from "../run/contained-output.js";
 
 /** The read-model context a loaded scorer sees: the terminal or browser scoring context. The module
@@ -188,14 +190,19 @@ export async function loadAdapterScorer(args: {
 
   // Fail-closed containment gate on the entry file only: rejects symlink, nlink>1, realpath-escape,
   // TOCTOU. Its returned bytes are the digest input.
-  const bytes = await readContainedRegularFile(root, relPosix);
-  if (!bytes) {
+  const read = await readContainedRegularFile(root, relPosix, PROJECT_FILE_MAX_BYTES);
+  if (read.status === "refused" && read.reason === "too-large")
+    return fail(
+      "HUMANISH_STUDY_SCORER_NOT_FOUND",
+      `review.scorer.ref "${trimmed}" could not be read: ${refusalText(relPosix, read)}.`,
+    );
+  if (read.status !== "read") {
     return fail(
       "HUMANISH_STUDY_SCORER_NOT_FOUND",
       `review.scorer.ref "${trimmed}" could not be read as a regular file inside the project (${relPosix}). Use a plain file there: not a symlink or a hard link, and not a path that resolves outside the project.`,
     );
   }
-  const digest = digestText(bytes.toString("utf8"));
+  const digest = digestText(read.bytes.toString("utf8"));
 
   // Import the entry module in a broad try/catch (ERR_MODULE_NOT_FOUND / SyntaxError / ERR_REQUIRE_ESM
   // / top-level throw). import() executes the transitive graph, and the cwd clamp guards only the entry
