@@ -1,0 +1,778 @@
+{
+  "completed": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.010Z",
+        "durationMs": 9,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "message-002",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant impression",
+            "text": "Impression (liked): Enter saved the name.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant impressions request completed",
+            "text": "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+            "at": "1970-01-01T00:00:00.009Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "completed",
+          "reason": "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+          "usageReported": true
+        },
+        "impressions": {
+          "status": "collected",
+          "items": [
+            {
+              "kind": "liked",
+              "text": "Enter saved the name.",
+              "messageId": "message-002"
+            }
+          ]
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",3,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
+    ]
+  },
+  "cutOff": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.009Z",
+        "durationMs": 8,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request failed",
+            "text": "the reply was cut off by the output limit",
+            "at": "1970-01-01T00:00:00.008Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "failed",
+          "reason": "the reply was cut off by the output limit",
+          "usageReported": true
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request failed: the reply was cut off by the output limit"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",2,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
+    ]
+  },
+  "invalidImpressions": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.009Z",
+        "durationMs": 8,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request failed",
+            "text": "the reply did not contain valid impressions",
+            "at": "1970-01-01T00:00:00.008Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "failed",
+          "reason": "the reply did not contain valid impressions",
+          "usageReported": true
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request failed: the reply did not contain valid impressions"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",2,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
+    ]
+  },
+  "requestsActions": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.009Z",
+        "durationMs": 8,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request failed",
+            "text": "the closing response requested actions or safety checks; none were executed and its report was not accepted",
+            "at": "1970-01-01T00:00:00.008Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "failed",
+          "reason": "the closing response requested actions or safety checks; none were executed and its report was not accepted",
+          "usageReported": true
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request failed: the closing response requested actions or safety checks; none were executed and its report was not accepted"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",2,{"input":30,"output":15,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5},{"input":20,"output":10}]},{}]
+    ]
+  },
+  "thrownError": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.009Z",
+        "durationMs": 8,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request failed",
+            "text": "provider unavailable; closing request usage is unreported",
+            "at": "1970-01-01T00:00:00.008Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "failed",
+          "reason": "provider unavailable; closing request usage is unreported",
+          "usageReported": false
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request failed: provider unavailable; closing request usage is unreported"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",2,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
+    ]
+  },
+  "hungUntilDeadline": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.009Z",
+        "durationMs": 8,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request failed",
+            "text": "impressions request deadline reached; closing request usage is unreported",
+            "at": "1970-01-01T00:00:00.008Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "failed",
+          "reason": "impressions request deadline reached; closing request usage is unreported",
+          "usageReported": false
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request failed: impressions request deadline reached; closing request usage is unreported"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["provider.requestImpressions",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"},"contextHint":"The interactive session has ended. Return only impressions. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions."}],
+      ["onTrace",2,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
+    ]
+  },
+  "estimateAtCap": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "The Save button did nothing.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.008Z",
+        "durationMs": 7,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "The Save button did nothing.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "The Save button did nothing.",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant impressions request skipped",
+            "text": "the estimated model budget was reached",
+            "at": "1970-01-01T00:00:00.007Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "participant_end",
+          "status": "skipped",
+          "reason": "the estimated model budget was reached"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the impressions request was skipped: the estimated model budget was reached"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
+      ["onMessage","The Save button did nothing."],
+      ["onTrace",2,{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},{}]
+    ]
+  }
+}

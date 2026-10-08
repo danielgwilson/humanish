@@ -27,8 +27,47 @@ export interface DebriefContext {
 const DEBRIEF_REQUEST_CAP_MS = 30_000;
 const DEBRIEF_HINT = `The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.`;
 
-/** The provider's closing request for a trigger: the closing report, or impressions only. */
-type ClosingAsk = NonNullable<CuaProvider["debrief"]>;
+/** The provider's read-only closing request. */
+type ClosingCall = NonNullable<CuaProvider["debrief"]>;
+
+/** How a reply that requested no actions ends the debrief, and the report it adds if accepted. */
+type ReplyOutcome = Pick<Debrief, "report" | "messageId"> & {
+  readonly status: "completed" | "failed";
+  readonly detail: string;
+};
+
+/**
+ * What the debrief asks for: the closing report after a structured stop, or impressions only after
+ * the participant ended the session itself. It is chosen once from the trigger and holds every
+ * difference between the two requests.
+ */
+interface ClosingAsk {
+  /** The provider's method for this request, absent when the provider has none. */
+  readonly call: (provider: CuaProvider) => ClosingCall | undefined;
+  readonly contextHint: string;
+  /** Names the request in the trace's notices: `participant <noticeLabel> <status>`. */
+  readonly noticeLabel: string;
+  /** Names the request when its time bound passes. */
+  readonly deadlineLabel: string;
+  /** Read the reply into the session, or say why it was not accepted. */
+  readonly read: (session: LoopSession, turn: CuaTurn) => ReplyOutcome;
+}
+
+const CLOSING_REPORT: ClosingAsk = {
+  call: (provider) => provider.debrief,
+  contextHint: DEBRIEF_HINT,
+  noticeLabel: "debrief",
+  deadlineLabel: "closing report",
+  read: readClosingReport,
+};
+
+const IMPRESSIONS_ONLY: ClosingAsk = {
+  call: (provider) => provider.requestImpressions,
+  contextHint: IMPRESSIONS_HINT,
+  noticeLabel: "impressions request",
+  deadlineLabel: "impressions request",
+  read: readImpressions,
+};
 
 type RecordDebrief = (
   status: Debrief["status"],
@@ -46,6 +85,7 @@ export async function requestDebrief(
   context: DebriefContext,
   trigger: DebriefTrigger,
 ): Promise<Debrief> {
+  const ask = trigger.kind === "participant_end" ? IMPRESSIONS_ONLY : CLOSING_REPORT;
   const record: RecordDebrief = (status, detail, usageReported) => {
     const debrief: Debrief = {
       trigger: trigger.kind,
@@ -56,33 +96,37 @@ export async function requestDebrief(
     session.trace.record("notice", () =>
       notice(
         status === "completed" ? "ok" : "warn",
-        `participant ${trigger.kind === "participant_end" ? "impressions request" : "debrief"} ${status}`,
+        `participant ${ask.noticeLabel} ${status}`,
         session.redactNarration(detail),
       ),
     );
     return debrief;
   };
-  const plan = planDebrief(session, trigger);
+  const plan = planDebrief(session, ask, trigger);
   const debrief =
     "skip" in plan
       ? record("skipped", plan.skip)
-      : await debriefExchange(session, plan.ask, context, trigger, plan.boundMs, record);
+      : await debriefExchange(session, context, trigger, ask, plan, record);
   session.flush();
   return debrief;
 }
 
-/** Why the debrief is skipped, or the request and time bound its one request gets. */
-type DebriefPlan =
-  | { readonly skip: string }
-  | { readonly ask: ClosingAsk; readonly boundMs: number };
+/** The debrief's one request, bound to its provider, and that request's time bound. */
+interface PlannedRequest {
+  readonly send: ClosingCall;
+  readonly boundMs: number;
+}
 
-function planDebrief(session: LoopSession, trigger: DebriefTrigger): DebriefPlan {
+/** Why the debrief is skipped, or the request it sends. */
+type DebriefPlan = { readonly skip: string } | PlannedRequest;
+
+function planDebrief(session: LoopSession, ask: ClosingAsk, trigger: DebriefTrigger): DebriefPlan {
   const { provider, signal, usage } = session;
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   if (session.trace.counts.turns === 0)
     return { skip: "the study stopped before any participant turn" };
-  const ask = trigger.kind === "participant_end" ? provider.requestImpressions : provider.debrief;
-  if (ask === undefined)
+  const send = ask.call(provider)?.bind(provider);
+  if (send === undefined)
     return { skip: "this provider does not support read-only closing reports" };
   if (usage.cleanupUnconfirmed) return { skip: "participant request cleanup is unconfirmed" };
   if (signal?.aborted) return { skip: "the study was cancelled" };
@@ -114,15 +158,15 @@ function planDebrief(session: LoopSession, trigger: DebriefTrigger): DebriefPlan
       skip: signal?.aborted ? "the study was cancelled" : "the session deadline was reached",
     };
   }
-  return { ask, boundMs };
+  return { send, boundMs };
 }
 
 async function debriefExchange(
   session: LoopSession,
-  ask: ClosingAsk,
   context: DebriefContext,
   trigger: DebriefTrigger,
-  boundMs: number,
+  ask: ClosingAsk,
+  { send, boundMs }: PlannedRequest,
   record: RecordDebrief,
 ): Promise<Debrief> {
   const { signal, provider } = session;
@@ -143,18 +187,18 @@ async function debriefExchange(
       ...(context.acknowledgedSafetyChecks === undefined
         ? {}
         : { acknowledgedSafetyChecks: context.acknowledgedSafetyChecks }),
-      contextHint: trigger.kind === "participant_end" ? IMPRESSIONS_HINT : DEBRIEF_HINT,
+      contextHint: ask.contextHint,
     };
     const turn =
       provider.requestPolicy === "fail_closed"
         ? await singleDispatch(
             session,
             "debrief",
-            (dispatchSignal) => ask.call(provider, request, dispatchSignal),
+            (dispatchSignal) => send(request, dispatchSignal),
             boundMs,
           )
-        : await raceSessionDeadline(ask.call(provider, request, scope.signal), boundMs, signal);
-    return acceptDebriefTurn(session, turn, trigger, record);
+        : await raceSessionDeadline(send(request, scope.signal), boundMs, signal);
+    return acceptDebriefTurn(session, turn, ask, record);
   } catch (error) {
     // A failed optional report cannot rewrite the already observed structured completion.
     if (isComputerUseAdmissionLimitError(error)) {
@@ -166,7 +210,7 @@ async function debriefExchange(
     const detail = signal?.aborted
       ? "cancelled"
       : scope.signal.aborted || error instanceof CuaDeadlineError
-        ? `${trigger.kind === "participant_end" ? "impressions request" : "closing report"} deadline reached`
+        ? `${ask.deadlineLabel} deadline reached`
         : error instanceof Error
           ? error.message
           : String(error);
@@ -188,7 +232,7 @@ async function debriefExchange(
 function acceptDebriefTurn(
   session: LoopSession,
   turn: CuaTurn,
-  trigger: DebriefTrigger,
+  ask: ClosingAsk,
   record: RecordDebrief,
 ): Debrief {
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
@@ -220,31 +264,18 @@ function acceptDebriefTurn(
     );
   }
   // First-party providers parse their replies already; these parses cover third-party ports.
-  if (trigger.kind === "participant_end") {
-    const impressions = participantImpressionsSchema.safeParse(turn.impressions);
-    if (!impressions.success) {
-      return record(
-        "failed",
-        turn.interruption === "output_limit"
-          ? "the reply was cut off by the output limit"
-          : "the reply did not contain valid impressions",
-        usageReported,
-      );
-    }
-    session.impressions = recordImpressions(session, impressions.data);
-    return record(
-      "completed",
-      "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
-      usageReported,
-    );
-  }
+  const { status, detail, ...added } = ask.read(session, turn);
+  return { ...record(status, detail, usageReported), ...added };
+}
+
+/** A closing report: its summary and friction as one participant message, then its impressions. */
+function readClosingReport(session: LoopSession, turn: CuaTurn): ReplyOutcome {
   const closing = closingReportSchema.safeParse(turn.closingReport);
   if (!closing.success) {
-    return record(
-      "failed",
-      "the closing response did not contain a valid structured participant report",
-      usageReported,
-    );
+    return {
+      status: "failed",
+      detail: "the closing response did not contain a valid structured participant report",
+    };
   }
   const report: Debrief["report"] = {
     summary: session.redactNarration(closing.data.summary.trim()),
@@ -259,10 +290,31 @@ function acceptDebriefTurn(
   }));
   session.trace.bump("messages");
   session.impressions = recordImpressions(session, closing.data.impressions);
-  const debrief = record(
-    "completed",
-    "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
-    usageReported,
-  );
-  return { ...debrief, report, messageId };
+  return {
+    status: "completed",
+    detail:
+      "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+    report,
+    messageId,
+  };
+}
+
+/** Impressions alone, after the participant ended the session itself. */
+function readImpressions(session: LoopSession, turn: CuaTurn): ReplyOutcome {
+  const impressions = participantImpressionsSchema.safeParse(turn.impressions);
+  if (!impressions.success) {
+    return {
+      status: "failed",
+      detail:
+        turn.interruption === "output_limit"
+          ? "the reply was cut off by the output limit"
+          : "the reply did not contain valid impressions",
+    };
+  }
+  session.impressions = recordImpressions(session, impressions.data);
+  return {
+    status: "completed",
+    detail:
+      "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+  };
 }

@@ -177,3 +177,67 @@ it("closing request variants", async () => {
   }
   await expectGolden("closing-variants", runs);
 });
+
+// The impressions request: the participant ended the session itself without impressions, so the
+// loop asks for impressions alone.
+
+async function impressionsRun(
+  probe: Probe,
+  requestImpressions: (request: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>,
+  options: Partial<CuaLoopOptions> = {},
+): Promise<unknown> {
+  const provider = scriptedProvider(probe, [done(report, { usage: { input: 10, output: 5 } })], {
+    requestImpressions: async (request: CuaTurnRequest, signal: AbortSignal) => {
+      probe.push("provider.requestImpressions", request);
+      return requestImpressions(request, signal);
+    },
+  });
+  const executor = sequenceExecutor(probe, [() => ({ stateSignature: "0", text: "editing" })]);
+  let t = 0;
+  return outcome(
+    probe,
+    baseOptions(probe, provider, executor, {
+      now: () => (t += 1),
+      sleep: async (ms) => {
+        t += ms;
+      },
+      timeoutMs: 10_000,
+      ...options,
+    }),
+  );
+}
+
+it("impressions request variants", async () => {
+  const reply = (patch: Partial<CuaTurn> = {}): CuaTurn =>
+    turn({ done: true, usage: { input: 20, output: 10 }, ...patch });
+  const variants: Record<
+    string,
+    [(request: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>, Partial<CuaLoopOptions>?]
+  > = {
+    completed: [
+      async () => reply({ impressions: [{ kind: "liked", text: "Enter saved the name." }] }),
+    ],
+    cutOff: [async () => reply({ interruption: "output_limit" })],
+    invalidImpressions: [
+      async () => reply({ impressions: [{ kind: "liked", text: "x".repeat(501) }] }),
+    ],
+    requestsActions: [async () => reply({ actions: [{ kind: "click", x: 0, y: 0 }] })],
+    thrownError: [
+      async () => {
+        throw new Error("provider unavailable");
+      },
+    ],
+    hungUntilDeadline: [
+      (_request, signal) =>
+        new Promise((_resolve, reject) =>
+          signal.addEventListener("abort", () => reject(new Error("aborted"))),
+        ),
+      { turnTimeoutMs: 5 },
+    ],
+    estimateAtCap: [async () => reply(), { maxUsd: 0.5, estimateTurnCostUsd: () => 0.5 }],
+  };
+  const runs: Record<string, unknown> = {};
+  for (const [name, [requestImpressions, options]] of Object.entries(variants))
+    runs[name] = await impressionsRun(new Probe(), requestImpressions, options);
+  await expectGolden("closing-impressions", runs);
+});
