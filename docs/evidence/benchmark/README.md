@@ -71,11 +71,12 @@ Each step starts only when the spend so far plus that step's worst case fits und
 - A participant run's worst case is `--participant-cap` plus the CLI's worst-case desktop minutes
   at $0.00888 a minute (8 CPU, 8 GiB). The participant cap is checked between turns, so one turn
   can pass it.
-- An analysis's worst case is the admission estimate `humanish analyze --dry-run` reports for
-  that run. The default cap follows that estimate with 10% headroom, bounded by the remaining
-  per-brain budget and the CLI's $1,000 limit. A missing estimate refuses automatic sizing.
-  `--analysis-max-usd` keeps a fixed per-run cap. `analyze` refuses before sending anything when
-  the estimate is higher than its cap. The estimate is conservative and is not a billing cap.
+- An analysis's cap follows the expected cost `humanish analyze --dry-run` reports for that run,
+  with 10% headroom, bounded by the remaining per-brain budget and the CLI's $1,000 limit. A
+  missing estimate refuses automatic sizing. `--analysis-max-usd` keeps a fixed per-run cap.
+  `analyze` refuses before sending anything when the expected cost plus 10%, or its worst case
+  when that is lower, is over the cap. The cap does not bound the bill: an analysis can spend up
+  to its worst case, its whole output allowance.
 - A `local-agent` participant's model spend has no price. It is recorded as unknown, and the cap
   bounds only its desktop and analysis spend.
 
