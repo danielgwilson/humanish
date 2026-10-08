@@ -2,7 +2,7 @@ import { Accordion } from "@base-ui/react/accordion";
 import { ArrowRight, ChevronDown, Info } from "lucide-react";
 import type { ObserverData } from "@/lib/observer-data";
 import { participantLabels } from "@/lib/participant-label";
-import { formatElapsed } from "@/lib/player-model";
+import { formatRunTime } from "../../src/run/run-clock.js";
 import {
   basisLabel,
   findingHeading,
@@ -186,7 +186,7 @@ export function StudyReport({
           };
           const time = (moment: typeof lead) =>
             moment.resolved?.elapsedMs !== null && moment.resolved?.elapsedMs !== undefined
-              ? formatElapsed(moment.resolved.elapsedMs)
+              ? formatRunTime(moment.resolved.elapsedMs)
               : moment.resolved?.at
                 ? new Date(moment.resolved.at).toLocaleTimeString()
                 : "Time unavailable";
@@ -452,7 +452,7 @@ export function StudyReport({
                   const resolved = resolveReportMoment(data, moment.streamId, moment.eventId);
                   const time =
                     resolved?.elapsedMs != null
-                      ? formatElapsed(resolved.elapsedMs)
+                      ? formatRunTime(resolved.elapsedMs)
                       : resolved?.at
                         ? new Date(resolved.at).toLocaleTimeString()
                         : "Time unavailable";

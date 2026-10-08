@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { formatDuration, runArtifactHref } from "@/lib/artifact-href";
-import type { RecordingInterval } from "@/lib/grid-recording";
+import type { RecordingInterval } from "../../src/run/run-clock.js";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
 

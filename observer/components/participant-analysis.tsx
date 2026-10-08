@@ -1,7 +1,7 @@
 import type { ObserverData } from "@/lib/observer-data";
 import type { ParticipantAnalysis as Review } from "@/lib/study-report";
 import { RecordedEntryLink } from "./recorded-entry-link";
-import { formatElapsed } from "@/lib/player-model";
+import { formatRunTime } from "../../src/run/run-clock.js";
 
 /** An explanation of the independent review, separate from recorded outcomes. */
 export function ParticipantAnalysis({ data, review }: { data: ObserverData; review: Review }) {
@@ -36,7 +36,7 @@ export function ParticipantAnalysis({ data, review }: { data: ObserverData; revi
         {review.moments.map((moment, index) => {
           const time =
             moment.elapsedMs !== null
-              ? formatElapsed(moment.elapsedMs)
+              ? formatRunTime(moment.elapsedMs)
               : moment.at && Number.isFinite(Date.parse(moment.at))
                 ? new Date(moment.at).toLocaleTimeString()
                 : "Time unavailable";

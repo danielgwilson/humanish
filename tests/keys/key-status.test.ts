@@ -57,6 +57,21 @@ describe("humanish keys status", () => {
     expect(text).not.toContain("synthetic-");
   });
 
+  it("prints each key with its use and fill command, in the order the status lists them", async () => {
+    const text = formatKeyStatus(await keyStatus({ cwd, env: {}, deps: deps() }));
+    expect(text).toBe(
+      [
+        "E2B_API_KEY (hosted desktops): missing; run `e2b auth login`, or `humanish keys set e2b`",
+        "OPENAI_API_KEY (participant model and analysis): missing; run `humanish keys set openai`",
+        "GH_TOKEN (private repository subjects): missing; run `gh auth login`, or `humanish keys set github`",
+        "AGENTMAIL_API_KEY (email in studies): missing; run `humanish keys set agentmail`",
+        "",
+        "Values are never printed. `humanish keys set` asks for each missing key in turn.",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("names a stored key humanish does not use, so it does not look lost", async () => {
     await mkdir(path.join(home, ".config", "humanish"), { recursive: true });
     await writeFile(
@@ -66,7 +81,9 @@ describe("humanish keys status", () => {
     const others = otherStoredKeys({}, deps());
     expect(others).toEqual(["ANTHROPIC_API_KEY"]);
     const text = formatKeyStatus(await keyStatus({ cwd, env: {}, deps: deps() }), others);
-    expect(text).toContain("ANTHROPIC_API_KEY");
+    expect(text).toContain(
+      "Also in the user store: ANTHROPIC_API_KEY. humanish does not use it today.",
+    );
     expect(text).not.toContain("synthetic-");
   });
 

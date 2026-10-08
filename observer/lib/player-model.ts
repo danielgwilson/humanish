@@ -1,4 +1,5 @@
-import { screenshotHref, traceItems } from "./artifact-href";
+import { captureTimes, isCapture, traceItems } from "../../src/run/run-clock.js";
+import { screenshotHref } from "./artifact-href";
 import type { ObserverStream } from "./observer-data";
 
 // The player's view of a stream: the recorded screenshots as an ordered frame timeline,
@@ -53,9 +54,8 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
   const rows: PlayerRow[] = [];
 
   for (const item of items) {
-    // CUA notices can cite an earlier screenshot for context. Only capture and
-    // scripted action events introduce frames; a notice does not recapture it.
-    if ((item.kind === "screenshot" || item.kind === "ui_action") && item.screenshotRef) {
+    // A capture whose path cannot be shown stays a row. It still counts on the run clock.
+    if (isCapture(item)) {
       const href = screenshotHref(item.screenshotRef.path);
       if (href !== null) {
         const atMs = item.at === undefined ? Number.NaN : Date.parse(item.at);
@@ -102,14 +102,9 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
 
   if (frames.length === 0) return null;
   const durationMs = stream.actor?.durationMs ?? 0;
-  // Recorded pace needs every frame stamped and the stamps non-decreasing; anything
-  // else (older bundle, mixed producers, clock skew) falls back to averaging.
-  const recorded =
-    frames.length > 1 &&
-    frames.every((frame) => frame.atMs !== undefined) &&
-    frames.every(
-      (frame, index) => index === 0 || (frame.atMs ?? 0) >= (frames[index - 1]?.atMs ?? 0),
-    );
+  // Recorded pace needs two frames with run clock times; an older bundle, mixed producers or
+  // clock skew fall back to averaging.
+  const recorded = frames.length > 1 && captureTimes(frames.map((frame) => frame.atMs)) !== null;
   return {
     frames,
     rows,
@@ -190,13 +185,6 @@ export function groupPlayerRows(rows: readonly PlayerRow[], groupWaits = true): 
     } else groups.push({ first: row, last: row, count: 1 });
   }
   return groups;
-}
-
-export function formatElapsed(ms: number): string {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
 /** Index window for bounded interactive DOM; every item remains reachable. */

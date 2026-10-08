@@ -3,24 +3,13 @@
 
 import { cli } from "../cli/invocation.js";
 import {
+  LISTED_KEYS,
   listUserKeys,
   probeKeySources,
   setUserKey,
   type KeyResolutionDeps,
   type KeySourceProbe,
 } from "./key-resolution.js";
-
-/**
- * The keys a person sets for humanish, in the order the status lists them and `keys set` asks for
- * them. ANTHROPIC_API_KEY is left out: a Claude Code participant runs on its own login and never
- * receives it. CODEX_API_KEY is an alternative spelling of the OpenAI key for terminal studies.
- */
-const STATUS_KEYS = [
-  { name: "E2B_API_KEY", use: "hosted desktops" },
-  { name: "OPENAI_API_KEY", use: "participant model and analysis" },
-  { name: "GH_TOKEN", use: "private repository subjects" },
-  { name: "AGENTMAIL_API_KEY", use: "email in studies" },
-] as const;
 
 interface KeyStatusRow extends KeySourceProbe {
   /** What humanish uses the key for, in a few words. */
@@ -33,19 +22,19 @@ export async function keyStatus(args: {
   deps?: KeyResolutionDeps;
 }): Promise<KeyStatusRow[]> {
   const probes = await probeKeySources(
-    STATUS_KEYS.map((key) => key.name),
+    LISTED_KEYS.map((key) => key.name),
     {
       cwd: args.cwd,
       env: args.env,
       ...(args.deps === undefined ? {} : { deps: args.deps }),
     },
   );
-  return probes.map((probe, index) => ({ ...probe, use: STATUS_KEYS[index]!.use }));
+  return probes.map((probe, index) => ({ ...probe, use: LISTED_KEYS[index]!.use }));
 }
 
 /** Names in the user store that the status does not list, such as ANTHROPIC_API_KEY. */
 export function otherStoredKeys(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): string[] {
-  const listed = new Set<string>(STATUS_KEYS.map((key) => key.name));
+  const listed = new Set(LISTED_KEYS.map((key) => key.name));
   return listUserKeys(env, deps).filter((name) => !listed.has(name));
 }
 

@@ -21,7 +21,7 @@ import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
 import { runNoteFile, type RunNotes } from "../run/note-files.js";
 import { byRunTime } from "../run/note-shape.js";
-import { formatRunTime } from "../run/notes.js";
+import { formatRunTime } from "../run/run-clock.js";
 import { runParticipantCaptions } from "../run/participant-records.js";
 import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";

@@ -38,35 +38,71 @@ import { cli } from "../cli/invocation.js";
 import { humanishConfigFile } from "../cli/user-config.js";
 import { OPENAI_EGRESS_PLACEHOLDER } from "../routes/terminal/runtime-auth.js";
 
-/** The only names implicit discovery may fill (and `humanish keys set` may store). Everything
- *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
- *  must never enter process env off a file the operator did not explicitly pass (an explicit
- *  --dotenv remains the operator's own full-file load). */
-const KNOWN_PROVIDER_KEYS = [
-  "OPENAI_API_KEY",
-  "ANTHROPIC_API_KEY",
-  "E2B_API_KEY",
-  "GH_TOKEN",
-  "GITHUB_TOKEN",
-  "CODEX_API_KEY",
-  "AGENTMAIL_API_KEY",
-] as const;
-const PROVIDER_KEY_SET = new Set<string>(KNOWN_PROVIDER_KEYS);
+/** A provider key humanish knows. */
+interface ProviderKey {
+  readonly name: string;
+  /** The `humanish keys set <vendor>` alias for this key. */
+  readonly vendor?: string;
+  /** The vendor CLI's own login, whose store discovery reads this key from. */
+  readonly login?: string;
+  /** The key this name is a second spelling of. It is filled the way that key is. */
+  readonly spellingOf?: string;
+  /** This key's place in the `humanish keys` list (1 is first) and what humanish uses it for. */
+  readonly listed?: { readonly order: number; readonly use: string };
+}
+
+/**
+ * The provider keys, in the order `humanish keys set` names their vendors. Implicit discovery fills
+ * only these names and the user store holds only these. Everything else in an overlay or store file
+ * is ignored and named: a repo-planted NODE_OPTIONS/LD_PRELOAD must never enter process env off a
+ * file the operator did not explicitly pass (an explicit --dotenv remains the operator's own
+ * full-file load). ANTHROPIC_API_KEY is not listed: a Claude Code participant runs on its own login
+ * and never receives it. CODEX_API_KEY is an alternative spelling of the OpenAI key for terminal
+ * studies.
+ */
+const PROVIDER_KEYS: readonly ProviderKey[] = [
+  {
+    name: "OPENAI_API_KEY",
+    vendor: "openai",
+    listed: { order: 2, use: "participant model and analysis" },
+  },
+  {
+    name: "E2B_API_KEY",
+    vendor: "e2b",
+    login: "e2b auth login",
+    listed: { order: 1, use: "hosted desktops" },
+  },
+  { name: "ANTHROPIC_API_KEY", vendor: "anthropic" },
+  {
+    name: "GH_TOKEN",
+    vendor: "github",
+    login: "gh auth login",
+    listed: { order: 3, use: "private repository subjects" },
+  },
+  { name: "GITHUB_TOKEN", spellingOf: "GH_TOKEN" },
+  { name: "CODEX_API_KEY" },
+  { name: "AGENTMAIL_API_KEY", vendor: "agentmail", listed: { order: 4, use: "email in studies" } },
+];
+const PROVIDER_KEY_SET = new Set(PROVIDER_KEYS.map((key) => key.name));
+const providerKey = (name: string): ProviderKey | undefined =>
+  PROVIDER_KEYS.find((key) => key.name === name);
+
+/** The vendor aliases `humanish keys set` accepts. A raw ENV_NAME is also accepted. */
+export const KEY_VENDORS = PROVIDER_KEYS.flatMap((key) =>
+  key.vendor === undefined ? [] : [key.vendor],
+);
+
+/** The keys `humanish keys` lists, in its order, each with what humanish uses it for. */
+export const LISTED_KEYS = PROVIDER_KEYS.flatMap(({ name, listed }) =>
+  listed === undefined ? [] : [{ name, ...listed }],
+)
+  .sort((a, b) => a.order - b.order)
+  .map(({ name, use }) => ({ name, use }));
 
 /** An env for a vendor CLI that discovery runs: the caller's, without any provider key name. */
 function withoutProviderKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(env).filter(([name]) => !PROVIDER_KEY_SET.has(name)));
 }
-
-/** `humanish keys set <vendor>` aliases; a raw ENV_NAME is also accepted. A Map, so a name such as
- * `constructor` is no alias. */
-const KEY_VENDOR_ALIASES = new Map([
-  ["openai", "OPENAI_API_KEY"],
-  ["e2b", "E2B_API_KEY"],
-  ["anthropic", "ANTHROPIC_API_KEY"],
-  ["github", "GH_TOKEN"],
-  ["agentmail", "AGENTMAIL_API_KEY"],
-]);
 
 export interface ResolvedKeyFill {
   name: string;
@@ -297,21 +333,10 @@ export interface KeySourceProbe {
 /** The nearest fill instruction for a missing key. Doctor rows use it, and it is appended to
  *  *_KEYS_MISSING errors so the failure names the fix. */
 export function missingKeyHint(name: string): string {
-  switch (name) {
-    case "E2B_API_KEY":
-      return `run \`e2b auth login\`, or \`${cli("keys set e2b")}\``;
-    case "GH_TOKEN":
-    case "GITHUB_TOKEN":
-      return `run \`gh auth login\`, or \`${cli("keys set github")}\``;
-    case "OPENAI_API_KEY":
-      return `run \`${cli("keys set openai")}\``;
-    case "ANTHROPIC_API_KEY":
-      return `run \`${cli("keys set anthropic")}\``;
-    case "AGENTMAIL_API_KEY":
-      return `run \`${cli("keys set agentmail")}\``;
-    default:
-      return `run \`${cli(`keys set ${name}`)}\``;
-  }
+  const named = providerKey(name);
+  const key = named?.spellingOf === undefined ? named : providerKey(named.spellingOf);
+  const set = `\`${cli(`keys set ${key?.vendor ?? name}`)}\``;
+  return key?.login === undefined ? `run ${set}` : `run \`${key.login}\`, or ${set}`;
 }
 
 /** One shared suffix for *_KEYS_MISSING messages: where discovery looked, and what fills each
@@ -353,21 +378,21 @@ export async function probeKeySources(
     ...(args.deps === undefined ? {} : { deps: args.deps }),
   });
   const bySource = new Map(fills.map((fill) => [fill.name, fill.source]));
+  const setInEnv = (name: string): boolean =>
+    args.env[name] !== undefined && args.env[name]?.trim() !== "";
   return names.map((name) => {
-    const inEnv =
-      args.env[name] !== undefined && args.env[name]?.trim() !== "" && !placeholder(name);
-    // GH_TOKEN and GITHUB_TOKEN are one credential with two spellings; a doctor row that says
-    // "missing" while GITHUB_TOKEN sits in the env would be wrong.
-    const aliasInEnv =
-      name === "GH_TOKEN" &&
-      args.env.GITHUB_TOKEN !== undefined &&
-      args.env.GITHUB_TOKEN.trim() !== "";
+    const inEnv = setInEnv(name) && !placeholder(name);
+    // A second spelling of the key in the env, such as GITHUB_TOKEN for GH_TOKEN, is the same
+    // credential; a doctor row that says "missing" while it sits in the env would be wrong.
+    const spelling = PROVIDER_KEYS.find(
+      (key) => key.spellingOf === name && setInEnv(key.name),
+    )?.name;
     const source = inEnv
       ? args.dotenv?.names.includes(name)
         ? `--dotenv ${args.dotenv.path}`
         : "process env"
-      : aliasInEnv
-        ? "process env (GITHUB_TOKEN)"
+      : spelling !== undefined
+        ? `process env (${spelling})`
         : (bySource.get(name) ?? null);
     return {
       name,
@@ -382,8 +407,9 @@ const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** Resolve a `humanish keys set` target: a vendor alias or a raw env name. Null = invalid. */
 export function resolveKeyName(vendorOrName: string): string | null {
-  const alias = KEY_VENDOR_ALIASES.get(vendorOrName.toLowerCase());
-  if (alias !== undefined) return alias;
+  const vendor = vendorOrName.toLowerCase();
+  const key = PROVIDER_KEYS.find((candidate) => candidate.vendor === vendor);
+  if (key !== undefined) return key.name;
   return ENV_NAME.test(vendorOrName) ? vendorOrName : null;
 }
 

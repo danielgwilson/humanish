@@ -3,11 +3,11 @@
 
 import { type RunRerunLineage } from "../../run/bundle.js";
 import { loadRunBundle } from "../../run/locate.js";
+import { resolveLatestRunPointer } from "../../run/paths.js";
 import { type RunStream } from "../../run/streams.js";
 import type { CuaParticipantPlan, DesktopParticipantRun } from "./types.js";
 import { plural } from "../../run/text.js";
 import { access } from "node:fs/promises";
-import path from "node:path";
 import { cli } from "../../cli/invocation.js";
 
 export async function resolveCuaRerunSelection(args: {
@@ -36,7 +36,7 @@ export async function resolveCuaRerunSelection(args: {
   if (!source) {
     const noRuns =
       sourceRunId === "latest" &&
-      !(await access(path.join(args.cwd, ".humanish", "runs", "latest.json")).then(
+      !(await access(resolveLatestRunPointer(args.cwd)).then(
         () => true,
         () => false,
       ));

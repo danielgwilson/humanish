@@ -5,12 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import type { AutomaticAnalysisView } from "../../src/analysis/job.js";
 import type { AnalysisArtifact, LoadedAnalysis } from "../../src/analysis/types.js";
-import {
-  analysisFindings,
-  ANALYSIS_FINDINGS_SCHEMA,
-  formatFindings,
-  formatFindingsSummary,
-} from "../../src/cli/findings.js";
+import { analysisFindings, ANALYSIS_FINDINGS_SCHEMA } from "../../src/cli/findings.js";
+import { formatFindings, formatFindingsSummary } from "../../src/cli/findings-text.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
 
 const published = (name: string): LoadedAnalysis =>

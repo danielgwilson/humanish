@@ -1,5 +1,5 @@
 import type { GridRecording } from "@/lib/grid-recording";
-import { formatElapsed } from "@/lib/player-model";
+import { formatRunTime } from "../../src/run/run-clock.js";
 import type { RunNote, SaveRunNoteResult } from "@/lib/run-notes";
 import { AddNote, NoteMarkers } from "./reviewer-notes";
 import { IconButton } from "./ui/icon-button";
@@ -67,8 +67,8 @@ export function StudyPlayback({
         </IconButton>
         <span className="study-playback-time" title="Study recording time">
           <span>Study </span>
-          {reviewing && !unavailable ? formatElapsed(elapsed) : "—"}
-          <span> / {formatElapsed(duration)}</span>
+          {reviewing && !unavailable ? formatRunTime(elapsed) : "—"}
+          <span> / {formatRunTime(duration)}</span>
         </span>
         <div className="scrubwrap">
           <div className="scrub-track" aria-hidden="true">
@@ -91,8 +91,8 @@ export function StudyPlayback({
               unavailable
                 ? "Selected time is outside the available recording. Seek to choose a new time."
                 : reviewing
-                  ? `${formatElapsed(elapsed)} of ${formatElapsed(duration)}, recorded capture time`
-                  : `Latest previews. Recording duration ${formatElapsed(duration)}`
+                  ? `${formatRunTime(elapsed)} of ${formatRunTime(duration)}, recorded capture time`
+                  : `Latest previews. Recording duration ${formatRunTime(duration)}`
             }
             onChange={(event) => onSeek(start + Number(event.target.value))}
             onKeyDown={(event) => {

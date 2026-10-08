@@ -1,17 +1,17 @@
+import { captureTimes } from "../../src/run/run-clock.js";
 import type { PlayerModel } from "./player-model";
 
+/**
+ * Frame times on the run clock (`shared`), or from the first frame (`elapsed`). Unstamped frames
+ * have no `shared` times, and take the average pace for `elapsed`.
+ */
 export function frameTimes(model: PlayerModel, clock: "shared" | "elapsed"): number[] | null {
-  const stamped = model.frames.every(
-    (frame, index) =>
-      frame.atMs !== undefined &&
-      Number.isFinite(frame.atMs) &&
-      (index === 0 || frame.atMs >= (model.frames[index - 1]?.atMs ?? Infinity)),
-  );
-  if (clock === "shared" && !stamped) return null;
-  const origin = clock === "shared" ? 0 : (model.frames[0]?.atMs ?? 0);
-  return model.frames.map((frame, index) =>
-    stamped ? (frame.atMs ?? 0) - origin : index * model.avgFrameMs,
-  );
+  const times = captureTimes(model.frames.map((frame) => frame.atMs));
+  if (clock === "shared") return times;
+  const origin = times?.[0] ?? 0;
+  return times
+    ? times.map((time) => time - origin)
+    : model.frames.map((_frame, index) => index * model.avgFrameMs);
 }
 /** Never select a future capture. Outside coverage remains explicit. */
 export function comparisonFrame(
