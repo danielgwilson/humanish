@@ -209,7 +209,12 @@ percent-encoded, JSON-escaped, base64, base64url and hex, and where escapes spli
 hex forms are searched from 6 characters. A value of 4 bytes, such as the code `7439`, is found
 in base64 written whole (`NzQzOQ` or `NzQzOQ==`) and not inside a longer base64 run, where 4 or 5
 characters of its encoding do not depend on the bytes around it;
-`tests/evidence/secret-scrub.test.ts` records the case. A field
+`tests/evidence/secret-scrub.test.ts` records the case. The cost of the short forms is
+over-redaction: an identifier that holds a short value's base64 loses that part, as
+`aMTIzNAz` becomes `a[REDACTED_SECRET]z` while the code `1234` (`MTIzNA`) is registered, since a
+match cannot tell whether the identifier came from the value. In the text of 9 real runs, no 6-
+or 7-character form of any 4-, 5- or 6-digit code occurred. Run evidence is scrubbed for the same
+forms. A field
 with a value is stored decoded with the value replaced; a field without one keeps its spelling. A
 value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: only the markers
 humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,

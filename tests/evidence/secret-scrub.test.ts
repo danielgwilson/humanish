@@ -110,6 +110,13 @@ describe("scrubSecretValues", () => {
     }
   });
 
+  // The contract lists this cost of the six-character forms.
+  it("redacts the part of an identifier that spells a short value's base64", () => {
+    expect(scrubSecretValues(["1234"])("The record named aMTIzNAz failed to load.")).toBe(
+      "The record named a[REDACTED_SECRET]z failed to load.",
+    );
+  });
+
   it("removes overlapping values that start at different places", () => {
     const scrub = scrubSecretValues([T, "catch-01-private-credential"]);
     expect(scrub(Buffer.from(`${T}-private-credential`).toString("hex"))).toBe("[REDACTED_SECRET]");
