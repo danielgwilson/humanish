@@ -1,10 +1,9 @@
 // Reviewer notes on disk: one file per note, notes/<id>.json (humanish.run-note.v1) in the run
-// directory. A note is written once, to a temporary file that link(2) gives its name only when
-// nothing holds that name, and is never rewritten, so a writer never reads or replaces another
-// writer's note and no lock is needed. An id starts
-// with its creation time, so the files sort in the order they were added, and ends in random
-// bits. Readers list notes/ and read each file within MAX_NOTE_FILE_BYTES, skipping and naming
-// anything that is not a readable note of the run.
+// directory. A note is written once, by creating its name only when nothing holds it, and is never
+// rewritten, so a writer never reads or replaces another writer's note and no lock is needed. An
+// id starts with its creation time, so the files sort in the order they were added, and ends in
+// random bits. Readers list notes/ and read each file within MAX_NOTE_FILE_BYTES, skipping and
+// naming anything that is not a readable note of the run, including a note still being written.
 
 import { randomBytes } from "node:crypto";
 import { lstat, opendir } from "node:fs/promises";
@@ -33,7 +32,7 @@ export const RUN_NOTES_DIR = "notes";
 export const MAX_NOTE_FILE_BYTES = 16 * 1024;
 /** The entries a reader lists in notes/ before it stops. */
 const MAX_LISTED_ENTRIES = 2 * MAX_RUN_NOTES;
-/** A temporary file of a write in progress, or of one a stopped writer left. Never a note. */
+/** A temporary file of the atomic writer, or one a 0.114.0 note writer left. Never a note. */
 const WRITE_IN_PROGRESS = /^\.humanish-write-/;
 
 const text = (max: number) => z.string().min(1).max(max);

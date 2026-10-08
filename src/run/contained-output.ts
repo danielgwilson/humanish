@@ -1,14 +1,5 @@
 import { constants } from "node:fs";
-import {
-  link,
-  lstat,
-  mkdir,
-  open,
-  realpath,
-  rename,
-  unlink,
-  type FileHandle,
-} from "node:fs/promises";
+import { lstat, mkdir, open, realpath, rename, unlink, type FileHandle } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -232,41 +223,37 @@ export async function writeContainedOutputFile(
 }
 
 /**
- * Writes a new file inside the root without ever replacing one: the bytes go to a temporary file,
- * which link(2) then gives the final name, failing with EEXIST when that name exists, and the
- * temporary name is removed. writeContainedOutputFile renames instead, which replaces a file that
- * took the name in the meantime.
+ * Creates a new file inside the root under its final name, refusing with EEXIST when that name
+ * exists, so it never replaces a file. The file is opened with O_EXCL and O_NOFOLLOW, filled in one
+ * write and synced, so a reader may briefly see it empty or short. It never has a temporary name or
+ * a second link, so the run directory passes its single-link check at every moment.
+ * writeContainedOutputFile renames a finished file into place instead, replacing what is there.
  */
-export async function writeNewContainedOutputFile(
+export async function createContainedOutputFile(
   rootInput: PreparedOutputRoot,
   relativePath: string,
   data: string,
 ): Promise<void> {
   const filePath = await prepareContainedOutputFile(rootInput, relativePath);
   const root = await resolveOutputRoot(rootInput);
-  const parent = path.dirname(filePath);
-  const revalidate = async (): Promise<void> => {
-    if ((await resolveOutputRoot(rootInput)) !== root) {
-      throw new Error("Output root changed after it was prepared.");
-    }
-    await assertContainedDirectoryChain(root, parent);
-  };
-  await revalidate();
-  const temporary = path.join(parent, `.humanish-write-${process.pid}-${randomUUID()}.tmp`);
-  let handle;
+  await assertContainedDirectoryChain(root, path.dirname(filePath));
+  const bytes = Buffer.from(data, "utf8");
+  const handle = await open(
+    filePath,
+    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+    0o600,
+  );
   try {
-    handle = await open(temporary, "wx", 0o600);
-    await handle.writeFile(data, "utf8");
+    const { bytesWritten } = await handle.write(bytes, 0, bytes.length, 0);
+    if (bytesWritten !== bytes.length) throw new Error("The file was not written in full.");
     await handle.sync();
-    await handle.close();
-    handle = undefined;
-    await revalidate();
-    await link(temporary, filePath);
-  } finally {
-    await handle?.close().catch(() => undefined);
-    await unlink(temporary).catch(() => undefined);
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    // O_EXCL created this name here, so removing it removes only this file.
+    await unlink(filePath).catch(() => undefined);
+    throw error;
   }
-  await assertRegularFileOrMissing(filePath, "Selected output files");
+  await handle.close();
 }
 
 /** Read one regular file only when both lexical and physical paths stay in root. */

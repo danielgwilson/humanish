@@ -16,6 +16,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   run toward `blocked`.
 - When `humanish notes --add` refuses a run with no readable run.json, the `verify` command it
   suggests names this install's invocation, such as `npx humanish` in a project.
+- Adding reviewer notes at the same time, from the Observer or `humanish notes --add`, no longer
+  refuses one of them. A note was published with a hard link, so for a moment it had two links,
+  and another add's run directory check refused the run as having "no run.json humanish can read
+  safely". A note is now created under its own name, and a refusal from that check names what it
+  found (#1679).
 
 ### Changed
 

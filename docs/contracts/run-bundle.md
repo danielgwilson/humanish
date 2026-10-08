@@ -617,9 +617,13 @@ Each note a person adds while reviewing a run is its own file in the run directo
 - `author`: `"you"` in this version.
 - `createdAt`, `editedAt`: ISO-8601. Notes cannot be edited yet, so `editedAt` is `null`.
 
-A note file is written once and never rewritten: its bytes go to a temporary file inside
-`notes/`, which `link` gives the note's name only when no file has that name, and a taken name
-gets a new id. Adding a note reads no other note, so notes added at the same time from any
+A note file is created once under its own name, only when no file has that name (`O_CREAT` with
+`O_EXCL`), filled in one write and never rewritten; a taken name gets a new id. No temporary
+file or second link is made, so the run directory passes the single-link check that `verify`,
+serving and adding a note run while a note is added. A reader can find a note while it is being
+written, as an empty or short file; it skips and names that file like any unreadable note, and
+the next read finds the whole note. A writer stopped mid-write leaves such a file, which readers
+keep skipping. Adding a note reads no other note, so notes added at the same time from any
 process are all kept, and there is no lock. Readers list at most 1000 entries of `notes/` and
 read at most 500 notes, each within 16 KiB and refused before reading past that; any other
 entry, or a file that is not a note of the run, is skipped and named. The Observer servers serve

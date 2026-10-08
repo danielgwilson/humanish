@@ -161,6 +161,10 @@ describe("reading notes/", () => {
 
     // Any link in a run directory makes its storage unsafe, run.json included.
     expect(added).toMatchObject({ ok: false, error: { code: "HUMANISH_INVALID_RUN_BUNDLE" } });
+    // The refusal names what the storage check found, which is not a problem with run.json.
+    if (added.ok) throw new Error("the note was added");
+    expect(added.error.message).toMatch(/symbolic link/);
+    expect(added.error.message).not.toMatch(/run\.json/);
     expect(await readdir(outside)).toEqual([]);
     expect((await readRunNotes(prepared)).skipped).toEqual([expect.stringContaining("notes")]);
   });
