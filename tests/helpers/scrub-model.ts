@@ -295,8 +295,9 @@ export function survivingForm(values: readonly string[], text: string): string |
   return undefined;
 }
 
-// The regex RunSecrets used to find what a value's view drops or decodes: operating-system
-// commands, control sequences and two-byte escapes, raw and JSON-escaped, and percent runs.
+// The regex escapeSequences replaced, which finds what a value's view drops or decodes:
+// operating-system commands, control sequences and two-byte escapes, raw and JSON-escaped, and
+// percent runs.
 const VIEW_SEQUENCE = new RegExp(
   [
     "\\x1b\\][^\\x07]*(?:\\x07|\\x1b\\\\)",

@@ -15,9 +15,9 @@ describe("escapeSequences", () => {
     );
   });
 
-  it("ends a command at the first BEL after it, or else at the last string terminator", () => {
+  it("ends a command at the first bell character after it, or else at the last string terminator", () => {
     expect(escapeSequences("a\x1b]0;t\x07b\x07")).toEqual([[1, 7]]);
-    // With no BEL after it, the command runs to the last terminator and takes the text between.
+    // With no bell character after it, the command runs to the last terminator and takes the text between.
     expect(escapeSequences("\x1b]0;a\x1b\\ b \x1b]0;c\x1b\\ d")).toEqual([[0, 17]]);
     expect(escapeSequences("\x1b]0;a \x1b]")).toEqual([]);
   });

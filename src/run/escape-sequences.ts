@@ -38,16 +38,16 @@ function percentRunEnd(text: string, from: number): number {
  * The stretches of the text a value's view drops or decodes, in order and without overlap, each
  * as [start, end): operating-system commands (`ESC ]`), control sequences (`ESC [`) and the
  * two-byte escapes `ESC 7`, `ESC 8`, `ESC =` and `ESC >`, raw or JSON-escaped (`\u001b`), and runs
- * of percent escapes. An operating-system command ends at the first BEL after it or, with none
- * after it, at the last `ESC \` in the text. A JSON-escaped one ends at the first backslash after
- * it, which must start `\u0007` or `\u001b\\`. A start with no end is left as written. These are the
- * matches of one regex of the six shapes; that regex took time quadratic in a run of unterminated
- * commands, and this takes time linear in the text.
+ * of percent escapes. An operating-system command ends at the first bell character after it or,
+ * with none after it, at the last `ESC \` in the text. A JSON-escaped one ends at the first
+ * backslash after it, which must start `\u0007` or `\u001b\\`. A start with no end is left as
+ * written. One regex of the six shapes finds the same stretches, in time quadratic in a run of
+ * unterminated commands; this takes time linear in the text.
  */
 export function escapeSequences(text: string): [number, number][] {
   const lastTerminator = text.lastIndexOf(STRING_TERMINATOR);
-  // The first BEL at or after the last place searched from. Starts only move forward, so each
-  // stretch of text is searched once.
+  // The first bell character at or after the last place searched from. Starts only move forward,
+  // so each stretch of text is searched once.
   let bel = text.indexOf(BEL);
   const commandEnd = (start: number): number => {
     if (bel !== -1 && bel < start + 2) bel = text.indexOf(BEL, start + 2);
