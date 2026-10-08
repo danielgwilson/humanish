@@ -14,6 +14,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   print: the expected cost range for the study's participants and the rule that refuses an
   analysis whose expected cost plus 10% is over the cap. It still showed the wording from before
   0.114.0, "admission estimate limit", with no expected cost.
+- The warning for a participant with no persona background names `study show` the way the
+  install runs humanish, such as `npx humanish study show <id> --json` where humanish is a dev
+  dependency. It printed `humanish study show`, which reaches a stale global install or nothing.
 - Telemetry reads `CI=false` and `HUMANISH_STUDY_PARTICIPANT=false` as unset, as the update check
   and is-in-ci already did. It counted any value other than empty or `0` as set, so `CI=false`
   marked an event as coming from CI.
