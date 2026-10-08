@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -163,6 +164,26 @@ describe("humanish export", () => {
     const html = await readFile(path.join(cwd, result.path), "utf8");
     expect(html).toContain("humanish-local-only");
     expect(notesSlot(html)).toEqual({ notes: slotted(`Key ${secret}`), write: null });
+  });
+
+  it("marks a local-only export whose notes hold encoded text the scan cannot read", async () => {
+    const encoded = gzipSync("a note the scan cannot read").toString("base64");
+    await writeNoteFile(runDir, RUN, { text: `Pasted ${encoded}` });
+
+    const refused = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    const local = await exportRun(
+      cwd,
+      RUN,
+      { localOnly: true },
+      { verify: verified("share_ready") },
+    );
+
+    expect(refused).toMatchObject({ ok: false, shareSafety: { status: "local_only" } });
+    expect(local).toMatchObject({
+      ok: true,
+      watermarked: true,
+      shareSafety: { status: "local_only", reasons: [{ code: "UNSCANNED_ARTIFACT" }] },
+    });
   });
 
   it("leaves out a note file it cannot read and says which", async () => {
@@ -401,6 +422,28 @@ describe("humanish export", () => {
     expect(formatExportHuman(result)).toContain("(watermarked: local only)");
     expect(html).toMatch(
       /"share":\{"status":"local_only","verifiedAt":"[^"]+","reasons":\["RAW_SCREENSHOTS"\]\}/,
+    );
+  });
+
+  it("keeps a blocked run blocked when --local-only exports it with an analysis that fails its checks", async () => {
+    await mkdir(path.join(runDir, "analysis", "analysis-1"), { recursive: true });
+    await writeFile(path.join(runDir, "analysis", "analysis-1", "analysis.json"), "{ not json");
+
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { localOnly: true },
+      { verify: verified("blocked", true, ["PUBLIC_SAFETY_FINDINGS"]) },
+    );
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(result.shareSafety).toMatchObject({
+      status: "blocked",
+      reasons: [{ code: "PUBLIC_SAFETY_FINDINGS" }, { code: "ANALYSIS_UNVERIFIED" }],
+    });
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(html).toMatch(
+      /"share":\{"status":"blocked","verifiedAt":"[^"]+","reasons":\["PUBLIC_SAFETY_FINDINGS","ANALYSIS_UNVERIFIED"\]\}/,
     );
   });
 

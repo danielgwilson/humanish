@@ -2,15 +2,10 @@ import type { Command } from "commander";
 
 import { renderObserver } from "../../observer/render.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../../run/locate.js";
-import {
-  addRunNote,
-  formatRunTime,
-  readRunNotes,
-  runParticipantCaptions,
-  type RunNote,
-  type RunNoteErrorCode,
-} from "../../run/notes.js";
-import { streamParticipantIdOf } from "../../run/participant-records.js";
+import { readRunNotes } from "../../run/note-files.js";
+import { byRunTime, type RunNote } from "../../run/note-shape.js";
+import { addRunNote, formatRunTime, type RunNoteErrorCode } from "../../run/notes.js";
+import { runParticipantCaptions, streamParticipantIdOf } from "../../run/participant-records.js";
 import { resolvePhysicalCwd, runIdOf, type PreparedRunArtifactPaths } from "../../run/paths.js";
 import { runNotFoundMessage } from "../../run/run-not-found.js";
 import { cli } from "../invocation.js";
@@ -100,11 +95,6 @@ function parseRunTime(value: string): number | null {
   const match = /^(\d{1,4}):([0-5]\d)$/.exec(value.trim());
   return match ? (Number(match[1]) * 60 + Number(match[2])) * 1000 : null;
 }
-
-const byRunTime = (notes: readonly RunNote[]): RunNote[] =>
-  [...notes].sort(
-    (left, right) => left.atMs - right.atMs || left.createdAt.localeCompare(right.createdAt),
-  );
 
 async function handleNotes(
   io: CliIo,

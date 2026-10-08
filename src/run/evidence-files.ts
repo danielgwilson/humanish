@@ -1,5 +1,5 @@
 import { constants, type BigIntStats } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
+import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 
 import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
@@ -103,6 +103,27 @@ export async function pathMissing(filePath: string): Promise<boolean> {
   }
 }
 
+/**
+ * At most `maxBytes` from the start of an opened file, or null when it holds more. It reads by
+ * position, in chunks of up to 64 KiB, and stops one byte past the limit, so a file that grew
+ * after it was opened is never read whole.
+ */
+export async function readOpenedAtMost(
+  handle: FileHandle,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
+    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
+    if (bytesRead === 0) return Buffer.concat(chunks, total);
+    total += bytesRead;
+    if (total > maxBytes) return null;
+    chunks.push(chunk.subarray(0, bytesRead));
+  }
+}
+
 export type BoundedFileResult =
   | { state: "read"; bytes: Buffer }
   | { state: "limit"; size: bigint }
@@ -155,22 +176,17 @@ export async function readBoundedFileResult(
     );
     try {
       if (!sameFile(before, await handle.stat({ bigint: true }))) return unavailable;
-      const chunks: Buffer[] = [];
-      let total = 0;
-      while (total <= maxBytes) {
-        const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
-        const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
-        if (bytesRead === 0) break;
-        total += bytesRead;
-        if (total > maxBytes) return unavailable;
-        chunks.push(chunk.subarray(0, bytesRead));
-      }
-      if (!sameFile(before, await handle.stat({ bigint: true })) || total !== Number(before.size))
+      const bytes = await readOpenedAtMost(handle, maxBytes);
+      if (
+        bytes === null ||
+        !sameFile(before, await handle.stat({ bigint: true })) ||
+        bytes.length !== Number(before.size)
+      )
         return unavailable;
       if ((await validateRoot()) !== physicalRoot) return unavailable;
       await validateParents();
       if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
-      return { state: "read", bytes: Buffer.concat(chunks, total) };
+      return { state: "read", bytes };
     } finally {
       await handle.close();
     }

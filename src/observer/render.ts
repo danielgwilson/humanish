@@ -20,14 +20,15 @@ import {
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import { loadRunBundlePrepared, readRunJsonIfExists } from "../run/locate.js";
-import { readRunNotes } from "../run/notes.js";
+import { readRunNotes } from "../run/note-files.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./http.js";
 import { listenOnLoopback } from "./listen.js";
-import { createNotesWriter, NOTES_PATH } from "./notes-route.js";
+import { NOTES_PATH } from "../run/note-shape.js";
+import { createNotesWriter } from "./notes-route.js";
 import {
   pinDirectChildDirectory,
   pinDirectory,

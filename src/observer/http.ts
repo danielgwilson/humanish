@@ -1,7 +1,8 @@
 // Shared HTTP hardening primitives for the serve surfaces. Extracted here so both the live
 // Observer server (src/observer/render.ts) and the run-library server
 // (src/observer/serve.ts) can enforce the identical Host allowlist + security-header posture
-// without a module cycle. This file imports nothing from the serve modules.
+// without a module cycle. The email catch (src/comms/email-catch.ts) reads request bodies through
+// readBodyAtMost too. This file imports nothing from the serve modules.
 
 // The exposure mode a serve/watch surface is running in.
 // - "loopback": no exposure declared; bound to 127.0.0.1 for local viewing only.
@@ -64,4 +65,24 @@ export function parsePublicOrigin(
     host: parsed.host.toLowerCase(),
     scheme: parsed.protocol === "https:" ? "https" : "http",
   };
+}
+
+/**
+ * A request body, or null once it passes `limit` bytes. Reading stops at the limit: leaving the
+ * loop destroys the request with its socket detached, so the caller can still answer, and should
+ * send `connection: close`, since the rest of the body is never read. Rejects when the client
+ * aborts.
+ */
+export async function readBodyAtMost(
+  request: AsyncIterable<Buffer>,
+  limit: number,
+): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > limit) return null;
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, size);
 }

@@ -7,6 +7,7 @@ import { constants as fsConstants } from "node:fs";
 import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
+import { readOpenedAtMost } from "../run/evidence-files.js";
 import { isPathInside, isSafeRunIdSegment } from "../run/paths.js";
 
 /** internal: consumed by src/observer/serve.ts */
@@ -45,7 +46,9 @@ export async function readContainedFile(
     const body =
       options.maxBytes === undefined
         ? await opened.handle.readFile()
-        : await readAtMost(opened.handle, opened.size, options.maxBytes);
+        : opened.size > options.maxBytes
+          ? null
+          : await readOpenedAtMost(opened.handle, options.maxBytes);
     if (body === null) return null;
     // A write that landed during the read changed the file's mtime and ctime.
     if (
@@ -118,26 +121,6 @@ export async function openContainedFile(
   } catch {
     if (handle) await handle.close().catch(() => undefined);
     return null;
-  }
-}
-
-/** At most `maxBytes` from the start of an opened file, or null when it holds more. */
-async function readAtMost(
-  handle: FileHandle,
-  size: number,
-  maxBytes: number,
-): Promise<Buffer | null> {
-  if (size > maxBytes) return null;
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for (;;) {
-    const chunk = Buffer.alloc(Math.min(64 * 1024, maxBytes + 1 - total));
-    const { bytesRead } = await handle.read(chunk, 0, chunk.length, total);
-    if (bytesRead === 0) return Buffer.concat(chunks, total);
-    total += bytesRead;
-    // The file grew past the limit after it was opened.
-    if (total > maxBytes) return null;
-    chunks.push(chunk.subarray(0, bytesRead));
   }
 }
 

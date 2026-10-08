@@ -21,7 +21,7 @@ import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadAnalysis } from "../analysis/load.js";
-import { readNotesForSharing, type RunNotes } from "../run/notes.js";
+import { readNotesForSharing, type RunNotes } from "../run/note-files.js";
 import { cli } from "../cli/invocation.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
@@ -496,7 +496,11 @@ function makePortable(inlined: Record<string, unknown>, verified: VerifyResult):
       }
     }
   }
-  // What verify said, in the file, so the chrome can agree with the result envelope.
+  recordShareSafety(inlined, verified);
+}
+
+/** What verify said, in the file, so the chrome can agree with the result envelope. */
+function recordShareSafety(inlined: Record<string, unknown>, verified: VerifyResult): void {
   const publicSafety = (inlined.publicSafety ?? {}) as Record<string, unknown>;
   inlined.publicSafety = {
     ...publicSafety,
@@ -506,6 +510,35 @@ function makePortable(inlined: Record<string, unknown>, verified: VerifyResult):
       reasons: verified.shareSafety.reasons.map((r) => r.code),
     },
   };
+}
+
+/** A sharing check that failed on what the export is about to include: the analysis or the notes. */
+interface SharingProblem {
+  status: "local_only" | "blocked";
+  reason: VerifyResult["shareSafety"]["reasons"][number];
+}
+
+/**
+ * Adds a failed sharing check to verify's result. The reason joins verify's reasons and the status
+ * is the worse of the two, as verify grades an analysis. The export is refused unless --local-only,
+ * which writes the new status into the file.
+ */
+function applySharingProblem(
+  verified: VerifyResult,
+  inlined: Record<string, unknown>,
+  options: ExportOptions,
+  problem: SharingProblem,
+): "blocked" | "downgraded" {
+  verified.shareSafety = {
+    status:
+      problem.status === "blocked" || verified.shareSafety.status === "blocked"
+        ? "blocked"
+        : "local_only",
+    reasons: [...verified.shareSafety.reasons, problem.reason],
+  };
+  if (options.localOnly !== true) return "blocked";
+  recordShareSafety(inlined, verified);
+  return "downgraded";
 }
 
 /**
@@ -534,23 +567,13 @@ async function recheckAnalysis(
   }
   const analysisSharing = analysisSharingProblems(analysis);
   if (!analysisSharing.sensitive && !analysisSharing.unverified) return "ok";
-  verified.shareSafety = {
+  return applySharingProblem(verified, inlined, options, {
     status: analysisSharing.sensitive ? "blocked" : "local_only",
-    reasons: [
-      ...verified.shareSafety.reasons,
-      {
-        code: "ANALYSIS_UNVERIFIED",
-        message: "The exact analysis snapshot being exported did not pass sharing checks.",
-      },
-    ],
-  };
-  if (options.localOnly !== true) return "blocked";
-  (inlined.publicSafety as Record<string, unknown>).share = {
-    status: verified.shareSafety.status,
-    verifiedAt: new Date().toISOString(),
-    reasons: verified.shareSafety.reasons.map((reason) => reason.code),
-  };
-  return "downgraded";
+    reason: {
+      code: "ANALYSIS_UNVERIFIED",
+      message: "The exact analysis snapshot being exported did not pass sharing checks.",
+    },
+  });
 }
 
 /**
@@ -565,35 +588,12 @@ async function checkedNotes(
   options: ExportOptions,
   warnings: string[],
 ): Promise<{ notes: RunNotes; check: "ok" | "blocked" | "downgraded" }> {
-  const { notes, finding } = await readNotesForSharing(runPaths);
+  const { notes, problem } = await readNotesForSharing(runPaths);
   for (const skipped of notes.skipped) warnings.push(`Reviewer notes: ${skipped}`);
-  if (finding === null) return { notes, check: "ok" };
-  verified.shareSafety = {
-    status:
-      finding === "sensitive" || verified.shareSafety.status === "blocked"
-        ? "blocked"
-        : "local_only",
-    reasons: [
-      ...verified.shareSafety.reasons,
-      finding === "sensitive"
-        ? {
-            code: "PUBLIC_SAFETY_FINDINGS",
-            message:
-              "The reviewer notes being exported match secret, token or local-path patterns.",
-          }
-        : {
-            code: "UNSCANNED_ARTIFACT",
-            message: "The reviewer notes being exported hold encoded text the scan cannot read.",
-          },
-    ],
+  return {
+    notes,
+    check: problem === null ? "ok" : applySharingProblem(verified, inlined, options, problem),
   };
-  if (options.localOnly !== true) return { notes, check: "blocked" };
-  (inlined.publicSafety as Record<string, unknown>).share = {
-    status: verified.shareSafety.status,
-    verifiedAt: new Date().toISOString(),
-    reasons: verified.shareSafety.reasons.map((reason) => reason.code),
-  };
-  return { notes, check: "downgraded" };
 }
 
 /** The portable Observer HTML, with the local-only banner when the export is watermarked. */
