@@ -16,9 +16,9 @@
 import { listStudyManifests } from "../study/discover.js";
 import { listRuns } from "../run/stored-runs.js";
 import { plural } from "../run/text.js";
-import { supportsLocalBrowser } from "./first-run-path.js";
+import { supportsLocalBrowser, tuiSentence, type TuiReader } from "./first-run-path.js";
 import { PRODUCT_SENTENCE } from "./product-sentence.js";
-import { cli } from "./invocation.js";
+import { cli, humanishCommand } from "./invocation.js";
 
 export const ORIENTATION_SCHEMA = "humanish.orientation.v1" as const;
 
@@ -181,9 +181,10 @@ function nextCommandsForStudies(args: {
 
 /**
  * The human rendering. Says where you are before it says what to do, because "what should I run"
- * has no answer that is true in every project.
+ * has no answer that is true in every project. A project with studies also gets the sentence about
+ * `humanish tui`, worded for `reader`.
  */
-export function formatOrientationHuman(state: OrientationState): string {
+export function formatOrientationHuman(state: OrientationState, reader: TuiReader): string {
   const lines: string[] = [`humanish: ${PRODUCT_SENTENCE}`, ""];
 
   if (!state.initialized) {
@@ -207,6 +208,7 @@ export function formatOrientationHuman(state: OrientationState): string {
     lines.push(`      ${next.why}`);
   }
   lines.push("");
+  if (state.initialized) lines.push(tuiSentence(reader, humanishCommand()));
   lines.push(`\`${cli("--help")}\` lists every command.`);
   return `${lines.join("\n")}\n`;
 }

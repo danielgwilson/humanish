@@ -21,14 +21,14 @@ assume broad inherited job env is safe. Stop before live provider spend,
 hosted execution, deploys, public tunnels, or GitHub mutation unless the user
 explicitly approves that exact action.
 
-## Not For You: `humanish tui`
+## `humanish tui` is for the person you work for
 
-`humanish tui` is a human-only surface. It takes over the terminal and waits for
-keystrokes, so it will block you and produce nothing you can read. It refuses a
-non-interactive stdin or stdout with `HUMANISH_TUI_REQUIRES_TTY` rather than
-rendering escape codes into your transcript — but do not invoke it at all.
+Tell the person you are working for: `npx humanish tui`, typed in your own terminal, lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.
 
-Everything it shows has a machine-readable equivalent, which is what you want:
+It takes over the terminal and waits for keystrokes. It refuses a detected agent
+session with `HUMANISH_TUI_AGENT_SESSION` and a non-interactive stdin or stdout
+with `HUMANISH_TUI_REQUIRES_TTY`. Everything it shows has a machine-readable
+equivalent:
 
 | Instead of the TUI  | Use                                                                                    |
 | ------------------- | -------------------------------------------------------------------------------------- |
@@ -37,9 +37,6 @@ Everything it shows has a machine-readable equivalent, which is what you want:
 | starting a run      | `npx humanish run <study> --json --no-open`                                            |
 | a run's findings    | `npx humanish review --run <id> --json`                                                |
 | communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
-
-If a human asks you to "open the TUI", tell them the command to type; do not run
-it on their behalf.
 
 For AgentMail credential setup, a human can open `humanish tui`, press `c`,
 and choose **Add API key**. Hidden entry returns to Connections after saving or

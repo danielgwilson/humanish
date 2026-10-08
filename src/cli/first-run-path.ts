@@ -53,6 +53,8 @@ export interface FirstRunEnvironment {
   platform?: NodeJS.Platform;
   /** How a suggested command invokes humanish; `npx humanish` when unset. */
   humanish?: string;
+  /** Who reads the next steps, for the line about `humanish tui`; an agent when unset. */
+  reader?: TuiReader;
 }
 
 /** Whether this host passed init's quick checks for a local browser study, and why not. */
@@ -190,10 +192,35 @@ function hostedStep(env: FirstRunEnvironment, humanish: string, note: string): F
   };
 }
 
-/** The block init prints after its changes. */
+/** Who reads a list of next steps: a person at this terminal, or a coding agent working for one. */
+export type TuiReader = "person" | "agent";
+
+/**
+ * The one sentence about `humanish tui` that init, the `AGENTS.md` section, bare `humanish` and
+ * doctor print. An agent cannot use the screen, so its sentence tells it what to say to the person
+ * it works for, in words it can repeat. A line that only labels the screen as being for that
+ * person was read and left out of every agent's report.
+ */
+export function tuiSentence(reader: TuiReader, humanish = "npx humanish"): string {
+  const what =
+    "lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.";
+  return reader === "person"
+    ? `\`${humanish} tui\` ${what}`
+    : `Tell the person you are working for: \`${humanish} tui\`, typed in your own terminal, ${what}`;
+}
+
+/**
+ * The block init prints after its changes: the commands to run, then the TUI for the person. No
+ * blank line before the TUI, so init's output still fits a 24-line screen.
+ */
 export function firstRunGuidance(env: FirstRunEnvironment): string[] {
   const steps = firstRunSteps(env);
-  return ["", "next:", ...steps.flatMap((step) => [`  ${step.command}`, `      ${step.why}`])];
+  return [
+    "",
+    "next:",
+    ...steps.flatMap((step) => [`  ${step.command}`, `      ${step.why}`]),
+    tuiSentence(env.reader ?? "agent", env.humanish),
+  ];
 }
 
 /** Starts humanish's section of `AGENTS.md`, on its heading line. */
@@ -246,8 +273,7 @@ export function agentsSection(humanish = "npx humanish"): string {
     '  http://127.0.0.1:3000 --local-mission "Complete the primary flow"` on first setup.',
     "- Evidence lands in gitignored `.humanish/runs/`. Never commit it, and never paste raw run",
     `  bundles into an issue; \`${humanish} feedback issue\` writes a redacted, share-safe draft.`,
-    `- \`${humanish} tui\` is for people and refuses to run in an agent session. Use the commands`,
-    "  above instead, and tell the person you are working for that the TUI exists.",
+    `- \`${humanish} tui\` refuses to open in an agent session. ${tuiSentence("agent", humanish)}`,
     "- A live run spends money. `caps.maxUsd` in each study caps estimated model spend: the run",
     "  stops before its next request once the estimate passes it, so the last request can go over, and",
     "  hosted desktop time is billed on top. Do not raise it without asking the person you are working for.",

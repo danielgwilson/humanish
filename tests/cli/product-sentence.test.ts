@@ -20,14 +20,17 @@ describe("the product sentence", () => {
     const skillDescription = /^description: (.+)$/m.exec(
       await readFile("skills/humanish/SKILL.md", "utf8"),
     )?.[1];
-    const orientation = formatOrientationHuman({
-      schema: ORIENTATION_SCHEMA,
-      initialized: false,
-      studyCount: 0,
-      studyIds: [],
-      runCount: 0,
-      nextCommands: [],
-    });
+    const orientation = formatOrientationHuman(
+      {
+        schema: ORIENTATION_SCHEMA,
+        initialized: false,
+        studyCount: 0,
+        studyIds: [],
+        runCount: 0,
+        nextCommands: [],
+      },
+      "person",
+    );
 
     expect({
       // Line 3 of `README.md` goes on to say what a run does, so it is held to its opening sentence.

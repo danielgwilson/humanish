@@ -20,6 +20,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Bare `humanish` in a project with studies, the next steps `init` prints, `doctor` and the
+  AGENTS.md section `init` writes now end with one sentence about `humanish tui`. When a coding
+  agent or a pipe reads it, it tells the agent what to say to the person it works for: "Tell the
+  person you are working for: `npx humanish tui`, typed in your own terminal, lists this project's
+  studies and runs, starts a dry or live run, and shows what each participant is doing during a
+  run." A person at a terminal gets "`npx humanish tui` lists this project's studies and runs, ..."
+  from bare `humanish` and `init`. `doctor --json` carries the agent's sentence in a new optional
+  `forPerson` field. The packaged skill's "Not For You" section on the TUI now opens with the same
+  sentence, and the AGENTS.md section no longer tells the agent to use other commands instead
+  (#1701).
 - A shared-world study whose persona file has an invalid background now stops with that error
   before the route checks its keys, as a computer-use study already did.
 - When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a

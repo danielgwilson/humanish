@@ -7,9 +7,11 @@ import {
   AGENTS_SECTION_END_MARKER,
   AGENTS_SECTION_MARKER,
   agentsSection,
+  firstRunGuidance,
   firstRunSteps,
   starterActorFor,
   starterLocalAgentFor,
+  tuiSentence,
   type FirstRunEnvironment,
 } from "../../src/cli/first-run-path.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -260,6 +262,69 @@ describe("what to do next, resolved against this machine", () => {
     ]) {
       expect(firstRunSteps(env).length).toBeLessThanOrEqual(2);
     }
+  });
+});
+
+// Coding agents relay init's next lines nearly verbatim, so the hand-off is a line in that list,
+// addressed to the person the agent works for.
+const FOR_PERSON =
+  "Tell the person you are working for: `npx humanish tui`, typed in your own terminal, lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.";
+
+describe("the terminal UI is named for the person a coding agent works for", () => {
+  const machine: FirstRunEnvironment = {
+    hasE2bKey: false,
+    hasProviderKey: false,
+    localAgents: [],
+    hasDesktopSdk: true,
+    desktopPeerCommand: "npm i -D @e2b/desktop",
+  };
+
+  it("addresses an agent's reader to the person it works for", () => {
+    expect(tuiSentence("agent")).toBe(FOR_PERSON);
+  });
+
+  it("tells a person at a terminal what the screen does, with the invocation it is given", () => {
+    expect(tuiSentence("person", "humanish")).toBe(
+      "`humanish tui` lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.",
+    );
+  });
+
+  it("ends init's next steps with it, after the commands the agent runs itself", () => {
+    expect(firstRunGuidance({ ...machine, reader: "agent" })).toEqual([
+      "",
+      "next:",
+      "  npx humanish run first-run",
+      "      a dry run: no browser or model runs, no keys, no spend",
+      "  npx humanish keys set e2b",
+      "      the hosted starter needs an E2B desktop.",
+      FOR_PERSON,
+    ]);
+  });
+
+  it("reads as an agent's when an agent runner marks the session, whatever the terminal", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-firstrun-"));
+    try {
+      await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "demo" }), "utf8");
+      const result = await runInit({
+        cwd,
+        yes: true,
+        env: { HOME: cwd, CODEX_THREAD_ID: "thread-1" },
+      });
+      // A source checkout invokes humanish by its bare name.
+      expect(result.nextSteps?.at(-1)).toBe(
+        FOR_PERSON.replace("`npx humanish tui`", "`humanish tui`"),
+      );
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("writes it into the agents file section in place of the old instruction", () => {
+    const section = agentsSection("npx humanish");
+    expect(section).toContain(
+      `\n- \`npx humanish tui\` refuses to open in an agent session. ${FOR_PERSON}\n`,
+    );
+    expect(section).not.toContain("Use the commands");
   });
 });
 

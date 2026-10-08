@@ -176,7 +176,7 @@ describe("readOrientation", () => {
 describe("formatOrientationHuman", () => {
   it("says where you are before it says what to do", async () => {
     dir = await emptyProject();
-    const text = formatOrientationHuman(await readOrientation(dir));
+    const text = formatOrientationHuman(await readOrientation(dir), "person");
 
     expect(text).toContain("not set up yet");
     // Every suggestion carries its reason: a command with no "why" is just a shorter menu.
@@ -185,16 +185,65 @@ describe("formatOrientationHuman", () => {
   });
 
   it("counts labs and runs in prose a person can read", async () => {
-    const text = formatOrientationHuman({
-      schema: ORIENTATION_SCHEMA,
-      initialized: true,
-      studyCount: 1,
-      studyIds: ["only-lab"],
-      runCount: 1,
-      latestRunId: "cua-123",
-      nextCommands: [{ command: "humanish watch only-lab", why: "run it" }],
-    });
+    const text = formatOrientationHuman(
+      {
+        schema: ORIENTATION_SCHEMA,
+        initialized: true,
+        studyCount: 1,
+        studyIds: ["only-lab"],
+        runCount: 1,
+        latestRunId: "cua-123",
+        nextCommands: [{ command: "humanish watch only-lab", why: "run it" }],
+      },
+      "person",
+    );
     expect(text).toContain("1 study and 1 run");
     expect(text).toContain("cua-123");
+  });
+
+  // A person at a terminal types bare `humanish` first; without this line they find the TUI only
+  // through --help.
+  const initialized = {
+    schema: ORIENTATION_SCHEMA,
+    initialized: true,
+    studyCount: 5,
+    studyIds: ["first-run", "try-live", "local-browser"],
+    runCount: 0,
+    nextCommands: [
+      {
+        command: "humanish run first-run",
+        why: "a dry run: no browser or model runs, no keys, no spend",
+      },
+    ],
+  };
+
+  it("names the terminal UI to a person at a terminal", () => {
+    expect(formatOrientationHuman(initialized, "person")).toBe(
+      [
+        "humanish: Synthetic user research for apps, CLIs, and agent-facing product flows.",
+        "",
+        "This project has 5 studies and no runs yet.",
+        "",
+        "  humanish run first-run",
+        "      a dry run: no browser or model runs, no keys, no spend",
+        "",
+        "`humanish tui` lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.",
+        "`humanish --help` lists every command.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("addresses an agent's reader to the person it works for", () => {
+    expect(formatOrientationHuman(initialized, "agent")).toContain(
+      "\nTell the person you are working for: `humanish tui`, typed in your own terminal, lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.\n`humanish --help` lists every command.\n",
+    );
+  });
+
+  it("leaves the TUI out of a project that has no studies for it to list", async () => {
+    dir = await emptyProject();
+    const state = await readOrientation(dir);
+    expect(formatOrientationHuman(state, "person")).not.toContain("tui");
+    expect(formatOrientationHuman(state, "agent")).not.toContain("tui");
   });
 });

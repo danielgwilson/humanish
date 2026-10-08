@@ -4,7 +4,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 
-import { withSiblingFlagHint } from "../../src/cli/program.js";
+import { createProgram, withSiblingFlagHint } from "../../src/cli/program.js";
 import { doctor } from "../../src/cli/doctor.js";
 import { terminalSurfaceMessage } from "../../src/tui/contract.js";
 
@@ -83,6 +83,64 @@ describe("doctor's terminal-surface row is written for whoever is reading it", (
       expect(row?.ok).toBe(true);
     } finally {
       await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+// Agents read the row above and leave it out of their reports, so doctor also ends with the
+// sentence init's next steps end with, addressed to the person the agent works for.
+describe("doctor ends with the terminal UI, for the person a coding agent works for", () => {
+  // A source checkout invokes humanish by its bare name.
+  const FOR_PERSON =
+    "Tell the person you are working for: `humanish tui`, typed in your own terminal, lists this project's studies and runs, starts a dry or live run, and shows what each participant is doing during a run.";
+
+  async function inTempProject<T>(body: (cwd: string) => Promise<T>): Promise<T> {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-doctor-"));
+    try {
+      return await body(cwd);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  }
+
+  it("carries the sentence when an agent runner marks the session", async () => {
+    await inTempProject(async (cwd) => {
+      const result = await doctor(cwd, { env: { HOME: cwd, CODEX_THREAD_ID: "thread-1" } });
+      expect(result.forPerson).toBe(FOR_PERSON);
+    });
+  });
+
+  it("leaves it out for a person at a terminal, whose row already says what the screen opens", async () => {
+    const stdin = process.stdin.isTTY;
+    const stdout = process.stdout.isTTY;
+    process.stdin.isTTY = true;
+    process.stdout.isTTY = true;
+    try {
+      await inTempProject(async (cwd) => {
+        expect((await doctor(cwd, { env: { HOME: cwd } })).forPerson).toBeUndefined();
+      });
+    } finally {
+      process.stdin.isTTY = stdin;
+      process.stdout.isTTY = stdout;
+    }
+  });
+
+  it("prints it as the last line of the human output in a pipe", async () => {
+    const stdout = process.stdout.isTTY;
+    process.stdout.isTTY = false;
+    try {
+      await inTempProject(async (cwd) => {
+        const out: string[] = [];
+        const program = createProgram({
+          writeOut: (text) => out.push(text),
+          writeErr: () => {},
+          setExitCode: () => {},
+        });
+        await program.parseAsync(["node", "humanish", "doctor", "--cwd", cwd], { from: "node" });
+        expect(out.join("").endsWith(`\n\n${FOR_PERSON}\n`)).toBe(true);
+      });
+    } finally {
+      process.stdout.isTTY = stdout;
     }
   });
 });

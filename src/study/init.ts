@@ -9,6 +9,7 @@ import {
 } from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
 import { humanishCommand } from "../cli/invocation.js";
+import { personAtTerminal } from "../cli/observer-follow.js";
 import { replaceAgentsSection } from "./agents-section.js";
 import { probeLocalBrowserHost } from "./local-browser-host.js";
 import { probeKeySources } from "../keys/key-resolution.js";
@@ -466,6 +467,7 @@ async function firstRunEnvironment(
     localBrowserHost: await probeLocalBrowserHost(),
     platform: process.platform,
     humanish: humanishCommand(),
+    reader: personAtTerminal(env) ? "person" : "agent",
   };
 }
 

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
+import { personAtTerminal } from "./observer-follow.js";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, Help, type ParseOptionsResult } from "commander";
@@ -422,7 +423,7 @@ export function createProgram(
     if (options.json === true) {
       cliIo.writeOut(`${JSON.stringify(state, null, 2)}\n`);
     } else {
-      cliIo.writeOut(formatOrientationHuman(state));
+      cliIo.writeOut(formatOrientationHuman(state, personAtTerminal() ? "person" : "agent"));
     }
     cliIo.setExitCode(0);
   });

@@ -39,7 +39,9 @@ import {
   readImplicitProjectFile,
   validateCwd,
 } from "../run/project.js";
-import { cli } from "./invocation.js";
+import { tuiSentence } from "./first-run-path.js";
+import { cli, humanishCommand } from "./invocation.js";
+import { personAtTerminal } from "./observer-follow.js";
 import { recordedVersion } from "./update-check.js";
 import { CLI_VERSION } from "./version.js";
 
@@ -57,6 +59,12 @@ export interface DoctorResult {
   cwd: string;
   /** The step to take first, such as preparing a local study's runtime. */
   next?: string;
+  /**
+   * Additive + optional. The sentence about `humanish tui` addressed to the person a coding agent
+   * works for, present when no person is at this terminal. The terminal surface row is a check with
+   * status ok, which an agent does not pass on.
+   */
+  forPerson?: string;
   checks: Array<{
     name: string;
     ok: boolean;
@@ -215,6 +223,7 @@ export async function doctor(
     ok: checks.every((check) => check.ok),
     cwd,
     ...(setup?.next === undefined ? {} : { next: setup.next }),
+    ...(personAtTerminal(env) ? {} : { forPerson: tuiSentence("agent", humanishCommand()) }),
     checks: withStatus(checks),
   };
 }

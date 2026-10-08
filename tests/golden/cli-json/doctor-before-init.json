@@ -10,6 +10,7 @@
       }
     ],
     "cwd": "string",
+    "forPerson": "string",
     "ok": "boolean",
     "schema": "string"
   },

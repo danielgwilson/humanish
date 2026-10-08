@@ -516,6 +516,7 @@ function formatDoctorHuman(result: DoctorResult): string {
         (check) =>
           `- ${check.status.replace("_", " ")} ${check.name}: ${check.message.replaceAll("\n", "\n    ")}`,
       ),
+      ...(result.forPerson === undefined ? [] : ["", result.forPerson]),
     ].join("\n") + "\n"
   );
 }
