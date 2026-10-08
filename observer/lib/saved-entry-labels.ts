@@ -1,4 +1,4 @@
-import { traceItems } from "./artifact-href";
+import { traceItems } from "../../src/run/run-clock.js";
 import type { ObserverStream } from "./observer-data";
 
 /** Two clicks can share a title, image and even a timestamp. Keep saved choices
