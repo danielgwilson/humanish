@@ -24,6 +24,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   list of provider keys the store holds. Both names matched a built-in object property in the alias
   table and printed `Not a valid env name: function Object() { [native code] }`.
 
+### Changed
+
+- A feedback draft for an amended finding opens with the sentence `humanish review` and the
+  Observer show: "Corrected in human review. The reviewer's claim replaces the original headline
+  and account." It had its own wording of that sentence.
+
 ## 0.114.0: Reviewer notes, expected analysis cost, percent-encoded UTF-8 in verify (2026-10-08)
 
 humanish 0.114.0 lets a reviewer note a moment of a recorded run, admits post-run analysis on its
