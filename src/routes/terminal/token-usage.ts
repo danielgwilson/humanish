@@ -9,10 +9,9 @@
 //   {"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,
 //    "cache_write_input_tokens":30951,"output_tokens":2283,"reasoning_output_tokens":902}}
 //
-// So the route can record a measured token fact even when it cannot record a priced one. Rates stay
-// out of this module deliberately: pricing lives in src/run/pricing.ts, and the terminal route has no
-// real model id to price against (it records `model: "codex"`), so the output is
-// tokens-known-rate-unknown rather than a guessed dollar figure.
+// So the route records a measured token fact whether or not a rate prices it. Rates stay out of this
+// module: the route prices these counts once, from the model it passed to Codex, with
+// src/run/pricing.ts (live-finish.ts), and the ledger and run.json both read that estimate.
 
 import type { ActorTokenUsage } from "../../actors/contract.js";
 
@@ -96,8 +95,7 @@ export function parseTerminalTokenUsage(transcript: string): ActorTokenUsage | u
 }
 
 /** Human-readable token statement for the cost ledger and the no-spend proof. Reports what was
- *  counted and says plainly that it is unpriced, so a reader never reads "no charge recorded" as
- *  "nothing was consumed". */
+ *  counted, so a reader never reads "no charge recorded" as "nothing was consumed". */
 export function describeTokenUsage(usage: ActorTokenUsage): string {
   const parts: string[] = [];
   if (usage.input !== undefined) parts.push(`${usage.input.toLocaleString("en-US")} input`);

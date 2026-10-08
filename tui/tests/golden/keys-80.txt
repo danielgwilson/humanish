@@ -1,0 +1,19 @@
+human(ish)                                                           example-app
+‹ keys and accounts
+
+Provider keys
+
+❯ E2B_API_KEY (hosted desktops): missing; run `e2b auth login`, or `humanish
+  keys set e2b`
+  OPENAI_API_KEY (participant model and analysis): set, from
+  ~/.config/humanish/keys.env
+  GH_TOKEN (private repository subjects): missing; run `gh auth login`, or
+  `humanish keys set github`
+  AGENTMAIL_API_KEY (email in studies): missing; run `humanish keys set
+  agentmail`
+  Email connection (AgentMail)
+
+⏎ on a key asks for its value.
+Key entry is hidden. Saved keys apply to all your projects.
+
+↑↓ move  ⏎ select  esc back  q quit

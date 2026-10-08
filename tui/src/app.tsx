@@ -2,13 +2,14 @@ import { Text, useApp, useInput, useWindowSize } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
+import { KeysScreen } from "./screens/keys-screen.js";
 import { PALETTE } from "./palette.js";
 
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry } from "../../src/run/run-index.js";
 import type { StudyRow } from "../../src/run/projection.js";
-import type { TuiOptions } from "../../src/tui/contract.js";
+import type { TuiHandoff, TuiOptions } from "../../src/tui/contract.js";
 import {
   currentScreen,
   initialNav,
@@ -26,15 +27,17 @@ import {
   itemsForStudy,
   openSelected,
   projectData,
-  retiredFileOf,
+  rerunStudyOf,
   type ProjectData,
 } from "./project.js";
 import { renderScreen } from "./screen-body.js";
 import { runActions } from "./screens/run-screen.js";
+import { liveCostText } from "./screens/study-screen.js";
 import { startStudy } from "./start-study.js";
 
 export interface AppProps {
-  onKeyEntry?: () => void;
+  /** A key the person asked to enter; the surface exits after it so the host can prompt. */
+  onKeyEntry?: (handoff: TuiHandoff) => void;
   options: TuiOptions;
   onReady?: () => void;
   /** Frozen in tests so a golden never depends on the wall clock. */
@@ -68,6 +71,15 @@ const LIVE_CONFIRM_MIN_MS = 400;
 
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
+
+/**
+ * Why a live start of this study cannot happen here. `humanish run` runs a file in the mode it
+ * sets, and no flag turns a dry-run file live, so a live start would start a dry run under a prompt
+ * that promised spend.
+ */
+function dryRunFileNote(row: StudyRow): string {
+  return `Set mode: live in ${row.path ?? row.name} to start a live run.`;
+}
 
 export function App({
   options,
@@ -105,8 +117,20 @@ export function App({
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
   /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
+  /** When Run again was armed for a live run, which spends like a live start. */
+  const [againArmedAt, setAgainArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
-  const [showConnections, setShowConnections] = useState(options.initialScreen === "connections");
+  /** `c keys and accounts`, and the email connection one of its rows opens. */
+  const [accounts, setAccounts] = useState<"keys" | "email" | undefined>(
+    options.initialScreen === "connections"
+      ? "email"
+      : options.initialScreen === "keys"
+        ? "keys"
+        : undefined,
+  );
+  const [keysCursor, setKeysCursor] = useState(0);
+  const hasAccounts =
+    options.capabilities.keys !== undefined || options.capabilities.comms !== undefined;
   /** When the "set up humanish here" action was armed: it writes into the operator's directory. */
   const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
@@ -203,6 +227,10 @@ export function App({
 
   const start = useCallback(
     async (row: StudyRow, mode: "dry-run" | "live"): Promise<void> => {
+      if (mode === "live" && summary?.mode === "dry-run") {
+        setLaunchNote({ studyKey: row.key, text: dryRunFileNote(row) });
+        return;
+      }
       if (mode === "live" && confirming !== "live") {
         // Arm, do not fire. The row above says what a live run costs; this makes the operator press
         // again having read it.
@@ -240,7 +268,7 @@ export function App({
         });
       }
     },
-    [confirming, armedAt, options],
+    [confirming, armedAt, options, summary],
   );
 
   /**
@@ -298,41 +326,40 @@ export function App({
         return;
       }
       // Run again: the same study, in the same mode it ran in, launched the same detached way.
-      const studyId = run.study?.id;
-      const matching =
-        studyId === undefined
-          ? []
-          : (data?.rows.filter(
-              (candidate) => candidate.studyId === studyId && candidate.declared,
-            ) ?? []);
-      if (matching.length > 1) {
-        setActionNote(
-          "multiple manifests share this study id; choose the exact one from the list to run again",
-        );
+      if (data === undefined) return;
+      const { row, refusal } = rerunStudyOf(data, run);
+      if (row === undefined) {
+        setActionNote(refusal);
         return;
       }
-      const row = matching[0];
-      if (row === undefined || !row.declared) {
-        const retired = data === undefined ? undefined : retiredFileOf(data, studyId);
-        setActionNote(
-          retired === undefined
-            ? "cannot run this again: its study has no manifest here any more"
-            : `cannot run this again: ${retired.message}`,
-        );
+      const mode = run.mode === "live" ? "live" : "dry-run";
+      if (mode === "live" && summary?.mode === "dry-run") {
+        setActionNote(dryRunFileNote(row));
         return;
+      }
+      if (mode === "live") {
+        // Armed like a live start from the study screen: the prompt below the actions restates
+        // the cost, and only a second Enter, after the auto-repeat floor, spends it.
+        if (againArmedAt === undefined) {
+          setAgainArmedAt(Date.now());
+          setActionNote(undefined);
+          return;
+        }
+        if (Date.now() - againArmedAt < LIVE_CONFIRM_MIN_MS) return;
+        setAgainArmedAt(undefined);
       }
       setActionNote(`starting ${row.name}…`);
       const started = await options.capabilities.startRun({
         cwd: options.cwd,
         study: row.name,
         ...(row.path ? { manifestPath: row.path } : {}),
-        mode: run.mode === "live" ? "live" : "dry-run",
+        mode,
       });
       setActionNote(
         started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message,
       );
     },
-    [detail, options, data, stopArmedAt],
+    [detail, options, data, stopArmedAt, againArmedAt, summary],
   );
 
   useInput(
@@ -348,7 +375,7 @@ export function App({
           rightArrow?: boolean;
         },
       ) => {
-        if (showConnections) {
+        if (accounts !== undefined) {
           if (input === "q") exit();
           return;
         }
@@ -366,12 +393,14 @@ export function App({
           exit();
           return;
         }
-        if (input === "c" && options.capabilities.comms) {
+        if (input === "c" && hasAccounts) {
           setConfirming(undefined);
           setArmedAt(undefined);
           setStopArmedAt(undefined);
+          setAgainArmedAt(undefined);
           setInitArmedAt(undefined);
-          setShowConnections(true);
+          setKeysCursor(0);
+          setAccounts("keys");
           return;
         }
         if (input === "g" || input === "G") {
@@ -389,6 +418,7 @@ export function App({
             setConfirming(undefined);
             setArmedAt(undefined);
           }
+          setAgainArmedAt(undefined);
           dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
         }
@@ -405,6 +435,10 @@ export function App({
           if (stopArmedAt !== undefined) {
             setStopArmedAt(undefined);
             setActionNote(undefined);
+            return;
+          }
+          if (againArmedAt !== undefined) {
+            setAgainArmedAt(undefined);
             return;
           }
           if (initArmedAt !== undefined) {
@@ -475,8 +509,10 @@ export function App({
         detail,
         act,
         stopArmedAt,
+        againArmedAt,
         showHelp,
-        showConnections,
+        accounts,
+        hasAccounts,
         initArmedAt,
         initialized,
         options,
@@ -500,6 +536,7 @@ export function App({
     setDetail(undefined);
     setActionNote(undefined);
     setStopArmedAt(undefined);
+    setAgainArmedAt(undefined);
   }
   useEffect(() => {
     if (openRunId === undefined) return;
@@ -587,11 +624,15 @@ export function App({
     };
   }, [liveRunIds, options]);
 
-  // What the open study is. Includes the key probe, which is why it is read per study rather than for
-  // the whole list.
-  const openStudyKey = screen.name === "study" ? screen.studyKey : undefined;
+  // What the open study is, or the study a run card would run again. Includes the key probe, which
+  // is why it is read per study rather than for the whole list.
+  const openRun = screen.name === "run" ? data?.runsById.get(screen.runId) : undefined;
   const openStudyRow =
-    openStudyKey === undefined ? undefined : data?.rows.find((row) => row.key === openStudyKey);
+    screen.name === "study"
+      ? data?.rows.find((row) => row.key === screen.studyKey)
+      : data === undefined || openRun === undefined
+        ? undefined
+        : rerunStudyOf(data, openRun).row;
   const openStudyName = openStudyRow?.path ?? openStudyRow?.name;
   // A summary belongs to one study, so it starts unread whenever the open study changes. Adjusted
   // during render, as the run detail is above.
@@ -616,26 +657,36 @@ export function App({
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
-    if (showConnections && options.capabilities.comms)
+    const handOff = (handoff: TuiHandoff): void => {
+      onKeyEntry?.(handoff);
+      exit();
+    };
+    if (accounts === "email" && options.capabilities.comms)
       return (
         <ConnectionsScreen
           capabilities={options.capabilities.comms}
           columns={contentWidth(size.columns)}
-          notice={options.connectionNotice}
-          onBack={() => setShowConnections(false)}
-          onKeyEntry={() => {
-            onKeyEntry?.();
-            exit();
-          }}
+          notice={options.initialScreen === "connections" ? options.connectionNotice : undefined}
+          onBack={() => setAccounts("keys")}
+          onKeyEntry={() => handOff({ action: "agentmail-key" })}
+        />
+      );
+    if (accounts !== undefined)
+      return (
+        <KeysScreen
+          keys={options.capabilities.keys}
+          email={options.capabilities.comms !== undefined}
+          columns={contentWidth(size.columns)}
+          notice={options.initialScreen === "keys" ? options.connectionNotice : undefined}
+          selected={keysCursor}
+          onSelect={setKeysCursor}
+          onBack={() => setAccounts(undefined)}
+          onEmail={() => setAccounts("email")}
+          onKeyEntry={handOff}
         />
       );
     if (showHelp)
-      return (
-        <HelpScreen
-          columns={contentWidth(size.columns)}
-          connections={!!options.capabilities.comms}
-        />
-      );
+      return <HelpScreen columns={contentWidth(size.columns)} connections={hasAccounts} />;
     if (error !== undefined)
       return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
@@ -654,12 +705,17 @@ export function App({
       liveDetails,
       tick,
       initialized,
-      actionNote,
+      actionNote:
+        againArmedAt !== undefined && openStudyRow !== undefined
+          ? `run again live? ${liveCostText(openStudyRow, summary)} · ⏎ again to confirm · esc cancel`
+          : actionNote,
       initArmed: initArmedAt !== undefined,
     });
   }, [
     showHelp,
-    showConnections,
+    accounts,
+    hasAccounts,
+    keysCursor,
     options,
     onKeyEntry,
     exit,
@@ -679,6 +735,8 @@ export function App({
     tick,
     initialized,
     actionNote,
+    againArmedAt,
+    openStudyRow,
   ]);
 
   return (
@@ -690,8 +748,9 @@ export function App({
         selected,
         confirming,
         initialized,
-        overlay: showConnections ? "connections" : showHelp ? "help" : undefined,
-        connections: !!options.capabilities.comms,
+        overlay:
+          accounts === "email" ? "connections" : (accounts ?? (showHelp ? "help" : undefined)),
+        connections: hasAccounts,
         cwd: options.cwd,
         columns: size.columns,
       })}

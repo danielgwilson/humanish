@@ -193,7 +193,8 @@ describe("Connections", () => {
         until: (frame) => frame.includes("c keys and accounts"),
       });
       try {
-        const frame = await surface.press("c", (frame) => frame.includes("Add API key"));
+        await surface.press("c", (frame) => frame.includes("❯ Email connection"));
+        const frame = await surface.press(KEY.enter, (frame) => frame.includes("Add API key"));
         await golden(`connections-missing-${columns}`, frame);
         expect(
           normalizeFrame(frame)
@@ -201,6 +202,7 @@ describe("Connections", () => {
             .every((line) => line.length <= columns),
         ).toBe(true);
         expect(frame).toMatch(/not available\s+yet/);
+        await surface.press(KEY.escape, (frame) => frame.includes("❯ Email connection"));
         await surface.press(KEY.escape, (frame) => frame.includes("No studies here yet."));
         expect(keyEntry).not.toHaveBeenCalled();
       } finally {
@@ -249,8 +251,7 @@ describe("Connections", () => {
     });
     try {
       await surface.press(KEY.enter, () => keyEntry.mock.calls.length === 1);
-      expect(keyEntry).toHaveBeenCalledOnce();
-      expect(keyEntry).toHaveBeenCalledWith();
+      expect(keyEntry).toHaveBeenCalledExactlyOnceWith({ action: "agentmail-key" });
     } finally {
       surface.unmount();
     }

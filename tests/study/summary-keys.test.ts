@@ -35,10 +35,35 @@ async function summary(config: unknown, env: NodeJS.ProcessEnv) {
 }
 
 describe("TUI key summary follows the configured route", () => {
-  it("allows a keyless dry-run", async () => {
+  it("checks a dry-run study's keys against the live plan its live row names", async () => {
+    // `humanish run` on this file runs a dry run; the screen still offers a live run, so the keys
+    // it shows are the ones a live run of this study needs.
     expect(await summary({ ...base, mode: "dry-run" }, {})).toMatchObject({
-      keysReady: true,
+      mode: "dry-run",
+      keysReady: false,
+      missingKeys: ["E2B_API_KEY", "OPENAI_API_KEY"],
     });
+    expect(await summary(base, {})).toMatchObject({ mode: "live" });
+  });
+
+  it("reports the live plan's refusal for a study that can only run dry", async () => {
+    // The first-run starter's shape.
+    const result = await summary(
+      {
+        schema: STUDY_SCHEMA,
+        id: "key-check",
+        route: "preview",
+        mode: "dry-run",
+        subject: { source: "this-repo" },
+        actor: { type: "synthetic-persona" },
+        participants: 4,
+      },
+      {},
+    );
+    expect(result.keysReady).toBeUndefined();
+    expect(result.planRefusal).toBe(
+      "this-repo studies are dry-run only; use a clone or app-url subject for a live run.",
+    );
   });
 
   it("requires desktop plus model for API computer use", async () => {
@@ -146,6 +171,27 @@ describe("TUI caps summary", () => {
 
   it("draws no cap for a computer-use lab that declares none", async () => {
     expect((await summary(base, {})).caps).toEqual({});
+  });
+
+  it("leaves out the caps of a route whose dollar caps it does not show", async () => {
+    // A live terminal study must declare caps.maxUsd 0; showing it as a participant cap would
+    // misstate what bounds the run.
+    const terminal = {
+      ...base,
+      route: "terminal",
+      subject: {
+        source: "terminal-product",
+        product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
+      },
+      actor: { type: "codex-exec", mission: "Use the CLI." },
+      caps: { maxUsd: 0, maxMinutes: 5 },
+      execution: {
+        target: "e2b-terminal",
+        runtimeAuth: "openai-env",
+        terminal: { transport: "exec-stream", stdin: "disabled" },
+      },
+    };
+    expect((await summary(terminal, {})).caps).toBeUndefined();
   });
 });
 

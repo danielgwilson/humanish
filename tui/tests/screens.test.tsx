@@ -648,6 +648,55 @@ describe('the studies list says what a study is (stakeholder feedback: "so i kno
   });
 });
 
+describe("the study screen says all of what a study is", () => {
+  const described = (description: string) =>
+    options({
+      readStudySummary: async () => ({
+        schema: "humanish.study-summary.v1" as const,
+        studyId: "signup-flow",
+        mode: "live" as const,
+        description,
+      }),
+    });
+
+  async function studyFrame(description: string, rows: number): Promise<string> {
+    const surface = await renderToText(
+      <App options={described(description)} now={NOW} tick={0} />,
+      { columns: 80, rows, until: (frame) => frame.includes("Signup flow") },
+    );
+    try {
+      return normalizeFrame(
+        await surface.press(KEY.enter, (frame) => frame.includes("Can a first-time visitor")),
+      );
+    } finally {
+      surface.unmount();
+    }
+  }
+
+  it("wraps the whole description when the terminal has the rows for it", async () => {
+    const description =
+      "Can a first-time visitor finish signing up unaided? The form asks for a work address, a password and a company name, then sends a confirmation link the participant opens before the dashboard loads.";
+    const frame = await studyFrame(description, 30);
+    expect(flat(frame)).toContain(description);
+    expect(frame.split("\n").every((line) => [...line].length <= 80)).toBe(true);
+  });
+
+  it("cuts a description longer than the rows it gets, and marks the cut", async () => {
+    const sentence = "The participant reads every field label before typing anything at all. ";
+    const frame = await studyFrame(
+      `Can a first-time visitor finish signing up unaided? ${sentence.repeat(12)}Last sentence.`,
+      24,
+    );
+    const lines = frame.split("\n");
+    const first = lines.findIndex((line) => line.startsWith("Can a first-time visitor"));
+    // Two lines at 24 rows, the second ending in the visible cut.
+    expect(lines.slice(first, first + 2).every((line) => line.length > 40)).toBe(true);
+    expect(lines[first + 1]).toMatch(/…$/);
+    expect(lines[first + 2]).not.toContain("The participant reads");
+    expect(frame).not.toContain("Last sentence.");
+  });
+});
+
 describe("the key legend", () => {
   // A legend that wraps leaves a lone "quit" on the last line, which reads as a stray word.
   it("fits on one line at the width of every golden", async () => {
