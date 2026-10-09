@@ -8,91 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.118.0: Up to 100 participants, E2B concurrent sandboxes, study check plans like run, analysis range (2026-10-09)
 
-- `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` tells humanish how many sandboxes your E2B plan runs at
-  once: 20 when unset (E2B Hobby), 100 on Pro. A hosted computer-use or shared-world study runs at
-  most that many desktops at once, counting a provisioned shared world's app sandbox, and its plan
-  records a warning naming the setting when the limit holds participants to waves. An
-  `execution.concurrency` above the limit is refused before any sandbox is created, with the
-  setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
-  row. A local desktop study keeps its own capacity checks (#1737).
+humanish 0.118.0 lets a computer-use study have up to 100 participants, up from 16, holds a
+shared-world study to the same 100, and runs them within the number of sandboxes the E2B plan runs
+at once. The new setting `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` gives that number (20 when unset,
+E2B Hobby's limit; Pro runs 100). A study with more participants than that runs them in waves, an
+`execution.concurrency` above it is refused before any sandbox is created, and `doctor` shows it. A
+live run of more than 16 participants records its automatic analysis as skipped with
+`AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, because one analysis reads at most 16 participants. `study
+check` now plans a study the way `humanish run` does and fails a study the run refuses, and a
+shared-world or scripted clone study whose sandbox deadline passes the ceiling is refused at plan
+time. The analysis line that `run`, `study check` and the TUI print ends its expected range at the
+largest run admission admits (`$0.75 to $2.83` for one participant at the default $3 cap, where it
+read `$3.79`) and states the rule as admission applies it. An in-process `local-app` run records
+`subject.source: local-app`, a desktop-cli dry run names its product, and `verify` names an unlisted
+folder and the 10,000-entry stop in their own sentences. In `humanish tui`, the key legend says what
+Enter and Esc do while an action is armed, a study's median cost includes its analyses, and Esc
+after entering a key returns to the screen the keys were opened from.
 
-### Changed
-
-- An in-process run of a `local-app` study records `subject.source: "local-app"` in run.json, the
-  JSON result and each participant's `lanes[].subject`. It recorded `"app-url"`. `verify`,
-  `observe`, `review` and `export` read both values, so runs saved with `app-url` still open; npm
-  0.117.0 cannot read a run that records `local-app`. An in-process run of an `app-url` study
-  still records `app-url` (#1716).
-- A computer-use study may have up to 100 participants, up from 16, and a shared-world study is
-  held to the same 100, where it had no limit. The old refusal said every participant runs at once
-  and no setting raises the cap; how many run at once is now the E2B plan's limit above, and
-  `caps.maxUsd` bounds spend. The new refusal says the 100 keeps one run's bundle and Observer view
-  a size humanish supports. A `participants` group whose `count` would pass 100 is refused before
-  it is expanded, and a `--count` above 100 before any participant is built (#1737).
-- A live run of more than 16 participants records its automatic analysis as skipped with
-  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `run`, `study check`, `doctor` and the TUI say before
-  the run that it will not run. One analysis reads at most 16 participants; it would have analyzed
-  the first 16 and reported a partial result. The skip does not fail a run whose study declares
-  no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
-  asked for and did not get (#1737).
-- A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
-  count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
-  and a declared value above the participant count is clamped to it, as on computer use.
-- A study with real email receiving and more than 64 participants is refused when it is read. Its
-  run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
-  inboxes.
-
-### Fixed
-
-- `humanish study check` now plans the study the way `humanish run <study>` does and fails a study
-  the run refuses before it starts, such as a computer-use study whose sandbox deadline passes
-  `HUMANISH_E2B_MAX_SANDBOX_MINUTES`, or a `local-app` study, which only the library can run. The
-  failed `plan` row and the error carry the run's code and message, and no reachability probe
-  runs. It passed such a study before. A study that plans gets the same output as before (#1707).
-- A shared-world study, or a scripted study with a `clone` subject, whose sandbox deadline passes
-  the sandbox ceiling is refused before it starts, as computer-use and terminal studies are, with
-  the `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The code is
-  `HUMANISH_SHARED_WORLD_INVALID` on shared world and the new `HUMANISH_SCRIPTED_SUBJECT_INVALID`
-  on the scripted route, which also uses it to refuse a value of the setting it cannot read. The
-  deadline is the subject sandbox's on a clone or local-tree subject (the session, 30 minutes to
-  provision, each seed step's budget and 10 minutes of teardown) and each participant's sandbox on
-  a shared-world `app-url` study (the session and 10 minutes). With `execution.timeoutMs` set, or
-  with seed steps that leave no session under the ceiling, E2B refused the sandbox after the run
-  started. A scripted `app-url` study creates no E2B sandbox and is not checked (#1707).
-- `humanish verify` names a folder the public-safety scan could not list, and the folder where it
-  stopped at 10,000 files and folders, in their own sentences of the `UNSCANNED_ARTIFACT` reason:
-  "The public-safety scan stopped at its limit of 10000 files and folders while listing
-  extras/many/, so it read nothing listed after that point." It counted either one as a file it
-  could not read: "cannot read 1 file as text ...: extras/many/ (the scan stops after 10000
-  entries)" (#1691).
-- A `desktop-cli` dry run names the product the way the `subject:` line does: "Dry run: 1
-  participant would use widgetsmith-cli (desktop-cli).", "would each use their own copy of
-  widgetsmith-cli (desktop-cli)" on a fan-out, and "would use widgetsmith-cli (desktop-cli); no
-  session ran." for each participant. The three sentences named an empty URL (#1716).
-- A `participants` list entry with a very large `count`, such as `1000000000`, no longer exhausts
-  memory while the study is read. The parser expanded every group before checking the roster's
-  size.
-- In `humanish tui`, the key legend says what Enter and Esc do while an action waits for its
-  second Enter: `⏎ confirm  esc cancel`, or `esc keep analyzing` for Cancel analysis. While Stop,
-  Cancel analysis, Run again or Set up humanish here was armed, it still read `⏎ select  esc back`
-  or `⏎ set up humanish here`.
-- In `humanish tui`, a study's median cost includes each run's analyses, as its run rows and run
-  cards do. A study whose two runs cost $0.55 and $1.06 with their analyses showed `~$0.02
-  median`, the participants and desktops alone; it now shows `~$0.80 median` (#1720).
-- The analysis line that `humanish run`, `study check` and the TUI print before a live run gives
-  the expected cost of the analysis admission would start. Its range ended at a run that keeps
-  evidence up to the limits, which the default $3 cap refuses: a one-participant study read
-  `expected $0.75 to $3.79` and now reads `expected $0.75 to $2.83`. The line states the rule as
-  admission applies it: the analysis is refused when both its worst case and its expected cost
-  plus a 10% margin are over the cap. `humanish doctor` and the help for `analyze --max-cost` now
-  state it in the same words; both said the expected cost plus the margin alone. When the cap
-  refuses even a run that keeps no evidence, the line says so, and `study check --json` gives that
-  run's expected cost as `analysis.refusedFromUsd` in place of `analysis.expectedCostUsd` (#1720).
-- In `humanish tui`, Esc on the keys screen after entering a key goes back to the screen the keys
-  were opened from. It went to the studies list, because the surface mounts again after the
-  hidden prompt and started over (#1720).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.118.0)
 
 ## 0.117.0: Long participant waits, OpenAI wait length, serve.build fails fast, TUI confirmations (2026-10-09)
 
