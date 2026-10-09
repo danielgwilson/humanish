@@ -13,6 +13,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
   saved." or why a moment could not open), as opening a participant or the participants grid
   already did (#1728).
+- An in-process run of a `local-app` study records `subject.source: "local-app"` in run.json, the
+  JSON result and each participant's `lanes[].subject`. It recorded `"app-url"`. `verify`,
+  `observe`, `review` and `export` read both values, so runs saved with `app-url` still open; npm
+  0.116.0 cannot read a run that records `local-app`. An in-process run of an `app-url` study
+  still records `app-url` (#1716).
 
 ### Fixed
 
@@ -31,6 +36,28 @@ The Unreleased section holds the full notes for the next version until it is tag
   it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
   longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
   (#1722).
+- `humanish study check` now plans the study the way `humanish run <study>` does and fails a study
+  the run refuses before it starts, such as a computer-use study whose sandbox deadline passes
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. The failed `plan` row and the error carry the run's code and
+  message, and no reachability probe runs. It passed such a study before. A study that plans gets
+  the same output as before (#1707).
+- A shared-world study whose sandbox deadline passes the sandbox ceiling is refused before it
+  starts, as computer-use and terminal studies are, with `HUMANISH_SHARED_WORLD_INVALID` and the
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The deadline is the subject
+  sandbox's on a clone or local-tree study (the session, 30 minutes to provision, each seed step's
+  budget and 10 minutes of teardown) and each participant's sandbox on an `app-url` study (the
+  session and 10 minutes). With `execution.timeoutMs` set, or with seed steps that leave no
+  session under the ceiling, E2B refused the sandbox after the run started (#1707).
+- `humanish verify` names a folder the public-safety scan could not list, and the folder where it
+  stopped at 10,000 files and folders, in their own sentences of the `UNSCANNED_ARTIFACT` reason:
+  "The public-safety scan stopped at its limit of 10000 files and folders while listing
+  extras/many/, so it read nothing listed after that point." It counted either one as a file it
+  could not read: "cannot read 1 file as text ...: extras/many/ (the scan stops after 10000
+  entries)" (#1691).
+- A `desktop-cli` dry run names the product the way the `subject:` line does: "Dry run: 1
+  participant would use widgetsmith-cli (desktop-cli).", "would each use their own copy of
+  widgetsmith-cli (desktop-cli)" on a fan-out, and "would use widgetsmith-cli (desktop-cli); no
+  session ran." for each participant. The three sentences named an empty URL (#1716).
 
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 
