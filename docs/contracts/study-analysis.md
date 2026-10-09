@@ -107,8 +107,10 @@ kept as a report on the run.
 The first live cohort analysis, on a 24-participant computer-use run, sent two
 cohort requests of 12 participants and the merge request in 5 minutes 6 seconds.
 Its expected cost was $6.08, 2.3 times its $2.65 bill, and each of its 447
-citations resolved in the run's packet. One run does not calibrate
-the merge request's estimate.
+citations resolved in the run's packet. A second analysis of the same run, with
+the current merge instructions, billed $1.92, most of its input served from the
+provider's prompt cache, and each of its 466 citations resolved. Two runs do not
+calibrate the merge request's estimate.
 
 ## Explicit Codex account analysis
 
