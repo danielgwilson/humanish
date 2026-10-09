@@ -2,7 +2,7 @@ import { CommanderError } from "commander";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
@@ -234,6 +234,67 @@ describe("lab preflight", () => {
         expect(envelope.checks.some((check) => check.name === "reachability")).toBe(true);
       },
     );
+  });
+});
+
+// A clone study whose 60-minute session plus 40 minutes of provisioning and teardown headroom asks
+// E2B for a 100-minute sandbox, past the 60 minutes allowed when the setting is unset.
+const LONG_CLONE_STUDY = [
+  "schema: humanish.study.v3",
+  "id: long-clone",
+  "route: computer-use",
+  "mode: dry-run",
+  "subject:",
+  "  source: clone",
+  "  repos:",
+  "    - example-org/example-app",
+  "  serve:",
+  "    start: python3 -m http.server 3000",
+  "    url: http://127.0.0.1:3000/",
+  "actor:",
+  "  type: openai-computer-use",
+  "  mission: Explore and stop.",
+  "execution:",
+  "  target: e2b-desktop",
+  "  timeoutMs: 3600000",
+  "review:",
+  "  analysis: false",
+].join("\n");
+
+describe("study check and the planner", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("refuses a study humanish run refuses at plan time, with the run's code and message", async () => {
+    await withTempLab({ "humanish/studies/long-clone.yaml": LONG_CLONE_STUDY }, async (cwd) => {
+      const checked = await runCli(["study", "check", "long-clone", "--cwd", cwd, "--json"]);
+      const run = await runCli(["run", "long-clone", "--cwd", cwd, "--json"]);
+      const check = JSON.parse(checked.stdout) as StudyPreflightResult;
+      const refused = JSON.parse(run.stdout) as { error?: { code: string; message: string } };
+
+      expect(run.exitCode).toBe(2);
+      expect(refused.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
+      expect(checked.exitCode).toBe(2);
+      expect(check.ok).toBe(false);
+      expect(check.error).toEqual(refused.error);
+      expect(check.checks.find((row) => row.name === "plan")).toMatchObject({ ok: false });
+      expect(check.error?.message).toMatch(
+        /a 100m sandbox deadline, .* set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 100 or more\.$/,
+      );
+    });
+  });
+
+  it("passes the same study once the sandbox ceiling admits it", async () => {
+    vi.stubEnv("HUMANISH_E2B_MAX_SANDBOX_MINUTES", "100");
+    await withTempLab({ "humanish/studies/long-clone.yaml": LONG_CLONE_STUDY }, async (cwd) => {
+      const checked = await runCli(["study", "check", "long-clone", "--cwd", cwd, "--json"]);
+      const check = JSON.parse(checked.stdout) as StudyPreflightResult;
+
+      expect(checked.exitCode).toBe(0);
+      expect(check.ok).toBe(true);
+      expect(check.checks.every((row) => row.ok)).toBe(true);
+    });
   });
 });
 
