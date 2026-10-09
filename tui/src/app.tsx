@@ -676,7 +676,7 @@ export function App({
         screen,
         data,
         selected,
-        confirming,
+        armed,
         initialized,
         overlay:
           accounts === "email" ? "connections" : (accounts ?? (showHelp ? "help" : undefined)),

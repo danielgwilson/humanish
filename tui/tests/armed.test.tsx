@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
-import { KEY, renderToText, type RenderedFrames } from "../src/testing/render-to-text.js";
+import {
+  KEY,
+  normalizeFrame,
+  renderToText,
+  type RenderedFrames,
+} from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
 // Five actions take two Enters, because each spends money, ends work already paid for, or writes
@@ -147,6 +152,8 @@ interface Case {
   reach: (surface: RenderedFrames) => Promise<void>;
   /** What the frame says while the action is armed. */
   prompt: string;
+  /** The key legend while it is armed: what Enter and Esc do now. */
+  legend: string;
   /** Keys that go somewhere else, each with the frame it lands on. */
   away: [string, (frame: string) => boolean][];
   /** Keys that come back, ending on the frame with the cursor on the action again. */
@@ -159,6 +166,7 @@ const CASES: Case[] = [
     project: () => project(),
     reach: (surface) => openRun(surface, "starting…", "❯ Stop this run"),
     prompt: "stop this run?",
+    legend: "⏎ confirm  esc cancel",
     away: [[KEY.down, onRow("Open in Observer")]],
     back: [[KEY.up, onRow("Stop this run")]],
   },
@@ -170,6 +178,7 @@ const CASES: Case[] = [
       await surface.press(KEY.down, onRow("Cancel analysis"));
     },
     prompt: "cancel analysis?",
+    legend: "⏎ confirm  esc keep analyzing",
     away: [[KEY.up, onRow("Open in Observer")]],
     back: [[KEY.down, onRow("Cancel analysis")]],
   },
@@ -181,6 +190,7 @@ const CASES: Case[] = [
       await surface.press(KEY.down, onRow("Start a live run"));
     },
     prompt: "start a live run?",
+    legend: "⏎ confirm  esc cancel",
     away: [[KEY.up, onRow("Start a dry run")]],
     back: [[KEY.down, onRow("Start a live run")]],
   },
@@ -192,6 +202,7 @@ const CASES: Case[] = [
       await surface.press(KEY.down, onRow("Run again"));
     },
     prompt: "run again live?",
+    legend: "⏎ confirm  esc cancel",
     away: [["g", onRow("Open in Observer")]],
     back: [["G", onRow("Run again")]],
   },
@@ -200,6 +211,7 @@ const CASES: Case[] = [
     project: () => project({ initialized: false }),
     reach: (surface) => surface.waitFor(onRow("Set up humanish here")).then(() => undefined),
     prompt: "⏎ again to confirm",
+    legend: "⏎ confirm  esc cancel",
     away: [["?", (frame) => frame.includes("Keyboard shortcuts")]],
     back: [[KEY.escape, onRow("Set up humanish here")]],
   },
@@ -213,7 +225,31 @@ async function render(options: TuiOptions): Promise<RenderedFrames> {
   });
 }
 
+/** The key legend: the frame's last line. */
+function legendOf(frame: string): string {
+  return normalizeFrame(frame).split("\n").at(-1)?.trim() ?? "";
+}
+
 describe("an armed action", () => {
+  it.each(CASES)(
+    "$name: the key legend says what Enter and Esc do while it is armed, and goes back after",
+    async ({ project: makeProject, reach, prompt, legend }) => {
+      const { options } = makeProject();
+      const surface = await render(options);
+      try {
+        await reach(surface);
+        const before = legendOf(surface.frames.at(-1) ?? "");
+        const armed = await surface.press(KEY.enter, (frame) => frame.includes(prompt));
+        expect(legendOf(armed)).toBe(legend);
+        const cancelled = await surface.press(KEY.escape, (frame) => !frame.includes(prompt));
+        expect(legendOf(cancelled)).toBe(before);
+      } finally {
+        surface.unmount();
+      }
+    },
+    20_000,
+  );
+
   it.each(CASES)(
     "$name: Enter after going somewhere else and coming back arms again and does nothing",
     async ({ project: makeProject, reach, prompt, away, back }) => {
