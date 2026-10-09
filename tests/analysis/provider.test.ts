@@ -153,6 +153,27 @@ describe("study analysis provider boundary", () => {
     expect(JSON.stringify(result)).not.toContain("synthetic-private");
   });
 
+  it("asks Bun's fetch for no timeout of its own, so timeoutMs alone ends the request", async () => {
+    // Under Bun, `undici` is Bun's built-in module: its fetch ignores the dispatcher and ends a
+    // request after 300 s unless `timeout: false` is passed. Node's undici fetch ignores the field.
+    const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
+    await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    expect(fetchFn.mock.calls[0]?.[1]).toMatchObject({ timeout: false });
+  });
+
+  it("records a fetch TimeoutError as the client's own timeout", async () => {
+    const fetchFn = vi.fn<AnalysisFetch>(async () => {
+      throw new DOMException("synthetic-private-payload", "TimeoutError");
+    });
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    expect(result).toMatchObject({
+      usage: null,
+      dispatched: true,
+      errorCode: "provider_client_timeout",
+    });
+    expect(JSON.stringify(result)).not.toContain("synthetic-private");
+  });
+
   it("honors cancellation before dispatch", async () => {
     const fetchFn = vi.fn<AnalysisFetch>();
     const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({

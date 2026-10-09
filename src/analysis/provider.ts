@@ -35,6 +35,7 @@ export interface AnalysisProviderResult {
     | "provider_network_error"
     | "invalid_response"
     | "provider_headers_timeout"
+    | "provider_client_timeout"
     | "provider_body_timeout"
     | "provider_connect_timeout"
     | "provider_connection_reset"
@@ -113,6 +114,8 @@ function networkErrorCode(error: unknown): AnalysisProviderResult["errorCode"] {
     const value = record(current);
     if (typeof value.code === "string" && Object.hasOwn(codes, value.code))
       return codes[value.code]!;
+    // Bun's fetch ends a request with a TimeoutError of its own, with no code.
+    if (value.name === "TimeoutError") return "provider_client_timeout";
     current = value.cause;
   }
   return "provider_network_error";
@@ -200,6 +203,11 @@ export type AnalysisFetch = (
     headers: Record<string, string>;
     body: string;
     dispatcher: Dispatcher;
+    /**
+     * Bun's fetch ignores `dispatcher` and ends a request after 300 s unless this is false;
+     * Node's undici fetch ignores the field. The caller's timeoutMs governs either way.
+     */
+    timeout: false;
   },
 ) => Promise<{ ok: boolean; status: number; body: ReadableStream<Uint8Array> | null }>;
 
@@ -285,6 +293,7 @@ export function createAnalysisProvider(options: {
         headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
         body,
         dispatcher,
+        timeout: false,
       });
       if (!response.ok) {
         // Never read provider error prose: it may echo evidence or credentials.
