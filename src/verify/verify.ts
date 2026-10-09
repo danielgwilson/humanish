@@ -34,6 +34,8 @@ import {
   redactedShapeFramePaths,
   scanRunPublicSafetyArtifacts,
   streamScreenshotPaths,
+  unscannedMessage,
+  type UnscannedArtifacts,
 } from "./artifacts.js";
 import { flatContextWarnings } from "./context-growth.js";
 import { runNotFinished, type UnfinishedRun } from "./liveness.js";
@@ -41,13 +43,9 @@ import { costAndReceiptFindings } from "./costs.js";
 import { rerunLineageFindings } from "./rerun.js";
 import { sharedWorldEvidenceFindings } from "./shared-world.js";
 import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./subject.js";
-import { plural } from "../run/text.js";
 import { cli } from "../cli/invocation.js";
 
 export const VERIFY_SCHEMA = "humanish.verify-result.v1";
-
-// The UNSCANNED_ARTIFACT reason names this many paths and counts the rest.
-const MAX_LISTED_UNSCANNED = 10;
 
 export interface VerifyResult {
   schema: typeof VERIFY_SCHEMA;
@@ -158,7 +156,7 @@ export async function verifyResolvedRun(
 
   checks.push(...bundlePresenceChecks(bundleRead, review));
   const derivedPublicSafetyFindings: string[] = [];
-  const unscannedArtifacts: string[] = [];
+  const unscannedArtifacts: UnscannedArtifacts = { files: [], unlistedFolders: [] };
   const sandboxIdFiles: string[] = [];
   let journaledSandboxIds: string[] = [];
   try {
@@ -166,7 +164,7 @@ export async function verifyResolvedRun(
   } catch (error) {
     if (!(error instanceof ContainedReadRefusedError)) throw error;
     // Without the journal's ids, verify cannot clear any file of naming one.
-    unscannedArtifacts.push(SANDBOX_RECEIPTS_ARTIFACT);
+    unscannedArtifacts.files.push(SANDBOX_RECEIPTS_ARTIFACT);
   }
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
     runPaths,
@@ -548,7 +546,7 @@ function buildShareSafety(args: {
   ok: boolean;
   bundle: RunBundle;
   publicSafetyFindings: string[];
-  unscannedArtifacts: string[];
+  unscannedArtifacts: UnscannedArtifacts;
   /** Declared frames whose bytes have the redactor's output shape. */
   redactedShapeFrames: ReadonlySet<string>;
   /** Files other than sandbox-receipts.ndjson that name one of the run's raw sandbox ids. */
@@ -585,15 +583,8 @@ function buildShareSafety(args: {
         "Continuous screen/audio recordings are retained for local review. Screenshot redaction does not redact this media.",
     });
   }
-  if (args.unscannedArtifacts.length > 0) {
-    const paths = [...new Set(args.unscannedArtifacts)].sort();
-    const shown = paths.slice(0, MAX_LISTED_UNSCANNED).join(", ");
-    const more = paths.length - MAX_LISTED_UNSCANNED;
-    reasons.push({
-      code: "UNSCANNED_ARTIFACT",
-      message: `The public-safety scan cannot read ${plural(paths.length, "file")} as text that ${paths.length === 1 ? "is not a stream screenshot under screenshots/ or a registered recording" : "are not stream screenshots under screenshots/ or registered recordings"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
-    });
-  }
+  const unscanned = unscannedMessage(args.unscannedArtifacts);
+  if (unscanned !== undefined) reasons.push({ code: "UNSCANNED_ARTIFACT", message: unscanned });
   // Runs from 0.110 keep raw sandbox ids only in sandbox-receipts.ndjson. An earlier run records
   // them in run.json, and any file that names one is not share-ready as it is.
   const rawResources = (args.bundle.providerResources ?? []).some(

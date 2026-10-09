@@ -2,12 +2,13 @@ import { CommanderError } from "commander";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
+import { lab, SCENARIO_YAML } from "../admission/fixtures.js";
 
 interface CliResult {
   exitCode: number;
@@ -234,6 +235,125 @@ describe("lab preflight", () => {
         expect(envelope.checks.some((check) => check.name === "reachability")).toBe(true);
       },
     );
+  });
+});
+
+// A clone study whose 60-minute session plus 40 minutes of provisioning and teardown headroom asks
+// E2B for a 100-minute sandbox, past the 60 minutes allowed when the setting is unset.
+const LONG_CLONE_STUDY = [
+  "schema: humanish.study.v3",
+  "id: long-clone",
+  "route: computer-use",
+  "mode: dry-run",
+  "subject:",
+  "  source: clone",
+  "  repos:",
+  "    - example-org/example-app",
+  "  serve:",
+  "    start: python3 -m http.server 3000",
+  "    url: http://127.0.0.1:3000/",
+  "actor:",
+  "  type: openai-computer-use",
+  "  mission: Explore and stop.",
+  "execution:",
+  "  target: e2b-desktop",
+  "  timeoutMs: 3600000",
+  "review:",
+  "  analysis: false",
+].join("\n");
+
+describe("study check and the planner", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("refuses a study humanish run refuses at plan time, with the run's code and message", async () => {
+    await withTempLab({ "humanish/studies/long-clone.yaml": LONG_CLONE_STUDY }, async (cwd) => {
+      const checked = await runCli(["study", "check", "long-clone", "--cwd", cwd, "--json"]);
+      const run = await runCli(["run", "long-clone", "--cwd", cwd, "--json"]);
+      const check = JSON.parse(checked.stdout) as StudyPreflightResult;
+      const refused = JSON.parse(run.stdout) as { error?: { code: string; message: string } };
+
+      expect(run.exitCode).toBe(2);
+      expect(refused.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
+      expect(checked.exitCode).toBe(2);
+      expect(check.ok).toBe(false);
+      expect(check.error).toEqual(refused.error);
+      expect(check.checks.find((row) => row.name === "plan")).toMatchObject({ ok: false });
+      expect(check.error?.message).toMatch(
+        /a 100m sandbox deadline, .* set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 100 or more\.$/,
+      );
+    });
+  });
+
+  it.each([
+    // Each participant's own sandbox: 55m + 10m of teardown buffer.
+    {
+      study: "a shared-world study on the external-public plane",
+      base: "sharedExternal",
+      sessionMinutes: 55,
+      code: "HUMANISH_SHARED_WORLD_INVALID",
+    },
+    // The subject sandbox outlives every participant: 20m + 30m to provision + 5m for the one seed
+    // step + 10m of teardown buffer.
+    {
+      study: "a shared-world study on the provisioned plane",
+      base: "sharedProvisioned",
+      sessionMinutes: 20,
+      code: "HUMANISH_SHARED_WORLD_INVALID",
+    },
+    // The clone's subject sandbox: the same 20m + 30m + 5m + 10m.
+    {
+      study: "a scripted clone study",
+      base: "scriptedClone",
+      sessionMinutes: 20,
+      code: "HUMANISH_SCRIPTED_SUBJECT_INVALID",
+    },
+  ] as const)(
+    "refuses $study whose 65m sandbox deadline passes the ceiling",
+    async ({ base, sessionMinutes, code }) => {
+      const study = lab(base, {
+        id: "long-study",
+        execution: { timeoutMs: sessionMinutes * 60_000 },
+      });
+      // A JSON document is a YAML document.
+      await withTempLab(
+        {
+          "humanish/studies/long-study.yaml": JSON.stringify(study),
+          "humanish/scenarios/adm-journey.yaml": SCENARIO_YAML,
+        },
+        async (cwd) => {
+          const run = await runCli(["run", "long-study", "--cwd", cwd, "--json"]);
+          const checked = await runCli(["study", "check", "long-study", "--cwd", cwd, "--json"]);
+          const refused = JSON.parse(run.stdout) as { error?: { code: string; message: string } };
+
+          expect(run.exitCode).toBe(2);
+          expect(refused.error?.code).toBe(code);
+          expect(refused.error?.message).toMatch(
+            /a 65m .*deadline.* may not live longer than 60m\. .* set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 65 or more\.$/,
+          );
+          expect(checked.exitCode).toBe(2);
+          expect((JSON.parse(checked.stdout) as StudyPreflightResult).error).toEqual(refused.error);
+
+          vi.stubEnv("HUMANISH_E2B_MAX_SANDBOX_MINUTES", "65");
+          expect(
+            (await runCli(["study", "check", "long-study", "--cwd", cwd, "--json"])).exitCode,
+          ).toBe(0);
+        },
+      );
+    },
+  );
+
+  it("passes the same study once the sandbox ceiling admits it", async () => {
+    vi.stubEnv("HUMANISH_E2B_MAX_SANDBOX_MINUTES", "100");
+    await withTempLab({ "humanish/studies/long-clone.yaml": LONG_CLONE_STUDY }, async (cwd) => {
+      const checked = await runCli(["study", "check", "long-clone", "--cwd", cwd, "--json"]);
+      const check = JSON.parse(checked.stdout) as StudyPreflightResult;
+
+      expect(checked.exitCode).toBe(0);
+      expect(check.ok).toBe(true);
+      expect(check.checks.every((row) => row.ok)).toBe(true);
+    });
   });
 });
 

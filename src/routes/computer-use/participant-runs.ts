@@ -7,7 +7,6 @@ import {
   isLocalBrowserStudy,
   LOCAL_BROWSER_LIFETIME_MS,
 } from "../../substrates/local/runtime-config.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { type StudyConfig } from "../../study/types.js";
@@ -28,10 +27,7 @@ import {
   type ParticipantRunsAndPlan,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
 } from "./types.js";
-import {
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
-} from "../../substrates/e2b/lifetime.js";
+import { sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
 import { readPositiveInt } from "../../study/parse/values.js";
 import { digestUrl } from "./bundle-parts.js";
 import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
@@ -46,11 +42,7 @@ export function defaultSessionTimeoutMs(config: StudyConfig, ceilingMs: number):
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
   if (!provisionedRoute) return DEFAULT_APP_URL_SESSION_TIMEOUT_MS;
-  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-    0,
-  );
-  const room = ceilingMs - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  const room = ceilingMs - sandboxHeadroomMs({ seed: config.subject.state?.seed ?? [] });
   return Math.max(
     MIN_DERIVED_SESSION_TIMEOUT_MS,
     Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room),
@@ -68,17 +60,10 @@ export function resolveParticipantSandboxMs(config: StudyConfig, ceilingMs: numb
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
-  const stateBudgetMs = provisionedRoute
-    ? (config.subject.state?.seed ?? []).reduce(
-        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-        0,
-      )
-    : 0;
   return (
     config.execution?.desktop?.sandboxTimeoutMs ??
     timeoutMs +
-      (provisionedRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) +
-      SANDBOX_TIMEOUT_BUFFER_MS
+      sandboxHeadroomMs(provisionedRoute ? { seed: config.subject.state?.seed ?? [] } : undefined)
   );
 }
 

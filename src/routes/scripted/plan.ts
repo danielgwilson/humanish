@@ -20,10 +20,15 @@ import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
+import { sandboxDeadlineRefusal, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
 
 // Default surface roster is 1 (desktop only): the defaults-table single-participant row governs;
 // `count: 2` is the declared override that adds the mobile surface.
 const DEFAULT_SURFACE_COUNT = 1;
+
+// Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
+// sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
+const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 
 /** The error a scripted study returns before a run starts. */
 export interface ScriptedRefusal extends RouteRefusal<
@@ -33,6 +38,7 @@ export interface ScriptedRefusal extends RouteRefusal<
   | "HUMANISH_SCRIPTED_ACTOR_UNSUPPORTED"
   | "HUMANISH_SCRIPTED_SCENARIO_INVALID"
   | "HUMANISH_SCRIPTED_SUBJECT_UNSAFE"
+  | "HUMANISH_SCRIPTED_SUBJECT_INVALID"
 > {
   /**
    * Set on the receiving, analysis and tasks refusals. The route returns those before it opens its
@@ -66,6 +72,8 @@ export function planScriptedStudy(
     readonly dryRun: boolean;
     /** A test's injected browser means a live run needs no host browser. */
     readonly injectedBrowser?: boolean;
+    /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
+    readonly sandboxCeiling: SandboxCeiling;
   },
 ): ScriptedPlanResult {
   const refuse = (
@@ -134,6 +142,30 @@ export function planScriptedStudy(
       { actor, appUrl: evidenceAppUrlOf(subject) },
     );
 
+  const timeoutMs = config.execution?.timeoutMs;
+  const sessionTimeoutMs = timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  // A clone is served from an E2B sandbox that must outlive the journey; a loopback app runs on
+  // this machine and needs no sandbox.
+  if (subject.kind === "clone") {
+    const ceiling = input.sandboxCeiling;
+    const reason = ceiling.ok
+      ? sandboxDeadlineRefusal(
+          {
+            name: "the subject sandbox",
+            sessionMs: sessionTimeoutMs,
+            sessionDeclared: timeoutMs !== undefined,
+            servedSubject: { seed: subject.state?.seed ?? [] },
+          },
+          ceiling.ms,
+        )
+      : ceiling.message;
+    if (reason)
+      return refuse("HUMANISH_SCRIPTED_SUBJECT_INVALID", reason, {
+        actor,
+        appUrl: evidenceAppUrlOf(subject),
+      });
+  }
+
   const requirements: Requirement[] = [];
   if (!input.dryRun && subject.kind === "clone") {
     requirements.push({ kind: "key", name: "E2B_API_KEY" });
@@ -142,7 +174,6 @@ export function planScriptedStudy(
   // The browser runs on this machine on both subjects; a clone's is pointed at its getHost URL.
   if (!input.dryRun && input.injectedBrowser !== true) requirements.push({ kind: "host-browser" });
   const persona = config.actor?.persona;
-  const timeoutMs = config.execution?.timeoutMs;
   return {
     ok: true,
     plan: {
@@ -156,7 +187,7 @@ export function planScriptedStudy(
       scenarioRef,
       surfaces: browserSurfaces.slice(0, config.surfaces?.length ?? DEFAULT_SURFACE_COUNT),
       ...(persona === undefined ? {} : { personaId: persona }),
-      ...(timeoutMs === undefined ? {} : { sessionTimeoutMs: timeoutMs }),
+      sessionTimeoutMs,
       requirements,
     },
   };

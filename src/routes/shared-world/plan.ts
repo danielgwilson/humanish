@@ -38,10 +38,9 @@ import {
   waitLimitValidationReason,
 } from "../../study/validation.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import {
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
+  sandboxDeadlineRefusal,
+  sandboxHeadroomMs,
   type SandboxCeiling,
 } from "../../substrates/e2b/lifetime.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
@@ -163,6 +162,26 @@ export function planSharedWorldStudy(
   const plane = planeOf(config);
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
+  const sessionTimeoutMs =
+    config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms);
+  // The run's longest deadline: on the provisioned plane the subject sandbox, which serves the app
+  // until every participant ends; on the external-public plane each participant's own sandbox.
+  const deadlineReason = sandboxDeadlineRefusal(
+    plane.kind === "provisioned"
+      ? {
+          name: "the subject sandbox, which serves the app until every participant ends",
+          sessionMs: sessionTimeoutMs,
+          sessionDeclared: config.execution?.timeoutMs !== undefined,
+          servedSubject: { seed: plane.subject.state.seed ?? [] },
+        }
+      : {
+          name: "each participant's sandbox",
+          sessionMs: sessionTimeoutMs,
+          sessionDeclared: config.execution?.timeoutMs !== undefined,
+        },
+    ceiling.ms,
+  );
+  if (deadlineReason) return refuse(invalid, deadlineReason, actor);
   const brain = brainOf(config, false);
   if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const base = planBase(config, {
@@ -177,7 +196,7 @@ export function planSharedWorldStudy(
       actor,
       plane,
       concurrency: config.execution?.concurrency ?? plane.participants.length,
-      sessionTimeoutMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms),
+      sessionTimeoutMs,
       brain,
       caps: planCaps(config),
       requirements: base.dryRun
@@ -214,11 +233,7 @@ const DEFAULT_APP_URL_SESSION_MS = 30 * 60_000;
 
 function defaultSessionTimeoutMs(plane: SharedWorldPlane, ceilingMs: number): number {
   if (plane.kind !== "provisioned") return DEFAULT_APP_URL_SESSION_MS;
-  const stateBudgetMs = (plane.subject.state.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-    0,
-  );
-  const room = ceilingMs - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  const room = ceilingMs - sandboxHeadroomMs({ seed: plane.subject.state.seed ?? [] });
   return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
 }
 

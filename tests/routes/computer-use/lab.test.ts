@@ -6415,7 +6415,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     );
     expect(subjectEvent.message).toContain("unpinned");
     expect(subjectEvent.message).toContain("no E2B desktop");
-    expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
+    expect(bundle.subject).toEqual({ source: "local-app", state: { provenance: "undeclared" } });
 
     // appState never persists anywhere in the bundle (runtime-only).
     const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
