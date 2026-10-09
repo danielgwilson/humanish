@@ -44,6 +44,7 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
+import { subjectName } from "../../run/subject-name.js";
 import { plural } from "../../run/text.js";
 
 type SingleParticipantBundleArgs = Parameters<typeof buildSingleParticipantBundle>[0];
@@ -123,6 +124,8 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
       : (args.captureRedaction ?? "raw");
   return {
     publicAppUrl,
+    /** How the participant's sentence and the summary name the subject. */
+    subjectName: subjectName(publicAppUrl, args.subject),
     participant,
     tally: judgment.tally,
     status,
@@ -137,7 +140,7 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
 type ParticipantView = ReturnType<typeof participantView>;
 
 function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantView): RunSimulation {
-  const { publicAppUrl, status, reason } = view;
+  const { status, reason } = view;
   const name = participantCaption({
     id: args.participantId ?? "lane-01",
     personaId: args.persona.id,
@@ -152,7 +155,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
     currentStep: reason,
     summary: participantSummary(
       name,
-      { name: "the app", place: browserPlace(args), target: publicAppUrl },
+      { name: "the app", place: browserPlace(args), target: view.subjectName },
       {
         trace: args.session?.trace,
         sessionError: args.sessionError,
@@ -352,11 +355,11 @@ function singleSummary(
     return "1 participant is using the app. The run is still going, so nothing here is final.";
   }
   if (args.dryRun) {
-    return `Dry run: 1 participant would use ${view.publicAppUrl}. Nothing was launched and $0 was spent.`;
+    return `Dry run: 1 participant would use ${view.subjectName}. Nothing was launched and $0 was spent.`;
   }
   if (args.session === undefined) {
     return args.sessionError === undefined
-      ? `1 participant was planned against ${view.publicAppUrl}, but no session ran.`
+      ? `1 participant was planned against ${view.subjectName}, but no session ran.`
       : `1 participant was planned, but the run failed before their session finished: ${view.reason}`;
   }
   const ending = actorEnding(args.session.trace);

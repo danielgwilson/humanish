@@ -22,6 +22,7 @@ import {
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
 import { providerResourcesForOutcome, publicSafeAppUrlLabel } from "./bundle-parts.js";
+import { subjectName } from "../../run/subject-name.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { judgeParticipantRecords } from "../../run/judge.js";
@@ -67,7 +68,7 @@ function fanoutSummary(
     return `${people} ${count === 1 ? "is" : "are"} each using their own copy of the app. The run is still going, so nothing here is final.`;
   }
   if (args.dryRun) {
-    return `${rerun}Dry run: ${people} would each use their own copy of ${publicSafeAppUrlLabel(args.appUrl)}. No desktops were launched and $0 was spent.`;
+    return `${rerun}Dry run: ${people} would each use their own copy of ${subjectName(publicSafeAppUrlLabel(args.appUrl), args.aggregateSubject)}. No desktops were launched and $0 was spent.`;
   }
   const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
   return `${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;

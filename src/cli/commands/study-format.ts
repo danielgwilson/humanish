@@ -6,6 +6,7 @@ import type { ScriptedBrowserStudyResult } from "../../routes/scripted/types.js"
 import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 import type { StudySubject } from "../../study/types.js";
+import { subjectName } from "../../run/subject-name.js";
 
 /**
  * A run's first lines: the command that ran, whether it was a dry run, how it ended, and its route.
@@ -52,14 +53,12 @@ function sandboxIdsLine(result: { runId?: string }): string[] {
 }
 
 /**
- * How a run's output names its subject: by the URL its participants open. A product studied at a
- * desktop has no URL, so it is named with its source, as in `humanish (desktop-cli)`. A refusal
- * made before the route resolved a URL has none either, so it names the URL the study declares.
+ * The `subject:` line's name for the study's declared subject. A refusal made before the route
+ * resolved a URL has none, so it names the URL the study declares.
  */
-function subjectName(appUrl: string, subject: StudySubject): string {
-  if (appUrl !== "") return appUrl;
-  if (subject.product !== undefined) return `${subject.product.name} (${subject.source})`;
-  return subject.appUrl ?? subject.serve?.url ?? subject.source;
+function subjectLine(appUrl: string, subject: StudySubject): string {
+  const named = subjectName(appUrl, { source: subject.source, product: subject.product?.name });
+  return named !== "" ? named : (subject.appUrl ?? subject.serve?.url ?? subject.source);
 }
 
 /** A participant's status in words: a dry run's placeholder status says that nothing ran live. */
@@ -131,7 +130,7 @@ export function formatScriptedStudyHuman(
     ...runHeader(result, "scripted"),
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
-    `subject: ${subjectName(result.appUrl, subject)}`,
+    `subject: ${subjectLine(result.appUrl, subject)}`,
     ...(result.scenario
       ? [
           `scenario: ${result.scenario.id} @ ${result.scenario.sourceDigest.slice(0, 12)} (${result.scenario.source}, ${result.scenario.steps} step${result.scenario.steps === 1 ? "" : "s"})`,
@@ -164,7 +163,7 @@ export function formatCuaStudyHuman(
     ...runHeader(result, "computer-use"),
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
-    `subject: ${subjectName(result.appUrl, subject)}`,
+    `subject: ${subjectLine(result.appUrl, subject)}`,
     ...(result.subject?.source === "clone"
       ? [
           `repo: ${result.subject.repo}${result.subject.commit ? `@${result.subject.commit.slice(0, 12)}` : ""}${result.subject.envNames && result.subject.envNames.length > 0 ? ` env=[${result.subject.envNames.join(", ")}]` : ""}`,
