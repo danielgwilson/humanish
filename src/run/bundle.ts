@@ -151,6 +151,22 @@ export interface RunSimulation {
   streamIds: string[];
   startedAt: string;
   updatedAt: string;
+  /**
+   * When a computer-use or shared-world participant was due and when it started, in a study that
+   * declares `participants[].startAfterMs`. `startAfterMs` is its offset (0 when its entry declares
+   * none), `scheduledAt` the moment the run started its participants plus that offset, and
+   * `startedAt` when its desktop was requested: later than `scheduledAt` when it waited for a free
+   * slot. A dry run records only the offset, and a participant that never started has no
+   * `startedAt`. The record's own `startedAt` above is the run's creation time.
+   */
+  arrival?: RunParticipantArrival;
+}
+
+/** A participant record's `arrival`. */
+export interface RunParticipantArrival {
+  startAfterMs: number;
+  scheduledAt?: string;
+  startedAt?: string;
 }
 
 export interface RunEvent {

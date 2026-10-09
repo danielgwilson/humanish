@@ -200,10 +200,11 @@ export function participantSessionOptions(
               provider?.version ?? capModelId,
               provider?.executionProfile,
             ).estimatedCostUsd;
-            const totalUsd = deps.runBudget!.note(spec.planned.id, estimate);
-            return totalUsd > deps.runBudget!.maxTotalUsd
-              ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
-              : null;
+            deps.runBudget!.note(spec.planned.id, estimate);
+            const crossed = deps.runBudget!.crossed();
+            return crossed === undefined
+              ? null
+              : `study budget reached: ${crossed}; this lane stops here and sibling lanes stop at their next turn`;
           },
         }),
     ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
@@ -376,13 +377,22 @@ export function participantCapWarning(
 
 export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
   const participantEstimates = new Map<string, number>();
+  const total = (): number => {
+    let sum = 0;
+    for (const value of participantEstimates.values()) sum += value;
+    return sum;
+  };
   return {
     maxTotalUsd,
     note(participantId, estimateUsd) {
       if (estimateUsd !== null) participantEstimates.set(participantId, estimateUsd);
-      let total = 0;
-      for (const value of participantEstimates.values()) total += value;
-      return total;
+      return total();
+    },
+    crossed() {
+      const totalUsd = total();
+      return totalUsd > maxTotalUsd
+        ? `the run's estimated model spend $${round6(totalUsd)} crossed caps.maxTotalUsd=$${maxTotalUsd}`
+        : undefined;
     },
   };
 }

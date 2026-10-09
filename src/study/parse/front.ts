@@ -9,6 +9,7 @@ import { participantCountReason, type StudyRoute } from "../routing.js";
 import type { StudyParseFailure, StudySurfaces } from "../types.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./actors.js";
 import { invalid, posInt } from "./values.js";
+import { isStartAfterMs, LATEST_START_AFTER_MS, startAfterMessage } from "../arrivals.js";
 
 // The values `route:` takes: every route routeOf can return.
 const ROUTES = [
@@ -181,6 +182,10 @@ function entriesOf(raw: unknown[]): Parsed<Participants> {
   const source: number[] = [];
   for (const [index, entry] of raw.entries()) {
     if (!isRecord(entry) || entry.count === undefined) {
+      if (isRecord(entry) && entry.startEveryMs !== undefined)
+        return invalid(
+          `participants[${index}].startEveryMs spreads a group's members over time, so it needs \`count\` on the same entry.`,
+        );
       entries.push(entry);
       source.push(index);
       continue;
@@ -199,14 +204,47 @@ function entriesOf(raw: unknown[]): Parsed<Participants> {
         `participants[${index}] has a count, so it needs an \`id\` matching ${PARTICIPANT_ID_PATTERN} of at most ${PARTICIPANT_ID_MAX_CHARS - 3} characters. Its participants are <id>-01 to <id>-${String(count).padStart(2, "0")}.`,
       );
     }
+    const starts = memberStarts(entry, index, id, count);
+    if (!starts.ok) return starts;
     const shared: Record<string, unknown> = { ...entry };
     delete shared.count;
+    delete shared.startEveryMs;
     for (let n = 1; n <= count; n += 1) {
-      entries.push({ ...shared, id: `${id}-${String(n).padStart(2, "0")}` });
+      const startAfterMs = starts.value(n);
+      entries.push({
+        ...shared,
+        id: `${id}-${String(n).padStart(2, "0")}`,
+        ...(startAfterMs === undefined ? {} : { startAfterMs }),
+      });
       source.push(index);
     }
   }
   return { ok: true, value: { entries, source } };
+}
+
+// A group's `startEveryMs` gives member n the start `startAfterMs + (n - 1) * startEveryMs`.
+// Without it every member keeps the entry's own `startAfterMs`, which the entry parser checks.
+function memberStarts(
+  entry: Record<string, unknown>,
+  index: number,
+  id: string,
+  count: number,
+): Parsed<(member: number) => unknown> {
+  if (entry.startEveryMs === undefined) return { ok: true, value: () => entry.startAfterMs };
+  const every = typeof entry.startEveryMs === "number" ? posInt(entry.startEveryMs) : undefined;
+  if (every === undefined)
+    return invalid(
+      `participants[${index}].startEveryMs must be a whole number of milliseconds of 1 or more: how long after one member of the group the next one starts.`,
+    );
+  const first = entry.startAfterMs ?? 0;
+  if (!isStartAfterMs(first))
+    return invalid(startAfterMessage(`participants[${index}].startAfterMs`));
+  const last = first + (count - 1) * every;
+  if (last > LATEST_START_AFTER_MS)
+    return invalid(
+      `participants[${index}] starts its last member, ${id}-${String(count).padStart(2, "0")}, ${last} ms after the run starts its participants, and a start must be at most ${LATEST_START_AFTER_MS} ms (24 hours). Lower startEveryMs, startAfterMs or count.`,
+    );
+  return { ok: true, value: (member) => first + (member - 1) * every };
 }
 
 function surfacesOf(route: StudyRoute, raw: unknown): Parsed<StudySurfaces | undefined> {

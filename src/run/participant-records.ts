@@ -45,6 +45,7 @@ export function participantRecord(
     streamIds: [ids.streamId],
     startedAt: fields.startedAt,
     updatedAt: fields.updatedAt,
+    ...(fields.arrival === undefined ? {} : { arrival: fields.arrival }),
   };
 }
 

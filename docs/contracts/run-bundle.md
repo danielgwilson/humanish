@@ -65,7 +65,7 @@ scenario:
   goal: "<scenario goal>"
   source: "<scenario source>"
   sourceDigest: "<sha256>"
-simulations: [] # simCount entries, each paired with its streams
+simulations: [] # simCount entries, each paired with its streams; `arrival` when the study declares starts
 streams: []
 events: []
 artifacts:

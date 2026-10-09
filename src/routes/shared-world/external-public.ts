@@ -7,7 +7,7 @@
 
 import { liveObserverResult } from "../../observer/live.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import { mapWithConcurrency } from "../../run/concurrency.js";
+import { runOnSchedule } from "../../study/arrivals.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { drainExternalComms } from "./comms.js";
 import { LobbyHandoff, runFollower, runHost, type HandoffParticipantDeps } from "./handoff.js";
@@ -123,14 +123,26 @@ export async function runExternalPublicPlane(
     .filter(({ index }) => index !== hostIndex);
   const orderedResults: ActorRunResult[] = new Array(actorSpecs.length);
   try {
+    // The host starts with the run (parse refuses a later start for it); the followers start on
+    // the study's schedule.
     const hostPromise =
       hostIndex >= 0 && actorSpecs[hostIndex] !== undefined
-        ? runHost(handoff, deps, actorSpecs[hostIndex]!, hostIndex)
+        ? runHost(handoff, deps, actorSpecs[hostIndex]!, hostIndex).then((result) => ({
+            ...result,
+            scheduledAt: result.startedAt,
+          }))
         : undefined;
-    const followerResultsPromise = mapWithConcurrency(
+    const followerResultsPromise = runOnSchedule(
       followerEntries,
-      Math.max(1, concurrency - 1),
-      ({ spec, index }) => runFollower(handoff, deps, spec, index),
+      {
+        startAfterMs: ({ spec }) => spec.planned.startAfterMs,
+        slots: Math.max(1, concurrency - 1),
+        now: ctx.now,
+      },
+      async ({ spec, index }, _position, { scheduledAt }) => ({
+        ...(await runFollower(handoff, deps, spec, index)),
+        scheduledAt,
+      }),
     );
     const [hostResult, followerResults] = await Promise.all([hostPromise, followerResultsPromise]);
     if (hostResult !== undefined && hostIndex >= 0) {

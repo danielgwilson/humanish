@@ -2405,7 +2405,7 @@ describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome wi
 
 // The participant runner is total: every exit path records an outcome. Before the guard, one
 // participant's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
-// mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
+// worker pool while sibling workers kept launching sandboxes nobody would record: spent
 // money, vanished evidence. These drive runCuaParticipants directly with an injected participant
 // runner so the throw path (not the already-guarded in-session error path) is what is under test.
 describe("runCuaParticipants total-runner guard", () => {
@@ -2432,7 +2432,8 @@ describe("runCuaParticipants total-runner guard", () => {
     selfReportedBlocker: false,
     harnessError: false,
   });
-  const deps = {} as unknown as Parameters<typeof runCuaParticipants>[1];
+  // The runner reads only the run's clock, to record when each participant starts.
+  const deps = { now: Date.now } as unknown as Parameters<typeof runCuaParticipants>[1];
 
   it("a throwing participant records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];

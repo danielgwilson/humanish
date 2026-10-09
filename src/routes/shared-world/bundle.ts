@@ -51,6 +51,7 @@ import {
 } from "./types.js";
 import { gapsListClause } from "../../run/outcomes.js";
 import { plural } from "../../run/text.js";
+import { describeArrivals } from "../../study/arrivals.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The simultaneity
  *  count: the participant count says how many existed; this says how many ever ran at once. */
@@ -166,7 +167,7 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created a concurrent shared-world run for ${plan.studyId} (actor ${descriptor.id}, ${plural(actorSpecs.length, "persona")} on one shared app, at most ${plan.concurrency} at once).`,
+    message: `Created a concurrent shared-world run for ${plan.studyId} (actor ${descriptor.id}, ${plural(actorSpecs.length, "persona")} on one shared app, at most ${plan.concurrency} at once).${plan.arrivals.declared ? ` Schedule: ${describeArrivals(plan.arrivals)}` : ""}`,
   });
   // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
   // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git

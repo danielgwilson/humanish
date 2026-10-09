@@ -8,8 +8,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- A computer-use or shared-world study can start its participants over time:
+  `participants[].startAfterMs` starts a participant that many milliseconds after the run starts
+  its participants (up to 24 hours), and a group's `startEveryMs` spreads its members, member k at
+  `startAfterMs + (k - 1) * startEveryMs`. Each participant's desktop is created at its start. One
+  whose start comes while every slot is taken waits for the next free one. `study check` and the
+  run's plan print the first and last start and the most participants at once, and run.json
+  records each participant's `arrival` with its scheduled and actual start. A provisioned shared
+  world's app sandbox serves until the last participant ends, and a study whose last start puts
+  that past `HUMANISH_E2B_MAX_SANDBOX_MINUTES` is refused before anything is created (#1737).
+
 ### Changed
 
+- A computer-use or shared-world participant whose start comes after the study crossed
+  `caps.maxTotalUsd`, in a later wave or later in its schedule, is skipped before its desktop is
+  created. It is recorded as blocked with a reason naming the budget and counted among the fan-out
+  summary's skipped participants. It used to create its desktop, make one model request and stop
+  (#1737).
 - One analysis of a run with more than 16 participants covers all of them, up to 128. They are
   split into cohorts of at most 16, each analysed by its own request under the full packet limits,
   and one more request merges the cohort reports into the run's one report. In 0.118.0 a live run
@@ -25,6 +42,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   fails the attempt with no findings and a warning, and its usage counts every request sent. The
   `humanish.study-analysis.v1` schema is unchanged; its stored limits grew to 6,400 evidence
   items, 320 captures and 16 MiB (#1737).
+
+### Fixed
+
+- A provisioned shared-world study that runs in waves asks E2B for an app sandbox that lives until
+  the last wave can end, and is refused when that passes `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. Its
+  app sandbox lived one session plus provisioning, which a second wave could outlast (#1737).
 
 ## 0.118.0: Up to 100 participants, E2B concurrent sandboxes, study check plans like run, analysis range (2026-10-09)
 

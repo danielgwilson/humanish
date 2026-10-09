@@ -19,7 +19,7 @@ import type {
 } from "../../study/types.js";
 import { liveObserverResult } from "../../observer/live.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
-import { mapWithConcurrency } from "../../run/concurrency.js";
+import { runOnSchedule } from "../../study/arrivals.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
@@ -44,6 +44,7 @@ import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { withInboxMission } from "../computer-use/participant-prompt.js";
 import { planeStateOf } from "./plan.js";
 import { runCuaParticipant } from "../computer-use/participant-execution.js";
+import type { DesktopParticipantRun } from "../computer-use/types.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
@@ -177,7 +178,7 @@ class SubjectPlane {
   }
 
   async acquire(): Promise<void> {
-    const { plan, deps, env, requestTimeoutMs, timeoutMs } = this.ctx;
+    const { plan, deps, env, requestTimeoutMs } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
     const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     // The one subject sandbox: headless service host (no GUI participant). The subject env is
@@ -188,7 +189,9 @@ class SubjectPlane {
       module: subjectModule,
       apiKey: this.ctx.e2bApiKey,
       requestTimeoutMs,
-      sessionTimeoutMs: timeoutMs,
+      // The app serves until the last participant ends, which a late start or a wait for a free
+      // slot puts past one session.
+      sessionTimeoutMs: plan.arrivals.lastEndMs,
       seed: planeStateOf(plan)?.seed ?? [],
       metadata: {
         ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
@@ -479,9 +482,9 @@ async function publishInProgress(
   startParticipantFlush(ctx, live, inProgressBundle);
 }
 
-// Launch N actor sandboxes concurrently and independently (runCuaParticipant + mapWithConcurrency;
-// runCuaParticipants would add a pipeline gate and fail-fast). Each actor's window is measured on the
-// one orchestrator clock.
+// Launch N actor sandboxes independently on the study's schedule (runCuaParticipant +
+// runOnSchedule; runCuaParticipants would add a pipeline gate and fail-fast). Each actor's window is
+// measured on the one orchestrator clock.
 function runParticipants(
   plane: SubjectPlane,
   ctx: PlaneContext,
@@ -492,7 +495,12 @@ function runParticipants(
   const participants = ctx.plan.plane.participants;
   const { commsEmail } = setup;
   const baseActorDeps = participantRunDeps(ctx, live, ctx.scrubKnownValues);
-  return mapWithConcurrency(ctx.actorSpecs, Math.max(1, ctx.concurrency), async (spec, i) => {
+  const schedule = {
+    startAfterMs: (spec: DesktopParticipantRun) => spec.planned.startAfterMs,
+    slots: Math.max(1, ctx.concurrency),
+    now,
+  };
+  return runOnSchedule(ctx.actorSpecs, schedule, async (spec, i, { scheduledAt }) => {
     const route = resolveActorEntryUrl(plane.getHostUrl!, participants[i]?.entry);
     // Tell this persona its (getHost-reachable) inbox URL, but only when comms is live and this participant
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
@@ -509,7 +517,7 @@ function runParticipants(
     const startedAt = now();
     const outcome = await runCuaParticipant(actorSpec, { ...baseActorDeps, appUrl: route });
     const endedAt = now();
-    return { spec, outcome, startedAt, endedAt, route };
+    return { spec, outcome, scheduledAt, startedAt, endedAt, route };
   });
 }
 
