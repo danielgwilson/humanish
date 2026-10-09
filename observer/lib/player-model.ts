@@ -197,6 +197,15 @@ export function boundedWindow(
   return { start, end: Math.min(length, start + limit) };
 }
 
+/** The recorded entry `eventId` within the capture interval of frame `frame`, if the model holds it. */
+export function frameEntry(
+  model: PlayerModel,
+  eventId: string,
+  frame: number,
+): PlayerRow | undefined {
+  return model.rows.find((row) => row.id === eventId && !row.isFrame && row.frameIndex === frame);
+}
+
 /** A trace event can occur between screenshots; preserve its own recorded time. */
 export function rowElapsedMs(model: PlayerModel, row: PlayerRow): number {
   const start = model.frames[0]?.atMs;

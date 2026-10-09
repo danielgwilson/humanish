@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
+  saved." or why a moment could not open), as opening a participant or the participants grid
+  already did (#1728).
+
 ### Fixed
 
 - A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
