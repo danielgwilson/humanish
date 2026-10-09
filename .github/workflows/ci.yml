@@ -174,7 +174,17 @@ jobs:
         if: steps.changes.outputs.needed == 'true'
         run: |
           python3 -B -m unittest discover -s runtime/browser-guest/tests -p '*_test.py' -v
-          python3 runtime/browser-guest/build.py --architecture amd64 --output "$RUNNER_TEMP/guest-image"
+          # Docker Hub sometimes refuses GitHub's shared runners for minutes at a time. The base is
+          # pinned by digest, so a retry builds the same image.
+          for attempt in 1 2 3; do
+            if python3 runtime/browser-guest/build.py --architecture amd64 --output "$RUNNER_TEMP/guest-image-$attempt"; then
+              mv "$RUNNER_TEMP/guest-image-$attempt" "$RUNNER_TEMP/guest-image"
+              break
+            fi
+            tail -20 "$RUNNER_TEMP/guest-image-$attempt/build.log" || true
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep $((attempt * 60))
+          done
           pnpm install --frozen-lockfile
           pnpm exec tsc -p tsconfig.build.json
       - name: Prove headed input with Chromium sandbox enabled
@@ -205,5 +215,6 @@ jobs:
       # happened on 2026-08-31. Coverage is unchanged in practice: every branch runs this job,
       # so a secret is still caught on the PR that introduces it, and `--full-history HEAD`
       # still walks the whole ancestry rather than the diff.
+      # gitleaks publishes the same image to GHCR, which GitHub's runners reach without Docker Hub.
       - name: Scan full git history for secrets (gitleaks)
-        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --log-opts="--full-history HEAD" --redact --no-banner
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --log-opts="--full-history HEAD" --redact --no-banner
