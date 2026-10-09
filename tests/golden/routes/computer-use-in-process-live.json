@@ -16,7 +16,7 @@
       "screenshots": 0
     },
     "subject": {
-      "source": "app-url",
+      "source": "local-app",
       "state": {
         "provenance": "undeclared"
       }
@@ -54,7 +54,7 @@
           950
         ],
         "subject": {
-          "source": "app-url",
+          "source": "local-app",
           "state": {
             "provenance": "undeclared"
           }
@@ -633,7 +633,7 @@
     },
     "feedbackCandidates": [],
     "subject": {
-      "source": "app-url",
+      "source": "local-app",
       "state": {
         "provenance": "undeclared"
       }

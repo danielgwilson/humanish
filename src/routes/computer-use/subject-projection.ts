@@ -133,6 +133,7 @@ function participantSubjectProjection(args: {
   if (args.subject.kind === "desktop-cli") {
     return { source: "desktop-cli", product: args.subject.product.name, state: args.subjectState };
   }
+  if (args.subject.kind === "local-app") return { source: "local-app", state: args.subjectState };
   return { source: "app-url", state: args.subjectState };
 }
 

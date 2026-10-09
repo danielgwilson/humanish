@@ -286,7 +286,8 @@ function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
     value.source !== "clone" &&
     value.source !== "app-url" &&
     value.source !== "local-tree" &&
-    value.source !== "desktop-cli"
+    value.source !== "desktop-cli" &&
+    value.source !== "local-app"
   )
     return false;
   if (value.repo !== undefined && typeof value.repo !== "string") return false;
