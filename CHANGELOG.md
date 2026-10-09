@@ -8,7 +8,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-## 0.119.0: Participants arrive over time, one analysis past 16 participants in cohorts, late starts skipped past the budget (2026-10-09)
+## 0.119.0: Participants arrive over time, one analysis past 16 participants in cohorts, late starts skipped past the budget, study warnings redacted (2026-10-09)
 
 humanish 0.119.0 lets a computer-use or shared-world study start its participants over time, and
 analyses a run of 17 to 100 participants in one report. `participants[].startAfterMs` starts a
@@ -23,7 +23,9 @@ automatic analysis of such a run. Admission, the plan's analysis line, `study ch
 `analyze --dry-run` worst case count every request, and `analyze --json` gives their number as
 `admission.requests`. At the default $3 cap the analysis of 17 or more participants is refused even
 with no evidence, so it needs a higher `review.analysis.maxCostUsd`. A provisioned shared world gets
-an app sandbox that lives until the last start or wave can end.
+an app sandbox that lives until the last start or wave can end. A study warning recorded in the
+run's bundle is redacted as a run failure is, so a hosted study whose participant instruction names
+a sandbox URL other than the subject's verifies `share_ready` again, as on 0.111.2.
 
 [Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.119.0)
 
