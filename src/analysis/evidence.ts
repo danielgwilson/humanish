@@ -28,16 +28,9 @@ import {
   type SourceEntry,
 } from "./evidence-sources.js";
 import { readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
+import { analysisCohortCount, analysisCohorts, EVIDENCE_LIMITS } from "./analysis-limits.js";
 
-export const EVIDENCE_LIMITS = Object.freeze({
-  participants: 16,
-  evidence: 800,
-  captures: 40,
-  textBytes: 160 * 1024,
-  imageBytes: 8 * 1024 * 1024,
-  totalImageBytes: 20 * 1024 * 1024,
-  sourceBytes: 16 * 1024 * 1024,
-});
+export { EVIDENCE_LIMITS };
 // A second guard for direct callers. The analysis service already requires every stream to be in
 // TERMINAL_SIMULATION_STATUSES; this refuses only statuses that mean still running, so a dry-run
 // bundle's contract_proof_only streams stay capturable. The source is not shape-guarded here, so
@@ -52,7 +45,11 @@ const UNFINISHED_STREAM_STATUSES: ReadonlySet<string> = new Set([
   "suspended",
 ]);
 
-export type EvidenceLimits = { [Key in keyof typeof EVIDENCE_LIMITS]?: number };
+/** Lower limits: `participants` for the run, the rest for each cohort's packet. The cohort size
+ * stays `EVIDENCE_LIMITS.cohortParticipants`, the size runAnalysis splits by. */
+export type EvidenceLimits = {
+  [Key in Exclude<keyof typeof EVIDENCE_LIMITS, "cohortParticipants">]?: number;
+};
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
@@ -63,7 +60,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
     value.schema !== "humanish.run-bundle.v1" ||
     value.runId !== runIdOf(prepared) ||
     !Array.isArray(value.streams) ||
-    value.streams.length > 128 ||
+    value.streams.length > EVIDENCE_LIMITS.participants ||
     !Array.isArray(value.events) ||
     value.events.length > 100000 ||
     (value.commsReceiving !== undefined && !isCommsReceivingEvidence(value.commsReceiving))
@@ -124,7 +121,7 @@ export async function captureEvidence(
   bundleBytes: Buffer,
   requested: EvidenceLimits = {},
 ): Promise<AnalysisInput> {
-  const limits: Required<EvidenceLimits> = { ...EVIDENCE_LIMITS, ...requested };
+  const limits: Record<keyof typeof EVIDENCE_LIMITS, number> = { ...EVIDENCE_LIMITS, ...requested };
   for (const key of Object.keys(EVIDENCE_LIMITS) as Array<keyof typeof EVIDENCE_LIMITS>) {
     if (
       !Number.isSafeInteger(limits[key]) ||
@@ -150,7 +147,7 @@ export async function captureEvidence(
   const evidence: AnalysisEvidence[] = [];
   const images: AnalysisInput["images"] = [];
   const omissions = new Set<string>();
-  let textBytes = 0;
+  const contextBytes = new Map<RunStream, number>();
   const participants = selected.map((stream) => {
     const participant = participantSource(stream, captureVersion);
     const assignment = participantAssignment(stream, captureVersion);
@@ -162,29 +159,41 @@ export async function captureEvidence(
       participant.recordedReason !== (stream.actor?.reason ?? null)
     )
       omissions.add("Participant context exceeded the text limit.");
-    textBytes += Buffer.byteLength(JSON.stringify(participant));
+    contextBytes.set(stream, Buffer.byteLength(JSON.stringify(participant)));
     return participant;
   });
-  if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
-  // Tie-breaking uses stable participant IDs, not the order of streams in a bundle.
-  // The emitted packet still preserves participant and source event order.
-  const packings = selected
-    .map((stream) => ({
-      stream,
-      entries: sourceEntries(bundle, stream, captureVersion),
-      captures: new Map<SourceEntry, Buffer>(),
-      admitted: new Set<SourceEntry>(),
-      captureCursor: 0,
-      attempts: 0,
-      readBytes: 0,
-      imageBytes: 0,
-      reservationBlocked: false,
-    }))
-    .sort((a, b) => (a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0));
-  const sel = planCaptureSelection(packings, limits);
-  await selectCaptures(prepared, packings, sel, omissions);
-  recordCaptureOmissions(packings, sel, omissions);
-  const textByEntry = boundEvidenceText(packings, limits.textBytes - textBytes, omissions);
+  // Each cohort is one request's packet, selected under the full limits on its own.
+  const packings: ParticipantPacking[] = [];
+  const textByEntry = new Map<SourceEntry, string>();
+  for (const cohort of analysisCohorts(selected)) {
+    const textBytes = cohort.reduce((total, stream) => total + contextBytes.get(stream)!, 0);
+    if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
+    // Tie-breaking uses stable participant IDs, not the order of streams in a bundle.
+    // The emitted packet still preserves participant and source event order.
+    const cohortPackings = cohort
+      .map((stream) => ({
+        stream,
+        entries: sourceEntries(bundle, stream, captureVersion),
+        captures: new Map<SourceEntry, Buffer>(),
+        admitted: new Set<SourceEntry>(),
+        captureCursor: 0,
+        attempts: 0,
+        readBytes: 0,
+        imageBytes: 0,
+        reservationBlocked: false,
+      }))
+      .sort((a, b) => (a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0));
+    const sel = planCaptureSelection(cohortPackings, limits);
+    await selectCaptures(prepared, cohortPackings, sel, omissions);
+    recordCaptureOmissions(cohortPackings, sel, omissions);
+    for (const [entry, text] of boundEvidenceText(
+      cohortPackings,
+      limits.textBytes - textBytes,
+      omissions,
+    ))
+      textByEntry.set(entry, text);
+    packings.push(...cohortPackings);
+  }
   packEvidence(selected, packings, textByEntry, evidence, images);
   const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
   const coverage = {
@@ -594,6 +603,8 @@ export async function validateAnalysisEvidence(
   }
   const sourceKeys = new Set<string>();
   const checkedCaptures = new Map<string, string>();
+  // Each cohort's packet holds at most totalImageBytes.
+  const imageByteLimit = analysisCohortCount(included.size) * EVIDENCE_LIMITS.totalImageBytes;
   let checkedImageBytes = 0;
   for (const entry of artifact.evidence) {
     const matches =
@@ -641,8 +652,7 @@ export async function validateAnalysisEvidence(
         if (!bytes || screenshotEvidenceError(source.capturePath, bytes) !== null)
           throw new Error("ANALYSIS_CAPTURE_UNAVAILABLE");
         checkedImageBytes += bytes.length;
-        if (checkedImageBytes > EVIDENCE_LIMITS.totalImageBytes)
-          throw new Error("ANALYSIS_IMAGE_LIMIT_EXCEEDED");
+        if (checkedImageBytes > imageByteLimit) throw new Error("ANALYSIS_IMAGE_LIMIT_EXCEEDED");
         hash = sha256(bytes);
         checkedCaptures.set(source.capturePath, hash);
       }

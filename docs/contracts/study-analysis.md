@@ -37,7 +37,13 @@ The estimate counts the instructions, evidence packet and result schema at 3
 UTF-8 bytes per input token, adds 2,048 framing tokens and each capture's
 high-detail image tokens, and prices input at the model's highest input rate.
 The expected output is 12,000 tokens plus 1,000 per participant, at most the
-output allowance; the worst case spends the whole allowance. `admission` in
+output allowance; the worst case spends the whole allowance. A run with more than
+16 participants sends one request per cohort and a merge request
+([runs with more than 16 participants](#runs-with-more-than-16-participants)),
+and the estimate is their sum, each request priced on its own long-context tier.
+The merge request's input is its instructions, packet and schema, counted the same
+way, plus each cohort's report at that request's whole output allowance; it is
+expected to write what one request covering every participant would. `admission` in
 `--json` output has `estimatedCostUsd` (the expected cost), `worstCaseCostUsd`,
 `admittedCostUsd` (the figure compared with the cap: the expected cost plus 10%,
 or the worst case when that is lower), `maxCostUsd`, `inputTokenAllowance` (the
@@ -47,7 +53,7 @@ times for those billed $1 or more.
 A refusal's message gives the expected cost, the worst case, the cap, and
 `humanish analyze --run <id> --max-cost <n>` with `n` the worst case rounded up.
 
-The default deadline is ten minutes. With no explicit output-token limit, analysis
+The default deadline is ten minutes for each request. With no explicit output-token limit, analysis
 uses 32,768 tokens if admission fits the declared budget, or retains the prior
 16,384-token allowance otherwise. Explicit limits are never adjusted. Selection
 happens before dispatch; `admission.outputTokenAllowance` exposes it in dry-run,
@@ -63,6 +69,44 @@ an unverified essential result remains unknown even if the participant reported
 success. Findings keep reported concerns and observed recovery distinct across
 participants. Other supported models can be selected explicitly, but evidence
 reference validation does not certify their interpretation of small visual details.
+
+## Runs with more than 16 participants
+
+One analysis covers up to 128 participants, the most streams it reads from a run
+bundle. A request covers at most 16 (`EVIDENCE_LIMITS.cohortParticipants` in
+`src/analysis/analysis-limits.ts`). A run with more is split into the fewest
+cohorts of at most 16, with participants dealt in roster order: 17 participants
+make cohorts of 9 and 8, 24 make two of 12, 40 make 14, 13 and 13, and 100 make
+seven. Each cohort's packet is selected under the packet limits below on its own,
+so each participant keeps at least the evidence a 16-participant run gives it.
+Evidence IDs are numbered across the whole run, so they stay unique.
+
+Each cohort request uses the standard instructions, schema and validation, with
+only its own participants' evidence and captures. Up to four run at once for
+OpenAI, which keeps four requests at the packet limits under the lowest paid
+tier's gpt-6-astra rate limit of 1,000,000 tokens a minute; Codex runs one at a
+time. Then one merge request reads the cohort reports, never the evidence or the
+captures. It writes the summary, findings, design findings, concern reviews and
+limitations for the whole run; the participant reviews are the cohorts' own.
+Merged observations may cite only evidence that a cohort report cites, and the
+merged report passes the same reference, membership and basis checks against the
+run's whole packet as a single request's report does.
+
+The attempt has one execution start, one receipt and one `analysis.json`, with the
+run's participants, coverage and evidence and the summed usage of every request
+sent. The artifact schema is unchanged. Its stored limits grew to hold eight
+cohorts: 6,400 evidence items, 320 captures and 16 MiB. If a cohort request fails
+or is rejected, no further request starts, no merge request is sent and the
+attempt fails with that request's code, with no findings; a warning names the
+cohort's size. A failed merge request fails the attempt the same way. The usage
+still counts every request sent. Findings from part of the participants are not
+kept as a report on the run.
+
+The first live cohort analysis, on a 24-participant computer-use run, sent two
+cohort requests of 12 participants and the merge request in 5 minutes 6 seconds.
+Its expected cost was $6.08, 2.3 times its $2.65 bill, and each of its 447
+citations resolved in the run's packet. One run does not calibrate
+the merge request's estimate.
 
 ## Explicit Codex account analysis
 
@@ -85,8 +129,9 @@ converted to API authentication.
 Omit `--max-cost` and `--max-output-tokens` for Codex. Numeric declarations are
 rejected because this transport does not enforce them. `maxCostUsd` and
 `maxOutputTokens` are stored as null. The existing evidence bounds, one analyst
-turn, bounded response bytes and whole-operation timeout still apply. One turn
-is not a claim of one upstream billed request; account limits apply. Reported
+turn per request (one per cohort, and the merge request), bounded response bytes
+and whole-operation timeout still apply. One turn is not a claim of one upstream
+billed request; account limits apply. Reported
 tokens remain inspectable, but dollar estimates, admission dollars and rate dates
 remain null. Interrupted token observations remain explicitly incomplete.
 
@@ -128,7 +173,7 @@ stopped, an operator can remove the empty lock directory and retry.
 
 ## Evidence and findings
 
-The packet currently admits up to 16 participants, 800 evidence items, 40 PNG
+Each request's packet admits up to 16 participants, 800 evidence items, 40 PNG
 captures, 160 KiB of text and 20 MiB of images. Individual source files, image
 dimensions and result sizes have separate limits. Count and text budgets are
 distributed across included participants, with unused capacity from short

@@ -43,6 +43,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A study with real email receiving and more than 64 participants is refused when it is read. Its
   run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
   inboxes.
+- One analysis of a run with more than 16 participants covers all of them, up to 128. They are
+  split into cohorts of at most 16, each analysed by its own request under the full packet limits,
+  and one more request merges the cohort reports into the run's one report; before, the packet
+  held the first 16 participants and listed the rest as omitted. Admission, the expected cost, the
+  worst case and the `study check` range cover every request, and the plan's analysis line names
+  the cohorts. `analyze` prints an `Analysis requesting` line for each request. A cohort or merge
+  request that fails fails the attempt with no findings and a warning, and its usage counts every
+  request sent. The `humanish.study-analysis.v1` schema is unchanged; its stored limits grew to
+  6,400 evidence items, 320 captures and 16 MiB (#1737).
 
 ### Fixed
 

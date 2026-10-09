@@ -7,6 +7,7 @@ import {
   isSupportedAnalysisModel,
 } from "./execute.js";
 import { ADMISSION_MARGIN } from "./admission.js";
+import { analysisCohortCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import { plural } from "../run/text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { AnalysisConfig } from "./types.js";
@@ -197,9 +198,14 @@ export function automaticAnalysisBudget(
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
+  const cohorts = analysisCohortCount(budget.participants ?? 0);
+  const requests =
+    cohorts === 1
+      ? ""
+      : `, analysed in ${cohorts} cohorts of at most ${EVIDENCE_LIMITS.cohortParticipants} and merged by one more request`;
   const range =
     budget.expectedCostUsd === undefined || budget.participants === undefined
       ? ""
-      : ` · expected $${budget.expectedCostUsd.low.toFixed(2)} to $${budget.expectedCostUsd.high.toFixed(2)} for ${plural(budget.participants, "participant")}, depending on how much evidence the run keeps`;
+      : ` · expected $${budget.expectedCostUsd.low.toFixed(2)} to $${budget.expectedCostUsd.high.toFixed(2)} for ${plural(budget.participants, "participant")}${requests}, depending on how much evidence the run keeps`;
   return `After live runs: ${budget.trigger} analysis · ${budget.model}${range} · refused before it starts if the expected cost plus a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin is over $${budget.maxCostUsd}; this is not a billing cap. Set review.analysis: false to disable.`;
 }

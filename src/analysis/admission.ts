@@ -1,5 +1,5 @@
-// The admission cost model for one study analysis request: the expected cost, the worst case, the
-// figure admission compares with the cap, and the words and command a cost refusal gives.
+// The admission cost model for one study analysis: the expected cost, the worst case, the figure
+// admission compares with the cap, and the words and command a cost refusal gives.
 
 import type { ModelRate } from "../run/pricing.js";
 
@@ -21,13 +21,22 @@ const EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT = 1_000;
 /** Admission compares the expected cost times this margin with the cap. */
 export const ADMISSION_MARGIN = 1.1;
 
-export interface AnalysisRequestSize {
+interface AnalysisRequestSize {
   /** UTF-8 bytes of the instructions, the evidence packet and the result schema. */
   textBytes: number;
   imageTokens: number;
   participants: number;
   /** The request's output limit. The worst case spends all of it. */
   outputAllowance: number;
+}
+
+/**
+ * The requests of one analysis: one per cohort and, for more than one cohort, a merge request.
+ * `mergeTextBytes` are the merge request's instructions, schema and packet without the reports.
+ */
+export interface AnalysisRequests {
+  cohorts: readonly AnalysisRequestSize[];
+  mergeTextBytes: number;
 }
 
 export interface AnalysisCostEstimate {
@@ -58,21 +67,58 @@ function requestCost(rate: ModelRate, inputTokens: number, outputTokens: number)
   );
 }
 
-export function estimateAnalysisCost(
-  rate: ModelRate,
-  size: AnalysisRequestSize,
-): AnalysisCostEstimate {
+/** One request's input and costs. `reportTokens` are earlier requests' reports it reads. */
+function estimateRequest(rate: ModelRate, size: AnalysisRequestSize, reportTokens = 0) {
   const inputTokens =
-    Math.ceil(size.textBytes / BYTES_PER_INPUT_TOKEN) + FRAMING_TOKENS + size.imageTokens;
+    Math.ceil(size.textBytes / BYTES_PER_INPUT_TOKEN) +
+    FRAMING_TOKENS +
+    size.imageTokens +
+    reportTokens;
   const expectedOutputTokens = Math.min(
     size.outputAllowance,
     EXPECTED_OUTPUT_TOKENS + EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT * size.participants,
   );
-  const expectedCostUsd = requestCost(rate, inputTokens, expectedOutputTokens);
-  const worstCaseCostUsd = requestCost(rate, inputTokens, size.outputAllowance);
   return {
     inputTokens,
     expectedOutputTokens,
+    expectedCostUsd: requestCost(rate, inputTokens, expectedOutputTokens),
+    worstCaseCostUsd: requestCost(rate, inputTokens, size.outputAllowance),
+  };
+}
+
+/**
+ * Every request of one analysis, summed. A merge request reads each cohort's report, priced at
+ * that request's whole output allowance since the report and its reasoning share it, and is
+ * expected to write what one request covering every participant would.
+ */
+export function estimateAnalysisCost(
+  rate: ModelRate,
+  requests: AnalysisRequests,
+): AnalysisCostEstimate {
+  const { cohorts } = requests;
+  const estimates = cohorts.map((size) => estimateRequest(rate, size));
+  if (cohorts.length > 1)
+    estimates.push(
+      estimateRequest(
+        rate,
+        {
+          textBytes: requests.mergeTextBytes,
+          imageTokens: 0,
+          participants: cohorts.reduce((total, size) => total + size.participants, 0),
+          outputAllowance: Math.max(...cohorts.map((size) => size.outputAllowance)),
+        },
+        cohorts.reduce((total, size) => total + size.outputAllowance, 0),
+      ),
+    );
+  const sum = (key: keyof (typeof estimates)[number]): number =>
+    estimates.reduce((total, estimate) => total + estimate[key], 0);
+  // Each request's cost is a whole number of micro-dollars, so rounding the sum to the nearest one
+  // only removes the addition's float noise.
+  const expectedCostUsd = Math.round(sum("expectedCostUsd") * 1e6) / 1e6;
+  const worstCaseCostUsd = Math.round(sum("worstCaseCostUsd") * 1e6) / 1e6;
+  return {
+    inputTokens: sum("inputTokens"),
+    expectedOutputTokens: sum("expectedOutputTokens"),
     expectedCostUsd,
     worstCaseCostUsd,
     admittedCostUsd: Math.min(worstCaseCostUsd, roundUp(expectedCostUsd * ADMISSION_MARGIN)),
