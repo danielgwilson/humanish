@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runStudy } from "../../../src/index.js";
 import { loadRunBundle } from "../../../src/run/locate.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
@@ -178,5 +179,51 @@ describe("a desktop-cli subject", () => {
       "failed verify checks",
     ).toEqual([]);
     expect((await loadRunBundle(cwd, result.runId))?.bundle.subject).toEqual(DESKTOP_CLI_SUBJECT);
+  });
+});
+
+const LOCAL_APP_SUBJECT = { source: "local-app", state: { provenance: "undeclared" } };
+
+describe("a local-app subject on the in-process route", () => {
+  it("is recorded as local-app in run.json and the result, which verify and the bundle loader read", async () => {
+    const parsed = parseStudy({
+      schema: STUDY_SCHEMA,
+      id: "subject-kind-local-app",
+      route: "computer-use",
+      subject: { source: "local-app", appUrl: "http://localhost:5173/" },
+      actor: {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Look around and stop.",
+      },
+      review: { analysis: false },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const outcome = await runStudy(parsed.config, {
+      cwd,
+      dryRun: true,
+      env: {},
+      // A dry run drives nothing, so neither is called.
+      inProcess: {
+        executor: async () => {
+          throw new Error("a dry run creates no executor");
+        },
+      },
+      createProvider: async () => {
+        throw new Error("a dry run creates no provider");
+      },
+    });
+    if (outcome.route !== "computer-use") throw new Error(`unexpected route ${outcome.route}`);
+    const { result } = outcome;
+    expect(result.ok).toBe(true);
+    expect((await readRunJson(result.runId)).subject).toEqual(LOCAL_APP_SUBJECT);
+    expect(result.subject).toEqual(LOCAL_APP_SUBJECT);
+    expect(result.lanes?.map((lane) => lane.subject)).toEqual([LOCAL_APP_SUBJECT]);
+    const verified = await verifyRun(cwd, result.runId);
+    expect(
+      verified.checks.filter((check) => !check.ok).map((check) => check.name),
+      "failed verify checks",
+    ).toEqual([]);
+    expect((await loadRunBundle(cwd, result.runId))?.bundle.subject).toEqual(LOCAL_APP_SUBJECT);
   });
 });

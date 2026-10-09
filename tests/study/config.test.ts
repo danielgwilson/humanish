@@ -895,15 +895,18 @@ describe("parseStudy (humanish.study.v3)", () => {
             execution: { target: "e2b-desktop", desktop: { resolution: [1280, 800] } },
           },
         ],
-        ["over the 16-lane cap (count)", cuaWith(cua, 17)],
+        ["over the 100-participant limit (count)", cuaWith(cua, 101)],
         [
-          "over the 16-lane cap (list)",
+          "over the 100-participant limit (list)",
           cuaWith(
             cua,
-            Array.from({ length: 17 }, (_v, i) => ({ id: `lane-${i}` })),
+            Array.from({ length: 101 }, (_v, i) => ({ id: `viewer-${i}` })),
           ),
         ],
-        ["over the 16-lane cap (counted entry)", cuaWith(cua, [{ id: "viewer", count: 17 }])],
+        [
+          "over the 100-participant limit (counted entry)",
+          cuaWith(cua, [{ id: "viewer", count: 101 }]),
+        ],
         ["duplicate lane ids", cuaWith(cua, [{ id: "dup" }, { id: "dup" }])],
         [
           "duplicate counted entry ids",
@@ -1585,8 +1588,8 @@ describe("parseStudy (humanish.study.v3)", () => {
         { ...validCloneCua, subject: { ...validCloneCua.subject, clone: { fanout: 2 } } },
       ],
       [
-        "over the 16-lane cap",
-        { ...validCloneCua, actor: { type: "openai-computer-use" }, participants: 17 },
+        "over the 100-participant limit",
+        { ...validCloneCua, actor: { type: "openai-computer-use" }, participants: 101 },
       ],
     ])("fails closed on clone+serve mis-config: %s", (_label, input) => {
       const result = parseStudy(input);
@@ -2367,7 +2370,7 @@ describe("concurrent shared-world routing + cross-validation", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("refuses explicit concurrency 1 with a migration message; an omitted concurrency runs all participants", () => {
+  it("refuses explicit concurrency 1 with a migration message; an omitted concurrency stays unset", () => {
     // The sequential shared-world route was removed in 0.106.0. A lab that still declares
     // concurrency 1 must fail at parse with the fix, never silently run concurrently.
     const seq1 = parseStudy(
@@ -2378,19 +2381,17 @@ describe("concurrent shared-world routing + cross-validation", () => {
       expect(seq1.error.message).toContain("at least 2 (got 1)");
       expect(seq1.error.message).toContain("omit execution.concurrency");
     }
-    // All-parallel default: omitting concurrency means every participant lives at once; the
-    // parser fills concurrency = participant count.
+    // The planner resolves an omitted concurrency from the participants and the E2B plan's limit
+    // (tests/study/participant-limits.test.ts), so the parser leaves it unset.
     const allParallel = parseStudy(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }),
     );
     expect(allParallel.ok).toBe(true);
     if (allParallel.ok) {
-      expect(allParallel.config.execution?.concurrency).toBe(
-        participantList(allParallel.config)?.length,
-      );
+      expect(allParallel.config.execution?.concurrency).toBeUndefined();
       expect(isSharedWorldComposition(allParallel.config)).toBe(true);
       expect(routeOf(allParallel.config)).toBe("shared-world");
-      // No waves warning: the filled default equals the participant count.
+      // No waves warning: nothing was declared.
       expect(allParallel.warnings.filter((w) => w.includes("caps a"))).toEqual([]);
     }
   });

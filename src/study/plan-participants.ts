@@ -4,7 +4,11 @@
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
-import { isSharedWorldComposition, participantIdAt } from "./routing.js";
+import {
+  computerUseParticipantCount,
+  isSharedWorldComposition,
+  participantIdAt,
+} from "./routing.js";
 import type { StudyTask } from "./tasks.js";
 import type { StudyParticipantEntry, StudyConfig } from "./types.js";
 import {
@@ -46,6 +50,8 @@ interface DesktopParticipant extends Participant {
     readonly maxOutputTokens?: number;
     /** actor.maxWaitMs: the longest one wait action lasts. */
     readonly maxWaitMs?: number;
+    /** actor.idleWaitMs: how long a wait with no duration lasts while the participant only waits. */
+    readonly idleWaitMs?: number;
   };
 }
 
@@ -100,6 +106,7 @@ function desktopParticipant(
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
   const maxWaitMs = actor?.maxWaitMs;
+  const idleWaitMs = actor?.idleWaitMs;
   return {
     id: participantIdAt(index, entry?.id, kind),
     index,
@@ -120,6 +127,7 @@ function desktopParticipant(
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+      ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     },
   };
 }
@@ -134,10 +142,7 @@ export function computerUseParticipants(
 ): ComputerUseParticipant[] {
   const actor = config.actor;
   const roster = participantList(config);
-  const count = roster
-    ? roster.length
-    : Math.max(1, countOverride ?? declaredParticipantCount(config) ?? 1);
-  return Array.from({ length: count }, (_, index) => {
+  return Array.from({ length: computerUseParticipantCount(config, countOverride) }, (_, index) => {
     const entry = roster?.[index];
     const focus = roster ? entry?.instruction : participantInstruction(config);
     return {

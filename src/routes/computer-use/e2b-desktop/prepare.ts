@@ -6,6 +6,7 @@ import { validatePreparedRunArtifactPaths } from "../../../run/paths.js";
 import { provisionCloneSubject } from "../../../subject/clone.js";
 import { provisionDesktopCli } from "../../../subject/desktop-cli.js";
 import { provisionLocalTreeSubject } from "../../../subject/local-tree.js";
+import { SubjectBuildError } from "../../../subject/serve.js";
 import { inspectDesktopScreenGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import { observeDesktopResources } from "../../../substrates/e2b/desktop-resources.js";
 import { acquireE2BDesktopSandbox, e2bDesktopTemplate } from "../../../substrates/e2b/sandbox.js";
@@ -195,36 +196,43 @@ export async function provisionParticipantSubject(
       onPhase: ctx.onSubjectPhase,
     });
   }
-  if (subject.kind === "clone") {
-    state.subjectCommit = await provisionCloneSubject(shell, {
-      repo: subject.repo,
-      depth: residual.subject.clone?.depth ?? 1,
-      serve: subject.serve,
-      ...(subject.state === undefined ? {} : { state: subject.state }),
-      hasGithubToken: subject.env.includes("GITHUB_TOKEN"),
-      requestTimeoutMs: deps.requestTimeoutMs,
-      scrub: deps.scrubKnownValues,
-      onCommit: (commit) => {
-        state.subjectCommit = commit;
-      },
-      onStateStep: (record) => {
-        state.stateStepRecords.push(record);
-      },
-      onPhase: ctx.onSubjectPhase,
-      ...deps.detachedTimers,
-    });
-  } else if (subject.kind === "local-tree" && deps.localTreeArchiveBuffer) {
-    await provisionLocalTreeSubject(shell, {
-      archiveBuffer: deps.localTreeArchiveBuffer,
-      serve: subject.serve,
-      ...(subject.state === undefined ? {} : { state: subject.state }),
-      requestTimeoutMs: deps.requestTimeoutMs,
-      scrub: deps.scrubKnownValues,
-      onStateStep: (record) => {
-        state.stateStepRecords.push(record);
-      },
-      onPhase: ctx.onSubjectPhase,
-      ...deps.detachedTimers,
-    });
+  try {
+    if (subject.kind === "clone") {
+      state.subjectCommit = await provisionCloneSubject(shell, {
+        repo: subject.repo,
+        depth: residual.subject.clone?.depth ?? 1,
+        serve: subject.serve,
+        ...(subject.state === undefined ? {} : { state: subject.state }),
+        hasGithubToken: subject.env.includes("GITHUB_TOKEN"),
+        requestTimeoutMs: deps.requestTimeoutMs,
+        scrub: deps.scrubKnownValues,
+        onCommit: (commit) => {
+          state.subjectCommit = commit;
+        },
+        onStateStep: (record) => {
+          state.stateStepRecords.push(record);
+        },
+        onPhase: ctx.onSubjectPhase,
+        ...deps.detachedTimers,
+      });
+    } else if (subject.kind === "local-tree" && deps.localTreeArchiveBuffer) {
+      await provisionLocalTreeSubject(shell, {
+        archiveBuffer: deps.localTreeArchiveBuffer,
+        serve: subject.serve,
+        ...(subject.state === undefined ? {} : { state: subject.state }),
+        requestTimeoutMs: deps.requestTimeoutMs,
+        scrub: deps.scrubKnownValues,
+        onStateStep: (record) => {
+          state.stateStepRecords.push(record);
+        },
+        onPhase: ctx.onSubjectPhase,
+        ...deps.detachedTimers,
+      });
+    }
+  } catch (error) {
+    // A failed serve.build gets its own code, so the run names the step the author has to fix.
+    if (error instanceof SubjectBuildError)
+      state.failureCode = "HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED";
+    throw error;
   }
 }

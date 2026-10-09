@@ -7,6 +7,7 @@ import { completeAutomaticAnalysis, type AnalysisInput } from "../analysis/autom
 import type { AutomaticAnalysisDeps } from "../analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import type { AdmittedPlan, StudyOutcome, StudyResult } from "../run-study.js";
+import { withParticipantLimitSkip } from "../study/automatic-analysis-plan.js";
 import type { PlannedAnalysis } from "../study/plan-types.js";
 import type { LateScorer } from "../study/route-inputs.js";
 import type { StudyRoute } from "../study/routing.js";
@@ -52,11 +53,14 @@ export async function admitRoute<R extends ShellRoute, I extends AnalysisInput, 
   shell: RouteShell<R, I, A>,
 ): Promise<AdmittedPlan<R>> {
   const complete = (input: I, result: StudyResult<R>, finished: FinishedRun | undefined) =>
-    completeAutomaticAnalysis(result, finished, shell.analysis?.config, input, {
-      ...(shell.analysis === undefined ? {} : { trigger: shell.analysis.trigger }),
-      preferLargerOutput: shell.analysis?.preferLargerOutput === true,
-      ...(shell.analysisRefusal === undefined ? {} : { refusal: shell.analysisRefusal }),
-    });
+    // A live run of more participants than one analysis reads records the skip and starts nothing.
+    shell.analysis?.skip !== undefined && !result.dryRun
+      ? Promise.resolve(withParticipantLimitSkip(result, shell.analysis.trigger))
+      : completeAutomaticAnalysis(result, finished, shell.analysis?.config, input, {
+          ...(shell.analysis === undefined ? {} : { trigger: shell.analysis.trigger }),
+          preferLargerOutput: shell.analysis?.preferLargerOutput === true,
+          ...(shell.analysisRefusal === undefined ? {} : { refusal: shell.analysisRefusal }),
+        });
   const admission = await shell.admit();
   if (!admission.ok)
     return {

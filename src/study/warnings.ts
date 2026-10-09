@@ -104,6 +104,13 @@ const ACTOR_ROWS: readonly InertRow[] = [
     applies: (config, routes) =>
       config.actor?.maxWaitMs !== undefined && !routes.cua && !routes.shared,
   },
+  {
+    field: "actor.idleWaitMs",
+    reason:
+      "how long a computer-use participant's wait with no duration lasts; needs route: computer-use or shared-world",
+    applies: (config, routes) =>
+      config.actor?.idleWaitMs !== undefined && !routes.cua && !routes.shared,
+  },
 ];
 
 const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered terminal actor";

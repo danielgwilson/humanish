@@ -91,7 +91,7 @@ import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.j
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
-import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves both faces of the sandbox: the
@@ -560,7 +560,7 @@ describe("desktop-cli runtime prerequisites", () => {
 
   function scriptIndex(sandbox: FakeSandbox, step: string): number {
     return sandbox.calls.findIndex(
-      ([name, file]) => name === "files.write" && String(file).endsWith(`${step}/run.sh`),
+      ([name, file]) => name === "files.write" && String(file).endsWith(`${step}/command.sh`),
     );
   }
 
@@ -619,7 +619,7 @@ describe("desktop-cli runtime prerequisites", () => {
       } else {
         expect(installIndex).toBeGreaterThan(runtimeIndex);
         expect(installIndex).toBeLessThan(terminalIndex);
-        expect(sandbox.calls[installIndex]?.[2]).toContain(`( ${install} )`);
+        expect(sandbox.calls[installIndex]?.[2]).toBe(`${install}\n`);
       }
       expect(sandbox.calls.some(([name]) => name === "open")).toBe(false);
     },
@@ -1096,6 +1096,7 @@ describe("runCuaActorLab", () => {
     const planned = planComputerUseStudy(config, {
       dryRun: true,
       sandboxCeiling: sandboxCeiling({}),
+      concurrentSandboxes: concurrentSandboxes({}),
     });
     if (!planned.ok || planned.plan.runner.subject.kind !== "app-url")
       throw new Error("expected an app-url computer-use plan");
@@ -4280,22 +4281,23 @@ describe("runCuaActorLab", () => {
     // The operator's E2B request timeout reaches the desktop create.
     expect(created[0]?.requestTimeoutMs).toBe(45_000);
 
-    // Provisioning sequence: the wrapper scripts carry the declared commands.
-    const scriptFor = (name: string): string => {
+    // Provisioning sequence: each step's command file holds the declared command, and its
+    // wrapper runs it from the subject checkout.
+    const scriptFor = (name: string, file: "run.sh" | "command.sh"): string => {
       const entry = sandbox.calls.find(
         (call): call is [string, string, string] =>
-          call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
+          call[0] === "files.write" && String(call[1]).endsWith(`${name}/${file}`),
       );
-      if (!entry) throw new Error(`missing script for ${name}`);
+      if (!entry) throw new Error(`missing ${file} for ${name}`);
       return entry[2];
     };
-    expect(scriptFor("subject-clone")).toContain(
+    expect(scriptFor("subject-clone", "command.sh")).toContain(
       "git clone --depth 2 https://github.com/example-org/example-app.git",
     );
-    expect(scriptFor("subject-install")).toContain("( pnpm install --frozen-lockfile )");
-    expect(scriptFor("subject-install")).toContain("cd '/home/user/subject'");
-    expect(scriptFor("subject-build")).toContain("( pnpm build )");
-    expect(scriptFor("subject-start")).toContain("( pnpm start )");
+    expect(scriptFor("subject-install", "command.sh")).toBe("pnpm install --frozen-lockfile\n");
+    expect(scriptFor("subject-install", "run.sh")).toContain("cd '/home/user/subject'");
+    expect(scriptFor("subject-build", "command.sh")).toBe("pnpm build\n");
+    expect(scriptFor("subject-start", "command.sh")).toBe("pnpm start\n");
 
     // Readiness was probed before the browser opened on the served URL.
     const probeIndex = sandbox.calls.findIndex(
@@ -4505,7 +4507,7 @@ describe("runCuaActorLab", () => {
     // …and the clone script references the variable, never the value, never a token-in-URL.
     const cloneScript = sandbox.calls.find(
       (call): call is [string, string, string] =>
-        call[0] === "files.write" && String(call[1]).endsWith("subject-clone/run.sh"),
+        call[0] === "files.write" && String(call[1]).endsWith("subject-clone/command.sh"),
     );
     expect(cloneScript?.[2]).toContain("$GITHUB_TOKEN");
     expect(cloneScript?.[2]).toContain("http.extraHeader");
@@ -4639,6 +4641,49 @@ describe("runCuaActorLab", () => {
     expect(message.indexOf("subject install failed twice")).toBeLessThan(
       message.indexOf("ERR_SSL_CIPHER_OPERATION_FAILED"),
     );
+  });
+
+  it("a subject build bash cannot parse fails the run with the build's code and bash's message, scrubbed", async () => {
+    const plainValue = "plain-build-pw-" + "24681357";
+    const config = cloneCuaConfig({ env: ["DATABASE_PASSWORD"] });
+    let sessionStarted = false;
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) => {
+        if (command.includes("subject-build/status")) return { stdout: "2\n" };
+        if (command.includes("subject-build") && command.includes("tail -c")) {
+          return {
+            stdout: `using DATABASE_PASSWORD=${plainValue}\n/tmp/humanish-subject/subject-build/command.sh: line 4: syntax error: unexpected end of file\n`,
+          };
+        }
+        return undefined;
+      }),
+    });
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runStudyWith(
+      config,
+      {
+        cwd,
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_PASSWORD: plainValue },
+      },
+      {
+        desktopModule: async () => module,
+        runSession: async () => {
+          sessionStarted = true;
+          throw new Error("session must never start after a failed build");
+        },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.ok).toBe(false);
+    expect(sessionStarted).toBe(false);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED");
+    expect(result.error?.message).toContain("subject build failed (exit 2)");
+    expect(result.error?.message).toContain("line 4: syntax error: unexpected end of file");
+    expect(result.error?.message).toContain("[REDACTED_SECRET]");
+    expect(result.error?.message).not.toContain(plainValue);
+    expect(result.lanes?.[0]?.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED");
   });
 
   it("scrubs provisioned values (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
@@ -5148,19 +5193,19 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       sandbox.calls.findIndex(
         (call) => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
       );
-    const scriptFor = (name: string): string => {
+    const scriptFor = (name: string, file: "run.sh" | "command.sh"): string => {
       const entry = sandbox.calls.find(
         (call): call is [string, string, string] =>
-          call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
+          call[0] === "files.write" && String(call[1]).endsWith(`${name}/${file}`),
       );
-      if (!entry) throw new Error(`missing script for ${name}`);
+      if (!entry) throw new Error(`missing ${file} for ${name}`);
       return entry[2];
     };
-    expect(scriptFor("subject-state-db-up")).toContain(
-      "( sudo service postgresql start && pg_isready -t 30 )",
+    expect(scriptFor("subject-state-db-up", "command.sh")).toBe(
+      "sudo service postgresql start && pg_isready -t 30\n",
     );
-    expect(scriptFor("subject-state-db-up")).toContain("cd '/home/user/subject'");
-    expect(scriptFor("subject-state-admin-user")).toContain("bootstrap-admin");
+    expect(scriptFor("subject-state-db-up", "run.sh")).toContain("cd '/home/user/subject'");
+    expect(scriptFor("subject-state-admin-user", "command.sh")).toContain("bootstrap-admin");
 
     // Phase ordering from the recorded call sequence: install → before-build → build →
     // before-start → start → readiness probe → after-ready → browser open.
@@ -5730,7 +5775,7 @@ describe("buildSingleParticipantBundle", () => {
       // uploaded archive.
       const extractScript = sandbox.calls.find(
         (call): call is [string, string, string] =>
-          call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh"),
+          call[0] === "files.write" && String(call[1]).endsWith("subject-extract/command.sh"),
       );
       expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
       expect(extractScript?.[2]).toContain("mkdir -p /home/user/subject");
@@ -6371,7 +6416,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     );
     expect(subjectEvent.message).toContain("unpinned");
     expect(subjectEvent.message).toContain("no E2B desktop");
-    expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
+    expect(bundle.subject).toEqual({ source: "local-app", state: { provenance: "undeclared" } });
 
     // appState never persists anywhere in the bundle (runtime-only).
     const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");

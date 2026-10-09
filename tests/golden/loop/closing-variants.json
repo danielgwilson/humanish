@@ -32,6 +32,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -192,6 +197,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -315,6 +325,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -447,6 +462,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -577,6 +597,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -723,6 +748,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -848,6 +878,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -976,6 +1011,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -1103,6 +1143,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -1226,6 +1271,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -1351,6 +1401,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -1464,6 +1519,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -1654,6 +1714,11 @@
           "model": "golden-1",
           "turnId": "previous"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -1811,6 +1876,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -1977,6 +2047,11 @@
         "ids": {
           "model": "golden-1",
           "turnId": "previous"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,

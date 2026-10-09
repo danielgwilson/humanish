@@ -16,7 +16,7 @@ import {
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaAction, CuaTurnRequest } from "./types.js";
-import { CUA_WAIT_LIMITS } from "../wait.js";
+import { planWait } from "../wait.js";
 
 // The participant's actions: their public labels, what counts as a material action, and how one
 // turn's batch is dispatched to the desktop.
@@ -151,16 +151,9 @@ function rejectedActionHint(title: string, reason: CuaRejectionReason | undefine
   return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
 
-/** The ms a wait asked for when that is longer than the session's longest wait, else undefined. */
-function overlongWaitMs(session: LoopSession, action: CuaAction): number | undefined {
-  return action.kind === "wait" && action.ms !== undefined && action.ms > session.maxWaitMs
-    ? action.ms
-    : undefined;
-}
-
 /** Record a wait the loop shortened, and return the participant's note about it. */
 function recordShortenedWait(session: LoopSession, title: string, requestedMs: number): string {
-  const ms = session.maxWaitMs;
+  const ms = session.waits.maxWaitMs;
   session.trace.record("notice", () =>
     notice(
       "warn",
@@ -184,13 +177,15 @@ export async function runActionBatch(
   const { actionHistory, trace } = session;
   const notes: string[] = [];
   const hint = (): string | undefined => (notes.length === 0 ? undefined : notes.join(" "));
+  const idleTurn = isIdleTurn(actions);
   for (const [index, requested] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
-    const requestedMs = overlongWaitMs(session, requested);
-    const action: CuaAction =
-      requestedMs === undefined ? requested : { kind: "wait", ms: session.maxWaitMs };
+    const wait =
+      requested.kind === "wait" ? planWait(session.waits, requested.ms, idleTurn) : undefined;
+    const action: CuaAction = wait === undefined ? requested : { kind: "wait", ms: wait.ms };
     const title = describeCuaAction(action);
-    if (requestedMs !== undefined) notes.push(recordShortenedWait(session, title, requestedMs));
+    if (wait?.shortenedFromMs !== undefined)
+      notes.push(recordShortenedWait(session, title, wait.shortenedFromMs));
     actionHistory.lastActionTitle = title;
     actionHistory.recentActionTitles.push(title);
     if (actionHistory.recentActionTitles.length > RECENT_ACTION_TITLES)
@@ -203,7 +198,7 @@ export async function runActionBatch(
     session.phase = `executing ${title}`;
     let status: ExecutionStatus;
     try {
-      status = await dispatchAction(session, action, title);
+      status = await dispatchAction(session, action, title, wait?.steps);
     } catch (error) {
       const declared = isComputerUseExecutorError(error)
         ? error.disposition
@@ -270,40 +265,27 @@ function countAttempt(
 }
 
 /**
- * The desktop calls an idle action takes: one, or for a wait longer than one desktop call carries,
- * consecutive waits of at most CUA_WAIT_LIMITS.stepMs (70 s is 30 s, 30 s and 10 s).
- */
-function stepsOf(action: CuaAction): CuaAction[] {
-  const { stepMs } = CUA_WAIT_LIMITS;
-  if (action.kind !== "wait" || action.ms === undefined || !Number.isFinite(action.ms))
-    return [action];
-  const steps: CuaAction[] = [];
-  for (let left = action.ms; left > stepMs; left -= stepMs)
-    steps.push({ kind: "wait", ms: stepMs });
-  steps.push({ kind: "wait", ms: action.ms - steps.length * stepMs });
-  return steps;
-}
-
-/**
  * Execute one action. Idle actions only look: a `wait` that hangs inside the SDK has in
  * effect waited, so a stalled one is skipped with a notice, its remaining steps are not sent, and
  * it loses nothing the participant chose. An action is recorded as completed only after every
- * desktop call it takes resolves.
+ * desktop call it takes resolves. A wait is sent as `waitSteps`, its planWait steps.
  */
 async function dispatchAction(
   session: LoopSession,
   action: CuaAction,
   title: string,
+  waitSteps: readonly number[] | undefined,
 ): Promise<"completed" | "skipped"> {
   if (!isIdleAction(action)) {
     await executeAction(session, action, title);
     return "completed";
   }
+  const calls: CuaAction[] = waitSteps?.map((ms) => ({ kind: "wait", ms })) ?? [action];
   try {
-    for (const step of stepsOf(action)) {
+    for (const call of calls) {
       if (session.signal?.aborted) throw new CuaAbortError();
-      const boundMs = session.observationTimeoutMs + (step.kind === "wait" ? (step.ms ?? 0) : 0);
-      await executeAction(session, step, title, boundMs);
+      const boundMs = session.observationTimeoutMs + (call.kind === "wait" ? (call.ms ?? 0) : 0);
+      await executeAction(session, call, title, boundMs);
     }
     return "completed";
   } catch (error) {

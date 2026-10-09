@@ -5,6 +5,9 @@ import type { CommsInlineImage } from "./types.js";
 /** authenticate() rejects with this code when the credential cannot acquire fresh inboxes. */
 export const RECEIVING_SCOPE_UNSUPPORTED = "comms_scope_unsupported";
 
+/** The most inboxes one run leases, one per participant; the lease journal holds this many. */
+export const MAX_RECEIVING_INBOXES = 64;
+
 export interface ReceivingContext {
   signal?: AbortSignal;
   timeoutMs?: number;

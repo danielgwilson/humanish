@@ -1,7 +1,7 @@
 // The preflight result a run returns, built from its context. preflight.ts and the probes in
 // preflight-probes.ts both finish through these, so they live below both.
 
-import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
+import { studyAnalysisBudget } from "./automatic-analysis-plan.js";
 import { digestText } from "../evidence/redaction.js";
 import { computerUseParticipantCount } from "./routing.js";
 import type { StudyPreflightCheck, StudyPreflightResult, PreflightContext } from "./preflight.js";
@@ -14,7 +14,7 @@ export function finalize(
   args?: { check?: StudyPreflightCheck; checks?: StudyPreflightCheck[] },
 ): StudyPreflightResult {
   const checks = [...ctx.checks, ...(args?.check ? [args.check] : []), ...(args?.checks ?? [])];
-  const analysis = automaticAnalysisBudget(
+  const analysis = studyAnalysisBudget(
     ctx.config.review?.analysis,
     ctx.route,
     computerUseParticipantCount(ctx.config),

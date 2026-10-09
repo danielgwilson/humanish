@@ -5,11 +5,10 @@
 // getHost) stays with each route.
 
 import { redactText } from "../../evidence/redaction.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import type { OwnedDesktopAllocation } from "../desktop-session.js";
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
-import { SANDBOX_TIMEOUT_BUFFER_MS, SUBJECT_PROVISION_BUDGET_MS } from "./lifetime.js";
+import { sandboxHeadroomMs } from "./lifetime.js";
 import { acquireE2BDesktopSandbox, readE2BRelease } from "./sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "./sdk.js";
 
@@ -70,14 +69,7 @@ export class E2BSubjectSandbox {
   async acquire(request: SubjectSandboxRequest): Promise<E2BDesktopSandbox> {
     const { envs } = request;
     const { warnings, scrub } = this.run;
-    const timeoutMs =
-      request.sessionTimeoutMs +
-      SUBJECT_PROVISION_BUDGET_MS +
-      request.seed.reduce(
-        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-        0,
-      ) +
-      SANDBOX_TIMEOUT_BUFFER_MS;
+    const timeoutMs = request.sessionTimeoutMs + sandboxHeadroomMs({ seed: request.seed });
     const subject = await acquireE2BDesktopSandbox({
       module: request.module,
       options: {

@@ -14,7 +14,12 @@ import {
   humanishInstall,
   type HumanishInstall,
 } from "../substrates/e2b/peer-install.js";
-import { describeSandboxCeiling, sandboxCeiling } from "../substrates/e2b/lifetime.js";
+import {
+  concurrentSandboxes,
+  describeConcurrentSandboxes,
+  describeSandboxCeiling,
+  sandboxCeiling,
+} from "../substrates/e2b/lifetime.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
@@ -196,6 +201,7 @@ export async function doctor(
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
     sandboxCeilingCheck(env),
+    concurrentSandboxesCheck(env),
     terminalSurfaceCheck(),
     ...versionCheck(env),
     ...localAgentChecks(agents),
@@ -306,6 +312,16 @@ async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) 
 function sandboxCeilingCheck(env: NodeJS.ProcessEnv): DoctorCheck {
   const ceiling = sandboxCeiling(env);
   return { name: "e2b sandbox ceiling", ok: ceiling.ok, message: describeSandboxCeiling(ceiling) };
+}
+
+/** How many sandboxes the E2B planners run at once, and where that number came from. */
+function concurrentSandboxesCheck(env: NodeJS.ProcessEnv): DoctorCheck {
+  const limit = concurrentSandboxes(env);
+  return {
+    name: "e2b concurrent sandboxes",
+    ok: limit.ok,
+    message: describeConcurrentSandboxes(limit),
+  };
 }
 
 /**

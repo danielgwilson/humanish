@@ -26,10 +26,7 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { defaultSubjectPhaseSink } from "../../src/subject/steps.js";
 import { ownDesktopAllocation } from "../../src/substrates/desktop-session.js";
-import {
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  e2bRequestTimeoutMs,
-} from "../../src/substrates/e2b/lifetime.js";
+import { e2bRequestTimeoutMs } from "../../src/substrates/e2b/lifetime.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -448,6 +445,29 @@ describe("each route hands the study's longest wait to its participants", () => 
     expect(sessions.map((session) => session.maxWaitMs)).toEqual([90_000, 90_000]);
   });
 
+  it("computer use and shared world: the study's idle wait, to each session", async () => {
+    const cu = recordingSessions();
+    const shared = recordingSessions(2);
+    const cuResult = await runComputerUse({
+      cwd,
+      config: computerUseStudy({ ...OPENAI, idleWaitMs: 15_000 }),
+      dryRun: false,
+      env: ENV,
+      deps: { ...seams(), runSession: cu.runSession },
+    });
+    const sharedResult = await runSharedWorld({
+      cwd,
+      config: provisionedStudy({ ...OPENAI, idleWaitMs: 15_000 }),
+      dryRun: false,
+      env: ENV,
+      deps: { ...seams(), runSession: shared.runSession },
+    });
+    expect(cuResult.error).toBeUndefined();
+    expect(sharedResult.error).toBeUndefined();
+    expect(cu.sessions.map((session) => session.idleWaitMs)).toEqual([15_000, 15_000]);
+    expect(shared.sessions.map((session) => session.idleWaitMs)).toEqual([15_000, 15_000]);
+  });
+
   it("no limit is passed when the study sets none, so the loop's default applies", async () => {
     const { sessions, runSession } = recordingSessions();
     await runComputerUse({
@@ -458,6 +478,7 @@ describe("each route hands the study's longest wait to its participants", () => 
       deps: { ...seams(), runSession },
     });
     expect(sessions.map((session) => session.maxWaitMs)).toEqual([undefined, undefined]);
+    expect(sessions.map((session) => session.idleWaitMs)).toEqual([undefined, undefined]);
   });
 });
 
@@ -559,7 +580,8 @@ describe("shared world hands each participant the run's deps", () => {
     expect(shared.studyId).toBe("desktop-deps-shared-world");
     expect(shared.participantCount).toBe(2);
     expect(shared.timeoutMs).toBe(60_000);
-    expect(shared.sandboxMs).toBe(60_000 + SANDBOX_TIMEOUT_BUFFER_MS);
+    // The 1-minute session plus the 10-minute teardown buffer.
+    expect(shared.sandboxMs).toBe(11 * 60_000);
     expect(shared.requestTimeoutMs).toBe(e2bRequestTimeoutMs(ENV));
     // The physical project root, bound before the run starts.
     expect(shared.studyCwd).toBe(await realpath(cwd));

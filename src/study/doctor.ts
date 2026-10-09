@@ -22,7 +22,7 @@ import {
 } from "../actors/codex/protocol-compat.js";
 import type { DoctorCheckDraft } from "../cli/doctor.js";
 import { admissionRule } from "../analysis/admission.js";
-import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
+import { studyAnalysisBudget, type StudyAnalysisBudget } from "./automatic-analysis-plan.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 import {
@@ -228,7 +228,6 @@ export interface StudySetupCheckArgs {
 }
 
 type AccountReadiness = () => Promise<CodexReadiness>;
-type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
 
 /**
  * Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network.
@@ -297,7 +296,15 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   checks.push(...(await participantChecks(config, route, keys, local, args, checkAccount)));
   if (route === "scripted") checks.push(await scriptedBrowserCheck());
   checks.push(...subjectEnvChecks(requiredSubjectEnv(requirements), args));
-  const analysis = automaticAnalysisBudget(config.review?.analysis, route);
+  const analysis = studyAnalysisBudget(
+    config.review?.analysis,
+    route,
+    plan.route === "computer-use"
+      ? plan.runner.participants.length
+      : plan.route === "shared-world"
+        ? plan.plane.participants.length
+        : 1,
+  );
   if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
   checks.push(checkScope(analysis));
   const reads =
@@ -495,10 +502,19 @@ function subjectEnvChecks(names: readonly string[], args: StudySetupCheckArgs): 
 
 /** The post-run analysis: the Codex account, or the OpenAI key and the analysis cost limit. */
 async function analysisCheck(
-  analysis: AnalysisBudget,
+  analysis: StudyAnalysisBudget,
   args: StudySetupCheckArgs,
   checkAccount: AccountReadiness,
 ): Promise<Check> {
+  if (analysis.skip !== undefined) {
+    const explicit = analysis.trigger === "explicit";
+    return {
+      name: "post-run analysis",
+      ok: !explicit,
+      ...(explicit ? {} : { status: "note" as const }),
+      message: `Will not run: this study has ${analysis.participants ?? "more"} participants, more than automatic analysis reads. The participants still run.${explicit ? " review.analysis asks for it, so the run will exit 2; set review.analysis: false or run fewer participants." : ""}`,
+    };
+  }
   if (analysis.provider === "codex") {
     const readiness = await checkAccount();
     const recovery =
@@ -530,7 +546,7 @@ async function analysisCheck(
 }
 
 /** What doctor checked and what it did not. */
-function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check {
+function checkScope(analysis: StudyAnalysisBudget | undefined): Check {
   return {
     name: "check scope",
     ok: true,

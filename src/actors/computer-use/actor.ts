@@ -69,6 +69,8 @@ export interface CuaActorSessionOptions {
   noProgressSteps?: number;
   /** The longest one wait action lasts, forwarded to the loop. See LoopRunOptions.maxWaitMs. */
   maxWaitMs?: number;
+  /** How long a wait with no duration lasts in an idle turn. See LoopRunOptions.idleWaitMs. */
+  idleWaitMs?: number;
   /**
    * Redact persisted screenshots (blur+downscale). Default `false`: full fidelity for local use.
    * Set true for unowned subjects or share-as-is bundles. The provider always sees raw frames.
@@ -132,6 +134,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.idleSteps === undefined ? {} : { idleSteps: options.idleSteps }),
     ...(options.noProgressSteps === undefined ? {} : { noProgressSteps: options.noProgressSteps }),
     ...(options.maxWaitMs === undefined ? {} : { maxWaitMs: options.maxWaitMs }),
+    ...(options.idleWaitMs === undefined ? {} : { idleWaitMs: options.idleWaitMs }),
     ...(options.acknowledgeSafetyChecks === undefined
       ? {}
       : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),

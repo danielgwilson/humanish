@@ -13,10 +13,10 @@ import { planStudy, resolveStudyDryRun, routeOf } from "./plan.js";
 import { localCodexParticipantCheck } from "./doctor.js";
 import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import {
-  automaticAnalysisBudget,
-  formatAutomaticAnalysisBudget,
-  type AutomaticAnalysisBudget,
-} from "../analysis/automatic-config.js";
+  formatStudyAnalysisBudget,
+  studyAnalysisBudget,
+  type StudyAnalysisBudget,
+} from "./automatic-analysis-plan.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
@@ -41,8 +41,8 @@ export interface StudySummary {
   runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
   participantReadiness?: { ok: boolean; message: string };
   communications?: string;
-  analysis?: AutomaticAnalysisBudget & {
-    /** The budget line `run` and `study check` print, from formatAutomaticAnalysisBudget. */
+  analysis?: StudyAnalysisBudget & {
+    /** The budget line `run` and `study check` print, from formatStudyAnalysisBudget. */
     line: string;
   };
   schema: typeof STUDY_SUMMARY_SCHEMA;
@@ -204,7 +204,7 @@ export async function readStudySummary(
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
-  const analysis = automaticAnalysisBudget(
+  const analysis = studyAnalysisBudget(
     inspected.config.review?.analysis,
     route,
     computerUseParticipantCount(inspected.config),
@@ -229,9 +229,7 @@ export async function readStudySummary(
       : undefined;
 
   return {
-    ...(analysis
-      ? { analysis: { ...analysis, line: formatAutomaticAnalysisBudget(analysis) } }
-      : {}),
+    ...(analysis ? { analysis: { ...analysis, line: formatStudyAnalysisBudget(analysis) } } : {}),
     ...(runtime
       ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } }
       : {}),

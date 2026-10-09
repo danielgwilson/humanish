@@ -21,6 +21,7 @@
       "runtime ignore",
       "e2b desktop sdk",
       "e2b sandbox ceiling",
+      "e2b concurrent sandboxes",
       "terminal surface",
       "claude participant transcripts",
       "key OPENAI_API_KEY",

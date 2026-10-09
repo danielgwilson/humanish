@@ -31,6 +31,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -96,6 +101,11 @@
         "reason": "provider golden-cua requires a screenshot frame but the executor returned an observation with no screenshot (vision provider against a state-only executor)",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -202,6 +212,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -267,6 +282,11 @@
         "reason": "run aborted by the harness",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 0,
@@ -350,6 +370,11 @@
         "reason": "the adapter reported a local admission limit before provider dispatch; the participant did not report completion. No actions or closing request followed the refusal.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 0,
@@ -464,6 +489,11 @@
         "completionReason": "harness_error",
         "reason": "API dollar caps and output-token limits cannot bound account-billed providers; use a finite timeout or an API-billed participant.",
         "ids": {},
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -569,6 +599,11 @@
           "reasoningEffort": "low",
           "maxOutputTokens": 1000
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -650,6 +685,11 @@
         "reason": "the injected estimateTurnCostUsd returned a non-finite estimate while caps.maxUsd is set; the estimator receives one object with the running token totals. Failing closed instead of running uncapped.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -746,6 +786,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -839,6 +884,11 @@
         "reason": "Finished.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 2,

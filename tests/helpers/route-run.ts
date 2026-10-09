@@ -38,7 +38,7 @@ import type {
   TerminalProductStudyResult,
   TerminalRunInput,
 } from "../../src/routes/terminal/types.js";
-import { sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
+import { concurrentSandboxes, sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
 
 /** What planStudy adds to a route's plan: the study the run came from and the study's warnings. */
 type PlanFields = { readonly study?: RunStudyProvenance; readonly warnings?: readonly string[] };
@@ -61,6 +61,7 @@ export async function runComputerUse(
     dryRun,
     hasRunSession: input.deps?.runSession !== undefined,
     sandboxCeiling: sandboxCeiling(input.env ?? {}),
+    concurrentSandboxes: concurrentSandboxes(input.env ?? {}),
     driving: callerDrivingOf(input),
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
@@ -92,6 +93,7 @@ export async function runSharedWorld(
     dryRun,
     hasRunSession: input.deps?.runSession !== undefined,
     sandboxCeiling: sandboxCeiling(input.env ?? {}),
+    concurrentSandboxes: concurrentSandboxes(input.env ?? {}),
   });
   if (!planned.ok) return sharedWorldStudyRefusal(options, planned.refusal);
   return runAdmitted(admitSharedWorldPlan({ ...planned.plan, ...fields }, input, config));
@@ -105,6 +107,7 @@ export async function runScripted(
   const planned = planScriptedStudy(config, {
     dryRun,
     injectedBrowser: injectedBrowser(input.deps),
+    sandboxCeiling: sandboxCeiling(input.env ?? {}),
   });
   if (!planned.ok) return scriptedStudyRefusal(options, planned.refusal);
   return runAdmitted(admitScriptedPlan({ ...planned.plan, ...fields }, input));

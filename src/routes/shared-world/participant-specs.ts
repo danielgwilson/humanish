@@ -19,7 +19,7 @@ import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./type
 import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
-import { SANDBOX_TIMEOUT_BUFFER_MS } from "../../substrates/e2b/lifetime.js";
+import { sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
 
 // prose-check: model prompt (the participant model reads this, not a person)
 const DEFAULT_MISSION =
@@ -168,7 +168,7 @@ export function participantRunDeps(
       openaiApiKey: ctx.openaiApiKey,
       e2bApiKey: ctx.e2bApiKey,
       timeoutMs: ctx.timeoutMs,
-      sandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
+      sandboxMs: ctx.timeoutMs + sandboxHeadroomMs(),
       participantCount: plan.plane.participants.length,
       artifactRoot: ctx.runPaths,
       studyCwd: ctx.cwd,

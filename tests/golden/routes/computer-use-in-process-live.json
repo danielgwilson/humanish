@@ -16,7 +16,7 @@
       "screenshots": 0
     },
     "subject": {
-      "source": "app-url",
+      "source": "local-app",
       "state": {
         "provenance": "undeclared"
       }
@@ -54,7 +54,7 @@
           950
         ],
         "subject": {
-          "source": "app-url",
+          "source": "local-app",
           "state": {
             "provenance": "undeclared"
           }
@@ -145,6 +145,11 @@
     "reason": "Reached the goal via getState().",
     "ids": {
       "model": "0.1.0"
+    },
+    "waitSettings": {
+      "maxWaitMs": 120000,
+      "idleWaitMs": 5000,
+      "settleWaitMs": 500
     },
     "counts": {
       "turns": 2,
@@ -479,6 +484,11 @@
           "ids": {
             "model": "0.1.0"
           },
+          "waitSettings": {
+            "maxWaitMs": 120000,
+            "idleWaitMs": 5000,
+            "settleWaitMs": 500
+          },
           "counts": {
             "turns": 2,
             "actions": 1,
@@ -633,7 +643,7 @@
     },
     "feedbackCandidates": [],
     "subject": {
-      "source": "app-url",
+      "source": "local-app",
       "state": {
         "provenance": "undeclared"
       }

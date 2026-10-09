@@ -31,6 +31,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -156,6 +161,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -266,6 +276,11 @@
         "reason": "The Save button did nothing.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -378,6 +393,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -489,6 +509,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -596,6 +621,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -702,6 +732,11 @@
         "reason": "The Save button did nothing.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,

@@ -7,7 +7,12 @@ import { callerDrivingOf, planComputerUseStudy } from "../routes/computer-use/pl
 import { injectedBrowser, planScriptedStudy } from "../routes/scripted/plan.js";
 import { planSharedWorldStudy } from "../routes/shared-world/plan.js";
 import { planTerminalStudy } from "../routes/terminal/plan.js";
-import { sandboxCeiling, type SandboxCeiling } from "../substrates/e2b/lifetime.js";
+import {
+  concurrentSandboxes,
+  sandboxCeiling,
+  type ConcurrentSandboxes,
+  type SandboxCeiling,
+} from "../substrates/e2b/lifetime.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyDeps } from "./study-deps.js";
@@ -85,10 +90,10 @@ type RoutePlanResult =
 
 /**
  * The plan a study runs under, built without reading files or the network. From the environment
- * (options.env, else process.env, as the routes read it) it reads one value, the E2B sandbox
- * ceiling, which no study file can know. Each route's planner makes every refusal that route
- * makes, in the route's order and with its codes and messages; the route's exported runner calls
- * the same planner.
+ * (options.env, else process.env, as the routes read it) it reads the operator's E2B plan limits,
+ * the sandbox ceiling and the concurrent sandboxes, which no study file can know. Each route's
+ * planner makes every refusal that route makes, in the route's order and with its codes and
+ * messages; the route's exported runner calls the same planner.
  */
 export function planStudy(
   config: StudyConfig,
@@ -97,12 +102,16 @@ export function planStudy(
 ): PlanResult {
   const study = localBrowserDefaults(config);
   const input = { dryRun: resolveStudyDryRun(study, options.dryRun, true) ?? true };
-  const ceiling = sandboxCeiling(options.env ?? process.env);
-  const result = planRoute(routeOf(config), study, options, input, deps, ceiling);
+  const env = options.env ?? process.env;
+  const e2b = {
+    sandboxCeiling: sandboxCeiling(env),
+    concurrentSandboxes: concurrentSandboxes(env),
+  };
+  const result = planRoute(routeOf(config), study, options, input, deps, e2b);
   if (!result.ok) return result;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
-  const warnings = recordedStudyWarnings(study);
+  const warnings = [...recordedStudyWarnings(study), ...(result.plan.warnings ?? [])];
   const plan = {
     ...result.plan,
     ...(options.study === undefined ? {} : { study: options.study }),
@@ -117,8 +126,12 @@ function planRoute(
   options: InternalRunStudyOptions,
   input: { readonly dryRun: boolean },
   deps: StudyDeps,
-  sandboxCeiling: SandboxCeiling,
+  e2b: {
+    readonly sandboxCeiling: SandboxCeiling;
+    readonly concurrentSandboxes: ConcurrentSandboxes;
+  },
 ): RoutePlanResult {
+  const { sandboxCeiling } = e2b;
   switch (route) {
     case "preview":
       return planPreview(study, options, input);
@@ -129,13 +142,13 @@ function planRoute(
         driving: callerDrivingOf(options),
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-        sandboxCeiling,
+        ...e2b,
       });
     case "shared-world":
       return planSharedWorldStudy(study, {
         ...input,
         hasRunSession: deps.runSession !== undefined,
-        sandboxCeiling,
+        ...e2b,
       });
     case "terminal":
       return planTerminalStudy(study, {
@@ -144,6 +157,10 @@ function planRoute(
         sandboxCeiling,
       });
     case "scripted":
-      return planScriptedStudy(study, { ...input, injectedBrowser: injectedBrowser(deps) });
+      return planScriptedStudy(study, {
+        ...input,
+        injectedBrowser: injectedBrowser(deps),
+        sandboxCeiling,
+      });
   }
 }

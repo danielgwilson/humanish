@@ -63,6 +63,9 @@ export interface PlannedAnalysis {
   /** "default" when the study declared no review.analysis. */
   readonly trigger: "default" | "explicit";
   readonly preferLargerOutput: boolean;
+  /** Set when the study has more participants than one analysis reads: a live run records the
+   *  analysis as skipped for this reason and never starts it. */
+  readonly skip?: "AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT";
 }
 
 interface PlanBase {
@@ -70,7 +73,8 @@ interface PlanBase {
   /** The study's declared title, which bundles record. */
   readonly title?: string;
   readonly study?: RunStudyProvenance;
-  /** Warnings about the study's own fields, which the run records in its bundle as warn events. */
+  /** Warnings about the study's own fields and the plan made from them, which the run records in
+   *  its bundle as warn events. */
   readonly warnings?: readonly string[];
   /** A frozen copy owned by the plan. */
   readonly residual: Readonly<ResidualConfig>;
@@ -251,9 +255,10 @@ export interface ScriptedPlan extends PlanBase {
   readonly scenarioRef: string;
   /** Empty only for a library caller's `count: 0`, which the parser refuses; that run has no sessions. */
   readonly surfaces: readonly BrowserSurface[];
-  /** The declared persona and session timeout; the route supplies its defaults. */
+  /** The declared persona; the route supplies its default. */
   readonly personaId?: string;
-  readonly sessionTimeoutMs?: number;
+  /** Each surface's journey budget: execution.timeoutMs, else 5 minutes. */
+  readonly sessionTimeoutMs: number;
 }
 
 export type StudyPlan =

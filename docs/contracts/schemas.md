@@ -76,17 +76,17 @@ map each one to its v3 key.
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:
 
-| Key                                                               | Meaning                                                                                                                                                         |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                         |
-| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                   |
-| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                               |
-| `actor`                                                           | who drives it, one object: `type`, `model`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `reasoningEffort`, `stopWhen`, `dwell` |
-| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                   |
-| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                               |
-| `caps`                                                            | the route's budget (below)                                                                                                                                      |
-| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                  |
-| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                        |
+| Key                                                               | Meaning                                                                                                                                                                       |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                                       |
+| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                                 |
+| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                                             |
+| `actor`                                                           | who drives it, one object: `type`, `model`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `idleWaitMs`, `reasoningEffort`, `stopWhen`, `dwell` |
+| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                                 |
+| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                                             |
+| `caps`                                                            | the route's budget (below)                                                                                                                                                    |
+| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                                |
+| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                                      |
 
 The parser reads only the declared route's keys. A key that route never reads is an error that
 names the route, such as "route: computer-use does not read scenario. Remove it.", and an
@@ -183,7 +183,7 @@ The rest of this section names keys by their v3 spelling:
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
   A `participants` count is the preview route's participant count (simCount),
   and on the computer-use **E2B** route the homogeneous fan-out count (N
-  identical participants, each its own E2B desktop: separate worlds, cap 16).
+  identical participants, each its own E2B desktop: separate worlds, at most 100).
   The scripted route's `surfaces` is its surface list (`[desktop]`, the default,
   or `[desktop, mobile]`). The in-process/local-app computer-use route stays
   single participant (no E2B to fan out);
@@ -197,7 +197,8 @@ The rest of this section names keys by their v3 spelling:
   so `--count` does not apply to it, and each entry's `instruction` is the steer;
   an entry's `device` is XOR with a raw `execution.desktop.resolution`. Participant ids
   default `lane-01`..`lane-NN` (`role-01`..`role-NN` for shared-world participants), must be unique, and name per-participant evidence paths
-  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 participants. The other
+  (`actors/<streamId>.json`, `screenshots/<laneId>/`). At most 100 participants, on the
+  shared-world route too. The other
   routes refuse a list (table above). `subject.clone.fanout` is rejected on the
   computer-use, shared-world and scripted routes (declare fan-out with
   `participants`). No current route reads `clone.fanout`;
@@ -216,9 +217,12 @@ The rest of this section names keys by their v3 spelling:
   shape. Ids are checked for collisions after expansion;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
-  simultaneously: independent participants resolve it from the final participant count,
-  after any `--count` override, and the parser fills `concurrency = participantCount`
-  for multi-participant shared-world studies. Total sessions and spend are identical either way; only wall-clock
+  simultaneously: both routes resolve it when they plan, from the final participant count
+  after any `--count` override. On hosted desktops the plan runs at most
+  `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` sandboxes at once (20 when unset; a provisioned
+  shared world's app sandbox counts against it), so a larger roster runs in waves and the plan
+  records a warning naming the setting. A declared value above that limit is refused at plan
+  time. Total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the participant count runs participants in
   waves and emits a warning saying so, because a green waved run is otherwise
   indistinguishable from the all-live run the author meant. Shared-world studies
@@ -529,7 +533,7 @@ Core-owned fields:
   an older run, else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
-  `{ source: clone | app-url | local-tree | desktop-cli, repo?, product?, commit?,
+  `{ source: clone | app-url | local-tree | desktop-cli | local-app, repo?, product?, commit?,
   archiveSha256?, dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
   unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
   commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
@@ -541,7 +545,9 @@ Core-owned fields:
   the archive content digest stands in for it. `product` is the desktop-cli field: the
   `subject.product.name` the study declares, with state `undeclared`. A computer-use
   run of a desktop-cli study saved before this field existed records `app-url` with no
-  `product`. `commandDigest` is the
+  `product`. `local-app` is an in-process run of a local-app study, the caller's running app
+  with no code pin and state `undeclared`; one saved before that value existed records
+  `app-url`. `commandDigest` is the
   sha256-16 of the exact seed command; command text and env values never
   appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state
@@ -985,6 +991,14 @@ Core-owned fields:
   “provider reply cut off by the output limit; asking again” notice. A second
   cut-off reply to the same request ends the session with
   `stopCause: provider_output_limit`.
+- optional `waitSettings`: the wait lengths a computer-use participant's session
+  applied, in milliseconds, defaults included. `maxWaitMs` is the longest one
+  wait action lasts (`actor.maxWaitMs`); a longer wait is shortened to it.
+  `idleWaitMs` is how long a wait that names no duration lasts in a turn that
+  only waits or takes screenshots (`actor.idleWaitMs`), and `settleWaitMs` how
+  long such a wait lasts after an action in the same turn. Each `ui_action` for
+  a wait is titled with the length it lasted. Absent on other routes and on
+  earlier bundles
 - optional `conversation`: how the first-party OpenAI computer-use provider
   carried the conversation between requests. `mode` is `threaded` (the server
   kept it through `previous_response_id`) or `explicit_context` (the server kept
@@ -1668,7 +1682,7 @@ of it fails.
 | `cuaLaneCount`                                                                                                                                 | the `plan` `StudyEvent`, which lists every participant                                                                                                                                                                                                                                                                                         |
 | `resolveSeatUrl`                                                                                                                               | `parseStudy`, which refuses a participant entry that is not same-origin loopback; build the URL with `new URL(entry, serveUrl)`                                                                                                                                                                                                                |
 | `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`, `externalPublicSharedWorldValidationReason` | `parseStudy`, which returns the same reason                                                                                                                                                                                                                                                                                                    |
-| `MAX_CUA_LANES`                                                                                                                                | none; `parseStudy` refuses a roster of more than 16 participants                                                                                                                                                                                                                                                                               |
+| `MAX_CUA_LANES`                                                                                                                                | none; `parseStudy` refuses a roster of more than 100 participants                                                                                                                                                                                                                                                                              |
 
 ## Product-Adapter Extension Seam
 

@@ -10,43 +10,70 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
-- `actor.maxWaitMs` sets how long one `wait` action of a computer-use or shared-world participant
-  may last, from 1000 to 600000. When unset it is 120000 (two minutes), or 30000 on a desktop with
-  speech, where heard speech reaches the participant only with a screenshot. A longer wait is
-  shortened to it, the trace records a `wait shortened` notice with the requested and applied
-  durations, and the participant is told on its next turn. A terminal, scripted or preview study
-  that sets it is refused, as for any field its route does not read.
+- `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` tells humanish how many sandboxes your E2B plan runs at
+  once: 20 when unset (E2B Hobby), 100 on Pro. A hosted computer-use or shared-world study runs at
+  most that many desktops at once, counting a provisioned shared world's app sandbox, and its plan
+  records a warning naming the setting when the limit holds participants to waves. An
+  `execution.concurrency` above the limit is refused before any sandbox is created, with the
+  setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
+  row. A local desktop study keeps its own capacity checks (#1737).
 
 ### Changed
 
-- A participant's wait longer than 30 seconds now lasts as long as it asked, up to
-  `actor.maxWaitMs`. humanish sends it to the desktop as consecutive waits of at most 30 seconds,
-  the longest one browser-control request carries. A Codex participant's wait was shortened to 30
-  seconds before, and still is on a desktop with speech unless the study sets `actor.maxWaitMs`.
-  Its `humanish_ui` tool description now states the study's longest wait, and the tool's input
-  schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
-  removed: the loop shortens a wait itself, for every provider.
-- In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
-  saved." or why a moment could not open), as opening a participant or the participants grid
-  already did (#1728).
+- An in-process run of a `local-app` study records `subject.source: "local-app"` in run.json, the
+  JSON result and each participant's `lanes[].subject`. It recorded `"app-url"`. `verify`,
+  `observe`, `review` and `export` read both values, so runs saved with `app-url` still open; npm
+  0.117.0 cannot read a run that records `local-app`. An in-process run of an `app-url` study
+  still records `app-url` (#1716).
+- A computer-use study may have up to 100 participants, up from 16, and a shared-world study is
+  held to the same 100, where it had no limit. The old refusal said every participant runs at once
+  and no setting raises the cap; how many run at once is now the E2B plan's limit above, and
+  `caps.maxUsd` bounds spend. The new refusal says the 100 keeps one run's bundle and Observer view
+  a size humanish supports. A `participants` group whose `count` would pass 100 is refused before
+  it is expanded, and a `--count` above 100 before any participant is built (#1737).
+- A live run of more than 16 participants records its automatic analysis as skipped with
+  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `run`, `study check`, `doctor` and the TUI say before
+  the run that it will not run. One analysis reads at most 16 participants; it would have analyzed
+  the first 16 and reported a partial result. The skip does not fail a run whose study declares
+  no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
+  asked for and did not get (#1737).
+- A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
+  count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
+  and a declared value above the participant count is clamped to it, as on computer use.
+- A study with real email receiving and more than 64 participants is refused when it is read. Its
+  run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
+  inboxes.
 
 ### Fixed
 
-- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
-  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
-  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
-  With another key in `process.env`, the check asked that key's account, and a not-found answer
-  from it would be recorded as confirming the sandbox was gone (#1726).
-- In `humanish tui`, an armed action no longer stays armed after the cursor leaves it. Arming Stop,
-  moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
-  analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
-  after `?`. The five actions that take two Enters (those four and a live start) now follow one
-  rule: the second Enter counts only on the same action of the same screen, within 30 seconds of
-  the first. An Enter less than 400 ms after the one before it is ignored and restarts that wait.
-  The wait used to count from the first Enter, so a held Enter confirmed on every repeat past it;
-  it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
-  longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
-  (#1722).
+- `humanish study check` now plans the study the way `humanish run <study>` does and fails a study
+  the run refuses before it starts, such as a computer-use study whose sandbox deadline passes
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES`, or a `local-app` study, which only the library can run. The
+  failed `plan` row and the error carry the run's code and message, and no reachability probe
+  runs. It passed such a study before. A study that plans gets the same output as before (#1707).
+- A shared-world study, or a scripted study with a `clone` subject, whose sandbox deadline passes
+  the sandbox ceiling is refused before it starts, as computer-use and terminal studies are, with
+  the `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The code is
+  `HUMANISH_SHARED_WORLD_INVALID` on shared world and the new `HUMANISH_SCRIPTED_SUBJECT_INVALID`
+  on the scripted route, which also uses it to refuse a value of the setting it cannot read. The
+  deadline is the subject sandbox's on a clone or local-tree subject (the session, 30 minutes to
+  provision, each seed step's budget and 10 minutes of teardown) and each participant's sandbox on
+  a shared-world `app-url` study (the session and 10 minutes). With `execution.timeoutMs` set, or
+  with seed steps that leave no session under the ceiling, E2B refused the sandbox after the run
+  started. A scripted `app-url` study creates no E2B sandbox and is not checked (#1707).
+- `humanish verify` names a folder the public-safety scan could not list, and the folder where it
+  stopped at 10,000 files and folders, in their own sentences of the `UNSCANNED_ARTIFACT` reason:
+  "The public-safety scan stopped at its limit of 10000 files and folders while listing
+  extras/many/, so it read nothing listed after that point." It counted either one as a file it
+  could not read: "cannot read 1 file as text ...: extras/many/ (the scan stops after 10000
+  entries)" (#1691).
+- A `desktop-cli` dry run names the product the way the `subject:` line does: "Dry run: 1
+  participant would use widgetsmith-cli (desktop-cli).", "would each use their own copy of
+  widgetsmith-cli (desktop-cli)" on a fan-out, and "would use widgetsmith-cli (desktop-cli); no
+  session ran." for each participant. The three sentences named an empty URL (#1716).
+- A `participants` list entry with a very large `count`, such as `1000000000`, no longer exhausts
+  memory while the study is read. The parser expanded every group before checking the roster's
+  size.
 - In `humanish tui`, the key legend says what Enter and Esc do while an action waits for its
   second Enter: `⏎ confirm  esc cancel`, or `esc keep analyzing` for Cancel analysis. While Stop,
   Cancel analysis, Run again or Set up humanish here was armed, it still read `⏎ select  esc back`
@@ -66,6 +93,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 - In `humanish tui`, Esc on the keys screen after entering a key goes back to the screen the keys
   were opened from. It went to the studies list, because the surface mounts again after the
   hidden prompt and started over (#1720).
+
+## 0.117.0: Long participant waits, OpenAI wait length, serve.build fails fast, TUI confirmations (2026-10-09)
+
+humanish 0.117.0 lets a participant wait through a long hosted study, gives an OpenAI
+participant's wait a usable length, and fails a broken `serve.build` within seconds. A
+participant's wait longer than one desktop call now lasts as long as it asked, up to the new study
+field `actor.maxWaitMs` (1 second to 10 minutes; 2 minutes by default, 30 seconds on a desktop with
+speech), and goes to the desktop in steps of at most 30 seconds. A Codex participant's longer wait
+was cut to 30 seconds before. An `openai-computer-use` participant's `wait` names no duration and
+lasted half a second on a hosted desktop; it now lasts `actor.idleWaitMs` (5 seconds by default) in
+a turn that only waits, and 500 ms after an action in the same turn. The participant's `actor.json`
+records these lengths as `waitSettings`. A `serve.install`, `serve.build` or seed step that bash
+cannot parse fails within seconds with bash's error, where the run waited out the step's limit (10
+minutes for `serve.build`), and a failed `serve.build` on the computer-use route has its own error
+code. In `humanish tui`, a two-Enter confirmation ends when the cursor leaves it. The terminal
+route's check after its sandbox kill carries the run's E2B key, and browser Back in the Observer
+clears a stale saved-moment message.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.117.0)
 
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 

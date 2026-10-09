@@ -22,10 +22,6 @@ import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.
 import type { StudyDeps } from "../../study/study-deps.js";
 import { refusedResult } from "../../run/study-result.js";
 
-// Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
-// sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
-const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
-
 /** What setup hands the run: the plan's subject and scenario, keys and the browser to launch. */
 export interface ScriptedRunSetup {
   cwd: string;
@@ -142,7 +138,7 @@ export async function prepareScriptedRun(
   if (refusal) return { ok: false, result: failed(refusal.code, refusal.message) };
 
   const surfaces = plan.surfaces;
-  const timeoutMs = plan.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const timeoutMs = plan.sessionTimeoutMs;
   const persona: ActorPersonaRef = {
     id: plan.personaId ?? "scripted-journey",
     traitsApplied: [],

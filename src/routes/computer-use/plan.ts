@@ -28,7 +28,7 @@ import type {
   RoutePlanResult,
   RouteRefusal,
 } from "../../study/plan-types.js";
-import { MAX_COMPUTER_USE_PARTICIPANTS } from "../../study/routing.js";
+import { computerUseParticipantCount, participantCountReason } from "../../study/routing.js";
 import type { StudyConfig, StudySubjectServe, StudySubjectState } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
@@ -46,7 +46,12 @@ import {
   defaultSessionTimeoutMs,
   resolveParticipantSandboxMs,
 } from "./participant-runs.js";
-import { ceilingAdvice, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
+import {
+  ceilingAdvice,
+  participantsAtOnce,
+  type ConcurrentSandboxes,
+  type SandboxCeiling,
+} from "../../substrates/e2b/lifetime.js";
 import { type ComputerUseRunInput, type CuaActorStudyErrorCode } from "./types.js";
 
 /** The error a computer-use study returns before a run starts. */
@@ -320,6 +325,24 @@ function rosterShapeReason(config: StudyConfig, ceilingMs: number): Rejection {
   );
 }
 
+/**
+ * How many of the runner's participants run at once. Hosted desktops share the E2B plan's
+ * concurrent sandboxes; the local VM has its own capacity rules and the in-process route runs one
+ * participant.
+ */
+function concurrencyOf(
+  config: StudyConfig,
+  runner: ComputerUseRunner,
+  limit: ConcurrentSandboxes,
+): ReturnType<typeof participantsAtOnce> {
+  const declared = config.execution?.concurrency;
+  const n = runner.participants.length;
+  const concurrency = boundedConcurrency(declared, n);
+  return runner.desktop === "e2b-desktop"
+    ? participantsAtOnce({ concurrency, declared: declared !== undefined, participants: n }, limit)
+    : { ok: true, count: concurrency };
+}
+
 /** The plan's rerun: the source run and, when given, the participants to rerun. */
 function rerunPlan({
   sourceRunId,
@@ -347,6 +370,8 @@ export function planComputerUseStudy(
     readonly rerun?: ComputerUseRunInput["rerun"];
     /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
     readonly sandboxCeiling: SandboxCeiling;
+    /** How many sandboxes the operator's E2B plan runs at once (concurrentSandboxes). */
+    readonly concurrentSandboxes: ConcurrentSandboxes;
   },
 ): ComputerUsePlanResult {
   const hasRunSession = input.hasRunSession === true;
@@ -422,14 +447,13 @@ export function planComputerUseStudy(
   if (productReason)
     return refuse("in-scope", "HUMANISH_COMPUTER_USE_SUBJECT_INVALID", productReason, actor);
 
+  // Counted before any participant is built, so a large --count is refused without building it.
+  const countReason = participantCountReason(
+    computerUseParticipantCount(config, input.countOverride),
+  );
+  if (countReason)
+    return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", countReason, actor);
   const participants = computerUseParticipants(config, input.countOverride);
-  if (participants.length > MAX_COMPUTER_USE_PARTICIPANTS)
-    return refuse(
-      "after-personas",
-      "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      `Computer-use fan-out is capped at ${MAX_COMPUTER_USE_PARTICIPANTS} participants (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
-      actor,
-    );
   const [first, ...rest] = participants;
   if (driving.inProcess && rest.length > 0)
     return refuse(
@@ -465,21 +489,24 @@ export function planComputerUseStudy(
     : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
-  const declared = config.execution?.concurrency;
-  const n = participants.length;
+  const atOnce = concurrencyOf(config, runner, input.concurrentSandboxes);
+  if (!atOnce.ok)
+    return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", atOnce.message, actor);
   const provisioned = source === "clone" || source === "local-tree";
   const base = planBase(config, {
     dryRun: input.dryRun,
     analysis,
+    participants: participants.length,
   });
   return {
     ok: true,
     plan: {
       ...base,
+      ...(atOnce.lowered === undefined ? {} : { warnings: [atOnce.lowered] }),
       route: "computer-use",
       actor,
       runner,
-      concurrency: boundedConcurrency(declared, n),
+      concurrency: atOnce.count,
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceiling.ms),
       sandboxMs: resolveParticipantSandboxMs(config, ceiling.ms),
       caps: planCaps(config),
