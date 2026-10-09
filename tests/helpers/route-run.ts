@@ -105,6 +105,7 @@ export async function runScripted(
   const planned = planScriptedStudy(config, {
     dryRun,
     injectedBrowser: injectedBrowser(input.deps),
+    sandboxCeiling: sandboxCeiling(input.env ?? {}),
   });
   if (!planned.ok) return scriptedStudyRefusal(options, planned.refusal);
   return runAdmitted(admitScriptedPlan({ ...planned.plan, ...fields }, input));

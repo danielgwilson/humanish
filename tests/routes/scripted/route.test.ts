@@ -56,6 +56,7 @@ import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { runAdmitted, runComputerUse, runScripted } from "../../helpers/route-run.js";
+import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -619,7 +620,10 @@ describe("runScriptedBrowserLab", () => {
 
   it("runs a plan alone: the bundle records the plan's lab id, persona and surfaces", async () => {
     await writeCommittedScenario(cwd);
-    const planned = planScriptedStudy(scriptedConfig({ count: 2 }), { dryRun: true });
+    const planned = planScriptedStudy(scriptedConfig({ count: 2 }), {
+      dryRun: true,
+      sandboxCeiling: sandboxCeiling({}),
+    });
     if (!planned.ok) throw new Error("expected a scripted plan");
     const plan = {
       ...planned.plan,

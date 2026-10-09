@@ -155,11 +155,16 @@ describe("the ceiling setting", () => {
       plan(cloneStudy(), env),
       plan(terminalStudy(), env),
       plan(study("sharedProvisioned", {}), env),
+      plan(study("scriptedClone", {}), env),
+      // A scripted app-url study runs a browser on this machine and creates no E2B sandbox.
+      plan(study("scriptedAppUrl", {}), env),
     ];
     expect(results.map((result) => (result.ok ? "planned" : result.refusal.code))).toEqual([
       "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "HUMANISH_TERMINAL_CAPS_INVALID",
       "HUMANISH_SHARED_WORLD_INVALID",
+      "HUMANISH_SCRIPTED_SUBJECT_INVALID",
+      "planned",
     ]);
   });
 });

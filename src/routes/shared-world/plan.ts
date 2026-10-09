@@ -38,7 +38,7 @@ import {
 } from "../../study/validation.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
 import {
-  ceilingAdvice,
+  sandboxDeadlineRefusal,
   sandboxHeadroomMs,
   type SandboxCeiling,
 } from "../../substrates/e2b/lifetime.js";
@@ -162,7 +162,23 @@ export function planSharedWorldStudy(
     throw new Error("shared-world validation admitted a plane it cannot plan");
   const sessionTimeoutMs =
     config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms);
-  const deadlineReason = sandboxDeadlineReason(config, plane, sessionTimeoutMs, ceiling.ms);
+  // The run's longest deadline: on the provisioned plane the subject sandbox, which serves the app
+  // until every participant ends; on the external-public plane each participant's own sandbox.
+  const deadlineReason = sandboxDeadlineRefusal(
+    plane.kind === "provisioned"
+      ? {
+          name: "the subject sandbox, which serves the app until every participant ends",
+          sessionMs: sessionTimeoutMs,
+          sessionDeclared: config.execution?.timeoutMs !== undefined,
+          servedSubject: { seed: plane.subject.state.seed ?? [] },
+        }
+      : {
+          name: "each participant's sandbox",
+          sessionMs: sessionTimeoutMs,
+          sessionDeclared: config.execution?.timeoutMs !== undefined,
+        },
+    ceiling.ms,
+  );
   if (deadlineReason) return refuse(invalid, deadlineReason, actor);
   const brain = brainOf(config, false);
   if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
@@ -217,43 +233,6 @@ function defaultSessionTimeoutMs(plane: SharedWorldPlane, ceilingMs: number): nu
   if (plane.kind !== "provisioned") return DEFAULT_APP_URL_SESSION_MS;
   const room = ceilingMs - sandboxHeadroomMs({ seed: plane.subject.state.seed ?? [] });
   return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
-}
-
-/**
- * Why the run's longest sandbox deadline passes the ceiling, or undefined. On the provisioned plane
- * the subject sandbox serves the app until every participant ends, so its deadline is the longest;
- * on the external-public plane each participant's own sandbox has it. E2B refuses a timeout past
- * the plan's limit with a 400, after the plan printed.
- */
-function sandboxDeadlineReason(
-  config: StudyConfig,
-  plane: SharedWorldPlane,
-  sessionMs: number,
-  ceilingMs: number,
-): string | undefined {
-  const provisioned = plane.kind === "provisioned";
-  const headroomMs = sandboxHeadroomMs(
-    provisioned ? { seed: plane.subject.state.seed ?? [] } : undefined,
-  );
-  const deadlineMs = sessionMs + headroomMs;
-  if (deadlineMs <= ceilingMs) return undefined;
-  const inMinutes = (ms: number) => Math.round(ms / 60_000);
-  const session =
-    config.execution?.timeoutMs === undefined
-      ? `The default session budget of ${inMinutes(sessionMs)}m`
-      : `execution.timeoutMs ${inMinutes(sessionMs)}m`;
-  const sandbox = provisioned
-    ? "the subject sandbox, which serves the app until every participant ends"
-    : "each participant's sandbox";
-  const headroom = provisioned
-    ? `${inMinutes(headroomMs)}m to provision and seed the subject and tear it down`
-    : `${inMinutes(headroomMs)}m of teardown buffer`;
-  const roomMinutes = Math.floor((ceilingMs - headroomMs) / 60_000);
-  const lower =
-    roomMinutes >= 1
-      ? `Lower execution.timeoutMs to at most ${roomMinutes}m.`
-      : "The provisioning and seed step budgets alone leave no session time under it, so shorten subject.state.seed[].timeoutMs.";
-  return `${session} derives a ${inMinutes(deadlineMs)}m deadline for ${sandbox}, and a sandbox may not live longer than ${ceilingMs / 60_000}m. The deadline is the session budget plus ${headroom}. ${lower}${ceilingAdvice(deadlineMs)}`;
 }
 
 /** The provisioned plane's declared subject state. The external-public plane declares none. */

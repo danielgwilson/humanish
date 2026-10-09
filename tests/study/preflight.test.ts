@@ -8,7 +8,7 @@ import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
-import { lab } from "../admission/fixtures.js";
+import { lab, SCENARIO_YAML } from "../admission/fixtures.js";
 
 interface CliResult {
   exitCode: number;
@@ -288,27 +288,47 @@ describe("study check and the planner", () => {
 
   it.each([
     // Each participant's own sandbox: 55m + 10m of teardown buffer.
-    { plane: "external-public", base: "sharedExternal", sessionMinutes: 55 },
+    {
+      study: "a shared-world study on the external-public plane",
+      base: "sharedExternal",
+      sessionMinutes: 55,
+      code: "HUMANISH_SHARED_WORLD_INVALID",
+    },
     // The subject sandbox outlives every participant: 20m + 30m to provision + 5m for the one seed
     // step + 10m of teardown buffer.
-    { plane: "provisioned", base: "sharedProvisioned", sessionMinutes: 20 },
+    {
+      study: "a shared-world study on the provisioned plane",
+      base: "sharedProvisioned",
+      sessionMinutes: 20,
+      code: "HUMANISH_SHARED_WORLD_INVALID",
+    },
+    // The clone's subject sandbox: the same 20m + 30m + 5m + 10m.
+    {
+      study: "a scripted clone study",
+      base: "scriptedClone",
+      sessionMinutes: 20,
+      code: "HUMANISH_SCRIPTED_SUBJECT_INVALID",
+    },
   ] as const)(
-    "refuses a shared-world study on the $plane plane whose 65m sandbox deadline passes the ceiling",
-    async ({ base, sessionMinutes }) => {
+    "refuses $study whose 65m sandbox deadline passes the ceiling",
+    async ({ base, sessionMinutes, code }) => {
       const study = lab(base, {
-        id: "long-shared",
+        id: "long-study",
         execution: { timeoutMs: sessionMinutes * 60_000 },
       });
       // A JSON document is a YAML document.
       await withTempLab(
-        { "humanish/studies/long-shared.yaml": JSON.stringify(study) },
+        {
+          "humanish/studies/long-study.yaml": JSON.stringify(study),
+          "humanish/scenarios/adm-journey.yaml": SCENARIO_YAML,
+        },
         async (cwd) => {
-          const run = await runCli(["run", "long-shared", "--cwd", cwd, "--json"]);
-          const checked = await runCli(["study", "check", "long-shared", "--cwd", cwd, "--json"]);
+          const run = await runCli(["run", "long-study", "--cwd", cwd, "--json"]);
+          const checked = await runCli(["study", "check", "long-study", "--cwd", cwd, "--json"]);
           const refused = JSON.parse(run.stdout) as { error?: { code: string; message: string } };
 
           expect(run.exitCode).toBe(2);
-          expect(refused.error?.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
+          expect(refused.error?.code).toBe(code);
           expect(refused.error?.message).toMatch(
             /a 65m .*deadline.* may not live longer than 60m\. .* set HUMANISH_E2B_MAX_SANDBOX_MINUTES to 65 or more\.$/,
           );
@@ -317,7 +337,7 @@ describe("study check and the planner", () => {
 
           vi.stubEnv("HUMANISH_E2B_MAX_SANDBOX_MINUTES", "65");
           expect(
-            (await runCli(["study", "check", "long-shared", "--cwd", cwd, "--json"])).exitCode,
+            (await runCli(["study", "check", "long-study", "--cwd", cwd, "--json"])).exitCode,
           ).toBe(0);
         },
       );

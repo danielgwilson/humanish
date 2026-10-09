@@ -144,6 +144,10 @@ function planRoute(
         sandboxCeiling,
       });
     case "scripted":
-      return planScriptedStudy(study, { ...input, injectedBrowser: injectedBrowser(deps) });
+      return planScriptedStudy(study, {
+        ...input,
+        injectedBrowser: injectedBrowser(deps),
+        sandboxCeiling,
+      });
   }
 }

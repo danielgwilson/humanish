@@ -41,13 +41,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   `HUMANISH_E2B_MAX_SANDBOX_MINUTES`, or a `local-app` study, which only the library can run. The
   failed `plan` row and the error carry the run's code and message, and no reachability probe
   runs. It passed such a study before. A study that plans gets the same output as before (#1707).
-- A shared-world study whose sandbox deadline passes the sandbox ceiling is refused before it
-  starts, as computer-use and terminal studies are, with `HUMANISH_SHARED_WORLD_INVALID` and the
-  `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The deadline is the subject
-  sandbox's on a clone or local-tree study (the session, 30 minutes to provision, each seed step's
-  budget and 10 minutes of teardown) and each participant's sandbox on an `app-url` study (the
-  session and 10 minutes). With `execution.timeoutMs` set, or with seed steps that leave no
-  session under the ceiling, E2B refused the sandbox after the run started (#1707).
+- A shared-world study, or a scripted study with a `clone` subject, whose sandbox deadline passes
+  the sandbox ceiling is refused before it starts, as computer-use and terminal studies are, with
+  the `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The code is
+  `HUMANISH_SHARED_WORLD_INVALID` on shared world and the new `HUMANISH_SCRIPTED_SUBJECT_INVALID`
+  on the scripted route, which also uses it to refuse a value of the setting it cannot read. The
+  deadline is the subject sandbox's on a clone or local-tree subject (the session, 30 minutes to
+  provision, each seed step's budget and 10 minutes of teardown) and each participant's sandbox on
+  a shared-world `app-url` study (the session and 10 minutes). With `execution.timeoutMs` set, or
+  with seed steps that leave no session under the ceiling, E2B refused the sandbox after the run
+  started. A scripted `app-url` study creates no E2B sandbox and is not checked (#1707).
 - `humanish verify` names a folder the public-safety scan could not list, and the folder where it
   stopped at 10,000 files and folders, in their own sentences of the `UNSCANNED_ARTIFACT` reason:
   "The public-safety scan stopped at its limit of 10000 files and folders while listing

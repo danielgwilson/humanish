@@ -83,6 +83,47 @@ export function sandboxHeadroomMs(servedSubject?: {
   return SUBJECT_PROVISION_BUDGET_MS + seedMs + SANDBOX_TIMEOUT_BUFFER_MS;
 }
 
+/** A sandbox a plan will ask E2B for, as its deadline refusal describes it. */
+export interface PlannedSandbox {
+  /** How the refusal names the sandbox, as in "the subject sandbox". */
+  readonly name: string;
+  /** The session it hosts, and whether the study set it in execution.timeoutMs. */
+  readonly sessionMs: number;
+  readonly sessionDeclared: boolean;
+  /** The subject it serves, whose provisioning and seed steps add to its deadline. */
+  readonly servedSubject?:
+    | { readonly seed: readonly { readonly timeoutMs?: number | undefined }[] }
+    | undefined;
+}
+
+/**
+ * Why the sandbox's deadline, its session plus sandboxHeadroomMs, passes the `ceilingMs` ceiling,
+ * or undefined when it fits. The message shows the arithmetic, the longest execution.timeoutMs the
+ * ceiling leaves, and the setting value that would admit the study.
+ */
+export function sandboxDeadlineRefusal(
+  sandbox: PlannedSandbox,
+  ceilingMs: number,
+): string | undefined {
+  const headroomMs = sandboxHeadroomMs(sandbox.servedSubject);
+  const deadlineMs = sandbox.sessionMs + headroomMs;
+  if (deadlineMs <= ceilingMs) return undefined;
+  const inMinutes = (ms: number) => Math.round(ms / 60_000);
+  const session = sandbox.sessionDeclared
+    ? `execution.timeoutMs ${inMinutes(sandbox.sessionMs)}m`
+    : `The default session budget of ${inMinutes(sandbox.sessionMs)}m`;
+  const headroom =
+    sandbox.servedSubject === undefined
+      ? `${inMinutes(headroomMs)}m of teardown buffer`
+      : `${inMinutes(headroomMs)}m to provision and seed the subject and tear it down`;
+  const roomMinutes = Math.floor((ceilingMs - headroomMs) / 60_000);
+  const lower =
+    roomMinutes >= 1
+      ? `Lower execution.timeoutMs to at most ${roomMinutes}m.`
+      : "The provisioning and seed step budgets alone leave no session time under it, so shorten subject.state.seed[].timeoutMs.";
+  return `${session} derives a ${inMinutes(deadlineMs)}m deadline for ${sandbox.name}, and a sandbox may not live longer than ${ceilingMs / 60_000}m. The deadline is the session budget plus ${headroom}. ${lower}${ceilingAdvice(deadlineMs)}`;
+}
+
 /** The timeout of one E2B API request: HUMANISH_E2B_REQUEST_TIMEOUT_MS when set, else 60 s. */
 export function e2bRequestTimeoutMs(env: Record<string, string | undefined>): number {
   return readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);

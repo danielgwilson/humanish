@@ -251,9 +251,10 @@ export interface ScriptedPlan extends PlanBase {
   readonly scenarioRef: string;
   /** Empty only for a library caller's `count: 0`, which the parser refuses; that run has no sessions. */
   readonly surfaces: readonly BrowserSurface[];
-  /** The declared persona and session timeout; the route supplies its defaults. */
+  /** The declared persona; the route supplies its default. */
   readonly personaId?: string;
-  readonly sessionTimeoutMs?: number;
+  /** Each surface's journey budget: execution.timeoutMs, else 5 minutes. */
+  readonly sessionTimeoutMs: number;
 }
 
 export type StudyPlan =
