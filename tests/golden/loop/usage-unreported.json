@@ -31,6 +31,11 @@
       "ids": {
         "model": "golden-1"
       },
+      "waitSettings": {
+        "maxWaitMs": 120000,
+        "idleWaitMs": 10000,
+        "settleWaitMs": 500
+      },
       "counts": {
         "turns": 1,
         "actions": 0,

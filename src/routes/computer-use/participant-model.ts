@@ -184,6 +184,9 @@ export function participantSessionOptions(
     ...(spec.planned.limits.maxWaitMs === undefined
       ? {}
       : { maxWaitMs: spec.planned.limits.maxWaitMs }),
+    ...(spec.planned.limits.idleWaitMs === undefined
+      ? {}
+      : { idleWaitMs: spec.planned.limits.idleWaitMs }),
     ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
     // The study budget: this participant notes its own running estimate on the shared
     // ledger and stops when the run total crosses the cap, independent of the per-participant

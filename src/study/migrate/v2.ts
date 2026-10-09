@@ -180,8 +180,8 @@ const V2_KEYS: KeyShape = {
     lanes: PARTICIPANT_ENTRY,
     // Roster groups are participants with a count; the parser expanded them into `lanes[]`.
     roster: { ...PARTICIPANT_ENTRY, count: true },
-    // maxWaitMs arrived after v2, so a v2 file cannot carry it.
-    ...without(ACTOR, "type", "maxWaitMs"),
+    // maxWaitMs and idleWaitMs arrived after v2, so a v2 file cannot carry them.
+    ...without(ACTOR, "type", "maxWaitMs", "idleWaitMs"),
     laneFocus: { id: true, label: true, instruction: true },
   },
   execution: withAfter(EXECUTION, "egressAllow", { caps: CAPS }),

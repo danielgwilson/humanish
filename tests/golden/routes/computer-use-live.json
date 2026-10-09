@@ -180,6 +180,11 @@
     "modelSettings": {
       "reasoningEffort": "medium"
     },
+    "waitSettings": {
+      "maxWaitMs": 120000,
+      "idleWaitMs": 10000,
+      "settleWaitMs": 500
+    },
     "counts": {
       "turns": 2,
       "actions": 1,
@@ -603,6 +608,11 @@
           },
           "modelSettings": {
             "reasoningEffort": "medium"
+          },
+          "waitSettings": {
+            "maxWaitMs": 120000,
+            "idleWaitMs": 10000,
+            "settleWaitMs": 500
           },
           "counts": {
             "turns": 2,

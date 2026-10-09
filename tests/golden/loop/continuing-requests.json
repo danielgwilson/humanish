@@ -43,6 +43,11 @@
         "completionReason": "goal_satisfied",
         "reason": "Finished.",
         "ids": {},
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 3,
           "actions": 2,
@@ -212,6 +217,11 @@
         "stopCause": "spend_limit",
         "reason": "Stopped before the next model turn: estimated spend $0.21 passed caps.maxUsd=$0.1 with no material progress",
         "ids": {},
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -305,6 +315,11 @@
         "completionReason": "harness_error",
         "reason": "participant provider error: invalid_response; cleanup: unconfirmed",
         "ids": {},
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -443,6 +458,11 @@
         "reason": "Finished.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 2,

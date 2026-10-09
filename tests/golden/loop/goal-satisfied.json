@@ -31,6 +31,11 @@
         "model": "golden-1",
         "turnId": "r3"
       },
+      "waitSettings": {
+        "maxWaitMs": 120000,
+        "idleWaitMs": 10000,
+        "settleWaitMs": 500
+      },
       "counts": {
         "turns": 3,
         "actions": 3,

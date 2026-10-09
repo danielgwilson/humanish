@@ -32,6 +32,11 @@
           "model": "golden-1",
           "turnId": "r2"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 3,
           "actions": 2,
@@ -189,6 +194,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -278,6 +288,11 @@
         "reason": "stopWhen matched done-route (appStatePathEquals)",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 0,
@@ -370,6 +385,11 @@
         "reason": "stopWhen matched thanks (urlPathEquals+textIncludes)",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -512,6 +532,11 @@
         "reason": "Finished.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 2,
@@ -726,6 +751,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -884,6 +914,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -983,6 +1018,11 @@
         "reason": "provider golden-cua requires a screenshot frame but the executor returned an observation with no screenshot (vision provider against a state-only executor)",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 0,
@@ -1114,6 +1154,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -1223,6 +1268,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -1331,6 +1381,11 @@
         "reason": "Finished.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 3,

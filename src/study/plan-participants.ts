@@ -46,6 +46,8 @@ interface DesktopParticipant extends Participant {
     readonly maxOutputTokens?: number;
     /** actor.maxWaitMs: the longest one wait action lasts. */
     readonly maxWaitMs?: number;
+    /** actor.idleWaitMs: how long a wait with no duration lasts while the participant only waits. */
+    readonly idleWaitMs?: number;
   };
 }
 
@@ -100,6 +102,7 @@ function desktopParticipant(
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
   const maxWaitMs = actor?.maxWaitMs;
+  const idleWaitMs = actor?.idleWaitMs;
   return {
     id: participantIdAt(index, entry?.id, kind),
     index,
@@ -120,6 +123,7 @@ function desktopParticipant(
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+      ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     },
   };
 }

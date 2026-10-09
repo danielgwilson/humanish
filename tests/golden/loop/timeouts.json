@@ -32,6 +32,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -151,6 +156,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -266,6 +276,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -348,6 +363,11 @@
         "reason": "reached the 30ms time budget with 1 material action attempt, 1 turn; the latest action outcome is uncertain",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 10000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,

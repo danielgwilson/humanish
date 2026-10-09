@@ -146,6 +146,11 @@
     "ids": {
       "model": "0.1.0"
     },
+    "waitSettings": {
+      "maxWaitMs": 120000,
+      "idleWaitMs": 10000,
+      "settleWaitMs": 500
+    },
     "counts": {
       "turns": 2,
       "actions": 1,
@@ -478,6 +483,11 @@
           "reason": "Reached the goal via getState().",
           "ids": {
             "model": "0.1.0"
+          },
+          "waitSettings": {
+            "maxWaitMs": 120000,
+            "idleWaitMs": 10000,
+            "settleWaitMs": 500
           },
           "counts": {
             "turns": 2,
