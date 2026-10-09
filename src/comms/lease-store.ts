@@ -6,7 +6,11 @@ import { homedir, hostname } from "node:os";
 import path from "node:path";
 import { isRecord } from "../run/type-guards.js";
 import { isReceivingProviderId } from "./providers.js";
-import type { ReceivingIdentity, ReceivingLease } from "./receiving-types.js";
+import {
+  MAX_RECEIVING_INBOXES,
+  type ReceivingIdentity,
+  type ReceivingLease,
+} from "./receiving-types.js";
 
 const SCHEMA = "humanish.comms-lease-journal.v1";
 const MAX_BYTES = 1_048_576;
@@ -176,7 +180,7 @@ function parseJournal(text: string): CommsLeaseJournal {
     !safeString(value.updatedAt) ||
     !Array.isArray(value.leases) ||
     value.leases.length < 1 ||
-    value.leases.length > 64
+    value.leases.length > MAX_RECEIVING_INBOXES
   )
     fail();
   const participants = new Set<string>();
@@ -555,7 +559,7 @@ export class CommsLeaseStore {
       !KEY_ENV.test(options.apiKeyEnv) ||
       !validReceivingIdentity(options.identity) ||
       options.participants.length < 1 ||
-      options.participants.length > 64 ||
+      options.participants.length > MAX_RECEIVING_INBOXES ||
       new Set(options.participants).size !== options.participants.length ||
       options.participants.some((id) => !LOCAL_ID.test(id))
     )

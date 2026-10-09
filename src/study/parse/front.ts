@@ -5,7 +5,7 @@
 import { isRecord } from "../../run/type-guards.js";
 import { findUnknownStudyKey } from "../keys.js";
 import { movedV2KeyReason } from "../migrate/v2.js";
-import type { StudyRoute } from "../routing.js";
+import { participantCountReason, type StudyRoute } from "../routing.js";
 import type { StudyParseFailure, StudySurfaces } from "../types.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./actors.js";
 import { invalid, posInt } from "./values.js";
@@ -167,8 +167,16 @@ function homogeneousOf(raw: unknown): Parsed<Participants> {
 }
 
 // A list entry with `count: n` is a group: n participants `<id>-01` to `<id>-NN`, even when n is 1.
-// config.ts then checks every entry and the expanded ids for collisions.
+// config.ts then checks every entry and the expanded ids for collisions. The roster's size is
+// checked before any group expands, so a large count is refused without building it.
 function entriesOf(raw: unknown[]): Parsed<Participants> {
+  const size = raw.reduce<number>(
+    (sum, entry) =>
+      sum + (isRecord(entry) && typeof entry.count === "number" ? (posInt(entry.count) ?? 1) : 1),
+    0,
+  );
+  const sizeReason = participantCountReason(size);
+  if (sizeReason) return invalid(sizeReason);
   const entries: unknown[] = [];
   const source: number[] = [];
   for (const [index, entry] of raw.entries()) {

@@ -23,6 +23,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A computer-use participant's `actor.json` records the wait lengths its session used as
   `waitSettings` (`maxWaitMs`, `idleWaitMs`, `settleWaitMs`), and each wait action's title gives
   the length it lasted (`wait 500ms`).
+- `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` tells humanish how many sandboxes your E2B plan runs at
+  once: 20 when unset (E2B Hobby), 100 on Pro. A hosted computer-use or shared-world study runs at
+  most that many desktops at once, counting a provisioned shared world's app sandbox, and its plan
+  records a warning naming the setting when the limit holds participants to waves. An
+  `execution.concurrency` above the limit is refused before any sandbox is created, with the
+  setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
+  row. A local desktop study keeps its own capacity checks (#1737).
 
 ### Changed
 
@@ -36,6 +43,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 - In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
   saved." or why a moment could not open), as opening a participant or the participants grid
   already did (#1728).
+- A computer-use study may have up to 100 participants, up from 16, and a shared-world study is
+  held to the same 100, where it had no limit. The old refusal said every participant runs at once
+  and no setting raises the cap; how many run at once is now the E2B plan's limit above, and
+  `caps.maxUsd` bounds spend. The new refusal says the 100 keeps one run's bundle and Observer view
+  a size humanish supports. A `participants` group whose `count` would pass 100 is refused before
+  it is expanded, and a `--count` above 100 before any participant is built (#1737).
+- A live run of more than 16 participants records its automatic analysis as skipped with
+  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `run`, `study check`, `doctor` and the TUI say before
+  the run that it will not run. One analysis reads at most 16 participants; it would have analyzed
+  the first 16 and reported a partial result. The skip does not fail a run whose study declares
+  no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
+  asked for and did not get (#1737).
+- A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
+  count by the parser. The planner resolves it, from the participants and the E2B plan's limit.
+- A study with real email receiving and more than 64 participants is refused when it is read. Its
+  run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
+  inboxes.
 
 ### Fixed
 
@@ -72,6 +96,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
   longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
   (#1722).
+- A `participants` list entry with a very large `count`, such as `1000000000`, no longer exhausts
+  memory while the study is read. The parser expanded every group before checking the roster's
+  size.
 
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 

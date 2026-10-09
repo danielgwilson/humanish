@@ -169,7 +169,7 @@ describe("planLab", () => {
         createProvider: provider,
       }),
     ).toBe("computer-use HUMANISH_COMPUTER_USE_FANOUT_INVALID");
-    expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe(
+    expect(gap(parsed(cuApp), { cwd: ROOT, count: 101 })).toBe(
       "computer-use HUMANISH_COMPUTER_USE_FANOUT_INVALID",
     );
     // A preview plan holds only a dry run.

@@ -141,7 +141,7 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return `actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
       // Multi-participant fan-out is consumed on this route (`per-lane-worlds`; the shared cua
-      // cross-validation below enforces the 16 cap, the per-participant target gates, and the
+      // cross-validation below enforces the participant bound, the per-participant target gates, and the
       // allowPublicTargets+N>1 rejection for ambiguous one-target fan-out).
       // Loopback by default; an owner may declare a public/preview target via policies.
       const targets = [config.subject.appUrl ?? "", ...declaredTargets(config)];

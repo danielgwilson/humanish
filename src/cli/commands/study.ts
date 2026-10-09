@@ -1,4 +1,4 @@
-import { formatAutomaticAnalysisBudget } from "../../analysis/automatic-config.js";
+import { formatStudyAnalysisBudget } from "../../study/automatic-analysis-plan.js";
 import { resolve } from "node:path";
 import { Command, Option } from "commander";
 import { inspectStudyManifest, listStudyManifests } from "../../study/discover.js";
@@ -214,7 +214,7 @@ function formatStudyCheckHuman(result: StudyPreflightResult): HumanOutput {
       `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
       ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
       `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
-      ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
+      ...(result.analysis ? [formatStudyAnalysisBudget(result.analysis)] : []),
       ...(result.sandbox.created
         ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
         : []),

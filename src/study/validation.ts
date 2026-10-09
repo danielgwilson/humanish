@@ -1,4 +1,5 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
+import { MAX_RECEIVING_INBOXES } from "../comms/receiving-types.js";
 import { waitFieldsReason } from "../actors/computer-use/wait.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
@@ -6,7 +7,7 @@ import { declaredTargets } from "./plan-participants.js";
 import {
   actorResolvesToComputerUse,
   computerUseParticipantCount,
-  MAX_COMPUTER_USE_PARTICIPANTS,
+  participantCountReason,
   registeredComputerUseActors,
   resolveEntryUrl,
   isComputerUseComposition,
@@ -20,8 +21,8 @@ import { participantList } from "./study-fields.js";
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
  * message, or null when valid. The parser enforces it, and runStudyWith checks it again for a config
- * that skipped the parser. It runs rosterStructuralValidationReason (id and device
- * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
+ * that skipped the parser. It runs rosterStructuralValidationReason (roster size, id and device
+ * validity, unique ids) first, then the route-scoped XOR, participant count and policy checks.
  */
 export function computerUseValidationReason(config: StudyConfig): string | null {
   const roster = participantList(config);
@@ -56,9 +57,8 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
     }
   }
   const participantCount = computerUseParticipantCount(config);
-  if (participantCount > MAX_COMPUTER_USE_PARTICIPANTS) {
-    return `A computer-use study runs at most ${MAX_COMPUTER_USE_PARTICIPANTS} participants, and this one declares ${participantCount}. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies.`;
-  }
+  const countReason = participantCountReason(participantCount);
+  if (countReason) return countReason;
   // Public targets fan out into N independent worlds driving the same public app, which is an
   // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
   // when every roster entry declares its own target, making the adapter-owned topology explicit. But when
@@ -77,8 +77,8 @@ export function computerUseValidationReason(config: StudyConfig): string | null 
 }
 
 /**
- * Engine-level path-token validation for configs supplied directly through the
- * public TypeScript/JavaScript API instead of parseStudy.
+ * Engine-level roster validation (its size and its ids' path tokens) for configs supplied directly
+ * through the public TypeScript/JavaScript API instead of parseStudy.
  */
 function rosterStructuralValidationReason(config: StudyConfig): string | null {
   const roster = participantList(config);
@@ -87,6 +87,8 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
     if (!Array.isArray(roster) || roster.length === 0) {
       return "participants must be a non-empty array when set.";
     }
+    const countReason = participantCountReason(roster.length);
+    if (countReason) return countReason;
     for (const [index, entry] of roster.entries()) {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
         return `participants[${index}] must be an object.`;
@@ -228,6 +230,10 @@ export function receivingEmailValidationReason(config: StudyConfig): string | un
   ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
+  const participants = computerUseParticipantCount(config);
+  if (participants > MAX_RECEIVING_INBOXES) {
+    return `Real email receiving leases one inbox per participant, at most ${MAX_RECEIVING_INBOXES} per run, and this study has ${participants} participants. Run at most ${MAX_RECEIVING_INBOXES} participants with a real inbox, or split them across studies.`;
+  }
   if (config.actor?.type === "local-agent") {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
@@ -286,14 +292,14 @@ export function waitLimitValidationReason(config: StudyConfig): string | null {
 
 /**
  * Shared-world participants share one live app, so at least two must be live at once. The
- * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
- * fills an omitted concurrency with the participant count. Both callers check it after their
- * two-participant roster floor, so a one-participant roster gets the roster refusal, never this
- * one.
+ * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0. An omitted
+ * concurrency runs every participant, up to the E2B plan's limit, which the planner checks. Both
+ * callers check it after their two-participant roster floor, so a one-participant roster gets the
+ * roster refusal, never this one.
  */
 function sharedWorldConcurrencyReason(config: StudyConfig): string | null {
-  // Direct library callers skip the parser, so an omitted value defaults here exactly as the
-  // route does: to the participant count. A missing roster reads as 0 and is refused.
+  // An omitted value runs every participant, so it is checked as the participant count. A missing
+  // roster reads as 0 and is refused.
   const participants = participantList(config)?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;

@@ -197,7 +197,8 @@ The rest of this section names keys by their v3 spelling:
   so `--count` does not apply to it, and each entry's `instruction` is the steer;
   an entry's `device` is XOR with a raw `execution.desktop.resolution`. Participant ids
   default `lane-01`..`lane-NN` (`role-01`..`role-NN` for shared-world participants), must be unique, and name per-participant evidence paths
-  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 participants. The other
+  (`actors/<streamId>.json`, `screenshots/<laneId>/`). At most 100 participants, on the
+  shared-world route too. The other
   routes refuse a list (table above). `subject.clone.fanout` is rejected on the
   computer-use, shared-world and scripted routes (declare fan-out with
   `participants`). No current route reads `clone.fanout`;
@@ -216,9 +217,12 @@ The rest of this section names keys by their v3 spelling:
   shape. Ids are checked for collisions after expansion;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
-  simultaneously: independent participants resolve it from the final participant count,
-  after any `--count` override, and the parser fills `concurrency = participantCount`
-  for multi-participant shared-world studies. Total sessions and spend are identical either way; only wall-clock
+  simultaneously: both routes resolve it when they plan, from the final participant count
+  after any `--count` override. On hosted desktops the plan runs at most
+  `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` sandboxes at once (20 when unset; a provisioned
+  shared world's app sandbox counts against it), so a larger roster runs in waves and the plan
+  records a warning naming the setting. A declared value above that limit is refused at plan
+  time. Total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the participant count runs participants in
   waves and emits a warning saying so, because a green waved run is otherwise
   indistinguishable from the all-live run the author meant. Shared-world studies
@@ -1676,7 +1680,7 @@ of it fails.
 | `cuaLaneCount`                                                                                                                                 | the `plan` `StudyEvent`, which lists every participant                                                                                                                                                                                                                                                                                         |
 | `resolveSeatUrl`                                                                                                                               | `parseStudy`, which refuses a participant entry that is not same-origin loopback; build the URL with `new URL(entry, serveUrl)`                                                                                                                                                                                                                |
 | `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`, `externalPublicSharedWorldValidationReason` | `parseStudy`, which returns the same reason                                                                                                                                                                                                                                                                                                    |
-| `MAX_CUA_LANES`                                                                                                                                | none; `parseStudy` refuses a roster of more than 16 participants                                                                                                                                                                                                                                                                               |
+| `MAX_CUA_LANES`                                                                                                                                | none; `parseStudy` refuses a roster of more than 100 participants                                                                                                                                                                                                                                                                              |
 
 ## Product-Adapter Extension Seam
 

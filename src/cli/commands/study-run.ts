@@ -1,11 +1,11 @@
-import {
-  automaticAnalysisBudget,
-  formatAutomaticAnalysisBudget,
-} from "../../analysis/automatic-config.js";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { deriveRunFacts } from "../telemetry.js";
 import { resolveStudyManifest } from "../../study/discover.js";
+import {
+  formatStudyAnalysisBudget,
+  studyAnalysisBudget,
+} from "../../study/automatic-analysis-plan.js";
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
@@ -161,13 +161,13 @@ export async function runStudyCommand(args: {
             `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is code that humanish loaded and ran in this process. Review it as you would any code you run.\n`,
           );
         }
-        const analysisBudget = automaticAnalysisBudget(
+        const analysisBudget = studyAnalysisBudget(
           config.review?.analysis,
           route,
           computerUseParticipantCount(config),
         );
         if (analysisBudget && resolveStudyDryRun(config, args.options.dryRun, true) === false) {
-          args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
+          args.io.writeErr(`${formatStudyAnalysisBudget(analysisBudget)}\n`);
         }
         return scorer === undefined ? {} : { scorer };
       },
