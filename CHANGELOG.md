@@ -8,158 +8,51 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
-
-- `HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest E2B sandbox lifetime the planners allow: 60
-  minutes (E2B's Hobby limit) when unset, up to 1440 for E2B's Pro plan. A study whose sandbox
-  deadline passes it is refused before any sandbox is created, and the refusal gives the setting
-  value that would admit it. `humanish doctor` shows the ceiling on a new `e2b sandbox ceiling` row,
-  and a value outside 1 to 1440 fails that row and refuses hosted studies. Raising it also raises
-  the default session of a computer-use clone or local-tree study without `execution.timeoutMs`,
-  from 20 minutes to as much as 30.
-
 ### Changed
 
-- Before a live start, the `humanish tui` study screen shows what a live run of the study is known
-  to cost: the median of its live runs, its participant caps, or `no participant cap set` for a
-  computer-use study that declares none, and the analysis line `humanish run` prints at a live
-  start. The confirm prompt restates all three, in place of its own `$3 admission estimate limit`
-  wording (#1699).
-- A shared-world study whose persona file has an invalid background now stops with that error
-  before the route checks its keys, as a computer-use study already did.
-- When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
-  concurrency cap below the roster or about participants without an inbox, the `egressAllow`
-  warning now comes after those two.
-- `humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
-  shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
-  value not given from the default size of a new VM, which could change the VM's CPUs or memory.
-- The refusal of `humanish keys set` for a name that is not a provider key now lists
-  `E2B_API_KEY` before `ANTHROPIC_API_KEY`.
-- `NO_UPDATE_NOTIFIER`, the variable the update-notifier package reads, now turns off the update
-  check and its notice, as `HUMANISH_NO_UPDATE_CHECK=1` does. As in update-notifier, any value
-  turns it off, including an empty one, `0` or `false`.
 - In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
   saved." or why a moment could not open), as opening a participant or the participants grid
-  already did.
-- An adapter artifact larger than 32 MiB (state, log, trace or filesystem output) now grades a run
-  `local_only` when nothing in the bundle cites it, and `blocked` when the bundle cites it as
-  evidence. `verify` read and scanned such a file whole before.
-- A computer-use run of a `desktop-cli` study records `subject.source: "desktop-cli"` and the
-  declared product name as `subject.product` in run.json, the JSON result and each participant's
-  `lanes[].subject`. It recorded `app-url` before. Its subject event names the product, where it
-  said `Subject app declared at ` with no URL. `verify`, `observe`, `review` and `export` read
-  both, so runs saved with `app-url` still open.
+  already did (#1728).
 
 ### Fixed
 
-- The `humanish tui` study screen no longer shows `keys ✓` for a study whose file sets
-  `mode: dry-run` on a machine with no keys. It checks the keys a live run of the study needs,
-  whatever its mode, and shows the live plan's refusal for a study that can only run dry, such as
-  `first-run`. `humanish run` runs a file in the mode it sets, so "Start a live run" on a dry-run
-  file armed, restated a spend and then started a dry run. That row now reads `needs mode: live`,
-  and Enter on it names the file to change; Run again on a live run of such a study does the same
-  (#1698).
-- "Run again" on a live run in `humanish tui` asks for a second Enter, as a live start does, and
-  its prompt shows the same cost. It started a live run on one Enter. A dry rerun still starts on
-  one Enter (#1710).
-- The `humanish tui` study screen wraps the study's whole description within the content width.
-  It cut the description to one line of at most 96 columns, even in a wide terminal. A description
-  longer than the rows the terminal leaves it ends in `…`; the studies list keeps its one-line
-  preview (#1700).
-- `c keys and accounts` in `humanish tui` lists each provider key `humanish keys` lists, with the
-  line `humanish keys` prints for it, and Enter on a key asks for its value with hidden input and
-  stores it as `humanish keys set` does. The AgentMail email connection is a row of that screen.
-  `c` opened the AgentMail screen only, so the OpenAI and E2B keys a study needs could not be set
-  there (#1706).
-- A run refused before it was created, such as a live study with no keys, no longer ends its
-  `humanish run` output with `analysis: skipped because the run's evidence could not be read`. The
-  output ends with the refusal and its code. The JSON keeps the `automaticAnalysis` record (#1704).
-- The `subject:` line of `humanish run` names a `desktop-cli` subject by its product and source,
-  as in `subject: humanish (desktop-cli)`. It was empty, as it was for every computer-use study the
-  CLI refused for an option such as `--port 99999`; those now print the study's URL (#1705).
-- In `humanish tui`, the cursor stays on the row the person selected when a refresh reorders the
-  rows: a study that goes live and moves to the top of the studies list, a newer run listed above
-  the selected run, or a run that finishes, where Open in Observer moves up a row and Run again
-  takes its place. The cursor used to keep its row number, so Enter could open a different study
-  or start a new run. Escape back to the studies list also returns to the selected study after the
-  list reordered. When the action the person chose on a run's screen goes away under the cursor
-  (Cancel analysis once the analysis ends, Stop once the run ends), Enter now does nothing and says
-  so; it used to act on the row now there, which could be Run again (#1696).
-- On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
-  punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
-  to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,
-  `PAGEDOWN`, `?`) to xdotool unchanged; xdotool ignored them and exited 0, and the run recorded
-  the keypress as completed. Both the hosted and the local desktop now translate key names
-  through one table, which also gains the shifted punctuation (`?`, `!`, `:` and the rest), so
-  `?` works on the local desktop too. One name joined with `+`, such as `Control+a`, is split into
-  its keys on both desktops. A name outside the table is refused, and the participant is
-  told the action was rejected. A key xdotool still reports as unknown is recorded as a failed
-  desktop command. Hosted findings from earlier runs about arrow keys, Page Up, Page Down or
-  punctuation keys may come from this defect (#1697).
-- When a study's analysis does not complete (refused at admission, failed or cancelled) and the
-  run's own result is ok, the first line of `humanish run` reads
-  `humanish run <study>: live run finished; the analysis did not complete`. It read
-  `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
-  keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
-  `live run failed` (#1673).
-- A run whose received email held a link of 32,768 characters or more no longer fails its analysis
-  with `analysis_validation_failed_unexpected`. The scrub of the run's known values builds one
-  regular expression of them, which Node refuses once a value is that long; it then searches each
-  value directly and replaces the same text (#1646).
-- The known-value scrubs find the base64 of a value of 4 or 5 bytes, such as the code `7439`
-  written `NzQzOQ`, and a 5-byte value inside a longer base64 run. Base64 and hex forms are
-  searched from 6 characters instead of 8. A 4-byte value inside a longer base64 run is still not
-  found, and an identifier that holds a short value's base64, such as `aMTIzNAz` while the code
-  `1234` is registered, loses that part (#1646).
-- Run evidence is checked after its known values are replaced. When the result still holds a value
-  in any reading `verify` uses, as when the marker written for one value spells another, the whole
-  text becomes `[REDACTED_SECRET]` (#1646).
-- Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
-  operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
-- humanish reads at most 32 MiB of one run file, 64 KiB of `.humanish/runs/latest.json` and
-  4 MiB of a project file (study, persona and scenario YAML, `package.json`, `AGENTS.md`, a scorer
-  entry), and refuses a larger file without reading it. It read every file whole before. A file
-  that is there and refused is never taken for a missing one, and the refusal names the file and
-  the limit:
-  - `humanish verify` lists a larger run file under `UNSCANNED_ARTIFACT`, names the limit for a
-    larger `run.json`, `review.json`, `review.md` or `cleanup.json` and for a larger file the
-    bundle cites as evidence, and calls an unfinished run's sandboxes `unconfirmed` when it
-    cannot read `sandbox-receipts.ndjson`.
-  - `humanish reclaim` stops before it kills or writes anything when the `reclaim-receipt.json`
-    an earlier reclaim wrote cannot be read, so its recorded outcomes are kept.
-  - A persona or scenario file that cannot be read stops the study with an error naming it. It
-    used to be skipped for a lower-priority file of the same name, or for the persona id alone.
-  - `--run latest` with a larger pointer and `feedback list` with a larger draft say so. The
-    sandbox id sweep at the end of a run fails, naming each text file it could not read, and so
-    does a run whose `sandbox-receipts.ndjson` is a link or cannot be read: without its ids, the
-    sweep cannot find them in the run's other files.
-  - `export --format bundle` reads each source file within what is left of `--max-bytes` and
-    refuses one that changes as it is read.
-  - A run file swapped for a FIFO while a command reads it no longer leaves the command waiting
-    for a writer (#1669).
-- `humanish verify` lists a run folder it cannot list under `UNSCANNED_ARTIFACT`, and stops its
-  public-safety scan after 10,000 files and folders with the stop listed there too, so neither
-  run grades `share_ready`. A folder it could not list was skipped before. `export --format
-  bundle` already refused a run with more than 10,000 entries (#1669).
-- `humanish comms configure` refuses a local study copy over 1 MiB that it would replace, where
-  it now cannot read the copy whole.
-- A route's kill of the E2B sandbox it created now carries the API key the create used. It carried
-  none, so the E2B SDK used `E2B_API_KEY` from `process.env`: a library caller whose key was only
-  in `RunStudyOptions.env`, or whose `process.env` held another key, got a kill that failed or
-  reached another account, and the sandbox ran until its create-time timeout, which
-  `HUMANISH_E2B_MAX_SANDBOX_MINUTES` can set to 24 hours. The kills, checks and tag search of
-  `humanish reclaim` and of the run's interrupt handler now carry `E2B_API_KEY` and `E2B_DOMAIN`
-  from the environment by name (#1708).
-- Redacting a local path that holds a long run of backslashes takes time linear in the run. A path
-  holding 40,000 backslashes and then a letter took 1.4 s.
-- A terminal run's review, its no-spend statement and the provider line of
-  `terminal-ledgers.json` now give the participant's token estimate that run.json's cost summary
-  gives, for example "Provider tokens (382,595 input, ...) are estimated at 0.37157 USD, the
-  participant's model cost, which caps.maxUsd does not count." They used to call the tokens
-  unpriced. The provider line keeps `usd: null` and adds `estimatedUsd` with source
-  `estimated-token-usage`, so `knownTotalUsd`, the `maxUsd` check and `noSpend.satisfied` are
-  unchanged. Tokens of a declared model with no rate are still unpriced, and the note now names
-  that model (#1703).
+- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
+  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
+  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
+  With another key in `process.env`, the check asked that key's account, and a not-found answer
+  from it would be recorded as confirming the sandbox was gone (#1726).
+- In `humanish tui`, an armed action no longer stays armed after the cursor leaves it. Arming Stop,
+  moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
+  analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
+  after `?`. The five actions that take two Enters (those four and a live start) now follow one
+  rule: the second Enter counts only on the same action of the same screen, within 30 seconds of
+  the first. An Enter less than 400 ms after the one before it is ignored and restarts that wait.
+  The wait used to count from the first Enter, so a held Enter confirmed on every repeat past it;
+  it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
+  longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
+  (#1722).
+
+## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
+
+humanish 0.116.0 delivers a hosted participant's arrow keys and punctuation, lets the operator
+raise the E2B sandbox lifetime, and reads run files within size limits. On hosted E2B desktops,
+`ARROWDOWN`, Page Up, Page Down, `?`, `/` and other names missing from `@e2b/desktop`'s key table
+reached xdotool unchanged, which ignored them while the run recorded the keypress as completed;
+both desktops now translate key names through one table and refuse a name outside it.
+`HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest sandbox lifetime the planners allow, 60 minutes
+when unset and up to 1440 on E2B's Pro plan. A refusal names the value that admits the study, and
+`humanish doctor` shows the ceiling. A route's sandbox kill, and the kills, checks and listings of
+`humanish reclaim`, carry the run's E2B key. `verify` reads at most 32 MiB of a run file and lists
+a larger file, or a run past 10,000 entries, as unscanned, and every contained read tells a missing
+file from one it refused. A run whose analysis did not complete reads `live run finished; the
+analysis did not complete`, a run refused before it was created prints no `analysis:` line, and a
+`desktop-cli` run names its product on the `subject:` line and in run.json. In `humanish tui`, the
+cursor follows the selected row through a refresh, a live start of a `mode: dry-run` file says
+`needs mode: live`, Run again on a live run asks for a second Enter, the confirm prompt restates
+the study's cost, and `c` lists every provider key. `NO_UPDATE_NOTIFIER` turns the update check
+off.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.116.0)
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

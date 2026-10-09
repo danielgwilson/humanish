@@ -1,10 +1,7 @@
 import { toErrorMessage } from "../../evidence/redaction.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
-import {
-  E2BDesktopStartupError,
-  isSandboxNotFoundError,
-  type E2BDesktopModule,
-} from "../../substrates/e2b/sdk.js";
+import type { E2BAccount } from "../../substrates/e2b/connection.js";
+import { E2BDesktopStartupError, isSandboxNotFoundError } from "../../substrates/e2b/sdk.js";
 import { releaseUnavailableDetail } from "../../substrates/e2b/sandbox.js";
 import type { TerminalLedgers } from "./types.js";
 
@@ -21,8 +18,8 @@ import type { TerminalLedgers } from "./types.js";
 export async function teardownSandbox(args: {
   /** The allocation from acquisition; its release kills the exact id it captured. */
   allocation: OwnedDesktopAllocation | undefined;
-  /** For the Sandbox.getInfo(id) re-check only. */
-  sandboxModule: E2BDesktopModule | undefined;
+  /** The account the create used, for the Sandbox.getInfo(id) re-check only. */
+  account: E2BAccount | undefined;
   startupCleanup?: E2BDesktopStartupError["cleanup"];
   /** Why the startup guard's cleanup is unconfirmed, when it knows. */
   startupCleanupDetail?: string | undefined;
@@ -33,7 +30,7 @@ export async function teardownSandbox(args: {
 }): Promise<TerminalLedgers["cleanup"]> {
   const {
     allocation,
-    sandboxModule,
+    account,
     startupCleanup,
     startupCleanupDetail,
     requestTimeoutMs,
@@ -41,7 +38,7 @@ export async function teardownSandbox(args: {
     recordLifecycle,
     warnings,
   } = args;
-  if (allocation === undefined || !sandboxModule) {
+  if (allocation === undefined || account === undefined) {
     // create() can reject after its constructor acquired a handle. The default loader retains
     // that authority and reclaims it before rejecting; the route itself never receives its ID.
     if (startupCleanup === "killed" || startupCleanup === "already_gone") {
@@ -96,7 +93,7 @@ export async function teardownSandbox(args: {
       ? "kill(id) returned true (found and killed)"
       : "kill(id) found the exact sandbox already gone (404)";
 
-  if (typeof sandboxModule.Sandbox.getInfo !== "function") {
+  if (account.getInfo === undefined) {
     recordLifecycle(
       "terminal-lab.cleanup.killed",
       `Sandbox ${sandboxId} reclaimed: ${killNote}; the installed SDK has no getInfo(id) to re-verify, so kill(id)'s own result is the proof.`,
@@ -109,7 +106,7 @@ export async function teardownSandbox(args: {
   }
 
   try {
-    const info = await sandboxModule.Sandbox.getInfo(sandboxId, { requestTimeoutMs });
+    const info = await account.getInfo(sandboxId, { requestTimeoutMs });
     const state = info.state ?? "unknown";
     recordLifecycle(
       "terminal-lab.cleanup.unconfirmed",

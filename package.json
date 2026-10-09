@@ -1,6 +1,6 @@
 {
   "name": "humanish",
-  "version": "0.115.0",
+  "version": "0.116.0",
   "description": "Synthetic user research for apps, CLIs, and agent-facing product flows.",
   "keywords": [
     "cli",
@@ -91,7 +91,7 @@
     "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "node scripts/check-lint-cap.mjs --max-warnings=427",
+    "lint": "node scripts/check-lint-cap.mjs --max-warnings=426",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs",
     "vocabulary:check": "tsx scripts/check-retired-words.ts",
