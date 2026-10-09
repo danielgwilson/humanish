@@ -194,6 +194,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-09 | 0.117.0, src/ as of 882d47f6 | `neutral` | `openai-computer-use` | 3            | 8/15          | 7/15            | 0 and 0             | $6.04           | [summary](2026-10-09-0.117.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.118.0, src/ as of d183d1ae | `neutral` | `openai-computer-use` | 3            | 6/15          | 6/15            | 0 and 0             | $5.38           | [summary](2026-10-09-0.118.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.119.0, src/ as of 6405a7c0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 10/15           | 0 and 0             | $6.12           | [summary](2026-10-09-0.119.0-neutral-openai-computer-use.md) |
+| 2026-10-09 | 0.120.0, src/ as of cf75cc6f | `neutral` | `openai-computer-use` | 3            | 12/15         | 11/15           | 0 and 0             | $5.87           | [summary](2026-10-09-0.120.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -337,6 +338,22 @@ participants. Three runs per arm cannot separate this rise from the same noise. 
 release commit 53dbf23e. The release branch then took the fix that redacts study warnings before the
 run records them; it changes what the bundle records and nothing a participant receives or does, so
 the run stands for 0.119.0.
+
+The 0.120.0 run took the analysis cap from the dry run's `admittedCostUsd`, $1.21; bills were $0.64
+to $0.93. The bench skipped the clean 3 analysis as `skipped_budget`: spend stood at $5.87 after
+that run, and its analysis could have passed the $7 cap. The analysis column therefore covers 3
+planted and 2 clean participants. Every participant ran threaded, ended on its own with
+`goal_satisfied` and gave 6 impressions. Against 0.119.0, D1 and D5 account for the rise: all three
+planted reports name each, where two did on 0.119.0, and all three planted analyses name D1. Read
+from the click coordinates in the traces, every planted participant committed its first edit with
+the row's Save button (3 of 3, as on 0.119.0) and pressed Clear completed after checking a task (3
+of 3, against 2 of 3). D3 and D4 stayed 3/3 for reports and analyses. One unresolved line is on the
+planted arm: planted 2's analysis finding "Edited task text reverted after Save and filter changes"
+says the revised wording stayed in the editor after Save and returned to the original after the
+filters changed, which is D5. Read by hand, analysis recall is 12/15, and report recall stays 12/15.
+No planted participant typed more than 28 characters in one action, so none met D2. Five of six
+reports say the participant saw no terminal output, from the persona's `clear_terminal_output`
+trait. Three runs per arm cannot separate this rise from the run-to-run variation described above.
 
 ## What these numbers are not
 
