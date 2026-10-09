@@ -678,6 +678,14 @@ async function seekStudy(page, milliseconds) {
   );
   await page.getByRole("button", { name: "Play study", exact: true }).waitFor();
 }
+/** Whether the first card on the grid page shows inside the scrolling content area. */
+async function firstCardInView(page) {
+  return page.evaluate(() => {
+    const card = document.querySelector(".gallery .card").getBoundingClientRect();
+    const content = document.querySelector(".content").getBoundingClientRect();
+    return card.top >= content.top && card.top < content.bottom;
+  });
+}
 async function readyStudyCard(page, id, source) {
   const card = studyCard(page, id);
   // A retained decoded image stays mounted while an offscreen replacement is
@@ -2680,6 +2688,21 @@ try {
     record.checks.pinned = await page.locator(".card").first().getAttribute("data-stream-id");
     assert.equal(record.checks.pinned, "lane-40");
   });
+  await runCase(
+    "grid-pages-phone",
+    { phone: true, touch: true, laneCount: 80 },
+    async ({ page, record, snap }) => {
+      // The pager is under the 36th card, a long scroll at 390px.
+      await page.getByRole("button", { name: "Next page", exact: true }).click();
+      await page.getByText("Showing 37–72 of 80 participants", { exact: true }).waitFor();
+      assert(await firstCardInView(page), "Next page opened away from its first participant");
+      assert.equal(await page.locator(".card").first().getAttribute("data-stream-id"), "lane-37");
+      await snap("next-page-first-card");
+      await page.getByRole("button", { name: "Previous page", exact: true }).click();
+      assert(await firstCardInView(page), "Previous page opened away from its first participant");
+      record.checks.pageTurnShowsFirstCard = true;
+    },
+  );
   await runCase("saved-moments", {}, async ({ page, record, snap }) => {
     await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2`);
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();

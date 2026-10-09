@@ -18,8 +18,14 @@ import { StudyGrid } from "./components/study-grid";
 import { StudyPlayback } from "./components/study-playback";
 import "./styles/study-playback.css";
 import { ParticipantPager, Topbar } from "./components/topbar";
-import { GridOptions, type GridFilters } from "./components/grid-options";
+import { GridOptions, GridStatusSummary } from "./components/grid-options";
 import { ShareStatus } from "./components/study-details";
+import {
+  filterParticipants,
+  isGridFilters,
+  NO_FILTERS,
+  type GridFilters,
+} from "./lib/grid-filters";
 import { isActiveStream, isServedOrigin } from "./lib/live";
 import type { ObserverData } from "./lib/observer-data";
 import { participantLabels } from "./lib/participant-label";
@@ -34,16 +40,6 @@ import { sidebarClosedByUrl, useAutoplay } from "./lib/autoplay";
 import { useObserverNavigation } from "./lib/use-observer-navigation";
 import { useParticipantPlayer } from "./lib/use-participant-player";
 import { useSavedMoments } from "./lib/use-saved-moments";
-
-const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
-const isFilters = (v: unknown): v is GridFilters =>
-  !!v &&
-  typeof v === "object" &&
-  ["status", "kind", "query"].every(
-    (k) =>
-      typeof (v as Record<string, unknown>)[k] === "string" &&
-      ((v as Record<string, string>)[k]?.length ?? 0) < 256,
-  );
 
 export function App({
   data: initialData,
@@ -74,7 +70,7 @@ export function App({
   const hasFindingsView =
     !!report || !!analysis.automatic || runNotes.notes.length > 0 || runNotes.unreadable;
   const [density, setDensity] = usePreference("density", "comfortable", isDensity);
-  const [filters, setFilters] = usePreference("filters", NO_FILTERS, isFilters);
+  const [filters, setFilters] = usePreference("filters", NO_FILTERS, isGridFilters);
   const [pinnedByRun, setPinnedByRun] = usePreference(
     `pins-${initialData?.run.runId ?? "empty"}`,
     [] as string[],
@@ -180,19 +176,12 @@ export function App({
     (participant) => participant.streamId === selected?.id,
   );
   const labels = participantLabels(streams);
-  const visible = streams.filter((s) => {
-    if (
-      filters.status === "__active"
-        ? !isActiveStream(s)
-        : filters.status && s.statusLabel !== filters.status
-    )
-      return false;
-    if (filters.kind && s.kindLabel !== filters.kind) return false;
-    return `${labels.get(s.id)} ${s.label} ${s.id} ${s.laneId ?? ""} ${s.sim.personaId}`
-      .toLowerCase()
-      .replace(/[-_]+/g, " ")
-      .includes(filters.query.toLowerCase().replace(/[-_]+/g, " "));
-  });
+  const visible = filterParticipants(streams, filters, labels);
+  // A changed filter shows its first page; the page the old filter was on may not exist.
+  const changeFilters = (next: GridFilters) => {
+    setFilters(next);
+    setGridPage({ runId: data.run.runId, page: 0 });
+  };
   const togglePin = (id: string) =>
     setPinnedByRun(
       pinnedByRun.includes(id)
@@ -290,11 +279,14 @@ export function App({
           reviewing={studyPlayback.reviewing}
           page={gridPage.runId === data.run.runId ? gridPage.page : 0}
           onPageChange={(page) => setGridPage({ runId: data.run.runId, page })}
+          statusSummary={
+            <GridStatusSummary data={data} filters={filters} onFilters={changeFilters} />
+          }
           tools={
             <GridOptions
               data={data}
               filters={filters}
-              onFilters={setFilters}
+              onFilters={changeFilters}
               density={density}
               onDensity={setDensity}
               onMonitor={() => navigation.monitor(true)}
