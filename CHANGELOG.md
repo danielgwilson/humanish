@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
+  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
+  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
+  With another key in `process.env`, the check asked that key's account, and a not-found answer
+  from it would be recorded as confirming the sandbox was gone (#1726).
+
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 
 humanish 0.116.0 delivers a hosted participant's arrow keys and punctuation, lets the operator

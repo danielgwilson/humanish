@@ -21,11 +21,12 @@ import {
   type DesktopResourceObservation,
 } from "../../substrates/e2b/desktop-resources.js";
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
+import { e2bAccount, type E2BAccount } from "../../substrates/e2b/connection.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import {
   E2BDesktopStartupError,
   loadE2BDesktopModule,
-  type E2BDesktopModule,
+  type E2BDesktopCreateOptions,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/sdk.js";
 import { shellQuote } from "../../substrates/shell.js";
@@ -93,7 +94,7 @@ export class LiveTerminalSandbox {
   private readonly wallClockMs: number;
   private readonly sandboxTimeoutMs: number;
   private sandbox: E2BDesktopSandbox | undefined;
-  private module: E2BDesktopModule | undefined;
+  private account: E2BAccount | undefined;
   private allocation: OwnedDesktopAllocation | undefined;
   private startupCleanup: E2BDesktopStartupError["cleanup"] | undefined;
   private startupCleanupDetail: string | undefined;
@@ -119,7 +120,6 @@ export class LiveTerminalSandbox {
     // Declared egress allowlist, or undefined for the historical unrestricted default.
     const egressAllow = plan.egressAllow;
     const sandboxModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
-    this.module = sandboxModule;
     await validatePreparedRunArtifactPaths(runPaths);
     // No sandbox-global env in either mode. In openai-egress, only this host-side SDK request
     // carries the real runtime key; participant commands receive an inert placeholder. The proxy
@@ -132,16 +132,19 @@ export class LiveTerminalSandbox {
       runtimeEnv.mode === "openai-egress"
         ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
         : routing;
+    const options: E2BDesktopCreateOptions = {
+      apiKey: e2bApiKey,
+      requestTimeoutMs,
+      timeoutMs: sandboxTimeoutMs,
+      metadata,
+      ...(network === undefined ? {} : { network }),
+      lifecycle: { onTimeout: "kill" },
+    };
+    // Teardown's check by id reaches the account the create used, whatever process.env names.
+    this.account = e2bAccount(sandboxModule, options);
     const acquired = await acquireE2BShellSandbox({
       module: sandboxModule,
-      options: {
-        apiKey: e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs: sandboxTimeoutMs,
-        metadata,
-        ...(network === undefined ? {} : { network }),
-        lifecycle: { onTimeout: "kill" },
-      },
+      options,
       retry: {
         // A failed first attempt may have allocated a sandbox whose id never reached this run;
         // its own kill-on-timeout reclaims it.
@@ -535,7 +538,7 @@ export class LiveTerminalSandbox {
     // --- Proven cleanup, by exact id, never Sandbox.list. ---
     this.cleanup = await teardownSandbox({
       allocation: this.allocation,
-      sandboxModule: this.module,
+      account: this.account,
       ...(this.startupCleanup === undefined ? {} : { startupCleanup: this.startupCleanup }),
       startupCleanupDetail: this.startupCleanupDetail,
       requestTimeoutMs,
