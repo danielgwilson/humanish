@@ -8,34 +8,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.120.0: Analysis completes under Bun, runs past 16 participants print a bounded list, Observer counts participants by status (2026-10-09)
 
-- The Observer's participant grid counts the participants by status in a row under the run's
-  tally, when they ended more than one way. Pressing a count shows only those participants, and
-  pressing it again shows everyone. The view options gain a Persona filter when the participants
-  have more than one persona (#1737).
+humanish 0.120.0 completes an analysis run from a Bun process, prints a run of more than 16
+participants in a bounded number of lines, and counts and filters the Observer's participants by
+status and persona. Under Bun, `undici` is Bun's built-in module, whose `Agent` has no `destroy()`,
+and the analysis provider's teardown after each request threw a `TypeError` that replaced the
+request's result, so every automatic analysis from a Bun process ended `unknown` with
+`AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN` and kept no receipt. A failing teardown is now ignored.
+`humanish watch` and `humanish run` print a computer-use run of more than 16 participants as one
+line counting them by status, up to 16 participants that did not pass, and a `not listed:` line.
+Each participant line holds its closing message on one line cut at 160 characters, and a warning
+printed the same for each participant prints once. The Observer's participant grid counts the
+participants by status when they ended more than one way, and pressing a count filters the grid.
+Its view options gain a Persona filter, a filter change returns to the first page, and Next page
+and Previous page open the new page at its first participant.
 
-### Changed
-
-- `humanish watch` and `humanish run` print a computer-use run of more than 16 participants in
-  a fixed number of lines: one line counting the participants by status, up to 16 participants
-  that did not pass, and how many it did not list. A run of 16 or fewer still lists every
-  participant. Each participant's line holds its closing message on one line, cut at 160
-  characters, where it used to print the whole message. A warning repeated for each participant
-  prints once (#1737).
-- In the Observer, a changed grid filter shows the first page of participants (#1737).
-
-### Fixed
-
-- An analysis run from a Bun process completes. Under Bun, `undici` is Bun's built-in module,
-  whose `Agent` has no `destroy()`, and the provider's teardown after each request threw a
-  `TypeError` that replaced the request's result. Every automatic analysis then ended `unknown`
-  with `AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN`, even when the model answered, and kept no receipt for
-  requests already sent. A failing teardown is now ignored (#1752).
-- In the Observer, Next page and Previous page under the participant grid now open the new page
-  at its first participant. The grid kept its scroll position, so turning the page from the
-  bottom of 36 participants showed the end of the next page, about 10,000 px past its first
-  participant on a phone (#1737).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.120.0)
 
 ## 0.119.0: Participants arrive over time, one analysis past 16 participants in cohorts, late starts skipped past the budget, study warnings redacted (2026-10-09)
 
