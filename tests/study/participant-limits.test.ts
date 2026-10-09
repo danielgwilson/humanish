@@ -190,14 +190,15 @@ describe("how many shared-world participants run at once", () => {
 });
 
 describe("automatic analysis of a study over 16 participants", () => {
-  it("is planned as skipped for 17 participants and planned to run for 16", () => {
-    const seventeen = planned(plan(study("cuAppUrl", participants(17))));
-    expect(seventeen.analysis?.skip).toBe("AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT");
-    const sixteen = planned(plan(study("cuAppUrl", participants(16))));
-    expect(sixteen.analysis?.skip).toBeUndefined();
+  it("is planned to run for 17 participants, as for 16", () => {
+    for (const count of [16, 17]) {
+      const analysis = planned(plan(study("cuAppUrl", participants(count)))).analysis;
+      expect(analysis?.config.model).toBe("gpt-6-astra");
+      expect(analysis?.skip).toBeUndefined();
+    }
   });
 
-  it("says in study check's analysis line that it will not run, and why", async () => {
+  it("says in study check's analysis line that 17 participants are analysed in two cohorts", async () => {
     const cwd = await makeTestTempDir("humanish-participant-limits-");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
@@ -205,7 +206,7 @@ describe("automatic analysis of a study over 16 participants", () => {
       stringify(lab("cuAppUrl", { mode: "live", ...participants(17) })),
     );
     const check = await runStudyPreflight({ cwd, study: "crowd", env: {} });
-    expect(check.analysis?.expectedCostUsd).toBeUndefined();
+    expect(check.analysis?.expectedCostUsd).toBeDefined();
     let stdout = "";
     const program = createProgram({
       writeOut: (text) => {
@@ -216,9 +217,7 @@ describe("automatic analysis of a study over 16 participants", () => {
     });
     await program.parseAsync(["node", "humanish", "study", "check", "crowd", "--cwd", cwd]);
     const line = stdout.split("\n").find((text) => text.startsWith("After live runs:"));
-    expect(line).toContain("will not run");
-    expect(line).toContain("17 participants");
-    expect(line).toContain("at most 16");
+    expect(line).toMatch(/for 17 participants, analysed in 2 cohorts of at most 16/);
   });
 });
 

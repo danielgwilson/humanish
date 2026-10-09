@@ -31,12 +31,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   `caps.maxUsd` bounds spend. The new refusal says the 100 keeps one run's bundle and Observer view
   a size humanish supports. A `participants` group whose `count` would pass 100 is refused before
   it is expanded, and a `--count` above 100 before any participant is built (#1737).
-- A live run of more than 16 participants records its automatic analysis as skipped with
-  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `run`, `study check`, `doctor` and the TUI say before
-  the run that it will not run. One analysis reads at most 16 participants; it would have analyzed
-  the first 16 and reported a partial result. The skip does not fail a run whose study declares
-  no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
-  asked for and did not get (#1737).
 - A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
   count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
   and a declared value above the participant count is clamped to it, as on computer use.
@@ -48,7 +42,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   and one more request merges the cohort reports into the run's one report; before, the packet
   held the first 16 participants and listed the rest as omitted. Admission, the expected cost, the
   worst case and the `study check` range cover every request, and the plan's analysis line names
-  the cohorts. `analyze` prints an `Analysis requesting` line for each request. A cohort or merge
+  the cohorts. A default analysis of 17 participants is expected to cost $4.60 to $10.69, over the
+  default $3 cap, so it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless
+  `review.analysis.maxCostUsd` admits it. `analyze` prints an `Analysis requesting` line for each request. A cohort or merge
   request that fails fails the attempt with no findings and a warning, and its usage counts every
   request sent. The `humanish.study-analysis.v1` schema is unchanged; its stored limits grew to
   6,400 evidence items, 320 captures and 16 MiB (#1737).

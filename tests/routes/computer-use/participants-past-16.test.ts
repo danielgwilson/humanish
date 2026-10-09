@@ -1,6 +1,6 @@
 // A live computer-use run of more than 16 participants on fake desktops ($0, real orchestration):
-// it finishes, runs no more desktops at once than the E2B plan allows, and records its automatic
-// analysis as skipped because one analysis reads at most 16 participants.
+// it finishes, runs no more desktops at once than the E2B plan allows, and requests the automatic
+// analysis of every participant.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -11,9 +11,8 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
-import { analysisOutcomeText, automaticAnalysisEnvelope } from "../../../src/cli/io.js";
+import type { runAutomaticAnalysis } from "../../../src/analysis/automatic.js";
 import { runStudyWith } from "../../../src/run-study.js";
-import { studyAnalysisSucceeded } from "../../../src/study/automatic-analysis-plan.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import {
@@ -65,9 +64,12 @@ describe("a live computer-use run of more than 16 participants", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("finishes ok and records its analysis as skipped for its participant count", async () => {
+  it("finishes ok and requests the analysis of all 17 participants", async () => {
     const handle = makeFanoutModule();
-    const analyze = vi.fn();
+    const analyze = vi.fn<typeof runAutomaticAnalysis>(async () => ({
+      state: "complete",
+      reason: null,
+    }));
     const outcome = await runStudyWith(
       crowd(17),
       { cwd, env: KEYS },
@@ -78,30 +80,8 @@ describe("a live computer-use run of more than 16 participants", () => {
     expect(result.ok).toBe(true);
     expect(result.laneSummary?.passed).toBe(17);
     expect(handle.killed).toHaveLength(17);
-    expect(analyze).not.toHaveBeenCalled();
-    expect(result.automaticAnalysis).toEqual({
-      state: "skipped",
-      reason: "AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT",
-    });
-    // The CLI prints the reason in words and exits 0: the study did not ask for analysis.
-    expect(analysisOutcomeText(result.automaticAnalysis!)).toBe(
-      "not run, because the study has more than 16 participants and automatic analysis reads at most 16",
-    );
-    expect(studyAnalysisSucceeded(result)).toBe(true);
-    expect(automaticAnalysisEnvelope(result).ok).toBe(true);
-  });
-
-  it("fails the exit rule when the study asked for the analysis it skipped", async () => {
-    const handle = makeFanoutModule();
-    const outcome = await runStudyWith(
-      crowd(17, { maxCostUsd: 5 }),
-      { cwd, env: KEYS },
-      { ...seams(handle), analysis: { run: vi.fn() } },
-    );
-    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
-    expect(outcome.result.ok).toBe(true);
-    expect(outcome.result.automaticAnalysis?.reason).toBe("AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT");
-    expect(studyAnalysisSucceeded(outcome.result)).toBe(false);
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(result.automaticAnalysis).toMatchObject({ state: "complete" });
   });
 
   it("runs 24 participants 20 at a time by default and all at once when the plan allows 100", async () => {
