@@ -23,6 +23,7 @@ import {
 } from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
+import { plural } from "../run/text.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
 
 /** Public-safety and evidence-reference findings stop at this many per list. */
@@ -33,6 +34,56 @@ export const MAX_REPORTED_FINDINGS = 50;
  * refuses a run with more, so the scan never passes a run whose files it did not all read.
  */
 export const MAX_RUN_ENTRIES = 10_000;
+
+/** What the public-safety scan did not read. A run with any of it cannot grade share_ready. */
+export interface UnscannedArtifacts {
+  /** Run files it could not read as text, by run-relative path. */
+  readonly files: string[];
+  /** Folders it could not list, by run-relative path ("" is the run folder). */
+  readonly unlistedFolders: string[];
+  /** The folder it was listing when it reached MAX_RUN_ENTRIES. It read nothing listed after. */
+  stoppedIn?: string;
+}
+
+// The UNSCANNED_ARTIFACT reason names this many paths of each kind and counts the rest.
+const MAX_LISTED_UNSCANNED = 10;
+
+/**
+ * The UNSCANNED_ARTIFACT reason: the files the scan could not read, the folders it could not list
+ * and where it stopped, each in its own sentence. Undefined when the scan read everything.
+ */
+export function unscannedMessage(unscanned: UnscannedArtifacts): string | undefined {
+  const files = [...new Set(unscanned.files)].sort();
+  const folders = [...new Set(unscanned.unlistedFolders)].sort().map(folderName);
+  const sentences: string[] = [];
+  if (files.length > 0)
+    sentences.push(
+      `The public-safety scan cannot read ${plural(files.length, "file")} as text that ${files.length === 1 ? "is not a stream screenshot under screenshots/ or a registered recording" : "are not stream screenshots under screenshots/ or registered recordings"}: ${listed(files)}.`,
+    );
+  if (folders.length > 0)
+    sentences.push(
+      `The public-safety scan could not list ${plural(folders.length, "folder")}, so it read none of the files in ${folders.length === 1 ? "it" : "them"}: ${listed(folders)}.`,
+    );
+  if (unscanned.stoppedIn !== undefined)
+    sentences.push(
+      `The public-safety scan stopped at its limit of ${MAX_RUN_ENTRIES} files and folders while listing ${folderName(unscanned.stoppedIn)}, so it read nothing listed after that point.`,
+    );
+  if (sentences.length === 0) return undefined;
+  const onlyFiles = folders.length === 0 && unscanned.stoppedIn === undefined;
+  sentences.push(
+    onlyFiles ? "Review them before sharing." : "Review the run folder before sharing.",
+  );
+  return sentences.join(" ");
+}
+
+function folderName(relativeDirectory: string): string {
+  return relativeDirectory === "" ? "the run folder" : `${relativeDirectory}/`;
+}
+
+function listed(paths: readonly string[]): string {
+  const more = paths.length - MAX_LISTED_UNSCANNED;
+  return `${paths.slice(0, MAX_LISTED_UNSCANNED).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
 
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -382,15 +433,16 @@ interface RegisteredStreamMedia {
 /**
  * Scans every run file for secret and path patterns and returns the findings. A file that is not
  * registered stream media and that the scan cannot read as text (readPlainText), cannot read at
- * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned`, so the caller can keep
- * the run from grading share_ready. So does a directory it cannot list, and the rest of the run
- * after MAX_RUN_ENTRIES entries.
+ * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned.files`, so the caller can
+ * keep the run from grading share_ready. A directory it cannot list goes to
+ * `unscanned.unlistedFolders`, and the directory it was listing when it passed MAX_RUN_ENTRIES
+ * entries is `unscanned.stoppedIn`.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
   derivedFindings: string[],
   media: RegisteredStreamMedia,
-  unscanned: string[],
+  unscanned: UnscannedArtifacts,
 ): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
@@ -407,7 +459,7 @@ async function scanRunPublicSafetyDirectory(
   findings: string[],
   derivedFindings: string[],
   media: RegisteredStreamMedia,
-  unscanned: string[],
+  unscanned: UnscannedArtifacts,
   walk: { entries: number },
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
@@ -421,16 +473,14 @@ async function scanRunPublicSafetyDirectory(
     : runPaths.physicalRunRoot;
   const entries = await readdir(current).catch(() => null);
   if (entries === null) {
-    unscanned.push(`${relativeDirectory || "."}/ (could not be listed)`);
+    unscanned.unlistedFolders.push(relativeDirectory);
     return;
   }
   for (const entryName of entries) {
     walk.entries += 1;
     if (walk.entries > MAX_RUN_ENTRIES) {
-      if (walk.entries === MAX_RUN_ENTRIES + 1)
-        unscanned.push(
-          `${relativeDirectory || "."}/ (the scan stops after ${MAX_RUN_ENTRIES} entries)`,
-        );
+      // Every directory the walk returns through comes here once more; the first one stopped it.
+      unscanned.stoppedIn ??= relativeDirectory;
       return;
     }
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
@@ -495,7 +545,7 @@ async function scanRunPublicSafetyDirectory(
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath).catch(() => null);
     const decoded = bytes === null ? undefined : readPlainText(bytes);
     if (decoded === undefined || !decoded.ok) {
-      unscanned.push(relativePath);
+      unscanned.files.push(relativePath);
       continue;
     }
     // A receipt's id in any other file, or a raw id at a sandbox-id key, which an older run or
@@ -514,7 +564,7 @@ async function scanRunPublicSafetyDirectory(
     if (scan.sensitive) {
       selectedFindings.push(`sensitive text ${relativePath}`);
     } else if (scan.opaque) {
-      unscanned.push(relativePath);
+      unscanned.files.push(relativePath);
     }
   }
 }
