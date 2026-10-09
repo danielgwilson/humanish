@@ -1,5 +1,5 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { CUA_WAIT_LIMITS, isMaxWaitMs } from "../actors/computer-use/wait.js";
+import { waitFieldsReason } from "../actors/computer-use/wait.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
@@ -277,13 +277,11 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
 }
 
 /**
- * Refuse a wait limit out of range. On a route whose participants take no wait actions the field
- * is inert (warnings.ts).
+ * Refuse a wait field out of range, or an idle wait longer than the longest wait. On a route whose
+ * participants take no wait actions the fields are inert (warnings.ts).
  */
 export function waitLimitValidationReason(config: StudyConfig): string | null {
-  const maxWaitMs = config.actor?.maxWaitMs;
-  if (maxWaitMs === undefined || isMaxWaitMs(maxWaitMs)) return null;
-  return `actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs}.`;
+  return config.actor === undefined ? null : waitFieldsReason(config.actor, "actor.");
 }
 
 /**

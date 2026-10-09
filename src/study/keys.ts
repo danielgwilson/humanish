@@ -124,6 +124,7 @@ export const ACTOR = {
   model: true,
   maxOutputTokens: true,
   maxWaitMs: true,
+  idleWaitMs: true,
   localAgent: true,
   reasoningEffort: true,
   stopWhen: STOP_WHEN,

@@ -31,6 +31,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 2,
           "actions": 2,
@@ -169,6 +174,11 @@
         "reason": "gave up: 3 consecutive turns that repeated a recent action on an unchanged UI state",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 4,
@@ -388,6 +398,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 2,
           "actions": 1,
@@ -522,6 +537,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 1,
@@ -625,6 +645,11 @@
         "reason": "computer-use loop error: pointer driver exploded",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -730,6 +755,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 0,
           "actions": 0,
@@ -824,6 +854,11 @@
         "reason": "desktop executor error: invalid_response; disposition: outcome_uncertain",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -941,6 +976,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -1045,6 +1085,11 @@
         "reason": "Reached the goal",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,

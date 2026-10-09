@@ -443,6 +443,16 @@ export interface ActorConversation {
   }>;
 }
 
+/** How long a computer-use participant's waits lasted, in milliseconds. */
+export interface ActorWaitSettings {
+  /** The longest one wait action lasts (actor.maxWaitMs). A longer wait is shortened to it. */
+  maxWaitMs: number;
+  /** A wait with no duration in a turn that only waits or takes screenshots (actor.idleWaitMs). */
+  idleWaitMs: number;
+  /** A wait with no duration after the participant acts in the same turn. */
+  settleWaitMs: number;
+}
+
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
   provider: string;
@@ -485,6 +495,11 @@ export interface ActorTrace {
    * half its sample description missing, and two such traces cannot be compared.
    */
   modelSettings?: { reasoningEffort: string; maxOutputTokens?: number };
+  /**
+   * Additive + optional: the wait lengths the computer-use loop applied, defaults included. Absent
+   * on other producers and on bundles written before it was recorded.
+   */
+  waitSettings?: ActorWaitSettings;
   counts: Record<string, number>;
   /**
    * Additive + optional affordance record (humanish.affordance-use.v1): which kind of route

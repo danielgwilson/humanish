@@ -72,3 +72,47 @@ describe("actor.maxWaitMs", () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe("actor.idleWaitMs", () => {
+  const withIdle = (base: BaseName, actor: Record<string, unknown>) =>
+    parseStudy(lab(base, {}, actor));
+
+  it("plans the study's idle wait for each computer-use and shared-world participant", () => {
+    const cu = withIdle("cuAppUrl", { idleWaitMs: 15_000 });
+    const shared = withIdle("sharedProvisioned", { idleWaitMs: 15_000 });
+    expect(cu.ok && shared.ok).toBe(true);
+    if (!cu.ok || !shared.ok) return;
+    expect(computerUseParticipants(cu.config, 2).map((each) => each.limits.idleWaitMs)).toEqual([
+      15_000, 15_000,
+    ]);
+    expect(
+      sharedWorldParticipants(shared.config).participants.map((each) => each.limits.idleWaitMs),
+    ).toEqual([15_000, 15_000]);
+  });
+
+  it("accepts an idle wait as long as the study's longest wait", () => {
+    const result = withIdle("cuAppUrl", { idleWaitMs: 45_000, maxWaitMs: 45_000 });
+    expect(result.ok).toBe(true);
+  });
+
+  it("refuses an idle wait longer than the study's longest wait", () => {
+    const result = withIdle("cuAppUrl", { idleWaitMs: 60_000, maxWaitMs: 45_000 });
+    expect(result.ok).toBe(false);
+    if (!result.ok)
+      expect(result.error.message).toBe(
+        "actor.idleWaitMs (60000) is longer than actor.maxWaitMs (45000), the longest one wait action lasts. Lower actor.idleWaitMs or raise actor.maxWaitMs.",
+      );
+  });
+
+  it.each([0, 999, 600_001, 1.5, -1, null, "10000"])("refuses %s", (idleWaitMs) => {
+    const result = withIdle("cuAppUrl", { idleWaitMs });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toContain("actor.idleWaitMs");
+  });
+
+  it("refuses it on a terminal study, whose participants take no wait actions", () => {
+    const result = withIdle("terminal", { idleWaitMs: 15_000 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toMatch(/does not read actor\.idleWaitMs/);
+  });
+});

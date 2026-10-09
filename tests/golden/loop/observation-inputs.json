@@ -31,6 +31,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 30000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 3,
           "actions": 2,
@@ -194,6 +199,11 @@
         "modelSettings": {
           "reasoningEffort": "low",
           "maxOutputTokens": 2048
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 5,
@@ -361,6 +371,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -464,6 +479,11 @@
         "reason": "Finished with [scrubbed].",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 2,

@@ -377,6 +377,13 @@ export interface StudyActor {
    */
   maxWaitMs?: number;
   /**
+   * Computer-use and shared-world: how long a `wait` that names no duration lasts when the
+   * participant's turn only waits or takes screenshots, in whole milliseconds from 1000 to 600000
+   * and no longer than maxWaitMs. Default 5000. After an action in the same turn such a wait lasts
+   * 500 ms. OpenAI's computer-use `wait` never names a duration.
+   */
+  idleWaitMs?: number;
+  /**
    * `local-agent` only: which locally signed-in coding agent is the brain. Absent = codex.
    *
    * A separate field from `model` on purpose. The first cut of this route overloaded `model` to

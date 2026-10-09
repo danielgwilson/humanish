@@ -188,14 +188,7 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     expect(calls).toEqual([{ method: "wait", args: [1234] }]);
   });
 
-  it("maps wait without ms to wait(defaultWaitMs)", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop, { defaultWaitMs: 777 });
-    await executor.execute({ kind: "wait" });
-    expect(calls).toEqual([{ method: "wait", args: [777] }]);
-  });
-
-  it("uses a 500ms default wait when no option is given", async () => {
+  it("waits half a second for a wait that names no duration", async () => {
     const calls = await run({ kind: "wait" });
     expect(calls).toEqual([{ method: "wait", args: [500] }]);
   });
