@@ -4,7 +4,11 @@
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
-import { isSharedWorldComposition, participantIdAt } from "./routing.js";
+import {
+  computerUseParticipantCount,
+  isSharedWorldComposition,
+  participantIdAt,
+} from "./routing.js";
 import type { StudyTask } from "./tasks.js";
 import type { StudyParticipantEntry, StudyConfig } from "./types.js";
 import {
@@ -138,10 +142,7 @@ export function computerUseParticipants(
 ): ComputerUseParticipant[] {
   const actor = config.actor;
   const roster = participantList(config);
-  const count = roster
-    ? roster.length
-    : Math.max(1, countOverride ?? declaredParticipantCount(config) ?? 1);
-  return Array.from({ length: count }, (_, index) => {
+  return Array.from({ length: computerUseParticipantCount(config, countOverride) }, (_, index) => {
     const entry = roster?.[index];
     const focus = roster ? entry?.instruction : participantInstruction(config);
     return {

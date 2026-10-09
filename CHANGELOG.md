@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` tells humanish how many sandboxes your E2B plan runs at
+  once: 20 when unset (E2B Hobby), 100 on Pro. A hosted computer-use or shared-world study runs at
+  most that many desktops at once, counting a provisioned shared world's app sandbox, and its plan
+  records a warning naming the setting when the limit holds participants to waves. An
+  `execution.concurrency` above the limit is refused before any sandbox is created, with the
+  setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
+  row. A local desktop study keeps its own capacity checks (#1737).
+
 ### Changed
 
 - An in-process run of a `local-app` study records `subject.source: "local-app"` in run.json, the
@@ -15,6 +25,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   `observe`, `review` and `export` read both values, so runs saved with `app-url` still open; npm
   0.117.0 cannot read a run that records `local-app`. An in-process run of an `app-url` study
   still records `app-url` (#1716).
+- A computer-use study may have up to 100 participants, up from 16, and a shared-world study is
+  held to the same 100, where it had no limit. The old refusal said every participant runs at once
+  and no setting raises the cap; how many run at once is now the E2B plan's limit above, and
+  `caps.maxUsd` bounds spend. The new refusal says the 100 keeps one run's bundle and Observer view
+  a size humanish supports. A `participants` group whose `count` would pass 100 is refused before
+  it is expanded, and a `--count` above 100 before any participant is built (#1737).
+- A live run of more than 16 participants records its automatic analysis as skipped with
+  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `run`, `study check`, `doctor` and the TUI say before
+  the run that it will not run. One analysis reads at most 16 participants; it would have analyzed
+  the first 16 and reported a partial result. The skip does not fail a run whose study declares
+  no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
+  asked for and did not get (#1737).
+- A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
+  count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
+  and a declared value above the participant count is clamped to it, as on computer use.
+- A study with real email receiving and more than 64 participants is refused when it is read. Its
+  run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
+  inboxes.
 
 ### Fixed
 
@@ -43,6 +71,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   participant would use widgetsmith-cli (desktop-cli).", "would each use their own copy of
   widgetsmith-cli (desktop-cli)" on a fan-out, and "would use widgetsmith-cli (desktop-cli); no
   session ran." for each participant. The three sentences named an empty URL (#1716).
+- A `participants` list entry with a very large `count`, such as `1000000000`, no longer exhausts
+  memory while the study is read. The parser expanded every group before checking the roster's
+  size.
 
 ## 0.117.0: Long participant waits, OpenAI wait length, serve.build fails fast, TUI confirmations (2026-10-09)
 

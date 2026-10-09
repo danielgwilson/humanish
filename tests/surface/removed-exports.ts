@@ -62,7 +62,7 @@ export const REMOVED_IN_0_107: Readonly<Record<string, string>> = {
   concurrentSharedWorldValidationReason: "parseStudy",
   externalPublicSharedWorldValidationReason: "parseStudy",
   resolveLabDryRun: "RunStudyOptions.dryRun",
-  MAX_CUA_LANES: "parseStudy, which refuses more than 16 participants",
+  MAX_CUA_LANES: "parseStudy, which refuses more than 100 participants",
   CuaActorLabResult: 'StudyResult<"computer-use">',
   ScriptedBrowserLabResult: 'StudyResult<"scripted">',
   TerminalProductLabResult: 'StudyResult<"terminal">',

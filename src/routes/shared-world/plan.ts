@@ -39,10 +39,13 @@ import {
 } from "../../study/validation.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
 import {
+  participantsAtOnce,
+  type ConcurrentSandboxes,
   sandboxDeadlineRefusal,
   sandboxHeadroomMs,
   type SandboxCeiling,
 } from "../../substrates/e2b/lifetime.js";
+import { boundedConcurrency } from "../computer-use/participant-runs.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
 /** The error a shared-world study returns before a run starts. */
@@ -76,6 +79,8 @@ export function planSharedWorldStudy(
     readonly hasRunSession?: boolean;
     /** The longest sandbox lifetime the operator's E2B plan allows (sandboxCeiling). */
     readonly sandboxCeiling: SandboxCeiling;
+    /** How many sandboxes the operator's E2B plan runs at once (concurrentSandboxes). */
+    readonly concurrentSandboxes: ConcurrentSandboxes;
   },
 ): SharedWorldPlanResult {
   const refuse = (
@@ -162,6 +167,21 @@ export function planSharedWorldStudy(
   const plane = planeOf(config);
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
+  // Every participant's desktop and, on the provisioned plane, the app's own sandbox share the E2B
+  // plan's concurrent sandboxes. A shared world needs two participants live together.
+  const declared = config.execution?.concurrency;
+  const n = plane.participants.length;
+  const atOnce = participantsAtOnce(
+    {
+      concurrency: boundedConcurrency(declared, n),
+      declared: declared !== undefined,
+      participants: n,
+      alongside: plane.kind === "provisioned" ? 1 : 0,
+      minimum: 2,
+    },
+    input.concurrentSandboxes,
+  );
+  if (!atOnce.ok) return refuse(invalid, atOnce.message, actor);
   const sessionTimeoutMs =
     config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms);
   // The run's longest deadline: on the provisioned plane the subject sandbox, which serves the app
@@ -187,15 +207,17 @@ export function planSharedWorldStudy(
   const base = planBase(config, {
     dryRun: input.dryRun,
     analysis,
+    participants: n,
   });
   return {
     ok: true,
     plan: {
       ...base,
+      ...(atOnce.lowered === undefined ? {} : { warnings: [atOnce.lowered] }),
       route: "shared-world",
       actor,
       plane,
-      concurrency: config.execution?.concurrency ?? plane.participants.length,
+      concurrency: atOnce.count,
       sessionTimeoutMs,
       brain,
       caps: planCaps(config),

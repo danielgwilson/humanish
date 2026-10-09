@@ -1,4 +1,4 @@
-import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
+import { studyAnalysisSucceeded } from "../../study/automatic-analysis-plan.js";
 import { Command } from "commander";
 import { resolveStudyDryRun } from "../../study/plan.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
@@ -68,7 +68,10 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
         topology: "shared-world",
         topologyMode: "concurrent",
         roleCount: participantList(args.config)?.length ?? 0,
-        concurrency: args.config.execution?.concurrency ?? 1,
+        // Refused before it planned: the declared cap, else every participant.
+        concurrency:
+          args.config.execution?.concurrency ??
+          Math.max(1, participantList(args.config)?.length ?? 0),
         dryRun,
         runId: runId ?? args.options.runId ?? "not-created",
         roles: [],
@@ -153,7 +156,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
         };
       }
       writeResult(args.command, args.io, output, formatConcurrentSharedWorldStudyHuman);
-      args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+      args.io.setExitCode(result.ok && studyAnalysisSucceeded(result) ? 0 : 2);
       await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
       if (server && output.observer?.ok) {

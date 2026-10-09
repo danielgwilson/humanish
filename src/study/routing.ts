@@ -4,9 +4,18 @@ import { isLoopbackUrl } from "./parse/subject.js";
 import type { StudyConfig } from "./types.js";
 import { participantList, declaredParticipantCount } from "./study-fields.js";
 
-// Hard cap on computer-use participants. No setting raises it: each participant is a paid desktop,
-// and they all run at once.
-export const MAX_COMPUTER_USE_PARTICIPANTS = 16;
+// The most participants one study holds, on any route. One run keeps every participant's stream in
+// one bundle, one Observer view and one analysis, and those are sized for 100: the analysis reads a
+// bundle of at most 128 streams. How many run at once is a separate limit, the E2B plan's
+// (concurrentSandboxes in substrates/e2b/lifetime.ts), and caps.maxUsd bounds what they spend.
+const MAX_STUDY_PARTICIPANTS = 100;
+
+/** Why a study of `count` participants cannot run, or undefined when it can. */
+export function participantCountReason(count: number): string | undefined {
+  return count > MAX_STUDY_PARTICIPANTS
+    ? `A study runs at most ${MAX_STUDY_PARTICIPANTS} participants, and this one has ${count}. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to ${MAX_STUDY_PARTICIPANTS}; split the participants across studies.`
+    : undefined;
+}
 
 type ActorRunKind = ActorCapabilities["lanes"][number];
 
@@ -65,12 +74,15 @@ export function registeredTerminalActors(): string[] {
 }
 
 /**
- * The declared fan-out participant count on the computer-use route: a `participants` list's
- * length, else a participant count, else 1. The single source of truth shared by the parser, the engine,
+ * The fan-out participant count on the computer-use route: a `participants` list's length, else
+ * the caller's count override, else a participant count, else 1. The single source of truth shared by the parser, the engine,
  * and the pre-flight plan so the participant count is computed the same way everywhere.
  */
-export function computerUseParticipantCount(config: StudyConfig): number {
-  return participantList(config)?.length ?? declaredParticipantCount(config) ?? 1;
+export function computerUseParticipantCount(config: StudyConfig, countOverride?: number): number {
+  return (
+    participantList(config)?.length ??
+    Math.max(1, countOverride ?? declaredParticipantCount(config) ?? 1)
+  );
 }
 
 /**

@@ -29,7 +29,7 @@ export const routeCases: readonly AdmissionCase[] = [
     name: "count override above the cap",
     raw: lab("cuAppUrl"),
     parser: "accepts",
-    options: { count: 17 },
+    options: { count: 101 },
   },
   {
     name: "in-process fan-out",

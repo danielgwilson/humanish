@@ -128,7 +128,7 @@ export interface ParticipantPaths {
  * instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
- * route-scoped cross-validation (device XOR raw resolution, targets, cap 16) runs in parseStudy
+ * route-scoped cross-validation (device XOR raw resolution, targets, the participant bound) runs in parseStudy
  * where the route is known.
  */
 export function parseParticipantEntries(

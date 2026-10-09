@@ -18,14 +18,14 @@
 // The terminal route consumes subject.product, `caps` and execution.{terminal,runtimeAuth}.
 //
 // NOTE on `participants`: a count (preview: the simulated count; computer use: N identical
-// participants, each its own desktop, capped at 16), `{ count, instruction }` (identical
+// participants, each its own desktop, at most 100), `{ count, instruction }` (identical
 // participants with one steer), or a list of `{ id?, persona?, device?, instruction?, target? ... }`
 // entries, each its own desktop. A list entry with a `count` is a group that expands into
 // `<id>-01` to `<id>-NN`. A shared world takes a list of at least two. `participants[].device`
 // excludes a raw `execution.desktop.resolution`, and `participants[].target` is app-url computer
 // use only: an absolute browser URL this participant opens in place of `subject.appUrl`.
-// `execution.concurrency` bounds in-flight participants (default: all at once; env
-// HUMANISH_CUA_MAX_CONCURRENCY may only lower it).
+// `execution.concurrency` bounds in-flight participants (default: all at once, up to the E2B
+// plan's concurrent sandboxes; env HUMANISH_CUA_MAX_CONCURRENCY may only lower it).
 
 import {
   isLocalBrowserStudy,
@@ -53,9 +53,8 @@ import {
 } from "./parse/front.js";
 import { parseSubject } from "./parse/subject.js";
 import { invalid, optionalStr, str } from "./parse/values.js";
-import { isComputerUseComposition, isSharedWorldComposition, routeOf } from "./routing.js";
+import { isComputerUseComposition, routeOf } from "./routing.js";
 import { declaredParticipantIds } from "./plan-participants.js";
-import { declaredParticipantCount, participantList } from "./study-fields.js";
 import {
   ID_PATTERN,
   STUDY_SCHEMA,
@@ -269,7 +268,8 @@ function parseParticipants(raw: unknown, read: Participants): Parsed<StudyConfig
 
 /**
  * The checks that read more than one section of a parsed config, and the defaults they fill:
- * shared-world `execution.concurrency`, `comms.email.recipients` and the local browser's defaults.
+ * `comms.email.recipients` and the local browser's defaults. An omitted `execution.concurrency`
+ * stays unset: the planner resolves it from the participants and the E2B plan's limit.
  */
 function checkStudyConfig(config: StudyConfig): StudyParseResult {
   const smtpReason = smtpValidationReason(config);
@@ -283,24 +283,6 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const waitLimitReason = waitLimitValidationReason(config);
   if (waitLimitReason) return invalid(waitLimitReason);
-
-  // All-parallel default: a multi-participant study that does not declare execution.concurrency
-  // runs every participant at once; the declared field is a cap the author chose, never a mode.
-  // Independent computer-use participants resolve that default from the final participant count
-  // when they plan, after any --count override, so the parser leaves it unset for them. A shared
-  // world's roster is fixed, so its default is filled here for the envelopes and warnings that read
-  // the parsed config.
-  {
-    const participantCount =
-      participantList(config)?.length ?? declaredParticipantCount(config) ?? 1;
-    if (
-      participantCount > 1 &&
-      config.execution?.concurrency === undefined &&
-      isSharedWorldComposition(config)
-    ) {
-      config.execution = { ...config.execution, concurrency: participantCount };
-    }
-  }
 
   // Email that just works: the funnel's only handoff to an actor is the per-participant
   // inbox instruction, gated on recipients[]. Guessed participant ids broke a field run:

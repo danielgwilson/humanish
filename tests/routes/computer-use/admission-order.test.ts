@@ -129,7 +129,7 @@ const rules = new Map<string, Rule>([
     { mutate: (c) => (c.subject = { source: "desktop-cli" }), ...inProcess },
   ],
   ["desktop-cli without a product", { mutate: (c) => (c.subject = { source: "desktop-cli" }) }],
-  ["count override above the cap", { mutate: () => undefined, countOverride: 17 }],
+  ["count override above the cap", { mutate: () => undefined, countOverride: 101 }],
   ["in-process fan-out", { mutate: (c) => (c.participants = 2), ...inProcess }],
   ["live without keys", { mutate: (c) => (c.mode = "live") }],
 ]);
@@ -242,7 +242,7 @@ describe("computer-use admission order", () => {
     );
     const { config, deps } = caseOf([]);
     await expect(
-      runComputerUse({ cwd, config, dryRun: true, env: {}, deps, countOverride: 17 }),
+      runComputerUse({ cwd, config, dryRun: true, env: {}, deps, countOverride: 101 }),
     ).rejects.toThrow("Persona background must be text.");
   });
 });

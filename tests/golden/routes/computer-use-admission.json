@@ -514,7 +514,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
+      "message": "A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -993,7 +993,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
+      "message": "A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -1191,7 +1191,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      "message": "Computer-use fan-out is capped at 16 participants (resolved 17); N concurrent paid desktops is real spend."
+      "message": "A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

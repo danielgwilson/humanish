@@ -108,7 +108,18 @@ npx humanish doctor
 
 A higher ceiling lets you declare longer sessions, and a session you declared keeps its length. It changes one default: a computer-use `clone` or `local-tree` study without `execution.timeoutMs` gets what the ceiling leaves after provisioning and seeding, up to 30 minutes, where the 60-minute ceiling leaves 20. Every minute of a desktop is billed, so declare `execution.timeoutMs` when you want a fixed session.
 
-Pro's higher concurrency needs no setting. A study runs all its participants at once unless `execution.concurrency` sets fewer, and a computer-use study runs at most 16 participants on any plan.
+### Set how many sandboxes your E2B plan runs at once
+
+E2B runs 20 sandboxes at once on its Hobby plan and 100 on Pro, which add-ons raise to 1,100. Each participant on a hosted desktop is one sandbox, and a provisioned shared-world study keeps one more for its app. E2B's API does not say which plan a key belongs to, so humanish runs at most 20 at once unless `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` sets another. On Pro, set it to 100:
+
+```bash
+export HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES=100
+npx humanish doctor
+```
+
+`doctor` prints the limit in use on its `e2b concurrent sandboxes` row. A study runs every participant at once unless `execution.concurrency` sets fewer. When the limit is lower than that, the participants run in waves, and the plan says how many run at a time and which setting raises it. An `execution.concurrency` above the limit is refused before any sandbox is created, with the setting value that would admit it. A local desktop study (`execution.target: local`) has its own capacity checks and does not read this setting. Like the sandbox ceiling, set it in your shell or in a `--dotenv` file.
+
+Waves change how long a run takes. Each participant's desktop and model time stays the same, and `caps.maxUsd` and `caps.maxTotalUsd` bound the spend. A study has at most 100 participants on any plan.
 
 ## Choose a model
 

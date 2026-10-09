@@ -91,8 +91,8 @@ export function sharedWorldStudyRefusal(
     studyId: config.id,
     actor: config.actor?.type ?? "",
     participantCount: declared.length,
-    // The parser fills concurrency for multi-participant studies, so this fallback serves only
-    // library callers: every declared participant runs at once unless the author declared a cap.
+    // A refused study never planned its concurrency, so its result reports the declared cap, else
+    // every declared participant.
     concurrency: config.execution?.concurrency ?? Math.max(1, declared.length),
     dryRun,
     runId: options.runId,

@@ -34,7 +34,7 @@ import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
-import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 type SessionRunner = NonNullable<StudyDeps["runSession"]>;
 
@@ -362,6 +362,7 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       dryRun: false,
       hasRunSession: true,
       sandboxCeiling: sandboxCeiling({}),
+      concurrentSandboxes: concurrentSandboxes({}),
     });
     if (!planned.ok) throw new Error(planned.refusal.message);
     const plan: ComputerUsePlan = {

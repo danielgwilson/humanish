@@ -330,9 +330,9 @@ export const parserCases: readonly AdmissionCase[] = [
     parser: "every participant in the roster must declare target",
   },
   {
-    name: "seventeen lanes",
-    raw: lab("cuAppUrl", { participants: 17 }),
-    parser: "runs at most 16 participants",
+    name: "a hundred and one participants",
+    raw: lab("cuAppUrl", { participants: 101 }),
+    parser: "runs at most 100 participants",
   },
   {
     name: "public target fan-out",

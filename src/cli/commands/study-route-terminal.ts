@@ -1,4 +1,4 @@
-import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
+import { studyAnalysisSucceeded } from "../../study/automatic-analysis-plan.js";
 import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
@@ -46,7 +46,7 @@ export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined 
       }
       const result = outcome.result;
       writeResult(args.command, args.io, result, formatTerminalStudyHuman);
-      args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+      args.io.setExitCode(result.ok && studyAnalysisSucceeded(result) ? 0 : 2);
       await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
       if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {

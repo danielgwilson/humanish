@@ -372,22 +372,22 @@
     "refused": "it does not parse: participants[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry."
   },
   {
-    "name": "fails closed on fan-out mis-config: over the 16-lane cap (count)",
+    "name": "fails closed on fan-out mis-config: over the 100-participant limit (count)",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (count)",
-    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","count":17}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","count":101}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
   },
   {
-    "name": "fails closed on fan-out mis-config: over the 16-lane cap (lanes)",
+    "name": "fails closed on fan-out mis-config: over the 100-participant limit (lanes)",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (lanes)",
-    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"lane-0"},{"id":"lane-1"},{"id":"lane-2"},{"id":"lane-3"},{"id":"lane-4"},{"id":"lane-5"},{"id":"lane-6"},{"id":"lane-7"},{"id":"lane-8"},{"id":"lane-9"},{"id":"lane-10"},{"id":"lane-11"},{"id":"lane-12"},{"id":"lane-13"},{"id":"lane-14"},{"id":"lane-15"},{"id":"lane-16"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","lanes":[{"id":"lane-0"},{"id":"lane-1"},{"id":"lane-2"},{"id":"lane-3"},{"id":"lane-4"},{"id":"lane-5"},{"id":"lane-6"},{"id":"lane-7"},{"id":"lane-8"},{"id":"lane-9"},{"id":"lane-10"},{"id":"lane-11"},{"id":"lane-12"},{"id":"lane-13"},{"id":"lane-14"},{"id":"lane-15"},{"id":"lane-16"},{"id":"lane-17"},{"id":"lane-18"},{"id":"lane-19"},{"id":"lane-20"},{"id":"lane-21"},{"id":"lane-22"},{"id":"lane-23"},{"id":"lane-24"},{"id":"lane-25"},{"id":"lane-26"},{"id":"lane-27"},{"id":"lane-28"},{"id":"lane-29"},{"id":"lane-30"},{"id":"lane-31"},{"id":"lane-32"},{"id":"lane-33"},{"id":"lane-34"},{"id":"lane-35"},{"id":"lane-36"},{"id":"lane-37"},{"id":"lane-38"},{"id":"lane-39"},{"id":"lane-40"},{"id":"lane-41"},{"id":"lane-42"},{"id":"lane-43"},{"id":"lane-44"},{"id":"lane-45"},{"id":"lane-46"},{"id":"lane-47"},{"id":"lane-48"},{"id":"lane-49"},{"id":"lane-50"},{"id":"lane-51"},{"id":"lane-52"},{"id":"lane-53"},{"id":"lane-54"},{"id":"lane-55"},{"id":"lane-56"},{"id":"lane-57"},{"id":"lane-58"},{"id":"lane-59"},{"id":"lane-60"},{"id":"lane-61"},{"id":"lane-62"},{"id":"lane-63"},{"id":"lane-64"},{"id":"lane-65"},{"id":"lane-66"},{"id":"lane-67"},{"id":"lane-68"},{"id":"lane-69"},{"id":"lane-70"},{"id":"lane-71"},{"id":"lane-72"},{"id":"lane-73"},{"id":"lane-74"},{"id":"lane-75"},{"id":"lane-76"},{"id":"lane-77"},{"id":"lane-78"},{"id":"lane-79"},{"id":"lane-80"},{"id":"lane-81"},{"id":"lane-82"},{"id":"lane-83"},{"id":"lane-84"},{"id":"lane-85"},{"id":"lane-86"},{"id":"lane-87"},{"id":"lane-88"},{"id":"lane-89"},{"id":"lane-90"},{"id":"lane-91"},{"id":"lane-92"},{"id":"lane-93"},{"id":"lane-94"},{"id":"lane-95"},{"id":"lane-96"},{"id":"lane-97"},{"id":"lane-98"},{"id":"lane-99"},{"id":"lane-100"}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
   },
   {
-    "name": "fails closed on fan-out mis-config: over the 16-lane cap (roster)",
+    "name": "fails closed on fan-out mis-config: over the 100-participant limit (roster)",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > multi-participant fan-out > fails closed on fan-out mis-config: over the 16-lane cap (roster)",
-    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"viewer","count":17}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+    "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","roster":[{"id":"viewer","count":101}]}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
+    "refused": "it does not parse: A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
   },
   {
     "name": "fails closed on fan-out mis-config: duplicate lane ids",
@@ -708,10 +708,10 @@
     "refused": "it does not parse: `subject.clone.fanout` is not used on the computer-use route: declare fan-out with participants (homogeneous) or participants (a roster of participants). (No current route reads clone.fanout.)"
   },
   {
-    "name": "fails closed on clone+serve mis-config: over the 16-lane cap",
+    "name": "fails closed on clone+serve mis-config: over the 100-participant limit",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > clone + serve (computer-use route) > fails closed on clone+serve mis-config: over the 16-lane cap",
-    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","count":17}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
-    "refused": "it does not parse: A computer-use study runs at most 16 participants, and this one declares 17. Each participant is a paid desktop and they all run at once, so no setting raises the cap; split the roster across studies."
+    "v2": {"schema":"humanish.lab.v2","id":"cua-clone","subject":{"source":"clone","repos":["example-org/example-app"],"clone":{"depth":2},"serve":{"install":"pnpm install","build":"pnpm build","start":"pnpm start","url":"http://127.0.0.1:3000/","readyTimeoutMs":60000},"env":["DATABASE_URL","GITHUB_TOKEN"]},"actors":[{"type":"openai-computer-use","count":101}],"execution":{"target":"e2b-desktop","timeoutMs":120000},"scenario":{"mode":"live"}},
+    "refused": "it does not parse: A study runs at most 100 participants, and this one has 101. One run keeps every participant's evidence in one bundle and one Observer view, and humanish supports runs of up to 100; split the participants across studies."
   },
   {
     "name": "fails closed on state mis-config: state on app-url",
