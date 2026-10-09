@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { ObserverData } from "@/lib/observer-data";
+import { isDensity, type GridDensity } from "@/lib/preferences";
 import { Select } from "./ui/select";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
@@ -14,13 +15,15 @@ export function GridOptions({
   data,
   filters,
   onFilters,
-  gridControl,
+  density,
+  onDensity,
   onMonitor,
 }: {
   data: ObserverData;
   filters: GridFilters;
   onFilters: (next: GridFilters) => void;
-  gridControl?: ReactNode;
+  density: GridDensity;
+  onDensity: (next: GridDensity) => void;
   onMonitor?: () => void;
 }) {
   const [viewOpen, setViewOpen] = useState(false);
@@ -99,7 +102,21 @@ export function GridOptions({
           onChange={(e) => onFilters({ ...filters, query: e.target.value })}
         />
       </span>
-      {gridControl}
+      <label className="tool">
+        <span className="o-label">Preview size</span>
+        <Select
+          label="Preview size"
+          value={density}
+          onValueChange={(value) => {
+            if (isDensity(value)) onDensity(value);
+          }}
+          options={[
+            { value: "compact", label: "Compact" },
+            { value: "comfortable", label: "Comfortable" },
+            { value: "large", label: "Large" },
+          ]}
+        />
+      </label>
       {onMonitor ? (
         <button
           type="button"

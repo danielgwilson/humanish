@@ -26,6 +26,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   Its `humanish_ui` tool description now states the study's longest wait, and the tool's input
   schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
   removed: the loop shortens a wait itself, for every provider.
+- In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
+  saved." or why a moment could not open), as opening a participant or the participants grid
+  already did (#1728).
 
 ### Fixed
 

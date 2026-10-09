@@ -12,6 +12,7 @@ import {
   boundedWindow,
   frameAtElapsedMs,
   frameElapsedMs,
+  frameEntry,
   frameHoldMs,
   groupPlayerRows,
   isActionRow,
@@ -183,9 +184,7 @@ export function Player({
     : playbackIndex(state, model);
   const current = frame >= 0 ? frames[frame] : undefined;
   const eventId = studyPlayback ? studyPlayback.eventId : state.eventId;
-  const selectedRow = eventId
-    ? model.rows.find((row) => row.id === eventId && !row.isFrame && row.frameIndex === frame)
-    : undefined;
+  const selectedRow = eventId ? frameEntry(model, eventId, frame) : undefined;
   const following = studyPlayback ? !studyPlayback.reviewing && active : state.mode === "live";
   const live = following && active ? liveEmbedUrl(stream) : null;
   const playing = studyPlayback ? studyPlayback.playing : state.playing;

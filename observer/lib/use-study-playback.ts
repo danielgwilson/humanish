@@ -43,6 +43,8 @@ const initialState = (runId: string): StudyState => ({
   selection: null,
 });
 
+export type StudyPlayback = ReturnType<typeof useStudyPlayback>;
+
 /** One capture clock survives participant/grid navigation and same-run polls. */
 export function useStudyPlayback(runId: string, streams: readonly ObserverStream[]) {
   const recording = useMemo(() => buildGridRecording(streams), [streams]);

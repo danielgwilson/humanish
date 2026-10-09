@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ReviewIcon } from "./review-icon";
 import { Popover } from "./ui/popover";
-import type { SavedMoment } from "@/lib/preferences";
+import type { SavedMomentsControl } from "@/lib/use-saved-moments";
 
 export function SavedMoments({
   labels,
@@ -13,17 +13,7 @@ export function SavedMoments({
   onSave,
   onOpen,
   onRemove,
-}: {
-  labels: Map<string, string>;
-  entryLabels?: Map<string, string>;
-  moments: SavedMoment[];
-  canSave: boolean;
-  stored: boolean;
-  message: string;
-  onSave: () => void;
-  onOpen: (moment: SavedMoment) => boolean;
-  onRemove: (moment: SavedMoment) => void;
-}) {
+}: SavedMomentsControl & { labels: Map<string, string> }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover
@@ -65,12 +55,12 @@ export function SavedMoments({
                 >
                   {labels.get(m.streamId) ?? m.streamId} · frame {m.frame + 1}
                   {m.eventId
-                    ? ` · ${entryLabels?.get(`${m.streamId}/${m.eventId}`) ?? "entry unavailable"}`
+                    ? ` · ${entryLabels.get(`${m.streamId}/${m.eventId}`) ?? "entry unavailable"}`
                     : ""}
                 </button>
                 <button
                   type="button"
-                  aria-label={`Remove saved frame ${m.frame + 1}${m.eventId ? ` (${entryLabels?.get(`${m.streamId}/${m.eventId}`) ?? "entry unavailable"})` : ""} from ${labels.get(m.streamId) ?? m.streamId}`}
+                  aria-label={`Remove saved frame ${m.frame + 1}${m.eventId ? ` (${entryLabels.get(`${m.streamId}/${m.eventId}`) ?? "entry unavailable"})` : ""} from ${labels.get(m.streamId) ?? m.streamId}`}
                   onClick={() => onRemove(m)}
                 >
                   Remove
