@@ -34,6 +34,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
   With another key in `process.env`, the check asked that key's account, and a not-found answer
   from it would be recorded as confirming the sandbox was gone (#1726).
+- In `humanish tui`, an armed action no longer stays armed after the cursor leaves it. Arming Stop,
+  moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
+  analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
+  after `?`. The five actions that take two Enters (those four and a live start) now follow one
+  rule: the second Enter counts only on the same action of the same screen, within 30 seconds of
+  the first. An Enter less than 400 ms after the one before it is ignored and restarts that wait.
+  The wait used to count from the first Enter, so a held Enter confirmed on every repeat past it;
+  it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
+  longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
+  (#1722).
 
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 
