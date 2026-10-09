@@ -193,6 +193,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-09 | 0.116.0, src/ as of a3189937 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $6.14           | [summary](2026-10-09-0.116.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.117.0, src/ as of 882d47f6 | `neutral` | `openai-computer-use` | 3            | 8/15          | 7/15            | 0 and 0             | $6.04           | [summary](2026-10-09-0.117.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.118.0, src/ as of d183d1ae | `neutral` | `openai-computer-use` | 3            | 6/15          | 6/15            | 0 and 0             | $5.38           | [summary](2026-10-09-0.118.0-neutral-openai-computer-use.md) |
+| 2026-10-09 | 0.119.0, src/ as of 6405a7c0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 10/15           | 0 and 0             | $6.12           | [summary](2026-10-09-0.119.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -314,6 +315,28 @@ lines are on the clean arm, "Reported edit-focus hesitation, followed by a succe
 read by hand recall stays 6/15 for reports and 6/15 for analyses. No planted participant typed more
 than 30 characters in one action, so none met D2. All six reports say the participant saw no
 terminal output, from the persona's `clear_terminal_output` trait.
+
+The 0.119.0 run took the analysis cap from the dry run's `admittedCostUsd`, $1.25; bills were $0.60
+to $0.86. No analysis was refused or skipped. Every participant ran threaded, ended on its own with
+`goal_satisfied` and gave 5 or 6 impressions. Against 0.118.0, D1 and D5 account for the rise: two
+planted reports and two planted analyses name each, where none did on 0.118.0. D3 and D4 stayed 3/3
+for reports and analyses. Two unresolved lines name D5 on the planted arm. Planted 1's report says
+"editing exposed a save button, but clicking it did nothing. pressing enter eventually saved the
+change." Planted 3's analysis finding "Edited wording did not survive a filter change after Save"
+says repeated Save attempts did not produce a stable edited result. Read by hand, recall is 11/15
+for reports and 11/15 for analyses. Planted 1's other unresolved analysis line, "Unintended task
+removal during a filter-to-clear sequence", describes a click at a button's old position after the
+footer moved; it is not a planted defect. On the clean arm, one unresolved line reports a
+participant's hesitation before clearing completed tasks, and the others describe what the clean
+build does: no Enter handler in edit mode, and an empty list after a refresh. No planted participant
+typed more than 27 characters in one action, so none met D2. Four of six reports say the participant
+saw no terminal output, from the persona's `clear_terminal_output` trait. A separate investigation
+read the decline from 0.114.0 to 0.118.0 as noise at three runs per arm: a same-hour A/B of npm
+0.114.0 and main at d183d1ae scored 52/80 planted-report recall on each over 16 planted
+participants. Three runs per arm cannot separate this rise from the same noise. The run used the
+release commit 53dbf23e. The release branch then took the fix that redacts study warnings before the
+run records them; it changes what the bundle records and nothing a participant receives or does, so
+the run stands for 0.119.0.
 
 ## What these numbers are not
 
