@@ -24,7 +24,7 @@ import {
   analysisResultJsonSchema,
   validateAnalysisInputMetadata,
 } from "./validation.js";
-import { analysisCohorts, EVIDENCE_LIMITS } from "./analysis-limits.js";
+import { analysisCohorts, analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import {
   checkMergedResponse,
   cohortInputs,
@@ -136,6 +136,9 @@ export interface AnalysisAdmission {
   admittedCostUsd: number | null;
   maxCostUsd: number | null;
   ratesAsOf: string | null;
+  /** The provider requests the costs cover: one per cohort, and the merge request for more than
+   *  one cohort. Null when the input or configuration was refused. */
+  requests: number | null;
 }
 export interface AnalysisProgress {
   phase: "admitted" | "requesting" | "validating" | "finished";
@@ -254,6 +257,7 @@ export function estimateAnalysisAdmission(
     admittedCostUsd: null,
     maxCostUsd: null,
     ratesAsOf: null,
+    requests: null,
   });
   if (
     (config.provider === "codex"
@@ -278,6 +282,7 @@ export function estimateAnalysisAdmission(
     return denied("analysis_question_sensitive");
   const badInput = inputError(input);
   if (badInput) return denied(badInput);
+  const requests = analysisRequestCount(input.coverage.includedStreamIds.length);
   if (config.provider === "codex")
     return {
       allowed: true,
@@ -289,6 +294,7 @@ export function estimateAnalysisAdmission(
       admittedCostUsd: null,
       maxCostUsd: null,
       ratesAsOf: null,
+      requests,
     };
   const rate = MODEL_RATES[config.model];
   if (
@@ -329,6 +335,7 @@ export function estimateAnalysisAdmission(
     admittedCostUsd: cost.admittedCostUsd,
     maxCostUsd: config.maxCostUsd,
     ratesAsOf: rate.asOf,
+    requests,
   };
 }
 

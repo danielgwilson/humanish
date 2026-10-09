@@ -1,4 +1,4 @@
-import { studyAnalysisSucceeded } from "../../study/automatic-analysis-plan.js";
+import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { resolveStudyDryRun } from "../../study/plan.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
@@ -156,7 +156,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
         };
       }
       writeResult(args.command, args.io, output, formatConcurrentSharedWorldStudyHuman);
-      args.io.setExitCode(result.ok && studyAnalysisSucceeded(result) ? 0 : 2);
+      args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
       await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
       if (server && output.observer?.ok) {

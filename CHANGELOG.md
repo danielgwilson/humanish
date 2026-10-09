@@ -41,11 +41,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   split into cohorts of at most 16, each analysed by its own request under the full packet limits,
   and one more request merges the cohort reports into the run's one report; before, the packet
   held the first 16 participants and listed the rest as omitted. Admission, the expected cost, the
-  worst case and the `study check` range cover every request, and the plan's analysis line names
-  the cohorts. A default analysis of 17 participants is expected to cost $4.60 to $10.69, over the
-  default $3 cap, so it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless
-  `review.analysis.maxCostUsd` admits it. `analyze` prints an `Analysis requesting` line for each request. A cohort or merge
-  request that fails fails the attempt with no findings and a warning, and its usage counts every
+  worst case and the `study check` range cover every request. The plan's analysis line and the
+  `analyze --dry-run` worst case name the cohort and merge requests, and `admission.requests` in
+  `--json` counts them. A default analysis of 17 participants is expected to cost $4.60 to
+  $10.69, over the default $3 cap, so it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED`
+  unless `review.analysis.maxCostUsd` admits it. `analyze` prints an `Analysis requesting` line
+  for each request. A cohort or merge request that fails fails the attempt with no findings and a warning, and its usage counts every
   request sent. The `humanish.study-analysis.v1` schema is unchanged; its stored limits grew to
   6,400 evidence items, 320 captures and 16 MiB (#1737).
 

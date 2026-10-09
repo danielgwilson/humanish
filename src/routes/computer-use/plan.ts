@@ -493,11 +493,7 @@ export function planComputerUseStudy(
   if (!atOnce.ok)
     return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", atOnce.message, actor);
   const provisioned = source === "clone" || source === "local-tree";
-  const base = planBase(config, {
-    dryRun: input.dryRun,
-    analysis,
-    participants: participants.length,
-  });
+  const base = planBase(config, { dryRun: input.dryRun, analysis });
   return {
     ok: true,
     plan: {

@@ -47,7 +47,11 @@ expected to write what one request covering every participant would. `admission`
 `--json` output has `estimatedCostUsd` (the expected cost), `worstCaseCostUsd`,
 `admittedCostUsd` (the figure compared with the cap: the expected cost plus 10%,
 or the worst case when that is lower), `maxCostUsd`, `inputTokenAllowance` (the
-input tokens priced) and `outputTokenAllowance`. On 148 billed gpt-6-astra
+input tokens priced), `outputTokenAllowance` (each request's) and `requests` (the
+requests the costs cover: 1, or each cohort's and the merge request; null when the
+input or configuration was refused). The dry run's worst case for more than one
+request says every request writes its whole allowance and names the cohort and merge
+requests, in the words the plan's analysis line uses. On 148 billed gpt-6-astra
 analyses the expected cost was 1.08 to 7.3 times the bill, and 1.08 to 1.32
 times for those billed $1 or more.
 A refusal's message gives the expected cost, the worst case, the cap, and

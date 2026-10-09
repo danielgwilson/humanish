@@ -166,6 +166,7 @@ describe("explicit Codex account analysis", () => {
       admittedCostUsd: null,
       maxCostUsd: null,
       ratesAsOf: null,
+      requests: 1,
     });
     const artifact = await runAnalysis(input, config(), {
       apiKey: "unused-synthetic-key",

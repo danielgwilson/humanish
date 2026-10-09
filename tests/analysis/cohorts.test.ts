@@ -243,6 +243,16 @@ describe("admission for a run with more than 16 participants", () => {
     expect(estimate.admittedCostUsd).toBeLessThanOrEqual(5.124351);
   });
 
+  it("counts the requests it prices: one up to 16 participants, then each cohort and the merge", () => {
+    expect(estimateAnalysisAdmission(packet(16, 160), config).requests).toBe(1);
+    expect(estimateAnalysisAdmission(packet(17, 170), config).requests).toBe(3);
+    expect(estimateAnalysisAdmission(packet(40, 400), config).requests).toBe(4);
+    expect(estimateAnalysisAdmission(packet(17, 17 * 89), config)).toMatchObject({
+      error: "analysis_input_limit",
+      requests: null,
+    });
+  });
+
   it("costs a 17-participant packet more than runs of its two cohorts' sizes", () => {
     // 88 entries for each participant: cohorts of 9 and 8 hold 792 and 704.
     const input = packet(17, 17 * 88);
@@ -279,7 +289,7 @@ describe("admission for a run with more than 16 participants", () => {
       );
     expect(line(16)).not.toMatch(/cohorts/);
     expect(line(24)).toMatch(
-      /for 24 participants, analysed in 2 cohorts of at most 16 and merged by one more request,/,
+      /for 24 participants in 2 cohort requests of at most 16 participants and one merge request,/,
     );
   });
 

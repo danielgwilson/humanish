@@ -1,4 +1,7 @@
-import type { AutomaticAnalysisResult } from "../analysis/automatic-completion.js";
+import {
+  automaticAnalysisSucceeded,
+  type AutomaticAnalysisResult,
+} from "../analysis/automatic-completion.js";
 import { costRefusal, refusedCost } from "../analysis/admission.js";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
@@ -7,11 +10,6 @@ import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import type { UpdateCheckContext } from "./update-check.js";
 import { warnAndQueue, withQueuedWarnings } from "./deprecations.js";
-import {
-  PARTICIPANT_LIMIT_SKIP,
-  PARTICIPANT_LIMIT_SKIP_TEXT,
-  studyAnalysisSucceeded,
-} from "../study/automatic-analysis-plan.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
 import { cli } from "./invocation.js";
@@ -442,7 +440,6 @@ const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
   AUTOMATIC_ANALYSIS_ADMISSION_REFUSED:
     "refused before it started: its configuration, question, evidence or cost did not pass admission",
   AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED: "not started because the run's cleanup was not confirmed",
-  [PARTICIPANT_LIMIT_SKIP]: PARTICIPANT_LIMIT_SKIP_TEXT,
   AUTOMATIC_ANALYSIS_REUSED: "complete, reusing an earlier analysis of the same evidence",
   AUTOMATIC_ANALYSIS_LIMITATIONS: "partial, because it covered only part of the evidence",
   AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED:
@@ -473,5 +470,5 @@ export function automaticAnalysisEnvelope<T>(result: T): T {
   )
     return result;
   const run = result as T & AutomaticAnalysisResult & { ok: boolean };
-  return { ...run, runOk: run.ok, ok: run.ok && studyAnalysisSucceeded(run) };
+  return { ...run, runOk: run.ok, ok: run.ok && automaticAnalysisSucceeded(run) };
 }

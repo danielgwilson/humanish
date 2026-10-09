@@ -30,6 +30,15 @@ export const analysisCohortCount = (participants: number): number =>
   Math.max(1, Math.ceil(participants / EVIDENCE_LIMITS.cohortParticipants));
 
 /**
+ * The provider requests an analysis of this many participants sends: one per cohort, and the
+ * merge request when there is more than one cohort.
+ */
+export function analysisRequestCount(participants: number): number {
+  const cohorts = analysisCohortCount(participants);
+  return cohorts === 1 ? 1 : cohorts + 1;
+}
+
+/**
  * The cohorts a run's participants are analysed in: one when there are at most
  * `cohortParticipants`, otherwise the fewest that hold at most that many each. Participants are
  * dealt in turn, so cohort sizes differ by at most one and each cohort holds a spread of the roster.
