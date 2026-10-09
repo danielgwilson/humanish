@@ -23,12 +23,13 @@ review:
 Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
 mapping using the default OpenAI API provider requires `maxCostUsd`. Admission
-compares the expected cost plus a 10% margin with it; it does not limit the
-provider's final bill, and it is separate from participant spending limits. The
+refuses the request when both its worst case and its expected cost plus a 10% margin are over
+it; it does not limit the provider's final bill, and it is separate from participant spending limits. The
 estimate gives two numbers: the expected cost, and the worst case if the analyst
 spends its whole output allowance. `humanish study check` gives the expected cost
 range for the study's participant count, from a run that keeps no evidence to one
-at the evidence limits. Use `analyze --dry-run --max-cost <usd>` on retained
+that keeps the most evidence admission admits under the cap, at most the evidence limits. When
+the cap admits no analysis at all, it says so instead. Use `analyze --dry-run --max-cost <usd>` on retained
 evidence to inspect the expected cost, the worst case and the selected token
 allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance

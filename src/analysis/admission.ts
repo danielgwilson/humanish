@@ -19,7 +19,18 @@ const FRAMING_TOKENS = 2048;
 const EXPECTED_OUTPUT_TOKENS = 12_000;
 const EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT = 1_000;
 /** Admission compares the expected cost times this margin with the cap. */
-export const ADMISSION_MARGIN = 1.1;
+const ADMISSION_MARGIN = 1.1;
+const MARGIN_PERCENT = Math.round((ADMISSION_MARGIN - 1) * 100);
+
+/**
+ * When admission refuses a request, in words, for the cap as the sentence names it: `$3`, or `this`
+ * in the help of the option that sets it. Admission compares the smaller of the worst case and the
+ * expected cost with the margin, so it refuses only when both are over the cap. Every text that
+ * states the rule reads it here.
+ */
+export function admissionRule(cap: string): string {
+  return `both its worst case and its expected cost plus a ${MARGIN_PERCENT}% margin are over ${cap}`;
+}
 
 export interface AnalysisRequestSize {
   /** UTF-8 bytes of the instructions, the evidence packet and the result schema. */
@@ -105,9 +116,8 @@ export function costRefusal(
   runFlags: string,
   cli: (rest: string) => string,
 ): CostRefusal {
-  const margin = Math.round((ADMISSION_MARGIN - 1) * 100);
   return {
-    text: `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${margin}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent. To run it, raise the cap:`,
+    text: `The expected cost is $${cost.expectedCostUsd.toFixed(2)} and the worst case is $${cost.worstCaseCostUsd.toFixed(2)}. With a ${MARGIN_PERCENT}% margin the expected cost is over the $${cost.maxCostUsd} cap, so no request was sent. To run it, raise the cap:`,
     command: cli(`analyze ${runFlags} --max-cost ${Math.max(1, Math.ceil(cost.worstCaseCostUsd))}`),
   };
 }

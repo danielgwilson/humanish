@@ -6,7 +6,7 @@ import {
   analysisCostRange,
   isSupportedAnalysisModel,
 } from "./execute.js";
-import { ADMISSION_MARGIN } from "./admission.js";
+import { admissionRule } from "./admission.js";
 import { plural } from "../run/text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { AnalysisConfig } from "./types.js";
@@ -156,8 +156,13 @@ export interface AutomaticAnalysisBudget {
   trigger: "default" | "explicit";
   /** The participants the expected cost range is for. */
   participants?: number;
-  /** The expected cost, from a run that keeps no evidence to one at the evidence limits. */
+  /**
+   * The expected cost of the analysis admission would start, from a run that keeps no evidence to
+   * one that keeps the most evidence admission admits, at most the evidence limits.
+   */
   expectedCostUsd?: { low: number; high: number };
+  /** In place of the range when admission refuses even a run that keeps no evidence: its cost. */
+  refusedFromUsd?: number;
 }
 
 /** Metadata only: resolving the future live-run budget never reads keys or dispatches. With a
@@ -173,14 +178,9 @@ export function automaticAnalysisBudget(
   if (!resolved.ok || !resolved.config) return undefined;
   const { config } = resolved;
   const range =
-    participants === undefined || config.provider === "codex"
+    participants === undefined
       ? undefined
-      : analysisCostRange(
-          resolved.preferLargerOutput
-            ? { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS }
-            : config,
-          participants,
-        );
+      : analysisCostRange(config, participants, resolved.preferLargerOutput === true);
   return {
     ...(config.provider === "codex"
       ? { provider: "codex" as const, billing: "account-unknown" as const }
@@ -188,18 +188,23 @@ export function automaticAnalysisBudget(
     model: config.model,
     maxCostUsd: config.maxCostUsd,
     trigger: raw === undefined ? "default" : "explicit",
-    ...(range === undefined || participants === undefined
-      ? {}
-      : { participants, expectedCostUsd: range }),
+    ...(range === undefined || participants === undefined ? {} : { participants, ...range }),
   };
 }
 
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
+  const rule = admissionRule(`$${budget.maxCostUsd}`);
+  const who =
+    budget.participants === undefined ? undefined : plural(budget.participants, "participant");
   const range =
-    budget.expectedCostUsd === undefined || budget.participants === undefined
+    budget.expectedCostUsd === undefined || who === undefined
       ? ""
-      : ` · expected $${budget.expectedCostUsd.low.toFixed(2)} to $${budget.expectedCostUsd.high.toFixed(2)} for ${plural(budget.participants, "participant")}, depending on how much evidence the run keeps`;
-  return `After live runs: ${budget.trigger} analysis · ${budget.model}${range} · refused before it starts if the expected cost plus a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin is over $${budget.maxCostUsd}; this is not a billing cap. Set review.analysis: false to disable.`;
+      : ` · expected $${budget.expectedCostUsd.low.toFixed(2)} to $${budget.expectedCostUsd.high.toFixed(2)} for ${who}, depending on how much evidence the run keeps`;
+  const refused =
+    budget.refusedFromUsd === undefined || who === undefined
+      ? `refused before it starts if ${rule}`
+      : `refused before it starts for ${who} even with no evidence (expected $${budget.refusedFromUsd.toFixed(2)}), since ${rule}`;
+  return `After live runs: ${budget.trigger} analysis · ${budget.model}${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
 }
