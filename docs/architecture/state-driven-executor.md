@@ -75,10 +75,12 @@ graphically dense (pixel-art) UI. `stableProgressKey(appState)`:
 ## A single desktop command failure is a recoverable skipped action
 
 `execute(action)` runs against a real substrate, and the real `@e2b/desktop`
-Sandbox **throws** `CommandExitError` on **any** non-zero exit. A `press`,
+Sandbox **throws** `CommandExitError` on **any** non-zero exit. A keypress,
 `scroll`, `drag`, `moveMouse`, or `click` can exit non-zero for reasons that have
 nothing to do with the run's health (a `Ctrl+Minus` zoom keypress exiting `2` was
-the reproduced case). The loop treats one such failure as a **recoverable skipped
+the reproduced case). xdotool also skips a key name it cannot resolve with a `No such
+key name` warning and exits `0`; the E2B executor turns that warning into an error with
+exit code `0` and xdotool's stderr. The loop treats one such failure as a **recoverable skipped
 action**, not a fatal error:
 
 - The per-action `execute()` call is wrapped at the loop boundary, in `runActionBatch`

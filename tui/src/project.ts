@@ -72,6 +72,35 @@ export function retiredFileOf(
 }
 
 /**
+ * The study file a run starts again from: the one declared manifest with the run's study id. When
+ * there is none, or several, nothing can be started, and `refusal` says why.
+ */
+export function rerunStudyOf(
+  data: ProjectData,
+  run: RunIndexEntry,
+): { row: StudyRow; refusal?: never } | { row?: never; refusal: string } {
+  const studyId = run.study?.id;
+  const matching =
+    studyId === undefined
+      ? []
+      : data.rows.filter((candidate) => candidate.studyId === studyId && candidate.declared);
+  if (matching.length > 1)
+    return {
+      refusal:
+        "multiple manifests share this study id; choose the exact one from the list to run again",
+    };
+  const row = matching[0];
+  if (row !== undefined) return { row };
+  const retired = retiredFileOf(data, studyId);
+  return {
+    refusal:
+      retired === undefined
+        ? "cannot run this again: its study has no manifest here any more"
+        : `cannot run this again: ${retired.message}`,
+  };
+}
+
+/**
  * Every live run in the project, once.
  *
  * Not a flatMap over study rows: two manifests can declare the same study id, so a run belonging to
@@ -130,6 +159,7 @@ export function identityOf(
   screen: Screen,
   data: ProjectData | undefined,
   selected: number,
+  detail?: RunDetail | null,
 ): string | undefined {
   if (data === undefined) return undefined;
   if (screen.name === "studies") return data.rows[selected]?.key ?? "peer:all-runs";
@@ -139,11 +169,16 @@ export function identityOf(
     if (item === undefined) return undefined;
     return item.kind === "start" ? `start:${item.mode}` : `run:${item.run.runId}`;
   }
-  return undefined;
+  return openRunActions(screen, data, detail)?.[selected];
 }
 
 /** Where that identity sits now. -1 when it is gone (a run deleted, a manifest removed). */
-export function indexOfIdentity(screen: Screen, data: ProjectData, identity: string): number {
+export function indexOfIdentity(
+  screen: Screen,
+  data: ProjectData,
+  identity: string,
+  detail?: RunDetail | null,
+): number {
   if (screen.name === "studies") {
     return identity === "peer:all-runs"
       ? data.rows.length
@@ -159,7 +194,22 @@ export function indexOfIdentity(screen: Screen, data: ProjectData, identity: str
         : `run:${item.run.runId}` === identity,
     );
   }
-  return -1;
+  return openRunActions(screen, data, detail)?.findIndex((action) => action === identity) ?? -1;
+}
+
+/**
+ * The open run's actions once its detail has been read. Before that the list is provisional: a
+ * finished run offers only Run again until the read finds its Observer artifact, and a cursor that
+ * followed Run again from that list would land on it once Open in Observer appears above.
+ */
+function openRunActions(
+  screen: Screen,
+  data: ProjectData,
+  detail: RunDetail | null | undefined,
+): ReturnType<typeof runActions> | undefined {
+  if (screen.name !== "run" || detail === undefined) return undefined;
+  const run = data.runsById.get(screen.runId);
+  return run === undefined ? undefined : runActions(run, detail);
 }
 
 export function openSelected(

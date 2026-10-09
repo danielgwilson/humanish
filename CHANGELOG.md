@@ -10,13 +10,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
-- `HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest E2B sandbox lifetime the planners allow: 60
-  minutes (E2B's Hobby limit) when unset, up to 1440 for E2B's Pro plan. A study whose sandbox
-  deadline passes it is refused before any sandbox is created, and the refusal gives the setting
-  value that would admit it. `humanish doctor` shows the ceiling on a new `e2b sandbox ceiling` row,
-  and a value outside 1 to 1440 fails that row and refuses hosted studies. Raising it also raises
-  the default session of a computer-use clone or local-tree study without `execution.timeoutMs`,
-  from 20 minutes to as much as 30.
 - `actor.maxWaitMs` sets how long one `wait` action of a computer-use or shared-world participant
   may last, from 1000 to 600000. When unset it is 120000 (two minutes), or 30000 on a desktop with
   speech, where heard speech reaches the participant only with a screenshot. A longer wait is
@@ -29,81 +22,40 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A participant's wait longer than 30 seconds now lasts as long as it asked, up to
   `actor.maxWaitMs`. humanish sends it to the desktop as consecutive waits of at most 30 seconds,
   the longest one browser-control request carries. A Codex participant's wait was shortened to 30
-  seconds before, and still is on a desktop with speech unless the study sets `actor.maxWaitMs`. Its `humanish_ui` tool description now states the study's longest wait, and the
-  tool's input schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
+  seconds before, and still is on a desktop with speech unless the study sets `actor.maxWaitMs`.
+  Its `humanish_ui` tool description now states the study's longest wait, and the tool's input
+  schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
   removed: the loop shortens a wait itself, for every provider.
-- A shared-world study whose persona file has an invalid background now stops with that error
-  before the route checks its keys, as a computer-use study already did.
-- When `study check` or a run warns that `execution.egressAllow` is ignored and also warns about a
-  concurrency cap below the roster or about participants without an inbox, the `egressAllow`
-  warning now comes after those two.
-- `humanish runtime setup` with only `--memory` or only `--cpus`, on a Mac where `limactl list`
-  shows no size for the humanish Lima VM, now stops and asks for both values. It used to take the
-  value not given from the default size of a new VM, which could change the VM's CPUs or memory.
-- The refusal of `humanish keys set` for a name that is not a provider key now lists
-  `E2B_API_KEY` before `ANTHROPIC_API_KEY`.
-- `NO_UPDATE_NOTIFIER`, the variable the update-notifier package reads, now turns off the update
-  check and its notice, as `HUMANISH_NO_UPDATE_CHECK=1` does. As in update-notifier, any value
-  turns it off, including an empty one, `0` or `false`.
-- An adapter artifact larger than 32 MiB (state, log, trace or filesystem output) now grades a run
-  `local_only` when nothing in the bundle cites it, and `blocked` when the bundle cites it as
-  evidence. `verify` read and scanned such a file whole before.
 
 ### Fixed
 
-- A run refused before it was created, such as a live study with no keys, no longer ends its
-  `humanish run` output with `analysis: skipped because the run's evidence could not be read`. The
-  output ends with the refusal and its code. The JSON keeps the `automaticAnalysis` record (#1704).
-- The `subject:` line of `humanish run` names a `desktop-cli` subject by its product and source,
-  as in `subject: humanish (desktop-cli)`. It was empty, as it was for every computer-use study the
-  CLI refused for an option such as `--port 99999`; those now print the study's URL (#1705).
-- When a study's analysis does not complete (refused at admission, failed or cancelled) and the
-  run's own result is ok, the first line of `humanish run` reads
-  `humanish run <study>: live run finished; the analysis did not complete`. It read
-  `live run failed`, which sent a reader to the participants. The exit code stays 2 and the JSON
-  keeps `ok: false` and `runOk: true`. A run whose own result is not ok still reads
-  `live run failed` (#1673).
-- A run whose received email held a link of 32,768 characters or more no longer fails its analysis
-  with `analysis_validation_failed_unexpected`. The scrub of the run's known values builds one
-  regular expression of them, which Node refuses once a value is that long; it then searches each
-  value directly and replaces the same text (#1646).
-- The known-value scrubs find the base64 of a value of 4 or 5 bytes, such as the code `7439`
-  written `NzQzOQ`, and a 5-byte value inside a longer base64 run. Base64 and hex forms are
-  searched from 6 characters instead of 8. A 4-byte value inside a longer base64 run is still not
-  found, and an identifier that holds a short value's base64, such as `aMTIzNAz` while the code
-  `1234` is registered, loses that part (#1646).
-- Run evidence is checked after its known values are replaced. When the result still holds a value
-  in any reading `verify` uses, as when the marker written for one value spells another, the whole
-  text becomes `[REDACTED_SECRET]` (#1646).
-- Scrubbing run evidence takes time linear in the text's terminal escape sequences. A run of
-  operating-system commands with no terminator took 3.4 s at 64 KiB (#1646).
-- humanish reads at most 32 MiB of one run file, 64 KiB of `.humanish/runs/latest.json` and
-  4 MiB of a project file (study, persona and scenario YAML, `package.json`, `AGENTS.md`, a scorer
-  entry), and refuses a larger file without reading it. It read every file whole before. A file
-  that is there and refused is never taken for a missing one, and the refusal names the file and
-  the limit:
-  - `humanish verify` lists a larger run file under `UNSCANNED_ARTIFACT`, names the limit for a
-    larger `run.json`, `review.json`, `review.md` or `cleanup.json` and for a larger file the
-    bundle cites as evidence, and calls an unfinished run's sandboxes `unconfirmed` when it
-    cannot read `sandbox-receipts.ndjson`.
-  - `humanish reclaim` stops before it kills or writes anything when the `reclaim-receipt.json`
-    an earlier reclaim wrote cannot be read, so its recorded outcomes are kept.
-  - A persona or scenario file that cannot be read stops the study with an error naming it. It
-    used to be skipped for a lower-priority file of the same name, or for the persona id alone.
-  - `--run latest` with a larger pointer and `feedback list` with a larger draft say so. The
-    sandbox id sweep at the end of a run fails, naming each text file it could not read, and so
-    does a run whose `sandbox-receipts.ndjson` is a link or cannot be read: without its ids, the
-    sweep cannot find them in the run's other files.
-  - `export --format bundle` reads each source file within what is left of `--max-bytes` and
-    refuses one that changes as it is read.
-  - A run file swapped for a FIFO while a command reads it no longer leaves the command waiting
-    for a writer (#1669).
-- `humanish verify` lists a run folder it cannot list under `UNSCANNED_ARTIFACT`, and stops its
-  public-safety scan after 10,000 files and folders with the stop listed there too, so neither
-  run grades `share_ready`. A folder it could not list was skipped before. `export --format
-  bundle` already refused a run with more than 10,000 entries (#1669).
-- `humanish comms configure` refuses a local study copy over 1 MiB that it would replace, where
-  it now cannot read the copy whole.
+- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
+  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
+  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
+  With another key in `process.env`, the check asked that key's account, and a not-found answer
+  from it would be recorded as confirming the sandbox was gone (#1726).
+
+## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
+
+humanish 0.116.0 delivers a hosted participant's arrow keys and punctuation, lets the operator
+raise the E2B sandbox lifetime, and reads run files within size limits. On hosted E2B desktops,
+`ARROWDOWN`, Page Up, Page Down, `?`, `/` and other names missing from `@e2b/desktop`'s key table
+reached xdotool unchanged, which ignored them while the run recorded the keypress as completed;
+both desktops now translate key names through one table and refuse a name outside it.
+`HUMANISH_E2B_MAX_SANDBOX_MINUTES` sets the longest sandbox lifetime the planners allow, 60 minutes
+when unset and up to 1440 on E2B's Pro plan. A refusal names the value that admits the study, and
+`humanish doctor` shows the ceiling. A route's sandbox kill, and the kills, checks and listings of
+`humanish reclaim`, carry the run's E2B key. `verify` reads at most 32 MiB of a run file and lists
+a larger file, or a run past 10,000 entries, as unscanned, and every contained read tells a missing
+file from one it refused. A run whose analysis did not complete reads `live run finished; the
+analysis did not complete`, a run refused before it was created prints no `analysis:` line, and a
+`desktop-cli` run names its product on the `subject:` line and in run.json. In `humanish tui`, the
+cursor follows the selected row through a refresh, a live start of a `mode: dry-run` file says
+`needs mode: live`, Run again on a live run asks for a second Enter, the confirm prompt restates
+the study's cost, and `c` lists every provider key. `NO_UPDATE_NOTIFIER` turns the update check
+off.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.116.0)
 
 ## 0.115.0: Closing report limits, admitted analysis cost, concurrent reviewer notes, known-value scrub (2026-10-08)
 

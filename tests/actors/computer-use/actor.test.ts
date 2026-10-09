@@ -68,7 +68,6 @@ function makeFakeDesktop(): RecordingDesktop {
     moveMouse: record("moveMouse"),
     scroll: record("scroll"),
     write: record("write"),
-    press: record("press"),
     drag: record("drag"),
     wait: record("wait"),
   };

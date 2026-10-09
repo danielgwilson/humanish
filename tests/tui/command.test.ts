@@ -321,6 +321,112 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
     }
   });
 
+  it("lists the keys humanish keys lists and stores the one the person picks", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-provider-key-"));
+    // Empty values keep discovery off this machine's e2b login and gh token.
+    const env = {
+      XDG_CONFIG_HOME: path.join(cwd, "user-config"),
+      E2B_API_KEY: "",
+      GH_TOKEN: "",
+      GITHUB_TOKEN: "",
+    };
+    const canary = "synthetic-provider-key-canary";
+    const labels: string[] = [];
+    const views: TuiOptions[] = [];
+    let before: unknown;
+    let after: unknown;
+    try {
+      const result = await runCli(
+        ["tui", "--cwd", cwd],
+        workingRuntime({
+          env,
+          promptSecret: async (label) => {
+            labels.push(label);
+            return canary;
+          },
+          loadTui: async () => ({
+            startTui: async (options) => {
+              views.push(options);
+              if (views.length === 1) {
+                before = await options.capabilities.keys?.status();
+                return { action: "provider-key", name: "OPENAI_API_KEY" };
+              }
+              after = await options.capabilities.keys?.status();
+              return 0;
+            },
+          }),
+        }),
+      );
+      expect(result.exitCode).toBe(0);
+      expect(before).toEqual([
+        {
+          name: "E2B_API_KEY",
+          set: false,
+          line: "E2B_API_KEY (hosted desktops): missing; run `e2b auth login`, or `humanish keys set e2b`",
+        },
+        {
+          name: "OPENAI_API_KEY",
+          set: false,
+          line: "OPENAI_API_KEY (participant model and analysis): missing; run `humanish keys set openai`",
+        },
+        {
+          name: "GH_TOKEN",
+          set: false,
+          line: "GH_TOKEN (private repository subjects): missing; run `gh auth login`, or `humanish keys set github`",
+        },
+        {
+          name: "AGENTMAIL_API_KEY",
+          set: false,
+          line: "AGENTMAIL_API_KEY (email in studies): missing; run `humanish keys set agentmail`",
+        },
+      ]);
+      // The prompt `humanish keys set openai` shows.
+      expect(labels).toEqual(["Value for OPENAI_API_KEY"]);
+      expect(views[1]?.initialScreen).toBe("keys");
+      expect(views[1]?.connectionNotice).toBe("OPENAI_API_KEY stored.");
+      expect(after).toContainEqual({
+        name: "OPENAI_API_KEY",
+        set: true,
+        line: `OPENAI_API_KEY (participant model and analysis): set, from ${userKeyStorePath(env)}`,
+      });
+      expect(await readFile(userKeyStorePath(env), "utf8")).toBe(`OPENAI_API_KEY=${canary}\n`);
+      expect(JSON.stringify([views, before, after]) + result.stdout + result.stderr).not.toContain(
+        canary,
+      );
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("asks for no value when the view names a key humanish keys does not list", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-unlisted-key-"));
+    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), HUMANISH_STRICT_KEYS: "1" };
+    const prompt = vi.fn(async () => "synthetic-unlisted-value");
+    let notice: string | undefined;
+    let visits = 0;
+    try {
+      await runCli(
+        ["tui", "--cwd", cwd],
+        workingRuntime({
+          env,
+          promptSecret: prompt,
+          loadTui: async () => ({
+            startTui: async (options) => {
+              if (++visits === 1) return { action: "provider-key", name: "NODE_OPTIONS" };
+              notice = options.connectionNotice;
+              return 0;
+            },
+          }),
+        }),
+      );
+      expect(prompt).not.toHaveBeenCalled();
+      expect(notice).toBe("NODE_OPTIONS is not a key humanish keys lists. Nothing was changed.");
+      await expect(readFile(userKeyStorePath(env))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("preserves explicit env precedence when replacing a stored key", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-replace-"));
     const env = {

@@ -73,6 +73,8 @@ jobs:
 
   observer:
     runs-on: ubuntu-latest
+    # The proofs drive a real browser; a hung one would otherwise hold the job for six hours.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -95,12 +97,17 @@ jobs:
       - run: pnpm exec playwright-core install --with-deps chromium
       # Use the runner's installed Chrome with its sandbox enabled for control conformance.
       - run: pnpm browser-control:proof
+        timeout-minutes: 5
         env:
           HUMANISH_BROWSER_EXECUTABLE: /usr/bin/google-chrome
       - run: pnpm observer:iframe:proof
+        timeout-minutes: 5
       - run: pnpm observer:browser:proof
+        timeout-minutes: 12
       - run: pnpm observer:chrome:proof
+        timeout-minutes: 5
       - run: pnpm observer:reliability:proof
+        timeout-minutes: 5
       - uses: actions/upload-artifact@v7
         if: always()
         with:

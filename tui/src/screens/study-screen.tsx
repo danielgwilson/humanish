@@ -67,6 +67,15 @@ export interface StudyScreenProps {
 }
 
 /**
+ * The rows the rest of the screen takes below the description at 80 columns when keys are missing:
+ * the subject, the summary, four of analysis, three of missing keys, the start rows, the runs
+ * heading and one run, with the blank lines between them. The description gets what the terminal
+ * has left, at least two lines, so a tall window shows all of it and a short one cuts it with a
+ * visible ellipsis instead of scrolling the frame.
+ */
+const STUDY_DETAIL_ROWS = 16;
+
+/**
  * The object, and where the lifecycle lives. What this study does, what it typically costs, one
  * action, then its runs newest-first, so idle, running and finished are one screen rather than
  * three, and the run you just started appears where you are already looking.
@@ -78,7 +87,14 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
   return (
     <Box flexDirection="column">
       {summary?.description === undefined ? null : (
-        <Text wrap="truncate-end">{firstSentence(summary.description)}</Text>
+        <Box flexDirection="column">
+          {normalizeThought(summary.description, {
+            width: columns,
+            maxLines: Math.max(2, viewport - STUDY_DETAIL_ROWS),
+          }).lines.map((line, index) => (
+            <Text key={index}>{line}</Text>
+          ))}
+        </Box>
       )}
       {summary?.subject === undefined ? null : (
         <Text dimColor wrap="truncate-end">
@@ -99,7 +115,7 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
           {/* The same rule the studies list uses. Falling back to the mode-mixed expectation here put
               a dry-run-derived figure directly above a control that spends money. */}
           {studySummaryLine(row)}
-          {capsLine(summary)}
+          {capsText(summary)}
         </Text>
         <Box flexGrow={1} />
         {summary?.planRefusal !== undefined ? (
@@ -110,7 +126,10 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
           </Text>
         )}
       </Box>
-      {summary?.analysis === undefined ? null : <Text wrap="wrap">{summary.analysis.line}</Text>}
+      {/* While a live start is armed, its prompt carries this line. */}
+      {summary?.analysis === undefined || props.confirming === "live" ? null : (
+        <Text wrap="wrap">{summary.analysis.line}</Text>
+      )}
       {summary?.runtime ? (
         <Text color={summary.runtime.ok ? PALETTE.ok : PALETTE.warn}>
           {summary.runtime.message}
@@ -170,13 +189,7 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
           {props.confirming === "live" ? (
             <Box marginTop={1}>
               <Text color={PALETTE.warn}>
-                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}
-                {summary?.analysis
-                  ? summary.analysis.provider === "codex"
-                    ? " + Codex account analysis (remote inference; account limits apply, dollar cost unknown)"
-                    : ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)`
-                  : ""}{" "}
-                · ⏎ confirm · esc cancel
+                {"  "}start a live run? {liveCostText(row, summary)} · ⏎ confirm · esc cancel
               </Text>
             </Box>
           ) : null}
@@ -306,6 +319,7 @@ function startRowText(
     return { label: "Start a dry run", value: "free · no keys, no spend", blocked: false };
   const blocked =
     summary?.planRefusal !== undefined ||
+    summary?.mode === "dry-run" ||
     summary?.keysReady === false ||
     summary?.runtime?.ok === false ||
     summary?.participantReadiness?.ok === false;
@@ -336,6 +350,7 @@ function startRowsStack(
 /** Why the live row is blocked, the most basic reason first. */
 function blocker(summary: StudySummary | null | undefined): string {
   if (summary?.planRefusal !== undefined) return "refused";
+  if (summary?.mode === "dry-run") return "needs mode: live";
   if (summary?.keysReady === false) return "needs keys";
   if (summary?.runtime?.ok === false) return "needs runtime setup";
   return "needs Codex login";
@@ -518,21 +533,28 @@ function PastRun({
   );
 }
 
-function capsLine(summary: StudySummary | null | undefined): string {
-  const lane = summary?.caps.laneUsd;
-  const study = summary?.caps.studyUsd;
-  if (lane === undefined && study === undefined) return "";
+/**
+ * What a live run of this study is known to cost before it starts: what its live runs have cost,
+ * its participant caps, and the analysis line `humanish run` prints at a live start. Every prompt
+ * that commits a live run restates it.
+ */
+export function liveCostText(row: StudyRow, summary: StudySummary | null | undefined): string {
+  const analysis = summary?.analysis === undefined ? "" : `. ${summary.analysis.line}`;
+  return `${expectationLine(row.liveExpectation)}${capsText(summary)}${analysis}`;
+}
+
+/**
+ * The declared caps, or that none is set on a route that takes them. Empty before the read, and on
+ * a route whose caps the summary does not show.
+ */
+function capsText(summary: StudySummary | null | undefined): string {
+  if (summary?.caps === undefined) return "";
+  const { laneUsd: lane, studyUsd: study } = summary.caps;
+  if (lane === undefined && study === undefined) return " · no participant cap set";
   const parts: string[] = [];
   if (lane !== undefined) parts.push(`$${lane} per participant`);
   if (study !== undefined) parts.push(`$${study} study`);
   return ` · caps ${parts.join(" / ")}`;
-}
-
-/** The first sentence of a description: enough to say what the study is, in one line. */
-function firstSentence(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  const stop = flat.indexOf(". ");
-  return stop === -1 ? flat : flat.slice(0, stop + 1);
 }
 
 function shortDate(stamp: string | undefined): string {

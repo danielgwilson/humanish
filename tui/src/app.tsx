@@ -2,14 +2,22 @@ import { Text, useApp, useInput, useWindowSize } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
+import { KeysScreen } from "./screens/keys-screen.js";
 import { PALETTE } from "./palette.js";
 
 import type { StudySummary } from "../../src/study/summary.js";
 import type { RunDetail } from "../../src/run/detail.js";
 import type { RunIndexEntry } from "../../src/run/run-index.js";
 import type { StudyRow } from "../../src/run/projection.js";
-import type { TuiOptions } from "../../src/tui/contract.js";
-import { currentScreen, initialNav, navigate, selectedIndex } from "./navigation.js";
+import type { TuiHandoff, TuiOptions } from "../../src/tui/contract.js";
+import {
+  currentScreen,
+  initialNav,
+  navigate,
+  screenKey,
+  selectedIndex,
+  type Screen,
+} from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
 import { frameText } from "./frame-text.js";
 import {
@@ -19,15 +27,17 @@ import {
   itemsForStudy,
   openSelected,
   projectData,
-  retiredFileOf,
+  rerunStudyOf,
   type ProjectData,
 } from "./project.js";
 import { renderScreen } from "./screen-body.js";
 import { runActions } from "./screens/run-screen.js";
+import { liveCostText } from "./screens/study-screen.js";
 import { startStudy } from "./start-study.js";
 
 export interface AppProps {
-  onKeyEntry?: () => void;
+  /** A key the person asked to enter; the surface exits after it so the host can prompt. */
+  onKeyEntry?: (handoff: TuiHandoff) => void;
   options: TuiOptions;
   onReady?: () => void;
   /** Frozen in tests so a golden never depends on the wall clock. */
@@ -61,6 +71,15 @@ const LIVE_CONFIRM_MIN_MS = 400;
 
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
+
+/**
+ * Why a live start of this study cannot happen here. `humanish run` runs a file in the mode it
+ * sets, and no flag turns a dry-run file live, so a live start would start a dry run under a prompt
+ * that promised spend.
+ */
+function dryRunFileNote(row: StudyRow): string {
+  return `Set mode: live in ${row.path ?? row.name} to start a live run.`;
+}
 
 export function App({
   options,
@@ -98,8 +117,20 @@ export function App({
   const [actionNote, setActionNote] = useState<string | undefined>(undefined);
   /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
+  /** When Run again was armed for a live run, which spends like a live start. */
+  const [againArmedAt, setAgainArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
-  const [showConnections, setShowConnections] = useState(options.initialScreen === "connections");
+  /** `c keys and accounts`, and the email connection one of its rows opens. */
+  const [accounts, setAccounts] = useState<"keys" | "email" | undefined>(
+    options.initialScreen === "connections"
+      ? "email"
+      : options.initialScreen === "keys"
+        ? "keys"
+        : undefined,
+  );
+  const [keysCursor, setKeysCursor] = useState(0);
+  const hasAccounts =
+    options.capabilities.keys !== undefined || options.capabilities.comms !== undefined;
   /** When the "set up humanish here" action was armed: it writes into the operator's directory. */
   const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
@@ -113,15 +144,22 @@ export function App({
   const projectState = useMemo(() => options.capabilities.readProjectState(options.cwd), [options]);
   // Study files humanish no longer reads make this a project, even one with only .humanish/labs/.
   const initialized = projectState.initialized || (data?.retired.length ?? 0) > 0;
-  const clock = now ?? Date.now();
+  /**
+   * The time this frame measures elapsed durations against. Held in state and advanced by the
+   * spinner timer below, because a clock read during render renders the same state differently.
+   */
+  const [wallClock, setWallClock] = useState(() => Date.now());
+  const clock = now ?? wallClock;
 
-  // Identity of the selected row, kept current so a refresh that reorders the list can put the
-  // cursor back on the same thing. A live study sorts to the top the moment a run starts, so an index
-  // held across a refresh silently points at a different study, and that is how someone opens, or
-  // starts, the wrong one.
-  const selectedIdRef = useRef<string | undefined>(undefined);
+  // The row the person chose on each screen, by identity, keyed like the navigation's per-screen
+  // index. A live study sorts to the top the moment a run starts, and a run that finishes swaps Stop
+  // for Run again, so an index held across a refresh silently points at a different row, and that
+  // is how someone opens, or starts, the wrong one.
+  const chosenRef = useRef(new Map<string, string>());
+  /** The cursor at the last commit, which tells the person's moves apart from refreshes. */
+  const cursorRef = useRef<{ screen: Screen; selected: number } | undefined>(undefined);
   /** Where the operator is right now, readable from an async launch that started long ago. */
-  const screenRef = useRef<ReturnType<typeof currentScreen>>({ name: "studies" });
+  const screenRef = useRef<Screen>({ name: "studies" });
 
   useEffect(() => {
     let cancelled = false;
@@ -163,29 +201,36 @@ export function App({
   const selected = selectedIndex(nav);
   const rowCount = countRows(screen, data, detail);
 
+  // A move on the same screen records the row the cursor is on. Anything else (a refresh, arriving
+  // at a screen, coming back to one) puts the cursor on the recorded row. When that row is gone
+  // (a run deleted, a Stop that no longer applies) the cursor keeps its index and the record stays
+  // until the person moves, so Enter on the run screen can tell that nobody chose the row under it.
   useEffect(() => {
     screenRef.current = screen;
-    const identity = identityOf(screen, data, selected);
-    if (identity !== undefined) selectedIdRef.current = identity;
-  }, [screen, data, selected]);
-
-  // After a refresh, put the cursor back on the same row rather than the same index. When the row
-  // is gone entirely (a run deleted underneath us) the index is left where it was and clamped by
-  // the reducer, which keeps the cursor near where the operator left it.
-  useEffect(() => {
     if (data === undefined) return;
-    const identity = selectedIdRef.current;
-    if (identity === undefined) return;
-    const next = indexOfIdentity(screen, data, identity);
-    if (next >= 0 && next !== selected) {
-      dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
+    const last = cursorRef.current;
+    cursorRef.current = { screen, selected };
+    const key = screenKey(screen);
+    const chosen = chosenRef.current.get(key);
+    const moved = last?.screen === screen && last.selected !== selected;
+    if (!moved && chosen !== undefined) {
+      const next = indexOfIdentity(screen, data, chosen, detail);
+      if (next >= 0 && next !== selected) {
+        dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
+      }
+      return;
     }
-    // `selected` is deliberately absent: this reacts to data changing, not to the operator moving.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, screen]);
+    const identity = identityOf(screen, data, selected, detail);
+    if (identity === undefined) chosenRef.current.delete(key);
+    else chosenRef.current.set(key, identity);
+  }, [screen, data, selected, detail]);
 
   const start = useCallback(
     async (row: StudyRow, mode: "dry-run" | "live"): Promise<void> => {
+      if (mode === "live" && summary?.mode === "dry-run") {
+        setLaunchNote({ studyKey: row.key, text: dryRunFileNote(row) });
+        return;
+      }
       if (mode === "live" && confirming !== "live") {
         // Arm, do not fire. The row above says what a live run costs; this makes the operator press
         // again having read it.
@@ -223,7 +268,7 @@ export function App({
         });
       }
     },
-    [confirming, armedAt, options],
+    [confirming, armedAt, options, summary],
   );
 
   /**
@@ -281,41 +326,40 @@ export function App({
         return;
       }
       // Run again: the same study, in the same mode it ran in, launched the same detached way.
-      const studyId = run.study?.id;
-      const matching =
-        studyId === undefined
-          ? []
-          : (data?.rows.filter(
-              (candidate) => candidate.studyId === studyId && candidate.declared,
-            ) ?? []);
-      if (matching.length > 1) {
-        setActionNote(
-          "multiple manifests share this study id; choose the exact one from the list to run again",
-        );
+      if (data === undefined) return;
+      const { row, refusal } = rerunStudyOf(data, run);
+      if (row === undefined) {
+        setActionNote(refusal);
         return;
       }
-      const row = matching[0];
-      if (row === undefined || !row.declared) {
-        const retired = data === undefined ? undefined : retiredFileOf(data, studyId);
-        setActionNote(
-          retired === undefined
-            ? "cannot run this again: its study has no manifest here any more"
-            : `cannot run this again: ${retired.message}`,
-        );
+      const mode = run.mode === "live" ? "live" : "dry-run";
+      if (mode === "live" && summary?.mode === "dry-run") {
+        setActionNote(dryRunFileNote(row));
         return;
+      }
+      if (mode === "live") {
+        // Armed like a live start from the study screen: the prompt below the actions restates
+        // the cost, and only a second Enter, after the auto-repeat floor, spends it.
+        if (againArmedAt === undefined) {
+          setAgainArmedAt(Date.now());
+          setActionNote(undefined);
+          return;
+        }
+        if (Date.now() - againArmedAt < LIVE_CONFIRM_MIN_MS) return;
+        setAgainArmedAt(undefined);
       }
       setActionNote(`starting ${row.name}…`);
       const started = await options.capabilities.startRun({
         cwd: options.cwd,
         study: row.name,
         ...(row.path ? { manifestPath: row.path } : {}),
-        mode: run.mode === "live" ? "live" : "dry-run",
+        mode,
       });
       setActionNote(
         started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message,
       );
     },
-    [detail, options, data, stopArmedAt],
+    [detail, options, data, stopArmedAt, againArmedAt, summary],
   );
 
   useInput(
@@ -331,7 +375,7 @@ export function App({
           rightArrow?: boolean;
         },
       ) => {
-        if (showConnections) {
+        if (accounts !== undefined) {
           if (input === "q") exit();
           return;
         }
@@ -349,12 +393,14 @@ export function App({
           exit();
           return;
         }
-        if (input === "c" && options.capabilities.comms) {
+        if (input === "c" && hasAccounts) {
           setConfirming(undefined);
           setArmedAt(undefined);
           setStopArmedAt(undefined);
+          setAgainArmedAt(undefined);
           setInitArmedAt(undefined);
-          setShowConnections(true);
+          setKeysCursor(0);
+          setAccounts("keys");
           return;
         }
         if (input === "g" || input === "G") {
@@ -372,6 +418,7 @@ export function App({
             setConfirming(undefined);
             setArmedAt(undefined);
           }
+          setAgainArmedAt(undefined);
           dispatch({ type: "move", delta: key.upArrow || input === "k" ? -1 : 1, total: rowCount });
           return;
         }
@@ -388,6 +435,10 @@ export function App({
           if (stopArmedAt !== undefined) {
             setStopArmedAt(undefined);
             setActionNote(undefined);
+            return;
+          }
+          if (againArmedAt !== undefined) {
+            setAgainArmedAt(undefined);
             return;
           }
           if (initArmedAt !== undefined) {
@@ -417,6 +468,18 @@ export function App({
             const run = data.runsById.get(screen.runId);
             if (run !== undefined) {
               const action = runActions(run, detail)[selected];
+              const key = screenKey(screen);
+              const chosen = chosenRef.current.get(key);
+              const identity = identityOf(screen, data, selected, detail);
+              if (identity !== undefined && chosen !== undefined && identity !== chosen) {
+                // The action the person chose went away under the cursor (Cancel analysis when the
+                // analysis ends, Stop when the run does), and this key was meant for it. Acting on
+                // the row now there would start or stop something nobody chose.
+                chosenRef.current.set(key, identity);
+                setStopArmedAt(undefined);
+                setActionNote("nothing was done: this run's actions changed before that key");
+                return;
+              }
               if (action !== undefined) {
                 void act(run, action);
                 return;
@@ -446,8 +509,10 @@ export function App({
         detail,
         act,
         stopArmedAt,
+        againArmedAt,
         showHelp,
-        showConnections,
+        accounts,
+        hasAccounts,
         initArmedAt,
         initialized,
         options,
@@ -462,15 +527,20 @@ export function App({
   // Detail is fetched only for the run being looked at. It opens that run's bundle, which the index
   // deliberately does not: affordable for one run, not for a listing.
   const openRunId = screen.name === "run" ? screen.runId : undefined;
-  useEffect(() => {
+  // What belongs to the open run starts over when another run opens or the run screen closes. It is
+  // adjusted during render (react.dev, "Adjusting some state when a prop changes"), so no frame
+  // shows the previous run's detail, note or armed stop.
+  const [detailRunId, setDetailRunId] = useState(openRunId);
+  if (detailRunId !== openRunId) {
+    setDetailRunId(openRunId);
+    setDetail(undefined);
     setActionNote(undefined);
     setStopArmedAt(undefined);
-    if (openRunId === undefined) {
-      setDetail(undefined);
-      return;
-    }
+    setAgainArmedAt(undefined);
+  }
+  useEffect(() => {
+    if (openRunId === undefined) return;
     let cancelled = false;
-    setDetail(undefined);
     const read = async (): Promise<void> => {
       try {
         const next = await options.capabilities.readRunDetail(options.cwd, openRunId);
@@ -490,14 +560,17 @@ export function App({
     };
   }, [openRunId, options]);
 
-  // The spinner clock. Independent of the data refresh, because motion is what says "live" and a
-  // 2s heartbeat does not read as motion.
+  // The spinner and the clock. Independent of the data refresh, because motion is what says "live"
+  // and a 2s heartbeat does not read as motion.
   useEffect(() => {
-    if (frozenTick !== undefined) return;
-    const timer = setInterval(() => setTick((previous) => previous + 1), SPINNER_MS);
+    if (frozenTick !== undefined && now !== undefined) return;
+    const timer = setInterval(() => {
+      setTick((previous) => previous + 1);
+      setWallClock(Date.now());
+    }, SPINNER_MS);
     timer.unref?.();
     return () => clearInterval(timer);
-  }, [frozenTick]);
+  }, [frozenTick, now]);
 
   // Live participants plus the latest run of the open study, so its post-run analysis stays visible.
   // Never open all historical bundles merely to populate a list.
@@ -513,11 +586,15 @@ export function App({
       ...(watchedLatestId === undefined ? [] : [watchedLatestId]),
     ]),
   ].join(",");
+  // With no live run and no study open to watch, what was read for earlier runs is dropped, so a run
+  // that comes back into view starts unread. Adjusted during render, as the run detail is above.
+  const [liveDetailRunIds, setLiveDetailRunIds] = useState(liveRunIds);
+  if (liveDetailRunIds !== liveRunIds) {
+    setLiveDetailRunIds(liveRunIds);
+    if (liveRunIds === "") setLiveDetails(new Map());
+  }
   useEffect(() => {
-    if (liveRunIds === "") {
-      setLiveDetails(new Map());
-      return;
-    }
+    if (liveRunIds === "") return;
     let cancelled = false;
     let reading = false;
     const read = async (): Promise<void> => {
@@ -547,19 +624,26 @@ export function App({
     };
   }, [liveRunIds, options]);
 
-  // What the open study is. Includes the key probe, which is why it is read per study rather than for
-  // the whole list.
-  const openStudyKey = screen.name === "study" ? screen.studyKey : undefined;
+  // What the open study is, or the study a run card would run again. Includes the key probe, which
+  // is why it is read per study rather than for the whole list.
+  const openRun = screen.name === "run" ? data?.runsById.get(screen.runId) : undefined;
   const openStudyRow =
-    openStudyKey === undefined ? undefined : data?.rows.find((row) => row.key === openStudyKey);
+    screen.name === "study"
+      ? data?.rows.find((row) => row.key === screen.studyKey)
+      : data === undefined || openRun === undefined
+        ? undefined
+        : rerunStudyOf(data, openRun).row;
   const openStudyName = openStudyRow?.path ?? openStudyRow?.name;
-  useEffect(() => {
-    if (openStudyName === undefined) {
-      setSummary(undefined);
-      return;
-    }
-    let cancelled = false;
+  // A summary belongs to one study, so it starts unread whenever the open study changes. Adjusted
+  // during render, as the run detail is above.
+  const [summaryStudyName, setSummaryStudyName] = useState(openStudyName);
+  if (summaryStudyName !== openStudyName) {
+    setSummaryStudyName(openStudyName);
     setSummary(undefined);
+  }
+  useEffect(() => {
+    if (openStudyName === undefined) return;
+    let cancelled = false;
     void (async () => {
       const read = await options.capabilities
         .readStudySummary(options.cwd, openStudyName, { checkKeys: true })
@@ -573,26 +657,36 @@ export function App({
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
-    if (showConnections && options.capabilities.comms)
+    const handOff = (handoff: TuiHandoff): void => {
+      onKeyEntry?.(handoff);
+      exit();
+    };
+    if (accounts === "email" && options.capabilities.comms)
       return (
         <ConnectionsScreen
           capabilities={options.capabilities.comms}
           columns={contentWidth(size.columns)}
-          notice={options.connectionNotice}
-          onBack={() => setShowConnections(false)}
-          onKeyEntry={() => {
-            onKeyEntry?.();
-            exit();
-          }}
+          notice={options.initialScreen === "connections" ? options.connectionNotice : undefined}
+          onBack={() => setAccounts("keys")}
+          onKeyEntry={() => handOff({ action: "agentmail-key" })}
+        />
+      );
+    if (accounts !== undefined)
+      return (
+        <KeysScreen
+          keys={options.capabilities.keys}
+          email={options.capabilities.comms !== undefined}
+          columns={contentWidth(size.columns)}
+          notice={options.initialScreen === "keys" ? options.connectionNotice : undefined}
+          selected={keysCursor}
+          onSelect={setKeysCursor}
+          onBack={() => setAccounts(undefined)}
+          onEmail={() => setAccounts("email")}
+          onKeyEntry={handOff}
         />
       );
     if (showHelp)
-      return (
-        <HelpScreen
-          columns={contentWidth(size.columns)}
-          connections={!!options.capabilities.comms}
-        />
-      );
+      return <HelpScreen columns={contentWidth(size.columns)} connections={hasAccounts} />;
     if (error !== undefined)
       return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
@@ -611,12 +705,17 @@ export function App({
       liveDetails,
       tick,
       initialized,
-      actionNote,
+      actionNote:
+        againArmedAt !== undefined && openStudyRow !== undefined
+          ? `run again live? ${liveCostText(openStudyRow, summary)} · ⏎ again to confirm · esc cancel`
+          : actionNote,
       initArmed: initArmedAt !== undefined,
     });
   }, [
     showHelp,
-    showConnections,
+    accounts,
+    hasAccounts,
+    keysCursor,
     options,
     onKeyEntry,
     exit,
@@ -636,6 +735,8 @@ export function App({
     tick,
     initialized,
     actionNote,
+    againArmedAt,
+    openStudyRow,
   ]);
 
   return (
@@ -647,8 +748,9 @@ export function App({
         selected,
         confirming,
         initialized,
-        overlay: showConnections ? "connections" : showHelp ? "help" : undefined,
-        connections: !!options.capabilities.comms,
+        overlay:
+          accounts === "email" ? "connections" : (accounts ?? (showHelp ? "help" : undefined)),
+        connections: hasAccounts,
         cwd: options.cwd,
         columns: size.columns,
       })}

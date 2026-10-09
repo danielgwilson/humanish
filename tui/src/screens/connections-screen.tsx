@@ -10,6 +10,7 @@ import type { TuiCapabilities } from "../../../src/tui/contract.js";
 import { listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { gutter } from "../frame.js";
+import { KEY_ENTRY_NOTE } from "./keys-screen.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
@@ -341,7 +342,7 @@ export function ConnectionsScreen({
           ) : null}
           <Box marginTop={1} flexDirection="column">
             <Text dimColor>Get a key: https://console.agentmail.to</Text>
-            <Text dimColor>Key entry is hidden. Saved keys apply to all your projects.</Text>
+            <Text dimColor>{KEY_ENTRY_NOTE}</Text>
             {receivingAvailable ? (
               <Text dimColor>Fresh inbox per participant · hosted email</Text>
             ) : (

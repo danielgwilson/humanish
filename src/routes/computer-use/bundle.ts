@@ -6,7 +6,12 @@
 import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
-import type { BundleRun, RunBundle, RunRerunLineage } from "../../run/bundle.js";
+import type {
+  BundleRun,
+  RunBundle,
+  RunRerunLineage,
+  RunSubjectProvenance,
+} from "../../run/bundle.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
 import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
@@ -15,13 +20,7 @@ import { providerResourcesForOutcome } from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
-import type {
-  CuaParticipantPlan,
-  DesktopParticipantRun,
-  CuaSubjectProjection,
-  CuaSubjectProvenanceArg,
-  ParticipantRunOutcome,
-} from "./types.js";
+import type { CuaParticipantPlan, DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 import { plural } from "../../run/text.js";
 
 /** What every bundle of one run shares, in progress or final. */
@@ -75,9 +74,8 @@ interface CuaRunBundleState {
   judgment: Judgment;
   dryRun: boolean;
   outcomes: ParticipantRunOutcome[] | undefined;
-  subjects: CuaSubjectProjection[];
-  aggregateSubject: CuaSubjectProjection;
-  subjectProvenance: CuaSubjectProvenanceArg | undefined;
+  subjects: RunSubjectProvenance[];
+  aggregateSubject: RunSubjectProvenance;
   failFastReason?: string;
   inProgress?: true;
 }
@@ -167,9 +165,7 @@ function singleParticipantArgs(
         }),
     source: base.source,
     ...(state.inProgress === undefined ? {} : { inProgress: state.inProgress }),
-    ...(state.subjectProvenance === undefined
-      ? {}
-      : { subjectProvenance: state.subjectProvenance }),
+    subject: state.aggregateSubject,
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     providerResources: providerResourcesForOutcome({
