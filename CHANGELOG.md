@@ -17,6 +17,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   `execution.concurrency` above the limit is refused before any sandbox is created, with the
   setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
   row. A local desktop study keeps its own capacity checks (#1737).
+- The Observer's participant grid counts the participants by status in a row under the run's
+  tally, when they ended more than one way. Pressing a count shows only those participants, and
+  pressing it again shows everyone. The view options gain a Persona filter when the participants
+  have more than one persona (#1737).
 
 ### Changed
 
@@ -43,6 +47,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A study with real email receiving and more than 64 participants is refused when it is read. Its
   run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
   inboxes.
+- `humanish watch` and `humanish run` print a computer-use run of more than 16 participants in
+  a fixed number of lines: one line counting the participants by status, up to 16 participants
+  that did not pass, and how many it did not list. A run of 16 or fewer still lists every
+  participant. Each participant's line holds its closing message on one line, cut at 160
+  characters, where it used to print the whole message. A warning repeated for each participant
+  prints once (#1737).
+- In the Observer, a changed grid filter shows the first page of participants (#1737).
 
 ### Fixed
 
@@ -93,6 +104,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 - In `humanish tui`, Esc on the keys screen after entering a key goes back to the screen the keys
   were opened from. It went to the studies list, because the surface mounts again after the
   hidden prompt and started over (#1720).
+- In the Observer, Next page and Previous page under the participant grid now open the new page
+  at its first participant. The grid kept its scroll position, so turning the page from the
+  bottom of 36 participants showed the end of the next page, about 10,000 px past its first
+  participant on a phone (#1737).
 
 ## 0.117.0: Long participant waits, OpenAI wait length, serve.build fails fast, TUI confirmations (2026-10-09)
 
