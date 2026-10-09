@@ -27,6 +27,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- An analysis run from a Bun process completes. Under Bun, `undici` is Bun's built-in module,
+  whose `Agent` has no `destroy()`, and the provider's teardown after each request threw a
+  `TypeError` that replaced the request's result. Every automatic analysis then ended `unknown`
+  with `AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN`, even when the model answered, and kept no receipt for
+  requests already sent. A failing teardown is now ignored (#1752).
 - In the Observer, Next page and Previous page under the participant grid now open the new page
   at its first participant. The grid kept its scroll position, so turning the page from the
   bottom of 36 participants showed the end of the next page, about 10,000 px past its first

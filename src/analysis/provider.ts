@@ -331,7 +331,13 @@ export function createAnalysisProvider(options: {
     } finally {
       clearTimeout(timer);
       request.signal?.removeEventListener("abort", onAbort);
-      await dispatcher.destroy().catch(() => undefined);
+      // Under Bun, `undici` is Bun's built-in module, whose Agent has no destroy(). Closing the
+      // agent must never replace the request's result, so a teardown that throws is ignored.
+      try {
+        await dispatcher.destroy();
+      } catch {
+        // The agent belongs to this request alone; nothing else uses it after this point.
+      }
     }
   };
 }
