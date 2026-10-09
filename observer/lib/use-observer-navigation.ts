@@ -50,7 +50,7 @@ export interface ObserverNavigation {
   compareIds: string[];
   /** The grid fills the frame without the library. Escape and the report leave it. */
   monitoring: boolean;
-  /** Counts navigations, so a player applies each address once. */
+  /** Counts navigations: each participant or grid open, and each browser history move. */
   revision: number;
   /** The last navigation left the study clock where it was. */
   preservePlayback: boolean;
@@ -126,7 +126,6 @@ export function useObserverNavigation({
   report,
   findingsAvailable,
   reviewing,
-  onParticipantOpen,
 }: {
   data: ObserverData | null;
   report: StudyReport | undefined;
@@ -134,8 +133,6 @@ export function useObserverNavigation({
   findingsAvailable: boolean;
   /** The study clock is reviewing, so paging opens the next participant in replay. */
   reviewing: boolean;
-  /** Runs on each participant or grid open from within the page, never on browser history. */
-  onParticipantOpen: () => void;
 }): ObserverNavigation {
   const runId = data?.run.runId ?? "";
   const streams = data?.streams ?? [];
@@ -203,7 +200,6 @@ export function useObserverNavigation({
     setSource(from);
     setRoute(parseHash(window.location.hash));
     setComparison(false);
-    onParticipantOpen();
     setPreservePlayback(keepClock);
     setRevision((value) => value + 1);
     if (id) focusAfterPaint(() => contentRef.current);

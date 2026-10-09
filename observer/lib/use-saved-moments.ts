@@ -27,7 +27,7 @@ const sameMoment = (a: SavedMoment, b: SavedMoment) =>
 
 /**
  * The run's saved moments, kept in browser storage, and the message from the last save or open.
- * A save takes the frame and entry the selected participant's player reports through
+ * The message shows until the next navigation, which `revision` counts. A save takes the frame and entry the selected participant's player reports through
  * `onViewChange`, once it is paused in replay. An open checks that the recording still holds the
  * frame and entry before it calls `open`.
  */
@@ -37,19 +37,22 @@ export function useSavedMoments({
   selected,
   model,
   open,
+  revision,
 }: {
   runId: string;
   streams: ObserverStream[];
   selected: ObserverStream | null;
   model: PlayerModel | null;
   open: (streamId: string, frame: number, eventId: string | undefined) => void;
+  revision: number;
 }): {
   control: SavedMomentsControl;
   onViewChange: (view: PlayerView) => void;
-  clearMessage: () => void;
 } {
   const [saved, setSaved, stored] = usePreference("moments", [] as SavedMoment[], isMoments);
-  const [message, setMessage] = useState("");
+  const [written, setWritten] = useState({ text: "", revision });
+  const message = written.revision === revision ? written.text : "";
+  const setMessage = (text: string) => setWritten({ text, revision });
   const [view, setView] = useState<(PlayerView & { streamId: string }) | null>(null);
   const entryLabels = useMemo(() => savedEntryLabels(streams), [streams]);
   const selectedId = selected?.id;
@@ -59,7 +62,6 @@ export function useSavedMoments({
     },
     [selectedId],
   );
-  const clearMessage = useCallback(() => setMessage(""), []);
   const onSave = () => {
     if (
       !selected ||
@@ -125,6 +127,5 @@ export function useSavedMoments({
       onRemove: (moment) => setSaved(saved.filter((m) => !sameMoment(m, moment))),
     },
     onViewChange,
-    clearMessage,
   };
 }

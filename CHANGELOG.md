@@ -38,6 +38,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `NO_UPDATE_NOTIFIER`, the variable the update-notifier package reads, now turns off the update
   check and its notice, as `HUMANISH_NO_UPDATE_CHECK=1` does. As in update-notifier, any value
   turns it off, including an empty one, `0` or `false`.
+- In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
+  saved." or why a moment could not open), as opening a participant or the participants grid
+  already did.
 - An adapter artifact larger than 32 MiB (state, log, trace or filesystem output) now grades a run
   `local_only` when nothing in the bundle cites it, and `blocked` when the bundle cites it as
   evidence. `verify` read and scanned such a file whole before.

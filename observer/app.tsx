@@ -126,9 +126,6 @@ export function App({
     report,
     findingsAvailable: hasFindingsView,
     reviewing: studyPlayback.reviewing,
-    // Opening a participant or the grid clears the saved-moment message. This runs on
-    // navigation only, after savedMoments below is assigned.
-    onParticipantOpen: () => savedMoments.clearMessage(),
   });
   const { selected, route, source, comparison, compareIds, monitoring } = navigation;
   const player = useParticipantPlayer(runId, navigation, studyPlayback, updating);
@@ -139,6 +136,7 @@ export function App({
     selected,
     model,
     open: (streamId, frame, eventId) => navigation.openParticipant(streamId, { frame, eventId }),
+    revision: navigation.revision,
   });
   // The viewport and explicit preference own the shell, never the selected view.
   const libraryAsDrawer = phone;

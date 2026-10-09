@@ -300,6 +300,26 @@ describe("saved moments", () => {
     expect(savedPanel()).toBeNull();
   });
 
+  it("clears the save message on browser Back", async () => {
+    const { data } = study();
+    await mount(data);
+    await click(find('[data-stream-id="lane-1"] .open-overlay'));
+    expect(window.location.hash).toMatch(/^#\/lane\/lane-1/);
+    const panel = await openSavedMoments();
+    await click(button("Save current moment", panel));
+    expect(find(".saved-moments [role=status]").textContent).toBe("Moment saved.");
+    await act(async () => {
+      const popped = new Promise((resolve) =>
+        window.addEventListener("popstate", resolve, { once: true }),
+      );
+      window.history.back();
+      await popped;
+    });
+    expect(window.location.hash).toBe("");
+    await openSavedMoments();
+    expect(find(".saved-moments [role=status]").textContent).toBe("");
+  });
+
   it("refuses a moment whose frame or entry the recording no longer holds", async () => {
     const { data } = study();
     const moment = { runId: RUN, streamId: "lane-1", savedAt: "2026-10-08T00:00:00.000Z" };
