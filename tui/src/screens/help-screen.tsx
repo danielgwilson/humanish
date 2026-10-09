@@ -51,8 +51,9 @@ export function HelpScreen({
         ))}
       </Box>
       <Box marginTop={1} flexDirection="column">
-        <Text dimColor>Starting a run asks twice when it spends money: the first ⏎ arms and</Text>
-        <Text dimColor>restates the cost, the second commits. A dry run never asks.</Text>
+        <Text dimColor>Anything that spends money, ends a run or writes files asks twice:</Text>
+        <Text dimColor>the first ⏎ arms and says what it will do, the second does it. Any</Text>
+        <Text dimColor>other key, or 30 seconds, cancels it. A dry run never asks.</Text>
       </Box>
     </Box>
   );

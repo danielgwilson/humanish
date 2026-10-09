@@ -25,6 +25,11 @@ export interface RenderedFrames {
   /** Send a keystroke, then wait for the frame it produces. Keys are in `KEY`. */
   press(input: string, until?: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
   /**
+   * Send a keystroke that may change no frame, such as a repeat the surface ignores, and resolve
+   * once Ink has read it: stdin's `readable` event runs on the next tick, before `setImmediate`.
+   */
+  send(input: string): Promise<void>;
+  /**
    * Change the terminal size the way Node's tty stream does (new `columns` and `rows`, then a
    * `resize` event), then wait for the frame laid out for it.
    */
@@ -180,6 +185,10 @@ export async function renderToText(
       // A keypress that changes nothing would hang forever on a "frame differs" predicate, so the
       // default waits for any non-blank frame written after the key: Ink re-renders on input.
       return waitForFrame(until ?? ((frame) => frame.trim().length > 0), from, timeoutMs);
+    },
+    send: async (input) => {
+      (stdin as unknown as { write(chunk: string): void }).write(input);
+      await new Promise((resolve) => setImmediate(resolve));
     },
     resize: async (nextColumns, nextRows, until, timeoutMs) => {
       const from = frames.length;
