@@ -70,6 +70,7 @@ import {
   receivingEmailValidationReason,
   smtpValidationReason,
   taskProtocolValidationReason,
+  waitLimitValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels, inertFieldPaths } from "./warnings.js";
 import { plural } from "../run/text.js";
@@ -279,6 +280,9 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);
+
+  const waitLimitReason = waitLimitValidationReason(config);
+  if (waitLimitReason) return invalid(waitLimitReason);
 
   // All-parallel default: a multi-participant study that does not declare execution.concurrency
   // runs every participant at once; the declared field is a cap the author chose, never a mode.

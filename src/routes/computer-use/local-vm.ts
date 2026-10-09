@@ -202,10 +202,11 @@ function createLocalParticipantDesktop(
 }
 
 /** The Codex account participant, whose unconfirmed cleanup blocks the study's analysis. */
-function accountProvider(state: LocalVmRunState): ProviderFactory {
+function accountProvider(state: LocalVmRunState, maxWaitMs: number | undefined): ProviderFactory {
   return async ({ executor }) => {
     const participant = createRestrictedCodexParticipant({
       speechEnabled: executor.speechEnabled === true,
+      ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
     });
     state.participants.push(participant);
     const provider = Object.assign(participant.provider, {
@@ -255,7 +256,9 @@ export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
   };
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
   return {
-    options: account ? { ...runOptions, createProvider: accountProvider(state) } : runOptions,
+    options: account
+      ? { ...runOptions, createProvider: accountProvider(state, config.actor?.maxWaitMs) }
+      : runOptions,
     localVm: {
       desktop: (run, warnings, artifactRoot) =>
         createLocalParticipantDesktop(context, run, warnings, artifactRoot),
