@@ -44,7 +44,7 @@ function fakeShell(exits: Record<string, Array<number | null>>) {
     },
     async writeFile(path: string, data: string | ArrayBuffer): Promise<void> {
       const step = stepOf(path);
-      if (step !== undefined) scripts[step] = String(data);
+      if (step !== undefined && path.endsWith("/command.sh")) scripts[step] = String(data);
     },
   };
   return { shell, scripts, launched };

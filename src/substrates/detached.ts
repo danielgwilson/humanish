@@ -3,7 +3,9 @@
 //
 // - Scripts are written via `writeFile`, never heredocs, which eliminates the
 //   sentinel-collision bug class (a command line that equals the heredoc terminator) by
-//   construction.
+//   construction. The author's command is a script file of its own, so bash parses it apart
+//   from the wrapper: a syntax error in it is that script's exit 2, logged, and the wrapper
+//   still writes the status.
 // - Bounded steps (install/build) run detached with an atomically-written status file
 //   (write tmp + mv), polled by short foreground commands; a timeout kills the process
 //   group and surfaces a capped log tail for the caller to redact and persist.
@@ -67,10 +69,11 @@ function stepDir(name: string): string {
   return `${WORK_ROOT}/${name}`;
 }
 
-// The wrapper script: runs the command from its own session (Shell.start makes the script the
-// process-group leader, so `kill -- -PID` reclaims the whole tree), logs everything, and
-// writes the exit code atomically so a poller can never read a half-written status.
-function wrapperScript(name: string, command: string, cwd: string | undefined): string {
+// The wrapper script: runs the command script from its own session (Shell.start makes the
+// wrapper the process-group leader, so `kill -- -PID` reclaims the whole tree), logs everything,
+// and writes the exit code atomically so a poller can never read a half-written status. It holds
+// no author text, so it always parses and always reaches the status write.
+function wrapperScript(name: string, cwd: string | undefined): string {
   const dir = stepDir(name);
   return [
     "#!/bin/bash",
@@ -79,7 +82,7 @@ function wrapperScript(name: string, command: string, cwd: string | undefined): 
     cwd === undefined
       ? ": # no cwd override"
       : `cd ${shellQuote(cwd)} || { echo 127 > ${shellQuote(`${dir}/status.tmp`)}; mv ${shellQuote(`${dir}/status.tmp`)} ${shellQuote(`${dir}/status`)}; exit 127; }`,
-    `( ${command} ) > ${shellQuote(`${dir}/log.txt`)} 2>&1`,
+    `bash ${shellQuote(`${dir}/command.sh`)} > ${shellQuote(`${dir}/log.txt`)} 2>&1`,
     "code=$?",
     `echo $code > ${shellQuote(`${dir}/status.tmp`)}`,
     `mv ${shellQuote(`${dir}/status.tmp`)} ${shellQuote(`${dir}/status`)}`,
@@ -99,7 +102,11 @@ async function writeAndLaunch(
   const dir = stepDir(name);
   const scriptPath = `${dir}/run.sh`;
   await runOrThrow(shell, `mkdir -p ${shellQuote(dir)}`, { requestTimeoutMs });
-  await shell.writeFile(scriptPath, wrapperScript(name, command, cwd));
+  // The study parser trims each command, so a YAML `|` block arrives without its final newline.
+  // bash closes a heredoc whose delimiter is a script's last line either way; the newline makes
+  // the file plain text.
+  await shell.writeFile(`${dir}/command.sh`, `${command}\n`);
+  await shell.writeFile(scriptPath, wrapperScript(name, cwd));
   throwOnExit(await shell.start(`bash ${shellQuote(scriptPath)}`, { requestTimeoutMs }));
 }
 

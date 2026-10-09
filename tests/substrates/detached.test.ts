@@ -44,7 +44,7 @@ function fakeTimers() {
 }
 
 describe("runDetachedStep", () => {
-  it("writes a heredoc-free wrapper script, launches via setsid, and reads the atomic status", async () => {
+  it("writes the command and a heredoc-free wrapper, launches via setsid, and reads the atomic status", async () => {
     const { desktop, commands, files } = makeScriptedDesktop((command) => {
       if (command.includes("/status")) return { stdout: "0\n" };
       if (command.includes("tail -c")) return { stdout: "build ok" };
@@ -61,10 +61,14 @@ describe("runDetachedStep", () => {
 
     expect(result).toEqual({ ok: true, exitCode: 0, timedOut: false, logTail: "build ok" });
 
+    // The command is its own file, so bash parses it apart from the wrapper.
+    const command = files.find((file) => file.path.endsWith("subject-build/command.sh"));
+    expect(command?.data).toBe("pnpm build\n");
     // The wrapper is a real file write, never a heredoc (no sentinel-collision class).
     const script = files.find((file) => file.path.endsWith("subject-build/run.sh"));
     expect(script).toBeDefined();
-    expect(script?.data).toContain("( pnpm build )");
+    expect(script?.data).toContain("bash '/tmp/humanish-subject/subject-build/command.sh'");
+    expect(script?.data).not.toContain("pnpm build");
     expect(script?.data).toContain("cd '/home/user/subject'");
     // Atomic status: write tmp, then mv; a poller can never read a half-written code.
     expect(script?.data).toContain("status.tmp");
@@ -135,8 +139,7 @@ describe("startDetachedProcess", () => {
     });
     expect(
       files.some(
-        (file) =>
-          file.path.endsWith("subject-start/run.sh") && file.data.includes("( pnpm start )"),
+        (file) => file.path.endsWith("subject-start/command.sh") && file.data === "pnpm start\n",
       ),
     ).toBe(true);
     expect(commands.some((command) => command.includes("setsid -f"))).toBe(true);
