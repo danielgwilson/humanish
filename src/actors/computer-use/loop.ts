@@ -36,7 +36,6 @@ export type {
   CuaSpendGate,
   CuaTurn,
   CuaTurnRequest,
-  ShortenedWait,
 } from "./loop/types.js";
 export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
@@ -191,7 +190,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         : ended;
     }
 
-    const batch = await runActionBatch(session, turn.actions, turn.shortenedWaits);
+    const batch = await runActionBatch(session, turn.actions);
     conversation.previousExecution = batch.execution;
     const checkpoint = await observer.checkpoint(turnNumber);
     if ("stop" in checkpoint) return checkpoint.stop;

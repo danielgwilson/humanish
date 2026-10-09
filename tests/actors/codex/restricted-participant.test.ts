@@ -214,21 +214,14 @@ describe("restricted participant conversation", () => {
       { kind: "type", text: null },
     ])
       expect(() => parseParticipantTool({ narration: "x", actions: [action] })).toThrow();
+    // A wait is admitted as asked, however long: the loop shortens and steps it, so a long wait
+    // never fails the tool call that would end the native run.
     expect(
       parseParticipantTool({
         narration: "I will wait for the other person.",
-        actions: [
-          { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
-          { kind: "wait", ms: 90_000 },
-        ],
-      }),
-    ).toMatchObject({
-      actions: [
-        { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
-        { kind: "wait", ms: PARTICIPANT_LIMITS.waitMs },
-      ],
-      shortenedWaits: [{ index: 1, requestedMs: 90_000, ms: PARTICIPANT_LIMITS.waitMs }],
-    });
+        actions: [{ kind: "wait", ms: 30_000 }, { kind: "wait", ms: 90_000.5 }, { kind: "wait" }],
+      }).actions,
+    ).toEqual([{ kind: "wait", ms: 30_000 }, { kind: "wait", ms: 90_000.5 }, { kind: "wait" }]);
     expect(parseParticipantFinal(finalOutput()).closingReport).toEqual({
       summary: "I saved the note.",
       frictionReports: ["The first click was skipped, so I retried."],
@@ -323,6 +316,17 @@ describe("restricted participant conversation", () => {
         },
       },
     });
+    // A wait has no published maximum: the tool description states the study's longest wait.
+    for (const schema of [PARTICIPANT_TOOL_SCHEMA, participantToolSchema(true)]) {
+      const { oneOf } = (schema.properties as { actions: { items: { oneOf: unknown[] } } }).actions
+        .items;
+      expect(oneOf).toContainEqual({
+        type: "object",
+        properties: { kind: { type: "string", const: "wait" }, ms: { type: "number", minimum: 0 } },
+        required: ["kind"],
+        additionalProperties: false,
+      });
+    }
     expect(JSON.stringify(PARTICIPANT_TOOL_SCHEMA)).not.toContain('"speak"');
     expect(JSON.stringify(participantToolSchema(true))).toContain('"speak"');
     expect(JSON.stringify(participantToolSchema(true))).not.toContain("heldKeys");

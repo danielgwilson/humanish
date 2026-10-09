@@ -79,6 +79,9 @@ export async function startParticipantModel(
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
       ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
       ...(executor.speechEnabled === true ? { speechEnabled: true } : {}),
+      ...(spec.planned.limits.maxWaitMs === undefined
+        ? {}
+        : { maxWaitMs: spec.planned.limits.maxWaitMs }),
       session: { env },
     });
     return { provider: codexParticipant.provider, codexParticipant };
@@ -178,6 +181,9 @@ export function participantSessionOptions(
       ? {}
       : { stopWhen: spec.planned.limits.stopWhen }),
     ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
+    ...(spec.planned.limits.maxWaitMs === undefined
+      ? {}
+      : { maxWaitMs: spec.planned.limits.maxWaitMs }),
     ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
     // The study budget: this participant notes its own running estimate on the shared
     // ledger and stops when the run total crosses the cap, independent of the per-participant

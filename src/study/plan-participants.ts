@@ -44,6 +44,8 @@ interface DesktopParticipant extends Participant {
     readonly dwell?: DwellWindow;
     readonly reasoningEffort?: ReasoningEffort;
     readonly maxOutputTokens?: number;
+    /** actor.maxWaitMs: the longest one wait action lasts. */
+    readonly maxWaitMs?: number;
   };
 }
 
@@ -97,6 +99,7 @@ function desktopParticipant(
   const dwell = entry?.dwell ?? actor?.dwell;
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
+  const maxWaitMs = actor?.maxWaitMs;
   return {
     id: participantIdAt(index, entry?.id, kind),
     index,
@@ -116,6 +119,7 @@ function desktopParticipant(
       ...(dwell === undefined ? {} : { dwell }),
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+      ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
     },
   };
 }

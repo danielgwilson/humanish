@@ -40,6 +40,7 @@ const rules = new Map<string, Rule>([
   ["tasks", { mutate: (c) => (actor(c).tasks = [{ id: "t", goal: "g" }]) }],
   ["unregistered actor", { mutate: (c) => (actor(c).type = "not-an-actor") }],
   ["invalid output limit", { mutate: (c) => (actor(c).maxOutputTokens = 0) }],
+  ["invalid wait limit", { mutate: (c) => (actor(c).maxWaitMs = 0) }],
   ["provisioned plane concurrency 1", { mutate: (c) => (record(c, "execution").concurrency = 1) }],
   [
     "external plane without authorization",
@@ -108,7 +109,9 @@ const pairs: [string, string][] = [
   ["invalid analysis", "tasks"],
   ["tasks", "unregistered actor"],
   ["unregistered actor", "invalid output limit"],
+  ["invalid output limit", "invalid wait limit"],
   ["invalid output limit", "provisioned plane concurrency 1"],
+  ["invalid wait limit", "provisioned plane concurrency 1"],
   ["provisioned plane concurrency 1", "output limit with a custom session"],
   ["external plane without authorization", "output limit with a custom session"],
   ["output limit with a custom session", "live cap on an unpriced model"],

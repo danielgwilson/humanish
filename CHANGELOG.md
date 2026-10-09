@@ -8,8 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `actor.maxWaitMs` sets how long one `wait` action of a computer-use or shared-world participant
+  may last, from 1000 to 600000. When unset it is 120000 (two minutes), or 30000 on a desktop with
+  speech, where heard speech reaches the participant only with a screenshot. A longer wait is
+  shortened to it, the trace records a `wait shortened` notice with the requested and applied
+  durations, and the participant is told on its next turn. A terminal, scripted or preview study
+  that sets it is refused, as for any field its route does not read.
+
 ### Changed
 
+- A participant's wait longer than 30 seconds now lasts as long as it asked, up to
+  `actor.maxWaitMs`. humanish sends it to the desktop as consecutive waits of at most 30 seconds,
+  the longest one browser-control request carries. A Codex participant's wait was shortened to 30
+  seconds before, and still is on a desktop with speech unless the study sets `actor.maxWaitMs`.
+  Its `humanish_ui` tool description now states the study's longest wait, and the tool's input
+  schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
+  removed: the loop shortens a wait itself, for every provider.
 - In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
   saved." or why a moment could not open), as opening a participant or the participants grid
   already did (#1728).

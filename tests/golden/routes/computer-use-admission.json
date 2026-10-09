@@ -82,6 +82,28 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
+  "invalid wait limit": {
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "ok": false,
+    "cwd": "[cwd]",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
+      "message": "actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from 1000 to 600000."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
   "output limit with a caller provider": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
@@ -605,6 +627,28 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
+  "invalid output limit and invalid wait limit": {
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "ok": false,
+    "cwd": "[cwd]",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
+      "message": "actor.maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
   "invalid output limit and output limit with a caller provider": {
     "schema": "humanish.study-result.v1",
     "route": "computer-use",
@@ -620,6 +664,28 @@
     "error": {
       "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
       "message": "actor.maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "invalid wait limit and output limit with a caller provider": {
+    "schema": "humanish.study-result.v1",
+    "route": "computer-use",
+    "studyId": "adm-cuappurl",
+    "ok": false,
+    "cwd": "[cwd]",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
+      "message": "actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from 1000 to 600000."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

@@ -1,4 +1,5 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
+import { CUA_WAIT_LIMITS, isMaxWaitMs } from "../actors/computer-use/wait.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
@@ -273,6 +274,16 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
     return "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
   }
   return null;
+}
+
+/**
+ * Refuse a wait limit out of range. On a route whose participants take no wait actions the field
+ * is inert (warnings.ts).
+ */
+export function waitLimitValidationReason(config: StudyConfig): string | null {
+  const maxWaitMs = config.actor?.maxWaitMs;
+  if (maxWaitMs === undefined || isMaxWaitMs(maxWaitMs)) return null;
+  return `actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs}.`;
 }
 
 /**
