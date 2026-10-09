@@ -9,10 +9,11 @@ import { estimateAnalysisCost } from "../../src/analysis/admission.js";
 import {
   automaticAnalysisBudget,
   formatAutomaticAnalysisBudget,
+  resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
 import { captureEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
 import { estimateAnalysisAdmission, runAnalysis } from "../../src/analysis/execute.js";
-import type { AnalysisFetch } from "../../src/analysis/provider.js";
+import type { AnalysisFetch, AnalysisProvider } from "../../src/analysis/provider.js";
 import type { AnalysisConfig, AnalysisInput, AnalysisResult } from "../../src/analysis/types.js";
 import { digestAnalysisInput, validateAnalysisArtifact } from "../../src/analysis/validation.js";
 import { MODEL_RATES } from "../../src/run/pricing.js";
@@ -212,24 +213,6 @@ function packet(participants: number, entries: number, textBytes = 40): Analysis
   return input;
 }
 
-/** The input a cohort of the given participants gets on its own. */
-function only(input: AnalysisInput, streamIds: string[]): AnalysisInput {
-  const members = new Set(streamIds);
-  const evidence = input.evidence.filter((entry) => members.has(entry.streamId));
-  const part: AnalysisInput = {
-    ...input,
-    participants: input.participants.filter((entry) => members.has(entry.streamId)),
-    coverage: {
-      ...input.coverage,
-      includedStreamIds: streamIds,
-      evidenceCount: evidence.length,
-    },
-    evidence,
-  };
-  part.inputDigest = digestAnalysisInput(part);
-  return part;
-}
-
 describe("admission for a run with more than 16 participants", () => {
   const rate = MODEL_RATES["gpt-6-astra"]!;
 
@@ -260,13 +243,12 @@ describe("admission for a run with more than 16 participants", () => {
     expect(estimate.admittedCostUsd).toBeLessThanOrEqual(5.124351);
   });
 
-  it("costs a 17-participant packet more than its two cohorts analysed alone", () => {
-    const input = packet(17, 1200);
-    const even = input.participants.filter((_, index) => index % 2 === 0).map((p) => p.streamId);
-    const odd = input.participants.filter((_, index) => index % 2 === 1).map((p) => p.streamId);
+  it("costs a 17-participant packet more than runs of its two cohorts' sizes", () => {
+    // 88 entries for each participant: cohorts of 9 and 8 hold 792 and 704.
+    const input = packet(17, 17 * 88);
     const whole = estimateAnalysisAdmission(input, config);
-    const first = estimateAnalysisAdmission(only(input, even), config);
-    const second = estimateAnalysisAdmission(only(input, odd), config);
+    const first = estimateAnalysisAdmission(packet(9, 9 * 88), config);
+    const second = estimateAnalysisAdmission(packet(8, 8 * 88), config);
     expect(whole.allowed).toBe(true);
     expect(whole.estimatedCostUsd!).toBeGreaterThan(
       first.estimatedCostUsd! + second.estimatedCostUsd!,
@@ -418,7 +400,11 @@ interface SentRequest {
   images: string[];
 }
 
-function transport(answer: (packet: Packet) => unknown) {
+// `editWire` changes each answer's captured envelope, such as its reported usage.
+function transport(
+  answer: (packet: Packet) => unknown,
+  editWire: (wire: typeof captured) => void = () => {},
+) {
   const sent: SentRequest[] = [];
   const fetchFn = vi.fn<AnalysisFetch>(async (_url, init) => {
     const content = JSON.parse(init.body).input[0].content as Array<{
@@ -436,6 +422,7 @@ function transport(answer: (packet: Packet) => unknown) {
     if (output instanceof Response) return output;
     const wire = structuredClone(captured);
     wire.output[0].content[0].text = JSON.stringify(output);
+    editWire(wire);
     return new Response(JSON.stringify(wire));
   });
   return { fetchFn, sent };
@@ -528,31 +515,153 @@ describe("one analysis of a run with more than 16 participants", () => {
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
-  it("rejects a merged report that cites evidence no cohort report cited", async () => {
-    const input = await captureEvidence(prepared, await saveRun(17, 3));
-    const uncited = input.evidence.find((entry) => entry.capture !== null && entry.frame === 2)!.id;
-    const h = transport((packet) => {
-      if (!packet.cohorts) return cohortReport(packet);
-      const merged = mergedReport(packet);
-      merged.designFindings![0]!.evidenceIds.push(uncited);
-      merged.designFindings![0]!.seenByStreamIds = [
-        ...new Set([
-          ...merged.designFindings![0]!.seenByStreamIds,
-          input.evidence.find((entry) => entry.id === uncited)!.streamId,
-        ]),
-      ];
-      return merged;
-    });
+  it.each([
+    // The cohort report cites frame 1 only in the participant's review, and frame 2 nowhere.
+    ["only in a participant review", 1],
+    ["nowhere", 2],
+  ])(
+    "rejects a merged design finding on a capture the cohort reports cite %s",
+    async (_where, frame) => {
+      const input = await captureEvidence(prepared, await saveRun(17, 3));
+      const capture = input.evidence.find(
+        (entry) => entry.streamId === participantId(0) && entry.frame === frame,
+      )!.id;
+      const h = transport((packet) => {
+        if (!packet.cohorts) return cohortReport(packet);
+        const merged = mergedReport(packet);
+        merged.designFindings![0]!.evidenceIds.push(capture);
+        return merged;
+      });
+      const rejected: unknown[] = [];
+      const artifact = await runAnalysis(input, config, {
+        apiKey: "synthetic-key",
+        fetch: h.fetchFn,
+        onRejectedOutput: (output) => rejected.push(output),
+      });
+      expect(h.sent).toHaveLength(3);
+      expect(artifact).toMatchObject({
+        status: "failed",
+        result: null,
+        error: "analysis_validation_failed_merge_reference_invalid",
+        usage: { inputTokens: 40_629, usageComplete: true },
+      });
+      expect(rejected).toHaveLength(1);
+    },
+  );
+});
+
+describe("the requests of an analysis in cohorts", () => {
+  it("starts no queued cohort request after one fails", async () => {
+    // 80 participants make five cohorts of 16; four start at once and the fifth waits.
+    const input = await captureEvidence(prepared, await saveRun(80, 1));
+    const h = transport((packet) =>
+      packet.participants.some((entry) => entry.streamId === participantId(0))
+        ? new Response("", { status: 500 })
+        : answerEach(packet),
+    );
+    const artifact = await runAnalysis(
+      input,
+      { ...config, maxCostUsd: 1000 },
+      {
+        apiKey: "synthetic-key",
+        fetch: h.fetchFn,
+      },
+    );
+    expect(h.sent).toHaveLength(4);
+    expect(artifact).toMatchObject({ status: "failed", error: "analysis_provider_http_error" });
+  });
+
+  it("fails the analysis with a warning when the merge request fails", async () => {
+    const input = await captureEvidence(prepared, await saveRun(17, 1));
+    const h = transport((packet) =>
+      packet.cohorts ? new Response("", { status: 500 }) : answerEach(packet),
+    );
+    const warnings: string[] = [];
     const artifact = await runAnalysis(input, config, {
       apiKey: "synthetic-key",
       fetch: h.fetchFn,
+      warnings,
     });
     expect(h.sent).toHaveLength(3);
     expect(artifact).toMatchObject({
       status: "failed",
       result: null,
-      error: "analysis_validation_failed_design_reference_invalid",
-      usage: { inputTokens: 40_629, usageComplete: true },
+      error: "analysis_provider_http_error",
+      usage: { inputTokens: 27_086, usageComplete: false },
+    });
+    expect(warnings).toHaveLength(1);
+  });
+
+  it("sends no merge request after a cancellation during the cohort requests", async () => {
+    const input = await captureEvidence(prepared, await saveRun(17, 1));
+    const controller = new AbortController();
+    const h = transport((packet) => {
+      if (packet.participants.some((entry) => entry.streamId === participantId(1)))
+        controller.abort();
+      return answerEach(packet);
+    });
+    const artifact = await runAnalysis(input, config, {
+      apiKey: "synthetic-key",
+      fetch: h.fetchFn,
+      signal: controller.signal,
+    });
+    expect(h.sent.some((request) => request.packet.cohorts)).toBe(false);
+    expect(artifact).toMatchObject({
+      status: "cancelled",
+      error: "analysis_cancelled",
+      result: null,
+    });
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it("marks a merged report partial when the summed bill passes the summed worst case", async () => {
+    const input = await captureEvidence(prepared, await saveRun(17, 1));
+    // Each request reports 600,000 input tokens: above the worst case of all three together.
+    const h = transport(answerEach, (wire) => {
+      wire.usage.input_tokens = 600_000;
+      wire.usage.input_tokens_details.cache_write_tokens = 0;
+    });
+    const admission = estimateAnalysisAdmission(input, config);
+    const artifact = await runAnalysis(input, config, {
+      apiKey: "synthetic-key",
+      fetch: h.fetchFn,
+    });
+    expect(artifact.usage.estimatedCostUsd).toBeGreaterThan(admission.worstCaseCostUsd!);
+    expect(artifact).toMatchObject({
+      status: "partial",
+      error: "analysis_admission_estimate_exceeded",
+      usage: { inputTokens: 1_800_000 },
+    });
+    expect(artifact.result!.participants).toHaveLength(17);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it("sends Codex account requests one at a time", async () => {
+    const input = await captureEvidence(prepared, await saveRun(17, 1));
+    const selected = resolveAutomaticAnalysis({ provider: "codex", timeoutMs: 1000 });
+    if (!selected.ok || selected.config?.provider !== "codex") throw new Error("not Codex");
+    let inFlight = 0;
+    let most = 0;
+    const run = vi.fn<AnalysisProvider>(async (request) => {
+      most = Math.max(most, ++inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight--;
+      return {
+        status: "completed",
+        output: answerEach(JSON.parse(request.evidence) as Packet),
+        usage: { input: 100, output: 20 },
+        usageComplete: true,
+        dispatched: true,
+        errorCode: null,
+      };
+    });
+    const artifact = await runAnalysis(input, selected.config, { codexProvider: run });
+    expect(run).toHaveBeenCalledTimes(3);
+    expect(most).toBe(1);
+    expect(artifact).toMatchObject({
+      provider: "codex",
+      status: "complete",
+      usage: { inputTokens: 300, outputTokens: 60, estimatedCostUsd: null, usageComplete: true },
     });
   });
 });

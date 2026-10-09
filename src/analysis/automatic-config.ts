@@ -198,7 +198,9 @@ export function automaticAnalysisBudget(
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
-  const cohorts = analysisCohortCount(budget.participants ?? 0);
+  const cohorts = analysisCohortCount(
+    Math.min(budget.participants ?? 0, EVIDENCE_LIMITS.participants),
+  );
   const requests =
     cohorts === 1
       ? ""

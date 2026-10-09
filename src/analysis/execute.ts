@@ -26,9 +26,8 @@ import {
 } from "./validation.js";
 import { analysisCohorts, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import {
-  citedInput,
+  checkMergedResponse,
   cohortInputs,
-  mergedResponse,
   mergePacket,
   mergeResultJsonSchema,
 } from "./cohorts.js";
@@ -58,8 +57,9 @@ export const MAX_ANALYSIS_OUTPUT_TOKENS = 32_768;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 /**
  * Cohort requests in flight at once. OpenAI's lowest paid tier allows gpt-6-astra 1,000,000 tokens
- * a minute (developers.openai.com/api/docs/models/gpt-6-astra, read 2026-10-09), and four requests
- * at the packet limits ask for about 600,000 with their output allowances.
+ * a minute (developers.openai.com/api/docs/models/gpt-6-astra, read 2026-10-09). A billed request
+ * at the packet limits used 113,897 input tokens, so four with 32,768-token output allowances ask
+ * for about 590,000.
  */
 const COHORT_CONCURRENCY = 4;
 
@@ -107,8 +107,8 @@ const INSTRUCTIONS = [
 const MERGE_INSTRUCTIONS = [
   `You merge the reports of a retained synthetic participant study into one report. Produce evidence-linked observations, never an execution verdict or a claim about real-human population rates. The study's participants were split into cohorts, and one analyst reviewed each cohort's evidence and captures under the same instructions. Together the cohorts cover every included participant once. The packet holds each cohort's participants and report, never the evidence itself.`,
   UNTRUSTED_EVIDENCE,
-  `Return the whole study's summary, findings, designFindings, concernReviews and limitations. The cohort analysts' participant reviews are kept as they wrote them, so do not write participant reviews. Base every claim on the cohort reports. Do not add a claim, participant or evidence ID that no cohort report supports, and cite only evidence IDs that the cohort reports cite, with the basis they cite them for.`,
-  `Merge findings from different cohorts that describe the same problem or recovery into one finding. Its affected and exposed participants are the union of theirs, and its observations keep each cohort's supporting observations with their claim, basis, evidence IDs and limitation, so every affected participant keeps cited support. Keep distinct problems separate, and keep a finding that only one cohort reported. Judge impact, recovery, confidence and replication across all the merged participants. Merge design findings that describe the same problem on the same screen: keep every cited capture, and list in seenByStreamIds only participants whose cited captures show the problem. Write design findings in the same plain register as headlines. Merge concern reviews that describe the same concern, and point a finding disposition at the merged finding's ID.`,
+  `Return the whole study's summary, findings, designFindings, concernReviews and limitations. The cohort analysts' participant reviews are kept as they wrote them, so do not write participant reviews. Base every claim on the cohort reports. Do not add a claim, participant or evidence ID that no cohort report supports. Cite only evidence IDs that the cohort reports cite in their findings, design findings and concern reviews, with the basis they cite them for.`,
+  `Merge findings from different cohorts that describe the same problem or recovery into one finding. Its affected and exposed participants are the union of theirs. Its observations keep the cohorts' supporting observations with their claim, basis, evidence IDs and limitation, so every affected participant keeps cited support; past 30 observations, combine observations that make the same claim on the same basis into one that cites all their evidence IDs, at most 100. Keep distinct problems separate, and keep a finding that only one cohort reported. Judge impact, recovery, confidence and replication across all the merged participants. Merge design findings that describe the same problem on the same screen: keep every cited capture, and list in seenByStreamIds only participants whose cited captures show the problem. Write design findings in the same plain register as headlines. Merge concern reviews that describe the same concern, and point a finding disposition at the merged finding's ID.`,
   CAUSE_AND_SETUP,
   CONCERN_REVIEWS,
   HARNESS_RECORDS,
@@ -302,16 +302,20 @@ export function estimateAnalysisAdmission(
     return denied("analysis_rate_unknown");
   const { maxOutputTokens } = config;
   const cost = estimateAnalysisCost(rate, {
-    cohorts: cohortInputs(input).map((cohort) => ({
-      textBytes: requestTextBytes(config) + Buffer.byteLength(evidenceText(cohort)),
-      imageTokens: cohort.images.reduce(
-        (sum, image) => sum + highDetailImageTokens(config.model, image.dataUrl),
-        0,
-      ),
-      participants: cohort.participants.length,
-      outputAllowance: maxOutputTokens,
-    })),
-    mergeTextBytes: mergeTextBytes(config) + Buffer.byteLength(mergePacket(input)),
+    cohorts: cohortInputs(input).map((cohort) => {
+      const request = cohortRequest(cohort, config);
+      return {
+        textBytes: requestBytes(request),
+        imageTokens: request.images.reduce(
+          (sum, image) => sum + highDetailImageTokens(config.model, image.dataUrl),
+          0,
+        ),
+        participants: cohort.participants.length,
+        outputAllowance: maxOutputTokens,
+      };
+    }),
+    // Without reports: estimateAnalysisCost prices them at the cohorts' output allowances.
+    mergeTextBytes: requestBytes(mergeRequest(input, config, [])),
   });
   if (!Number.isFinite(cost.worstCaseCostUsd)) return denied("analysis_rate_unknown");
   const allowed = cost.admittedCostUsd <= config.maxCostUsd;
@@ -332,13 +336,43 @@ export function estimateAnalysisAdmission(
  * retained packet averaged 200 bytes. A merge packet's participant entry is smaller. */
 const ENTRY_STRUCTURE_BYTES = 256;
 
-/** The instructions and result schema of each cohort request, and of the merge request. */
-const requestTextBytes = (config: AnalysisConfig): number =>
-  Buffer.byteLength(instructions(config)) +
-  Buffer.byteLength(JSON.stringify(analysisResultJsonSchema));
-const mergeTextBytes = (config: AnalysisConfig): number =>
-  Buffer.byteLength(mergeInstructions(config)) +
-  Buffer.byteLength(JSON.stringify(mergeResultJsonSchema));
+/** One provider request of an attempt. */
+interface AnalysisRequest {
+  instructions: string;
+  evidence: string;
+  images: AnalysisInput["images"];
+  schema: Record<string, unknown>;
+  /** Parse, scrub and validate the completed response. */
+  check: (output: unknown) => CheckedProviderAnalysis;
+}
+
+/** What one cohort's request sends, and the check of its report. */
+const cohortRequest = (cohort: AnalysisInput, config: AnalysisConfig): AnalysisRequest => ({
+  instructions: instructions(config),
+  evidence: evidenceText(cohort),
+  images: cohort.images,
+  schema: analysisResultJsonSchema,
+  check: (output) => checkProviderAnalysis(cohort, output),
+});
+
+/** What the merge request sends, and the check of the merged report. */
+const mergeRequest = (
+  input: AnalysisInput,
+  config: AnalysisConfig,
+  reports: readonly AnalysisResult[],
+): AnalysisRequest => ({
+  instructions: mergeInstructions(config),
+  evidence: mergePacket(input, reports),
+  images: [],
+  schema: mergeResultJsonSchema,
+  check: (output) => checkMergedResponse(input, reports, output),
+});
+
+/** The UTF-8 bytes of a request's instructions, packet and result schema. */
+const requestBytes = (request: Omit<AnalysisRequest, "images" | "check">): number =>
+  Buffer.byteLength(request.instructions) +
+  Buffer.byteLength(request.evidence) +
+  Buffer.byteLength(JSON.stringify(request.schema));
 
 /**
  * The expected cost of an analysis for this many participants before any evidence exists: from
@@ -356,17 +390,21 @@ export function analysisCostRange(
   const { maxOutputTokens } = config;
   const covered = Math.min(participants, EVIDENCE_LIMITS.participants);
   const cohorts = analysisCohorts(Array.from({ length: covered })).map((cohort) => cohort.length);
+  const cohortPrompt = { instructions: instructions(config), schema: analysisResultJsonSchema };
+  const mergePrompt = { instructions: mergeInstructions(config), schema: mergeResultJsonSchema };
   const expected = (full: boolean): number =>
     estimateAnalysisCost(rate, {
       cohorts: cohorts.map((size) => ({
         participants: size,
         outputAllowance: maxOutputTokens,
         textBytes:
-          requestTextBytes(config) +
+          requestBytes({ ...cohortPrompt, evidence: "" }) +
           (full ? EVIDENCE_LIMITS.textBytes + EVIDENCE_LIMITS.evidence * ENTRY_STRUCTURE_BYTES : 0),
         imageTokens: full ? EVIDENCE_LIMITS.captures * HIGH_DETAIL_IMAGE_TOKEN_CEILING : 0,
       })),
-      mergeTextBytes: mergeTextBytes(config) + (full ? covered * ENTRY_STRUCTURE_BYTES : 0),
+      mergeTextBytes:
+        requestBytes({ ...mergePrompt, evidence: "" }) +
+        (full ? covered * ENTRY_STRUCTURE_BYTES : 0),
     }).expectedCostUsd;
   return { low: expected(false), high: expected(true) };
 }
@@ -495,16 +533,6 @@ type RequestOutcome =
       rejected?: RejectedAnalysisOutput;
     };
 
-/** One provider request of an attempt. */
-interface AnalysisRequest {
-  instructions: string;
-  evidence: string;
-  images: AnalysisInput["images"];
-  schema: Record<string, unknown>;
-  /** Parse, scrub and validate the completed response. */
-  check: (output: unknown) => CheckedProviderAnalysis;
-}
-
 /**
  * The attempt's requests: one per cohort, `COHORT_CONCURRENCY` at a time (one at a time for Codex),
  * then the merge request for more than one cohort. After one request fails no further request
@@ -524,16 +552,7 @@ async function requestReport(
     config.provider === "codex" ? 1 : COHORT_CONCURRENCY,
     async (cohort): Promise<RequestOutcome | undefined> => {
       if (stopped || signal?.aborted) return undefined;
-      const outcome = await send(
-        {
-          instructions: instructions(config),
-          evidence: evidenceText(cohort),
-          images: cohort.images,
-          schema: analysisResultJsonSchema,
-          check: (output) => checkProviderAnalysis(cohort, output),
-        },
-        cohort,
-      );
+      const outcome = await send(cohortRequest(cohort, config), cohort);
       if (!outcome.ok) stopped = true;
       return outcome;
     },
@@ -544,17 +563,8 @@ async function requestReport(
   const reports = outcomes.map((outcome) => (outcome as { result: AnalysisResult }).result);
   if (cohorts.length === 1) return outcomes[0]!;
   if (signal?.aborted) return { ok: false, notSent: true };
-  const cited = citedInput(input, reports);
-  return send(
-    {
-      instructions: mergeInstructions(config),
-      evidence: mergePacket(input, reports),
-      images: [],
-      schema: mergeResultJsonSchema,
-      check: (output) => checkProviderAnalysis(cited, mergedResponse(input, reports, output)),
-    },
-    { ...cited, images: [] },
-  );
+  // The merge request sends the cohort reports, no evidence entries or captures.
+  return send(mergeRequest(input, config, reports), { ...input, evidence: [], images: [] });
 }
 
 /**

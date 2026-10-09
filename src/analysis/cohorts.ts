@@ -4,10 +4,15 @@
 
 import { z } from "zod";
 import { analysisCohorts } from "./analysis-limits.js";
+import { checkProviderAnalysis, type CheckedProviderAnalysis } from "./responses.js";
 import type { AnalysisInput, AnalysisResult } from "./types.js";
-import { analysisResponseSchema, digestAnalysisInput } from "./validation.js";
+import { analysisResponseSchema } from "./validation.js";
 
-/** The input each cohort request sends: the input itself when it is one cohort. */
+/**
+ * The input each cohort request sends: the input itself when it is one cohort. `includedStreamIds`
+ * keeps the bundle's stream order, the order captureEvidence split the packet by. A cohort's input
+ * is never stored, so it keeps the run's input digest.
+ */
 export function cohortInputs(input: AnalysisInput): AnalysisInput[] {
   const cohorts = analysisCohorts(input.coverage.includedStreamIds);
   if (cohorts.length === 1) return [input];
@@ -15,7 +20,7 @@ export function cohortInputs(input: AnalysisInput): AnalysisInput[] {
     const members = new Set(streamIds);
     const evidence = input.evidence.filter((entry) => members.has(entry.streamId));
     const ids = new Set(evidence.map((entry) => entry.id));
-    const cohort: AnalysisInput = {
+    return {
       ...input,
       participants: input.participants.filter((participant) => members.has(participant.streamId)),
       coverage: {
@@ -27,8 +32,6 @@ export function cohortInputs(input: AnalysisInput): AnalysisInput[] {
       evidence,
       images: input.images.filter((image) => ids.has(image.evidenceId)),
     };
-    cohort.inputDigest = digestAnalysisInput(cohort);
-    return cohort;
   });
 }
 
@@ -53,42 +56,40 @@ export const mergeResultJsonSchema = z.toJSONSchema(
   analysisResponseSchema.omit({ participants: true }),
 );
 
+/** The evidence a report's findings, design findings and concern reviews cite. */
+const findingEvidence = (report: AnalysisResult): string[] => [
+  ...report.findings.flatMap((finding) =>
+    finding.observations.flatMap((observation) => observation.evidenceIds),
+  ),
+  ...(report.designFindings ?? []).flatMap((finding) => finding.evidenceIds),
+  ...(report.concernReviews ?? []).flatMap((review) => review.evidenceIds),
+];
+
 /**
- * The merge request's answer with the cohorts' participant reviews, in the run's participant
- * order: a whole report, for the same check as any request's report.
+ * Check the merge request's answer as a whole report: with the cohorts' participant reviews, in
+ * the run's participant order, it passes the same check as any request's report. Its findings,
+ * design findings and concern reviews may cite only evidence that the cohort reports cite in
+ * theirs: the merge request saw no evidence, so any other citation would be a new claim.
  */
-export function mergedResponse(
+export function checkMergedResponse(
   input: AnalysisInput,
   reports: readonly AnalysisResult[],
   output: unknown,
-): unknown {
-  if (output === null || typeof output !== "object" || Array.isArray(output)) return output;
+): CheckedProviderAnalysis {
   const reviews = new Map(
     reports.flatMap((report) => report.participants).map((review) => [review.streamId, review]),
   );
-  return {
-    ...output,
-    participants: input.participants.flatMap(({ streamId }) => reviews.get(streamId) ?? []),
-  };
-}
-
-/** The input a merged report is checked against: only the evidence the cohort reports cite. */
-export function citedInput(
-  input: AnalysisInput,
-  reports: readonly AnalysisResult[],
-): AnalysisInput {
-  const cited = new Set(
-    reports.flatMap((report) => [
-      ...report.participants.flatMap((review) => [
-        ...review.evidenceIds,
-        ...review.feedback.map((quote) => quote.evidenceId),
-      ]),
-      ...report.findings.flatMap((finding) =>
-        finding.observations.flatMap((observation) => observation.evidenceIds),
-      ),
-      ...(report.designFindings ?? []).flatMap((finding) => finding.evidenceIds),
-      ...(report.concernReviews ?? []).flatMap((review) => review.evidenceIds),
-    ]),
-  );
-  return { ...input, evidence: input.evidence.filter((entry) => cited.has(entry.id)) };
+  const merged =
+    output === null || typeof output !== "object" || Array.isArray(output)
+      ? output
+      : {
+          ...output,
+          participants: input.participants.flatMap(({ streamId }) => reviews.get(streamId) ?? []),
+        };
+  const checked = checkProviderAnalysis(input, merged);
+  if (!checked.ok) return checked;
+  const cited = new Set(reports.flatMap(findingEvidence));
+  if (findingEvidence(checked.result).every((id) => cited.has(id))) return checked;
+  const error = "analysis_validation_failed_merge_reference_invalid";
+  return { ok: false, error, rejected: { error, errors: [], output: checked.result } };
 }

@@ -88,17 +88,19 @@ tier's gpt-6-astra rate limit of 1,000,000 tokens a minute; Codex runs one at a
 time. Then one merge request reads the cohort reports, never the evidence or the
 captures. It writes the summary, findings, design findings, concern reviews and
 limitations for the whole run; the participant reviews are the cohorts' own.
-Merged observations may cite only evidence that a cohort report cites, and the
-merged report passes the same reference, membership and basis checks against the
-run's whole packet as a single request's report does.
+Its findings, design findings and concern reviews may cite only evidence that a
+cohort report cites in its own findings, design findings or concern reviews
+(`analysis_validation_failed_merge_reference_invalid` otherwise), and the merged
+report passes the same reference, membership and basis checks against the run's
+whole packet as a single request's report does.
 
 The attempt has one execution start, one receipt and one `analysis.json`, with the
 run's participants, coverage and evidence and the summed usage of every request
 sent. The artifact schema is unchanged. Its stored limits grew to hold eight
 cohorts: 6,400 evidence items, 320 captures and 16 MiB. If a cohort request fails
-or is rejected, no further request starts, no merge request is sent and the
-attempt fails with that request's code, with no findings; a warning names the
-cohort's size. A failed merge request fails the attempt the same way. The usage
+or is rejected, no further request starts, requests already sent finish, no merge
+request is sent and the attempt fails with that request's code, with no findings;
+a warning names the cohort's size. A failed merge request fails the attempt the same way. The usage
 still counts every request sent. Findings from part of the participants are not
 kept as a report on the run.
 
