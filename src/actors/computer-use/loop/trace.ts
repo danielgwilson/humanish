@@ -166,6 +166,7 @@ export function loopResult(
               : { maxOutputTokens: provider.modelSettings.maxOutputTokens }),
           },
         }),
+    waitSettings: { ...session.waits },
     counts,
     items: recorder.items,
     ...(session.actionHistory.affordances.length > 0

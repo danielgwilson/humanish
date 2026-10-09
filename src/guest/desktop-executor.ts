@@ -1,6 +1,7 @@
 import { perceptualSignature } from "../evidence/frame-signature.js";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CuaAction, CuaExecutor } from "../actors/computer-use/loop.js";
+import { CUA_WAIT_LIMITS } from "../actors/computer-use/wait.js";
 import {
   BROWSER_CONTROL_LIMITS,
   validateBrowserControlAction,
@@ -182,7 +183,9 @@ async function executeAction(
         throw error;
       }
     }
-    if (action.kind === "wait") await delay(action.ms ?? 250, undefined, { signal });
+    // The loop sends every wait with its length; planWait owns the lengths.
+    if (action.kind === "wait")
+      await delay(action.ms ?? CUA_WAIT_LIMITS.settleMs, undefined, { signal });
     for (const command of commands) {
       assertOpen(state, signal, progress.dispatched);
       // No await between authority check and the native port invocation.

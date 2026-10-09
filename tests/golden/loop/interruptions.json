@@ -32,6 +32,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -153,6 +158,11 @@
         "reason": "the provider's output/context token limit interrupted this response; the participant did not report completion. No actions or closing request followed the incomplete response.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,
@@ -276,6 +286,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -398,6 +413,11 @@
         "ids": {
           "model": "golden-1"
         },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
         "counts": {
           "turns": 1,
           "actions": 0,
@@ -519,6 +539,11 @@
         "reason": "the provider's output/context token limit interrupted this response; the participant did not report completion. No actions or closing request followed the incomplete response.",
         "ids": {
           "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
         },
         "counts": {
           "turns": 1,

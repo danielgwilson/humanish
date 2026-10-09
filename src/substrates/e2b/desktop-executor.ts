@@ -4,6 +4,7 @@ import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
+import { CUA_WAIT_LIMITS } from "../../actors/computer-use/wait.js";
 import { xdotoolChord, xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 
 // The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
@@ -96,8 +97,6 @@ export interface E2BDesktopLike {
 }
 
 export interface E2BDesktopExecutorOptions {
-  /** Fallback wait when a wait action carries no ms. Default 500. */
-  defaultWaitMs?: number;
   /**
    * Pixels of CuaAction scroll dy per one SDK scroll tick. The executor maps
    * abs(dy) / scrollAmountPerTick to the SDK's integer `amount` (floored at 1 for
@@ -111,7 +110,6 @@ export interface E2BDesktopExecutorOptions {
   observeBrowserState?: () => Promise<Pick<CuaObservation, "url" | "title" | "text" | "scrollY">>;
 }
 
-const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
 const TYPE_COMMAND_TIMEOUT_MS = 15_000;
 const KEY_COMMAND_TIMEOUT_MS = 15_000;
@@ -277,7 +275,6 @@ export function createE2BDesktopExecutor(
   desktop: E2BDesktopLike,
   options: E2BDesktopExecutorOptions = {},
 ): CuaExecutor {
-  const defaultWaitMs = options.defaultWaitMs ?? DEFAULT_WAIT_MS;
   const scrollAmountPerTick = options.scrollAmountPerTick ?? DEFAULT_SCROLL_AMOUNT_PER_TICK;
 
   return {
@@ -382,7 +379,8 @@ export function createE2BDesktopExecutor(
         return;
       }
       case "wait":
-        await desktop.wait(action.ms ?? defaultWaitMs);
+        // The loop sends every wait with its length; planWait owns the lengths.
+        await desktop.wait(action.ms ?? CUA_WAIT_LIMITS.settleMs);
         return;
       case "screenshot":
         // No-op: the loop calls observe() separately to capture each frame, so
