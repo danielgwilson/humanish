@@ -251,7 +251,10 @@ describe("Connections", () => {
     });
     try {
       await surface.press(KEY.enter, () => keyEntry.mock.calls.length === 1);
-      expect(keyEntry).toHaveBeenCalledExactlyOnceWith({ action: "agentmail-key" });
+      expect(keyEntry).toHaveBeenCalledExactlyOnceWith(
+        { action: "agentmail-key" },
+        expect.anything(),
+      );
     } finally {
       surface.unmount();
     }

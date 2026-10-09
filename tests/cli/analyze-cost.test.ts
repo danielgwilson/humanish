@@ -105,3 +105,10 @@ it("puts every request of an analysis in cohorts in a dry run's worst case", asy
     "if every request (2 cohort requests of at most 16 participants and one merge request) writes its whole",
   );
 });
+
+it("states in --max-cost's help the rule admission applies", () => {
+  const analyze = createProgram().commands.find((command) => command.name() === "analyze")!;
+  expect(analyze.helpInformation().replace(/\s+/g, " ")).toContain(
+    "refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this.",
+  );
+});

@@ -487,6 +487,19 @@ describe("selected lab setup without paid dispatch", () => {
     });
   });
 
+  it("states the analysis admission rule as the line before a live run does", async () => {
+    await project(lab(), async (cwd) => {
+      const result = await doctor(cwd, {
+        study: "preview",
+        env: { ...keyless, OPENAI_API_KEY: "synthetic-model", E2B_API_KEY: "synthetic-desktop" },
+        localAgents: noAgents,
+      });
+      expect(result.checks.find((check) => check.name === "post-run analysis")?.message).toContain(
+        "refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap.",
+      );
+    });
+  });
+
   it.each([
     ["without a scorer", "", "present (process env), not used by this study"],
     [

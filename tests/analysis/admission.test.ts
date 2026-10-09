@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { costRefusal, estimateAnalysisCost } from "../../src/analysis/admission.js";
 import {
   automaticAnalysisBudget,
+  formatAutomaticAnalysisBudget,
   resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
 import {
@@ -228,8 +229,8 @@ describe("analysis admission estimate", () => {
     expect(preferLargerAnalysisOutput(input, explicit)).toEqual(explicit);
   });
 
-  it("gives study check a range that brackets a 6-participant study's packets", () => {
-    const range = automaticAnalysisBudget(undefined, "computer-use", 6)?.expectedCostUsd;
+  it("gives study check a range that brackets a 6-participant study's packets when the cap admits them", () => {
+    const range = automaticAnalysisBudget({ maxCostUsd: 1000 }, "computer-use", 6)?.expectedCostUsd;
     const config = { ...defaultConfig(), maxCostUsd: 1000 };
     const expected = (shape: PacketShape) =>
       estimateAnalysisAdmission(packet(shape), preferLargerAnalysisOutput(packet(shape), config))
@@ -245,6 +246,39 @@ describe("analysis admission estimate", () => {
     expect(range!.low).toBeLessThanOrEqual(smallest);
     expect(range!.high).toBeGreaterThanOrEqual(largest);
     expect(range!.high).toBeLessThan(largest * 1.5);
+  });
+
+  it("ends the range at the most admission admits under the default cap", () => {
+    // gpt-6-astra bills input at up to $12.50 per million tokens and output at $50. Past what the
+    // 32,768-token allowance admits, dispatch gives the request 16,384 tokens. One participant is
+    // expected to write 13,000, so the worst case is $0.1692 over the expected cost, and admission
+    // admits it while that worst case is at most $3: an expected $2.8308. Six are expected to write
+    // all 16,384, so the worst case is the expected cost and admission admits up to $3.
+    const one = automaticAnalysisBudget(undefined, "computer-use", 1)?.expectedCostUsd;
+    expect(one?.low).toBe(0.7532);
+    expect(one?.high).toBeCloseTo(2.8308, 4);
+    const six = automaticAnalysisBudget(undefined, "computer-use", 6)?.expectedCostUsd;
+    expect(six?.high).toBeCloseTo(3, 4);
+    // Admission refuses the packet at the evidence limits under that cap.
+    const limits = packet({
+      participants: 6,
+      entries: 800,
+      textBytes: 160 * 1024 - 6 * 200,
+      captures: 40,
+    });
+    expect(
+      estimateAnalysisAdmission(limits, preferLargerAnalysisOutput(limits, defaultConfig()))
+        .allowed,
+    ).toBe(false);
+  });
+
+  it("says when admission refuses an analysis even with no evidence", () => {
+    const budget = automaticAnalysisBudget({ maxCostUsd: 0.5 }, "computer-use", 1)!;
+    expect(budget.expectedCostUsd).toBeUndefined();
+    expect(budget.refusedFromUsd).toBe(0.7532);
+    expect(formatAutomaticAnalysisBudget(budget)).toBe(
+      "After live runs: explicit analysis · gpt-6-astra · refused before it starts for 1 participant even with no evidence (expected $0.75), since both its worst case and its expected cost plus a 10% margin are over $0.5; this is not a billing cap. Set review.analysis: false to disable.",
+    );
   });
 });
 

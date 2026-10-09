@@ -17,6 +17,7 @@ import {
   navigate,
   screenKey,
   selectedIndex,
+  type NavState,
   type Screen,
 } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
@@ -37,8 +38,13 @@ import { liveCostText } from "./screens/study-screen.js";
 import { startStudy } from "./start-study.js";
 
 export interface AppProps {
-  /** A key the person asked to enter; the surface exits after it so the host can prompt. */
-  onKeyEntry?: (handoff: TuiHandoff) => void;
+  /**
+   * A key the person asked to enter, and where they were; the surface exits after it so the host
+   * can prompt.
+   */
+  onKeyEntry?: (handoff: TuiHandoff, from: NavState) => void;
+  /** Where the person was when they handed a key off, so going back from the keys returns there. */
+  resume?: NavState;
   options: TuiOptions;
   onReady?: () => void;
   /** Frozen in tests so a golden never depends on the wall clock. */
@@ -80,12 +86,13 @@ export function App({
   options,
   onReady,
   onKeyEntry,
+  resume,
   now,
   tick: frozenTick,
 }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useWindowSize();
-  const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
+  const [nav, dispatch] = useReducer(navigate, resume, (from) => from ?? initialNav());
   const [data, setData] = useState<ProjectData | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   // Launch state is scoped to the study it belongs to: it is one surface with one piece of state, and
@@ -584,7 +591,7 @@ export function App({
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
     const handOff = (handoff: TuiHandoff): void => {
-      onKeyEntry?.(handoff);
+      onKeyEntry?.(handoff, nav);
       exit();
     };
     if (accounts === "email" && options.capabilities.comms)
@@ -651,6 +658,7 @@ export function App({
     exit,
     error,
     data,
+    nav,
     screen,
     selected,
     size.columns,
@@ -676,7 +684,7 @@ export function App({
         screen,
         data,
         selected,
-        confirming,
+        armed,
         initialized,
         overlay:
           accounts === "email" ? "connections" : (accounts ?? (showHelp ? "help" : undefined)),

@@ -283,14 +283,26 @@ describe("admission for a run with more than 16 participants", () => {
   });
 
   it("names the cohorts in the plan's analysis line only past 16 participants", () => {
-    const line = (participants: number) =>
-      formatAutomaticAnalysisBudget(
-        automaticAnalysisBudget(undefined, "computer-use", participants)!,
-      );
-    expect(line(16)).not.toMatch(/cohorts/);
+    const line = (participants: number, raw?: unknown) =>
+      formatAutomaticAnalysisBudget(automaticAnalysisBudget(raw, "computer-use", participants)!);
+    expect(line(16)).not.toMatch(/cohort/);
+    // The default $3 cap refuses even a 24-participant run with no evidence; $20 admits a range.
     expect(line(24)).toMatch(
-      /for 24 participants in 2 cohort requests of at most 16 participants and one merge request,/,
+      /refused before it starts for 24 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence/,
     );
+    expect(line(24, { maxCostUsd: 20 })).toMatch(
+      /to \$[\d.]+ for 24 participants in 2 cohort requests of at most 16 participants and one merge request, depending on/,
+    );
+  });
+
+  it("ends the range for 40 participants at what the cap admits across every request", () => {
+    const range = (maxCostUsd: number) =>
+      automaticAnalysisBudget({ maxCostUsd }, "computer-use", 40)!.expectedCostUsd!;
+    // At the evidence limits the three cohort requests and the merge request expect $16.20.
+    expect(range(1000).high).toBeGreaterThan(10);
+    expect(range(10).low).toBe(range(1000).low);
+    expect(range(10).high).toBeLessThanOrEqual(10);
+    expect(range(10).high).toBeGreaterThan(9.99);
   });
 
   it("gives study check a range for 40 participants that brackets their packets", () => {

@@ -1,4 +1,5 @@
 import { contentWidth, type FrameProps } from "./frame.js";
+import type { ArmedAction } from "./arming.js";
 import type { Screen } from "./navigation.js";
 import { itemsForStudy, liveRunsOf, type ProjectData } from "./project.js";
 import { runActions } from "./screens/run-screen.js";
@@ -8,7 +9,8 @@ export interface FrameTextView {
   screen: Screen;
   data: ProjectData | undefined;
   selected: number;
-  confirming: "live" | undefined;
+  /** The action waiting for its confirming Enter, as `useArming` reports it. */
+  armed: ArmedAction | undefined;
   initialized: boolean;
   /** A screen drawn over the navigation stack, which writes its own breadcrumb and legend. */
   overlay: "keys" | "connections" | "help" | undefined;
@@ -84,9 +86,14 @@ function keyHints(view: FrameTextView): string {
 }
 
 function legendFor(
-  { screen, data, selected, confirming, initialized }: FrameTextView,
+  { screen, data, selected, armed, initialized }: FrameTextView,
   move: string,
 ): string {
+  // While an action is armed, Enter confirms it and any other key cancels it (app.tsx), whatever
+  // the row would otherwise do. Cancel analysis says what cancelling it keeps, as its prompt does,
+  // because "esc cancel" next to "cancel analysis?" reads as the key that cancels the analysis.
+  if (armed !== undefined)
+    return `⏎ confirm  esc ${armed === "cancel-analysis" ? "keep analyzing" : "cancel"}`;
   switch (screen.name) {
     case "studies":
       // Nothing to move through or open on an empty screen, and a legend that lists inert keys
@@ -96,7 +103,6 @@ function legendFor(
       // row look decorative.
       return !initialized ? "⏎ set up humanish here  ? shortcuts  q quit" : "? shortcuts  q quit";
     case "study": {
-      if (confirming !== undefined) return "⏎ confirm  esc cancel";
       const item =
         data === undefined ? undefined : itemsForStudy(data, screen.studyKey).items[selected];
       const enter = item?.kind === "start" ? "⏎ start" : "⏎ open";

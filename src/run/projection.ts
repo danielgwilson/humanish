@@ -9,6 +9,7 @@
 //   - a participant's reported thinking is quoted, never paraphrased or summarized.
 
 import type { RunIndexEntry } from "./run-index.js";
+import { indexedRunCost } from "./run-cost.js";
 
 /** One study as the study list shows it. */
 export interface StudyRollup {
@@ -111,9 +112,16 @@ export function expectationFor(
       (value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0,
     )
     .sort((a, b) => a - b);
+  // Each run's cost is the one its row and card show (src/run/run-cost.ts): participants and
+  // desktops plus its analyses. A run whose participants and desktops have no figure stays
+  // unpriced below, so an analysis alone never stands in for what a run cost.
   const costs = finished
-    .map((entry) => entry.estimatedCostUsd)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .filter(
+      (entry) =>
+        typeof entry.estimatedCostUsd === "number" && Number.isFinite(entry.estimatedCostUsd),
+    )
+    .map((entry) => indexedRunCost(entry).total?.usd)
+    .filter((value): value is number => value !== undefined)
     .sort((a, b) => a - b);
   // A cost is unknown whether it was declared absent (`null`) or never recorded at all
   // (`undefined`: every fail-closed exit finalized with no outcome). Counting only the first

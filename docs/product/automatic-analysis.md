@@ -23,18 +23,19 @@ review:
 Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
 mapping using the default OpenAI API provider requires `maxCostUsd`. Admission
-compares the expected cost plus a 10% margin with it; it does not limit the
-provider's final bill, and it is separate from participant spending limits. The
+refuses the request when both its worst case and its expected cost plus a 10% margin are over
+it; it does not limit the provider's final bill, and it is separate from participant spending limits. The
 estimate gives two numbers: the expected cost, and the worst case if the analyst
 spends its whole output allowance. `humanish study check` gives the expected cost
 range for the study's participant count, from a run that keeps no evidence to one
-at the evidence limits. A study of more than 16 participants is analysed in
-cohorts of at most 16, one request each, and one more request merges their
-reports; the range covers every request and the analysis line names the cohorts
-(see [runs with more than 16 participants](../contracts/study-analysis.md#runs-with-more-than-16-participants)).
-The expected cost of 17 participants is already over the default $3 cap, so their
-default analysis is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless
-`review.analysis.maxCostUsd` admits it. Use `analyze --dry-run --max-cost <usd>` on retained
+that keeps the most evidence admission admits under the cap, at most the evidence limits. When
+the cap admits no analysis at all, it says so instead. A study of more than 16 participants is
+analysed in cohorts of at most 16, one request each, and one more request merges their reports;
+the range covers every request and the analysis line names them (see
+[runs with more than 16 participants](../contracts/study-analysis.md#runs-with-more-than-16-participants)).
+The default $3 cap refuses the analysis of 17 participants even for a run that keeps no evidence,
+so a default analysis of more than 16 participants is skipped with
+`AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless `review.analysis.maxCostUsd` admits it. Use `analyze --dry-run --max-cost <usd>` on retained
 evidence to inspect the expected cost, the worst case and the selected token
 allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** The actions that take two Enters: each spends money, ends paid work, or writes files. */
-type ArmedAction = "live-start" | "run-again" | "stop" | "cancel-analysis" | "init";
+export type ArmedAction = "live-start" | "run-again" | "stop" | "cancel-analysis" | "init";
 
 /**
  * The shortest gap between one Enter and the Enter that confirms. Every Enter inside it restarts

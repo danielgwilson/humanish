@@ -192,6 +192,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-08 | 0.115.0, src/ as of 0b3df523 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $6.20           | [summary](2026-10-08-0.115.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.116.0, src/ as of a3189937 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $6.14           | [summary](2026-10-09-0.116.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.117.0, src/ as of 882d47f6 | `neutral` | `openai-computer-use` | 3            | 8/15          | 7/15            | 0 and 0             | $6.04           | [summary](2026-10-09-0.117.0-neutral-openai-computer-use.md) |
+| 2026-10-09 | 0.118.0, src/ as of d183d1ae | `neutral` | `openai-computer-use` | 3            | 6/15          | 6/15            | 0 and 0             | $5.38           | [summary](2026-10-09-0.118.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -299,6 +300,20 @@ hand, analysis recall is 8/15, and report recall stays 8/15. The clean-arm repor
 enter while editing did not save the change; i had to click save." is true: the clean build's edit
 box has no Enter handler. Five of six reports say the participant saw no terminal output, from the
 persona's `clear_terminal_output` trait.
+
+The 0.118.0 run took the analysis cap from the dry run's `admittedCostUsd`, $1.13: expected $0.99 to
+$1.07, bills $0.53 to $0.75. No analysis was refused or skipped. Every participant ran threaded,
+ended on its own and gave 5 or 6 impressions. Against 0.117.0, D1 and D5 account for the drop. Only
+one planted participant pressed Clear completed (3 of 3 on 0.117.0), on the empty list's
+`undefined` row, then added a task in the same turn, which replaced that row; its report says "Clear
+completed removed it", which the rubric counts as a false assurance for D1. All three planted
+participants used Save in edit mode and none reported it doing nothing, where one report and one
+analysis did on 0.117.0. D3 and D4 stayed 3/3 for reports and analyses. The two unresolved analysis
+lines are on the clean arm, "Reported edit-focus hesitation, followed by a successful save" and
+"Empty list after refresh undermined reported trust"; both describe what the clean build does, so
+read by hand recall stays 6/15 for reports and 6/15 for analyses. No planted participant typed more
+than 30 characters in one action, so none met D2. All six reports say the participant saw no
+terminal output, from the persona's `clear_terminal_output` trait.
 
 ## What these numbers are not
 
