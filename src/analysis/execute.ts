@@ -293,33 +293,88 @@ export function estimateAnalysisAdmission(
  * retained packet averaged 200 bytes. */
 const ENTRY_STRUCTURE_BYTES = 256;
 
+/** How much a range bisection narrows the share of the evidence limits: 2^-40 of them. */
+const RANGE_BISECTIONS = 40;
+
 /**
- * The expected cost of an analysis for this many participants before any evidence exists: from a
- * packet with no evidence to one at the evidence limits with every capture at the image-token
- * ceiling. Undefined for Codex and for a model without rates.
+ * The expected cost of the analysis admission would start, before any evidence exists: from a
+ * packet with no evidence to the largest packet admission admits. When admission refuses even a
+ * packet with no evidence, `refusedFromUsd` is that packet's expected cost.
+ */
+export type AnalysisCostRange =
+  | { expectedCostUsd: { low: number; high: number } }
+  | { refusedFromUsd: number };
+
+/**
+ * The expected cost of the analysis admission would start for this many participants, before any
+ * evidence exists. Packets grow from no evidence toward the evidence limits with every capture at
+ * the image-token ceiling, and the range ends at the largest one admission admits, so it never
+ * passes the cap. With `preferLargerOutput` each packet gets the output allowance dispatch would
+ * give it (preferLargerAnalysisOutput). Undefined for Codex and for a model without rates.
  */
 export function analysisCostRange(
   config: AnalysisConfig,
   participants: number,
-): { low: number; high: number } | undefined {
+  preferLargerOutput = false,
+): AnalysisCostRange | undefined {
   if (config.provider === "codex") return undefined;
   const rate = MODEL_RATES[config.model];
   if (!rate || rate.placeholder) return undefined;
   const prompt =
     Buffer.byteLength(instructions(config)) +
     Buffer.byteLength(JSON.stringify(analysisResultJsonSchema));
-  const size = {
-    participants: Math.min(participants, EVIDENCE_LIMITS.participants),
-    outputAllowance: config.maxOutputTokens,
+  /** The request for a share of the evidence limits, from none (0) to all of them (1). */
+  const request = (share: number, outputAllowance: number) =>
+    estimateAnalysisCost(rate, {
+      participants: Math.min(participants, EVIDENCE_LIMITS.participants),
+      outputAllowance,
+      textBytes:
+        prompt +
+        share * (EVIDENCE_LIMITS.textBytes + EVIDENCE_LIMITS.evidence * ENTRY_STRUCTURE_BYTES),
+      imageTokens: share * EVIDENCE_LIMITS.captures * HIGH_DETAIL_IMAGE_TOKEN_CEILING,
+    });
+  const admits = (share: number, allowance: number): boolean =>
+    request(share, allowance).admittedCostUsd <= config.maxCostUsd;
+  // Cost grows with the share, so admission admits each allowance up to one share of the limits.
+  const largestAdmitted = (allowance: number): number => {
+    if (admits(1, allowance)) return 1;
+    let [admitted, refused] = [0, 1];
+    for (let step = 0; step < RANGE_BISECTIONS; step += 1) {
+      const share = (admitted + refused) / 2;
+      if (admits(share, allowance)) admitted = share;
+      else refused = share;
+    }
+    return admitted;
   };
-  const low = estimateAnalysisCost(rate, { ...size, textBytes: prompt, imageTokens: 0 });
-  const high = estimateAnalysisCost(rate, {
-    ...size,
-    textBytes:
-      prompt + EVIDENCE_LIMITS.textBytes + EVIDENCE_LIMITS.evidence * ENTRY_STRUCTURE_BYTES,
-    imageTokens: EVIDENCE_LIMITS.captures * HIGH_DETAIL_IMAGE_TOKEN_CEILING,
-  });
-  return { low: low.expectedCostUsd, high: high.expectedCostUsd };
+  // Dispatch tries the larger allowance first. A smaller allowance costs no more, so it admits at
+  // least the same share, and the packets past the larger one's share get the smaller one.
+  const larger = preferLargerOutput ? largerOutput(config) : undefined;
+  const allowances = [
+    ...(larger === undefined ? [] : [larger.maxOutputTokens]),
+    config.maxOutputTokens,
+  ];
+  const admitted = allowances.filter((allowance) => admits(0, allowance));
+  if (admitted.length === 0)
+    return { refusedFromUsd: request(0, config.maxOutputTokens).expectedCostUsd };
+  return {
+    expectedCostUsd: {
+      low: request(0, admitted[0]!).expectedCostUsd,
+      high: Math.max(
+        ...admitted.map(
+          (allowance) => request(largestAdmitted(allowance), allowance).expectedCostUsd,
+        ),
+      ),
+    },
+  };
+}
+
+/** The larger output allowance an omitted output limit may get, or undefined when it may not. */
+function largerOutput(
+  config: AnalysisConfig,
+): Extract<AnalysisConfig, { maxOutputTokens: number }> | undefined {
+  if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
+    return undefined;
+  return { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
 }
 
 /** Only for an omitted output limit. Preserve the established allowance when
@@ -329,10 +384,10 @@ export function preferLargerAnalysisOutput(
   input: AnalysisInput,
   config: AnalysisConfig,
 ): AnalysisConfig {
-  if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
-    return config;
-  const expanded = { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
-  return estimateAnalysisAdmission(input, expanded).allowed ? expanded : config;
+  const expanded = largerOutput(config);
+  return expanded !== undefined && estimateAnalysisAdmission(input, expanded).allowed
+    ? expanded
+    : config;
 }
 
 export type AnalysisDispatchContext = Pick<

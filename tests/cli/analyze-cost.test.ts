@@ -70,3 +70,10 @@ it("names the command that runs an analysis its cap refused", async () => {
   expect(stderr).toContain("$0.01 cap");
   expect(stderr).toContain(`analyze --run ${RUN_ID} --max-cost ${Math.ceil(worstCaseCostUsd!)}`);
 });
+
+it("states in --max-cost's help the rule admission applies", () => {
+  const analyze = createProgram().commands.find((command) => command.name() === "analyze")!;
+  expect(analyze.helpInformation().replace(/\s+/g, " ")).toContain(
+    "refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this.",
+  );
+});

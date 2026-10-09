@@ -6,7 +6,9 @@ import { describe, expect, it, vi } from "vitest";
 import { COMMS_PROVIDERS } from "../../src/comms/connections.js";
 import type { TuiKeyStatus, TuiOptions } from "../../src/tui/contract.js";
 import { App } from "../src/app.js";
-import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
+import { startTui } from "../src/entry.js";
+import { KEY, fakeTerminal, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
+import { LABS, RUNS } from "./fixtures.js";
 
 // `c keys and accounts` lists the provider keys `humanish keys` lists, with the line it prints for
 // each, and hands the key a person picks to the host's hidden prompt.
@@ -148,10 +150,10 @@ describe("c keys and accounts", () => {
       await surface.press("c", (frame) => frame.includes("❯ E2B_API_KEY"));
       await surface.press(KEY.down, (frame) => /❯ OPENAI_API_KEY/.test(frame));
       await surface.press(KEY.enter, () => keyEntry.mock.calls.length === 1);
-      expect(keyEntry).toHaveBeenCalledExactlyOnceWith({
-        action: "provider-key",
-        name: "OPENAI_API_KEY",
-      });
+      expect(keyEntry).toHaveBeenCalledExactlyOnceWith(
+        { action: "provider-key", name: "OPENAI_API_KEY" },
+        expect.anything(),
+      );
     } finally {
       surface.unmount();
     }
@@ -174,6 +176,55 @@ describe("c keys and accounts", () => {
     } finally {
       surface.unmount();
     }
+  });
+
+  it("goes back from the keys to the screen they were opened from after key entry", async () => {
+    // The host takes the terminal for its hidden prompt and then calls startTui again on the keys.
+    const terminal = fakeTerminal({ columns: 80, rows: 30 });
+    const base = options();
+    const project = options({
+      capabilities: {
+        ...base.capabilities,
+        readRunIndex: async () => ({
+          schema: "humanish.run-index.v1",
+          cwd: base.cwd,
+          runs: RUNS,
+          unreadable: [],
+        }),
+        listStudies: async () => ({
+          schema: "humanish.study-list.v1",
+          retired: [],
+          ok: true,
+          cwd: base.cwd,
+          studies: LABS,
+          warnings: [],
+        }),
+      },
+      stdin: terminal.stdin,
+      stdout: terminal.stdout,
+    });
+    const first = startTui(project);
+    await terminal.waitFor((frame) => frame.includes("Signup flow"));
+    await terminal.press(KEY.enter, (frame) => frame.includes("Start a dry run"));
+    await terminal.press("c", (frame) => frame.includes("❯ E2B_API_KEY"));
+    // The surface exits on this Enter, so it draws no frame.
+    await terminal.send(KEY.enter);
+    expect(await first).toEqual({ action: "provider-key", name: "E2B_API_KEY" });
+
+    const second = startTui({
+      ...project,
+      initialScreen: "keys",
+      connectionNotice: "E2B_API_KEY stored for every project.",
+    });
+    await terminal.waitFor((frame) => frame.includes("E2B_API_KEY stored for every project."));
+    const back = await terminal.press(
+      KEY.escape,
+      (frame) => frame.includes("q quit") && !frame.includes("Provider keys"),
+    );
+    expect(back).toContain("Start a dry run");
+    await terminal.press(KEY.escape, (frame) => frame.includes("never-run-lab"));
+    await terminal.send("q");
+    expect(await second).toBe(0);
   });
 
   it("reopens on the keys with the host's notice after key entry", async () => {

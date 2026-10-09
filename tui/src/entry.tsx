@@ -6,6 +6,7 @@ import React from "react";
 import type { StartTui, TuiOptions, TuiHandoff } from "../../src/tui/contract.js";
 import { forTerminal, terminalRendersUnicode } from "../../src/routes/terminal/encoding.js";
 import { App } from "./app.js";
+import type { NavState } from "./navigation.js";
 
 /**
  * A stdout that a non-UTF-8 terminal can read.
@@ -31,7 +32,17 @@ function encodeFor(stdout: TuiOptions["stdout"]): TuiOptions["stdout"] {
   return wrapped;
 }
 
+/**
+ * Where the person was when the surface last handed a key to the host. The host asks for the value
+ * with the surface unmounted and then mounts it again on `initialScreen`; that mount starts here, so
+ * going back from the keys returns to the screen they were opened from. Any other mount starts at
+ * the studies list.
+ */
+let handedOffFrom: NavState | undefined;
+
 export const startTui: StartTui = async (options: TuiOptions): Promise<number | TuiHandoff> => {
+  const resume = options.initialScreen === undefined ? undefined : handedOffFrom;
+  handedOffFrom = undefined;
   let outcome: number | TuiHandoff = 0;
   let ready: () => void = () => {};
   const firstFrame = new Promise<void>((resolve) => {
@@ -42,9 +53,11 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number | 
   const instance = render(
     <App
       options={options}
+      {...(resume === undefined ? {} : { resume })}
       onReady={ready}
-      onKeyEntry={(handoff) => {
+      onKeyEntry={(handoff, from) => {
         outcome = handoff;
+        handedOffFrom = from;
       }}
     />,
     {

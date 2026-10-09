@@ -11,6 +11,7 @@ import {
   dryRunBundleRefusal,
   showAnalysis,
 } from "../../analysis/service.js";
+import { admissionRule } from "../../analysis/admission.js";
 import type { AnalysisAdmission } from "../../analysis/execute.js";
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
@@ -68,7 +69,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--max-cost <usd>",
-      "Required for OpenAI, also with --dry-run: send nothing when the expected cost in USD, plus a 10% margin, is above this. It does not limit billing. Unsupported for Codex.",
+      `Required for OpenAI, also with --dry-run: an analysis is refused before it sends anything if ${admissionRule("this")}. It does not limit billing. Unsupported for Codex.`,
     )
     .option(
       "--model <id>",
