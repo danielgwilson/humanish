@@ -13,15 +13,12 @@ import { render } from "ink";
 import { PassThrough } from "node:stream";
 import type React from "react";
 
-export interface RenderedFrames {
+/** A fake terminal: TTY streams that record every frame, and the keys and waits a test drives. */
+export interface FakeTerminal {
+  stdin: NodeJS.ReadStream;
+  stdout: NodeJS.WriteStream;
   /** Every frame Ink wrote, escape codes stripped, in order. */
   frames: string[];
-  /**
-   * The frame that satisfied the wait predicate: not simply the last one. Ink's final writes are
-   * cursor control that strips to an empty string, so "the last frame" is usually blank and a
-   * golden taken from it would be empty and pass.
-   */
-  last: string;
   /** Send a keystroke, then wait for the frame it produces. Keys are in `KEY`. */
   press(input: string, until?: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
   /**
@@ -45,6 +42,15 @@ export interface RenderedFrames {
    * waiting only for frames after a keypress races it.
    */
   waitFor(until: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
+}
+
+export interface RenderedFrames extends Omit<FakeTerminal, "stdin" | "stdout"> {
+  /**
+   * The frame that satisfied the wait predicate: not simply the last one. Ink's final writes are
+   * cursor control that strips to an empty string, so "the last frame" is usually blank and a
+   * golden taken from it would be empty and pass.
+   */
+  last: string;
   unmount(): void;
 }
 
@@ -88,71 +94,29 @@ function fakeStdout(columns: number, rows: number, frames: string[]): NodeJS.Wri
   stream.isTTY = true;
   stream.columns = columns;
   stream.rows = rows;
-  stream.write = ((chunk: string | Uint8Array): boolean => {
+  stream.write = ((chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
     frames.push(stripAnsi(String(chunk)));
+    // Ink resolves `waitUntilExit` from the callback of an empty write it queues at unmount, so a
+    // stream that drops callbacks leaves an exiting surface pending forever.
+    const done = rest.find((value) => typeof value === "function") as (() => void) | undefined;
+    if (done !== undefined) process.nextTick(done);
     return true;
   }) as NodeJS.WriteStream["write"];
   return stream;
 }
 
-export interface RenderOptions {
+export interface TerminalOptions {
   columns?: number;
   rows?: number;
-  /** Resolves when this predicate sees a frame; the default waits for any non-empty frame. */
-  until?: (frame: string) => boolean;
+  /** How long a wait looks for its frame before it fails. */
   timeoutMs?: number;
 }
 
-/**
- * Render a tree at a fixed terminal size and wait for the frame that matters.
- *
- * Waiting on a predicate rather than a timer is what keeps these tests off the flaky list: a
- * surface that loads data renders "reading…" first, and a fixed sleep captures whichever frame the
- * scheduler happened to reach.
- */
-export async function renderToText(
-  node: React.ReactElement,
-  options: RenderOptions = {},
-): Promise<RenderedFrames> {
-  const columns = options.columns ?? 80;
-  const rows = options.rows ?? 24;
+/** A terminal of a fixed size for a surface to render into, such as `startTui`'s streams. */
+export function fakeTerminal(options: TerminalOptions = {}): FakeTerminal {
   const frames: string[] = [];
-  const stdout = fakeStdout(columns, rows, frames);
+  const stdout = fakeStdout(options.columns ?? 80, options.rows ?? 24, frames);
   const stdin = fakeStdin();
-  const instance = render(node, {
-    stdin,
-    stdout,
-    patchConsole: false,
-    exitOnCtrlC: false,
-    // Ink decides interactivity from `is-in-ci` And stdout.isTTY, and when it decides
-    // non-interactive it writes only the final frame at unmount: no erase sequences, no
-    // intermediate renders. This harness exists to observe frames as they change and to send keys
-    // between them, so under CI every render test would wait forever for a frame that never comes.
-    // The environment variable describes the machine, not this stream: we built a TTY above, so we
-    // say so rather than letting an unrelated env var decide.
-    interactive: true,
-  });
-
-  const wanted = options.until ?? ((frame: string) => frame.trim().length > 0);
-  const deadline = Date.now() + (options.timeoutMs ?? 2_000);
-  let matched: string | undefined;
-  for (;;) {
-    matched = [...frames].reverse().find((frame) => wanted(frame));
-    if (matched !== undefined) break;
-    if (Date.now() > deadline) {
-      instance.unmount();
-      // Print every frame, not just the last: the last is nearly always Ink's blank teardown write,
-      // which tells you nothing about why the predicate never matched.
-      throw new Error(
-        `renderToText: no frame matched within the timeout. Frames were:\n${
-          frames.length === 0
-            ? "(nothing rendered)"
-            : frames.map((frame, index) => `--- ${index} ---\n${frame}`).join("\n")
-        }`,
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
 
   const waitForFrame = async (
     predicate: (frame: string) => boolean,
@@ -165,11 +129,17 @@ export async function renderToText(
       const found = frames.slice(from).reverse().find(predicate);
       if (found !== undefined) return found;
       if (Date.now() > limit) {
+        // Print every frame, not just the last: the last is nearly always Ink's blank teardown
+        // write, which tells you nothing about why the predicate never matched.
         throw new Error(
-          `renderToText: no frame ${since}matched. Frames since:\n${frames
-            .slice(from)
-            .map((frame, index) => `--- ${index} ---\n${frame}`)
-            .join("\n")}`,
+          `renderToText: no frame ${since}matched. Frames since:\n${
+            frames.length === from
+              ? "(nothing rendered)"
+              : frames
+                  .slice(from)
+                  .map((frame, index) => `--- ${index} ---\n${frame}`)
+                  .join("\n")
+          }`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -177,8 +147,9 @@ export async function renderToText(
   };
 
   return {
+    stdin,
+    stdout,
     frames,
-    last: matched,
     press: async (input, until, timeoutMs) => {
       const from = frames.length;
       (stdin as unknown as { write(chunk: string): void }).write(input);
@@ -208,8 +179,48 @@ export async function renderToText(
       );
     },
     waitFor: (until, timeoutMs) => waitForFrame(until, 0, timeoutMs, ""),
-    unmount: () => instance.unmount(),
   };
+}
+
+export interface RenderOptions extends TerminalOptions {
+  /** Resolves when this predicate sees a frame; the default waits for any non-empty frame. */
+  until?: (frame: string) => boolean;
+}
+
+/**
+ * Render a tree at a fixed terminal size and wait for the frame that matters.
+ *
+ * Waiting on a predicate rather than a timer is what keeps these tests off the flaky list: a
+ * surface that loads data renders "reading…" first, and a fixed sleep captures whichever frame the
+ * scheduler happened to reach.
+ */
+export async function renderToText(
+  node: React.ReactElement,
+  options: RenderOptions = {},
+): Promise<RenderedFrames> {
+  const { stdin, stdout, ...terminal } = fakeTerminal(options);
+  const instance = render(node, {
+    stdin,
+    stdout,
+    patchConsole: false,
+    exitOnCtrlC: false,
+    // Ink decides interactivity from `is-in-ci` And stdout.isTTY, and when it decides
+    // non-interactive it writes only the final frame at unmount: no erase sequences, no
+    // intermediate renders. This harness exists to observe frames as they change and to send keys
+    // between them, so under CI every render test would wait forever for a frame that never comes.
+    // The environment variable describes the machine, not this stream: we built a TTY above, so we
+    // say so rather than letting an unrelated env var decide.
+    interactive: true,
+  });
+  try {
+    const last = await terminal.waitFor(
+      options.until ?? ((frame: string) => frame.trim().length > 0),
+    );
+    return { ...terminal, last, unmount: () => instance.unmount() };
+  } catch (error) {
+    instance.unmount();
+    throw error;
+  }
 }
 
 /** Trim trailing whitespace per line so a golden is not hostage to padding. */
