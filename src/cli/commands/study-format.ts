@@ -1,7 +1,7 @@
 import { participantCaption } from "../../run/participant-caption.js";
 import type { CliError, HumanOutput } from "../io.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-use/diagnostics.js";
-import type { CuaActorStudyResult } from "../../routes/computer-use/types.js";
+import type { CuaActorStudyResult, CuaParticipantResult } from "../../routes/computer-use/types.js";
 import type { ScriptedBrowserStudyResult } from "../../routes/scripted/types.js";
 import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
@@ -66,6 +66,52 @@ function participantStatus(status: string): string {
   return status === "contract_proof_only" ? "dry run, nothing ran live" : status;
 }
 
+/** A warning the route adds for each participant prints once. */
+function warningLines(warnings: readonly string[]): string[] {
+  return [...new Set(warnings)].map((warning) => `warning: ${warning}`);
+}
+
+/** How many participants a run lists by name, and how long a closing message may run in a list. */
+const LISTED_PARTICIPANTS = 16;
+const REASON_CHARS = 160;
+
+/** A closing message on one line of at most REASON_CHARS characters. */
+function oneLine(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > REASON_CHARS ? `${line.slice(0, REASON_CHARS - 1).trimEnd()}…` : line;
+}
+
+function participantLine({ id, status, session, diagnostics }: CuaParticipantResult): string {
+  return [
+    `participant ${id}: ${participantStatus(status)}${session ? ` (${session.completionReason})` : ""}`,
+    ...(diagnostics ? [formatCuaDiagnostics(diagnostics)] : []),
+    ...(session ? [oneLine(session.reason)] : []),
+  ].join(" · ");
+}
+
+/**
+ * A fan-out run's participants: one line each up to LISTED_PARTICIPANTS, which fits one terminal
+ * screen with the run's other lines. A larger run prints its count by status, the first
+ * LISTED_PARTICIPANTS that did not pass, and how many it left out.
+ */
+function participantLines(participants: readonly CuaParticipantResult[]): string[] {
+  if (participants.length <= 1) return [];
+  if (participants.length <= LISTED_PARTICIPANTS) return participants.map(participantLine);
+  const counts = new Map<string, number>();
+  for (const { status } of participants)
+    counts.set(participantStatus(status), (counts.get(participantStatus(status)) ?? 0) + 1);
+  const notPassed = participants.filter(
+    ({ status }) => status !== "passed" && status !== "contract_proof_only",
+  );
+  const listed = notPassed.slice(0, LISTED_PARTICIPANTS);
+  const unlistedNotPassed = notPassed.length - listed.length;
+  return [
+    `participants: ${participants.length} · ${[...counts].map(([status, count]) => `${count} ${status}`).join(" · ")}`,
+    ...listed.map(participantLine),
+    `not listed: ${participants.length - listed.length} participants${unlistedNotPassed > 0 ? ` (${unlistedNotPassed} did not pass)` : ""}. The Observer shows each one.`,
+  ];
+}
+
 export function formatConcurrentSharedWorldStudyHuman(
   result: ConcurrentSharedWorldStudyResult,
 ): HumanOutput {
@@ -99,7 +145,7 @@ export function formatConcurrentSharedWorldStudyHuman(
     ...(result.observer?.opened === undefined
       ? []
       : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`),
+    ...warningLines(result.warnings),
   ]);
 }
 
@@ -117,7 +163,7 @@ export function formatTerminalStudyHuman(result: TerminalProductStudyResult): Hu
     ...(result.observer?.opened === undefined
       ? []
       : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`),
+    ...warningLines(result.warnings),
   ]);
 }
 
@@ -150,7 +196,7 @@ export function formatScriptedStudyHuman(
     ...(result.observer?.opened === undefined
       ? []
       : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`),
+    ...warningLines(result.warnings),
   ]);
 }
 
@@ -173,12 +219,7 @@ export function formatCuaStudyHuman(
       ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
       : []),
     ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
-    ...((result.lanes?.length ?? 0) > 1
-      ? result.lanes!.map(
-          (participant) =>
-            `participant ${participant.id}: ${participantStatus(participant.status)}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
-        )
-      : []),
+    ...participantLines(result.lanes ?? []),
     ...(result.session && (result.lanes?.length ?? 0) <= 1
       ? [
           `session: ${participantStatus(result.session.status)} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
@@ -195,6 +236,6 @@ export function formatCuaStudyHuman(
     ...(result.observer?.opened === undefined
       ? []
       : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`),
+    ...warningLines(result.warnings),
   ]);
 }

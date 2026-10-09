@@ -8,6 +8,30 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- The Observer's participant grid counts the participants by status in a row under the run's
+  tally, when they ended more than one way. Pressing a count shows only those participants, and
+  pressing it again shows everyone. The view options gain a Persona filter when the participants
+  have more than one persona (#1737).
+
+### Changed
+
+- `humanish watch` and `humanish run` print a computer-use run of more than 16 participants in
+  a fixed number of lines: one line counting the participants by status, up to 16 participants
+  that did not pass, and how many it did not list. A run of 16 or fewer still lists every
+  participant. Each participant's line holds its closing message on one line, cut at 160
+  characters, where it used to print the whole message. A warning repeated for each participant
+  prints once (#1737).
+- In the Observer, a changed grid filter shows the first page of participants (#1737).
+
+### Fixed
+
+- In the Observer, Next page and Previous page under the participant grid now open the new page
+  at its first participant. The grid kept its scroll position, so turning the page from the
+  bottom of 36 participants showed the end of the next page, about 10,000 px past its first
+  participant on a phone (#1737).
+
 ## 0.119.0: Participants arrive over time, one analysis past 16 participants in cohorts, late starts skipped past the budget, study warnings redacted (2026-10-09)
 
 humanish 0.119.0 lets a computer-use or shared-world study start its participants over time, and

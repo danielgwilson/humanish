@@ -124,6 +124,10 @@
       "goal": "Later participant pages remain reachable and pins survive monitor/reload"
     },
     {
+      "id": "grid-pages-phone",
+      "goal": "Turning a grid page at 390px opens the new page at its first participant"
+    },
+    {
       "id": "saved-moments",
       "goal": "Save, recall and delete an exact moment without storing evidence or URLs"
     },

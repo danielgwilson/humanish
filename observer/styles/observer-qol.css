@@ -331,6 +331,22 @@ button:disabled {
   max-height: min(620px, 85dvh);
   overflow-y: auto;
 }
+.grid-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: var(--space-10) var(--space-24) 0;
+}
+.grid-status-count {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.review-tool[aria-pressed="true"] .grid-status-count {
+  color: inherit;
+}
 .grid-pages {
   display: flex;
   flex-wrap: wrap;
@@ -516,6 +532,9 @@ button:disabled {
   }
 }
 @media (max-width: 880px) {
+  .grid-status {
+    padding: var(--space-10) var(--space-16) 0;
+  }
   .rail {
     width: 42px;
   }

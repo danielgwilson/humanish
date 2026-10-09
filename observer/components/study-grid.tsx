@@ -60,6 +60,7 @@ export function StudyGrid({
   updating = true,
   reviewOutcomes,
   tools,
+  statusSummary,
   recording,
   atMs,
   reviewing,
@@ -69,6 +70,8 @@ export function StudyGrid({
 }: {
   serverStopped?: boolean;
   tools?: ReactNode;
+  /** The row under the tally that counts and filters the participants by status. */
+  statusSummary?: ReactNode;
   reviewOutcomes?: { streamId: string; label: string }[] | undefined;
   /** What the run's analysis requests cost, from the companion analysis record. */
   analysisSpend?: RunAnalysisCost | undefined;
@@ -92,6 +95,7 @@ export function StudyGrid({
   const [priorityId, setPriorityId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const grid = useRef<HTMLDivElement>(null);
+  const section = useRef<HTMLElement>(null);
   const pageCount = Math.max(1, Math.ceil(streams.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   // Pinning changes order only after a deliberate user action, never on status updates.
@@ -130,6 +134,11 @@ export function StudyGrid({
     return () => observer.disconnect();
     // The ids are the structural dependency; poll snapshots do not reconnect streams.
   }, [shownKey]);
+  // The pager sits under the last card. Without this the new page opens at its own bottom.
+  const turnPage = (next: number) => {
+    onPageChange(next);
+    section.current?.scrollIntoView({ block: "start" });
+  };
   const liveThumbIds = new Set(
     !reviewing && updating && isServedOrigin(window.location.protocol)
       ? [...visibleIds]
@@ -139,12 +148,13 @@ export function StudyGrid({
       : [],
   );
   return (
-    <section aria-label="Study grid">
+    <section aria-label="Study grid" ref={section}>
       <h2 className="sr-only">Study participants</h2>
       <div className="grid-summary">
         <p className="countline">{gridSummary(data, reviewOutcomes, analysisSpend)}</p>
         {tools}
       </div>
+      {statusSummary}
       {streams.length === 0 ? (
         <p className="countline">No participants match the current filters.</p>
       ) : (
@@ -189,7 +199,7 @@ export function StudyGrid({
           <button
             type="button"
             disabled={currentPage === 0}
-            onClick={() => onPageChange(currentPage - 1)}
+            onClick={() => turnPage(currentPage - 1)}
           >
             Previous page
           </button>
@@ -201,7 +211,7 @@ export function StudyGrid({
           <button
             type="button"
             disabled={currentPage === pageCount - 1}
-            onClick={() => onPageChange(currentPage + 1)}
+            onClick={() => turnPage(currentPage + 1)}
           >
             Next page
           </button>

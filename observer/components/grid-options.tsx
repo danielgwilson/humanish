@@ -1,15 +1,10 @@
 import { useState } from "react";
+import { activeFilterCount, NO_FILTERS, statusCounts, type GridFilters } from "@/lib/grid-filters";
 import type { ObserverData } from "@/lib/observer-data";
 import { isDensity, type GridDensity } from "@/lib/preferences";
 import { Select } from "./ui/select";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
-
-export interface GridFilters {
-  status: string;
-  kind: string;
-  query: string;
-}
 
 export function GridOptions({
   data,
@@ -29,10 +24,8 @@ export function GridOptions({
   const [viewOpen, setViewOpen] = useState(false);
   const statuses = [...new Set(data.streams.map((s) => s.statusLabel))];
   const kinds = [...new Set(data.streams.map((s) => s.kindLabel))];
-  const activeFilters =
-    (filters.status === "" ? 0 : 1) +
-    (filters.kind === "" ? 0 : 1) +
-    (filters.query === "" ? 0 : 1);
+  const personas = [...new Set(data.streams.map((s) => s.sim.personaId))];
+  const activeFilters = activeFilterCount(filters);
   return (
     <Popover
       triggerClassName="filter-btn"
@@ -72,6 +65,20 @@ export function GridOptions({
           ]}
         />
       </label>
+      {personas.length > 1 ? (
+        <label className="tool">
+          <span className="o-label">Persona</span>
+          <Select
+            label="Participant persona"
+            value={filters.persona ?? ""}
+            onValueChange={(persona) => onFilters({ ...filters, persona })}
+            options={[
+              { value: "", label: "All" },
+              ...personas.map((persona) => ({ value: persona, label: persona })),
+            ]}
+          />
+        </label>
+      ) : null}
       <span className="searchbox">
         <svg
           width="12"
@@ -130,14 +137,43 @@ export function GridOptions({
         </button>
       ) : null}
       {activeFilters > 0 ? (
-        <button
-          type="button"
-          className="filter-clear"
-          onClick={() => onFilters({ status: "", kind: "", query: "" })}
-        >
+        <button type="button" className="filter-clear" onClick={() => onFilters(NO_FILTERS)}>
           Clear filters
         </button>
       ) : null}
     </Popover>
+  );
+}
+
+/**
+ * One button per status with its participant count, for a run whose participants end more than
+ * one way. A button filters the grid to that status, and pressing it again shows everyone.
+ */
+export function GridStatusSummary({
+  data,
+  filters,
+  onFilters,
+}: {
+  data: ObserverData;
+  filters: GridFilters;
+  onFilters: (next: GridFilters) => void;
+}) {
+  const counts = statusCounts(data.streams);
+  if (counts.length < 2) return null;
+  return (
+    <fieldset className="grid-status">
+      <legend className="sr-only">Participants by status</legend>
+      {counts.map(([status, count]) => (
+        <button
+          key={status}
+          type="button"
+          className="review-tool"
+          aria-pressed={filters.status === status}
+          onClick={() => onFilters({ ...filters, status: filters.status === status ? "" : status })}
+        >
+          {status} <span className="grid-status-count">{count}</span>
+        </button>
+      ))}
+    </fieldset>
   );
 }
