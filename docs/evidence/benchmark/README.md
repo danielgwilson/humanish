@@ -191,6 +191,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-08 | 0.114.0, src/ as of dabf6569 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $6.19           | [summary](2026-10-08-0.114.0-neutral-openai-computer-use.md) |
 | 2026-10-08 | 0.115.0, src/ as of 0b3df523 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $6.20           | [summary](2026-10-08-0.115.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.116.0, src/ as of a3189937 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $6.14           | [summary](2026-10-09-0.116.0-neutral-openai-computer-use.md) |
+| 2026-10-09 | 0.117.0, src/ as of 882d47f6 | `neutral` | `openai-computer-use` | 3            | 8/15          | 7/15            | 0 and 0             | $6.04           | [summary](2026-10-09-0.117.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -282,6 +283,22 @@ its analysis says the participant used Clear completed. No planted analysis list
 listed it twice. The clean-arm analysis line "Empty list after refresh led to reported rejection of
 continued use" is true on both builds. Five of six reports say the participant saw no terminal
 output, from the persona's `clear_terminal_output` trait.
+
+The 0.117.0 run took each analysis's cap from the dry run's `admittedCostUsd`: expected $1.03 to
+$1.12, caps $1.14 to $1.23, bills $0.66 to $0.76. No analysis was refused or skipped. Every
+participant ran threaded, and each ended on its own and gave 5 or 6 impressions. The first clean
+participant's first reply reached the 1,024-token output limit and was sent again; after it, input
+grew every turn. The third clean participant gave up after a reload emptied the list ("I would not
+keep using a to-do list that loses the list on refresh"), so its run reads as failed; its report and
+analysis were scored as the others were. Every wait the participants sent followed another action
+in the same turn and lasted 500 ms, as it did on 0.116.0, so this release's longer wait for a turn
+that only waits changed no wait here: 10 waits in all, against 14 on 0.116.0. No planted participant
+typed more than 30 characters in one action, so none met D2. The planted analysis line "Repeated
+clearing attempts left completed tasks visible", which the rubric left unresolved, is D1: read by
+hand, analysis recall is 8/15, and report recall stays 8/15. The clean-arm report line "pressing
+enter while editing did not save the change; i had to click save." is true: the clean build's edit
+box has no Enter handler. Five of six reports say the participant saw no terminal output, from the
+persona's `clear_terminal_output` trait.
 
 ## What these numbers are not
 

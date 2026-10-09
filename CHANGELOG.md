@@ -10,19 +10,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Added
 
-- `actor.maxWaitMs` sets how long one `wait` action of a computer-use or shared-world participant
-  may last, from 1000 to 600000. When unset it is 120000 (two minutes), or 30000 on a desktop with
-  speech, where heard speech reaches the participant only with a screenshot. A longer wait is
-  shortened to it, the trace records a `wait shortened` notice with the requested and applied
-  durations, and the participant is told on its next turn. A terminal, scripted or preview study
-  that sets it is refused, as for any field its route does not read.
-- `actor.idleWaitMs` sets how long a computer-use or shared-world participant's `wait` that names
-  no duration lasts when its turn only waits or takes screenshots, from 1000 to 600000 and no
-  longer than `actor.maxWaitMs`. When unset it is 5000. A study that sets it longer than its
-  `actor.maxWaitMs` is refused.
-- A computer-use participant's `actor.json` records the wait lengths its session used as
-  `waitSettings` (`maxWaitMs`, `idleWaitMs`, `settleWaitMs`), and each wait action's title gives
-  the length it lasted (`wait 500ms`).
 - `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` tells humanish how many sandboxes your E2B plan runs at
   once: 20 when unset (E2B Hobby), 100 on Pro. A hosted computer-use or shared-world study runs at
   most that many desktops at once, counting a provisioned shared world's app sandbox, and its plan
@@ -33,16 +20,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
-- A participant's wait longer than 30 seconds now lasts as long as it asked, up to
-  `actor.maxWaitMs`. humanish sends it to the desktop as consecutive waits of at most 30 seconds,
-  the longest one browser-control request carries. A Codex participant's wait was shortened to 30
-  seconds before, and still is on a desktop with speech unless the study sets `actor.maxWaitMs`.
-  Its `humanish_ui` tool description now states the study's longest wait, and the tool's input
-  schema no longer publishes a 30-second maximum. `ComputerUseTurn.shortenedWaits` is
-  removed: the loop shortens a wait itself, for every provider.
-- In the Observer, browser Back and Forward now clear the message under Saved moments ("Moment
-  saved." or why a moment could not open), as opening a participant or the participants grid
-  already did (#1728).
 - A computer-use study may have up to 100 participants, up from 16, and a shared-world study is
   held to the same 100, where it had no limit. The old refusal said every participant runs at once
   and no setting raises the cap; how many run at once is now the E2B plan's limit above, and
@@ -64,42 +41,28 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- A `serve.install`, `serve.build` or `subject.state` seed step that bash cannot parse now fails
-  within seconds and shows bash's error. Each command was pasted into the script that records the
-  step's exit status, so a syntax error stopped that script before it recorded one, and the run
-  waited out the step's time limit: 10 minutes for `serve.build`. A `serve.build` ending in a
-  heredoc hit this every time: the study parser trims each command, which put the heredoc's
-  closing word on the same line as the script's own text. Each command now runs as its own
-  script, and a heredoc may close on its last line. A failed `serve.build` on the computer-use
-  route gives the run the error code `HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED`, and its message
-  carries the build's redacted log tail. A `serve.start` that bash cannot parse still waits out
-  `readyTimeoutMs`; the server log tail in its error now shows bash's message (#1732).
-- An `openai-computer-use` participant that only waits now waits 5 seconds for each `wait` it
-  sends. OpenAI's computer-use `wait` action names no duration, and it lasted 500 ms on a hosted
-  E2B desktop and 250 ms on a guest desktop, so a participant waiting in a video lobby or for an
-  email code spent a model turn and a screenshot every half second (#1731). A wait that names no
-  duration now lasts `actor.idleWaitMs` (5 seconds by default) when the participant's turn only
-  waits or takes screenshots, and 500 ms on both desktops when it follows an action in the same
-  turn, as nearly every such wait does. A `ComputerUseExecutor` passed to `runComputerUseLoop` now
-  receives every wait with its `ms` set.
-- A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
-  key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
-  "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.
-  With another key in `process.env`, the check asked that key's account, and a not-found answer
-  from it would be recorded as confirming the sandbox was gone (#1726).
-- In `humanish tui`, an armed action no longer stays armed after the cursor leaves it. Arming Stop,
-  moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
-  analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
-  after `?`. The five actions that take two Enters (those four and a live start) now follow one
-  rule: the second Enter counts only on the same action of the same screen, within 30 seconds of
-  the first. An Enter less than 400 ms after the one before it is ignored and restarts that wait.
-  The wait used to count from the first Enter, so a held Enter confirmed on every repeat past it;
-  it now confirms at most once, on its first repeat when the system's repeat delay is 400 ms or
-  longer (#1730). Any other key cancels the first Enter, and Esc cancels it without going back
-  (#1722).
 - A `participants` list entry with a very large `count`, such as `1000000000`, no longer exhausts
   memory while the study is read. The parser expanded every group before checking the roster's
   size.
+
+## 0.117.0: Long participant waits, OpenAI wait length, serve.build fails fast, TUI confirmations (2026-10-09)
+
+humanish 0.117.0 lets a participant wait through a long hosted study, gives an OpenAI
+participant's wait a usable length, and fails a broken `serve.build` within seconds. A
+participant's wait longer than one desktop call now lasts as long as it asked, up to the new study
+field `actor.maxWaitMs` (1 second to 10 minutes; 2 minutes by default, 30 seconds on a desktop with
+speech), and goes to the desktop in steps of at most 30 seconds. A Codex participant's longer wait
+was cut to 30 seconds before. An `openai-computer-use` participant's `wait` names no duration and
+lasted half a second on a hosted desktop; it now lasts `actor.idleWaitMs` (5 seconds by default) in
+a turn that only waits, and 500 ms after an action in the same turn. The participant's `actor.json`
+records these lengths as `waitSettings`. A `serve.install`, `serve.build` or seed step that bash
+cannot parse fails within seconds with bash's error, where the run waited out the step's limit (10
+minutes for `serve.build`), and a failed `serve.build` on the computer-use route has its own error
+code. In `humanish tui`, a two-Enter confirmation ends when the cursor leaves it. The terminal
+route's check after its sandbox kill carries the run's E2B key, and browser Back in the Observer
+clears a stale saved-moment message.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.117.0)
 
 ## 0.116.0: Hosted keyboard input, E2B sandbox ceiling, bounded run reads, run header, TUI live starts (2026-10-09)
 
