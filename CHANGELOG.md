@@ -56,7 +56,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
   asked for and did not get (#1737).
 - A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
-  count by the parser. The planner resolves it, from the participants and the E2B plan's limit.
+  count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
+  and a declared value above the participant count is clamped to it, as on computer use.
 - A study with real email receiving and more than 64 participants is refused when it is read. Its
   run used to fail at start with `comms_authority_unavailable`, because one run leases at most 64
   inboxes.
