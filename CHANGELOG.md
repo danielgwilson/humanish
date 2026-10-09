@@ -45,6 +45,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A study warning recorded in the run's bundle goes through the same redaction as a run failure.
+  The warning that a participant instruction reads like a script quotes up to three of its lines,
+  and a line that named a sandbox URL other than the subject's (a run inbox page, a second app)
+  put that URL in `events.ndjson`, `run.json` and `observer-data.json`. `verify` then graded the
+  bundle `blocked` and a hosted run failed with "Run bundle failed verification", where 0.111.2
+  verified it `share_ready`. The terminal still prints the warning as written (#1747).
 - A provisioned shared-world study that runs in waves asks E2B for an app sandbox that lives until
   the last wave can end, and is refused when that passes `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. Its
   app sandbox lived one session plus provisioning, which a second wave could outlast (#1737).

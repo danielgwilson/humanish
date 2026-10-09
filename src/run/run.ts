@@ -329,13 +329,15 @@ function runPublisher(args: {
 }): RunPublisher {
   const { options, runId, createdAt, paths, runStatus, now, admit, participantsRan } = args;
   const observer = observerTarget(options);
-  // The study's warnings join whatever events the route wrote, once, in every write.
+  // The study's warnings join whatever events the route wrote, once, in every write. A warning can
+  // quote the study file, which may name a sandbox URL a participant needs, so each goes through
+  // the redaction a run failure gets.
   const studyWarnings: RunEvent[] = (options.warnings ?? []).map((message, index) => ({
     id: `event-study-warning-${String(index + 1).padStart(3, "0")}`,
     at: createdAt,
     level: "warn",
     type: "study.warning",
-    message,
+    message: redactText(message),
   }));
   const withStudyWarnings = (events: readonly RunEvent[]): RunEvent[] => [
     ...events.filter((event) => !studyWarnings.some((warning) => warning.id === event.id)),
