@@ -15,7 +15,7 @@ actor:
   mission: Explore the app, complete the primary task for your persona, and stop when done.
 # A differentiated roster: per-participant persona + device + starting steer. `lanes` is XOR with
 # `count` (homogeneous) and XOR with `laneFocus`; an entry's `device` is XOR with a raw
-# execution.desktop.resolution. Hard cap 16 participants; ids default lane-01..lane-NN.
+# execution.desktop.resolution. At most 100 participants; ids default lane-01..lane-NN.
 participants:
   - id: mobile-newcomer
     persona: first-time-visitor

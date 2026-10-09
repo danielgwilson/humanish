@@ -183,7 +183,7 @@ The rest of this section names keys by their v3 spelling:
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
   A `participants` count is the preview route's participant count (simCount),
   and on the computer-use **E2B** route the homogeneous fan-out count (N
-  identical participants, each its own E2B desktop: separate worlds, cap 16).
+  identical participants, each its own E2B desktop: separate worlds, at most 100).
   The scripted route's `surfaces` is its surface list (`[desktop]`, the default,
   or `[desktop, mobile]`). The in-process/local-app computer-use route stays
   single participant (no E2B to fan out);
