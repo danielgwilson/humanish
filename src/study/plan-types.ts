@@ -10,6 +10,7 @@ import type { BrowserSurface } from "../actors/scripted-browser/types.js";
 import type { ScriptedRefusal } from "../routes/scripted/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunStudyProvenance } from "../run/study-provenance.js";
+import type { ArrivalPlan } from "./arrivals.js";
 import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
 import type { SharedWorldRefusal } from "../routes/shared-world/plan.js";
 import type {
@@ -173,6 +174,8 @@ export interface ComputerUsePlan extends PlanBase {
   readonly runner: ComputerUseRunner;
   /** Declared cap clamped to [1, participants]; the route may only lower it from env. */
   readonly concurrency: number;
+  /** When the participants start and how many run at once, with every session at its budget. */
+  readonly arrivals: ArrivalPlan;
   readonly sessionBudgetMs: number;
   readonly sandboxMs: number;
   readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
@@ -204,6 +207,11 @@ export interface SharedWorldPlan extends PlanBase {
   readonly plane: SharedWorldPlane;
   /** At least 2. */
   readonly concurrency: number;
+  /**
+   * When the participants start and how many run at once, with every session at its budget. On
+   * the provisioned plane the subject sandbox serves until `lastEndMs`.
+   */
+  readonly arrivals: ArrivalPlan;
   /** Each participant's session budget: execution.timeoutMs, else the plane's derived default. */
   readonly sessionTimeoutMs: number;
   readonly brain: Extract<Brain, { kind: "openai" | "local-agent" }>;

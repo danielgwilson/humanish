@@ -46,6 +46,12 @@ import {
   type SandboxCeiling,
 } from "../../substrates/e2b/lifetime.js";
 import { boundedConcurrency } from "../computer-use/participant-runs.js";
+import {
+  describeArrivals,
+  planStarts,
+  servedScheduleRefusal,
+  type ArrivalPlan,
+} from "../../study/arrivals.js";
 import type { ConcurrentSharedWorldStudyErrorCode } from "./types.js";
 
 /** The error a shared-world study returns before a run starts. */
@@ -167,57 +173,38 @@ export function planSharedWorldStudy(
   const plane = planeOf(config);
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
-  // Every participant's desktop and, on the provisioned plane, the app's own sandbox share the E2B
-  // plan's concurrent sandboxes. A shared world needs two participants live together.
-  const declared = config.execution?.concurrency;
-  const n = plane.participants.length;
-  const atOnce = participantsAtOnce(
-    {
-      concurrency: boundedConcurrency(declared, n),
-      declared: declared !== undefined,
-      participants: n,
-      alongside: plane.kind === "provisioned" ? 1 : 0,
-      minimum: 2,
-    },
-    input.concurrentSandboxes,
-  );
-  if (!atOnce.ok) return refuse(invalid, atOnce.message, actor);
   const sessionTimeoutMs =
     config.execution?.timeoutMs ?? defaultSessionTimeoutMs(plane, ceiling.ms);
-  // The run's longest deadline: on the provisioned plane the subject sandbox, which serves the app
-  // until every participant ends; on the external-public plane each participant's own sandbox.
-  const deadlineReason = sandboxDeadlineRefusal(
-    plane.kind === "provisioned"
-      ? {
-          name: "the subject sandbox, which serves the app until every participant ends",
-          sessionMs: sessionTimeoutMs,
-          sessionDeclared: config.execution?.timeoutMs !== undefined,
-          servedSubject: { seed: plane.subject.state.seed ?? [] },
-        }
-      : {
-          name: "each participant's sandbox",
-          sessionMs: sessionTimeoutMs,
-          sessionDeclared: config.execution?.timeoutMs !== undefined,
-        },
-    ceiling.ms,
+  const starts = startsOf(
+    plane,
+    config.execution?.concurrency,
+    input.concurrentSandboxes,
+    sessionTimeoutMs,
   );
+  if (!starts.ok) return refuse(invalid, starts.message, actor);
+  const { arrivals, warnings } = starts;
+  const deadlineReason = deadlineReasonOf(plane, arrivals, {
+    sessionDeclared: config.execution?.timeoutMs !== undefined,
+    ceilingMs: ceiling.ms,
+  });
   if (deadlineReason) return refuse(invalid, deadlineReason, actor);
   const brain = brainOf(config, false);
   if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const base = planBase(config, {
     dryRun: input.dryRun,
     analysis,
-    participants: n,
+    participants: plane.participants.length,
   });
   return {
     ok: true,
     plan: {
       ...base,
-      ...(atOnce.lowered === undefined ? {} : { warnings: [atOnce.lowered] }),
+      ...(warnings.length === 0 ? {} : { warnings }),
       route: "shared-world",
       actor,
       plane,
-      concurrency: atOnce.count,
+      concurrency: starts.count,
+      arrivals,
       sessionTimeoutMs,
       brain,
       caps: planCaps(config),
@@ -238,6 +225,97 @@ export function planSharedWorldStudy(
           ],
     },
   };
+}
+
+/**
+ * How many participants run at once, and when each one starts. Every participant's desktop and, on
+ * the provisioned plane, the app's own sandbox share the E2B plan's concurrent sandboxes, and a
+ * shared world needs two participants live together. On the external-public plane the host runs
+ * on a slot of its own and the others queue for the rest (external-public.ts).
+ */
+function startsOf(
+  plane: SharedWorldPlane,
+  declared: number | undefined,
+  limit: ConcurrentSandboxes,
+  sessionMs: number,
+):
+  | { ok: true; count: number; arrivals: ArrivalPlan; warnings: string[] }
+  | { ok: false; message: string } {
+  const n = plane.participants.length;
+  const atOnce = participantsAtOnce(
+    {
+      concurrency: boundedConcurrency(declared, n),
+      declared: declared !== undefined,
+      participants: n,
+      alongside: plane.kind === "provisioned" ? 1 : 0,
+      minimum: 2,
+    },
+    limit,
+  );
+  if (!atOnce.ok) return atOnce;
+  const hostIndex = plane.participants.findIndex((participant) => participant.host === true);
+  const queue = {
+    slots: atOnce.count,
+    sessionMs,
+    ...(plane.kind === "external-public" && hostIndex >= 0 ? { ownSlot: hostIndex } : {}),
+  };
+  return {
+    ok: true,
+    count: atOnce.count,
+    ...planStarts(plane.participants, queue, atOnce.lowered),
+  };
+}
+
+/**
+ * Why the run's longest-lived sandbox cannot live as long as the plan needs. On the provisioned
+ * plane that is the subject sandbox, which serves the app for one session and then until the last
+ * participant ends; on the external-public plane, each participant's own sandbox, created at its
+ * start.
+ */
+function deadlineReasonOf(
+  plane: SharedWorldPlane,
+  arrivals: ArrivalPlan,
+  options: { readonly sessionDeclared: boolean; readonly ceilingMs: number },
+): string | undefined {
+  const { sessionDeclared, ceilingMs } = options;
+  const sessionMs = arrivals.sessionMs;
+  if (plane.kind !== "provisioned")
+    return sandboxDeadlineRefusal(
+      { name: "each participant's sandbox", sessionMs, sessionDeclared },
+      ceilingMs,
+    );
+  const seed = plane.subject.state.seed ?? [];
+  return (
+    sandboxDeadlineRefusal(
+      {
+        name: "the subject sandbox, which serves the app until every participant ends",
+        sessionMs,
+        sessionDeclared,
+        servedSubject: { seed },
+      },
+      ceilingMs,
+    ) ?? servedScheduleRefusal(arrivals, { sessionMs, seed }, ceilingMs)
+  );
+}
+
+/**
+ * The schedule lines a shared-world run prints before it creates anything, when the study declares
+ * `participants[].startAfterMs`: the schedule, and the worst case in sandbox-minutes, which counts
+ * every participant's sandbox (its session plus the teardown buffer) and on the provisioned plane
+ * the app's sandbox until the last participant ends.
+ */
+export function sharedWorldScheduleLines(plan: SharedWorldPlan): string {
+  const participants = plan.plane.participants.length;
+  const participantMs = participants * (plan.sessionTimeoutMs + sandboxHeadroomMs());
+  const subjectMs =
+    plan.plane.kind === "provisioned"
+      ? plan.arrivals.lastEndMs + sandboxHeadroomMs({ seed: plan.plane.subject.state.seed ?? [] })
+      : 0;
+  return [
+    `humanish shared-world plan (${plan.studyId}): ${participants} participants, at most ${plan.concurrency} at once; worst-case ~${Math.round((participantMs + subjectMs) / 60_000)} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`,
+    `  schedule: ${describeArrivals(plan.arrivals)}`,
+    "",
+  ].join("\n");
 }
 
 // The default per-participant session budget is derived from the plane. On a provisioned plane the

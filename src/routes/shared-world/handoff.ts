@@ -318,7 +318,7 @@ export async function runHost(
   deps: HandoffParticipantDeps,
   spec: DesktopParticipantRun,
   participantIndex: number,
-): Promise<ActorRunResult> {
+): Promise<Omit<ActorRunResult, "scheduledAt">> {
   const onObservedUrl = handoff.makeObservedUrl(participantIndex, true);
   // CDP-independent handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
   // unreliable in practice). Two backups, both resolving the same latch; whichever sees the code first
@@ -381,7 +381,7 @@ export async function runFollower(
   deps: HandoffParticipantDeps,
   spec: DesktopParticipantRun,
   participantIndex: number,
-): Promise<ActorRunResult> {
+): Promise<Omit<ActorRunResult, "scheduledAt">> {
   const onObservedUrl = handoff.makeObservedUrl(participantIndex, false);
   // Follower: compose no mission and open no target until the host yields a lobby code.
   let code: string;

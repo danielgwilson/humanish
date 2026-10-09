@@ -115,6 +115,16 @@
         }
       },
       "concurrency": 2,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 2,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 1200000,
+        "sessionMs": 1200000
+      },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
       "caps": {}
@@ -206,6 +216,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 600000,
+        "sessionMs": 600000
+      },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
       "caps": {
@@ -299,6 +319,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 600000,
+        "sessionMs": 600000
+      },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
       "caps": {
@@ -400,6 +430,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 600000,
+        "sessionMs": 600000
+      },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
       "caps": {
@@ -543,6 +583,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 300000,
+        "sessionMs": 300000
+      },
       "sessionBudgetMs": 300000,
       "sandboxMs": 2700000,
       "caps": {
@@ -673,6 +723,16 @@
         }
       },
       "concurrency": 2,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 2,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 1200000,
+        "sessionMs": 1200000
+      },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
       "caps": {
@@ -828,6 +888,16 @@
         }
       },
       "concurrency": 2,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 2,
+        "waiting": 2,
+        "longestWaitMs": 900000,
+        "lastEndMs": 1800000,
+        "sessionMs": 900000
+      },
       "sessionBudgetMs": 900000,
       "sandboxMs": 1500000,
       "caps": {}
@@ -1188,6 +1258,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 240000,
+        "sessionMs": 240000
+      },
       "sessionBudgetMs": 240000,
       "sandboxMs": 2640000,
       "caps": {
@@ -1322,6 +1402,16 @@
         ]
       },
       "concurrency": 3,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 3,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 420000,
+        "sessionMs": 420000
+      },
       "sessionTimeoutMs": 420000,
       "brain": {
         "kind": "openai",
@@ -1442,6 +1532,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 240000,
+        "sessionMs": 240000
+      },
       "sessionBudgetMs": 240000,
       "sandboxMs": 2640000,
       "caps": {
@@ -1570,6 +1670,16 @@
         }
       },
       "concurrency": 2,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 2,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 1200000,
+        "sessionMs": 1200000
+      },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
       "caps": {
@@ -1794,6 +1904,16 @@
         ]
       },
       "concurrency": 3,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 3,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 600000,
+        "sessionMs": 600000
+      },
       "sessionTimeoutMs": 600000,
       "brain": {
         "kind": "openai",
@@ -1967,6 +2087,16 @@
         ]
       },
       "concurrency": 3,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 3,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 900000,
+        "sessionMs": 900000
+      },
       "sessionTimeoutMs": 900000,
       "brain": {
         "kind": "openai",
@@ -2212,6 +2342,16 @@
         }
       },
       "concurrency": 2,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 2,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 1080000,
+        "sessionMs": 1080000
+      },
       "sessionBudgetMs": 1080000,
       "sandboxMs": 3480000,
       "caps": {
@@ -2383,6 +2523,16 @@
         }
       },
       "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 600000,
+        "sessionMs": 600000
+      },
       "sessionBudgetMs": 600000,
       "sandboxMs": 1200000,
       "caps": {

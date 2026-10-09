@@ -8,7 +8,8 @@ import { type StudyConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
 import { type StudyRoute, planStudy, routeOf } from "./plan.js";
-import type { PlanRefusal } from "./plan-types.js";
+import type { PlanRefusal, StudyPlan } from "./plan-types.js";
+import { describeArrivals } from "./arrivals.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
@@ -200,6 +201,8 @@ export async function runStudyPreflight(
     const { code, message } = planned.refusal;
     return fail(ctx, code, message, [{ name: "plan", ok: false, message }]);
   }
+  const schedule = scheduleCheck(planned.planned.plan);
+  if (schedule !== undefined) ctx.checks.push(schedule);
 
   const machine = machineCheck(ctx.config);
   // A local study's app and desktops run on this machine, so the hosted probes do not apply.
@@ -246,6 +249,13 @@ export async function runStudyPreflight(
         ],
       });
   }
+}
+
+/** The plan's schedule, for a study that declares when its participants start. */
+function scheduleCheck(plan: StudyPlan): StudyPreflightCheck | undefined {
+  if (plan.route !== "computer-use" && plan.route !== "shared-world") return undefined;
+  if (!plan.arrivals.declared) return undefined;
+  return { name: "schedule", ok: true, message: describeArrivals(plan.arrivals) };
 }
 
 /** What study check leaves to doctor: this machine's setup for the study, and the command. */

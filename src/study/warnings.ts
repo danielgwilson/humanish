@@ -380,12 +380,21 @@ export function forwardDeclaredWarnings(config: StudyConfig): string[] {
         ];
   // A declared cap below the participant count is legal but loud: the roster promises N live actors
   // and the cap delivers waves of M. Say so up front (inspect + dry-run + run): a green run in
-  // waves is otherwise indistinguishable from the all-live run the author meant.
+  // waves is otherwise indistinguishable from the all-live run the author meant. A roster that
+  // declares when its participants start never promised them all at once; the plan's schedule
+  // says who waits for a slot.
   {
-    const participantCount =
-      participantList(config)?.length ?? declaredParticipantCount(config) ?? 1;
+    const roster = participantList(config);
+    const participantCount = roster?.length ?? declaredParticipantCount(config) ?? 1;
     const cap = config.execution?.concurrency;
-    if (routes.cua && cap !== undefined && participantCount > 1 && cap < participantCount) {
+    const scheduled = roster?.some((entry) => entry.startAfterMs !== undefined) === true;
+    if (
+      routes.cua &&
+      !scheduled &&
+      cap !== undefined &&
+      participantCount > 1 &&
+      cap < participantCount
+    ) {
       warnings.push(
         `execution.concurrency ${cap} caps a ${participantCount}-participant roster: participants run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${participantCount} participants simultaneously) or set it to ${participantCount}; declare a lower cap only to bound simultaneous paid desktops.`,
       );

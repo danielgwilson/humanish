@@ -19,6 +19,7 @@ import {
 import { invalid, str } from "./values.js";
 import type { StudyActor, StudyParticipantEntry, StudyParseFailure } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
+import { isStartAfterMs, startAfterMessage } from "../arrivals.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a study id.
@@ -125,7 +126,7 @@ export interface ParticipantPaths {
  * Parse a participant list into a fan-out roster (computer-use E2B route): `participants` in a
  * study, `actors[0].lanes` in the v2 file migrate reads, each named in messages by `paths`.
  * Structural only: each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
- * instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
+ * instruction?, target?, entry?, host?, startAfterMs?, reasoningEffort?, stopWhen?, dwell? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
  * route-scoped cross-validation (device XOR raw resolution, targets, the participant bound) runs in parseStudy
@@ -140,7 +141,7 @@ export function parseParticipantEntries(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
+      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
   const entries: StudyParticipantEntry[] = [];
@@ -148,7 +149,7 @@ export function parseParticipantEntries(
   for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
+        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
     const parsedEntry: StudyParticipantEntry = {};
@@ -227,6 +228,11 @@ export function parseParticipantEntries(
         );
       }
       if (entry.host) parsedEntry.host = true;
+    }
+    if (entry.startAfterMs !== undefined) {
+      if (!isStartAfterMs(entry.startAfterMs))
+        return invalid(startAfterMessage(`${paths.entry(entryIndex)}.startAfterMs`));
+      parsedEntry.startAfterMs = entry.startAfterMs;
     }
     entries.push(parsedEntry);
   }
