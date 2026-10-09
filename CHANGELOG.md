@@ -8,46 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.119.0: Participants arrive over time, one analysis past 16 participants in cohorts, late starts skipped past the budget (2026-10-09)
 
-- A computer-use or shared-world study can start its participants over time:
-  `participants[].startAfterMs` starts a participant that many milliseconds after the run starts
-  its participants (up to 24 hours), and a group's `startEveryMs` spreads its members, member k at
-  `startAfterMs + (k - 1) * startEveryMs`. Each participant's desktop is created at its start. One
-  whose start comes while every slot is taken waits for the next free one. `study check` and the
-  run's plan print the first and last start and the most participants at once, and run.json
-  records each participant's `arrival` with its scheduled and actual start. A provisioned shared
-  world's app sandbox serves until the last participant ends, and a study whose last start puts
-  that past `HUMANISH_E2B_MAX_SANDBOX_MINUTES` is refused before anything is created (#1737).
+humanish 0.119.0 lets a computer-use or shared-world study start its participants over time, and
+analyses a run of 17 to 100 participants in one report. `participants[].startAfterMs` starts a
+participant up to 24 hours after the run starts its participants, and a `count` group's
+`startEveryMs` spreads its members. Each participant's desktop is created at its start, the plan and
+`study check` print the first and last start and the most participants at once, and run.json records
+each participant's `arrival`. A participant whose start comes after the study crossed
+`caps.maxTotalUsd` is skipped before its desktop is created. The analysis of more than 16
+participants splits them into cohorts of at most 16, analyses each cohort with its own request, and
+merges the cohort reports into the run's one report with one more request; 0.118.0 skipped the
+automatic analysis of such a run. Admission, the plan's analysis line, `study check` and the
+`analyze --dry-run` worst case count every request, and `analyze --json` gives their number as
+`admission.requests`. At the default $3 cap the analysis of 17 or more participants is refused even
+with no evidence, so it needs a higher `review.analysis.maxCostUsd`. A provisioned shared world gets
+an app sandbox that lives until the last start or wave can end.
 
-### Changed
-
-- A computer-use or shared-world participant whose start comes after the study crossed
-  `caps.maxTotalUsd`, in a later wave or later in its schedule, is skipped before its desktop is
-  created. It is recorded as blocked with a reason naming the budget and counted among the fan-out
-  summary's skipped participants. It used to create its desktop, make one model request and stop
-  (#1737).
-- One analysis of a run with more than 16 participants covers all of them, up to 128. They are
-  split into cohorts of at most 16, each analysed by its own request under the full packet limits,
-  and one more request merges the cohort reports into the run's one report. In 0.118.0 a live run
-  of more than 16 participants recorded its automatic analysis as skipped with
-  `AUTOMATIC_ANALYSIS_PARTICIPANT_LIMIT`, and `analyze` read the first 16 participants and listed
-  the rest as omitted; that reason is no longer recorded. Admission, the expected cost, the worst
-  case and the `study check` range cover every request. The plan's analysis line and the `analyze
-  --dry-run` worst case name the cohort and merge requests, and `admission.requests` in `--json`
-  counts them. The default $3 cap refuses the analysis of 17 participants even for a run that
-  keeps no evidence, so a default analysis of more than 16 participants is skipped with
-  `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless `review.analysis.maxCostUsd` admits it. `analyze`
-  prints an `Analysis requesting` line for each request. A cohort or merge request that fails
-  fails the attempt with no findings and a warning, and its usage counts every request sent. The
-  `humanish.study-analysis.v1` schema is unchanged; its stored limits grew to 6,400 evidence
-  items, 320 captures and 16 MiB (#1737).
-
-### Fixed
-
-- A provisioned shared-world study that runs in waves asks E2B for an app sandbox that lives until
-  the last wave can end, and is refused when that passes `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. Its
-  app sandbox lived one session plus provisioning, which a second wave could outlast (#1737).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.119.0)
 
 ## 0.118.0: Up to 100 participants, E2B concurrent sandboxes, study check plans like run, analysis range (2026-10-09)
 
