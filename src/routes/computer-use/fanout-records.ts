@@ -11,6 +11,7 @@ import {
 import type { RunDesktopGeometry, RunStream } from "../../run/streams.js";
 import { participantCaption } from "../../run/participant-caption.js";
 import { participantSummary } from "../../run/outcomes.js";
+import { subjectName } from "../../run/subject-name.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import type { judgeParticipantRecords } from "../../run/judge.js";
@@ -101,7 +102,7 @@ function fanoutParticipantRecord(
     currentStep: reason,
     summary: participantSummary(
       name,
-      { name: "the app", target: publicTargetUrl },
+      { name: "the app", target: subjectName(publicTargetUrl, view.subject) },
       {
         trace: session?.trace,
         skippedReason: outcome?.skippedReason,

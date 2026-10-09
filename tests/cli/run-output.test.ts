@@ -270,3 +270,35 @@ describe("the analysis line of a run that was not created", () => {
     expect(stdout.split("\n").at(-2)).toBe("analysis: skipped for dry runs");
   });
 });
+
+describe("the dry-run summary of a desktop-cli study", () => {
+  it.each<[string, string[], string, number]>([
+    [
+      "one participant",
+      [],
+      "Dry run: 1 participant would use widgetsmith-cli (desktop-cli). Nothing was launched and $0 was spent.",
+      1,
+    ],
+    [
+      "a fan-out",
+      ["--count", "2"],
+      "Dry run: 2 participants would each use their own copy of widgetsmith-cli (desktop-cli). No desktops were launched and $0 was spent.",
+      2,
+    ],
+  ])("names the product as the subject line does (%s)", async (_kind, flags, summary, count) => {
+    const { cwd, id } = await fixtureStudy("cuDesktopCli");
+    const { exitCode, stdout } = await runCli(["run", id, ...flags, "--cwd", cwd, "--json"]);
+    expect(exitCode).toBe(0);
+    const { runId } = JSON.parse(stdout) as { runId: string };
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as { review: { summary: string }; simulations: { summary: string }[] };
+    expect(bundle.review.summary).toBe(summary);
+    expect(bundle.simulations.map((simulation) => simulation.summary)).toEqual(
+      Array.from(
+        { length: count },
+        () => "First time visitor would use widgetsmith-cli (desktop-cli); no session ran.",
+      ),
+    );
+  });
+});

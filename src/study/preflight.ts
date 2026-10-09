@@ -6,8 +6,9 @@ import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import { type StudyConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
-import { digest, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
-import { type StudyRoute, routeOf } from "./plan.js";
+import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
+import { type StudyRoute, planStudy, routeOf } from "./plan.js";
+import type { PlanRefusal } from "./plan-types.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
@@ -90,7 +91,8 @@ export interface StudyPreflightResult {
       | "HUMANISH_STUDY_PREFLIGHT_E2B_REQUIRED"
       | "HUMANISH_STUDY_PREFLIGHT_TARGET_UNREACHABLE"
       | "HUMANISH_STUDY_PREFLIGHT_PROVISION_FAILED"
-      | "HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED";
+      | "HUMANISH_STUDY_PREFLIGHT_TEARDOWN_FAILED"
+      | PlanRefusal["code"];
     message: string;
   };
 }
@@ -165,6 +167,7 @@ export async function runStudyPreflight(
       ? new Map()
       : (await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config))).personas;
   const route = routeOf(resolved.config);
+  const env = options.env ?? process.env;
   const ctx: PreflightContext = {
     cwd,
     study: options.study,
@@ -175,7 +178,7 @@ export async function runStudyPreflight(
     route,
     reachability,
     timeoutMs,
-    env: options.env ?? process.env,
+    env,
     hooks: options.hooks ?? {},
     checks: [
       { name: "study file", ok: true, message: `resolved ${resolved.origin} study file` },
@@ -188,6 +191,15 @@ export async function runStudyPreflight(
       ...personaBackgroundWarnings(resolved.config.id, participants, personas),
     ],
   };
+
+  // The plan `humanish run <study>` makes before it creates anything: no run options, so the file's
+  // mode decides dry or live, and the same environment for the sandbox ceiling. A study the run
+  // would refuse fails here with the run's code, before any probe creates a sandbox.
+  const planned = planStudy(resolved.config, { cwd, env });
+  if (!planned.ok) {
+    const { code, message } = planned.refusal;
+    return fail(ctx, code, message, [{ name: "plan", ok: false, message }]);
+  }
 
   const machine = machineCheck(ctx.config);
   // A local study's app and desktops run on this machine, so the hosted probes do not apply.

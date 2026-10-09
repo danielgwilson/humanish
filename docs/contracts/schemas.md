@@ -533,7 +533,7 @@ Core-owned fields:
   an older run, else `inferLegacyStudyId`, which reads the `persona.source` or `scenario.source`
   convention `study:<id>`, or `lab:<id>` from runs written before 0.108, and nothing else.
 - `subject` (optional, additive): structured subject provenance,
-  `{ source: clone | app-url | local-tree | desktop-cli, repo?, product?, commit?,
+  `{ source: clone | app-url | local-tree | desktop-cli | local-app, repo?, product?, commit?,
   archiveSha256?, dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
   unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
   commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
@@ -545,7 +545,9 @@ Core-owned fields:
   the archive content digest stands in for it. `product` is the desktop-cli field: the
   `subject.product.name` the study declares, with state `undeclared`. A computer-use
   run of a desktop-cli study saved before this field existed records `app-url` with no
-  `product`. `commandDigest` is the
+  `product`. `local-app` is an in-process run of a local-app study, the caller's running app
+  with no code pin and state `undeclared`; one saved before that value existed records
+  `app-url`. `commandDigest` is the
   sha256-16 of the exact seed command; command text and env values never
   appear. `humanish verify` fails closed when a live `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state

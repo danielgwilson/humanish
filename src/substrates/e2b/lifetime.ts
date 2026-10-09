@@ -5,6 +5,7 @@
 
 import { plural } from "../../run/text.js";
 import { readPositiveInt } from "../../study/parse/values.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 
 /** The setting that tells humanish how long the operator's E2B plan lets a sandbox live. */
 const SANDBOX_CEILING_SETTING = "HUMANISH_E2B_MAX_SANDBOX_MINUTES";
@@ -180,10 +181,68 @@ function limitText(limit: Extract<ConcurrentSandboxes, { ok: true }>): string {
 }
 
 /** Server-side reclamation buffer past a participant's own wall-clock stop. */
-export const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
+const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 
 /** Room a provisioned subject adds to the sandbox deadline for clone, install, build, start and probe. */
-export const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+
+/**
+ * What a sandbox's server-side timeout adds to the session it hosts: the teardown buffer, and on a
+ * sandbox that serves the subject, the provisioning budget and each seed step's budget. A planner
+ * adds it to the session to get the deadline it checks against the ceiling, and the route adds it
+ * to set the timeout it asks E2B for.
+ */
+export function sandboxHeadroomMs(servedSubject?: {
+  readonly seed: readonly { readonly timeoutMs?: number | undefined }[];
+}): number {
+  if (servedSubject === undefined) return SANDBOX_TIMEOUT_BUFFER_MS;
+  const seedMs = servedSubject.seed.reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+    0,
+  );
+  return SUBJECT_PROVISION_BUDGET_MS + seedMs + SANDBOX_TIMEOUT_BUFFER_MS;
+}
+
+/** A sandbox a plan will ask E2B for, as its deadline refusal describes it. */
+export interface PlannedSandbox {
+  /** How the refusal names the sandbox, as in "the subject sandbox". */
+  readonly name: string;
+  /** The session it hosts, and whether the study set it in execution.timeoutMs. */
+  readonly sessionMs: number;
+  readonly sessionDeclared: boolean;
+  /** The subject it serves, whose provisioning and seed steps add to its deadline. */
+  readonly servedSubject?:
+    | { readonly seed: readonly { readonly timeoutMs?: number | undefined }[] }
+    | undefined;
+}
+
+/**
+ * Why the sandbox's deadline, its session plus sandboxHeadroomMs, passes the `ceilingMs` ceiling,
+ * or undefined when it fits. The message shows the arithmetic, the longest execution.timeoutMs the
+ * ceiling leaves, and the setting value that would admit the study.
+ */
+export function sandboxDeadlineRefusal(
+  sandbox: PlannedSandbox,
+  ceilingMs: number,
+): string | undefined {
+  const headroomMs = sandboxHeadroomMs(sandbox.servedSubject);
+  const deadlineMs = sandbox.sessionMs + headroomMs;
+  if (deadlineMs <= ceilingMs) return undefined;
+  const inMinutes = (ms: number) => Math.round(ms / 60_000);
+  const session = sandbox.sessionDeclared
+    ? `execution.timeoutMs ${inMinutes(sandbox.sessionMs)}m`
+    : `The default session budget of ${inMinutes(sandbox.sessionMs)}m`;
+  const headroom =
+    sandbox.servedSubject === undefined
+      ? `${inMinutes(headroomMs)}m of teardown buffer`
+      : `${inMinutes(headroomMs)}m to provision and seed the subject and tear it down`;
+  const roomMinutes = Math.floor((ceilingMs - headroomMs) / 60_000);
+  const lower =
+    roomMinutes >= 1
+      ? `Lower execution.timeoutMs to at most ${roomMinutes}m.`
+      : "The provisioning and seed step budgets alone leave no session time under it, so shorten subject.state.seed[].timeoutMs.";
+  return `${session} derives a ${inMinutes(deadlineMs)}m deadline for ${sandbox.name}, and a sandbox may not live longer than ${ceilingMs / 60_000}m. The deadline is the session budget plus ${headroom}. ${lower}${ceilingAdvice(deadlineMs)}`;
+}
 
 /** The timeout of one E2B API request: HUMANISH_E2B_REQUEST_TIMEOUT_MS when set, else 60 s. */
 export function e2bRequestTimeoutMs(env: Record<string, string | undefined>): number {

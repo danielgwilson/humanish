@@ -26,10 +26,7 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { defaultSubjectPhaseSink } from "../../src/subject/steps.js";
 import { ownDesktopAllocation } from "../../src/substrates/desktop-session.js";
-import {
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  e2bRequestTimeoutMs,
-} from "../../src/substrates/e2b/lifetime.js";
+import { e2bRequestTimeoutMs } from "../../src/substrates/e2b/lifetime.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -583,7 +580,8 @@ describe("shared world hands each participant the run's deps", () => {
     expect(shared.studyId).toBe("desktop-deps-shared-world");
     expect(shared.participantCount).toBe(2);
     expect(shared.timeoutMs).toBe(60_000);
-    expect(shared.sandboxMs).toBe(60_000 + SANDBOX_TIMEOUT_BUFFER_MS);
+    // The 1-minute session plus the 10-minute teardown buffer.
+    expect(shared.sandboxMs).toBe(11 * 60_000);
     expect(shared.requestTimeoutMs).toBe(e2bRequestTimeoutMs(ENV));
     // The physical project root, bound before the run starts.
     expect(shared.studyCwd).toBe(await realpath(cwd));
