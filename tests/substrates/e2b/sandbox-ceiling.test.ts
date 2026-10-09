@@ -101,6 +101,22 @@ describe("the default session budget a provisioned route derives", () => {
     // The shared-world derivation caps a participant's session at 15 minutes.
     expect(raised.route === "shared-world" && raised.sessionTimeoutMs).toBe(minutes(15));
   });
+
+  it("is refused on the shared-world route when the seed steps leave no session under the ceiling", () => {
+    // A fourth seed step: 5m floor + 30m provisioning + 20m seeding + 10m buffer = 65m.
+    const seed = [...seeded.subject.state.seed, { name: "cache", command: "pnpm cache:warm" }];
+    const config = study("sharedProvisioned", {
+      subject: { state: { seed } },
+      execution: { timeoutMs: undefined },
+    });
+    const refused = plan(config, {});
+    if (refused.ok) throw new Error("expected a refusal");
+    expect(refused.refusal.code).toBe("HUMANISH_SHARED_WORLD_INVALID");
+    expect(refused.refusal.message).toContain("derives a 65m deadline for the subject sandbox");
+    expect(refused.refusal.message).toContain("shorten subject.state.seed[].timeoutMs");
+    expect(refused.refusal.message).toContain(`set ${SETTING} to 65 or more`);
+    expect(plan(config, { [SETTING]: "65" }).ok).toBe(true);
+  });
 });
 
 describe("the ceiling setting", () => {
