@@ -27,8 +27,8 @@ The default provider is `openai`; its default model is `gpt-6-astra`, with high 
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
 participant assignment. For OpenAI API analysis, `--max-cost` is required, including for dry-run
-admission. Admission compares the expected cost plus a 10% margin with it; the
-provider bill is not limited by it.
+admission. Admission refuses the request when both its worst case and its expected cost plus a
+10% margin are over it; the provider bill is not limited by it.
 `--timeout-ms` and `--max-output-tokens` bound the request. A bill above the
 worst case or the cap retains valid findings and usage but returns a partial
 result and a nonzero command exit, including when that version is reused.

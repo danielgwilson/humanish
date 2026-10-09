@@ -305,7 +305,7 @@ describe("automatic analysis admission and producer boundary", () => {
           `expected $${low.toFixed(2)} to $${high.toFixed(2)} for 1 participant`,
         );
         expect(stdout).toContain(
-          `refused before it starts if the expected cost plus a 10% margin is over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
+          `refused before it starts if both its worst case and its expected cost plus a 10% margin are over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
         );
       }
     },
@@ -739,7 +739,7 @@ describe("automatic analysis admission and producer boundary", () => {
         "taken-run",
       ]);
       expect(stderr).toMatch(
-        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over \$3; this is not a billing cap/,
+        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$3; this is not a billing cap/,
       );
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({

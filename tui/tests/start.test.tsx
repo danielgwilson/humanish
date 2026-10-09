@@ -17,14 +17,14 @@ import { LABS, NOW, RUNS } from "./fixtures.js";
 // Lines formatAutomaticAnalysisBudget printed for these budgets, captured from `humanish run`'s
 // formatter, which readStudySummary carries to the screen.
 const OPENAI_BUDGET_LINE =
-  "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if the expected cost plus a 10% margin is over $3; this is not a billing cap. Set review.analysis: false to disable.";
+  "After live runs: default analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable.";
 /** The OpenAI budget that line describes, as readStudySummary returns it. */
 const OPENAI_ANALYSIS = {
   model: "gpt-6-astra",
   maxCostUsd: 3,
   trigger: "default" as const,
   participants: 2,
-  expectedCostUsd: { low: 0.8032, high: 3.8392 },
+  expectedCostUsd: { low: 0.8032, high: 2.88079 },
   line: OPENAI_BUDGET_LINE,
 };
 const CODEX_BUDGET_LINE =

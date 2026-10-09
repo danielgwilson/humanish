@@ -260,14 +260,14 @@ Each policy is `false` until the study sets it to an unquoted `true`.
 
 `review.analysis` as a mapping takes these keys:
 
-| Key               | Default                                                        | Meaning                                                                                                                              |
-| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `provider`        | `openai`; `codex` for a Codex `local-agent` in a local browser | `openai` uses `OPENAI_API_KEY`. `codex` uses your signed-in Codex account and takes no dollar or token limit.                        |
-| `maxCostUsd`      | 3                                                              | `openai`: the analysis is refused before it starts when its expected cost plus a 10% margin is over this. It is not a billing limit. |
-| `model`           | `gpt-6-astra`                                                  | The analysis model.                                                                                                                  |
-| `question`        | none                                                           | A question for the analysis to answer, up to 4000 characters.                                                                        |
-| `timeoutMs`       | 600000                                                         | The analysis time limit, at most 600000.                                                                                             |
-| `maxOutputTokens` | 16384                                                          | `openai`: the reply's token limit, at most 32768.                                                                                    |
+| Key               | Default                                                        | Meaning                                                                                                                                                       |
+| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`        | `openai`; `codex` for a Codex `local-agent` in a local browser | `openai` uses `OPENAI_API_KEY`. `codex` uses your signed-in Codex account and takes no dollar or token limit.                                                 |
+| `maxCostUsd`      | 3                                                              | `openai`: the analysis is refused before it starts when both its worst case and its expected cost plus a 10% margin are over this. It is not a billing limit. |
+| `model`           | `gpt-6-astra`                                                  | The analysis model.                                                                                                                                           |
+| `question`        | none                                                           | A question for the analysis to answer, up to 4000 characters.                                                                                                 |
+| `timeoutMs`       | 600000                                                         | The analysis time limit, at most 600000.                                                                                                                      |
+| `maxOutputTokens` | 16384                                                          | `openai`: the reply's token limit, at most 32768.                                                                                                             |
 
 [Read results](/docs/read-results) shows the findings, and `humanish analyze` runs an analysis on demand.
 
