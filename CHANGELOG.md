@@ -38,9 +38,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   (#1722).
 - `humanish study check` now plans the study the way `humanish run <study>` does and fails a study
   the run refuses before it starts, such as a computer-use study whose sandbox deadline passes
-  `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. The failed `plan` row and the error carry the run's code and
-  message, and no reachability probe runs. It passed such a study before. A study that plans gets
-  the same output as before (#1707).
+  `HUMANISH_E2B_MAX_SANDBOX_MINUTES`, or a `local-app` study, which only the library can run. The
+  failed `plan` row and the error carry the run's code and message, and no reachability probe
+  runs. It passed such a study before. A study that plans gets the same output as before (#1707).
 - A shared-world study whose sandbox deadline passes the sandbox ceiling is refused before it
   starts, as computer-use and terminal studies are, with `HUMANISH_SHARED_WORLD_INVALID` and the
   `HUMANISH_E2B_MAX_SANDBOX_MINUTES` value that would admit it. The deadline is the subject

@@ -219,8 +219,8 @@ export interface RunSubjectProvenance {
      * declared-not-run: steps declared but not (all) executed ok: dry-run contract bundles
      *   and failed live provisioning.
      * undeclared: no subject.state block (stateless apps, app-url, local-app and desktop-cli
-     *   subjects),
-     *   the explicit "absence declared" marker that provenance requires when there is none.
+     *   subjects), the explicit "absence declared" marker that provenance requires when there
+     *   is none.
      * external-public: an operator-declared, operator-owned public deployment used
      *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
