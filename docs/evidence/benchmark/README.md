@@ -333,7 +333,10 @@ typed more than 27 characters in one action, so none met D2. Four of six reports
 saw no terminal output, from the persona's `clear_terminal_output` trait. A separate investigation
 read the decline from 0.114.0 to 0.118.0 as noise at three runs per arm: a same-hour A/B of npm
 0.114.0 and main at d183d1ae scored 52/80 planted-report recall on each over 16 planted
-participants. Three runs per arm cannot separate this rise from the same noise.
+participants. Three runs per arm cannot separate this rise from the same noise. The run used the
+release commit 53dbf23e. The release branch then took the fix that redacts study warnings before the
+run records them; it changes what the bundle records and nothing a participant receives or does, so
+the run stands for 0.119.0.
 
 ## What these numbers are not
 
