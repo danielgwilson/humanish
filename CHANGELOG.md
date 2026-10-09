@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- An analysis request from a Bun process can take longer than 5 minutes. Under Bun, `undici` is
+  Bun's built-in module, whose `fetch` ignores the provider's `dispatcher` and ended each request
+  after 300 seconds, so an analysis whose model took longer (a 34-participant run's cohort
+  requests took 325 to 405 s) failed with `analysis_provider_network_error`. The provider now
+  passes `timeout: false`, which Bun reads and Node's undici ignores, and the request's own
+  `timeoutMs` ends it under either runtime. A `TimeoutError` from `fetch` is recorded as
+  `provider_client_timeout` where it read `provider_network_error` (#1756).
+
 ## 0.120.0: Analysis completes under Bun, runs past 16 participants print a bounded list, Observer counts participants by status (2026-10-09)
 
 humanish 0.120.0 completes an analysis run from a Bun process, prints a run of more than 16
