@@ -46,6 +46,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   the first 16 and reported a partial result. The skip does not fail a run whose study declares
   no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
   asked for and did not get (#1737).
+- A computer-use or shared-world participant whose start comes after the study crossed
+  `caps.maxTotalUsd`, in a later wave or later in its schedule, is skipped before its desktop is
+  created. It is recorded as blocked with a reason naming the budget and counted among the fan-out
+  summary's skipped participants. It used to create its desktop, make one model request and stop
+  (#1737).
 - A provisioned shared-world study that runs in waves asks E2B for an app sandbox that lives until
   the last wave can end, and is refused when that passes `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. Its
   app sandbox lived one session plus provisioning, which a second wave could outlast (#1737).

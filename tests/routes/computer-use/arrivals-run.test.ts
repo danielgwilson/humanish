@@ -48,14 +48,14 @@ function timedModule() {
   return { module, createdAt, killedAt };
 }
 
-function seams(module: E2BDesktopModule, sessionMs = 50) {
+function seams(module: E2BDesktopModule, sessionMs = 50, responses: unknown[] = TWO_TURN_SESSION) {
   return {
     desktopModule: async () => module,
     runSession: async (options: CuaActorSessionOptions) => {
       await new Promise((resolve) => setTimeout(resolve, sessionMs));
       return runCuaActorSession({
         ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(responses) },
       });
     },
     analysis: { run: vi.fn() },
@@ -157,6 +157,50 @@ describe("a computer-use study with a declared schedule", () => {
     expect(timed.createdAt[0]! - startedAt).toBeLessThan(3_000);
     const bundle = await runJson(cwd, rerun.result.runId);
     expect(bundle.simulations.map((record) => record.arrival)).toEqual([undefined]);
+  });
+
+  it("skips a participant due after the study budget is spent, before its desktop exists", async () => {
+    // The first reply reports a million input tokens, which crosses a 1-cent study budget.
+    const spending = [
+      {
+        id: "resp_1",
+        output: [
+          { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] },
+        ],
+        usage: { input_tokens: 1_000_000, output_tokens: 0 },
+      },
+      {
+        id: "resp_2",
+        output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+        usage: { input_tokens: 0, output_tokens: 0 },
+      },
+    ];
+    const timed = timedModule();
+    const outcome = await runStudyWith(
+      clinic({
+        participants: [{ id: "nurse" }, { id: "patient", startAfterMs: 1_000 }],
+        caps: { maxTotalUsd: 0.01 },
+      }),
+      { cwd, env: KEYS },
+      seams(timed.module, 50, spending),
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    const { result } = outcome;
+
+    // Only the nurse's desktop was created.
+    expect(timed.createdAt).toHaveLength(1);
+    const patient = result.lanes?.find((lane) => lane.id === "patient");
+    expect(patient?.status).toBe("blocked");
+    expect(patient?.skippedReason).toContain("caps.maxTotalUsd");
+    expect(result.laneSummary?.skipped).toBe(1);
+    expect(result.ok).toBe(false);
+
+    const [, patientArrival] = (await runJson(cwd, result.runId)).simulations.map(
+      (record) => record.arrival,
+    );
+    expect(patientArrival?.startAfterMs).toBe(1_000);
+    expect(patientArrival?.scheduledAt).toBeDefined();
+    expect(patientArrival?.startedAt).toBeUndefined();
   });
 
   it("records the offsets in a dry run, with no start times", async () => {

@@ -19,10 +19,11 @@ import { baseSeams, concurrentStudy, makeRunSession } from "../../helpers/shared
 
 const MINUTES = 60_000;
 
-function scheduled(offsets: (number | undefined)[]): StudyConfig {
+function scheduled(offsets: (number | undefined)[], caps?: { maxTotalUsd: number }): StudyConfig {
   const study = concurrentStudy(offsets.length, offsets.length);
   const parsed = parseStudy({
     ...study,
+    ...(caps === undefined ? {} : { caps }),
     participants: study.participants.map((entry, index) => ({
       ...entry,
       ...(offsets[index] === undefined ? {} : { startAfterMs: offsets[index] }),
@@ -95,5 +96,38 @@ describe("a provisioned shared world with a declared schedule", () => {
       expect(start.startedAt).toBeGreaterThanOrEqual(start.scheduledAt);
       expect(createdAt[index + 1]).toBeGreaterThanOrEqual(start.scheduledAt);
     }
+  });
+
+  it("skips a participant due after the study budget is spent, before its desktop exists", async () => {
+    const state = { worldVersion: 0 };
+    const { env, deps, created } = baseSeams(state, async () => {});
+    const session = makeRunSession(state, async () => {});
+    const result = await runSharedWorld({
+      cwd,
+      config: scheduled([undefined, 1_000], { maxTotalUsd: 0.01 }),
+      dryRun: false,
+      env,
+      deps: {
+        ...deps,
+        // The first participant's session reports a million input tokens to the study ledger.
+        runSession: async (options: CuaActorSessionOptions) => {
+          options.overRunBudget?.({ input: 1_000_000, output: 0 });
+          return session(options);
+        },
+        analysis: { run: automaticAnalysisBoundary() },
+      },
+    });
+
+    // The app's sandbox and the first participant's desktop; none for the second.
+    expect(created.map((options) => options.metadata?.kind)).toHaveLength(2);
+    // As for a follower the handoff stopped: no session in the result, blocked in run.json.
+    expect(result.roles[1]?.status).toBe("failed");
+    expect(result.roles[1]?.error?.message).toContain("caps.maxTotalUsd");
+    expect(result.ok).toBe(false);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.simulations[1]?.status).toBe("blocked");
+    expect(bundle.simulations[1]?.arrival?.startedAt).toBeUndefined();
   });
 });

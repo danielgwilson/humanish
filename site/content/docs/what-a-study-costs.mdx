@@ -71,7 +71,7 @@ execution:
   timeoutMs: 600000
 ```
 
-- `maxTotalUsd` tracks estimated model spend across the study.
+- `maxTotalUsd` tracks estimated model spend across the study. A participant whose start comes after the study crossed it, in a later wave or [later in the schedule](/docs/study-files#start-participants-over-time), is skipped before its desktop is created and recorded as blocked with the budget as its reason.
 - `maxUsd` applies to each participant. Without a study cap, four participants at `$2` each have separate thresholds totaling `$8`; actual spend can exceed that sum.
 - Both thresholds are checked after model responses report usage. They do not reserve the cost of the next request. An in-flight model call and concurrent participants can cross a threshold before stopping. They are not hard provider billing limits.
 - E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.

@@ -86,6 +86,16 @@ export async function runCuaParticipant(
   spec: DesktopParticipantRun,
   deps: CuaParticipantDeps,
 ): Promise<ParticipantRunOutcome> {
+  // A participant whose start comes after the study budget is spent would pay for a desktop and a
+  // model turn only to stop at its first one, so it is skipped before its desktop exists.
+  const crossed = deps.runBudget?.crossed();
+  if (crossed !== undefined) {
+    deps.signalProvisioned?.(false);
+    return skippedOutcome(
+      spec,
+      `skipped: study budget reached before this participant started: ${crossed}; no desktop was created`,
+    );
+  }
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
@@ -291,7 +301,11 @@ export async function runCuaParticipants(
         failFast.reason = `a prior participant (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
         stopping.abort();
       }
-      return { ...outcome, arrival };
+      // A participant the study budget skipped never requested its desktop.
+      return {
+        ...outcome,
+        arrival: outcome.skippedReason === undefined ? arrival : { scheduledAt },
+      };
     },
   );
 

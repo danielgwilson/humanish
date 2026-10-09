@@ -382,7 +382,8 @@ export interface ParticipantRunsAndPlan {
 /**
  * The study's shared spend ledger: one counter across every participant. Each one notes its
  * own latest running model-spend estimate (monotone per participant: an estimate can only grow)
- * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
+ * and reads back the run total; the loop stops the participant the moment the total crosses the study budget,
+ * and a participant whose start comes after that is skipped before its desktop is created.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
 export interface CuaRunBudget {
@@ -390,6 +391,9 @@ export interface CuaRunBudget {
   /** Record this participant's latest running estimate (null = unpriceable, ignored) and return
    *  the run's current total across all participants. */
   note(participantId: string, estimateUsd: number | null): number;
+  /** The run total against caps.maxTotalUsd once the total has crossed it, in words; undefined
+   *  while it has not. */
+  crossed(): string | undefined;
 }
 
 /**
