@@ -190,6 +190,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-07 | 0.113.0, src/ as of 323e65a0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 6/10            | 0 and 0             | $5.83           | [summary](2026-10-07-0.113.0-neutral-openai-computer-use.md) |
 | 2026-10-08 | 0.114.0, src/ as of dabf6569 | `neutral` | `openai-computer-use` | 3            | 11/15         | 9/15            | 0 and 0             | $6.19           | [summary](2026-10-08-0.114.0-neutral-openai-computer-use.md) |
 | 2026-10-08 | 0.115.0, src/ as of 0b3df523 | `neutral` | `openai-computer-use` | 3            | 10/15         | 8/15            | 0 and 0             | $6.20           | [summary](2026-10-08-0.115.0-neutral-openai-computer-use.md) |
+| 2026-10-09 | 0.116.0, src/ as of a3189937 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $6.14           | [summary](2026-10-09-0.116.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -265,6 +266,22 @@ by hand, analysis recall is 10/15. The clean-arm analysis line "Reported edit-fo
 resolved by clicking the field" is true: the clean build's edit box is not focused when it opens.
 Five of six reports say the participant saw no terminal output, from the persona's
 `clear_terminal_output` trait.
+
+The 0.116.0 run took each analysis's cap from the dry run's `admittedCostUsd`: expected $1.01 to
+$1.12, caps $1.11 to $1.23, bills $0.61 to $0.85. No analysis was refused or skipped. Every
+participant ran threaded, input grew every turn, and each ended on its own and gave 6 impressions.
+The participants pressed Enter, Ctrl+A, Ctrl+R and End, keys `@e2b/desktop`'s own table already
+mapped, as the 0.115.0 participants did, so the hosted key translation in this release changed no
+keypress here. No planted participant typed more than 30 characters in one action, so none met D2.
+Two lines the rubric left unresolved are D5: the first planted report's "clicking save while
+editing did not seem to finish the edit; pressing enter did." and the third planted analysis's
+"Save attempts did not retain the edited wording". Read by hand, report recall is 10/15 and
+analysis recall 9/15. The second planted participant pressed Clear completed and reported "i used
+clear completed to remove it.", a false assurance on the build where that button does nothing, and
+its analysis says the participant used Clear completed. No planted analysis listed D1; 0.115.0's
+listed it twice. The clean-arm analysis line "Empty list after refresh led to reported rejection of
+continued use" is true on both builds. Five of six reports say the participant saw no terminal
+output, from the persona's `clear_terminal_output` trait.
 
 ## What these numbers are not
 
