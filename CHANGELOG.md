@@ -86,8 +86,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   moving to Open in Observer and back, then pressing Enter stopped the run at once. Cancel
   analysis did the same, as did Run again on a live run after `g` or `G`, and Set up humanish here
   after `?`. The five actions that take two Enters (those four and a live start) now follow one
-  rule: the second Enter counts only on the same action of the same screen within 30 seconds, any
-  other key cancels the first, and Esc cancels it without going back (#1722).
+  rule: the second Enter counts only on the same action of the same screen, within 30 seconds of
+  the first. An Enter less than 400 ms after the one before it is ignored and restarts that wait;
+  the wait used to count from the first Enter, so a held Enter confirmed once it passed. Any other
+  key cancels the first Enter, and Esc cancels it without going back (#1722).
 - On hosted E2B desktops, a computer-use participant's arrow keys, Page Up and Page Down, and
   punctuation keys such as `?`, `/` and `-` now reach the screen. The executor passed key names
   to `@e2b/desktop`'s `press()`, which handed names missing from its own table (`ARROWDOWN`,

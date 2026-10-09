@@ -274,6 +274,29 @@ describe("an armed action", () => {
     }
   }, 20_000);
 
+  it("does not confirm while Enter is held, and confirms on a fresh Enter after release", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"], shouldAdvanceTime: true });
+    const { options, acted } = project();
+    const surface = await render(options);
+    try {
+      await openRun(surface, "starting…", "❯ Stop this run");
+      await surface.press(KEY.enter, (frame) => frame.includes("stop this run?"));
+      // Enter held for 1.2 s after arming, repeated by the terminal every 30 ms.
+      for (let held = 30; held <= 1_200; held += 30) {
+        vi.advanceTimersByTime(30);
+        await surface.send(KEY.enter);
+      }
+      expect(acted).toEqual([]);
+
+      vi.advanceTimersByTime(450);
+      await surface.press(KEY.enter, (frame) => frame.includes("asked the run to stop"));
+      expect(acted).toEqual(["stop run"]);
+    } finally {
+      vi.useRealTimers();
+      surface.unmount();
+    }
+  }, 20_000);
+
   it("still confirms on the second Enter when nothing came between", async () => {
     const { options, acted } = project();
     const surface = await render(options);
