@@ -18,7 +18,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   that sets it is refused, as for any field its route does not read.
 - `actor.idleWaitMs` sets how long a computer-use or shared-world participant's `wait` that names
   no duration lasts when its turn only waits or takes screenshots, from 1000 to 600000 and no
-  longer than `actor.maxWaitMs`. When unset it is 10000. A study that sets it longer than its
+  longer than `actor.maxWaitMs`. When unset it is 5000. A study that sets it longer than its
   `actor.maxWaitMs` is refused.
 - A computer-use participant's `actor.json` records the wait lengths its session used as
   `waitSettings` (`maxWaitMs`, `idleWaitMs`, `settleWaitMs`), and each wait action's title gives
@@ -49,11 +49,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   route gives the run the error code `HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED`, and its message
   carries the build's redacted log tail. A `serve.start` that bash cannot parse still waits out
   `readyTimeoutMs`; the server log tail in its error now shows bash's message (#1732).
-- An `openai-computer-use` participant told to wait now waits 10 seconds a turn. OpenAI's
+- An `openai-computer-use` participant told to wait now waits 5 seconds for each `wait` it sends. OpenAI's
   computer-use `wait` action names no duration, and it lasted 500 ms on a hosted E2B desktop and
   250 ms on a guest desktop, so a participant waiting in a video lobby or for an email code spent
   a model turn and a screenshot every half second (#1731). A wait that names no duration now
-  lasts `actor.idleWaitMs` (10 seconds by default) when the participant's turn only waits or takes
+  lasts `actor.idleWaitMs` (5 seconds by default) when the participant's turn only waits or takes
   screenshots, and 500 ms on both desktops when it follows an action in the same turn, as nearly
   every such wait does. A `ComputerUseExecutor` passed to `runComputerUseLoop` now receives every
   wait with its `ms` set.

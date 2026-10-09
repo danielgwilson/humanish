@@ -33,7 +33,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -104,7 +104,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -214,7 +214,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -285,7 +285,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -373,7 +373,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -491,7 +491,7 @@
         "ids": {},
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -601,7 +601,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -688,7 +688,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -788,7 +788,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {
@@ -887,7 +887,7 @@
         },
         "waitSettings": {
           "maxWaitMs": 120000,
-          "idleWaitMs": 10000,
+          "idleWaitMs": 5000,
           "settleWaitMs": 500
         },
         "counts": {

@@ -32,7 +32,7 @@
       },
       "waitSettings": {
         "maxWaitMs": 120000,
-        "idleWaitMs": 10000,
+        "idleWaitMs": 5000,
         "settleWaitMs": 500
       },
       "counts": {

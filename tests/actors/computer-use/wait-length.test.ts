@@ -136,10 +136,10 @@ const shortened = (result: CuaLoopResult) =>
   result.trace.items.filter((item) => item.kind === "notice" && item.title === "wait shortened");
 
 describe("a wait with no duration on a hosted desktop", () => {
-  it("lasts ten seconds when the participant's turn only waits", async () => {
+  it("lasts five seconds when the participant's turn only waits", async () => {
     const { waits, result } = await hostedWaits([{ kind: "wait" }]);
 
-    expect(waits).toEqual([["wait", 10_000]]);
+    expect(waits).toEqual([["wait", 5_000]]);
     expect(result.completionReason).toBe("goal_satisfied");
   });
 
@@ -192,7 +192,7 @@ describe("a wait with no duration on a hosted desktop", () => {
 
     expect(defaults.result.trace.waitSettings).toEqual({
       maxWaitMs: 120_000,
-      idleWaitMs: 10_000,
+      idleWaitMs: 5_000,
       settleWaitMs: 500,
     });
     expect(studySet.result.trace.waitSettings).toEqual({

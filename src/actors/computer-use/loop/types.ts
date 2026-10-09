@@ -300,7 +300,7 @@ export interface CuaLoopOptions {
    * How long a `wait` that names no duration lasts, in ms, when its turn only waits or takes
    * screenshots: the study's actor.idleWaitMs. After an action in the same turn such a wait lasts
    * 500 ms. A whole number from 1000 to 600000 and no longer than an explicit maxWaitMs; any other
-   * value throws a RangeError before the session starts. Default 10000. The session never applies
+   * value throws a RangeError before the session starts. Default 5000. The session never applies
    * more than its maxWaitMs, and the trace records the applied lengths as `waitSettings`.
    */
   idleWaitMs?: number;

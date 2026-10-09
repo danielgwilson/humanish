@@ -110,7 +110,7 @@ speech reaches the participant only with a screenshot), records a `wait shortene
 durations when it does, and sends the rest as consecutive waits of at most 30 seconds. The Codex
 participant's `humanish_ui` schema leaves a wait's length open for that reason; the wire still
 refuses a single wait over 30 seconds. A wait that names no duration, as every OpenAI computer-use
-wait does, reaches the desktop with a length too: the study's `actor.idleWaitMs` (10 seconds by
+wait does, reaches the desktop with a length too: the study's `actor.idleWaitMs` (5 seconds by
 default) when the participant's turn only waits or takes screenshots, and 500 ms after an action in
 the same turn.
 

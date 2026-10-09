@@ -20,11 +20,11 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   defaultMaxMs: 120_000,
   /**
    * How long a wait that names no duration lasts in a turn that only waits or takes screenshots,
-   * when a study does not set actor.idleWaitMs. OpenAI's computer-use `wait` names no duration, so
-   * a participant told to wait for a page sends it turn after turn; at ten seconds a one-minute
-   * wait takes about four turns.
+   * when a study does not set actor.idleWaitMs. OpenAI's computer-use `wait` names no duration. A
+   * participant told to wait about a minute sent ten in one turn, which lasts 50 s at this length;
+   * one wait a turn makes a one-minute wait about six turns.
    */
-  defaultIdleMs: 10_000,
+  defaultIdleMs: 5_000,
   /**
    * How long a wait that names no duration lasts after the participant acts in the same turn, so
    * the screen can settle before the next screenshot. Nearly every OpenAI computer-use wait follows
