@@ -315,6 +315,9 @@ async function installSubject(step: ServeStep, command: string): Promise<void> {
   }
 }
 
+/** A serve.build that exited non-zero or ran out of time; the message carries its redacted log tail. */
+export class SubjectBuildError extends Error {}
+
 /** serve.build, once. */
 async function buildSubject(step: ServeStep, command: string): Promise<void> {
   const { now } = step;
@@ -337,7 +340,7 @@ async function buildSubject(step: ServeStep, command: string): Promise<void> {
     build.ok ? "subject build complete" : "subject build failed",
   );
   if (!build.ok) {
-    throw new Error(
+    throw new SubjectBuildError(
       `subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${failureTail(step.scrub(build.logTail))}`,
     );
   }

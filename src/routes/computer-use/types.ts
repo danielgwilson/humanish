@@ -269,6 +269,9 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
+  // The subject's serve.build exited non-zero or ran out of time in the sandbox. The message
+  // carries the build's redacted log tail, bash's own error included.
+  | "HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED"
   // A fail-closed spend cap (caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped: an unenforceable cap is more dangerous than none.

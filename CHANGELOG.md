@@ -32,6 +32,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A `serve.install`, `serve.build` or `subject.state` seed step that bash cannot parse now fails
+  within seconds and shows bash's error. Each command was pasted into the script that records the
+  step's exit status, so a syntax error stopped that script before it recorded one, and the run
+  waited out the step's time limit: 10 minutes for `serve.build`. A `serve.build` ending in a
+  heredoc hit this every time: the study parser trims each command, which put the heredoc's
+  closing word on the same line as the script's own text. Each command now runs as its own
+  script, and a heredoc may close on its last line. A failed `serve.build` on the computer-use
+  route gives the run the error code `HUMANISH_COMPUTER_USE_SUBJECT_BUILD_FAILED`, and its message
+  carries the build's redacted log tail. A `serve.start` that bash cannot parse still waits out
+  `readyTimeoutMs`; the server log tail in its error now shows bash's message (#1732).
 - A terminal run's check by id after its sandbox's kill (`Sandbox.getInfo`) now carries the API
   key the create used. With the key only in `RunStudyOptions.env`, the check failed with the SDK's
   "API key is required" error and `terminal-ledgers.json` recorded the re-verification as errored.

@@ -118,6 +118,7 @@ The tables below give each field's type and its default when you leave it out. "
 | `subject.serve.readyTimeoutMs`   | milliseconds  | 180000   | How long the app has to answer at `url` after it starts.                                            |
 
 The commands run inside the sandbox with the same trust as your own scripts. The run records a digest of each one.
+Each command runs as its own bash script, so a heredoc may close on the command's last line. When bash cannot parse `install` or `build`, the step fails at once with bash's message.
 
 ### Seed the app's state with `subject.state`
 
