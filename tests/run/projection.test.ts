@@ -72,6 +72,21 @@ describe("what a lab may claim about itself", () => {
     expect(expectationLine(expectation)).toContain("2 runs, 1 unpriced");
   });
 
+  it("an analysis alone does not price a run whose participants have no figure", () => {
+    const analysis = {
+      requests: 1,
+      estimatedUsd: 0.5,
+      complete: true,
+      providers: ["openai" as const],
+    };
+    const expectation = expectationFor([
+      run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1, analysisCost: analysis }),
+      run({ runId: "2", durationMs: 60_000, estimatedCostUsd: null, analysisCost: analysis }),
+    ]);
+    expect(expectation.medianCostUsd).toBe(1.5);
+    expect(expectationLine(expectation)).toBe("1m · ~$1.50 median · 2 runs, 1 unpriced");
+  });
+
   it("no history says so: it never borrows numbers or invents a range", () => {
     const expectation = expectationFor([run({ runId: "1", liveness: "running" })]);
     expect(expectation.sample).toBe(0);

@@ -98,6 +98,21 @@ describe("a study's past runs", () => {
     expect(study).not.toContain("excl. analysis");
   });
 
+  it("give the study a median over the same costs, analyses included", async () => {
+    const surface = await renderToText(
+      <App options={options()} now={Date.parse("2026-10-03T07:00:00.000Z")} tick={0} />,
+      {
+        columns: 140,
+        until: (frame) => frame.includes(FIXTURE_STUDY) && !frame.includes("reading project"),
+      },
+    );
+    const study = await surface.press(KEY.enter, (frame) => frame.includes("with 2 analyses"));
+    surface.unmount();
+    // The two runs cost $0.545128 and $1.059219 with their analyses; the median of two is their
+    // mean, $0.802174. Participants and desktops alone are $0.016123 each.
+    expect(study).toContain("~$0.80 median · 2 runs");
+  });
+
   it("make no completeness claim for a status record written before 0.109", async () => {
     await writePre109Status(cwd, ONE_ANALYSIS_RUN);
     const surface = await renderToText(
