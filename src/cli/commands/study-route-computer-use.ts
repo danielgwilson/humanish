@@ -1,4 +1,4 @@
-import { studyAnalysisSucceeded } from "../../study/automatic-analysis-plan.js";
+import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { type InternalRunStudyOptions } from "../../run-study.js";
 import { resolveStudyDryRun } from "../../study/plan.js";
@@ -360,7 +360,7 @@ async function reportCuaRun(
   writeResult(args.command, args.io, output, (value) =>
     formatCuaStudyHuman(value, args.config.subject),
   );
-  args.io.setExitCode(result.ok && studyAnalysisSucceeded(result) ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
   await writeRunFindings(args.command, args.io, args.options.cwd, result);
 
   if (server && (result.observer?.ok || attachedObserver)) {

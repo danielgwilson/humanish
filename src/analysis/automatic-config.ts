@@ -7,6 +7,7 @@ import {
   isSupportedAnalysisModel,
 } from "./execute.js";
 import { admissionRule } from "./admission.js";
+import { analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import { plural } from "../run/text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { AnalysisConfig } from "./types.js";
@@ -192,12 +193,28 @@ export function automaticAnalysisBudget(
   };
 }
 
+/**
+ * An analysis's requests in words, from their count: undefined for one request. The plan's
+ * analysis line and the dry run's worst case both say it.
+ */
+export function analysisRequestsText(requests: number): string | undefined {
+  return requests <= 1
+    ? undefined
+    : `${requests - 1} cohort requests of at most ${EVIDENCE_LIMITS.cohortParticipants} participants and one merge request`;
+}
+
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
   const rule = admissionRule(`$${budget.maxCostUsd}`);
+  // The participants, and the requests that analyse them when there is more than one.
+  const requests = analysisRequestsText(
+    analysisRequestCount(Math.min(budget.participants ?? 0, EVIDENCE_LIMITS.participants)),
+  );
   const who =
-    budget.participants === undefined ? undefined : plural(budget.participants, "participant");
+    budget.participants === undefined
+      ? undefined
+      : `${plural(budget.participants, "participant")}${requests === undefined ? "" : ` in ${requests}`}`;
   const range =
     budget.expectedCostUsd === undefined || who === undefined
       ? ""

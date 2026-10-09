@@ -190,11 +190,7 @@ export function planSharedWorldStudy(
   if (deadlineReason) return refuse(invalid, deadlineReason, actor);
   const brain = brainOf(config, false);
   if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
-  const base = planBase(config, {
-    dryRun: input.dryRun,
-    analysis,
-    participants: plane.participants.length,
-  });
+  const base = planBase(config, { dryRun: input.dryRun, analysis });
   return {
     ok: true,
     plan: {
