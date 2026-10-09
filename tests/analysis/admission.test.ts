@@ -289,7 +289,12 @@ describe("the admitted cost", () => {
   const size = { textBytes: 30_000, imageTokens: 0, participants: 1 };
 
   it("is the expected cost plus 10%", () => {
-    expect(estimateAnalysisCost(rate, { ...size, outputAllowance: 16_384 })).toEqual({
+    expect(
+      estimateAnalysisCost(rate, {
+        cohorts: [{ ...size, outputAllowance: 16_384 }],
+        mergeTextBytes: 0,
+      }),
+    ).toEqual({
       inputTokens: 12_048,
       expectedOutputTokens: 13_000,
       expectedCostUsd: 0.8006,
@@ -299,7 +304,12 @@ describe("the admitted cost", () => {
   });
 
   it("is the worst case when that is lower", () => {
-    expect(estimateAnalysisCost(rate, { ...size, outputAllowance: 13_500 })).toMatchObject({
+    expect(
+      estimateAnalysisCost(rate, {
+        cohorts: [{ ...size, outputAllowance: 13_500 }],
+        mergeTextBytes: 0,
+      }),
+    ).toMatchObject({
       expectedCostUsd: 0.8006,
       worstCaseCostUsd: 0.8256,
       admittedCostUsd: 0.8256,

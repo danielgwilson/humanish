@@ -23,7 +23,7 @@
 // per-delta→actor field, so causation under concurrency is structurally inexpressible.
 //
 // Capability and proof: the deterministic $0 gate proves the plumbing + the claims-match-mechanism
-// contract: the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
+// contract: the real start queue (runOnSchedule) produces genuinely overlapping laneWindows (a rendezvous
 // latch in the fake session forces two participant fns in-flight while the real orchestrator clock
 // measures the windows). Every generated bundle describes only its own observations; no one run
 // establishes scale, repeatability, or adopter-harness replacement.
@@ -49,7 +49,11 @@ import {
   type RouteAdmission,
 } from "../../run/route-shell.js";
 import { runExternalPublicPlane } from "./external-public.js";
-import { sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
+import {
+  sharedWorldDescriptorOf,
+  sharedWorldScheduleLines,
+  type SharedWorldRefusal,
+} from "./plan.js";
 import type { LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentStudyFailure, finishConcurrentRun } from "./result.js";
@@ -193,6 +197,8 @@ async function runPlanInScope(
   const deps = input.deps ?? {};
   const env: Record<string, string | undefined> = input.env ?? process.env;
   const fail = sharedWorldFailure(plan, input);
+  // Before any sandbox or provider call, as computer use prints its participant plan.
+  if (plan.arrivals.declared) process.stderr.write(sharedWorldScheduleLines(plan));
   const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
     plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";

@@ -31,7 +31,8 @@ import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
 export const ANALYSIS_DIRECTORY = "analysis";
 export const ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
-export const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
+// 4 MiB held one packet; a run of 128 participants stores eight cohorts' packets.
+export const ANALYSIS_MAX_BYTES = 16 * 1024 * 1024;
 export const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
 const MAX_CORRECTION_BYTES = 32 * 1024;

@@ -2,7 +2,13 @@ import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
-import { ANALYSIS_LIMITS, hasControlCharacter, hasRevisionFields } from "./analysis-limits.js";
+import {
+  ANALYSIS_LIMITS,
+  EVIDENCE_LIMITS,
+  MAX_ANALYSIS_COHORTS,
+  hasControlCharacter,
+  hasRevisionFields,
+} from "./analysis-limits.js";
 import {
   SHA256_HEX_PATTERN,
   ACTION_CAPTURE_VERSION,
@@ -29,7 +35,7 @@ const id = z
 const sourceId = text(256).min(1);
 const digest = z.string().regex(SHA256_HEX_PATTERN);
 const timestamp = z.string().datetime({ offset: true });
-const sourceIds = z.array(sourceId).max(128);
+const sourceIds = z.array(sourceId).max(EVIDENCE_LIMITS.participants);
 const refs = z.array(id).min(1).max(ANALYSIS_LIMITS.evidenceRefs);
 const limitations = z.array(text(2000).min(1)).max(100);
 const observationSchema = z
@@ -76,7 +82,7 @@ const analysisResultSchema = z
           })
           .strict(),
       )
-      .max(128),
+      .max(EVIDENCE_LIMITS.participants),
     findings: z
       .array(
         z
@@ -145,12 +151,18 @@ const normalizedResult = ({
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
 
+// A run's packet holds every cohort's packet.
+const MAX_PACKET_EVIDENCE = EVIDENCE_LIMITS.evidence * MAX_ANALYSIS_COHORTS;
 const analysisCoverageSchema = z
   .object({
     includedStreamIds: sourceIds,
     omittedStreamIds: sourceIds,
-    evidenceCount: z.number().int().min(0).max(2000),
-    captureCount: z.number().int().min(0).max(64),
+    evidenceCount: z.number().int().min(0).max(MAX_PACKET_EVIDENCE),
+    captureCount: z
+      .number()
+      .int()
+      .min(0)
+      .max(EVIDENCE_LIMITS.captures * MAX_ANALYSIS_COHORTS),
     complete: z.boolean(),
     omissions: limitations,
   })
@@ -308,9 +320,9 @@ const analysisArtifactSchema = z
           })
           .strict(),
       )
-      .max(128),
+      .max(EVIDENCE_LIMITS.participants),
     coverage: analysisCoverageSchema,
-    evidence: z.array(analysisEvidenceSchema).max(2000),
+    evidence: z.array(analysisEvidenceSchema).max(MAX_PACKET_EVIDENCE),
     result: analysisResultSchema.nullable(),
     error: z
       .string()

@@ -2,6 +2,7 @@
 // subject provenance event and the events of its outcome (session, geometry warnings, phase trail).
 
 import { participantAssignment } from "../../study/participant-assignment.js";
+import { arrivalRecord } from "../../study/arrivals.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
 import {
   participantEvent,
@@ -112,6 +113,9 @@ function fanoutParticipantRecord(
     ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
+    ...(args.participantPlan.schedule === undefined
+      ? {}
+      : { arrival: arrivalRecord(spec.planned.startAfterMs, outcome?.arrival) }),
   });
 }
 

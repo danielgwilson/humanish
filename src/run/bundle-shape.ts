@@ -408,7 +408,19 @@ function isRunSimulation(value: unknown): value is RunSimulation {
     Array.isArray(value.streamIds) &&
     value.streamIds.every((streamId) => typeof streamId === "string") &&
     typeof value.startedAt === "string" &&
-    typeof value.updatedAt === "string"
+    typeof value.updatedAt === "string" &&
+    (value.arrival === undefined || isRunParticipantArrival(value.arrival))
+  );
+}
+
+function isRunParticipantArrival(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.startAfterMs === "number" &&
+    Number.isSafeInteger(value.startAfterMs) &&
+    value.startAfterMs >= 0 &&
+    (value.scheduledAt === undefined || typeof value.scheduledAt === "string") &&
+    (value.startedAt === undefined || typeof value.startedAt === "string")
   );
 }
 

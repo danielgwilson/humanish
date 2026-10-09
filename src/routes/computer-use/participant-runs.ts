@@ -33,6 +33,8 @@ import { digestUrl } from "./bundle-parts.js";
 import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
 import { plural } from "../../run/text.js";
+import { formatDuration } from "../../run/projection.js";
+import { describeArrivals, planArrivals } from "../../study/arrivals.js";
 
 /**
  * The session budget of a study that declares no execution.timeoutMs. On a provisioned route it is
@@ -154,6 +156,13 @@ export function participantRunsAndPlan(
   const resolved = envLoweredConcurrency(plan.concurrency, participantCount, env);
   const concurrency = resolved.bound;
   const { sessionBudgetMs, sandboxMs } = plan;
+  const schedule =
+    resolved.envLoweredFrom === undefined
+      ? plan.arrivals
+      : planArrivals(
+          participants.map((participant) => participant.startAfterMs),
+          { slots: concurrency, sessionMs: sessionBudgetMs },
+        );
   const participantPlan: CuaParticipantPlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
@@ -164,6 +173,7 @@ export function participantRunsAndPlan(
     waves: Math.ceil(participantCount / concurrency),
     perLaneSessionBudgetMs: sessionBudgetMs,
     worstCaseSandboxMinutes: Math.round((participantCount * sandboxMs) / 60_000),
+    ...(schedule.declared ? { schedule } : {}),
     dryRun: plan.dryRun,
     lanes: runs.map((spec) => ({
       id: spec.planned.id,
@@ -190,6 +200,9 @@ export function participantRunsAndPlan(
       ...(spec.planned.targetUrl === undefined
         ? {}
         : { targetDigest: digestUrl(spec.planned.targetUrl) }),
+      ...(spec.planned.startAfterMs === undefined
+        ? {}
+        : { startAfterMs: spec.planned.startAfterMs }),
     })),
   };
   return { runs, participantPlan };
@@ -205,6 +218,8 @@ export function emitPreflightPlan(participantPlan: CuaParticipantPlan, studyId: 
   lines.push(
     `  session budget ${Math.round(participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${participantPlan.worstCaseSandboxMinutes} sandbox-minutes total${participantPlan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
+  if (participantPlan.schedule)
+    lines.push(`  schedule: ${describeArrivals(participantPlan.schedule)}`);
   for (const entry of participantPlan.lanes) {
     lines.push(`  - ${formatParticipantPlanEntry(entry)}`);
   }
@@ -217,6 +232,7 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
     entry.surface ? `surface=${entry.surface}` : undefined,
     entry.caseGroup ? `case=${entry.caseGroup}` : undefined,
     entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
+    entry.startAfterMs === undefined ? undefined : `start=+${formatDuration(entry.startAfterMs)}`,
   ].filter((part): part is string => part !== undefined);
   return `${entry.id}: persona=${entry.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${entry.device} ${entry.resolution[0]}x${entry.resolution[1]} prompt#${entry.instructionDigest}${entry.targetDigest ? ` target#${entry.targetDigest}` : ""}`;
 }

@@ -11,12 +11,19 @@ import type {
   Requirement,
   ResidualConfig,
 } from "./plan-types.js";
-import { analysisSkipFor } from "./automatic-analysis-plan.js";
 import type { StudyConfig } from "./types.js";
 
 export type Base = Omit<
   ComputerUsePlan,
-  "route" | "actor" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
+  | "route"
+  | "actor"
+  | "runner"
+  | "concurrency"
+  | "arrivals"
+  | "sessionBudgetMs"
+  | "sandboxMs"
+  | "caps"
+  | "rerun"
 >;
 
 // A YAML alias can make a parsed record contain itself (an inline persona that names its own
@@ -139,12 +146,9 @@ export function planBase(
       readonly config?: PlannedAnalysis["config"] | undefined;
       readonly preferLargerOutput?: boolean | undefined;
     };
-    /** How many participants the run has, which decides whether its analysis can run. */
-    readonly participants?: number;
   },
 ): Base {
   const analysis = input.analysis?.config;
-  const skip = analysisSkipFor(input.participants ?? 1);
   return {
     studyId: config.id,
     ...(config.title === undefined ? {} : { title: config.title }),
@@ -157,7 +161,6 @@ export function planBase(
             config: analysis,
             trigger: config.review?.analysis === undefined ? "default" : "explicit",
             preferLargerOutput: input.analysis?.preferLargerOutput === true,
-            ...(skip === undefined ? {} : { skip }),
           },
         }),
     requirements: [],

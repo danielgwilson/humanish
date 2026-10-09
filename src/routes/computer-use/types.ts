@@ -23,6 +23,7 @@ import type {
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyDeps } from "../../study/study-deps.js";
+import type { ArrivalPlan, ParticipantArrival } from "../../study/arrivals.js";
 import type { StudyEvent, ParticipantRef } from "../../study/run-study-events.js";
 import type {
   InProcessDriver,
@@ -167,6 +168,8 @@ export interface CuaParticipantPlanEntry {
   maxOutputTokens?: number;
   /** Present only when a participant overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
   targetDigest?: string;
+  /** The participant's declared start, in ms after the run starts its participants. */
+  startAfterMs?: number;
 }
 
 /** The pre-flight spend and participant plan (pure; printed to stderr + recorded as a bundle event before
@@ -186,6 +189,9 @@ export interface CuaParticipantPlan {
   perLaneSessionBudgetMs: number;
   /** Worst-case total sandbox-minutes across all participants (each one's full sandbox deadline). */
   worstCaseSandboxMinutes: number;
+  /** The schedule, when the study declares `participants[].startAfterMs`; a rerun starts its
+   *  participants together and has none. */
+  schedule?: ArrivalPlan;
   /** True for a dry-run plan (no spend); the same table appears live. */
   dryRun: boolean;
   lanes: CuaParticipantPlanEntry[];
@@ -376,7 +382,8 @@ export interface ParticipantRunsAndPlan {
 /**
  * The study's shared spend ledger: one counter across every participant. Each one notes its
  * own latest running model-spend estimate (monotone per participant: an estimate can only grow)
- * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
+ * and reads back the run total; the loop stops the participant the moment the total crosses the study budget,
+ * and a participant whose start comes after that is skipped before its desktop is created.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
 export interface CuaRunBudget {
@@ -384,6 +391,9 @@ export interface CuaRunBudget {
   /** Record this participant's latest running estimate (null = unpriceable, ignored) and return
    *  the run's current total across all participants. */
   note(participantId: string, estimateUsd: number | null): number;
+  /** The run total against caps.maxTotalUsd once the total has crossed it, in words; undefined
+   *  while it has not. */
+  crossed(): string | undefined;
 }
 
 /**
@@ -564,6 +574,8 @@ export interface ParticipantRunOutcome {
   warnings: string[];
   /** Set when the participant was skipped by the pipeline gate / fail-fast (a pinned reason). */
   skippedReason?: string;
+  /** When a fan-out participant was due and when its desktop was requested. */
+  arrival?: ParticipantArrival;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
   /** The inclusive friction read: blocker-shaped narration incl. self-resolved arcs.

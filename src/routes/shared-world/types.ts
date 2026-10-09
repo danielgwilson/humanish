@@ -165,6 +165,8 @@ export interface ConcurrentSharedWorldStudyResult
 export interface ActorRunResult {
   spec: DesktopParticipantRun;
   outcome: ParticipantRunOutcome;
+  /** When the schedule had it start, in epoch ms; the host of an external public app starts with the run. */
+  scheduledAt: number;
   startedAt: number;
   endedAt: number;
   route: string;

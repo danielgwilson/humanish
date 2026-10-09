@@ -24,6 +24,25 @@ beforeAll(async () => {
   await rm(path.join(root, "status.json"));
 });
 
+// The same preview run with 17 participants, analysed in two cohorts and a merge request. Its
+// Codex preview participants lose their app-server records, which a live run would have to carry.
+const COHORT_RUN_ID = "analyze-cost-cohorts";
+beforeAll(async () => {
+  await runDryRun({ cwd: project, dryRun: true, runId: COHORT_RUN_ID, participantCount: 17 });
+  const root = path.join(project, ".humanish", "runs", COHORT_RUN_ID);
+  const bundle = JSON.parse(await readFile(path.join(root, "run.json"), "utf8")) as RunBundle;
+  bundle.mode = "live";
+  for (const stream of bundle.streams) {
+    stream.status = "complete";
+    delete stream.codex;
+    stream.artifacts = stream.artifacts.filter(
+      (artifact) => !artifact.path.includes("codex-app-server"),
+    );
+  }
+  await writeFile(path.join(root, "run.json"), JSON.stringify(bundle) + "\n");
+  await rm(path.join(root, "status.json"));
+});
+
 afterAll(async () => {
   await rm(project, { recursive: true, force: true });
 });
@@ -69,6 +88,22 @@ it("names the command that runs an analysis its cap refused", async () => {
   expect(stderr).toContain(`$${worstCaseCostUsd!.toFixed(2)}`);
   expect(stderr).toContain("$0.01 cap");
   expect(stderr).toContain(`analyze --run ${RUN_ID} --max-cost ${Math.ceil(worstCaseCostUsd!)}`);
+});
+
+it("puts every request of an analysis in cohorts in a dry run's worst case", async () => {
+  const one = await analyze(["--run", RUN_ID, "--max-cost", "50", "--dry-run"]);
+  expect(one.stdout).toContain("if the analyst writes its whole");
+  const { stdout, exitCode } = await analyze([
+    "--run",
+    COHORT_RUN_ID,
+    "--max-cost",
+    "50",
+    "--dry-run",
+  ]);
+  expect(exitCode).toBe(0);
+  expect(stdout).toContain(
+    "if every request (2 cohort requests of at most 16 participants and one merge request) writes its whole",
+  );
 });
 
 it("states in --max-cost's help the rule admission applies", () => {

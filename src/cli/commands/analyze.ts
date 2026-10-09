@@ -1,4 +1,5 @@
 import {
+  analysisRequestsText,
   resolveAutomaticAnalysis,
   DEFAULT_ANALYSIS_MODEL,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
@@ -368,9 +369,15 @@ async function handleAnalyzeCorrect(
   }
 }
 
-/** An admitted dry run's costs: the expected cost, the worst case and the cap it was admitted under. */
+/**
+ * An admitted dry run's costs: the expected cost, the worst case and the cap it was admitted
+ * under. The worst case of an analysis in cohorts is every request writing its whole allowance.
+ */
 function admittedDryRunText(admission: AnalysisAdmission | undefined): string {
   const usd = (value: number | null | undefined): string =>
     value === null || value === undefined ? "unknown" : `$${value.toFixed(2)}`;
-  return `Expected cost: ${usd(admission?.estimatedCostUsd)}. Worst case: ${usd(admission?.worstCaseCostUsd)}, if the analyst writes its whole ${admission?.outputTokenAllowance ?? "unknown"}-token output allowance, reasoning included. Admitted under the $${admission?.maxCostUsd ?? "unknown"} cap. No request sent.\n`;
+  const requests = analysisRequestsText(admission?.requests ?? 1);
+  const writer =
+    requests === undefined ? "the analyst writes its" : `every request (${requests}) writes its`;
+  return `Expected cost: ${usd(admission?.estimatedCostUsd)}. Worst case: ${usd(admission?.worstCaseCostUsd)}, if ${writer} whole ${admission?.outputTokenAllowance ?? "unknown"}-token output allowance, reasoning included. Admitted under the $${admission?.maxCostUsd ?? "unknown"} cap. No request sent.\n`;
 }
