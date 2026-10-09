@@ -231,12 +231,25 @@ describe("the comparison", () => {
     await choose("lane-1");
     await choose("lane-2");
     await click(button("Compare selected (2/3)"));
-    const address = window.location.hash;
-    expect(address).toMatch(/^#\/compare\?lane=lane-1&lane=lane-2&clock=shared&at=\d+$/);
+    expect(window.location.hash).toMatch(
+      /^#\/compare\?lane=lane-1&lane=lane-2&clock=shared&at=\d+$/,
+    );
     expect(document.querySelectorAll(".compare-participant")).toHaveLength(2);
+    // Move the comparison clock 14 s past the start, so its address differs from a fresh one.
+    const seek = find<HTMLInputElement>('[aria-label="Seek comparison"]');
+    const later = Number(seek.min) + 14_000;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        seek,
+        String(later),
+      );
+      seek.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const address = window.location.hash;
+    expect(address).toBe(`#/compare?lane=lane-1&lane=lane-2&clock=shared&at=${later}`);
 
     await click(find('.compare-participant[data-stream-id="lane-1"] .compare-open'));
-    expect(window.location.hash).toBe("#/lane/lane-1/f/1");
+    expect(window.location.hash).toBe("#/lane/lane-1/f/3");
     expect(returnButton().getAttribute("aria-label")).toBe("Back to comparison");
 
     await click(returnButton());
