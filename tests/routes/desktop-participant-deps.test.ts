@@ -414,6 +414,50 @@ describe("computer use hands each participant the run's deps", () => {
   });
 });
 
+describe("each route hands the study's longest wait to its participants", () => {
+  it("computer use: each session and each Codex participant", async () => {
+    const { sessions, runSession } = recordingSessions();
+    const result = await runComputerUse({
+      cwd,
+      config: computerUseStudy({ ...CODEX, maxWaitMs: 90_000 }),
+      dryRun: false,
+      env: { E2B_API_KEY: ENV.E2B_API_KEY },
+      deps: { ...seams(), runSession },
+    });
+    expect(result.error).toBeUndefined();
+    expect(sessions.map((session) => session.maxWaitMs)).toEqual([90_000, 90_000]);
+    // The Codex tool description states the same limit the loop applies.
+    expect(
+      vi.mocked(createRestrictedCodexParticipant).mock.calls.map(([options]) => options?.maxWaitMs),
+    ).toEqual([90_000, 90_000]);
+  });
+
+  it("shared world: each session", async () => {
+    const { sessions, runSession } = recordingSessions(2);
+    const result = await runSharedWorld({
+      cwd,
+      config: provisionedStudy({ ...OPENAI, maxWaitMs: 90_000 }),
+      dryRun: false,
+      env: ENV,
+      deps: { ...seams(), runSession },
+    });
+    expect(result.error).toBeUndefined();
+    expect(sessions.map((session) => session.maxWaitMs)).toEqual([90_000, 90_000]);
+  });
+
+  it("no limit is passed when the study sets none, so the loop's default applies", async () => {
+    const { sessions, runSession } = recordingSessions();
+    await runComputerUse({
+      cwd,
+      config: computerUseStudy(OPENAI),
+      dryRun: false,
+      env: ENV,
+      deps: { ...seams(), runSession },
+    });
+    expect(sessions.map((session) => session.maxWaitMs)).toEqual([undefined, undefined]);
+  });
+});
+
 describe("computer use hands a caller's brain to each participant", () => {
   it("a caller's provider on the local VM, with the VM's signal on every session", async () => {
     const { sessions, runSession } = recordingSessions();

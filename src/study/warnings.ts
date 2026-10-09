@@ -95,6 +95,15 @@ const ACTOR_ROWS: readonly InertRow[] = [
     field: "actor.model",
     applies: (config, routes) => otherRoute(routes) && Boolean(config.actor?.model),
   },
+  // Only a computer-use loop dispatches wait actions; terminal, scripted and preview participants
+  // take none.
+  {
+    field: "actor.maxWaitMs",
+    reason:
+      "the longest wait action of a computer-use participant; needs route: computer-use or shared-world",
+    applies: (config, routes) =>
+      config.actor?.maxWaitMs !== undefined && !routes.cua && !routes.shared,
+  },
 ];
 
 const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered terminal actor";

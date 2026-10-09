@@ -8,6 +8,7 @@ import type {
 } from "../../actors/stop-conditions.js";
 import { isReasoningEffort, reasoningEffortNames } from "../../actors/reasoning-effort.js";
 import { isMaxOutputTokens } from "../../actors/output-token-limit.js";
+import { CUA_WAIT_LIMITS, isMaxWaitMs } from "../../actors/computer-use/wait.js";
 import { isHttpUrl } from "./subject.js";
 import { entryCredentialReason, urlCredentialReason } from "./url-credentials.js";
 import {
@@ -80,6 +81,13 @@ export function parseActorFields(
     if (!isMaxOutputTokens(entry.maxOutputTokens))
       return invalid(`${path}.maxOutputTokens must be a positive safe integer.`);
     actor.maxOutputTokens = entry.maxOutputTokens;
+  }
+  if (entry.maxWaitMs !== undefined) {
+    if (!isMaxWaitMs(entry.maxWaitMs))
+      return invalid(
+        `${path}.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMaxMs} to ${CUA_WAIT_LIMITS.mostMaxMs}.`,
+      );
+    actor.maxWaitMs = entry.maxWaitMs;
   }
   const localAgent = str(entry.localAgent);
   if (entry.localAgent !== undefined) {

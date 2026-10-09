@@ -50,6 +50,7 @@ const rules = new Map<string, Rule>([
     },
   ],
   ["invalid output limit", { mutate: (c) => (actor(c).maxOutputTokens = 0) }],
+  ["invalid wait limit", { mutate: (c) => (actor(c).maxWaitMs = 0) }],
   [
     "output limit with a caller provider",
     { mutate: (c) => (actor(c).maxOutputTokens = 1000), provider: true },
@@ -139,7 +140,9 @@ const pairs: [string, string][] = [
   ["invalid analysis", "unregistered actor"],
   ["unregistered actor", "media with firefox"],
   ["media with firefox", "invalid output limit"],
+  ["invalid output limit", "invalid wait limit"],
   ["invalid output limit", "output limit with a caller provider"],
+  ["invalid wait limit", "output limit with a caller provider"],
   ["output limit with a caller provider", "in-process real receiving"],
   ["real receiving with local-agent", "in-process real receiving"],
   ["in-process real receiving", "in-process media"],

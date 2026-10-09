@@ -370,6 +370,13 @@ export interface StudyActor {
   /** First-party OpenAI CUA only: per-response output limit including reasoning, not a dollar cap. */
   maxOutputTokens?: number;
   /**
+   * Computer-use and shared-world: the longest one `wait` action lasts, in whole milliseconds from
+   * 1000 to 600000. Default 120000, or 30000 on a desktop with speech. A longer wait is shortened
+   * to it, the trace records a `wait shortened` notice, and the participant is told on its next
+   * turn.
+   */
+  maxWaitMs?: number;
+  /**
    * `local-agent` only: which locally signed-in coding agent is the brain. Absent = codex.
    *
    * A separate field from `model` on purpose. The first cut of this route overloaded `model` to

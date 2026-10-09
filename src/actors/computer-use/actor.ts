@@ -67,6 +67,8 @@ export interface CuaActorSessionOptions {
   acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   idleSteps?: number;
   noProgressSteps?: number;
+  /** The longest one wait action lasts, forwarded to the loop. See LoopRunOptions.maxWaitMs. */
+  maxWaitMs?: number;
   /**
    * Redact persisted screenshots (blur+downscale). Default `false`: full fidelity for local use.
    * Set true for unowned subjects or share-as-is bundles. The provider always sees raw frames.
@@ -129,6 +131,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     ...(options.idleSteps === undefined ? {} : { idleSteps: options.idleSteps }),
     ...(options.noProgressSteps === undefined ? {} : { noProgressSteps: options.noProgressSteps }),
+    ...(options.maxWaitMs === undefined ? {} : { maxWaitMs: options.maxWaitMs }),
     ...(options.acknowledgeSafetyChecks === undefined
       ? {}
       : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),

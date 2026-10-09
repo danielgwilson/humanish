@@ -123,6 +123,7 @@ export const ACTOR = {
   mission: true,
   model: true,
   maxOutputTokens: true,
+  maxWaitMs: true,
   localAgent: true,
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
