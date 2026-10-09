@@ -6,7 +6,7 @@ import {
   analysisCostRange,
   isSupportedAnalysisModel,
 } from "./execute.js";
-import { ADMISSION_MARGIN } from "./admission.js";
+import { admissionRule } from "./admission.js";
 import { plural } from "../run/text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { AnalysisConfig } from "./types.js";
@@ -195,8 +195,7 @@ export function automaticAnalysisBudget(
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
-  // Admission admits a request when either figure is within the cap (admission.ts).
-  const rule = `both its worst case and its expected cost plus a ${Math.round((ADMISSION_MARGIN - 1) * 100)}% margin are over $${budget.maxCostUsd}`;
+  const rule = admissionRule(`$${budget.maxCostUsd}`);
   const who =
     budget.participants === undefined ? undefined : plural(budget.participants, "participant");
   const range =

@@ -59,9 +59,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   evidence up to the limits, which the default $3 cap refuses: a one-participant study read
   `expected $0.75 to $3.79` and now reads `expected $0.75 to $2.83`. The line states the rule as
   admission applies it: the analysis is refused when both its worst case and its expected cost
-  plus a 10% margin are over the cap. When the cap refuses even a run that keeps no evidence, the
-  line says so, and `study check --json` gives that run's expected cost as
-  `analysis.refusedFromUsd` in place of `analysis.expectedCostUsd` (#1720).
+  plus a 10% margin are over the cap. `humanish doctor` and the help for `analyze --max-cost` now
+  state it in the same words; both said the expected cost plus the margin alone. When the cap
+  refuses even a run that keeps no evidence, the line says so, and `study check --json` gives that
+  run's expected cost as `analysis.refusedFromUsd` in place of `analysis.expectedCostUsd` (#1720).
 - In `humanish tui`, Esc on the keys screen after entering a key goes back to the screen the keys
   were opened from. It went to the studies list, because the surface mounts again after the
   hidden prompt and started over (#1720).

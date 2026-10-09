@@ -21,6 +21,7 @@ import {
   protocolIncompatibilityMessage,
 } from "../actors/codex/protocol-compat.js";
 import type { DoctorCheckDraft } from "../cli/doctor.js";
+import { admissionRule } from "../analysis/admission.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
@@ -523,7 +524,7 @@ async function analysisCheck(
     ok: true,
     ...(keyed ? {} : { status: "note" as const }),
     message: keyed
-      ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. The analysis is refused before it starts if its expected cost plus a 10% margin is over $${analysis.maxCostUsd}; this is not a billing cap. Participant readiness is independent.`
+      ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. The analysis is refused before it starts if ${admissionRule(`$${analysis.maxCostUsd}`)}; this is not a billing cap. Participant readiness is independent.`
       : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
   };
 }

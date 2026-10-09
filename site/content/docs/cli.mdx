@@ -218,7 +218,7 @@ humanish analyze [options] [command]
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
-| `--max-cost <usd>` | Required for OpenAI, also with --dry-run: send nothing when the expected cost in USD, plus a 10% margin, is above this. It does not limit billing. Unsupported for Codex. |
+| `--max-cost <usd>` | Required for OpenAI, also with --dry-run: an analysis is refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this. It does not limit billing. Unsupported for Codex. |
 | `--model <id>` | Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort. (default: "gpt-6-astra") |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
 | `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
