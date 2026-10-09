@@ -17,6 +17,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   `execution.concurrency` above the limit is refused before any sandbox is created, with the
   setting value that would admit it. `doctor` shows the limit on an `e2b concurrent sandboxes`
   row. A local desktop study keeps its own capacity checks (#1737).
+- A computer-use or shared-world study can start its participants over time:
+  `participants[].startAfterMs` starts a participant that many milliseconds after the run starts
+  its participants (up to 24 hours), and a group's `startEveryMs` spreads its members, member k at
+  `startAfterMs + (k - 1) * startEveryMs`. Each participant's desktop is created at its start. One
+  whose start comes while every slot is taken waits for the next free one. `study check` and the
+  run's plan print the first and last start and the most participants at once, and run.json
+  records each participant's `arrival` with its scheduled and actual start. A provisioned shared
+  world's app sandbox serves until the last participant ends, and a study whose last start puts
+  that past `HUMANISH_E2B_MAX_SANDBOX_MINUTES` is refused before anything is created (#1737).
 
 ### Changed
 
@@ -37,6 +46,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   the first 16 and reported a partial result. The skip does not fail a run whose study declares
   no `review.analysis`; with a declared `review.analysis` the run exits 2, as for any analysis it
   asked for and did not get (#1737).
+- A provisioned shared-world study that runs in waves asks E2B for an app sandbox that lives until
+  the last wave can end, and is refused when that passes `HUMANISH_E2B_MAX_SANDBOX_MINUTES`. Its
+  app sandbox lived one session plus provisioning, which a second wave could outlast (#1737).
 - A shared-world study's omitted `execution.concurrency` is no longer filled with the participant
   count by the parser. The planner resolves it, from the participants and the E2B plan's limit,
   and a declared value above the participant count is clamped to it, as on computer use.

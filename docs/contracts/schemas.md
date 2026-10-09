@@ -215,6 +215,18 @@ The rest of this section names keys by their v3 spelling:
   `<id>-01` … `<id>-NN`, even when n is 1, before the engine runs (`viewer-01`,
   `viewer-02`, ...), so the runtime and run bundle keep one normalized participant
   shape. Ids are checked for collisions after expansion;
+- `participants[].startAfterMs` (computer-use and shared-world): when the participant
+  starts, in whole milliseconds after the run starts its participants, from 0 to 86,400,000
+  (24 hours). A `count` group's `startEveryMs` gives member k the start
+  `startAfterMs + (k - 1) * startEveryMs`, expanded at parse time like the ids. Refused: an
+  interval without `count`, a member past 24 hours, a start on a study of one participant, and a
+  later start for the external-public `host`. Participants start in order of their starts, each
+  at its time or when a slot frees under `execution.concurrency` and the E2B plan's limit,
+  whichever is later (`runOnSchedule` in `src/study/arrivals.ts`). Each participant's desktop is
+  created when it starts. The plan (`arrivals`, `planArrivals`) reports the first and last start
+  and the most participants at once with every session at its full budget, and the provisioned
+  shared world's subject sandbox serves until the last session can end, which the plan checks
+  against the sandbox ceiling. A rerun starts its selected participants together;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
   simultaneously: both routes resolve it when they plan, from the final participant count
@@ -516,7 +528,13 @@ Core-owned fields:
 - `artifactRoot`
 - `source.git`
 - `lifecycle`
-- `simulations`
+- `simulations`: one record per participant. On the computer-use and shared-world routes, a
+  study that declares `participants[].startAfterMs` gives each record `arrival:
+  { startAfterMs, scheduledAt?, startedAt? }`: the participant's offset (0 when its entry declares
+  none), the moment the run started its participants plus that offset, and when its desktop was
+  requested, which is later than `scheduledAt` when it waited for a free slot. A dry run records
+  only the offset, and a participant that never started has no `startedAt`. The record's own
+  `startedAt` is the run's creation time.
 - `streams`
 - `events`
 - `redaction`

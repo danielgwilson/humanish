@@ -16,7 +16,8 @@ import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-u
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantCaption } from "../../run/participant-caption.js";
 import { participantSummary } from "../../run/outcomes.js";
-import type { ConcurrentBundleArgs } from "./types.js";
+import type { ActorRunResult, ConcurrentBundleArgs } from "./types.js";
+import { arrivalRecord, type ParticipantArrival } from "../../study/arrivals.js";
 
 /** What every participant's records share. */
 export interface SharedWorldRecordContext {
@@ -124,7 +125,20 @@ function sharedWorldSimulation(
     ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
+    ...(args.plan.arrivals.declared
+      ? {
+          arrival: arrivalRecord(spec.planned.startAfterMs, actorArrival(args.actorResults[index])),
+        }
+      : {}),
   });
+}
+
+// A follower the handoff stopped before it opened the app never started its desktop.
+function actorArrival(result: ActorRunResult | undefined): ParticipantArrival | undefined {
+  if (result === undefined) return undefined;
+  return result.outcome.skippedReason === undefined
+    ? { scheduledAt: result.scheduledAt, startedAt: result.startedAt }
+    : { scheduledAt: result.scheduledAt };
 }
 
 function sharedWorldStream(

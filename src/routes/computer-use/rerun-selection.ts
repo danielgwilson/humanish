@@ -92,14 +92,17 @@ export async function resolveCuaRerunSelection(args: {
     };
   }
 
-  const selectedSpecs = selectedIds.map((id) => specsById.get(id)!);
+  // A rerun runs the selected participants again now, all together: the study's start offsets
+  // placed them in the first run's day, and that day is over.
+  const selectedSpecs = selectedIds.map((id) => startingWithTheRun(specsById.get(id)!));
   const selectedPlanIds = new Set(selectedIds);
-  const selectedPlanEntries = args.participantPlan.lanes.filter((entry) =>
-    selectedPlanIds.has(entry.id),
-  );
+  const selectedPlanEntries = args.participantPlan.lanes
+    .filter((entry) => selectedPlanIds.has(entry.id))
+    .map(({ startAfterMs: _offset, ...entry }) => entry);
   const concurrency = Math.max(1, Math.min(args.participantPlan.concurrency, selectedSpecs.length));
+  const { schedule: _schedule, ...unscheduled } = args.participantPlan;
   const participantPlan: CuaParticipantPlan = {
-    ...args.participantPlan,
+    ...unscheduled,
     laneCount: selectedSpecs.length,
     concurrency,
     waves: Math.ceil(selectedSpecs.length / concurrency),
@@ -118,6 +121,12 @@ export async function resolveCuaRerunSelection(args: {
       previous,
     },
   };
+}
+
+function startingWithTheRun(spec: DesktopParticipantRun): DesktopParticipantRun {
+  if (spec.planned.startAfterMs === undefined) return spec;
+  const { startAfterMs: _offset, ...planned } = spec.planned;
+  return { ...spec, planned };
 }
 
 function uniqueIds(values: string[]): string[] {

@@ -338,6 +338,12 @@ export interface StudyParticipantEntry {
    * into the follower missions at a host-first barrier. Inert/warned on every other route.
    */
   host?: boolean;
+  /**
+   * Computer use and shared world: when this participant starts, in milliseconds after the run
+   * starts its participants (0 to 86,400,000). A group's `startEveryMs` sets it for each member.
+   * Absent, the participant starts with the run. src/study/arrivals.ts schedules the start.
+   */
+  startAfterMs?: number;
 }
 
 export interface StudyActor {
@@ -821,6 +827,15 @@ type StudyParticipants = number | StudyParticipantGroup | StudyParticipantEntry[
 export interface StudyParticipantGroup {
   count?: number;
   instruction?: string;
+}
+
+/**
+ * The keys a `participants` list entry with `count` adds to an entry's. parseStudy expands the
+ * group into its members, and member k starts at `startAfterMs + (k - 1) * startEveryMs`.
+ */
+export interface StudyParticipantListGroup {
+  count?: number;
+  startEveryMs?: number;
 }
 
 /** The scripted surfaces: desktop, or desktop and mobile. */

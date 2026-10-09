@@ -177,9 +177,10 @@ const V2_KEYS: KeyShape = {
   actors: {
     type: true,
     count: true,
-    lanes: PARTICIPANT_ENTRY,
+    // startAfterMs arrived after v2, so a v2 participant cannot carry it.
+    lanes: without(PARTICIPANT_ENTRY, "startAfterMs"),
     // Roster groups are participants with a count; the parser expanded them into `lanes[]`.
-    roster: { ...PARTICIPANT_ENTRY, count: true },
+    roster: { ...without(PARTICIPANT_ENTRY, "startAfterMs"), count: true },
     // maxWaitMs and idleWaitMs arrived after v2, so a v2 file cannot carry them.
     ...without(ACTOR, "type", "maxWaitMs", "idleWaitMs"),
     laneFocus: { id: true, label: true, instruction: true },

@@ -53,6 +53,8 @@ interface DesktopParticipant extends Participant {
     /** actor.idleWaitMs: how long a wait with no duration lasts while the participant only waits. */
     readonly idleWaitMs?: number;
   };
+  /** When it starts, in ms after the run starts its participants; absent, with the run. */
+  readonly startAfterMs?: number;
 }
 
 /** Only independent computer-use participants consume a task protocol and their own target. */
@@ -129,6 +131,7 @@ function desktopParticipant(
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
       ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     },
+    ...(entry?.startAfterMs === undefined ? {} : { startAfterMs: entry.startAfterMs }),
   };
 }
 

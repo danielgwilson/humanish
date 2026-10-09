@@ -117,7 +117,7 @@ export HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES=100
 npx humanish doctor
 ```
 
-`doctor` prints the limit in use on its `e2b concurrent sandboxes` row. A study runs every participant at once unless `execution.concurrency` sets fewer. When the limit is lower than that, the participants run in waves, and the plan says how many run at a time and which setting raises it. An `execution.concurrency` above the limit is refused before any sandbox is created, with the setting value that would admit it. A local desktop study (`execution.target: local`) has its own capacity checks and does not read this setting. Like the sandbox ceiling, set it in your shell or in a `--dotenv` file.
+`doctor` prints the limit in use on its `e2b concurrent sandboxes` row. A study runs every participant at once unless `execution.concurrency` sets fewer or the study [starts participants over time](/docs/study-files#start-participants-over-time). When the limit is lower than that, the participants run in waves, and the plan says how many run at a time and which setting raises it. A participant whose start comes while every slot is taken waits for the next free one. An `execution.concurrency` above the limit is refused before any sandbox is created, with the setting value that would admit it. A local desktop study (`execution.target: local`) has its own capacity checks and does not read this setting. Like the sandbox ceiling, set it in your shell or in a `--dotenv` file.
 
 Waves change how long a run takes. Each participant's desktop and model time stays the same, and `caps.maxUsd` and `caps.maxTotalUsd` bound the spend. A study has at most 100 participants on any plan.
 

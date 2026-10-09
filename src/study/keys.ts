@@ -11,6 +11,7 @@ import type {
   StudyConfig,
   StudyParticipantEntry,
   StudyParticipantGroup,
+  StudyParticipantListGroup,
   StudySubject,
 } from "./types.js";
 
@@ -64,6 +65,7 @@ export const PARTICIPANT_ENTRY = {
   target: true,
   entry: true,
   host: true,
+  startAfterMs: true,
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,
@@ -203,7 +205,8 @@ const STUDY_KEYS = {
   participants: {
     ...PARTICIPANT_ENTRY,
     count: true,
-  } satisfies Keys<StudyParticipantEntry & StudyParticipantGroup>,
+    startEveryMs: true,
+  } satisfies Keys<StudyParticipantEntry & StudyParticipantGroup & StudyParticipantListGroup>,
   surfaces: true,
   caps: CAPS,
   execution: EXECUTION,

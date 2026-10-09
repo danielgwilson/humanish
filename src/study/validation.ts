@@ -17,6 +17,7 @@ import {
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { participantList } from "./study-fields.js";
+import { isStartAfterMs, rosterStartsReason, startAfterMessage } from "./arrivals.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -93,6 +94,9 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
       if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
         return `participants[${index}] must be an object.`;
       }
+      if (entry.startAfterMs !== undefined && !isStartAfterMs(entry.startAfterMs)) {
+        return startAfterMessage(`participants[${index}].startAfterMs`);
+      }
       const id = entry.id;
       if (id === undefined) {
         continue;
@@ -109,6 +113,7 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
       }
       seenIds.add(id);
     }
+    return rosterStartsReason(roster) ?? null;
   }
   return null;
 }

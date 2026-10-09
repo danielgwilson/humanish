@@ -16,7 +16,15 @@ import type { StudyConfig } from "./types.js";
 
 export type Base = Omit<
   ComputerUsePlan,
-  "route" | "actor" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
+  | "route"
+  | "actor"
+  | "runner"
+  | "concurrency"
+  | "arrivals"
+  | "sessionBudgetMs"
+  | "sandboxMs"
+  | "caps"
+  | "rerun"
 >;
 
 // A YAML alias can make a parsed record contain itself (an inline persona that names its own

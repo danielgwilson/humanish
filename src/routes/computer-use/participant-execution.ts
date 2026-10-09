@@ -4,7 +4,7 @@ import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaParticipantDiagnostics } from "./diagnostics.js";
-import { mapWithConcurrency } from "../../run/concurrency.js";
+import { runOnSchedule, type ParticipantArrival } from "../../study/arrivals.js";
 import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import {
@@ -58,9 +58,14 @@ export function makeParticipantWriteScreenshot(
 }
 
 /** A blocked participant outcome (pipeline gate / fail-fast skipped it before it ran). */
-function skippedOutcome(spec: DesktopParticipantRun, reason: string): ParticipantRunOutcome {
+function skippedOutcome(
+  spec: DesktopParticipantRun,
+  reason: string,
+  arrival?: ParticipantArrival,
+): ParticipantRunOutcome {
   return {
     spec,
+    ...(arrival === undefined ? {} : { arrival }),
     killed: false,
     streamUrlPresent: false,
     screenshots: [],
@@ -182,10 +187,12 @@ export async function runCuaParticipant(
 }
 
 /**
- * Run N>1 E2B participants with bounded concurrency, a pipeline gate (the first provisions
- * before the rest start), and session fail-fast on harness errors only (queued participants
- * become `blocked` with a pinned reason + a fail-fast event; mission verdicts never trip it).
- * Each participant tears down its own sandbox by id; nothing here ever enumerates.
+ * Run N>1 E2B participants on the study's schedule (runOnSchedule: each at its start offset, at
+ * most `concurrency` at once), behind a pipeline gate (the first to start provisions before the
+ * rest start) and session fail-fast on harness errors only (queued participants become `blocked`
+ * with a pinned reason + a fail-fast event; mission verdicts never trip it). A gate failure or a
+ * fail-fast ends every wait for a later start at once. Each participant tears down its own sandbox
+ * by id; nothing here ever enumerates.
  *
  * Exported for the total-runner tests: the injectable runner lets a test make one participant
  * throw (the exact class the guard exists for) without a live sandbox. Production always uses
@@ -198,34 +205,47 @@ export async function runCuaParticipants(
   runParticipant: typeof runCuaParticipant = runCuaParticipant,
 ): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
+  const stopping = new AbortController();
+  let gateHolder = runs[0]?.planned.id ?? "lane-01";
   let resolveGate: (() => void) | undefined;
   let rejectGate: (() => void) | undefined;
   const gate = new Promise<void>((resolve, reject) => {
     resolveGate = resolve;
-    rejectGate = () => reject(new Error("gate"));
+    rejectGate = () => {
+      reject(new Error("gate"));
+      stopping.abort();
+    };
   });
   // The gate is rejected on the first participant's provisioning failure; swallow the unhandled
   // rejection if no later participant ever awaits it (concurrency could let the first finish
   // alone).
   gate.catch(() => undefined);
 
-  const outcomes = await mapWithConcurrency(
+  const outcomes = await runOnSchedule(
     runs,
-    concurrency,
-    async (spec, index): Promise<ParticipantRunOutcome> => {
-      if (index > 0) {
+    {
+      startAfterMs: (spec) => spec.planned.startAfterMs,
+      slots: concurrency,
+      now: deps.now,
+      signal: stopping.signal,
+    },
+    async (spec, _index, { order, scheduledAt }): Promise<ParticipantRunOutcome> => {
+      if (order === 0) gateHolder = spec.planned.id;
+      if (order > 0) {
         try {
           await gate;
         } catch {
           return skippedOutcome(
             spec,
-            `skipped: participant ${runs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
+            `skipped: participant ${gateHolder} failed to provision its world (pipeline gate)`,
+            { scheduledAt },
           );
         }
       }
       if (failFast.tripped) {
-        return skippedOutcome(spec, `skipped: ${failFast.reason}`);
+        return skippedOutcome(spec, `skipped: ${failFast.reason}`, { scheduledAt });
       }
+      const arrival = { scheduledAt, startedAt: deps.now() };
       // The participant runner is total: every exit path returns a recorded outcome. Without this
       // guard, one participant's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
       // already torn down) rejected the whole map while sibling workers kept launching sandboxes
@@ -234,7 +254,7 @@ export async function runCuaParticipants(
       try {
         outcome = await runParticipant(spec, {
           ...deps,
-          ...(index === 0
+          ...(order === 0
             ? {
                 signalProvisioned: (ok: boolean) => {
                   if (ok) {
@@ -249,7 +269,7 @@ export async function runCuaParticipants(
       } catch (error) {
         // The first participant may have thrown before signaling the provisioning gate; release the followers as
         // blocked rather than leaving them awaiting a gate that will never settle.
-        if (index === 0) rejectGate?.();
+        if (order === 0) rejectGate?.();
         const detail = redactText(toErrorMessage(error));
         outcome = {
           spec,
@@ -269,8 +289,9 @@ export async function runCuaParticipants(
       if (outcome.harnessError && !failFast.tripped) {
         failFast.tripped = true;
         failFast.reason = `a prior participant (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
+        stopping.abort();
       }
-      return outcome;
+      return { ...outcome, arrival };
     },
   );
 
