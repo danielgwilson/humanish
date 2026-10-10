@@ -10,6 +10,7 @@ import { renderObserver, serveObserver } from "../dist/observer/render.js";
 import { serveObserverLibrary } from "../dist/observer/serve.js";
 import { serveObserverStatic } from "./lib/static-observer-server.ts";
 import { runDryRun } from "../dist/run/dry-run.js";
+import { bounded } from "./observer-proof-wait.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const candidates = [
@@ -84,7 +85,7 @@ try {
   assert.ok(address && typeof address === "object");
   const providerOrigin = `http://127.0.0.1:${address.port}`;
   browser = await chromium.launch({ executablePath, headless: true });
-  const page = await browser.newPage();
+  const page = await bounded("Opening the Observer page", browser.newPage());
   let blockedFrames = 0;
   page.on("console", (message) => {
     if (/frame-ancestors|X-Frame-Options/.test(message.text())) blockedFrames++;
@@ -194,7 +195,7 @@ try {
     ["staticRawHtml", new URL("/static.html", staticObserver.url).href],
     ["staticActiveSvg", new URL("/active.svg", staticObserver.url).href],
   ]) {
-    const artifactPage = await browser.newPage();
+    const artifactPage = await bounded(`${label}: opening a page`, browser.newPage());
     const response = await artifactPage.goto(url);
     assert.equal(
       response.headers()["content-security-policy"],
@@ -211,18 +212,18 @@ try {
       { scripts: true, read: "blocked", storage: "blocked" },
     );
     checks[`${label}Isolated`] = true;
-    await artifactPage.close();
+    await bounded(`${label}: closing the page`, artifactPage.close());
   }
   for (const [label, base, artifactPath] of [
     ["attached", observer.url, "/active.svg"],
     ["library", library.url, "/_humanish/runs/synthetic-iframe-study/active.svg"],
   ]) {
-    const artifactPage = await browser.newPage();
+    const artifactPage = await bounded(`${label} SVG: opening a page`, browser.newPage());
     const response = await artifactPage.goto(new URL(artifactPath, base).href);
     assert.equal(response.headers()["content-type"], "text/plain; charset=utf-8");
     assert.equal(await artifactPage.evaluate(() => window.artifactScriptExecuted), undefined);
     checks[`${label}SvgRemainsInert`] = true;
-    await artifactPage.close();
+    await bounded(`${label} SVG: closing the page`, artifactPage.close());
   }
   for (const [label, url] of [
     ["attached", observer.url],
@@ -231,15 +232,18 @@ try {
       new URL("/_humanish/runs/synthetic-iframe-study/observer//index.html", library.url).href,
     ],
   ]) {
-    const generatedPage = await browser.newPage();
+    const generatedPage = await bounded(`${label} Observer: opening a page`, browser.newPage());
     const response = await generatedPage.goto(url);
     assert.equal(response.headers()["content-security-policy"], "frame-ancestors 'none'");
     assert.equal(
-      await generatedPage.evaluate(async (target) => (await fetch(target)).text(), siblingPath),
+      await bounded(
+        `${label} Observer: fetching a sibling run's file`,
+        generatedPage.evaluate(async (target) => (await fetch(target)).text(), siblingPath),
+      ),
       marker,
     );
     checks[`${label}GeneratedObserverRetainsOrigin`] = true;
-    await generatedPage.close();
+    await bounded(`${label} Observer: closing the page`, generatedPage.close());
   }
   const receipt = {
     schema: "humanish.observer-iframe-proof.v1",
@@ -254,14 +258,17 @@ try {
   await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, checks }));
 } finally {
-  await browser?.close();
+  if (browser) await bounded("Closing the browser", browser.close());
   if (provider)
-    await new Promise((resolve) => {
-      provider.close(resolve);
-      provider.closeAllConnections();
-    });
-  await observer?.close();
-  await library?.close();
-  await staticObserver?.close();
+    await bounded(
+      "Closing the provider server",
+      new Promise((resolve) => {
+        provider.close(resolve);
+        provider.closeAllConnections();
+      }),
+    );
+  if (observer) await bounded("Closing the Observer server", observer.close());
+  if (library) await bounded("Closing the library server", library.close());
+  if (staticObserver) await bounded("Closing the static server", staticObserver.close());
   await rm(cwd, { recursive: true, force: true });
 }

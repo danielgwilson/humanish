@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { analysisFixture, fixture, screenshot } from "./observer-browser-fixtures.mjs";
+import { bounded } from "./observer-proof-wait.mjs";
 
 // Bounded supplement to observer-browser-proof: appearance, pin visibility,
 // library motion and fitted card geometry over synthetic retained recordings.
@@ -88,17 +89,21 @@ for (const candidate of candidates) {
 }
 const browser = await chromium.launch({ executablePath, headless: true });
 const results = [];
-async function settle(page) {
-  await page.evaluate(async () => {
-    // Base UI clears its starting style on an animation frame. Wait for that
-    // transition to exist before waiting for it to finish and taking a receipt.
-    await new Promise(requestAnimationFrame);
-    await new Promise(requestAnimationFrame);
-    await Promise.all(
-      document.getAnimations().map((animation) => animation.finished.catch(() => {})),
-    );
-    await new Promise(requestAnimationFrame);
-  });
+async function settle(page, when) {
+  await bounded(
+    `Settling animations ${when}`,
+    page.evaluate(async () => {
+      // Base UI clears its starting style on an animation frame. Wait for that
+      // transition to exist before waiting for it to finish and taking a receipt.
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      await Promise.all(
+        document.getAnimations().map((animation) => animation.finished.catch(() => {})),
+      );
+      await new Promise(requestAnimationFrame);
+    }),
+    5000,
+  );
 }
 async function chooseDensity(page, value) {
   await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
@@ -126,23 +131,26 @@ try {
         unexpectedNetwork: [],
       };
       results.push(record);
-      const context = await browser.newContext({
-        viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
-        hasTouch: phone,
-        isMobile: phone,
-        colorScheme: "light",
-        reducedMotion: reduced ? "reduce" : "no-preference",
-      });
+      const context = await bounded(
+        `${id}: opening a browser context`,
+        browser.newContext({
+          viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
+          hasTouch: phone,
+          isMobile: phone,
+          colorScheme: "light",
+          reducedMotion: reduced ? "reduce" : "no-preference",
+        }),
+      );
       await context.route("**/*", (route) => {
         if (new URL(route.request().url()).origin === origin) return route.continue();
         record.unexpectedNetwork.push(route.request().url());
         return route.abort();
       });
-      const page = await context.newPage();
+      const page = await bounded(`${id}: opening a page`, context.newPage());
       page.setDefaultTimeout(8000);
       page.on("pageerror", (error) => record.errors.push(error.message));
       async function snap(name) {
-        await settle(page);
+        await settle(page, `before the ${name} screenshot`);
         const file = `${id}-${name}.png`;
         await page.screenshot({ path: path.join(output, file) });
         record.screenshots.push(file);
@@ -152,9 +160,14 @@ try {
         await page.locator(".card").first().waitFor();
         for (const density of ["compact", "comfortable", "large"]) {
           await chooseDensity(page, density);
-          for (const image of await page.locator(".keyframe").all()) {
+          const images = await page.locator(".keyframe").all();
+          for (const [index, image] of images.entries()) {
             await image.scrollIntoViewIfNeeded();
-            await image.evaluate((element) => element.decode());
+            await bounded(
+              `${density} density: decoding keyframe ${index + 1} of ${images.length}`,
+              image.evaluate((element) => element.decode()),
+              5000,
+            );
           }
           const geometry = await page.locator(".card").evaluateAll((cards) =>
             cards.map((card) => {
@@ -231,7 +244,7 @@ try {
         if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
         const side = phone ? page.locator(".drawer-pop .side") : page.locator(".frame > .side");
         await side.waitFor();
-        await settle(page);
+        await settle(page, "after opening the library");
         const darkAction = side.getByRole("button", { name: "Switch to dark theme", exact: true });
         assert.equal(await darkAction.locator("svg").count(), 1);
         // The system remains authoritative until a user selects a theme.
@@ -273,7 +286,7 @@ try {
           );
           await toggle.click();
           await side.waitFor();
-          await settle(page);
+          await settle(page, "after expanding the library");
           assert(
             await side.evaluate((element, prior) => element === prior, handle),
             "Collapse remounted the library",
@@ -290,7 +303,7 @@ try {
           await side.waitFor({ state: "hidden" });
           await toggle.click();
           await side.waitFor();
-          await settle(page);
+          await settle(page, "after reopening the library drawer");
           await side.getByRole("button", { name: "Switch to light theme", exact: true }).waitFor();
         }
         const libraryBounds = await side.boundingBox();
@@ -308,15 +321,13 @@ try {
         record.error = String(error.stack ?? error);
         await snap("failure").catch(() => {});
       } finally {
-        await context.close();
+        await bounded(`${id}: closing the browser context`, context.close());
       }
       process.stdout.write(
         `${record.status.toUpperCase()} ${id}${record.error ? `: ${record.error.split("\n")[0]}` : ""}\n`,
       );
     }
 } finally {
-  await browser.close();
-  await new Promise((resolve) => server.close(resolve));
   await writeFile(
     path.join(output, "proof.json"),
     JSON.stringify(
@@ -330,5 +341,7 @@ try {
     ),
   );
   process.stdout.write(`Proof: ${output}\n`);
+  await bounded("Closing the browser", browser.close());
+  await bounded("Closing the fixture server", new Promise((resolve) => server.close(resolve)));
 }
 if (results.some((result) => result.status !== "passed")) process.exitCode = 1;

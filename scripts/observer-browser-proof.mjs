@@ -18,6 +18,7 @@ import {
 } from "./observer-browser-fixtures.mjs";
 
 import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
+import { bounded } from "./observer-proof-wait.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -312,9 +313,13 @@ async function inspectImages(locator) {
   for (let n = 0; n < (await locator.count()); n += 1) {
     const image = locator.nth(n);
     await image.scrollIntoViewIfNeeded();
-    await image.evaluate(async (element) => {
-      if (!element.complete) await element.decode();
-    });
+    await bounded(
+      `Decoding screenshot image ${n + 1}`,
+      image.evaluate(async (element) => {
+        if (!element.complete) await element.decode();
+      }),
+      5000,
+    );
     measurements.push(
       await image.evaluate((element) => {
         const rect = element.getBoundingClientRect();
@@ -563,34 +568,38 @@ async function readyCapture(locator, expectedSource) {
       ),
     "Expected capture did not finish loading before decode",
   );
-  return locator.evaluate(async (element, source) => {
-    if (!element.getAttribute("src")?.endsWith(source))
-      throw new Error("Capture source changed before decoding");
-    await element.decode();
-    if (!element.complete || !element.naturalWidth || !element.naturalHeight)
-      throw new Error("Capture did not decode");
-    // Async image decoding can finish after the route and dimensions are ready.
-    // Let the browser paint the decoded capture before retaining visual proof.
-    await new Promise(requestAnimationFrame);
-    await new Promise(requestAnimationFrame);
-    const bounds = element.getBoundingClientRect(),
-      css = getComputedStyle(element);
-    if (!element.isConnected || !element.getAttribute("src")?.endsWith(source))
-      throw new Error("Capture changed before painting");
-    if (
-      bounds.width <= 0 ||
-      bounds.height <= 0 ||
-      css.visibility !== "visible" ||
-      Number(css.opacity) !== 1
-    )
-      throw new Error("Decoded capture is not visible");
-    return {
-      source: element.getAttribute("src"),
-      natural: [element.naturalWidth, element.naturalHeight],
-      bounds: bounds.toJSON(),
-      complete: element.complete,
-    };
-  }, expectedSource);
+  return bounded(
+    `Decoding and painting capture ${expectedSource}`,
+    locator.evaluate(async (element, source) => {
+      if (!element.getAttribute("src")?.endsWith(source))
+        throw new Error("Capture source changed before decoding");
+      await element.decode();
+      if (!element.complete || !element.naturalWidth || !element.naturalHeight)
+        throw new Error("Capture did not decode");
+      // Async image decoding can finish after the route and dimensions are ready.
+      // Let the browser paint the decoded capture before retaining visual proof.
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      const bounds = element.getBoundingClientRect(),
+        css = getComputedStyle(element);
+      if (!element.isConnected || !element.getAttribute("src")?.endsWith(source))
+        throw new Error("Capture changed before painting");
+      if (
+        bounds.width <= 0 ||
+        bounds.height <= 0 ||
+        css.visibility !== "visible" ||
+        Number(css.opacity) !== 1
+      )
+        throw new Error("Decoded capture is not visible");
+      return {
+        source: element.getAttribute("src"),
+        natural: [element.naturalWidth, element.naturalHeight],
+        bounds: bounds.toJSON(),
+        complete: element.complete,
+      };
+    }, expectedSource),
+    5000,
+  );
 }
 const studySlider = (page) =>
   page.getByRole("slider", { name: "Seek study recording", exact: true });
@@ -817,11 +826,14 @@ async function runCase(id, options, action) {
   const requestStart = requests.length;
   const directory = path.join(output, id);
   await mkdir(directory);
-  const context = await browser.newContext({
-    viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
-    deviceScaleFactor: options.dpr ?? 1,
-    ...(options.touch ? { hasTouch: true, isMobile: true } : {}),
-  });
+  const context = await bounded(
+    `${id}: opening a browser context`,
+    browser.newContext({
+      viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
+      deviceScaleFactor: options.dpr ?? 1,
+      ...(options.touch ? { hasTouch: true, isMobile: true } : {}),
+    }),
+  );
   const unexpectedNetwork = [];
   await context.route("**/*", (route) => {
     const target = new URL(route.request().url());
@@ -830,7 +842,7 @@ async function runCase(id, options, action) {
     unexpectedNetwork.push(`${target.protocol}//${target.host}${target.pathname}`);
     return route.abort();
   });
-  const page = await context.newPage();
+  const page = await bounded(`${id}: opening a page`, context.newPage());
   page.setDefaultTimeout(8000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -843,63 +855,68 @@ async function runCase(id, options, action) {
   };
   async function snap(label) {
     if (id.startsWith("grid-playback-") || id.startsWith("global-playback-"))
-      await page.evaluate(async () => {
-        // Retain painted evidence, including after native seek events. Offscreen
-        // lazy images do not need to load merely to photograph this viewport.
-        const visible = [...document.images].filter((image) => {
-          if (getComputedStyle(image).visibility === "hidden") return false;
-          const box = image.getBoundingClientRect();
-          let left = Math.max(0, box.left),
-            right = Math.min(innerWidth, box.right),
-            top = Math.max(0, box.top),
-            bottom = Math.min(innerHeight, box.bottom);
-          for (let parent = image.parentElement; parent; parent = parent.parentElement) {
-            const css = getComputedStyle(parent),
-              bounds = parent.getBoundingClientRect();
-            if (["hidden", "clip", "auto", "scroll"].includes(css.overflowX)) {
-              left = Math.max(left, bounds.left);
-              right = Math.min(right, bounds.right);
+      await bounded(
+        `Loading and decoding the visible captures for the ${label} screenshot`,
+        page.evaluate(async () => {
+          // Retain painted evidence, including after native seek events. Offscreen
+          // lazy images do not need to load merely to photograph this viewport.
+          const visible = [...document.images].filter((image) => {
+            if (getComputedStyle(image).visibility === "hidden") return false;
+            const box = image.getBoundingClientRect();
+            let left = Math.max(0, box.left),
+              right = Math.min(innerWidth, box.right),
+              top = Math.max(0, box.top),
+              bottom = Math.min(innerHeight, box.bottom);
+            for (let parent = image.parentElement; parent; parent = parent.parentElement) {
+              const css = getComputedStyle(parent),
+                bounds = parent.getBoundingClientRect();
+              if (["hidden", "clip", "auto", "scroll"].includes(css.overflowX)) {
+                left = Math.max(left, bounds.left);
+                right = Math.min(right, bounds.right);
+              }
+              if (["hidden", "clip", "auto", "scroll"].includes(css.overflowY)) {
+                top = Math.max(top, bounds.top);
+                bottom = Math.min(bottom, bounds.bottom);
+              }
             }
-            if (["hidden", "clip", "auto", "scroll"].includes(css.overflowY)) {
-              top = Math.max(top, bounds.top);
-              bottom = Math.min(bottom, bounds.bottom);
-            }
-          }
-          return right > left && bottom > top;
-        });
-        await Promise.all(
-          visible.map(async (image) => {
-            // A newly visible lazy image may not have begun loading at the end of
-            // scrollIntoView. decode() alone can reject before its load event.
-            if (!image.complete || !image.naturalWidth)
-              await new Promise((resolve, reject) => {
-                const clear = () => {
-                  clearTimeout(timer);
-                  image.removeEventListener("load", loaded);
-                  image.removeEventListener("error", failed);
-                };
-                const loaded = () => {
-                    clear();
-                    resolve();
-                  },
-                  failed = () => {
-                    clear();
-                    reject(new Error("Visible proof capture failed to load"));
+            return right > left && bottom > top;
+          });
+          await Promise.all(
+            visible.map(async (image) => {
+              // A newly visible lazy image may not have begun loading at the end of
+              // scrollIntoView. decode() alone can reject before its load event.
+              if (!image.complete || !image.naturalWidth)
+                await new Promise((resolve, reject) => {
+                  const clear = () => {
+                    clearTimeout(timer);
+                    image.removeEventListener("load", loaded);
+                    image.removeEventListener("error", failed);
                   };
-                const timer = setTimeout(() => {
-                  clear();
-                  reject(new Error("Visible proof capture did not finish loading"));
-                }, 8000);
-                image.addEventListener("load", loaded, { once: true });
-                image.addEventListener("error", failed, { once: true });
-                if (image.complete && image.naturalWidth) loaded();
-              });
-            await image.decode();
-          }),
-        );
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-      });
+                  const loaded = () => {
+                      clear();
+                      resolve();
+                    },
+                    failed = () => {
+                      clear();
+                      reject(new Error("Visible proof capture failed to load"));
+                    };
+                  const timer = setTimeout(() => {
+                    clear();
+                    reject(new Error("Visible proof capture did not finish loading"));
+                  }, 8000);
+                  image.addEventListener("load", loaded, { once: true });
+                  image.addEventListener("error", failed, { once: true });
+                  if (image.complete && image.naturalWidth) loaded();
+                });
+              await image.decode();
+            }),
+          );
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+        }),
+        // Above the 8 s each image may take to load, so that message wins when it applies.
+        12_000,
+      );
     const name = `${record.screenshots.length + 1}-${label}.png`;
     await page.screenshot({ path: path.join(directory, name), fullPage: false });
     record.screenshots.push(`${id}/${name}`);
@@ -916,52 +933,58 @@ async function runCase(id, options, action) {
       };
     else if (axeSource) {
       await page.addScriptTag({ content: axeSource });
-      record.checks.accessibility = await page.evaluate(async () => {
-        const result = await window.axe.run(document, {
-          runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"] },
-        });
-        const describe = (v) => ({
-          id: v.id,
-          impact: v.impact,
-          nodes: v.nodes.map((n) => ({
-            target: n.target,
-            html:
-              typeof n.target[0] === "string"
-                ? (document.querySelector(n.target[0])?.outerHTML.slice(0, 4000) ?? n.html)
-                : n.html,
-            failureSummary: n.failureSummary,
-          })),
-        });
-        // The optional landmark rule treats a body-portal tooltip as page content.
-        // Retain that advisory only when the entire portal is a properly associated
-        // transient tooltip. Any other outside-landmark content still fails.
-        const tooltipAdvisory = (v) =>
-          v.id === "region" &&
-          v.nodes.every((n) => {
-            const portal =
-              typeof n.target[0] === "string" ? document.querySelector(n.target[0]) : null;
-            if (!portal?.matches("[data-base-ui-portal]")) return false;
-            const hints = [...portal.querySelectorAll('[role="tooltip"]')];
-            return (
-              hints.length > 0 &&
-              hints.map((hint) => hint.textContent.trim()).join("") === portal.textContent.trim() &&
-              hints.every(
-                (hint) =>
-                  hint.id && document.querySelector(`[aria-describedby~="${CSS.escape(hint.id)}"]`),
-              )
-            );
+      record.checks.accessibility = await bounded(
+        "Accessibility audit",
+        page.evaluate(async () => {
+          const result = await window.axe.run(document, {
+            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"] },
           });
-        return {
-          violations: result.violations.filter((v) => !tooltipAdvisory(v)).map(describe),
-          reviewedAdvisories: result.violations.filter(tooltipAdvisory).map((v) => ({
-            ...describe(v),
-            reason:
-              "A transient WAI-ARIA tooltip is associated with its trigger and rendered in Base UI's body portal; it does not need a separate page landmark.",
-          })),
-          incomplete: result.incomplete.map(describe),
-          passes: result.passes.length,
-        };
-      });
+          const describe = (v) => ({
+            id: v.id,
+            impact: v.impact,
+            nodes: v.nodes.map((n) => ({
+              target: n.target,
+              html:
+                typeof n.target[0] === "string"
+                  ? (document.querySelector(n.target[0])?.outerHTML.slice(0, 4000) ?? n.html)
+                  : n.html,
+              failureSummary: n.failureSummary,
+            })),
+          });
+          // The optional landmark rule treats a body-portal tooltip as page content.
+          // Retain that advisory only when the entire portal is a properly associated
+          // transient tooltip. Any other outside-landmark content still fails.
+          const tooltipAdvisory = (v) =>
+            v.id === "region" &&
+            v.nodes.every((n) => {
+              const portal =
+                typeof n.target[0] === "string" ? document.querySelector(n.target[0]) : null;
+              if (!portal?.matches("[data-base-ui-portal]")) return false;
+              const hints = [...portal.querySelectorAll('[role="tooltip"]')];
+              return (
+                hints.length > 0 &&
+                hints.map((hint) => hint.textContent.trim()).join("") ===
+                  portal.textContent.trim() &&
+                hints.every(
+                  (hint) =>
+                    hint.id &&
+                    document.querySelector(`[aria-describedby~="${CSS.escape(hint.id)}"]`),
+                )
+              );
+            });
+          return {
+            violations: result.violations.filter((v) => !tooltipAdvisory(v)).map(describe),
+            reviewedAdvisories: result.violations.filter(tooltipAdvisory).map((v) => ({
+              ...describe(v),
+              reason:
+                "A transient WAI-ARIA tooltip is associated with its trigger and rendered in Base UI's body portal; it does not need a separate page landmark.",
+            })),
+            incomplete: result.incomplete.map(describe),
+            passes: result.passes.length,
+          };
+        }),
+        30_000,
+      );
       assert.equal(
         record.checks.accessibility.violations.length,
         0,
@@ -986,7 +1009,7 @@ async function runCase(id, options, action) {
     record.requests = requests.slice(requestStart);
     record.finishedAt = new Date().toISOString();
     await writeFile(path.join(directory, "proof.json"), JSON.stringify(record, null, 2));
-    await context.close();
+    await bounded(`${id}: closing the browser context`, context.close());
     results.push(record);
     process.stdout.write(
       `${record.status.toUpperCase()} ${id}${record.error ? `: ${failureSummary(record.error)}` : ""}\n`,
@@ -2280,6 +2303,12 @@ try {
         const menu = page.getByRole("listbox", { name: "Participant status", exact: true });
         await menu.waitFor();
         await page.keyboard.press("r");
+        // Enter selects the highlighted option, so it waits for typeahead to move the highlight.
+        const typed = menu.getByRole("option", { name: "Running / preparing", exact: true });
+        await until(
+          async () => typed.evaluate((element) => element.hasAttribute("data-highlighted")),
+          "Typeahead r did not highlight Running / preparing",
+        );
         await page.keyboard.press("Enter");
         await menu.waitFor({ state: "hidden" });
         assert.equal(
@@ -2849,14 +2878,17 @@ try {
       assert.equal(await study.inputValue(), "30000", "Opening a note must seek its moment");
 
       // The page's own origin without the token is refused, and nothing is written.
-      record.checks.withoutToken = await page.evaluate(async (run) => {
-        const response = await fetch("/api/notes", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ runId: run, atMs: 0, participant: null, text: "No token." }),
-        });
-        return response.status;
-      }, runId);
+      record.checks.withoutToken = await bounded(
+        "Posting a note without the token",
+        page.evaluate(async (run) => {
+          const response = await fetch("/api/notes", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ runId: run, atMs: 0, participant: null, text: "No token." }),
+          });
+          return response.status;
+        }, runId),
+      );
       assert.equal(record.checks.withoutToken, 403);
       const after = await storedNotes();
       assert.equal(after.length, 1, "A refused request must not add a note");
@@ -2873,7 +2905,7 @@ try {
     } finally {
       if (server) {
         caseOrigins.delete(new URL(server.url).origin);
-        await server.close();
+        await bounded("Closing the notes server", server.close());
       }
       await rm(cwd, { recursive: true, force: true });
     }
@@ -3690,15 +3722,18 @@ try {
         await summary.focus();
         await page.keyboard.press("Enter");
         await page.locator(".report-summary[open]").waitFor();
-        const animated = await page.locator(".report-summary").evaluate(async (element) => {
-          await new Promise(requestAnimationFrame);
-          const animations = element.getAnimations({ subtree: true });
-          for (const animation of animations) {
-            animation.pause();
-            animation.currentTime = 40;
-          }
-          return animations.length;
-        });
+        const animated = await bounded(
+          "Pausing the summary's opening animation",
+          page.locator(".report-summary").evaluate(async (element) => {
+            await new Promise(requestAnimationFrame);
+            const animations = element.getAnimations({ subtree: true });
+            for (const animation of animations) {
+              animation.pause();
+              animation.currentTime = 40;
+            }
+            return animations.length;
+          }),
+        );
         if (animated) {
           const rowClickable = () =>
             page
@@ -3855,10 +3890,10 @@ try {
         );
         await page.getByRole("button", { name: "Back to participants", exact: true }).waitFor();
         // A copied address has no history-state origin and must use Participants.
-        const direct = await context.newPage();
+        const direct = await bounded("Opening a second page", context.newPage());
         await direct.goto(page.url());
         await direct.getByRole("button", { name: "Back to participants", exact: true }).waitFor();
-        await direct.close();
+        await bounded("Closing the second page", direct.close());
         record.checks = {
           shell: before,
           bothPriorityRowsVisible: true,
@@ -4658,8 +4693,8 @@ try {
         },
       );
 } finally {
-  await browser.close();
-  await new Promise((resolve) => server.close(resolve));
+  await bounded("Closing the browser", browser.close());
+  await bounded("Closing the fixture server", new Promise((resolve) => server.close(resolve)));
 }
 
 const completeCases = coverage.cases.map((entry) => ({
