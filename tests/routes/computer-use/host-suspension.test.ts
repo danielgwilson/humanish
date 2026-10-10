@@ -19,6 +19,7 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
+import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers/fanout-desktop.js";
 import { fakeHostClock } from "../../helpers/host-clock.js";
 
@@ -27,6 +28,7 @@ const MINUTE = 60_000;
 const STALLED =
   "provider turn 2 stalled; its usage is unknown and no maxOutputTokens bounds what it cost";
 const OFFLINE = "Unable to connect. Is the computer able to access the url?";
+const DEADLINE = "[deadline_exceeded] context deadline exceeded";
 
 function study(patch: Patch): StudyConfig {
   const parsed = parseStudy(lab("cuAppUrl", { mode: "live", ...patch }));
@@ -36,10 +38,10 @@ function study(patch: Patch): StudyConfig {
 
 /**
  * A host that sleeps for 6m 5s a minute into the run, once `sessions` participants are in their
- * sessions. Its wall clock starts now and moves only when it sleeps or beats, so the run starts at
- * T0 and the participants' own start times, read from the real clock, stay near it.
+ * sessions and `settleMs` of real time has passed for the others to settle. Its wall clock starts
+ * now and moves only when it sleeps or beats, so the run starts at T0.
  */
-function sleepingHost(sessions: number) {
+function sleepingHost(sessions: number, settleMs = 0) {
   const T0 = Date.now();
   const host = fakeHostClock(T0);
   let inSession = 0;
@@ -55,6 +57,7 @@ function sleepingHost(sessions: number) {
       inSession += 1;
       const order = inSession;
       if (inSession === sessions) {
+        if (settleMs > 0) await new Promise((resolve) => setTimeout(resolve, settleMs));
         host.beat(12);
         host.advance(6 * MINUTE);
         host.beat();
@@ -64,6 +67,17 @@ function sleepingHost(sessions: number) {
       return order;
     },
   };
+}
+
+/** The fake desktop module, with the first participant's sandbox create failing. */
+function firstCreateFails(message: string): E2BDesktopModule {
+  const fake = makeFanoutModule();
+  const create = (async (...args: Parameters<E2BDesktopModule["Sandbox"]["create"]>) => {
+    const options = args.find((arg): arg is E2BDesktopCreateOptions => typeof arg === "object");
+    if (options?.metadata?.participantIndex === "0") throw new Error(message);
+    return fake.module.Sandbox.create(...args);
+  }) as E2BDesktopModule["Sandbox"]["create"];
+  return { Sandbox: { ...fake.module.Sandbox, create } };
 }
 
 function headerLines(result: Parameters<typeof formatCuaStudyHuman>[0], config: StudyConfig) {
@@ -155,6 +169,39 @@ describe("a hosted fan-out whose host sleeps", () => {
       "route: computer-use",
       summary,
       `Rerun the participants that did not pass: humanish run ${config.id} --rerun-failed-from ${result.runId}`,
+    ]);
+  });
+
+  it("leaves a participant whose desktop failed before it to its own error", async () => {
+    const host = sleepingHost(3, 100);
+    const config = study({
+      participants: { count: 4 },
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 4 },
+    });
+    const outcome = await runStudyWith(
+      config,
+      { cwd, env: KEYS },
+      {
+        desktopModule: async () => firstCreateFails(DEADLINE),
+        hostClock: host.clock,
+        analysis: { run: vi.fn() },
+        runSession: async () => {
+          await host.sleepThrough();
+          throw new Error(STALLED);
+        },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    const { result } = outcome;
+
+    expect(result.hostSuspension?.summary).toBe(
+      "The host was suspended for 6m 5s at +1m; the 3 participant failures after it are likely its effect.",
+    );
+    expect(result.hostSuspension?.participantIds).toEqual(["lane-02", "lane-03", "lane-04"]);
+    const bundle = await runJson(cwd, result.runId);
+    expect(bundle.review.gaps).toEqual([
+      "lane-02, lane-03, lane-04: failed after the host was suspended, likely its effect. Each participant's record keeps its own error.",
+      expect.stringMatching(/^lane-01: .*deadline_exceeded/),
     ]);
   });
 });

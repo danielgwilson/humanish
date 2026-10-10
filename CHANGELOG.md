@@ -34,7 +34,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   header read "The host was suspended for 6m 5s at +1m; the 34 participant failures after it are
   likely its effect.", the review lists those participants in one gap line, and the result's
   `hostSuspension` holds the ids. A fan-out run's header then names the
-  `--rerun-failed-from` command. Each participant's own record and failure are unchanged. Before,
+  `--rerun-failed-from` command. A participant that stopped before the suspension, including one
+  whose desktop failed to start, keeps its own failure. Each participant's own record and failure
+  are unchanged. Before,
   a 6-minute sleep a minute into a 34-participant run read as 117 provider stalls, E2B deadlines
   and skips, none of which named the host (#1740).
 

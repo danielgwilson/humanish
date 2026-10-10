@@ -582,6 +582,12 @@ export interface ParticipantRunOutcome {
   skippedReason?: string;
   /** When a fan-out participant was due and when its desktop was requested. */
   arrival?: ParticipantArrival;
+  /**
+   * When the participant's runner returned this outcome, on the deps clock (epoch ms): after its
+   * session, or after a setup failure that left it none. Absent on a skipped participant, which
+   * never ran, and on outcomes built outside the runner.
+   */
+  endedAt?: number;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
   /** The inclusive friction read: blocker-shaped narration incl. self-resolved arcs.

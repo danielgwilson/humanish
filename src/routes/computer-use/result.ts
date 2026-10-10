@@ -88,7 +88,8 @@ function buildParticipantSummary(
 
 /**
  * Each participant as the host-suspension reading reads it: a harness error, its session's time
- * limit or a skip, and when it started and its session ended.
+ * limit or a skip, when it started, and when its runner returned, which a setup failure with no
+ * session also records.
  */
 function suspendedParticipants(outcomes: readonly ParticipantRunOutcome[]): SuspendedParticipant[] {
   return outcomes.map((outcome) => {
@@ -103,11 +104,13 @@ function suspendedParticipants(outcomes: readonly ParticipantRunOutcome[]): Susp
           : undefined;
     const startedAtMs =
       outcome.arrival?.startedAt ?? (trace === undefined ? undefined : Date.parse(trace.startedAt));
+    const endedAtMs =
+      outcome.endedAt ?? (trace === undefined ? undefined : Date.parse(trace.completedAt));
     return {
       id: outcome.spec.planned.id,
       ...(failure === undefined ? {} : { failure }),
       ...(startedAtMs === undefined ? {} : { startedAtMs }),
-      ...(trace === undefined ? {} : { endedAtMs: Date.parse(trace.completedAt) }),
+      ...(endedAtMs === undefined ? {} : { endedAtMs }),
     };
   });
 }

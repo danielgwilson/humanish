@@ -116,7 +116,7 @@ export interface SuspendedParticipant {
   failure?: "harness" | "time-limit" | "skipped";
   /** When it started; absent when no record says. */
   startedAtMs?: number;
-  /** When its session ended; absent when it has no session record. */
+  /** When it stopped, after its session or after a setup failure; absent when no record says. */
   endedAtMs?: number;
 }
 

@@ -176,6 +176,7 @@ export async function runCuaParticipant(
     selfReportedBlocker,
     reportedFriction,
     harnessError,
+    endedAt: deps.now(),
   };
 }
 
@@ -311,6 +312,7 @@ export async function runCuaParticipants(
           reportedFriction: false,
           harnessError: true,
           sessionError: `participant runner threw outside the session guard: ${detail}`,
+          endedAt: deps.now(),
         };
       }
       // A participant that stopped before its session failed on its own and trips no fail-fast.
