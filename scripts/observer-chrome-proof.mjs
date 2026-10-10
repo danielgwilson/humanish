@@ -7,6 +7,32 @@ import { chromium } from "playwright-core";
 import { analysisFixture, fixture, screenshot } from "./observer-browser-fixtures.mjs";
 import { bounded } from "./observer-proof-wait.mjs";
 
+// Temporary CI diagnostic: run the proof in fresh processes until the step budget is spent.
+if (!process.env.HUMANISH_PROOF_LOOP_CHILD) {
+  const { spawnSync } = await import("node:child_process");
+  const started = Date.now();
+  let runs = 0,
+    failures = 0;
+  while (Date.now() - started < 250_000 && runs < 40) {
+    runs += 1;
+    const t0 = Date.now();
+    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
+      env: { ...process.env, HUMANISH_PROOF_LOOP_CHILD: "1" },
+      encoding: "utf8",
+      timeout: 60_000,
+    });
+    if (child.status !== 0) failures += 1;
+    const lines = `${child.stdout ?? ""}${child.stderr ?? ""}`
+      .split("\n")
+      .filter((line) => line && !line.startsWith("Proof:"));
+    process.stdout.write(
+      `--- run ${runs} exit=${child.status} signal=${child.signal} ms=${Date.now() - t0}\n${lines.join("\n")}\n`,
+    );
+  }
+  process.stdout.write(`LOOP ${runs - failures}/${runs} passed\n`);
+  process.exit(failures ? 1 : 0);
+}
+
 // Bounded supplement to observer-browser-proof: appearance, pin visibility,
 // library motion and fitted card geometry over synthetic retained recordings.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -319,6 +345,111 @@ try {
       } catch (error) {
         record.status = "failed";
         record.error = String(error.stack ?? error);
+        const { readFileSync, readdirSync } = await import("node:fs");
+        const sample = () => {
+          const parents = new Map();
+          for (const pid of readdirSync("/proc").filter((name) => /^\d+$/.test(name))) {
+            try {
+              const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+              parents.set(pid, stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
+            } catch {
+              /* process exited */
+            }
+          }
+          const ours = (pid) => {
+            for (let at = pid; at && at !== "1"; at = parents.get(at))
+              if (at === String(process.pid)) return true;
+            return false;
+          };
+          const processes = [];
+          for (const pid of parents.keys()) {
+            if (pid === String(process.pid) || !ours(pid)) continue;
+            try {
+              const command = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+              const type = /--type=([a-z-]+)/.exec(command)?.[1] ?? "browser";
+              const threads = readdirSync(`/proc/${pid}/task`).map((tid) => {
+                const stat = readFileSync(`/proc/${pid}/task/${tid}/stat`, "utf8");
+                const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+                return {
+                  tid,
+                  name: stat.slice(stat.indexOf("(") + 1, stat.lastIndexOf(")")),
+                  state: fields[0],
+                  ticks: Number(fields[11]) + Number(fields[12]),
+                  wchan: readFileSync(`/proc/${pid}/task/${tid}/wchan`, "utf8"),
+                };
+              });
+              processes.push({ pid, type, threads });
+            } catch {
+              /* process exited */
+            }
+          }
+          return processes;
+        };
+        const before = sample();
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const after = sample();
+        const report = after.map((process) => {
+          const prior = before.find((entry) => entry.pid === process.pid);
+          return {
+            pid: process.pid,
+            type: process.type,
+            threads: process.threads
+              .map((thread) => ({
+                ...thread,
+                delta:
+                  thread.ticks -
+                  (prior?.threads.find((entry) => entry.tid === thread.tid)?.ticks ?? thread.ticks),
+              }))
+              .filter(
+                (thread) =>
+                  thread.tid === process.pid ||
+                  thread.delta > 0 ||
+                  /Compositor|Main|IO/.test(thread.name),
+              )
+              .map(
+                ({ tid, name, state, delta, wchan }) =>
+                  `${tid === process.pid ? "main" : name}:${state}:+${delta}:${wchan}`,
+              ),
+          };
+        });
+        process.stdout.write(`PROC ${id} ${JSON.stringify(report)}\n`);
+        const diagnosis = await bounded(
+          "diagnosis",
+          page.evaluate(async () => {
+            const frame = await Promise.race([
+              new Promise((r) => requestAnimationFrame(() => r("fired"))),
+              new Promise((r) => setTimeout(() => r("none in 1 s"), 1000)),
+            ]);
+            return {
+              frame,
+              visibility: document.visibilityState,
+              focus: document.hasFocus(),
+              animations: document.getAnimations().map((a) => ({
+                type: a.constructor.name,
+                name: a.animationName ?? a.transitionProperty,
+                state: a.playState,
+                pending: a.pending,
+                time: a.currentTime,
+                end: a.effect?.getComputedTiming().endTime,
+                target: String(a.effect?.target?.className ?? a.effect?.target?.tagName).slice(
+                  0,
+                  80,
+                ),
+              })),
+              images: [...document.querySelectorAll(".card img")].map((i) => ({
+                cls: i.className,
+                complete: i.complete,
+                width: i.naturalWidth,
+                top: Math.round(i.getBoundingClientRect().top),
+              })),
+              scroll: document.querySelector(".content")?.scrollTop,
+              portals: document.querySelectorAll("[data-base-ui-portal]").length,
+              url: location.href,
+            };
+          }),
+          4000,
+        ).catch((failure) => ({ unavailable: failure.message }));
+        process.stdout.write(`DIAG ${id} ${JSON.stringify(diagnosis)}\n`);
         await snap("failure").catch(() => {});
       } finally {
         await bounded(`${id}: closing the browser context`, context.close());
