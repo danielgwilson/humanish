@@ -1,4 +1,5 @@
 import type { Verdict } from "../../run/judge.js";
+import type { HostSuspensionReading } from "../../run/host-suspension.js";
 import type { LocalCapacity } from "../../substrates/local/capacity.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type {
@@ -346,6 +347,11 @@ export interface CuaActorStudyResult
   rerun?: RunRerunLineage;
   observer?: ObserverResult;
   diagnostics?: CuaDiagnostics;
+  /**
+   * Present when the host was suspended during the run (a laptop that slept): when, and which
+   * participant failures it likely caused. Each participant's own result is unchanged.
+   */
+  hostSuspension?: HostSuspensionReading;
   warnings: string[];
   error?: {
     code: CuaActorStudyErrorCode;
@@ -608,6 +614,8 @@ export interface CuaFanoutBundleArgs {
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   failFastReason?: string;
+  /** The run's host suspensions and the participant failures they likely caused. */
+  hostSuspension?: HostSuspensionReading;
   publicRepo?: string;
   inProgress?: boolean;
 }

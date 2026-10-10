@@ -20,6 +20,7 @@ import { providerResourcesForOutcome } from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
+import type { HostSuspensionReading } from "../../run/host-suspension.js";
 import type { CuaParticipantPlan, DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 import { plural } from "../../run/text.js";
 
@@ -77,6 +78,8 @@ interface CuaRunBundleState {
   subjects: RunSubjectProvenance[];
   aggregateSubject: RunSubjectProvenance;
   failFastReason?: string;
+  /** The final bundle's reading of the run's host suspensions. */
+  hostSuspension?: HostSuspensionReading;
   inProgress?: true;
 }
 
@@ -104,6 +107,7 @@ export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleSta
     participantPlan: base.participantPlan,
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
     ...(state.failFastReason === undefined ? {} : { failFastReason: state.failFastReason }),
+    ...(state.hostSuspension === undefined ? {} : { hostSuspension: state.hostSuspension }),
     ...(base.publicRepo === undefined ? {} : { publicRepo: base.publicRepo }),
     ...inProgress,
   });
@@ -165,6 +169,7 @@ function singleParticipantArgs(
         }),
     source: base.source,
     ...(state.inProgress === undefined ? {} : { inProgress: state.inProgress }),
+    ...(state.hostSuspension === undefined ? {} : { hostSuspension: state.hostSuspension }),
     subject: state.aggregateSubject,
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),

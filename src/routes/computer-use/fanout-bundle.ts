@@ -72,7 +72,30 @@ function fanoutSummary(
     return `${rerun}Dry run: ${people} would each use their own copy of ${subjectName(publicSafeAppUrlLabel(args.appUrl), args.aggregateSubject)}. No desktops were launched and $0 was spent.`;
   }
   const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
-  return `${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;
+  // A host suspension comes first: it may explain everything after it.
+  const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
+  return `${host}${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;
+}
+
+/**
+ * The review's gaps: one line for the participants a host suspension likely failed, then a line
+ * for each other participant that did not pass.
+ */
+function fanoutGaps(
+  args: CuaFanoutBundleArgs,
+  judgment: ReturnType<typeof judgeParticipantRecords>,
+): string[] {
+  const suspended = new Set(args.hostSuspension?.participantIds ?? []);
+  const others = judgment.participants.flatMap((participant, index) =>
+    participant.gapLine === undefined || suspended.has(args.specs[index]!.planned.id)
+      ? []
+      : [participant.gapLine],
+  );
+  if (suspended.size === 0) return others;
+  return [
+    `${[...suspended].join(", ")}: failed after the host was suspended, likely its effect. Each participant's record keeps its own error.`,
+    ...others,
+  ];
 }
 
 function fanoutReview(
@@ -128,9 +151,7 @@ function fanoutReview(
           ? ["Live fan-out session is still running."]
           : args.dryRun
             ? ["Live fan-out session not yet run (dry run only)."]
-            : judgment.participants.flatMap((participant) =>
-                participant.gapLine === undefined ? [] : [participant.gapLine],
-              ),
+            : fanoutGaps(args, judgment),
     },
     streams,
   );

@@ -7,14 +7,23 @@ import type { TerminalProductStudyResult } from "../../routes/terminal/types.js"
 import type { ConcurrentSharedWorldStudyResult } from "../../routes/shared-world/types.js";
 import type { StudySubject } from "../../study/types.js";
 import { subjectName } from "../../run/subject-name.js";
+import type { HostSuspensionReading } from "../../run/host-suspension.js";
+import { cli } from "../invocation.js";
 
 /**
  * A run's first lines: the command that ran, whether it was a dry run, how it ended, and its route.
  * `runOk` is the run's own ok, which automaticAnalysisEnvelope keeps when an analysis that did not
- * complete turns `ok` false. That run finished, and the line says so.
+ * complete turns `ok` false. That run finished, and the line says so. A host suspension follows,
+ * since it may explain every failure listed after it.
  */
 function runHeader(
-  result: { ok: boolean; runOk?: boolean; dryRun?: boolean; studyId: string },
+  result: {
+    ok: boolean;
+    runOk?: boolean;
+    dryRun?: boolean;
+    studyId: string;
+    hostSuspension?: HostSuspensionReading;
+  },
   route: "computer-use" | "terminal" | "scripted" | "shared-world",
 ): string[] {
   const kind = result.dryRun === true ? "dry run" : result.dryRun === false ? "live run" : "run";
@@ -23,7 +32,24 @@ function runHeader(
     : result.runOk === true
       ? "finished; the analysis did not complete"
       : "failed";
-  return [`humanish run ${result.studyId}: ${kind} ${ending}`, `route: ${route}`];
+  return [
+    `humanish run ${result.studyId}: ${kind} ${ending}`,
+    `route: ${route}`,
+    ...(result.hostSuspension === undefined ? [] : [result.hostSuspension.summary]),
+  ];
+}
+
+/**
+ * What to run after a host suspension failed participants: the rerun of those that did not pass,
+ * or the study again for a run with one participant.
+ */
+function suspensionNextStep(result: CuaActorStudyResult, participants: number): string[] {
+  if ((result.hostSuspension?.participantIds.length ?? 0) === 0) return [];
+  return participants > 1
+    ? [
+        `Rerun the participants that did not pass: ${cli(`run ${result.studyId} --rerun-failed-from ${result.runId}`)}`,
+      ]
+    : [`Run it again: ${cli(`run ${result.studyId}`)}`];
 }
 
 /**
@@ -205,8 +231,10 @@ export function formatCuaStudyHuman(
   result: CuaActorStudyResult,
   subject: StudySubject,
 ): HumanOutput {
+  const participants = result.lanes ?? [];
   return withError(result.error, [
     ...runHeader(result, "computer-use"),
+    ...suspensionNextStep(result, participants.length),
     `run: ${result.runId}`,
     `actor: ${result.actor}`,
     `subject: ${subjectLine(result.appUrl, subject)}`,
@@ -219,8 +247,8 @@ export function formatCuaStudyHuman(
       ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
       : []),
     ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
-    ...participantLines(result.lanes ?? []),
-    ...(result.session && (result.lanes?.length ?? 0) <= 1
+    ...participantLines(participants),
+    ...(result.session && participants.length <= 1
       ? [
           `session: ${participantStatus(result.session.status)} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
           `screenshots: ${result.session.screenshots}`,

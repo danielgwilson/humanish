@@ -172,6 +172,25 @@ Every surface that shows whether a run passed calls `runDisplay`
 `outcome` line. A run
 shows as `passed` only when its verdict is `pass` and its `ok` is not false.
 
+## Host suspensions
+
+The run's status cadence, every 5 s, is also its heartbeat. A wall-clock gap of 30 s or more
+between two ticks, or between the last tick and a bundle write, is a host suspension: the machine
+slept, or the process was stopped, and every participant loop on it stopped too. The wall clock
+counts suspended time on macOS and Linux; Node's timers and `performance.now()` count it on macOS
+only. Every bundle write records each suspension as a `host.suspended` warn event, `at` its start,
+whose message names its start, end, length and offset into the run (`src/run/host-suspension.ts`).
+
+On a computer-use run, a participant that failed in the harness or at its session time limit, and
+was in flight across a suspension, likely failed because of it. So did a participant skipped after
+such a failure (the pipeline gate, fail-fast). When any did, the outcome's first failure has
+`kind: run` and one sentence, such as "The host was suspended for 6m 5s at +1m; the 34
+participant failures after it are likely its effect.", ahead of each participant's own failure.
+`review.summary` starts with the same sentence, the attributed participants share one gap line,
+and the study result's `hostSuspension` holds the sentence, the participant ids and the
+suspensions. Participant records, streams and traces stay as they ended. The other routes record
+the events only.
+
 ## Recorded session stop causes
 
 An actor trace may include `stopCause` alongside its unchanged `status`,
