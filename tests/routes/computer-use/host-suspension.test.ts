@@ -38,10 +38,10 @@ function study(patch: Patch): StudyConfig {
 
 /**
  * A host that sleeps for 6m 5s a minute into the run, once `sessions` participants are in their
- * sessions and `settleMs` of real time has passed for the others to settle. Its wall clock starts
- * now and moves only when it sleeps or beats, so the run starts at T0.
+ * sessions and `settled` has resolved for the others to finish first. Its wall clock starts now
+ * and moves only when it sleeps or beats, so the run starts at T0.
  */
-function sleepingHost(sessions: number, settleMs = 0) {
+function sleepingHost(sessions: number, settled: Promise<unknown> = Promise.resolve()) {
   const T0 = Date.now();
   const host = fakeHostClock(T0);
   let inSession = 0;
@@ -57,7 +57,7 @@ function sleepingHost(sessions: number, settleMs = 0) {
       inSession += 1;
       const order = inSession;
       if (inSession === sessions) {
-        if (settleMs > 0) await new Promise((resolve) => setTimeout(resolve, settleMs));
+        await settled;
         host.beat(12);
         host.advance(6 * MINUTE);
         host.beat();
@@ -69,15 +69,25 @@ function sleepingHost(sessions: number, settleMs = 0) {
   };
 }
 
-/** The fake desktop module, with the first participant's sandbox create failing. */
-function firstCreateFails(message: string): E2BDesktopModule {
+/**
+ * The fake desktop module, with the first participant's sandbox create failing. `failed` resolves
+ * 500 ms after that create throws, which leaves the participant time to finish its failure.
+ */
+function firstCreateFails(message: string): { module: E2BDesktopModule; failed: Promise<void> } {
   const fake = makeFanoutModule();
+  let threw: () => void = () => undefined;
+  const failed = new Promise<void>((resolve) => {
+    threw = () => setTimeout(resolve, 500);
+  });
   const create = (async (...args: Parameters<E2BDesktopModule["Sandbox"]["create"]>) => {
     const options = args.find((arg): arg is E2BDesktopCreateOptions => typeof arg === "object");
-    if (options?.metadata?.participantIndex === "0") throw new Error(message);
+    if (options?.metadata?.participantIndex === "0") {
+      threw();
+      throw new Error(message);
+    }
     return fake.module.Sandbox.create(...args);
   }) as E2BDesktopModule["Sandbox"]["create"];
-  return { Sandbox: { ...fake.module.Sandbox, create } };
+  return { module: { Sandbox: { ...fake.module.Sandbox, create } }, failed };
 }
 
 function headerLines(result: Parameters<typeof formatCuaStudyHuman>[0], config: StudyConfig) {
@@ -173,7 +183,8 @@ describe("a hosted fan-out whose host sleeps", () => {
   });
 
   it("leaves a participant whose desktop failed before it to its own error", async () => {
-    const host = sleepingHost(3, 100);
+    const desktops = firstCreateFails(DEADLINE);
+    const host = sleepingHost(3, desktops.failed);
     const config = study({
       participants: { count: 4 },
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 4 },
@@ -182,7 +193,7 @@ describe("a hosted fan-out whose host sleeps", () => {
       config,
       { cwd, env: KEYS },
       {
-        desktopModule: async () => firstCreateFails(DEADLINE),
+        desktopModule: async () => desktops.module,
         hostClock: host.clock,
         analysis: { run: vi.fn() },
         runSession: async () => {
