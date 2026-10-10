@@ -8,37 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.121.0: One failed desktop fails alone, host sleep named as the cause (2026-10-10)
 
-- The participant line of a run's review lists interruption causes in a fixed order, most first
-  and then by name. It followed the order the participants finished in, so the same run could
-  read differently (#1741).
-- A hosted computer-use study runs its other participants when one participant's desktop fails to
-  start. The first participant held a gate on every subject, so when its desktop failed, every
-  other participant was recorded `blocked` with "failed to provision its world (pipeline gate)",
-  and an 11-participant `app-url` study whose first sandbox failed reported 10 skipped
-  participants. An `app-url` participant only opens the app on its own desktop, so its startup
-  failure is now its own and no gate holds the others back. A participant that fails before its
-  session also no longer trips fail-fast, which skipped every participant queued behind a full set
-  of slots or due later in a schedule. A `clone`, `local-tree` or `desktop-cli` subject, which
-  every participant sets up the same way, keeps the gate: any participant that becomes ready
-  releases it, a first participant whose sandbox was never created passes the first start to the
-  next one, and a first participant whose desktop came up and then failed, as when the subject
-  does not build, still blocks the rest (#1741).
-- A run whose host sleeps, such as a laptop closed on battery, says so. The run's status cadence
-  is now also a heartbeat: a wall-clock gap of 30 s or more between two ticks is recorded as a
-  `host.suspended` warn event with its start, end and length. On a computer-use run, the
-  participants that failed in the harness or at their time limit while in flight across the
-  suspension, and those skipped after such a failure, are named as its likely effect: the run
-  outcome's first failure, the start of the review summary and a line under the `humanish run`
-  header read "The host was suspended for 6m 5s at +1m; the 34 participant failures after it are
-  likely its effect.", the review lists those participants in one gap line, and the result's
-  `hostSuspension` holds the ids. A fan-out run's header then names the
-  `--rerun-failed-from` command. A participant that stopped before the suspension, including one
-  whose desktop failed to start, keeps its own failure. Each participant's own record and failure
-  are unchanged. Before,
-  a 6-minute sleep a minute into a 34-participant run read as 117 provider stalls, E2B deadlines
-  and skips, none of which named the host (#1740).
+humanish 0.121.0 keeps one participant's failed desktop from costing a whole hosted study, and
+names a host that slept mid-run as the likely cause of the failures after it. A computer-use study
+on an `app-url` subject no longer holds its participants behind the first one's desktop, and a
+participant that fails before its session no longer stops the participants queued behind it; a
+study whose subject is built in each sandbox still lets one participant set it up first, and the
+next one takes over when the first never got a desktop. When the machine running a study sleeps,
+the run records the suspension as a `host.suspended` event, and the run outcome, `humanish run`,
+the review and the `--json` result say the failures of participants running through it are
+likely its effect, while each participant's record keeps its own error. The review's participant
+line lists interruption causes in a fixed order.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.121.0)
 
 ## 0.120.1: Analysis requests under Bun run past 5 minutes (2026-10-09)
 
