@@ -14,6 +14,7 @@ import type { CuaActorSessionOptions } from "../actors/computer-use/actor.js";
 import type { AutomaticAnalysisDeps, runAutomaticAnalysis } from "../analysis/automatic.js";
 import type { CuaLoopResult } from "../actors/computer-use/loop.js";
 import type { renderObserver } from "../observer/render.js";
+import type { HostClock } from "../run/host-suspension.js";
 import type { TerminalCostProbe } from "../routes/terminal/types.js";
 import type { DetachedTimers } from "../substrates/detached.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
@@ -28,6 +29,11 @@ export interface StudyDeps {
   readonly renderObserver?: typeof renderObserver;
   /** The clock, in epoch milliseconds. Defaults to Date.now. */
   readonly now?: () => number;
+  /**
+   * Every recorded route: the run's wall clock and heartbeat timer, which time the run and notice
+   * a host suspension. Defaults to systemHostClock.
+   */
+  readonly hostClock?: HostClock;
   /** Clock and sleep for detached provisioning steps. */
   readonly detachedTimers?: DetachedTimers;
   /**

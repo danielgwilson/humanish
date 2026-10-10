@@ -1,4 +1,5 @@
 import type { Verdict } from "../../run/judge.js";
+import type { HostSuspensionReading } from "../../run/host-suspension.js";
 import type { LocalCapacity } from "../../substrates/local/capacity.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type {
@@ -346,6 +347,11 @@ export interface CuaActorStudyResult
   rerun?: RunRerunLineage;
   observer?: ObserverResult;
   diagnostics?: CuaDiagnostics;
+  /**
+   * Present when the host was suspended during the run (a laptop that slept): when, and which
+   * participant failures it likely caused. Each participant's own result is unchanged.
+   */
+  hostSuspension?: HostSuspensionReading;
   warnings: string[];
   error?: {
     code: CuaActorStudyErrorCode;
@@ -576,6 +582,12 @@ export interface ParticipantRunOutcome {
   skippedReason?: string;
   /** When a fan-out participant was due and when its desktop was requested. */
   arrival?: ParticipantArrival;
+  /**
+   * When the participant's runner returned this outcome, on the deps clock (epoch ms): after its
+   * session, or after a setup failure that left it none. Absent on a skipped participant, which
+   * never ran, and on outcomes built outside the runner.
+   */
+  endedAt?: number;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
   /** The inclusive friction read: blocker-shaped narration incl. self-resolved arcs.
@@ -608,6 +620,8 @@ export interface CuaFanoutBundleArgs {
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   failFastReason?: string;
+  /** The run's host suspensions and the participant failures they likely caused. */
+  hostSuspension?: HostSuspensionReading;
   publicRepo?: string;
   inProgress?: boolean;
 }

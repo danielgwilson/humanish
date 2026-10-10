@@ -7,9 +7,15 @@ import {
   judgeExecution,
   judgeParticipantRecords,
   OUTCOME_POLICIES,
+  participantHarnessFailed,
   resultOk,
   type ExecutionOutcome,
 } from "../../run/judge.js";
+import {
+  readHostSuspensions,
+  type HostSuspensionReading,
+  type SuspendedParticipant,
+} from "../../run/host-suspension.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import {
   participantExecutionFailures,
@@ -81,6 +87,35 @@ function buildParticipantSummary(
 }
 
 /**
+ * Each participant as the host-suspension reading reads it: a harness error, its session's time
+ * limit or a skip, when it started, and when its runner returned, which a setup failure with no
+ * session also records.
+ */
+function suspendedParticipants(outcomes: readonly ParticipantRunOutcome[]): SuspendedParticipant[] {
+  return outcomes.map((outcome) => {
+    const facts = participantFactsOf(outcome);
+    const trace = outcome.session?.trace;
+    const failure = facts.skipped
+      ? "skipped"
+      : participantHarnessFailed(facts)
+        ? "harness"
+        : trace?.stopCause === "time_limit"
+          ? "time-limit"
+          : undefined;
+    const startedAtMs =
+      outcome.arrival?.startedAt ?? (trace === undefined ? undefined : Date.parse(trace.startedAt));
+    const endedAtMs =
+      outcome.endedAt ?? (trace === undefined ? undefined : Date.parse(trace.completedAt));
+    return {
+      id: outcome.spec.planned.id,
+      ...(failure === undefined ? {} : { failure }),
+      ...(startedAtMs === undefined ? {} : { startedAtMs }),
+      ...(endedAtMs === undefined ? {} : { endedAtMs }),
+    };
+  });
+}
+
+/**
  * The computer-use study result for a finished run. The run passes only when the Observer rendered,
  * every participant passed (dry-run participants pass as contracts), and no adapter score or declared scorer
  * verdict failed; otherwise the error names the first reason.
@@ -102,6 +137,7 @@ function cuaStudyResult(args: {
   /** The run's ok and execution outcome as run.json records them (FinishedRun.outcome). */
   outcome: { ok: boolean; execution: ExecutionOutcome };
   observer: ObserverResult;
+  hostSuspension: HostSuspensionReading | undefined;
   receivingWarnings: string[];
   aggregateWarnings: string[];
   adapterWarnings: string[];
@@ -120,6 +156,7 @@ function cuaStudyResult(args: {
     rerunLineage,
     bundle,
     observer,
+    hostSuspension,
     receivingWarnings,
     aggregateWarnings,
     adapterWarnings,
@@ -147,6 +184,11 @@ function cuaStudyResult(args: {
   const summary = buildParticipantSummary(outcomes, participantCount, participantPlan, dryRun);
   const firstOutcome = outcomes?.[0];
 
+  // A failure the host suspension likely caused names the suspension first.
+  const suspended =
+    hostSuspension !== undefined && hostSuspension.participantIds.length > 0
+      ? hostSuspension.summary
+      : undefined;
   const errorResult = ((): CuaActorStudyResult["error"] | undefined => {
     if (ok) return undefined;
     if (adapterFailure !== undefined) {
@@ -156,7 +198,7 @@ function cuaStudyResult(args: {
       const outcome = firstOutcome;
       return {
         code: outcome?.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED",
-        message:
+        message: `${suspended === undefined ? "" : `${suspended} `}${
           outcome?.sessionError ??
           outcome?.providerCleanupError ??
           outcome?.providerPolicyError ??
@@ -164,10 +206,19 @@ function cuaStudyResult(args: {
             ? (participantResults[0]?.error?.message ??
               judgeParticipantRecords([participantFactsOf(outcome)]).participants[0]!
                 .notPassedMessage)
-            : (observer.error?.message ?? "Observer failed for the computer-use run.")),
+            : (observer.error?.message ?? "Observer failed for the computer-use run."))
+        }`,
       };
     }
     const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
+    const firstFailure =
+      suspended !== undefined
+        ? `; ${suspended.replace(/\.$/, "")}`
+        : failing?.sessionError !== undefined
+          ? `; first failure: ${failing.sessionError}`
+          : failing === undefined && args.outcome.execution.failures[0] !== undefined
+            ? `; ${args.outcome.execution.failures[0].message}`
+            : "";
     // A participant whose desktop failed for a known cause gives the run that cause's code.
     const codedFailure = (outcomes ?? []).find((outcome) => outcome.failureCode !== undefined);
     const code: CuaActorStudyErrorCode =
@@ -175,7 +226,7 @@ function cuaStudyResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.outcome.execution.failures[0] !== undefined ? `; ${args.outcome.execution.failures[0].message}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${firstFailure}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
@@ -221,6 +272,7 @@ function cuaStudyResult(args: {
     laneSummary: summary,
     ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
     observer,
+    ...(hostSuspension === undefined ? {} : { hostSuspension }),
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
@@ -253,6 +305,12 @@ export async function finishCuaRun(
   ];
   // One judgment for the whole run: the bundle's verdict and the result's ok both read it.
   const judgment = judgeComputerUseRun(bundleBase, { dryRun, outcomes });
+  // One reading of the host suspensions: the review, the outcome and the result all name it.
+  const hostSuspension = readHostSuspensions(
+    run.hostSuspensions(),
+    suspendedParticipants(outcomes ?? []),
+    Date.parse(run.createdAt),
+  );
   const bundle = buildCuaRunBundle(bundleBase, {
     judgment,
     dryRun,
@@ -260,6 +318,7 @@ export async function finishCuaRun(
     subjects,
     aggregateSubject,
     ...(failFastReason === undefined ? {} : { failFastReason }),
+    ...(hostSuspension === undefined ? {} : { hostSuspension }),
   });
 
   const adapterWarnings: string[] = [];
@@ -285,8 +344,17 @@ export async function finishCuaRun(
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
   const policy = OUTCOME_POLICIES["computer-use"];
-  // FinishedRun.renderObserver adds an Observer that did not render.
-  const execution = judgeExecution(participantExecutionFailures(outcomes, runId), policy);
+  // FinishedRun.renderObserver adds an Observer that did not render. A suspension that likely
+  // caused participant failures is the run's first failure, ahead of each one it explains.
+  const execution = judgeExecution(
+    [
+      ...(hostSuspension !== undefined && hostSuspension.participantIds.length > 0
+        ? [{ kind: "run" as const, message: hostSuspension.summary }]
+        : []),
+      ...participantExecutionFailures(outcomes, runId),
+    ],
+    policy,
+  );
   const finished = await run.finish(bundle, {
     ok: resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy }),
     execution,
@@ -315,6 +383,7 @@ export async function finishCuaRun(
     bundle,
     outcome: finished.outcome,
     observer,
+    hostSuspension,
     receivingWarnings,
     aggregateWarnings,
     adapterWarnings,

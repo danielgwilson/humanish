@@ -98,7 +98,9 @@ export function desktopParticipantDeps(
     redactScreenshots: run.redactScreenshots,
     scrubKnownValues: run.scrubKnownValues,
     runSession: run.runSession,
-    now: seams.now ?? Date.now,
+    // The run's own clock unless a test sets another, so a participant's times and the run's host
+    // suspensions read one clock.
+    now: seams.now ?? seams.hostClock?.now ?? Date.now,
     onStream: run.onStream,
     reportSubjectPhase: run.reportSubjectPhase,
   };

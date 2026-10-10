@@ -46,6 +46,7 @@ import {
 } from "../../run/participant-records.js";
 import { subjectName } from "../../run/subject-name.js";
 import { plural } from "../../run/text.js";
+import type { HostSuspensionReading } from "../../run/host-suspension.js";
 
 type SingleParticipantBundleArgs = Parameters<typeof buildSingleParticipantBundle>[0];
 
@@ -407,10 +408,15 @@ function singleReview(
           }
         : {}),
       ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
-      summary: singleSummary(args, view, {
-        ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
-        ...(credibilityNote === undefined ? {} : { credibilityNote }),
-      }),
+      // A host suspension comes first: it may explain everything after it.
+      summary: `${args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `}${singleSummary(
+        args,
+        view,
+        {
+          ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
+          ...(credibilityNote === undefined ? {} : { credibilityNote }),
+        },
+      )}`,
       gaps:
         args.session || args.sessionError !== undefined
           ? []
@@ -504,6 +510,8 @@ export function buildSingleParticipantBundle(args: {
    *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
   desktopMinutes?: number;
   desktopUsage?: DesktopUsage;
+  /** The run's host suspensions and the failure they likely caused. */
+  hostSuspension?: HostSuspensionReading;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   const cost = runCost(args);

@@ -25,6 +25,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   releases it, a first participant whose sandbox was never created passes the first start to the
   next one, and a first participant whose desktop came up and then failed, as when the subject
   does not build, still blocks the rest (#1741).
+- A run whose host sleeps, such as a laptop closed on battery, says so. The run's status cadence
+  is now also a heartbeat: a wall-clock gap of 30 s or more between two ticks is recorded as a
+  `host.suspended` warn event with its start, end and length. On a computer-use run, the
+  participants that failed in the harness or at their time limit while in flight across the
+  suspension, and those skipped after such a failure, are named as its likely effect: the run
+  outcome's first failure, the start of the review summary and a line under the `humanish run`
+  header read "The host was suspended for 6m 5s at +1m; the 34 participant failures after it are
+  likely its effect.", the review lists those participants in one gap line, and the result's
+  `hostSuspension` holds the ids. A fan-out run's header then names the
+  `--rerun-failed-from` command. A participant that stopped before the suspension, including one
+  whose desktop failed to start, keeps its own failure. Each participant's own record and failure
+  are unchanged. Before,
+  a 6-minute sleep a minute into a 34-participant run read as 117 provider stalls, E2B deadlines
+  and skips, none of which named the host (#1740).
 
 ## 0.120.1: Analysis requests under Bun run past 5 minutes (2026-10-09)
 

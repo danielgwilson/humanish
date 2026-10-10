@@ -15,6 +15,12 @@ import type { RunBundle } from "./bundle.js";
 import { isProvenanceField, studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 import type { ExecutionOutcome } from "./judge.js";
+import {
+  startHeartbeat,
+  systemHostClock,
+  type HostClock,
+  type HostSuspension,
+} from "./host-suspension.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 
@@ -135,6 +141,8 @@ export interface RunStatusHandle {
   interrupt(signal: RunInterruptSignal): Promise<boolean>;
   /** True from the moment `interrupt` accepts a signal, before its write lands. */
   readonly interrupted: boolean;
+  /** The host suspensions the cadence saw until now, or until it stopped. */
+  suspensions(): readonly HostSuspension[];
 }
 
 export interface BeginRunStatusOptions {
@@ -142,18 +150,22 @@ export interface BeginRunStatusOptions {
   mode: "dry-run" | "live";
   study?: RunStudyProvenance | undefined;
   sandboxes?: "none" | undefined;
+  /** The clock its timestamps and cadence read. Defaults to systemHostClock. */
+  clock?: HostClock | undefined;
 }
 
 /**
  * Start a run's status record and keep it fresh. Fire-and-forget by design: a status write that
- * fails must never fail the run it describes, so every write swallows its error. The interval is
- * `unref`'d, so this file can never be the reason a process stays alive.
+ * fails must never fail the run it describes, so every write swallows its error. The cadence is
+ * the run's heartbeat, which also records each host suspension, and its timer never keeps the
+ * process alive.
  */
 export function beginRunStatus(
   runPaths: PreparedOutputRoot,
   options: BeginRunStatusOptions,
 ): RunStatusHandle {
-  const iso = (): string => new Date().toISOString();
+  const clock = options.clock ?? systemHostClock;
+  const iso = (): string => new Date(clock.now()).toISOString();
   const startedAt = iso();
   const base: RunStatusRecord = {
     schema: RUN_STATUS_SCHEMA,
@@ -191,18 +203,17 @@ export function beginRunStatus(
 
   const started = write(base);
 
-  const timer = setInterval(() => {
+  const heartbeat = startHeartbeat(clock, RUN_STATUS_TOUCH_MS, () => {
     if (finished) return;
     void write({ ...base, updatedAt: iso() });
-  }, RUN_STATUS_TOUCH_MS);
-  timer.unref?.();
+  });
 
   const handle: RunStatusHandle = {
     started,
     async finish(outcome?: RunStatusOutcome) {
       if (finished) return;
       finished = true;
-      clearInterval(timer);
+      heartbeat.stop();
       const completedAt = iso();
       finishedRecord = {
         ...base,
@@ -227,7 +238,7 @@ export function beginRunStatus(
       }
       finished = true;
       interrupted = true;
-      clearInterval(timer);
+      heartbeat.stop();
       const completedAt = iso();
       await write({ ...base, state: "interrupted", updatedAt: completedAt, completedAt, signal });
       return true;
@@ -235,6 +246,7 @@ export function beginRunStatus(
     get interrupted() {
       return interrupted;
     },
+    suspensions: () => heartbeat.suspensions(),
   };
   return handle;
 }

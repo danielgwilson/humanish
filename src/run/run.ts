@@ -40,6 +40,12 @@ import {
   type RunStatusHandle,
 } from "./status.js";
 import { readRunJsonIfExists, runJsonValue } from "./locate.js";
+import {
+  hostSuspensionEvents,
+  systemHostClock,
+  type HostClock,
+  type HostSuspension,
+} from "./host-suspension.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 
 interface StartRunOptions {
@@ -56,8 +62,10 @@ interface StartRunOptions {
   renderReview: (bundle: RunBundle, status?: unknown) => string;
   /** Used by `FinishedRun.renderObserver`; `render` is the `StudyDeps.renderObserver` seam. */
   observer?: { open: boolean; render?: typeof renderObserver | undefined };
-  /** Clock for `createdAt` and the latest pointer. */
+  /** Clock for `createdAt` and the latest pointer. Defaults to the clock's `now`. */
   now?: (() => number) | undefined;
+  /** The run's wall clock and heartbeat timer. Defaults to systemHostClock. */
+  clock?: HostClock | undefined;
   /** Warnings about the study's own fields. Every bundle write records each as a warn event. */
   warnings?: readonly string[] | undefined;
   /** The route's known values, created before the run so a refusal before it is scrubbed too. */
@@ -80,8 +88,16 @@ interface StartRunInput {
   readonly runId?: string | undefined;
   /** Open the Observer page once it renders. */
   readonly open?: boolean | undefined;
-  /** `renderObserver` is the seam FinishedRun.renderObserver calls. */
-  readonly deps?: { readonly renderObserver?: typeof renderObserver | undefined } | undefined;
+  /**
+   * `renderObserver` is the seam FinishedRun.renderObserver calls; `hostClock` is the run's
+   * clock and heartbeat timer.
+   */
+  readonly deps?:
+    | {
+        readonly renderObserver?: typeof renderObserver | undefined;
+        readonly hostClock?: HostClock | undefined;
+      }
+    | undefined;
 }
 
 /** What a recorded route passes to startRun besides its plan and input. */
@@ -140,6 +156,12 @@ interface Run {
    * and a run that failed before any session (a refused E2B key) does not.
    */
   participantStarted(): void;
+  /**
+   * The times this process did not run while the run was alive, most likely because the host
+   * slept, as the run's heartbeat saw them up to this call. Every bundle write records each as a
+   * `host.suspended` event; a route reads them to say which participant failures they caused.
+   */
+  hostSuspensions(): readonly HostSuspension[];
   /**
    * The one final publication: run.json with `outcome` set from `outcome`, then the status
    * outcome copied from it, then review.json, review.md, events.ndjson,
@@ -339,10 +361,14 @@ function runPublisher(args: {
     type: "study.warning",
     message: redactText(message),
   }));
-  const withStudyWarnings = (events: readonly RunEvent[]): RunEvent[] => [
-    ...events.filter((event) => !studyWarnings.some((warning) => warning.id === event.id)),
-    ...studyWarnings,
-  ];
+  // So do the host suspensions the heartbeat has seen by the time of the write.
+  const withRunEvents = (events: readonly RunEvent[]): RunEvent[] => {
+    const owned = [
+      ...studyWarnings,
+      ...hostSuspensionEvents(runStatus.suspensions(), Date.parse(createdAt)),
+    ];
+    return [...events.filter((event) => !owned.some((mine) => mine.id === event.id)), ...owned];
+  };
   let pointerWritten = false;
   // The bundle of the last write asked for, and the outcome every later write carries once a
   // signal stopped the run, so no write after the interrupt can drop it.
@@ -382,7 +408,7 @@ function runPublisher(args: {
     const recorded = interrupted ?? outcome;
     const publicBundle = await withPublicSandboxIds(paths, {
       ...evidence,
-      events: withStudyWarnings(evidence.events),
+      events: withRunEvents(evidence.events),
       cwd: PUBLIC_TARGET_CWD,
       ...(recorded === undefined ? {} : { outcome: recorded }),
     });
@@ -513,8 +539,8 @@ export async function runScope<T>(
         const runId = options.runId ?? options.mintRunId();
         const created = await createRunArtifactPaths(options.cwd, runId);
         if (!created.ok) return created;
-        // beginRunStatus reads only the mode, the study provenance and the sandboxes field from
-        // the run's options.
+        // beginRunStatus reads only the mode, the study provenance, the sandboxes field and the
+        // clock from the run's options.
         const runStatus = beginRunStatus(created.paths, { ...options, runId });
         status = runStatus;
         let interruptBundle: ((signal: RunInterruptSignal) => Promise<void>) | undefined;
@@ -559,7 +585,7 @@ export async function runScope<T>(
     paths: PreparedRunArtifactPaths,
     runStatus: RunStatusHandle,
   ): { run: Run; interrupt: (signal: RunInterruptSignal) => Promise<void> } => {
-    const now = options.now ?? Date.now;
+    const now = options.now ?? (options.clock ?? systemHostClock).now;
     const createdAt = new Date(now()).toISOString();
     let participantsRan = false;
     const publisher = runPublisher({
@@ -588,6 +614,7 @@ export async function runScope<T>(
       participantStarted() {
         participantsRan = true;
       },
+      hostSuspensions: () => runStatus.suspensions(),
       writeSnapshot(bundle) {
         if (closed) return refuse("The run scope has closed.");
         if (finishCalled) return refuse("Run.finish was called; no snapshot follows it.");
@@ -645,6 +672,7 @@ async function startRecordedRun(
     renderReview: route.renderReview,
     observer: { open: input.open === true, render: input.deps?.renderObserver },
     now: route.now,
+    clock: input.deps?.hostClock,
     secrets: route.secrets,
   });
   if (!started.ok) return started;
