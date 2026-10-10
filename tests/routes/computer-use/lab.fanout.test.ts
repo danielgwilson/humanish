@@ -1312,7 +1312,11 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     if (outcome.route !== "computer-use") return;
 
     expect(outcome.result.ok).toBe(true);
-    expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a", "http://127.0.0.1:3002/role-b"]);
+    // Both participants start at once, so their desktops open in either order.
+    expect([...handle.opened].sort()).toEqual([
+      "http://127.0.0.1:3001/role-a",
+      "http://127.0.0.1:3002/role-b",
+    ]);
     expect(outcome.result.plan?.lanes.map((lane) => lane.targetDigest)).toEqual([
       expect.stringMatching(/^[a-f0-9]{16}$/),
       expect.stringMatching(/^[a-f0-9]{16}$/),
