@@ -10,6 +10,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The participant line of a run's review lists interruption causes in a fixed order, most first
+  and then by name. It followed the order the participants finished in, so the same run could
+  read differently (#1741).
 - A hosted computer-use study runs its other participants when one participant's desktop fails to
   start. The first participant held a gate on every subject, so when its desktop failed, every
   other participant was recorded `blocked` with "failed to provision its world (pipeline gate)",

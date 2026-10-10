@@ -224,7 +224,9 @@ export function formatParticipantOutcomes(
       const description = entry.label === undefined ? fallback : `interrupted (${entry.label})`;
       counts.set(description, (counts.get(description) ?? 0) + 1);
     }
-    for (const [description, n] of counts) parts.push(`${n} ${description}`);
+    // Participants finish in any order, so the causes are sorted: most first, then by name.
+    const sorted = [...counts].sort(([a, m], [b, n]) => n - m || a.localeCompare(b));
+    for (const [description, n] of sorted) parts.push(`${n} ${description}`);
   };
   append(outcomes.abandoned, ["abandoned"], "gave up");
   append(outcomes.ranOut, ["incomplete", "timed_out"], "interrupted (stop details unavailable)");
