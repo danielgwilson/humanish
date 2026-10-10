@@ -12,7 +12,7 @@ import type { CuaParticipantDeps } from "./types.js";
 /** The deps a desktop route builds once per run. Each participant adds the app URL it opens. */
 export type DesktopParticipantDeps = Omit<
   CuaParticipantDeps,
-  "signalProvisioned" | "appUrl" | "onObservedUrl"
+  "signalReady" | "appUrl" | "onObservedUrl"
 >;
 
 /** What every participant of a desktop run reads. Each route supplies all of it. */

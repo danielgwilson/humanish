@@ -105,8 +105,8 @@ async function fixture() {
     desktopModule: loadDesktopModule,
     onStream: async () => undefined,
     reportSubjectPhase: () => undefined,
-    signalProvisioned: (ready) => {
-      order.push(`gate:${ready}`);
+    signalReady: () => {
+      order.push("ready");
     },
   };
   let saved = false;
@@ -628,7 +628,7 @@ describe("ready desktop participant contract", () => {
     expect(result.sandboxId).toBeUndefined();
     expect(result.desktopResources).toBeUndefined();
     expect(result.desktopDurationMs).toBeUndefined();
-    expect(f.order.slice(0, 3)).toEqual(["prepare", "open", "gate:true"]);
+    expect(f.order.slice(0, 3)).toEqual(["prepare", "open", "ready"]);
     expect(f.order.indexOf("click")).toBeGreaterThan(f.order.indexOf("observe"));
     expect(f.order.at(-1)).toBe("release");
     expect(f.release).toHaveBeenCalledOnce();
@@ -665,22 +665,21 @@ describe("ready desktop participant contract", () => {
       expect(result.sessionError).toBe("Synthetic failure [scrubbed]");
       expect(result.killed).toBe(true);
       expect(f.port.finalize).toHaveBeenCalledExactlyOnceWith({ failed: true });
-      expect(f.order).toContain(`gate:${stage === "participant"}`);
+      expect(f.order.includes("ready")).toBe(stage === "participant");
       expect(f.backend.execute).not.toHaveBeenCalled();
       expect(f.release).toHaveBeenCalledOnce();
       expect(f.loadDesktopModule).not.toHaveBeenCalled();
     },
   );
 
-  it("does not let a failing pipeline callback skip cleanup", async () => {
+  it("does not let a failing ready callback skip cleanup", async () => {
     const f = await fixture();
-    f.port.prepare = async () => {
-      throw new Error("Synthetic setup failure");
-    };
-    f.deps.signalProvisioned = () => {
+    f.deps.signalReady = () => {
       throw new Error("Synthetic gate failure");
     };
-    await expect(runCuaParticipant(f.spec, f.deps)).rejects.toThrow("Synthetic gate failure");
+    const result = await runCuaParticipant(f.spec, f.deps);
+    expect(result.sessionError).toBe("Synthetic gate failure");
+    expect(f.backend.execute).not.toHaveBeenCalled();
     expect(f.release).toHaveBeenCalledOnce();
   });
 

@@ -90,7 +90,6 @@ export async function runCuaParticipant(
   // model turn only to stop at its first one, so it is skipped before its desktop exists.
   const crossed = deps.runBudget?.crossed();
   if (crossed !== undefined) {
-    deps.signalProvisioned?.(false);
     return skippedOutcome(
       spec,
       `skipped: study budget reached before this participant started: ${crossed}; no desktop was created`,
@@ -104,14 +103,6 @@ export async function runCuaParticipant(
   let sessionError: string | undefined;
   let providerCleanupError: string | undefined;
   let providerPolicyError: string | undefined;
-  let provisioned = false;
-  let signaled = false;
-  const signal = (ok: boolean): void => {
-    if (!signaled && deps.signalProvisioned) {
-      signaled = true;
-      deps.signalProvisioned(ok);
-    }
-  };
   const desktop =
     deps.createDesktop?.(spec, warnings, deps.artifactRoot) ??
     createE2BParticipantDesktop(spec, deps, warnings);
@@ -119,11 +110,7 @@ export async function runCuaParticipant(
     await desktop.prepare();
     const ready = await desktop.openSession();
     model = await startParticipantModel(spec, deps, ready.executor);
-
-    // World is ready: release the pipeline gate so the remaining participants may start.
-    provisioned = true;
-    signal(true);
-
+    deps.signalReady?.();
     session = await deps.runSession(
       participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
     );
@@ -145,17 +132,13 @@ export async function runCuaParticipant(
               : `Codex output after the participant's last request could not be checked against the item policy (${closed.refusal}).`,
         ),
       );
-    try {
-      if (!provisioned) signal(false);
-    } finally {
-      await desktop.finalize({
-        failed:
-          sessionError !== undefined ||
-          providerCleanupError !== undefined ||
-          providerPolicyError !== undefined ||
-          session === undefined,
-      });
-    }
+    await desktop.finalize({
+      failed:
+        sessionError !== undefined ||
+        providerCleanupError !== undefined ||
+        providerPolicyError !== undefined ||
+        session === undefined,
+    });
   }
   const { released, desktopFailure, ...desktopEvidence } = desktop.snapshot();
   // A desktop that died under the participant explains the failure better than the transport
@@ -196,13 +179,68 @@ export async function runCuaParticipant(
   };
 }
 
+/** What the pipeline gate tells a participant whose start has come. */
+type GateTurn = "start" | "hold" | "closed";
+
+/**
+ * Holds a fan-out's participants back until one of them is ready, when each sets up the subject in
+ * its own sandbox the same way (a clone or local tree built and served, a desktop CLI installed),
+ * so a subject that fails to set up fails once. The first participant to enter holds the gate and
+ * the others wait. Any participant that becomes ready opens it. A holder that never got a desktop
+ * learned nothing about the subject, so the next waiting participant holds it instead. A holder
+ * whose desktop came up and then failed before its session closes it, and `onClose` runs.
+ */
+function pipelineGate(open: boolean, onClose: () => void) {
+  let state: "vacant" | "held" | "open" | "closed" = open ? "open" : "vacant";
+  let holder: string | undefined;
+  const waiting: { id: string; turn: (turn: GateTurn) => void }[] = [];
+  const settle = (turn: GateTurn) => {
+    for (const participant of waiting.splice(0)) participant.turn(turn);
+  };
+  return {
+    /** The participant that holds the gate, or held it when it closed. */
+    holder: () => holder,
+    enter(id: string): Promise<GateTurn> {
+      if (state === "open") return Promise.resolve("start");
+      if (state === "closed") return Promise.resolve("closed");
+      if (state === "vacant") {
+        state = "held";
+        holder = id;
+        return Promise.resolve("hold");
+      }
+      return new Promise((turn) => waiting.push({ id, turn }));
+    },
+    ready(): void {
+      if (state !== "held") return;
+      state = "open";
+      settle("start");
+    },
+    failed(id: string, { handOver }: { handOver: boolean }): void {
+      if (state !== "held" || holder !== id) return;
+      if (handOver) {
+        const next = waiting.shift();
+        if (next === undefined) state = "vacant";
+        else {
+          holder = next.id;
+          next.turn("hold");
+        }
+        return;
+      }
+      state = "closed";
+      settle("closed");
+      onClose();
+    },
+  };
+}
+
 /**
  * Run N>1 E2B participants on the study's schedule (runOnSchedule: each at its start offset, at
- * most `concurrency` at once), behind a pipeline gate (the first to start provisions before the
- * rest start) and session fail-fast on harness errors only (queued participants become `blocked`
- * with a pinned reason + a fail-fast event; mission verdicts never trip it). A gate failure or a
- * fail-fast ends every wait for a later start at once. Each participant tears down its own sandbox
- * by id; nothing here ever enumerates.
+ * most `concurrency` at once), behind the pipeline gate when the subject is set up in each sandbox,
+ * and session fail-fast on harness errors only (queued participants become `blocked` with a pinned
+ * reason + a fail-fast event; mission verdicts never trip it). A participant that stops before its
+ * session has failed on its own and trips no fail-fast. A closed gate or a fail-fast ends every
+ * wait for a later start at once. Each participant tears down its own sandbox by id; nothing here
+ * ever enumerates.
  *
  * Exported for the total-runner tests: the injectable runner lets a test make one participant
  * throw (the exact class the guard exists for) without a live sandbox. Production always uses
@@ -210,26 +248,14 @@ export async function runCuaParticipant(
  */
 export async function runCuaParticipants(
   runs: DesktopParticipantRun[],
-  deps: Omit<CuaParticipantDeps, "signalProvisioned">,
+  deps: Omit<CuaParticipantDeps, "signalReady">,
   concurrency: number,
   runParticipant: typeof runCuaParticipant = runCuaParticipant,
 ): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
   const stopping = new AbortController();
-  let gateHolder = runs[0]?.planned.id ?? "lane-01";
-  let resolveGate: (() => void) | undefined;
-  let rejectGate: (() => void) | undefined;
-  const gate = new Promise<void>((resolve, reject) => {
-    resolveGate = resolve;
-    rejectGate = () => {
-      reject(new Error("gate"));
-      stopping.abort();
-    };
-  });
-  // The gate is rejected on the first participant's provisioning failure; swallow the unhandled
-  // rejection if no later participant ever awaits it (concurrency could let the first finish
-  // alone).
-  gate.catch(() => undefined);
+  // An app-url subject is only opened, so one participant's start says nothing about another's.
+  const gate = pipelineGate(deps.subject.kind === "app-url", () => stopping.abort());
 
   const outcomes = await runOnSchedule(
     runs,
@@ -239,23 +265,23 @@ export async function runCuaParticipants(
       now: deps.now,
       signal: stopping.signal,
     },
-    async (spec, _index, { order, scheduledAt }): Promise<ParticipantRunOutcome> => {
-      if (order === 0) gateHolder = spec.planned.id;
-      if (order > 0) {
-        try {
-          await gate;
-        } catch {
-          return skippedOutcome(
-            spec,
-            `skipped: participant ${gateHolder} failed to provision its world (pipeline gate)`,
-            { scheduledAt },
-          );
-        }
-      }
+    async (spec, _index, { scheduledAt }): Promise<ParticipantRunOutcome> => {
       if (failFast.tripped) {
         return skippedOutcome(spec, `skipped: ${failFast.reason}`, { scheduledAt });
       }
+      // A participant trips fail-fast only after the gate opened, or as it closes the gate, so no
+      // participant is still waiting at the gate when fail-fast skips the rest.
+      const id = spec.planned.id;
+      if ((await gate.enter(id)) === "closed") {
+        return skippedOutcome(
+          spec,
+          `skipped: participant ${gate.holder()} failed to provision its world (pipeline gate)`,
+          { scheduledAt },
+        );
+      }
       const arrival = { scheduledAt, startedAt: deps.now() };
+      let ready = false;
+      let threw = false;
       // The participant runner is total: every exit path returns a recorded outcome. Without this
       // guard, one participant's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
       // already torn down) rejected the whole map while sibling workers kept launching sandboxes
@@ -264,22 +290,13 @@ export async function runCuaParticipants(
       try {
         outcome = await runParticipant(spec, {
           ...deps,
-          ...(order === 0
-            ? {
-                signalProvisioned: (ok: boolean) => {
-                  if (ok) {
-                    resolveGate?.();
-                  } else {
-                    rejectGate?.();
-                  }
-                },
-              }
-            : {}),
+          signalReady: () => {
+            ready = true;
+            gate.ready();
+          },
         });
       } catch (error) {
-        // The first participant may have thrown before signaling the provisioning gate; release the followers as
-        // blocked rather than leaving them awaiting a gate that will never settle.
-        if (order === 0) rejectGate?.();
+        threw = true;
         const detail = redactText(toErrorMessage(error));
         outcome = {
           spec,
@@ -296,7 +313,11 @@ export async function runCuaParticipants(
           sessionError: `participant runner threw outside the session guard: ${detail}`,
         };
       }
-      if (outcome.harnessError && !failFast.tripped) {
+      // A participant that stopped before its session failed on its own and trips no fail-fast.
+      // Without a desktop it says nothing about the subject, so the next participant starts first.
+      // A runner that threw is a harness defect: it closes the gate and trips fail-fast.
+      if (!ready) gate.failed(id, { handOver: !threw && outcome.sandboxId === undefined });
+      if (outcome.harnessError && (ready || threw) && !failFast.tripped) {
         failFast.tripped = true;
         failFast.reason = `a prior participant (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
         stopping.abort();
@@ -415,7 +436,7 @@ export function toParticipantResult(
  */
 export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],
-  deps: Omit<CuaParticipantDeps, "signalProvisioned">,
+  deps: Omit<CuaParticipantDeps, "signalReady">,
   participantPlan: CuaParticipantPlan,
   inProcess: boolean,
 ): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason: string | undefined }> {
