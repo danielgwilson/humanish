@@ -1312,7 +1312,11 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     if (outcome.route !== "computer-use") return;
 
     expect(outcome.result.ok).toBe(true);
-    expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a", "http://127.0.0.1:3002/role-b"]);
+    // Both participants start at once, so their desktops open in either order.
+    expect([...handle.opened].sort()).toEqual([
+      "http://127.0.0.1:3001/role-a",
+      "http://127.0.0.1:3002/role-b",
+    ]);
     expect(outcome.result.plan?.lanes.map((lane) => lane.targetDigest)).toEqual([
       expect.stringMatching(/^[a-f0-9]{16}$/),
       expect.stringMatching(/^[a-f0-9]{16}$/),
@@ -1985,40 +1989,6 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     });
   });
 
-  it("pipeline gate: lane-1 provisioning failure ⇒ the remaining participants never start a sandbox", async () => {
-    const handle = makeFanoutModule();
-    const outcome = await runStudyWith(
-      fanoutConfig({ concurrency: 2 }),
-      {
-        cwd,
-        env: FANOUT_ENV,
-        // Fail provisioning for participant 0 (the gate owner) through prepareDesktop's target.
-        prepareDesktop: async (_desktop, target) => {
-          if (target.kind === "participant" && target.participant.index === 0)
-            throw new Error("lane-0 world failed to provision");
-        },
-      },
-      passingSeams(handle),
-    );
-    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
-    const result = outcome.result;
-
-    expect(result.ok).toBe(false);
-    // Only participant 0's sandbox was ever created; the gate kept participants 2-4 from starting.
-    expect(handle.created).toHaveLength(1);
-    expect(handle.created[0]?.metadata?.participantId).toBe("mobile-newcomer");
-    // Participant 0's sandbox was still torn down by id.
-    expect(handle.killed).toEqual(["fake-sandbox-01"]);
-    // The other participants are reported blocked.
-    expect(result.laneSummary?.skipped).toBe(3);
-    expect(result.lanes?.slice(1).every((lane) => lane.status === "blocked")).toBe(true);
-    expect(result.lanes?.[1]?.skippedReason).toContain("pipeline gate");
-    // The skip names the participant whose provisioning failed.
-    expect(result.lanes?.[1]?.skippedReason).toContain(
-      "participant mobile-newcomer failed to provision",
-    );
-  });
-
   it("fail-fast on a harness error: in-flight participants finish, queued participants are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
     const handle = makeFanoutModule();
     const outcome = await runStudyWith(
@@ -2432,8 +2402,11 @@ describe("runCuaParticipants total-runner guard", () => {
     selfReportedBlocker: false,
     harnessError: false,
   });
-  // The runner reads only the run's clock, to record when each participant starts.
-  const deps = { now: Date.now } as unknown as Parameters<typeof runCuaParticipants>[1];
+  // The runner reads the run's clock, to record when each participant starts, and the subject,
+  // which a clone gates behind the first participant's start.
+  const deps = { now: Date.now, subject: { kind: "clone" } } as unknown as Parameters<
+    typeof runCuaParticipants
+  >[1];
 
   it("a throwing participant records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
@@ -2443,7 +2416,7 @@ describe("runCuaParticipants total-runner guard", () => {
       1,
       async (s, laneDeps) => {
         if (s.planned.index === 0) {
-          (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
+          laneDeps.signalReady?.();
           return okOutcome(s);
         }
         if (s.planned.id === "lane-02")
@@ -2466,7 +2439,7 @@ describe("runCuaParticipants total-runner guard", () => {
     expect(failFastReason).toContain("lane-02");
   });
 
-  it("participant 0 throwing before it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
+  it("participant 0 throwing before it is ready closes the gate and releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes } = await runCuaParticipants(specs, deps, 3, async (s) => {
       if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");
@@ -2474,8 +2447,8 @@ describe("runCuaParticipants total-runner guard", () => {
     });
     expect(outcomes).toHaveLength(3);
     expect(outcomes[0]!.harnessError).toBe(true);
-    // Followers were awaiting the gate; the guard rejects it on lane-0 throw so they resolve as
-    // blocked (pipeline gate): the run ends instead of hanging on a promise nobody will settle.
+    // Followers were waiting at the gate; the throw closes it, so they resolve as blocked
+    // (pipeline gate): the run ends instead of hanging on a gate nobody will settle.
     expect(outcomes[1]!.skippedReason ?? "").toContain("pipeline gate");
     expect(outcomes[2]!.skippedReason ?? "").toContain("pipeline gate");
   });

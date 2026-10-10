@@ -10,6 +10,21 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- The participant line of a run's review lists interruption causes in a fixed order, most first
+  and then by name. It followed the order the participants finished in, so the same run could
+  read differently (#1741).
+- A hosted computer-use study runs its other participants when one participant's desktop fails to
+  start. The first participant held a gate on every subject, so when its desktop failed, every
+  other participant was recorded `blocked` with "failed to provision its world (pipeline gate)",
+  and an 11-participant `app-url` study whose first sandbox failed reported 10 skipped
+  participants. An `app-url` participant only opens the app on its own desktop, so its startup
+  failure is now its own and no gate holds the others back. A participant that fails before its
+  session also no longer trips fail-fast, which skipped every participant queued behind a full set
+  of slots or due later in a schedule. A `clone`, `local-tree` or `desktop-cli` subject, which
+  every participant sets up the same way, keeps the gate: any participant that becomes ready
+  releases it, a first participant whose sandbox was never created passes the first start to the
+  next one, and a first participant whose desktop came up and then failed, as when the subject
+  does not build, still blocks the rest (#1741).
 - A run whose host sleeps, such as a laptop closed on battery, says so. The run's status cadence
   is now also a heartbeat: a wall-clock gap of 30 s or more between two ticks is recorded as a
   `host.suspended` warn event with its start, end and length. On a computer-use run, the

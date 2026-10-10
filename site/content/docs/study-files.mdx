@@ -194,6 +194,8 @@ A study has at most 100 participants, each on its own desktop. How many run at o
 | `participants[].startAfterMs`    | whole milliseconds, 0 to 86400000 | with the run                                            | `computer-use` and `shared-world`: when this participant starts, after the run starts its participants. See [start participants over time](#start-participants-over-time). |
 | `participants[].startEveryMs`    | whole milliseconds, 1 or more     | none                                                    | On a group with `count`: each member starts this long after the one before it, from the entry's `startAfterMs`.                                                            |
 
+On `computer-use`, a participant whose desktop fails to start is recorded as failed and the others run. A `clone`, `local-tree` or `desktop-cli` subject is set up the same way in every participant's sandbox, so the first participant starts alone and the others start when its session begins. If its desktop comes up and it then fails before its session, as when the subject does not build, the others are recorded `blocked` and no other sandbox is created. If its sandbox is never created, the next participant starts alone in its place.
+
 ### Start participants over time
 
 A participant starts with the run unless its entry sets `startAfterMs`. A group spreads its members with `startEveryMs`: member k starts at `startAfterMs + (k - 1) × startEveryMs`. In this study two nurses work from the start, and six patients arrive five minutes apart from the second minute:

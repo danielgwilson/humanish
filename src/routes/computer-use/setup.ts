@@ -110,7 +110,7 @@ export interface CuaRunSetup {
 /** What only runStudyParticipants reads. */
 export interface CuaParticipantsSetup {
   env: Record<string, string | undefined>;
-  deps: Omit<CuaParticipantDeps, "signalProvisioned">;
+  deps: Omit<CuaParticipantDeps, "signalReady">;
   /** Filled by runStudyParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
   /** The operator-hosted inbox on the app-url route, when declared. */
@@ -434,7 +434,7 @@ function cuaParticipantDeps(
     redactScreenshots: boolean;
     liveTrace: CuaParticipantsSetup["liveTrace"];
   },
-): Omit<CuaParticipantDeps, "signalProvisioned"> {
+): Omit<CuaParticipantDeps, "signalReady"> {
   const { config, seams, env, externalCommsConfig, externalCommsEmail } = admitted;
   const deps = desktopParticipantDeps(
     {

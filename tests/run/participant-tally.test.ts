@@ -86,6 +86,15 @@ describe("formatParticipantOutcomes", () => {
     );
     expect(recorded).toEqual(before);
   });
+  it("lists causes in the same order whatever order the participants finished in", () => {
+    const recorded = tallyParticipantOutcomes(["incomplete", "incomplete", "incomplete"]);
+    const token = { status: "incomplete" as const, label: "provider token limit" };
+    const output = { status: "incomplete" as const, label: "provider output limit" };
+    const expected =
+      "0/3 recorded completions, 2 interrupted (provider token limit), 1 interrupted (provider output limit)";
+    expect(formatParticipantOutcomes(recorded, [token, output, token])).toBe(expected);
+    expect(formatParticipantOutcomes(recorded, [output, token, token])).toBe(expected);
+  });
   it("always leads with the denominator", () => {
     expect(
       formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed", "abandoned"])),

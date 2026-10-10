@@ -157,7 +157,7 @@ describe("recorded stop causes", () => {
     const original = structuredClone(bundle);
     const data = buildObserverData(bundle);
     expect(data.run.participantsLine).toBe(
-      "1/6 recorded completions (1 other or unavailable source), 1 interrupted (estimated spend limit), 1 interrupted (provider output limit), 1 interrupted (time limit), 1 interrupted (limit reached), 1 interrupted (provider response incomplete)",
+      "1/6 recorded completions (1 other or unavailable source), 1 interrupted (estimated spend limit), 1 interrupted (limit reached), 1 interrupted (provider output limit), 1 interrupted (time limit), 1 interrupted (provider response incomplete)",
     );
     expect(data.streams[1]!.statusLabel).toBe("Interrupted");
     expect(data.streams[4]!.statusLabel).toBe("Interrupted");

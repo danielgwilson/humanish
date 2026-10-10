@@ -532,8 +532,8 @@ export type CuaParticipantDeps = E2BDesktopDeps &
     /** The caller's inProcess executor with the run's config bound. Read by the in-process desktop. */
     inProcessExecutor?: (appUrl: string) => Promise<CuaExecutor>;
     runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
-    /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
-    signalProvisioned?: (ok: boolean) => void;
+    /** Called once, when the participant's desktop and model are ready and its session starts. */
+    signalReady?: () => void;
   };
 
 /** Why a sandbox was not confirmed released. */
