@@ -1,6 +1,6 @@
 {
   "name": "humanish",
-  "version": "0.120.1",
+  "version": "0.121.0",
   "description": "Synthetic user research for apps, CLIs, and agent-facing product flows.",
   "keywords": [
     "cli",
