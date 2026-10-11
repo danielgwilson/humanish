@@ -31,6 +31,14 @@ to overwrite an existing output directory. The fixtures contain only generated
 pixels and fictional participant data. The browser blocks unexpected external
 network requests; no credentials or provider setup are used.
 
+Playwright bounds locator actions and navigations. The four Observer proofs wrap every other
+wait (image decodes, animation frames, running animations, axe, opening and closing pages,
+contexts and the browser) in `bounded()` from `scripts/observer-proof-wait.mjs`, so a stall
+fails within seconds and its message names the case and the step. A page that stops answering
+also holds calls that take no timeout (`page.evaluate`, `evaluateAll`, keyboard input), so each
+case runs under `closeWhenOverdue()`: past 90 s here (45 s in the chrome proof) it closes the
+case's browser context, and the pending call fails at its own line.
+
 The built artifact can be selected explicitly. One case can be rerun while
 debugging; unselected cases remain visibly `not-run` in that report:
 

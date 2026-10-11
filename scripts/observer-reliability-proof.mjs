@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { fixture, analysisFixture, screenshot } from "./observer-browser-fixtures.mjs";
+import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const option = (name, fallback) => {
   const i = process.argv.indexOf(name);
@@ -134,53 +135,62 @@ async function ready(page, selector, ending) {
   );
 }
 async function sample(page, selector, ms) {
-  return page.evaluate(
-    async ({ selector, ms }) => {
-      const values = [],
-        start = performance.now();
-      while (performance.now() - start < ms) {
-        const image = document.querySelector(selector),
-          box = image?.getBoundingClientRect(),
-          style = image && getComputedStyle(image),
-          stage = image?.closest(".evidence-stage");
-        values.push({
-          t: performance.now() - start,
-          // The stage that sized the frame, so a geometry failure shows why the frame changed.
-          stage: stage ? `${stage.clientWidth}x${stage.clientHeight}` : undefined,
-          fitRatio: stage?.style.getPropertyValue("--fit-ratio") || undefined,
-          fitRecording: stage ? stage.hasAttribute("data-fit-recording") : undefined,
-          src: image?.getAttribute("src"),
-          visible:
-            !!image &&
-            image.complete &&
-            image.naturalWidth > 0 &&
-            style.visibility !== "hidden" &&
-            box.width > 0,
-          width: box?.width,
-          height: box?.height,
-          scroll: document.querySelector(".content")?.scrollTop,
-          notice: document.querySelector(".evidence-message,.capture-loading")?.textContent,
-        });
-        await new Promise(requestAnimationFrame);
-      }
-      return values;
-    },
-    { selector, ms },
+  return bounded(
+    `Sampling ${selector} for ${ms} ms`,
+    page.evaluate(
+      async ({ selector, ms }) => {
+        const values = [],
+          start = performance.now();
+        while (performance.now() - start < ms) {
+          const image = document.querySelector(selector),
+            box = image?.getBoundingClientRect(),
+            style = image && getComputedStyle(image),
+            stage = image?.closest(".evidence-stage");
+          values.push({
+            t: performance.now() - start,
+            // The stage that sized the frame, so a geometry failure shows why the frame changed.
+            stage: stage ? `${stage.clientWidth}x${stage.clientHeight}` : undefined,
+            fitRatio: stage?.style.getPropertyValue("--fit-ratio") || undefined,
+            fitRecording: stage ? stage.hasAttribute("data-fit-recording") : undefined,
+            src: image?.getAttribute("src"),
+            visible:
+              !!image &&
+              image.complete &&
+              image.naturalWidth > 0 &&
+              style.visibility !== "hidden" &&
+              box.width > 0,
+            width: box?.width,
+            height: box?.height,
+            scroll: document.querySelector(".content")?.scrollTop,
+            notice: document.querySelector(".evidence-message,.capture-loading")?.textContent,
+          });
+          await new Promise(requestAnimationFrame);
+        }
+        return values;
+      },
+      { selector, ms },
+    ),
+    ms + 5000,
   );
 }
 try {
   for (const phone of [false, true]) {
-    const context = await browser.newContext({
-      viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
-      isMobile: phone,
-      hasTouch: phone,
-    });
+    const id = phone ? "phone" : "desktop";
+    const context = await bounded(
+      `${id}: opening a browser context`,
+      browser.newContext({
+        viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
+        isMobile: phone,
+        hasTouch: phone,
+      }),
+    );
+    const release = closeWhenOverdue(context, id, 90_000);
     await context.route("**/*", (route) =>
       new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
     );
-    const page = await context.newPage();
+    const page = await bounded(`${id}: opening a page`, context.newPage());
     page.setDefaultTimeout(10000);
-    const record = { id: phone ? "phone" : "desktop", checks: {}, errors: [] };
+    const record = { id, checks: {}, errors: [] };
     results.push(record);
     page.on("pageerror", (e) => record.errors.push(e.message));
     try {
@@ -292,7 +302,10 @@ try {
         await page.screenshot({
           path: path.join(output, `${record.id}-pin-${reduced ? "reduced" : "motion"}-during.png`),
         });
-        const movement = await page.evaluate(() => window.__pinMovement);
+        const movement = await bounded(
+          `Measuring the ${reduced ? "reduced-motion" : "motion"} pin movement`,
+          page.evaluate(() => window.__pinMovement),
+        );
         record.checks[reduced ? "pinReduced" : "pinMotion"] = movement;
         if (!baseline) {
           assert.equal(movement.first, reduced ? "lane-1" : "lane-2");
@@ -392,40 +405,52 @@ try {
               theme,
             );
             await page.addScriptTag({ content: axeSource });
-            await page.evaluate(async () => {
-              await document.fonts.ready;
-              await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})));
-            });
-            const audit = await page.evaluate(async () => {
-              const result = await axe.run(document, {
-                runOnly: {
-                  type: "tag",
-                  values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"],
-                },
-              });
-              return {
-                violations: result.violations,
-                incomplete: result.incomplete,
-                passes: result.passes.map((p) => p.id),
-                contrast: result.passes
-                  .find((p) => p.id === "color-contrast")
-                  ?.nodes.map((n) => ({ target: n.target, checks: n.any.map((c) => c.data) })),
-              };
-            });
-            if (phone && view === "player") {
-              const final = page.locator('[data-entry-id="lane-1-final"]');
-              await final.scrollIntoViewIfNeeded();
-              audit.scrolledRow = await page.evaluate(async () => {
-                const result = await axe.run(
-                  document.querySelector('[data-entry-id="lane-1-final"]'),
-                  { runOnly: ["color-contrast"] },
-                );
+            await bounded(
+              `${theme} ${view}: waiting for fonts and animations`,
+              page.evaluate(async () => {
+                await document.fonts.ready;
+                await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})));
+              }),
+              5000,
+            );
+            const audit = await bounded(
+              `${theme} ${view}: accessibility audit`,
+              page.evaluate(async () => {
+                const result = await axe.run(document, {
+                  runOnly: {
+                    type: "tag",
+                    values: ["wcag2a", "wcag2aa", "wcag21aa", "best-practice"],
+                  },
+                });
                 return {
                   violations: result.violations,
                   incomplete: result.incomplete,
-                  passes: result.passes,
+                  passes: result.passes.map((p) => p.id),
+                  contrast: result.passes
+                    .find((p) => p.id === "color-contrast")
+                    ?.nodes.map((n) => ({ target: n.target, checks: n.any.map((c) => c.data) })),
                 };
-              });
+              }),
+              30_000,
+            );
+            if (phone && view === "player") {
+              const final = page.locator('[data-entry-id="lane-1-final"]');
+              await final.scrollIntoViewIfNeeded();
+              audit.scrolledRow = await bounded(
+                `${theme} ${view}: contrast audit of the scrolled final row`,
+                page.evaluate(async () => {
+                  const result = await axe.run(
+                    document.querySelector('[data-entry-id="lane-1-final"]'),
+                    { runOnly: ["color-contrast"] },
+                  );
+                  return {
+                    violations: result.violations,
+                    incomplete: result.incomplete,
+                    passes: result.passes,
+                  };
+                }),
+                30_000,
+              );
               if (!baseline) {
                 assert.equal(audit.scrolledRow.violations.length, 0);
                 assert.equal(
@@ -454,14 +479,13 @@ try {
         .screenshot({ path: path.join(output, `${record.id}-failure.png`) })
         .catch(() => {});
     } finally {
-      await context.close();
+      release();
+      await bounded(`${id}: closing the browser context`, context.close());
       delays.clear();
     }
     process.stdout.write(`${record.status.toUpperCase()} ${record.id}\n`);
   }
 } finally {
-  await browser.close();
-  await new Promise((r) => server.close(r));
   await writeFile(
     path.join(output, "proof.json"),
     JSON.stringify(
@@ -476,5 +500,7 @@ try {
     ),
   );
   process.stdout.write(`${output}\n`);
+  await bounded("Closing the browser", browser.close());
+  await bounded("Closing the fixture server", new Promise((r) => server.close(r)));
 }
 if (results.some((r) => r.status !== "passed")) process.exitCode = 1;
