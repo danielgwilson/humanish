@@ -10,7 +10,7 @@ import { renderObserver, serveObserver } from "../dist/observer/render.js";
 import { serveObserverLibrary } from "../dist/observer/serve.js";
 import { serveObserverStatic } from "./lib/static-observer-server.ts";
 import { runDryRun } from "../dist/run/dry-run.js";
-import { bounded } from "./observer-proof-wait.mjs";
+import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const candidates = [
@@ -36,6 +36,7 @@ let library;
 let staticObserver;
 let provider;
 let browser;
+let release = () => {};
 let requestedModule = 0;
 let requestedAttack = 0;
 const checks = {};
@@ -85,6 +86,7 @@ try {
   assert.ok(address && typeof address === "object");
   const providerOrigin = `http://127.0.0.1:${address.port}`;
   browser = await chromium.launch({ executablePath, headless: true });
+  release = closeWhenOverdue(browser, "The iframe proof", 60_000);
   const page = await bounded("Opening the Observer page", browser.newPage());
   let blockedFrames = 0;
   page.on("console", (message) => {
@@ -258,6 +260,7 @@ try {
   await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, checks }));
 } finally {
+  release();
   if (browser) await bounded("Closing the browser", browser.close());
   if (provider)
     await bounded(

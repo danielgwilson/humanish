@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { analysisFixture, fixture, screenshot } from "./observer-browser-fixtures.mjs";
-import { bounded } from "./observer-proof-wait.mjs";
+import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 
 // Bounded supplement to observer-browser-proof: appearance, pin visibility,
 // library motion and fitted card geometry over synthetic retained recordings.
@@ -141,6 +141,7 @@ try {
           reducedMotion: reduced ? "reduce" : "no-preference",
         }),
       );
+      const release = closeWhenOverdue(context, id, 45_000);
       await context.route("**/*", (route) => {
         if (new URL(route.request().url()).origin === origin) return route.continue();
         record.unexpectedNetwork.push(route.request().url());
@@ -321,6 +322,7 @@ try {
         record.error = String(error.stack ?? error);
         await snap("failure").catch(() => {});
       } finally {
+        release();
         await bounded(`${id}: closing the browser context`, context.close());
       }
       process.stdout.write(

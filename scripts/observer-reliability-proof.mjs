@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { fixture, analysisFixture, screenshot } from "./observer-browser-fixtures.mjs";
-import { bounded } from "./observer-proof-wait.mjs";
+import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const option = (name, fallback) => {
   const i = process.argv.indexOf(name);
@@ -184,6 +184,7 @@ try {
         hasTouch: phone,
       }),
     );
+    const release = closeWhenOverdue(context, id, 90_000);
     await context.route("**/*", (route) =>
       new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
     );
@@ -478,6 +479,7 @@ try {
         .screenshot({ path: path.join(output, `${record.id}-failure.png`) })
         .catch(() => {});
     } finally {
+      release();
       await bounded(`${id}: closing the browser context`, context.close());
       delays.clear();
     }

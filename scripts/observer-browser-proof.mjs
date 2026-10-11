@@ -18,7 +18,7 @@ import {
 } from "./observer-browser-fixtures.mjs";
 
 import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
-import { bounded } from "./observer-proof-wait.mjs";
+import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -834,6 +834,7 @@ async function runCase(id, options, action) {
       ...(options.touch ? { hasTouch: true, isMobile: true } : {}),
     }),
   );
+  const release = closeWhenOverdue(context, id, 90_000);
   const unexpectedNetwork = [];
   await context.route("**/*", (route) => {
     const target = new URL(route.request().url());
@@ -1003,12 +1004,15 @@ async function runCase(id, options, action) {
     record.error = error.stack ?? String(error);
   } finally {
     await snap(record.status).catch(() => {});
-    record.state = await stateProof(page).catch((error) => ({ unavailable: error.message }));
+    record.state = await bounded("Reading the final page state", stateProof(page), 5000).catch(
+      (error) => ({ unavailable: error.message }),
+    );
     record.errors = errors;
     record.unexpectedNetwork = unexpectedNetwork;
     record.requests = requests.slice(requestStart);
     record.finishedAt = new Date().toISOString();
     await writeFile(path.join(directory, "proof.json"), JSON.stringify(record, null, 2));
+    release();
     await bounded(`${id}: closing the browser context`, context.close());
     results.push(record);
     process.stdout.write(
