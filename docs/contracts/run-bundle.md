@@ -39,17 +39,29 @@ run.json keeps every field readers list runs by: each stream's status, judged st
 assignment and geometry, and the actor's status, completion reason, counts, persona, debrief,
 impressions, token usage and estimated cost. Each trace is written once.
 
+`trace.path` must be one of those trace file names (`actor.json`, `actors/<name>.json`,
+`actor-<name>.json`, with `<name>` a plain file name); `isStreamTracePath` in
+`src/run/stream-shape.ts` holds the rule, and the writer, the shape check and the loader all use
+it. Any other path, such as `observer/index.html`, fails the shape check.
+
 Readers load a stream through `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
 An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
 source limit for each trace) and refused unless its size, sha256, item count and screenshot count
-match the index. In a v2 run.json a stream with an `actor` and no index is refused, and so is
-one with both an index and inline `items`. verify reports a refused trace in the
-`local evidence artifacts exist` check. run.json's digest, which an analysis record binds,
-covers each index and so each trace.
+match the index. In a v2 run.json every `actor` must have an index: an actor with no index, with
+or without inline `items`, is refused, and so is one with both an index and inline `items`.
+verify reports a refused trace in the `local evidence artifacts exist` check, so the run is
+`blocked`. verify also scans the bytes of each trace it loaded with the public-safety text scan,
+apart from its walk of the run folder, so no path exemption the walk makes applies to a trace.
+run.json's digest, which an analysis record binds, covers each index and so each trace.
 
-A mid-run flush (`inProgress`) still writes `streams[].liveActor.items` inline; the final write
-replaces `liveActor` with the indexed actor. observer-data.json is built from the loaded bundle
-and has the same shape as before.
+Mid-run flushes: the writer indexes every finished participant on every write, flushes included,
+so a v2 run.json never holds `actor.items`. A participant still working has its items so far in
+`streams[].liveActor.items` (`humanish.live-actor.v1`), which no index binds. A v2 run.json may
+carry `liveActor` only while its run has not finished: one whose `outcome.state` is `finished`
+and still holds `liveActor` is refused. An unfinished v2 run.json with `liveActor` (a flush, or
+the last write of an interrupted run) verifies as `local_only` with the share-safety reason
+`RUN_NOT_FINISHED`, never `share_ready`. v1 bundles keep their earlier behavior.
+observer-data.json is built from the loaded bundle and has the same shape as before.
 
 Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema
 (`run schema` fails in verify, analysis refuses the source). This release reads v1 bundles as
@@ -738,7 +750,9 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 `ok: true` also does not mean the run finished. A run killed mid-way leaves an
 in-progress bundle that can pass every check. When the run is not finished,
 `warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
-`ok` and `shareSafety` do not change. Verify decides "not finished" by the run
+`ok` does not change. `shareSafety` changes only for a v2 bundle that holds a participant's
+in-progress items (`liveActor`): it is `local_only` with the reason `RUN_NOT_FINISHED`, since no
+trace index binds those items. Verify decides "not finished" by the run
 index's rule, which the TUI and `humanish stats` use: the run's `status.json` when
 it is well formed and names the run, else a `simulations[]` entry still `running` in the
 bundle. A `running` record updated within the stale window reads as still
@@ -897,6 +911,8 @@ does not inherit resource cleanup authority. Unsupported images, binary formats,
 inline image payloads, invalid evidence and references to omitted files are refused.
 The original and derivative are independently verified. Text still requires human
 review before sharing; screenshot blur does not certify natural-language privacy.
+Export counts the run's files and folders against the public-safety scan's limit
+(10,000 plus 5,000 for each participant `run.json` records) and refuses a run past it.
 
 ## Git Provenance
 

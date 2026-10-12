@@ -39,6 +39,7 @@ import {
   rawScreenshotStreamIds,
   redactedShapeFramePaths,
   scanRunPublicSafetyArtifacts,
+  scanSourceEvidence,
   streamScreenshotPaths,
   unscannedMessage,
   type UnscannedArtifacts,
@@ -77,7 +78,8 @@ export interface VerifyResult {
         | "RAW_SANDBOX_ID"
         | "CONTINUOUS_MEDIA"
         | "REAL_COMMUNICATIONS"
-        | "UNSCANNED_ARTIFACT";
+        | "UNSCANNED_ARTIFACT"
+        | "RUN_NOT_FINISHED";
       message: string;
     }>;
   };
@@ -155,7 +157,8 @@ export async function verifyResolvedRun(
   const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
   // Every check below reads the streams with their traces loaded; a trace that does not match its
   // index fails the evidence-artifacts check and its stream is checked without its items.
-  const { bundle, refusedTraces } = await loadTraces(runPaths, runJsonValue(bundleRead));
+  const traces = await loadTraces(runPaths, runJsonValue(bundleRead));
+  const { bundle, refusedTraces } = traces;
   const cleanupRead = await readRunJsonIfExists(runPaths, "cleanup.json");
   const review = {
     json: await readRunJsonIfExists(runPaths, "review.json"),
@@ -191,6 +194,7 @@ export async function verifyResolvedRun(
     unscannedArtifacts,
     isRunBundle(bundle) ? bundle.simulations.length : 0,
   );
+  addTraceScan(traces, publicSafetyFindings, unscannedArtifacts);
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
   if (
@@ -329,10 +333,29 @@ function evidenceArtifactsCheck(shaped: boolean, problems: string[]): VerifyChec
 async function loadTraces(
   runPaths: PreparedRunArtifactPaths,
   stored: unknown,
-): Promise<{ bundle: unknown; refusedTraces: string[] }> {
-  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [] };
-  const { bundle, refused } = await loadStreamTraces(runPaths, stored);
-  return { bundle, refusedTraces: refused.map((error) => error.message) };
+): Promise<{ bundle: unknown; refusedTraces: string[]; sensitive: string[]; opaque: string[] }> {
+  const scanned = { sensitive: [] as string[], opaque: [] as string[] };
+  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [], ...scanned };
+  // Each trace is source evidence: scanned by the bytes it was joined from, apart from the
+  // directory walk and any path exemption the walk makes.
+  const { bundle, refused } = await loadStreamTraces(runPaths, stored, {
+    onTrace: (file, bytes) => {
+      const scan = scanSourceEvidence(bytes);
+      if (scan !== "clean") scanned[scan === "sensitive" ? "sensitive" : "opaque"].push(file);
+    },
+  });
+  return { bundle, refusedTraces: refused.map((error) => error.message), ...scanned };
+}
+
+/** The trace scan's results, beside the walk's: each file named once. */
+function addTraceScan(
+  traces: { sensitive: string[]; opaque: string[] },
+  findings: string[],
+  unscanned: UnscannedArtifacts,
+): void {
+  for (const file of traces.sensitive)
+    if (!findings.includes(`sensitive text ${file}`)) findings.push(`sensitive text ${file}`);
+  for (const file of traces.opaque) if (!unscanned.files.includes(file)) unscanned.files.push(file);
 }
 
 /** The top-level run.json sections the shape guard requires. */
@@ -619,6 +642,14 @@ function buildShareSafety(args: {
   }
   const unscanned = unscannedMessage(args.unscannedArtifacts);
   if (unscanned !== undefined) reasons.push({ code: "UNSCANNED_ARTIFACT", message: unscanned });
+  // A v2 run.json binds each finished participant's items by its trace index. Items written while
+  // a participant was still working (liveActor) have no index, so such a run stays local.
+  const live = args.bundle.streams.filter((stream) => stream.liveActor !== undefined);
+  if (args.bundle.schema === RUN_BUNDLE_SCHEMA && live.length > 0)
+    reasons.push({
+      code: "RUN_NOT_FINISHED",
+      message: `The run did not finish: run.json holds in-progress items for ${live.map((stream) => stream.id).join(", ")}, which no trace file binds. Review it locally; rerun the study for evidence you can share.`,
+    });
   // Runs from 0.110 keep raw sandbox ids only in sandbox-receipts.ndjson. An earlier run records
   // them in run.json, and any file that names one is not share-ready as it is.
   const rawResources = (args.bundle.providerResources ?? []).some(

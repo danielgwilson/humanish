@@ -114,7 +114,7 @@ async function readSource(
   const stored = parseSource(prepared, bytes);
   if (stored.streams.some((stream) => (stream.trace?.bytes ?? 0) > traceBytes))
     throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
-  const loaded = await loadStreamTraces(prepared, stored, traceBytes);
+  const loaded = await loadStreamTraces(prepared, stored, { maxBytes: traceBytes });
   if (loaded.refused.length > 0) throw new Error("ANALYSIS_SOURCE_INVALID");
   for (const stream of loaded.bundle.streams) validateTraceItems(stream.actor);
   return loaded.bundle;

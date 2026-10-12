@@ -28,6 +28,7 @@ import {
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 import { runAutomaticAnalysis, readAutomaticAnalysis } from "../../src/analysis/automatic.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -677,7 +678,7 @@ describe("ordinary study analysis flow", () => {
         ],
       },
     } as unknown as NonNullable<RunBundle["streams"][number]["actor"]>;
-    await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle, null, 2) + "\n");
+    await writeRunBundle(runRoot, bundle);
     const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
     const packet = await captureEvidence(prepared, await readFile(path.join(runRoot, "run.json")));
     const cited = packet.evidence.find((entry) => entry.eventId === "message-002")!;

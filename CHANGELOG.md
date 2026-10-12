@@ -31,10 +31,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   `actors/<stream>.json` for more), and run.json keeps the participant's summary with
   `streams[].trace: { path, bytes, sha256, items, screenshots }`. run.json no longer grows with
   each turn: on a synthetic run of 8 participants with 1,000 turns each it is 74 KB, down from
-  17.0 MB. humanish reads v1 bundles as they are, with no migration, and refuses a trace whose
-  size or sha256 differs from run.json. npm 0.122.0 and earlier refuse a v2 bundle by its schema
+  17.0 MB. humanish reads v1 bundles as they are, with no migration. verify blocks a v2 bundle
+  whose trace differs from its index in size or sha256, whose index names a file other than a
+  trace file, or whose actor has no index, and grades an unfinished v2 run that holds a
+  participant's in-progress items `local_only` with the new share-safety reason
+  `RUN_NOT_FINISHED`. npm 0.122.0 and earlier refuse a v2 bundle by its schema
   (verify fails `run schema`); upgrade humanish to read runs this version writes. `humanish
-  export --format bundle` writes its copy as v2 from either version (#1766).
+  export --format bundle` writes its copy as v2 from either version, and counts a run's files
+  against the scan's limit for its participants in place of a flat 10,000 (#1766).
 
 ## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 

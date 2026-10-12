@@ -569,6 +569,18 @@ async function scanRunPublicSafetyDirectory(
   }
 }
 
+/**
+ * The public-safety scan of one file read as source evidence, an indexed trace, by its bytes and
+ * whatever its path: no exemption for a regenerated projection applies. `unscanned` when the bytes
+ * are not plain text or hold an encoding the scan cannot read.
+ */
+export function scanSourceEvidence(bytes: Buffer): "clean" | "sensitive" | "unscanned" {
+  const decoded = readPlainText(bytes);
+  if (!decoded.ok) return "unscanned";
+  const scan = scanEncodedTextCached(decoded.text);
+  return scan.sensitive ? "sensitive" : scan.opaque ? "unscanned" : "clean";
+}
+
 function normalizeLocalEvidenceReference(value: string | undefined): string | null {
   if (!value || value.includes("://") || path.isAbsolute(value)) {
     return null;

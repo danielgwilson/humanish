@@ -18,10 +18,16 @@ import {
   transformText,
 } from "./derivative-text.js";
 import { streamScreenshotPaths } from "../verify/artifacts.js";
-import { MAX_RUN_ENTRIES } from "../verify/scan-limit.js";
+import { runEntryLimit } from "../verify/scan-limit.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
-import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
-import { type RunBundle } from "../run/bundle.js";
+import {
+  loadRunBundlePrepared,
+  readRunJsonIfExists,
+  resolveRunPath,
+  runJsonValue,
+} from "../run/locate.js";
+import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
+import { isRecord } from "../run/type-guards.js";
 import {
   runIdOf,
   isPathInside,
@@ -106,16 +112,19 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
   const files: InventoryFile[] = [];
   let total = 0;
   let entriesSeen = 0;
+  // The scan's limit for the participants run.json records, so a run verify reads in full exports.
+  const stored = runJsonValue(await readRunJsonIfExists(root, RUN_BUNDLE_FILE));
+  const entryLimit = runEntryLimit(
+    isRecord(stored) && Array.isArray(stored.simulations) ? stored.simulations.length : 0,
+  );
   const walk = async (relative: string): Promise<void> => {
     const directory = path.join(root.physicalRunRoot, relative);
     const before = await lstat(directory, { bigint: true });
     if (!before.isDirectory() || before.isSymbolicLink())
       throw new Error("Source contains an unsafe directory.");
     for (const name of (await readdir(directory)).sort()) {
-      // TODO(#1766): read run.json first and take the scan's per-participant entry limit
-      // (runEntryLimit) once it lands, so a run verify admits also exports.
-      if (++entriesSeen > MAX_RUN_ENTRIES)
-        throw new Error(`Source exceeds ${MAX_RUN_ENTRIES} inventory entries.`);
+      if (++entriesSeen > entryLimit)
+        throw new Error(`Source exceeds ${entryLimit} inventory entries.`);
       if (name.includes("\\") || name.includes("\0"))
         throw new Error("Source contains an unsafe path segment.");
       const rel = relative ? `${relative}/${name}` : name;

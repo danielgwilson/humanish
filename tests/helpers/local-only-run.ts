@@ -6,6 +6,7 @@ import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { buildSingleParticipantBundle } from "../../src/routes/computer-use/single-bundle.js";
 import { buildRunSource } from "../../src/run/bundle.js";
 import { verdictForStatus } from "../../src/run/judge.js";
+import { writeRunBundle } from "./run-traces.js";
 
 export function rawScreenshotActorTrace(): ActorTrace {
   return {
@@ -86,7 +87,7 @@ export async function writeLocalOnlyRun(cwd: string, runId: string): Promise<voi
   });
   const runDir = path.join(cwd, ".humanish", "runs", runId);
   await mkdir(runDir, { recursive: true });
-  await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeRunBundle(runDir, bundle);
   await writeFile(
     path.join(runDir, "review.json"),
     `${JSON.stringify(bundle.review, null, 2)}\n`,
@@ -102,5 +103,4 @@ export async function writeLocalOnlyRun(cwd: string, runId: string): Promise<voi
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
     "utf8",
   );
-  await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
 }

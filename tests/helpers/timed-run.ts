@@ -11,6 +11,7 @@ import {
 } from "../../src/actors/contract.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { writeRunBundle } from "./run-traces.js";
 
 /** The first capture of the run: the run clock's 00:00. */
 const TIMED_RUN_START = Date.parse("2026-05-01T10:00:00.000Z");
@@ -132,7 +133,7 @@ export async function writeTimedRun(cwd: string, runId: string): Promise<string>
       actor: trace(second),
     },
   ];
-  await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
+  await writeRunBundle(runDir, bundle);
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   const pixels = PNG.sync.write(new PNG({ width: 1, height: 1 }));
   for (const item of [...first, ...second])

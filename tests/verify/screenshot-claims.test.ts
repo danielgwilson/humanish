@@ -14,6 +14,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { pngTextChunk, withPngChunk, withPngChunkData } from "../helpers/png-chunks.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -203,10 +204,13 @@ async function registerFrame(runDir: string, frame: FrameCase): Promise<void> {
   ];
   const stream = bundle.streams[0]!;
   if (frame.live) {
+    // In-progress items: a v2 run.json carries them only while its run has not finished.
     delete stream.actor;
+    delete bundle.outcome;
     Object.assign(stream, {
       liveActor: { schema: "humanish.live-actor.v1", updatedAt: "2026-10-01T00:00:00Z", items },
     });
+    await writeFile(bundlePath, JSON.stringify(bundle));
   } else {
     Object.assign(stream, {
       actor: {
@@ -217,8 +221,8 @@ async function registerFrame(runDir: string, frame: FrameCase): Promise<void> {
           : { redaction: { status: "passed", screenshots: frame.posture, notes: "Synthetic." } }),
       },
     });
+    await writeRunBundle(runDir, bundle);
   }
-  await writeFile(bundlePath, JSON.stringify(bundle));
 }
 
 const runIdOf = (index: number) => `screenshot-claim-${String(index).padStart(2, "0")}`;

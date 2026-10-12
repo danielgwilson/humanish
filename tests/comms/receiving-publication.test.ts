@@ -20,6 +20,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const RUN = "synthetic-receiving-study";
 const execFileAsync = promisify(execFile);
@@ -79,10 +80,10 @@ describe("receiving restrictions in retained evidence", () => {
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
   });
+  /** Writes the bundle as the run writer writes v2 and returns run.json's bytes. */
   async function save(): Promise<Buffer> {
-    const bytes = Buffer.from(JSON.stringify(bundle));
-    await writeFile(path.join(runDir, "run.json"), bytes);
-    return bytes;
+    await writeRunBundle(runDir, bundle);
+    return readFile(path.join(runDir, "run.json"));
   }
 
   it.each(["publication marker", "receiving snapshot", "both"])(

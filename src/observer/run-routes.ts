@@ -19,6 +19,7 @@ import {
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
+import { isStreamTraceIndex } from "../run/stream-shape.js";
 import { joinStreamTrace } from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 import {
@@ -247,12 +248,15 @@ async function loadPinnedTraces(
 ): Promise<RunStream[]> {
   const loaded: RunStream[] = [];
   for (const stream of streams) {
+    // An index naming a file that is not a trace file name is never read; join refuses it.
     const bytes =
       stream.trace === undefined
         ? undefined
-        : await readContainedFile(runRoot, path.join(runRoot.physicalPath, stream.trace.path), {
-            maxBytes: RUN_ARTIFACT_MAX_BYTES,
-          });
+        : isStreamTraceIndex(stream.trace)
+          ? await readContainedFile(runRoot, path.join(runRoot.physicalPath, stream.trace.path), {
+              maxBytes: RUN_ARTIFACT_MAX_BYTES,
+            })
+          : Buffer.alloc(0);
     if (bytes === null) throw new Error(`${stream.trace!.path} unavailable`);
     loaded.push(bytes === undefined ? stream : joinStreamTrace(stream, bytes));
   }

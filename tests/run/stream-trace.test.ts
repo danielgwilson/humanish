@@ -9,7 +9,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RunBundle } from "../../src/run/bundle.js";
+import type { RunStream } from "../../src/run/streams.js";
 import { resolveRunPath } from "../../src/run/locate.js";
+import { isRunStream } from "../../src/run/stream-shape.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import {
   loadRunTraces,
@@ -115,13 +117,64 @@ describe("a run's participant traces", () => {
     );
   });
 
-  it("refuses a v2 stream whose actor has neither its items nor an index", async () => {
+  it("refuses a v2 actor with no index, with or without inline items", async () => {
     const stored = await writeV2(v1);
     const { trace: _index, ...unindexed } = stored.streams[3]!;
-    const tampered = { ...stored, streams: [...stored.streams.slice(0, 3), unindexed] };
+    const inline = { ...unindexed, actor: v1.streams[3]!.actor } as RunStream;
+    const tampered = { ...stored, streams: [...stored.streams.slice(0, 2), inline, unindexed] };
     const loaded = await loadStreamTraces(runPaths, tampered);
-    expect(loaded.refused.map((error) => error.streamId)).toEqual(["stream-004"]);
+    expect(loaded.refused.map((error) => error.streamId)).toEqual(["stream-004", "stream-004"]);
     await expect(loadRunTraces(runPaths, tampered)).rejects.toThrow(/stream-004/);
+    // The same inline streams in a v1 run.json are the v1 shape.
+    expect((await loadStreamTraces(runPaths, { ...v1, streams: [inline] })).refused).toEqual([]);
+  });
+
+  it("refuses an index that names a file other than a trace file name", async () => {
+    const stored = await writeV2(v1);
+    const stream = stored.streams[0]!;
+    for (const name of ["observer/index.html", "review.json", "traces/desktop.json"]) {
+      const moved = { ...stream, trace: { ...stream.trace!, path: name } };
+      expect(isRunStream(moved)).toBe(false);
+      await expect(loadStreamTrace(runPaths, moved)).rejects.toThrow(/not a trace file name/);
+    }
+  });
+
+  it("hands each consumed trace's bytes to the caller after they match the index", async () => {
+    const stored = await writeV2(v1);
+    const seen: { path: string; sha256: string }[] = [];
+    await loadStreamTraces(runPaths, stored, {
+      onTrace: (file, bytes) =>
+        seen.push({ path: file, sha256: createHash("sha256").update(bytes).digest("hex") }),
+    });
+    expect(seen).toEqual(
+      stored.streams.map((stream) => ({ path: stream.trace!.path, sha256: stream.trace!.sha256 })),
+    );
+  });
+
+  it("reads in-progress items only in a v2 run.json whose run has not finished", async () => {
+    const stored = await writeV2(v1);
+    const live = {
+      ...stored.streams[0]!,
+      liveActor: {
+        schema: "humanish.live-actor.v1" as const,
+        updatedAt: "2026-10-01T00:00:00.000Z",
+        items: v1.streams[0]!.actor!.items,
+      },
+    };
+    const { outcome: _outcome, ...unfinished } = { ...stored, streams: [live] };
+    expect((await loadStreamTraces(runPaths, unfinished)).refused).toEqual([]);
+    const finished = {
+      ...unfinished,
+      outcome: {
+        state: "finished" as const,
+        ok: true,
+        execution: { succeeded: true, failures: [] },
+      },
+    };
+    const loaded = await loadStreamTraces(runPaths, finished as RunBundle);
+    expect(loaded.refused.map((error) => error.message)).toEqual([
+      expect.stringMatching(/stream-001.*finished run/),
+    ]);
   });
 
   it("refuses a v2 stream that holds items beside its index", async () => {
