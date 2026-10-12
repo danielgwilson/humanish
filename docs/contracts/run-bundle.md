@@ -50,7 +50,8 @@ Readers load a stream through `loadStreamTrace(runPaths, stream)`. A v1 stream r
 An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
 source limit for each trace) and refused unless its size, sha256, item count and screenshot count
 match the index. A trace file belongs to one participant: every stream whose index names a file
-another stream's index names is refused before any file is read. In a v2 run.json every `actor`
+another stream's index names, compared without case as a case-insensitive file system compares
+names, is refused before any file is read. The writer claims names the same way. In a v2 run.json every `actor`
 must have an index: an actor with no index, with
 or without inline `items`, is refused, and so is one with both an index and inline `items`.
 verify reports a refused trace in the `local evidence artifacts exist` check, so the run is
@@ -71,7 +72,8 @@ provenance) load traces through the same loader and rules. A participant whose t
 refused shows none of the items run.json or a file supplied for it: its stream carries
 `traceUnavailable` with the reason, its Observer timeline a `trace.unavailable` warning, and its
 run-detail entry `evidenceUnavailable`. The Observer server reads the saved observer-data.json
-only while a run has written no run.json.
+only while a run has no run.json at all; a run.json that is there and cannot be read, parsed or
+used as a bundle answers 404 with the reason, never the saved projection.
 observer-data.json is built from the loaded bundle and has the same shape as before.
 
 Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema

@@ -88,6 +88,11 @@ describe("writing a run's participant traces", () => {
   it.each([
     ["a trace artifact named after another participant", ["one", "actors/two.json"], ["two"]],
     ["an id that is not a file name before stream-001", ["bad id"], ["stream-001"]],
+    [
+      "trace artifacts that differ only in case",
+      ["one", "actors/Case.json"],
+      ["two", "actors/case.json"],
+    ],
   ] as const)("gives each participant its own trace file with %s", async (_name, ...specs) => {
     const base = v1.streams[0]!;
     const streams = specs.map((spec, index) => {
@@ -106,7 +111,8 @@ describe("writing a run's participant traces", () => {
     });
     const split = splitStreamTraces({ ...v1, streams });
     const paths = split.files.map((file) => file.path);
-    expect(new Set(paths).size).toBe(2);
+    // Distinct on a case-insensitive file system too.
+    expect(new Set(paths.map((name) => name.toLowerCase())).size).toBe(2);
     await writeV2({ ...v1, streams });
     const loaded = await loadStreamTraces(runPaths, split.bundle);
     expect(loaded.refused).toEqual([]);
@@ -169,6 +175,20 @@ describe("loading a run's participant traces", () => {
       expect(isRunStream(moved)).toBe(false);
       await expect(loadStreamTrace(runPaths, moved)).rejects.toThrow(/not a trace file name/);
     }
+  });
+
+  it("refuses two indexes whose paths differ only in case, on any file system", async () => {
+    const stored = await writeV2(v1);
+    const first = stored.streams[0]!;
+    const bytes = await readFile(path.join(runRoot, first.trace!.path));
+    const upper = { ...first, trace: { ...first.trace!, path: "actors/Case.json" } };
+    const lower = { ...stored.streams[1]!, trace: { ...first.trace!, path: "actors/case.json" } };
+    // A case-insensitive file system: both names open the same file.
+    const loaded = await loadStreamTraces(async () => ({ bytes }), {
+      ...stored,
+      streams: [upper, lower],
+    });
+    expect(loaded.refused.map((error) => error.streamId)).toEqual([upper.id, lower.id]);
   });
 
   it("hands each consumed trace's bytes to the caller after they match the index", async () => {

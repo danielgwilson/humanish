@@ -2,7 +2,7 @@
 // and v2 rules as verify. A participant whose trace the loader refused shows that its evidence is
 // unavailable, with the reason, and none of the items run.json or a file supplied for it.
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -43,7 +43,7 @@ describe("readers of a v2 run's traces", () => {
     writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`);
 
   /** The Observer server's data for the run. */
-  async function served(): Promise<string> {
+  async function served(expectedStatus = 200): Promise<string> {
     const started = await serveObserverLibrary(cwd, {
       port: 0,
       safe: false,
@@ -55,7 +55,7 @@ describe("readers of a v2 run's traces", () => {
       const response = await fetch(
         new URL(`/_humanish/runs/${RUN}/observer/observer-data.json`, started.server.url),
       );
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(expectedStatus);
       return await response.text();
     } finally {
       await started.server.close();
@@ -130,6 +130,44 @@ describe("readers of a v2 run's traces", () => {
     expect(streams.find((stream) => stream.id === "stream-one")?.traceUnavailable).toMatch(
       /sha256/,
     );
+  });
+
+  describe("the Observer server's saved projection", () => {
+    /** The saved observer-data.json with a forged item on the first participant's timeline. */
+    async function forgeSaved(): Promise<void> {
+      const saved = path.join(runDir, "observer", "observer-data.json");
+      const data = JSON.parse(await readFile(saved, "utf8")) as {
+        streams: { actor?: { items: unknown[] } }[];
+      };
+      data.streams[0] = {
+        ...data.streams[0],
+        actor: { items: thought("FORGED-SAVED-DATA").items },
+      };
+      await writeFile(saved, JSON.stringify(data));
+    }
+
+    it("is served only while the run has no run.json", async () => {
+      await forgeSaved();
+      await rm(path.join(runDir, "run.json"));
+      expect(await served()).toContain("FORGED-SAVED-DATA");
+    });
+
+    it.each([
+      ["an empty object", () => writeFile(path.join(runDir, "run.json"), "{}")],
+      ["torn JSON", () => writeFile(path.join(runDir, "run.json"), "{")],
+      [
+        "a hard link the contained reader refuses",
+        async () => {
+          await link(path.join(runDir, "run.json"), path.join(cwd, "run-link.json"));
+        },
+      ],
+    ])("is never served for a run.json that is %s", async (_name, replace) => {
+      await forgeSaved();
+      await replace();
+      const body = await served(404);
+      expect(body).not.toContain("FORGED-SAVED-DATA");
+      expect(body).toMatch(/run\.json/);
+    });
   });
 
   it("refuses two participants that index one trace file", async () => {

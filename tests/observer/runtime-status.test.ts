@@ -141,7 +141,8 @@ describe("served Observer runtime status", () => {
     };
     await writeFile(path.join(runRoot, "observer", "observer-data.json"), JSON.stringify(data));
     await rm(statusPath, { force: true });
-    await writeFile(bundlePath, "{");
+    // The saved data is read only while the run has no run.json.
+    await rm(bundlePath);
     expect((await read()).runtime).toBeUndefined();
   });
 });

@@ -36,15 +36,22 @@ const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).dig
 
 const isScreenshot = (artifact: StreamArtifact): boolean => artifact.kind === "screenshot";
 
+/**
+ * The file a trace path names on any file system. Trace file names are ASCII (isStreamTracePath),
+ * so lower case folds them as a case-insensitive file system does: actors/Case.json and
+ * actors/case.json are one file there.
+ */
+const traceFileKey = (tracePath: string): string => tracePath.toLowerCase();
+
 /** Names of the form actors/<n>.json, which the splitter gives by position and never reuses. */
 const POSITION_TRACE_FILE = /^actors\/\d+\.json$/;
 
 /**
  * The stream's actor trace artifact (actor.json, actors/<stream>.json, actor-<surface>.json) when
- * no earlier stream claimed it, else actors/<position>.json. The position names are a namespace
- * of their own: an artifact named that way is not reused, so two streams never get one file.
- * Another trace artifact (the scripted route's traces/<surface>.json holds its native step trace)
- * keeps its own file.
+ * no earlier stream claimed it (compared by traceFileKey), else actors/<position>.json. The
+ * position names are a namespace of their own: an artifact named that way is not reused, so two
+ * streams never get one file. Another trace artifact (the scripted route's traces/<surface>.json
+ * holds its native step trace) keeps its own file.
  */
 function tracePath(stream: RunStream, index: number, claimed: ReadonlySet<string>): string {
   const own = stream.artifacts.find(
@@ -53,7 +60,7 @@ function tracePath(stream: RunStream, index: number, claimed: ReadonlySet<string
       isStreamTracePath(artifact.path) &&
       !POSITION_TRACE_FILE.test(artifact.path),
   )?.path;
-  return own !== undefined && !claimed.has(own) ? own : `actors/${index + 1}.json`;
+  return own !== undefined && !claimed.has(traceFileKey(own)) ? own : `actors/${index + 1}.json`;
 }
 
 /**
@@ -69,16 +76,17 @@ export function splitStreamTraces(bundle: RunBundle): {
 } {
   const files: { path: string; bytes: Buffer }[] = [];
   const claimed = new Set<string>();
-  for (const stream of bundle.streams) if (stream.trace) claimed.add(stream.trace.path);
+  for (const stream of bundle.streams)
+    if (stream.trace) claimed.add(traceFileKey(stream.trace.path));
   const streams = bundle.streams.map((stream, index): RunStream => {
     const actor = stream.actor;
     if (actor === undefined || !Array.isArray(actor.items)) return stream;
     const { trace: _previous, ...rest } = stream;
     const filePath = tracePath(rest, index, claimed);
     // Only a stream already split that moved position can hold this stream's position name.
-    if (claimed.has(filePath))
+    if (claimed.has(traceFileKey(filePath)))
       throw new Error(`Two participants' traces would both be written to ${filePath}.`);
-    claimed.add(filePath);
+    claimed.add(traceFileKey(filePath));
     const screenshots = stream.artifacts.filter(isScreenshot);
     const bytes = Buffer.from(`${JSON.stringify({ ...actor, artifacts: screenshots }, null, 2)}\n`);
     files.push({ path: filePath, bytes });
@@ -200,7 +208,8 @@ export async function loadStreamTrace(
 
 /**
  * Why a stream of this bundle cannot be read, before any file is. A trace file belongs to one
- * participant, so every stream indexing a path another stream indexes is refused. In v2 the writer
+ * participant, so every stream indexing a path another stream indexes, compared as a
+ * case-insensitive file system compares them, is refused. In v2 the writer
  * indexes every actor on every write, mid-run flushes included, so a v2 actor without an index lost
  * its trace file, and inline items never come from the writer. A run still writing carries its
  * participants' items so far as `liveActor` (humanish.live-actor.v1), which no index binds; a
@@ -211,9 +220,11 @@ function bundleRefusal(
   stream: RunStream,
   owners: ReadonlyMap<string, string[]>,
 ): string | undefined {
-  const shared = isRecord(stream.trace) ? owners.get(String(stream.trace.path)) : undefined;
+  const shared = isRecord(stream.trace)
+    ? owners.get(traceFileKey(String(stream.trace.path)))
+    : undefined;
   if (shared !== undefined && shared.length > 1)
-    return `run.json indexes ${String(stream.trace!.path)} for participants ${shared.join(", ")}, and a trace file belongs to one participant`;
+    return `run.json indexes ${String(stream.trace!.path)} for participants ${shared.join(", ")} (paths that differ only in case name one file on some file systems), and a trace file belongs to one participant`;
   if (bundle.schema !== RUN_BUNDLE_SCHEMA) return undefined;
   if (stream.actor !== undefined && stream.trace === undefined)
     return "run.json holds its actor and names no trace file";
@@ -238,11 +249,10 @@ export async function loadStreamTraces(
   const read = typeof source === "function" ? source : containedReader(source);
   const owners = new Map<string, string[]>();
   for (const stream of bundle.streams)
-    if (isRecord(stream.trace))
-      owners.set(String(stream.trace.path), [
-        ...(owners.get(String(stream.trace.path)) ?? []),
-        stream.id,
-      ]);
+    if (isRecord(stream.trace)) {
+      const key = traceFileKey(String(stream.trace.path));
+      owners.set(key, [...(owners.get(key) ?? []), stream.id]);
+    }
   const streams: RunStream[] = [];
   const refused: StreamTraceRefusedError[] = [];
   for (const stream of bundle.streams) {
