@@ -8,40 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-A participant that reaches its scheduled end on `openai-computer-use` now writes its closing
-report, and the report's summary is its `reason` and its stream's final `ui.state`. The provider
-offered the closing report only on a conversation the server held, so a study under zero data
-retention, which carries the conversation on the client, skipped it and left "the participant's
-scheduled end ... was reached" as the participant's whole account. The report is now asked on the
-carried conversation too: its newest screens whole and its oldest turns summarized past the token
-budget, which the trace's conversation record counts. `stopCause` still says `scheduled_end`, and a
-participant whose report does not come back keeps the scheduled end as its reason. Claude as a
-`local-agent` participant model has no closing request, so `study check` and `run` now warn when
-its participants have a scheduled end.
+## 0.124.0: Small Observer files for long studies, faster verify, closing reports under zero data retention (2026-10-12)
 
-`verify` checks each screenshot about eight times faster: 3.8 ms for a 1440x950 capture, down
-from 32.6 ms. It read every screenshot through a full decode, so a run of 24 participants working
-8 hours, about 69,000 screenshots, took about 37 minutes to verify. A screenshot is now checked
-from its structure: every chunk's CRC, the IHDR fields, one run of image data, and a native
-inflate to exactly the bytes its rows need, each row starting with a valid filter type. A palette
-image is still decoded. On 8,883 retained screenshots the two checks agreed on every file and the
-total time fell from 258 s to 18 s, and verify of a synthetic run of 3 participants working 8 hours
-(8,895 screenshots of 147 KB) took 51 s, down from 282 s. The new check also refuses a few files the decoder accepted:
-image data cut short or followed by other bytes, image data split by another chunk, and a second
-IHDR.
+humanish 0.124.0 keeps a long study's Observer files small, checks screenshots about eight times
+faster, and asks an `openai-computer-use` participant for its closing report at a scheduled end
+under zero data retention. `observer/observer-data.json` is now `humanish.observer-data.v2`: the
+run and each participant without their trace items and screenshot entries, which the Observer
+page carries compressed. On a synthetic run of 24 participants working 8 hours, observer-data.json
+fell from 155 MiB to 0.33 MiB and index.html from 94 MiB to 16 MiB, so verify reads both. A
+reader of observer-data.json that needs a participant's items reads the run's traces. verify of a
+synthetic 8-hour run with 8,895 real-size screenshots took 51 s, down from 282 s.
 
-The Observer's saved data no longer holds every participant's trace items, so a long study's
-Observer files stay within what `verify` reads. `observer/observer-data.json` is now
-`humanish.observer-data.v2`: the run and each participant without their trace items and the
-screenshot entries of their artifact list, which stay in the run's traces. The Observer page
-carries them gzip-compressed beside the data (`humanish.observer-items.v1`) and joins the two
-before it renders, so it still opens from disk; a served page polls `observer-feed.json` for both.
-On a synthetic run of 24 participants working 8 hours each, observer-data.json fell from 155 MiB
-to 0.33 MiB and index.html from 94 MiB to 16 MiB; verify reads at most 32 MiB of a file, so the
-earlier files left such a run unable to grade `share_ready`. A reader of observer-data.json that
-needs a participant's items reads the run's traces (docs/architecture/observer.md). `humanish
-export` takes a v2 page's items from the run's traces, never from the page's compressed copy,
-and exports a page saved by an earlier version with its items as before.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.124.0)
 
 ## 0.123.0: Run bundle v2 writes each trace once, bundle size estimate (2026-10-12)
 
