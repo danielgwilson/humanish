@@ -1,0 +1,29 @@
+#!/bin/sh
+# Refuses a push when `pnpm gate` has not passed on the tree of a pushed commit. Opt in with
+# `git config core.hooksPath .githooks`. It only looks for the marker the gate writes at
+# <git common dir>/humanish-gate/<tree sha>, so it takes milliseconds and never runs the checks.
+# A marker is keyed by tree: amending only the commit message keeps it valid.
+
+markers="$(git rev-parse --git-common-dir)/humanish-gate"
+refused=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$local_sha" in
+  *[!0]*) ;;
+  *) continue ;; # A deletion pushes no commit.
+  esac
+  case "$remote_ref" in
+  refs/tags/*) continue ;;
+  esac
+  tree=$(git rev-parse --verify --quiet "$local_sha^{tree}") || tree=""
+  if [ -n "$tree" ] && [ -f "$markers/$tree" ]; then
+    continue
+  fi
+  echo "pre-push: no pnpm gate pass for $local_ref ($local_sha) going to $remote_ref." >&2
+  refused=1
+done
+
+if [ "$refused" = 1 ]; then
+  echo "Check out that commit with a clean worktree, run pnpm gate, then push again." >&2
+  echo "git push --no-verify skips this check once." >&2
+  exit 1
+fi

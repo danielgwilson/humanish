@@ -70,6 +70,7 @@
     "public-surface:scan": "node scripts/public-surface-scan.mjs",
     "api:proof": "node scripts/public-api-proof.mjs",
     "release:check": "pnpm check:pre && pnpm test && pnpm release:check:rest",
+    "gate": "node scripts/gate.mjs",
     "release:check:rest": "pnpm check:post && pnpm api:proof && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
     "skill:check": "DISABLE_TELEMETRY=1 pnpm exec skills add . --list",
     "test": "vitest run",

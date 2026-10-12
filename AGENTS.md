@@ -21,6 +21,7 @@ pnpm vitest run tests/<file>     # one test file
 pnpm format                      # oxfmt; run before every commit
 pnpm check                       # the full local gate (below)
 pnpm release:check               # check + API proof + public-surface scan + skill check + pack; CI runs this
+pnpm gate                        # before pushing: release:check, the CI steps the change reaches, a pass for .githooks/pre-push
 ```
 
 `pnpm check` runs format:check, lint (oxlint, type-aware), knip, prose:check, vocabulary:check,
