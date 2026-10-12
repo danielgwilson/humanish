@@ -1,3 +1,4 @@
+import { createDeflate } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
@@ -8,13 +9,53 @@ import {
   stripPngMetadataChunks,
 } from "../../src/evidence/image.js";
 import { redactScreenshot } from "../../src/evidence/redaction.js";
-import { pngTextChunk, withPngChunk, withPngChunkData } from "../helpers/png-chunks.js";
+import { pngOf, pngTextChunk, withPngChunk, withPngChunkData } from "../helpers/png-chunks.js";
+import { BROKEN_PNGS, VALID_PNGS } from "../helpers/png-cases.js";
 
 function encodePng(width = 2, height = 2): Buffer {
   const png = new PNG({ width, height });
   png.data.fill(255);
   return PNG.sync.write(png);
 }
+
+describe("a screenshot PNG's structure", () => {
+  it.each(VALID_PNGS)("accepts %s", (_name, bytes) => {
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+  });
+
+  it.each(BROKEN_PNGS)("refuses %s", (_name, bytes) => {
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+      "could not decode PNG evidence",
+    );
+  });
+
+  it("refuses a 16-bit RGBA row of 2^25 pixels, wider than the decoder reads", async () => {
+    // 33,554,432 x 1 is within the pixel cap; its 268 MB row inflates from about 260 KB.
+    const width = 2 ** 25;
+    const deflate = createDeflate();
+    const chunks: Buffer[] = [];
+    deflate.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const ended = new Promise((resolve) => deflate.on("end", resolve));
+    const block = Buffer.alloc(1 << 20);
+    for (let written = 0; written < 1 + width * 8; written += block.length)
+      deflate.write(block.subarray(0, Math.min(block.length, 1 + width * 8 - written)));
+    deflate.end();
+    await ended;
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(width, 0);
+    ihdr.writeUInt32BE(1, 4);
+    ihdr[8] = 16;
+    ihdr[9] = 6;
+    const wide = pngOf([
+      { type: "IHDR", data: ihdr },
+      { type: "IDAT", data: Buffer.concat(chunks) },
+      { type: "IEND", data: Buffer.alloc(0) },
+    ]);
+    expect(screenshotEvidenceError("screenshots/wide.png", wide)).toBe(
+      "could not decode PNG evidence",
+    );
+  });
+});
 
 describe("screenshot evidence", () => {
   it("accepts a valid small PNG", () => {
