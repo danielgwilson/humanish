@@ -38,7 +38,13 @@ function localBashShell(): Shell {
 // parallel test workers apart.
 const stepDirs: string[] = [];
 afterAll(async () => {
-  await Promise.all(stepDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+  // A detached step may still be writing its log or status when the tests end, which makes a
+  // single rmdir fail with ENOTEMPTY; rm retries those.
+  await Promise.all(
+    stepDirs.map((dir) =>
+      rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }),
+    ),
+  );
 });
 
 function stepName(label: string): string {

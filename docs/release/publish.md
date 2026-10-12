@@ -5,24 +5,26 @@ no agent runs it locally.
 
 ## Check the candidate
 
-Run both checks on the release commit:
+The release PR's CI is the gate of record: its `checks` jobs and its sharded `vitest` jobs together
+run `pnpm release:check` on both Node versions, and the `test (node-floor)` and `test (node-lts)`
+checks pass only when all of them did. `pnpm release:check` runs the same steps in one process
+(`pnpm check:pre`, `pnpm test`, then `pnpm release:check:rest`: `pnpm check:post`,
+`pnpm api:proof`, `pnpm public-surface:scan`, `pnpm skill:check` and `npm pack --dry-run`); run it
+locally when you want the gate before you push. Run the dogfood check on the release commit:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm release:check
 pnpm release:dogfood
 ```
-
-`pnpm release:check` is the gate CI's test job runs: `pnpm check`, `pnpm api:proof`,
-`pnpm public-surface:scan`, `pnpm skill:check` and `npm pack --dry-run`.
 
 `pnpm release:dogfood` packs the candidate, installs the tarball in a fresh project and sends one
 participant through the first-contact study against it. It needs provider keys and costs about a
 dollar of agent tokens; the study's own caps hold product spend to $0. CI never runs it. Read what
 the participant said before you tag.
 
-For a minor release, also run the efficacy benchmark on the release commit and commit what it
-writes:
+For a minor release that changes what a participant sees or does, or what the analysis reads,
+also run the efficacy benchmark on the release commit and commit what it writes. When a release
+changes neither, say so in the notes and skip it; the previous result stands.
 
 ```bash
 pnpm build

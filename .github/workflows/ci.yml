@@ -14,9 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    # Stable check names for the required-checks ruleset; the versions below can move.
-    name: test (node-${{ matrix.node }})
+  # The release gate, split so the vitest suite runs in shards beside the rest of it. `check` and
+  # `release:check` compose the same scripts locally: check:pre, test, then release:check:rest.
+  checks:
+    name: checks (node-${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -43,9 +44,58 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm release:check
+      - run: pnpm check:pre && pnpm release:check:rest
         env:
           HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}
+
+  vitest:
+    name: vitest (node-${{ matrix.node }}, ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [floor, lts]
+        shard: [1, 2, 3]
+        include:
+          - node: floor
+            node-version: "22.19.0"
+          - node: lts
+            node-version: "24"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test --shard=${{ matrix.shard }}/3
+        env:
+          HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}
+
+  test:
+    # Stable check names for the required-checks ruleset. A job whose needs failed is skipped, and
+    # a skipped required check counts as passing, so this job always runs and fails unless every
+    # part of the gate succeeded.
+    name: test (node-${{ matrix.node }})
+    needs: [checks, vitest]
+    if: always()
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [floor, lts]
+    steps:
+      - run: |
+          echo "checks: ${{ needs.checks.result }}, vitest: ${{ needs.vitest.result }}"
+          test "${{ needs.checks.result }}" = success
+          test "${{ needs.vitest.result }}" = success
 
   site:
     runs-on: ubuntu-latest
@@ -156,7 +206,9 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           base="${PR_BASE:-HEAD^}"
-          if git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/guest/ src/evidence/frame-signature.ts src/browser-control/protocol.ts src/actors/computer-use/executor-error.ts src/actors/computer-use/executor-diagnostic.ts src/actors/computer-use/speech.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' tests/guest/ package.json tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
+          # A release changes package.json's version alone; that builds no different guest image.
+          other_package_lines="$(git diff -U0 "$base" HEAD -- package.json | grep -E '^[+-][^+-]' | grep -vE '^[+-][[:space:]]*"version":' || true)"
+          if [ -z "$other_package_lines" ] && git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/guest/ src/evidence/frame-signature.ts src/browser-control/protocol.ts src/actors/computer-use/executor-error.ts src/actors/computer-use/executor-diagnostic.ts src/actors/computer-use/speech.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' tests/guest/ tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
