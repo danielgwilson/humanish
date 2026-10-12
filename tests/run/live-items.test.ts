@@ -192,6 +192,30 @@ describe("loading a running participant's live items", () => {
     ]);
   });
 
+  it("re-reads run.json once when the generation a cursor names is gone, and reads the next whole", async () => {
+    // The caller holds the first item of generation 1; the writer moved to generation 2 and
+    // removed generation 1 after this reader read run.json.
+    const later = `${TWO_LINES}${JSON.stringify({ ...SECOND, id: "ui_action-003" })}\n`;
+    await writeFile(path.join(runRoot, "live/1.2.ndjson"), later);
+    const current = inProgress(liveStream("live/1.2.ndjson", later));
+    await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(current, null, 2)}\n`);
+    const held = { items: 1, bytes: Buffer.byteLength(`${JSON.stringify(FIRST)}\n`) };
+    const loaded = await loadStreamTraces(
+      runPaths,
+      inProgress(liveStream("live/1.1.ndjson", TWO_LINES)),
+      { liveAfter: (index) => (index.path === "live/1.1.ndjson" ? held : undefined) },
+    );
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams[0]!.liveActor!.items.map((item) => item.id)).toEqual([
+      "reasoning-001",
+      "ui_action-002",
+      "ui_action-003",
+    ]);
+    expect(loaded.live).toEqual([
+      { streamId: "stream-001", index: current.streams[0]!.liveActor!.itemsFile },
+    ]);
+  });
+
   it("re-reads run.json once when the run finished and removed its live files", async () => {
     await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(stored, null, 2)}\n`);
     const loaded = await loadStreamTraces(

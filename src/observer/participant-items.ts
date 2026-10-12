@@ -33,6 +33,13 @@ export interface ObserverItems {
       actor?: ActorTraceItem[];
       liveActor?: ActorTraceItem[];
       artifacts?: ObserverStream["artifacts"];
+      /**
+       * Where `liveActor` ends in the participant's live file, as a cursor the page sends back
+       * (src/observer/feed-cursors.ts). Only on a feed response, for a list read from a live file.
+       */
+      live?: string;
+      /** Set when `liveActor` holds only the items past this cursor, one the page sent. */
+      liveAfter?: string;
     }
   >;
 }

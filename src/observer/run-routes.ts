@@ -8,6 +8,7 @@ import path from "node:path";
 import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import { loadAnalysis } from "../analysis/load.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
+import type { LiveItemsCursor } from "../run/live-items.js";
 import { isLocalOnlyRunFile, isLocalOnlyRunFileIdentity } from "../run/local-only-files.js";
 import { listRuns } from "../run/stored-runs.js";
 import { readAnalysisAccounting } from "../run/costs.js";
@@ -18,7 +19,12 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
-import { displayedTraces, loadStreamTraces, type TraceFileReader } from "../run/stream-trace.js";
+import {
+  displayedTraces,
+  loadStreamTraces,
+  type LiveItemsRead,
+  type TraceFileReader,
+} from "../run/stream-trace.js";
 import { isNodeError, isRecord } from "../run/type-guards.js";
 import {
   MAX_NOTE_FILE_BYTES,
@@ -35,6 +41,7 @@ import {
   type RunStatusRecord,
 } from "../run/status.js";
 import { renderObserverHtml } from "./artifact.js";
+import { parseFeedCursors, withFeedCursors } from "./feed-cursors.js";
 import { splitObserverData } from "./participant-items.js";
 import {
   buildObserverData,
@@ -135,7 +142,7 @@ export async function serveRunPath(
   relativePath: string,
   response: ServerResponse,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
-  request?: Pick<IncomingMessage, "method" | "headers">,
+  request?: Pick<IncomingMessage, "method" | "headers" | "url">,
   notesToken?: string,
 ): Promise<void> {
   const root = runRoot.physicalPath;
@@ -164,12 +171,12 @@ export async function serveRunPath(
     return;
   }
   if (cleanedRelativePath === "observer/index.html") {
-    const observerData = await observerDataOrReason(runRoot, runtimeStreamUrls);
-    if ("unavailable" in observerData) {
+    const observed = await observerDataOrReason(runRoot, runtimeStreamUrls);
+    if ("unavailable" in observed) {
       writeResponse(
         response,
         404,
-        `Observer data not found: ${observerData.unavailable}`,
+        `Observer data not found: ${observed.unavailable}`,
         "text/plain; charset=utf-8",
       );
       return;
@@ -179,7 +186,7 @@ export async function serveRunPath(
     writeResponse(
       response,
       200,
-      renderObserverHtml(observerData, {
+      renderObserverHtml(observed.data, {
         analysis,
         notes,
         ...(notesToken === undefined ? {} : { notesToken }),
@@ -195,23 +202,29 @@ export async function serveRunPath(
     cleanedRelativePath === "observer/observer-data.json" ||
     cleanedRelativePath === "observer/observer-feed.json"
   ) {
-    const observerData = await observerDataOrReason(runRoot, runtimeStreamUrls);
-    if ("unavailable" in observerData) {
+    const observed = await observerDataOrReason(
+      runRoot,
+      runtimeStreamUrls,
+      cleanedRelativePath === "observer/observer-feed.json"
+        ? requestedCursors(runRoot, request)
+        : undefined,
+    );
+    if ("unavailable" in observed) {
       writeResponse(
         response,
         404,
-        `Observer data not found: ${observerData.unavailable}`,
+        `Observer data not found: ${observed.unavailable}`,
         "text/plain; charset=utf-8",
       );
       return;
     }
-    const { shell, items } = splitObserverData(observerData);
+    const { shell, items } = splitObserverData(observed.data);
     writeResponse(
       response,
       200,
       cleanedRelativePath === "observer/observer-data.json"
         ? JSON.stringify(shell, null, 2)
-        : JSON.stringify({ data: shell, items }),
+        : JSON.stringify({ data: shell, items: withFeedCursors(items, observed.live) }),
       "application/json; charset=utf-8",
     );
     return;
@@ -259,12 +272,32 @@ export async function serveRunPath(
   }
 }
 
+/**
+ * The live cursors a feed poll sends in `after`. A root that checks reads against admitted files
+ * and digests gets none: its digest check covers whole files, and it serves only finished runs.
+ */
+function requestedCursors(
+  runRoot: PinnedDirectory,
+  request: Pick<IncomingMessage, "url"> | undefined,
+): ReadonlyMap<string, LiveItemsCursor> | undefined {
+  if (
+    runRoot.admitsFile !== undefined ||
+    runRoot.admitsContent !== undefined ||
+    request?.url === undefined
+  )
+    return undefined;
+  return parseFeedCursors(
+    new URL(request.url, "http://observer.invalid").searchParams.get("after"),
+  );
+}
+
 /** The run's trace files, read through its pinned folder. */
 function pinnedTraceReader(runRoot: PinnedDirectory): TraceFileReader {
-  return async (relativePath, maxBytes, length) => {
+  return async (relativePath, maxBytes, length, start) => {
     const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath), {
       maxBytes,
       ...(length === undefined ? {} : { length }),
+      ...(start === undefined ? {} : { start }),
     }).catch(() => null);
     return bytes === null ? { refused: `${relativePath} could not be read` } : { bytes };
   };
@@ -275,7 +308,7 @@ async function readObserverData(
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
 ): Promise<ObserverData | null> {
   const read = await observerDataOrReason(runRoot, runtimeStreamUrls);
-  return "unavailable" in read ? null : read;
+  return "unavailable" in read ? null : read.data;
 }
 
 /**
@@ -289,7 +322,8 @@ async function readObserverData(
 async function observerDataOrReason(
   runRoot: PinnedDirectory,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[],
-): Promise<ObserverData | { unavailable: string }> {
+  cursors?: ReadonlyMap<string, LiveItemsCursor>,
+): Promise<ObservedRun | { unavailable: string }> {
   const record = await readLocalRunStatus(runRoot);
   const runJson = path.join(runRoot.physicalPath, "run.json");
   const bundleBytes = await readContainedFile(runRoot, runJson).catch(() => null);
@@ -302,8 +336,10 @@ async function observerDataOrReason(
   // A root admitted for safe serving checks every read against the identity and digest admitted
   // with the run's share_ready verification, so a run.json changed since then is refused, and the
   // saved projection it may serve is the one admitted with the verified run.
-  if (absent || (bundleBytes === null && runRoot.admitsContent !== undefined))
-    return savedObserverData(runRoot, record, runtimeStreamUrls);
+  if (absent || (bundleBytes === null && runRoot.admitsContent !== undefined)) {
+    const saved = await savedObserverData(runRoot, record, runtimeStreamUrls);
+    return "unavailable" in saved ? saved : { data: saved, live: [] };
+  }
   if (bundleBytes === null)
     return { unavailable: "run.json is there but could not be read: it is a link or changed." };
   let stored: Parameters<typeof buildObserverData>[0];
@@ -315,14 +351,28 @@ async function observerDataOrReason(
     return { unavailable: "run.json is not a run bundle; it may be mid-write, so try again." };
   }
   try {
-    const bundle = displayedTraces(await loadStreamTraces(pinnedTraceReader(runRoot), stored));
-    return withRuntimeStreamUrls(
-      withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
-      runtimeStreamUrls,
+    const loaded = await loadStreamTraces(
+      pinnedTraceReader(runRoot),
+      stored,
+      cursors === undefined ? {} : { liveAfter: (index) => cursors.get(index.path) },
     );
+    const bundle = displayedTraces(loaded);
+    return {
+      data: withRuntimeStreamUrls(
+        withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
+        runtimeStreamUrls,
+      ),
+      live: loaded.live,
+    };
   } catch {
     return { unavailable: "run.json could not be shown as a run." };
   }
+}
+
+/** A run's Observer data, and each live file its participants' live items were read from. */
+interface ObservedRun {
+  data: ObserverData;
+  live: readonly LiveItemsRead[];
 }
 
 /** The saved observer-data.json of a run that has written no run.json yet. */
