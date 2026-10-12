@@ -1,5 +1,5 @@
 {
-  "schema": "humanish.run-bundle.v1",
+  "schema": "humanish.run-bundle.v2",
   "runId": "terminal-feedback-lifecycle-fixture",
   "mode": "dry-run",
   "simCount": 1,

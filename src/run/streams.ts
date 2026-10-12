@@ -183,6 +183,19 @@ export interface RunDesktopGeometry {
   warnings?: string[];
 }
 
+/**
+ * A stream's trace file in a v2 run.json: the actor trace with its items and the stream's
+ * screenshot entries as `artifacts`. `bytes` and `sha256` bind the file to run.json; `items` and
+ * `screenshots` are what it holds, so a reader can list them without opening it.
+ */
+export interface StreamTraceIndex {
+  path: string;
+  bytes: number;
+  sha256: string;
+  items: number;
+  screenshots: number;
+}
+
 /** The original participant-facing assignment, before runtime access/coordination details. */
 export interface RunParticipantAssignment {
   mission: string;
@@ -228,6 +241,12 @@ export interface RunStream {
    *  and never persisted into bundles; declared here because the served observer-data carries it
    *  and the client is typed against this contract. */
   liveEnded?: boolean;
+  /**
+   * Set by a reader that shows the run (displayedTraces in src/run/stream-trace.ts) when the loader
+   * refused this participant's trace: the reason. Runtime-only and never persisted; the stream then
+   * carries none of the refused items.
+   */
+  traceUnavailable?: string;
   /**
    * Browser CSS layout viewport. Deterministic browser adapters may declare and render this
    * exactly; hosted-desktop CUA producers set it only from a runtime measurement. Historical
@@ -281,8 +300,11 @@ export interface RunStream {
     turnId?: string;
   };
   // Provider-neutral projection of the actor's evidence (humanish.actor-trace.v1).
-  // Populated alongside the raw `codex` evidence; carries persona.traitsApplied.
+  // Populated alongside the raw `codex` evidence; carries persona.traitsApplied. In a v2 run.json
+  // it has no `items`: they are in the file `trace` names, and src/run/stream-trace.ts loads them.
   actor?: ActorTrace;
+  /** Present in a v2 run.json on each stream with an actor: where its items and screenshots are. */
+  trace?: StreamTraceIndex;
   /**
    * Mid-run partial actor evidence: the redacted trace items recorded so far,
    * flushed while a live participant is still running so the attached Observer's timeline can

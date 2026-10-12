@@ -144,7 +144,14 @@
       "preGrantableApprovals": false,
       "inProcessTools": false,
       "license": "open"
-    }
+    },
+    "artifacts": [
+      {
+        "label": "desktop screenshot 01 (raw)",
+        "path": "screenshots/desktop-step-01-load.png",
+        "kind": "screenshot"
+      }
+    ]
   },
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
@@ -210,8 +217,101 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui actor artifacts",
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui",
         "id": "scripted-desktop-stream",
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-provider",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "fake provisioned scripted trace"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "ids": {},
+          "counts": {
+            "steps": 1,
+            "actions": 1,
+            "assertions": 0,
+            "blocked": 0,
+            "screenshots": 1
+          },
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "Load landing page",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-01-load.png",
+                "redaction": "none"
+              }
+            }
+          ]
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop screenshot 01 (raw)",
+            "path": "screenshots/desktop-step-01-load.png",
+            "kind": "screenshot"
+          }
+        ],
         "sim": "[same as run.json simulation scripted-desktop]",
         "kindLabel": "Browser",
         "statusLabel": "Passed",
@@ -259,7 +359,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v1",
+      "bundleSchema": "humanish.run-bundle.v2",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -277,7 +377,7 @@
   },
   "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: Scenario scripted-first-run ran on 1 browser surface against [provisioned-subject]: 1/1 passed it.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: seeded; evidence host digest: 8d9b4d09db938d38.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 1 step action, 1 raw screenshot\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v1",
+    "schema": "humanish.run-bundle.v2",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,
@@ -399,19 +499,6 @@
             "blocked": 0,
             "screenshots": 1
           },
-          "items": [
-            {
-              "id": "step-01-load",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "passed",
-              "title": "Load landing page",
-              "screenshotRef": {
-                "path": "screenshots/desktop-step-01-load.png",
-                "redaction": "none"
-              }
-            }
-          ],
           "tokenUsage": {
             "input": 0,
             "output": 0,
@@ -456,13 +543,15 @@
             "label": "desktop actor trace",
             "path": "actor-desktop.json",
             "kind": "trace"
-          },
-          {
-            "label": "desktop screenshot 01 (raw)",
-            "path": "screenshots/desktop-step-01-load.png",
-            "kind": "screenshot"
           }
-        ]
+        ],
+        "trace": {
+          "path": "actor-desktop.json",
+          "bytes": "[bytes]",
+          "sha256": "[sha256]",
+          "items": 1,
+          "screenshots": 1
+        }
       }
     ],
     "events": [

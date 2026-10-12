@@ -1,6 +1,6 @@
 # Run Bundle Contract
 
-`humanish.run-bundle.v1` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+`humanish.run-bundle.v2` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
 (with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
 `src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
 source of truth. This page explains the stable public fields and the extension rules; it does not
@@ -13,6 +13,77 @@ and `terminal-ledgers.json`. `true` means participant and product setup commands
 in the JSON message of the `terminal-lab.runtime.declared` event. Older bundles omit it.
 The setting does not attest that the studied CLI honors the variable.
 
+## Participant traces
+
+From v2, run.json holds each participant's summary and the trace file holds its items. The run
+writer (`src/run/run.ts`, through `splitStreamTraces` in `src/run/stream-trace.ts`) writes, for
+each stream with an `actor`:
+
+- the trace file: the actor trace (`humanish.actor-trace.v1`) with every item, plus `artifacts`,
+  the stream's screenshot entries. Its path is the stream's actor trace artifact (`actor.json` for
+  one participant, `actors/<stream>.json` for more, `actor-<surface>.json` on the scripted route),
+  or `actors/<n>.json`, `n` its position in `streams[]` (from 1), for a stream with none or whose
+  trace artifact an earlier stream claimed. Names of that form are never reused as a stream's own
+  artifact, so two streams never get one file;
+- in run.json, `streams[].actor` without `items`, `streams[].artifacts` without the screenshot
+  entries, and the index:
+
+```yaml
+trace:
+  path: actors/stream-001.json
+  bytes: 5480211 # the file's size
+  sha256: "<hex digest of the file>"
+  items: 23104 # entries in the file's items
+  screenshots: 2881 # entries in the file's artifacts
+```
+
+run.json keeps every field readers list runs by: each stream's status, judged status,
+assignment and geometry, and the actor's status, completion reason, counts, persona, debrief,
+impressions, token usage and estimated cost. Each trace is written once.
+
+`trace.path` must be one of those trace file names (`actor.json`, `actors/<name>.json`,
+`actor-<name>.json`, with `<name>` a plain file name); `isStreamTracePath` in
+`src/run/stream-shape.ts` holds the rule, and the writer, the shape check and the loader all use
+it. Any other path, such as `observer/index.html`, fails the shape check.
+
+Readers load a stream through `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
+An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
+source limit for each trace) and refused unless its size, sha256, item count and screenshot count
+match the index. A trace file belongs to one participant: every stream whose index names a file
+another stream's index names, compared without case as a case-insensitive file system compares
+names, is refused before any file is read. The writer claims names the same way. In a v2 run.json every `actor`
+must have an index: an actor with no index, with
+or without inline `items`, is refused, and so is one with both an index and inline `items`.
+verify reports a refused trace in the `local evidence artifacts exist` check, so the run is
+`blocked`. verify also scans the bytes of each trace it loaded with the public-safety text scan,
+apart from its walk of the run folder, so no path exemption the walk makes applies to a trace.
+run.json's digest, which an analysis record binds, covers each index and so each trace.
+
+Mid-run flushes: the writer indexes every finished participant on every write, flushes included,
+so a v2 run.json never holds `actor.items`. A participant still working has its items so far in
+`streams[].liveActor.items` (`humanish.live-actor.v1`), which no index binds. A v2 run.json may
+carry `liveActor` only while its run has not finished: one whose `outcome.state` is `finished`
+and still holds `liveActor` is refused. An unfinished v2 run.json with `liveActor` (a flush, or
+the last write of an interrupted run) verifies as `local_only` with the share-safety reason
+`RUN_NOT_FINISHED`, never `share_ready`. v1 bundles keep their earlier behavior.
+
+Readers that show a run (the Observer server, run detail and the TUI, the review command's
+provenance) load traces through the same loader and rules. A participant whose trace the loader
+refused shows none of the items run.json or a file supplied for it: its stream carries
+`traceUnavailable` with the reason, its Observer timeline a `trace.unavailable` warning, and its
+run-detail entry `evidenceUnavailable`. The Observer server reads the saved observer-data.json
+only while a run has no run.json at all; a run.json that is there and cannot be read, parsed or
+used as a bundle answers 404 with the reason, never the saved projection. In safe serving
+(`observe --all --safe`) every read is checked against the files admitted with the run's
+share_ready verification, so a run.json changed after admission is refused and the admitted
+projection is served.
+observer-data.json is built from the loaded bundle and has the same shape as before.
+
+Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema
+(`run schema` fails in verify, analysis refuses the source). This release reads v1 bundles as
+they are, with no migration. An exported copy (`humanish export --format bundle`) is written as
+v2 whatever the source version.
+
 ## Purpose
 
 A run bundle is the durable evidence packet for one harness run. It should be
@@ -22,7 +93,7 @@ feedback drafts and future public issues.
 ## Minimum Bundle Shape
 
 ```yaml
-schema: humanish.run-bundle.v1
+schema: humanish.run-bundle.v2 # v1 bundles are still read
 runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
@@ -522,8 +593,12 @@ For run id `example-2026-06-02t10-00-00-000z-proof`, the core layout is:
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/review.md
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/observer/observer-data.json
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/events.ndjson
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/actors/stream-001.json
 .humanish/runs/latest.json
 ```
+
+`actors/<stream>.json` (or `actor.json` for one participant) is a participant's trace file; see
+[Participant traces](#participant-traces).
 
 Absolute paths, traversal segments, remotes, hosted logs, and private artifact
 URLs are not part of the core layout.
@@ -691,7 +766,9 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 `ok: true` also does not mean the run finished. A run killed mid-way leaves an
 in-progress bundle that can pass every check. When the run is not finished,
 `warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
-`ok` and `shareSafety` do not change. Verify decides "not finished" by the run
+`ok` does not change. `shareSafety` changes only for a v2 bundle that holds a participant's
+in-progress items (`liveActor`): it is `local_only` with the reason `RUN_NOT_FINISHED`, since no
+trace index binds those items. Verify decides "not finished" by the run
 index's rule, which the TUI and `humanish stats` use: the run's `status.json` when
 it is well formed and names the run, else a `simulations[]` entry still `running` in the
 bundle. A `running` record updated within the stale window reads as still
@@ -715,7 +792,8 @@ receipt records a sandbox not gone or misses a journaled one, and `unknown` othe
 including a receipt from humanish 0.110.0 or earlier, which did not search by tag.
 
 The local-evidence check includes screenshots declared only by
-`streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,
+`streams[].actor.items[].screenshotRef` (in the trace file for a v2 bundle) or
+`streams[].liveActor.items[].screenshotRef`,
 as well as every feedback candidate's evidence. Actor frame paths are relative
 to the run root; missing, malformed or nonlocal references fail verification.
 Screenshots use the existing bounded PNG decoder. Nonimage candidate evidence
@@ -849,6 +927,8 @@ does not inherit resource cleanup authority. Unsupported images, binary formats,
 inline image payloads, invalid evidence and references to omitted files are refused.
 The original and derivative are independently verified. Text still requires human
 review before sharing; screenshot blur does not certify natural-language privacy.
+Export counts the run's files and folders against the public-safety scan's limit
+(10,000 plus 5,000 for each participant `run.json` records) and refuses a run past it.
 
 ## Git Provenance
 

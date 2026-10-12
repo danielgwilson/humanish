@@ -15,6 +15,9 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { chromium } from "playwright-core";
 import { buildTour, publishedCapturePath, type TourVerifyInput } from "./lib/site-tour.js";
+import { RUN_BUNDLE_V1_SCHEMA, type RunBundle } from "../src/run/bundle.js";
+import { resolveRunPath } from "../src/run/locate.js";
+import { loadRunTraces } from "../src/run/stream-trace.js";
 
 const { values } = parseArgs({
   options: {
@@ -52,7 +55,11 @@ if (verify.shareSafety.status === "blocked") {
   throw new Error(`verify blocks ${runId}: ${JSON.stringify(verify.shareSafety.reasons)}`);
 }
 
-const bundle = await readJson<Parameters<typeof buildTour>[0]["bundle"]>("run.json");
+// Each participant's items, read through the trace loader from a v2 run's trace files.
+const runPaths = await resolveRunPath(project, runId);
+if (runPaths === null) throw new Error(`no run ${runId} under ${project}`);
+const loaded = await loadRunTraces(runPaths, await readJson<RunBundle>("run.json"));
+const bundle: Parameters<typeof buildTour>[0]["bundle"] = loaded;
 const analysis = await readJson<Parameters<typeof buildTour>[0]["analysis"]>(
   "observer/study-analysis.json",
 );
@@ -71,9 +78,11 @@ const jpegPaths = (text: string): string =>
   );
 
 // The run's provider resources are its E2B sandboxes; their ids are private and are redacted.
-const runJson = JSON.parse(await readFile(path.join(bundleDir, "run.json"), "utf8")) as {
-  providerResources?: Array<{ id?: string }>;
-};
+// The published copy is one file: the loaded bundle with its traces inline, the v1 layout.
+const runJson: { providerResources?: Array<{ id?: string }> } = structuredClone({
+  ...loaded,
+  schema: RUN_BUNDLE_V1_SCHEMA,
+});
 for (const resource of runJson.providerResources ?? []) resource.id = "[redacted-sandbox-id]";
 
 await rm(siteRun, { recursive: true, force: true });

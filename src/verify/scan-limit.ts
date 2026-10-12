@@ -1,14 +1,11 @@
-// How many files and folders the public-safety scan visits in one run. It lives apart from the
-// scan so the planner can check a study's estimated file count against it without loading the
-// scanner.
+// How many files and folders the public-safety scan visits in one run, and bundle export counts
+// before it copies one. It lives apart from the scan so the planner can check a study's estimated
+// file count against it without loading the scanner.
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 
-/**
- * The entries any run may hold, whatever its participants. Bundle export refuses a run with more,
- * and it reads no run.json before it counts.
- */
-export const MAX_RUN_ENTRIES = 10_000;
+/** The entries any run may hold, whatever its participants. */
+const MAX_RUN_ENTRIES = 10_000;
 
 /**
  * The entries each participant adds to the limit. Measured on 2026-10-12: a participant writes a

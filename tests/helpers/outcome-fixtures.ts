@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -235,7 +236,27 @@ export async function writeOutcomeCase(
           : `${JSON.stringify(restored, null, 2)}\n`;
     await writeFile(target, text, "utf8");
   }
+  await restoreTraceIndex(runDir);
   return { cwd, runId };
+}
+
+/**
+ * A golden masks the size and digest in each stream's trace index (they cover timestamps), so the
+ * restored run.json takes them from the restored trace file.
+ */
+async function restoreTraceIndex(runDir: string): Promise<void> {
+  const runJson = path.join(runDir, "run.json");
+  const run = JSON.parse(await readFile(runJson, "utf8")) as {
+    streams?: { trace?: { path: string; bytes: unknown; sha256: unknown } }[];
+  };
+  const indexed = (run.streams ?? []).flatMap((stream) => (stream.trace ? [stream.trace] : []));
+  if (indexed.length === 0) return;
+  for (const trace of indexed) {
+    const bytes = await readFile(path.join(runDir, trace.path));
+    trace.bytes = bytes.length;
+    trace.sha256 = createHash("sha256").update(bytes).digest("hex");
+  }
+  await writeFile(runJson, `${JSON.stringify(run, null, 2)}\n`, "utf8");
 }
 
 /** A temp root for the cases, named so the suite's temp-leak guard checks it. */

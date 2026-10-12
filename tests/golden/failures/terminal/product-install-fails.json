@@ -139,7 +139,8 @@
       "estimatedCostUsd": null,
       "reason": "no_token_usage",
       "ratesAsOf": null
-    }
+    },
+    "artifacts": []
   },
   "analysis-automatic/job.json": {
     "schema": "humanish.automatic-study-analysis.v1",
@@ -273,8 +274,70 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed terminal ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed terminal ui artifacts",
         "id": "stream-001",
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "codex",
+          "providerVersion": "0.153.3",
+          "runtime": {
+            "schema": "humanish.actor-runtime.v1",
+            "package": "@openai/codex",
+            "doNotTrack": true,
+            "requestedVersion": "latest",
+            "versionStatus": "verified",
+            "requestedModel": "gpt-5.6-sol",
+            "modelStatus": "humanish_default",
+            "usageGranularity": "runtime_turn",
+            "observedVersion": "0.153.3"
+          },
+          "protocol": "terminal-exec",
+          "lane": "terminal",
+          "persona": {
+            "id": "autonomous-creative-agent",
+            "traitsApplied": [],
+            "promptDigest": "[promptDigest]"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "Terminal output captured through commands.run onStdout and onStderr; known values are scrubbed and shape patterns redacted before anything is stored. This route takes no screenshots."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "failed",
+          "completionReason": "harness_error",
+          "reason": "subject.product.install could not prepare the world before codex exec: exit status 1",
+          "ids": {},
+          "counts": {
+            "commands": 0,
+            "runtimeParticipantItems": 0,
+            "actions": 0,
+            "messages": 0,
+            "terminalEvents": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "terminal"
+            ],
+            "producesScreenshots": false,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open",
+            "keyPlacement": "in-sandbox-command-scoped"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          },
+          "items": []
+        },
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "CLI",
         "statusLabel": "Failed",
@@ -320,7 +383,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v1",
+      "bundleSchema": "humanish.run-bundle.v2",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -347,7 +410,7 @@
   },
   "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: 1 participant took part: 0/1 recorded completions, 1 lost to a harness failure. How it ended: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v1",
+    "schema": "humanish.run-bundle.v2",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,
@@ -525,7 +588,6 @@
             "messages": 0,
             "terminalEvents": 0
           },
-          "items": [],
           "capabilities": {
             "headless": true,
             "structuredTrace": true,
@@ -582,7 +644,14 @@
             "path": "terminal-ledgers.json",
             "kind": "log"
           }
-        ]
+        ],
+        "trace": {
+          "path": "actor.json",
+          "bytes": "[bytes]",
+          "sha256": "[sha256]",
+          "items": 0,
+          "screenshots": 0
+        }
       }
     ],
     "events": [

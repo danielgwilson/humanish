@@ -17,6 +17,7 @@ import { renderObserver } from "../observer/render.js";
 import { renderObserverHtml, type ObserverExportAssets } from "../observer/artifact.js";
 import { buildObserverData, type ObserverData } from "../observer/data.js";
 import { resolveRunPath } from "../run/locate.js";
+import { loadRunTraces, StreamTraceRefusedError } from "../run/stream-trace.js";
 import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
@@ -370,7 +371,13 @@ async function currentObserverData(
     createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
   )
     return undefined;
-  return { value: buildObserverData(JSON.parse(source.toString("utf8")) as RunBundle) };
+  const stored = JSON.parse(source.toString("utf8")) as RunBundle;
+  // A trace that no longer matches run.json's index is a source that no longer matches.
+  const bundle = await loadRunTraces(runPaths, stored).catch((error: unknown) => {
+    if (error instanceof StreamTraceRefusedError) return undefined;
+    throw error;
+  });
+  return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
 }
 
 /** Portable HTML keeps the lightweight evidence; media remains in the source run. */

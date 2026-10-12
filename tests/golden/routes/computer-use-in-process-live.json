@@ -215,7 +215,8 @@
       "estimatedCostUsd": null,
       "reason": "no_token_usage",
       "ratesAsOf": null
-    }
+    },
+    "artifacts": []
   },
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
@@ -293,8 +294,104 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed ui artifacts",
         "id": "stream-001",
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-state-brain",
+          "providerVersion": "0.1.0",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "pixel-pat",
+            "traitsApplied": [],
+            "promptDigest": "447585e3031f1518"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Reached the goal via getState().",
+          "ids": {
+            "model": "0.1.0"
+          },
+          "waitSettings": {
+            "maxWaitMs": 120000,
+            "idleWaitMs": 5000,
+            "settleWaitMs": 500
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 0,
+            "reasonings": 1,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "keyboard": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "impressions": {
+            "status": "not_collected",
+            "reason": "the participant ended the session without a structured closing account"
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": false,
+            "byoModel": true,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          },
+          "items": [
+            {
+              "id": "reasoning-001",
+              "kind": "reasoning",
+              "lifecycle": "completed",
+              "title": "reasoning turn 1",
+              "text": "state looks right",
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "type [5 chars]",
+              "at": "[ts]"
+            },
+            {
+              "id": "message-003",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Reached the goal via getState().",
+              "at": "[ts]"
+            }
+          ]
+        },
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
@@ -340,7 +437,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v1",
+      "bundleSchema": "humanish.run-bundle.v2",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -369,7 +466,7 @@
   },
   "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 1 participant took part: 1/1 reported reaching the goal. How it ended: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace items, 0 screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v1",
+    "schema": "humanish.run-bundle.v2",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,
@@ -499,31 +596,6 @@
             "idleTurns": 0,
             "noProgressTurns": 0
           },
-          "items": [
-            {
-              "id": "reasoning-001",
-              "kind": "reasoning",
-              "lifecycle": "completed",
-              "title": "reasoning turn 1",
-              "text": "state looks right",
-              "at": "[ts]"
-            },
-            {
-              "id": "ui_action-002",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "type [5 chars]",
-              "at": "[ts]"
-            },
-            {
-              "id": "message-003",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message turn 2",
-              "text": "Reached the goal via getState().",
-              "at": "[ts]"
-            }
-          ],
           "affordanceUse": {
             "schema": "humanish.affordance-use.v1",
             "counts": {
@@ -576,7 +648,14 @@
             "path": "actor.json",
             "kind": "trace"
           }
-        ]
+        ],
+        "trace": {
+          "path": "actor.json",
+          "bytes": "[bytes]",
+          "sha256": "[sha256]",
+          "items": 3,
+          "screenshots": 0
+        }
       }
     ],
     "events": [

@@ -28,6 +28,7 @@ import {
 import { exportRun, formatExportHuman } from "../../src/feedback/export.js";
 import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
+import { readRunWithTraces } from "../helpers/run-traces.js";
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
@@ -117,6 +118,9 @@ describe("redacted bundle export", () => {
       },
     };
     original = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    // The source keeps its actor trace inline, as a run.json from 0.122.0 and earlier (v1) does;
+    // the exported copy is written as v2. tests/run/trace-versions.test.ts exports a v2 source.
+    original.schema = "humanish.run-bundle.v1";
     original.streams[0]!.actor = actor;
     original.streams[0]!.artifacts.push({
       kind: "screenshot",
@@ -166,9 +170,7 @@ describe("redacted bundle export", () => {
     });
     const shared = path.join(cwd, "shared");
     const derivativeDir = path.join(shared, ".humanish", "runs", RUN);
-    const derivative = JSON.parse(
-      await readFile(path.join(derivativeDir, "run.json"), "utf8"),
-    ) as RunBundle;
+    const derivative = await readRunWithTraces(derivativeDir);
     const observer = JSON.parse(
       await readFile(path.join(derivativeDir, "observer/observer-data.json"), "utf8"),
     );
@@ -365,7 +367,7 @@ describe("redacted bundle export", () => {
       derivation.files.find((entry: { path: string }) => entry.path === "screenshots/unused.PNG"),
     ).toMatchObject({ action: "omitted" });
     // The referenced frame stays at its path, blurred, and the copy holds no unregistered image.
-    const exported = JSON.parse(await readFile(path.join(output, "run.json"), "utf8")) as RunBundle;
+    const exported = await readRunWithTraces(output);
     expect(exported.streams[0]!.actor!.items[0]!.screenshotRef).toEqual({
       path: "screenshots/frame.png",
       redaction: "blurred",

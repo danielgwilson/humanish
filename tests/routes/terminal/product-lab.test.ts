@@ -457,7 +457,7 @@ describe("runTerminalProductLab (dry-run)", () => {
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("humanish.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v2");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");

@@ -48,6 +48,7 @@ import { exportRun } from "../../src/feedback/export.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticResult } from "./fixtures.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -185,8 +186,8 @@ describe("opted-in automatic analysis ownership", () => {
             },
           };
         }
-        original = Buffer.from(JSON.stringify(bundle));
-        await writeFile(path.join(root, "run.json"), original);
+        await writeRunBundle(root, bundle);
+        original = await readFile(path.join(root, "run.json"));
         expect((await verifyRun(cwd, runId)).checks.filter((check) => !check.ok)).toEqual([]);
         input = await captureEvidence(prepared, original);
         expect(input.coverage.complete).toBe(true);
@@ -552,8 +553,8 @@ describe("opted-in automatic analysis ownership", () => {
         license: "open",
       },
     };
-    const aborted = Buffer.from(JSON.stringify(bundle));
-    await writeFile(path.join(root, "run.json"), aborted);
+    await writeRunBundle(root, bundle);
+    const aborted = await readFile(path.join(root, "run.json"));
     expect((await verifyRun(cwd, runId)).checks.filter((check) => !check.ok)).toEqual([]);
     expect(await runAutomaticAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).toEqual({
       state: "skipped",
@@ -563,7 +564,7 @@ describe("opted-in automatic analysis ownership", () => {
     expect(await readFile(path.join(root, "run.json"))).toEqual(aborted);
     bundle.streams[0]!.actor.stopCause = "time_limit";
     bundle.streams[0]!.actor.reason = "The time limit ended the study.";
-    await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
+    await writeRunBundle(root, bundle);
     expect(
       await runAutomaticAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }),
     ).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });

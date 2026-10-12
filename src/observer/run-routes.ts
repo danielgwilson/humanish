@@ -2,7 +2,7 @@
 // URLs, its analysis, and its media with byte ranges. serveObserver (render.ts) and the library
 // server (serve.ts) both route requests through them.
 
-import type { FileHandle } from "node:fs/promises";
+import { lstat, type FileHandle } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
@@ -18,6 +18,8 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import { displayedTraces, loadStreamTraces, type TraceFileReader } from "../run/stream-trace.js";
+import { isNodeError, isRecord } from "../run/type-guards.js";
 import {
   MAX_NOTE_FILE_BYTES,
   readRunNotes,
@@ -160,9 +162,14 @@ export async function serveRunPath(
     return;
   }
   if (cleanedRelativePath === "observer/index.html") {
-    const observerData = await readObserverData(runRoot, runtimeStreamUrls);
-    if (!observerData) {
-      writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
+    const observerData = await observerDataOrReason(runRoot, runtimeStreamUrls);
+    if ("unavailable" in observerData) {
+      writeResponse(
+        response,
+        404,
+        `Observer data not found: ${observerData.unavailable}`,
+        "text/plain; charset=utf-8",
+      );
       return;
     }
     const analysis = await readObserverAnalysis(runRoot);
@@ -181,9 +188,14 @@ export async function serveRunPath(
   }
 
   if (cleanedRelativePath === "observer/observer-data.json") {
-    const observerData = await readObserverData(runRoot, runtimeStreamUrls);
-    if (!observerData) {
-      writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
+    const observerData = await observerDataOrReason(runRoot, runtimeStreamUrls);
+    if ("unavailable" in observerData) {
+      writeResponse(
+        response,
+        404,
+        `Observer data not found: ${observerData.unavailable}`,
+        "text/plain; charset=utf-8",
+      );
       return;
     }
     writeResponse(
@@ -237,31 +249,77 @@ export async function serveRunPath(
   }
 }
 
+/** The run's trace files, read through its pinned folder. */
+function pinnedTraceReader(runRoot: PinnedDirectory): TraceFileReader {
+  return async (relativePath, maxBytes) => {
+    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath), {
+      maxBytes,
+    }).catch(() => null);
+    return bytes === null ? { refused: `${relativePath} could not be read` } : { bytes };
+  };
+}
+
 async function readObserverData(
   runRoot: PinnedDirectory,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
 ): Promise<ObserverData | null> {
+  const read = await observerDataOrReason(runRoot, runtimeStreamUrls);
+  return "unavailable" in read ? null : read;
+}
+
+/**
+ * The run's Observer data, or why there is none. run.json is the source: each trace is loaded
+ * through the loader, and a participant whose trace it refuses shows as unavailable, with no
+ * fallback. The saved observer-data.json is read only while the run has no run.json at all, or in
+ * safe serving, where only its admitted bytes can be read. Otherwise a run.json that is there and
+ * cannot be read, parsed or used as a bundle (which a browser poll can meet mid-write) gives the
+ * reason, a 404 the poller retries, never the saved projection.
+ */
+async function observerDataOrReason(
+  runRoot: PinnedDirectory,
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[],
+): Promise<ObserverData | { unavailable: string }> {
   const record = await readLocalRunStatus(runRoot);
-  // Best-effort load from either source. Both reads swallow all errors on
-  // purpose: this runs on every browser poll of a live run, where run.json may
-  // be absent, still being written (a partial-JSON parse error), or superseded
-  // by observer-data.json. A transient failure just falls through to the next
-  // source, or to null -> a 404 the poller retries; it must not surface a 500.
+  const runJson = path.join(runRoot.physicalPath, "run.json");
+  const bundleBytes = await readContainedFile(runRoot, runJson).catch(() => null);
+  const absent =
+    bundleBytes === null &&
+    (await lstat(runJson).then(
+      () => false,
+      (error: unknown) => isNodeError(error) && error.code === "ENOENT",
+    ));
+  // A root admitted for safe serving checks every read against the identity and digest admitted
+  // with the run's share_ready verification, so a run.json changed since then is refused, and the
+  // saved projection it may serve is the one admitted with the verified run.
+  if (absent || (bundleBytes === null && runRoot.admitsContent !== undefined))
+    return savedObserverData(runRoot, record, runtimeStreamUrls);
+  if (bundleBytes === null)
+    return { unavailable: "run.json is there but could not be read: it is a link or changed." };
+  let stored: Parameters<typeof buildObserverData>[0];
   try {
-    const bundleBytes = await readContainedFile(
-      runRoot,
-      path.join(runRoot.physicalPath, "run.json"),
-    );
-    if (!bundleBytes) throw new Error("run.json unavailable");
-    const bundle = JSON.parse(bundleBytes.toString("utf8")) as Parameters<
-      typeof buildObserverData
-    >[0];
+    const parsed: unknown = JSON.parse(bundleBytes.toString("utf8"));
+    if (!isRecord(parsed) || !Array.isArray(parsed.streams)) throw new Error("not a run bundle");
+    stored = parsed as unknown as Parameters<typeof buildObserverData>[0];
+  } catch {
+    return { unavailable: "run.json is not a run bundle; it may be mid-write, so try again." };
+  }
+  try {
+    const bundle = displayedTraces(await loadStreamTraces(pinnedTraceReader(runRoot), stored));
     return withRuntimeStreamUrls(
       withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
       runtimeStreamUrls,
     );
-  } catch {}
+  } catch {
+    return { unavailable: "run.json could not be shown as a run." };
+  }
+}
 
+/** The saved observer-data.json of a run that has written no run.json yet. */
+async function savedObserverData(
+  runRoot: PinnedDirectory,
+  record: RunStatusRecord | undefined,
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[],
+): Promise<ObserverData | { unavailable: string }> {
   try {
     const observerBytes = await readContainedFile(
       runRoot,
@@ -275,9 +333,9 @@ async function readObserverData(
       ),
       runtimeStreamUrls,
     );
-  } catch {}
-
-  return null;
+  } catch {
+    return { unavailable: "The run has written no run.json or Observer data yet." };
+  }
 }
 
 /** The run directory's own status record, when it is well formed and names that directory. */

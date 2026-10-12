@@ -27,6 +27,7 @@ import { listRuns, readReview } from "../../src/run/stored-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const execFileAsync = promisify(execFile);
 const PNG_1X1 = syntheticPng1x1();
@@ -910,7 +911,8 @@ async function writeCuaRunFixture(
   }
   const runDir = path.join(cwd, ".humanish", "runs", runId);
   await mkdir(runDir, { recursive: true });
-  await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  // As the run writer writes v2: actor.json holds the trace and run.json indexes it.
+  await writeRunBundle(runDir, bundle);
   await writeFile(
     path.join(runDir, "review.json"),
     `${JSON.stringify(bundle.review, null, 2)}\n`,
@@ -926,13 +928,6 @@ async function writeCuaRunFixture(
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
     "utf8",
   );
-  if (session) {
-    await writeFile(
-      path.join(runDir, "actor.json"),
-      `${JSON.stringify(session.trace, null, 2)}\n`,
-      "utf8",
-    );
-  }
 }
 
 describe("verify hardening (no-engagement + screenshot posture)", () => {

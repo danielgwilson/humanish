@@ -26,7 +26,7 @@ workflow without leaking private upstream truth into core.
 
 | Contract                          | Schema                                                                                                                                                                                                                                                    | Public-safe fixture                                                                 |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Run bundle                        | `humanish.run-bundle.v1`                                                                                                                                                                                                                                  | `synthetic-run-bundle`                                                              |
+| Run bundle                        | `humanish.run-bundle.v2` (each participant's trace in its own file, indexed by `streams[].trace`; v1 bundles, with traces inline, are still read)                                                                                                         | `synthetic-run-bundle`                                                              |
 | Adapter                           | `humanish.adapter.v1`                                                                                                                                                                                                                                     | `synthetic-cli-adapter`                                                             |
 | Study file                        | `humanish.study.v3`                                                                                                                                                                                                                                       | `first-run`                                                                         |
 | Persona                           | `humanish.persona.v1`                                                                                                                                                                                                                                     | `synthetic-maintainer`                                                              |
@@ -471,7 +471,7 @@ A study's result has one schema on every route, `humanish.study-result.v1`
 (`src/run/study-result.ts`), with `route` and `studyId`. 0.109.0 removed `labId`, which 0.108.0
 wrote with the same value. Route-specific fields stay on their route's result. `humanish run`
 with no study, `observe`, and a refusal made before a route is picked keep
-`humanish.run-result.v1`. The evidence record stays `humanish.run-bundle.v1` in every case.
+`humanish.run-result.v1`. The evidence record stays `humanish.run-bundle.v2` in every case.
 The computer-use result carries `plan` (the pre-flight participant table: concurrency, waves,
 per-participant session budget, worst-case sandbox-minutes), `lanes[]` (always present,
 length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSummary`
@@ -578,7 +578,7 @@ Core-owned fields:
   }`. Emitted by the computer-use and shared-world routes and the clone
   scripted-browser route; absent on pre-existing and other bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
-  porcelain status at pack time) are local-tree-route fields, additive under
+  porcelain status at pack time) are local-tree-route fields, additive since
   `humanish.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
   the archive content digest stands in for it. `product` is the desktop-cli field: the
   `subject.product.name` the study declares, with state `undeclared`. A computer-use
@@ -616,7 +616,7 @@ Adapter-owned fields:
 Abbreviated synthetic fixture (omits `cwd`, `simulations`, `streams` and `events`):
 
 ```yaml
-schema: humanish.run-bundle.v1
+schema: humanish.run-bundle.v2
 runId: synthetic-run-bundle-2026-06-02t10-00-00-000z-proof
 mode: dry-run
 simCount: 1
@@ -686,8 +686,8 @@ sequential shared-world route, which 0.106.0 removed. Only bundles written befor
 (`tests/run/legacy-sequential-shared-world.test.ts`). The sequential rules below apply
 to those bundles.
 
-A shared-world bundle adds two additive, optional fields to `humanish.run-bundle.v1`
-(absent on every other bundle, so they stay byte-stable):
+A shared-world bundle adds two additive, optional fields, added under `humanish.run-bundle.v1`
+(absent on every other bundle):
 
 - `attributionClass: isolated | shared-world`: a separate attribution axis
   ("how well did the run attribute interaction?"), distinct from the persona-sampling
@@ -966,6 +966,13 @@ output all map onto one `ActorTrace`. Registered actors live in
 `local-agent`, `scripted-browser`, `codex-exec`). A study that names
 `pi-agent-core` or `claude-agent-sdk` fails to parse. There is no
 `humanish.actor.v1`; that name never shipped.
+
+Where the trace is stored depends on the run bundle version. In `humanish.run-bundle.v2`,
+`streams[].actor` in run.json is the trace without `items`, and the full trace, with the stream's
+screenshot entries as `artifacts`, is the file `streams[].trace.path` names (`actor.json`,
+`actors/<stream>.json` or `actor-<surface>.json`). A v1 run.json holds the full trace inline.
+`loadStreamTrace` in `src/run/stream-trace.ts` reads either; see
+[run-bundle.md](run-bundle.md#participant-traces).
 
 Core-owned fields:
 
@@ -1822,7 +1829,7 @@ including existence for referenced adapter artifacts.
 
 Reserved: `humanish.evidence-stream.v1` has never shipped as a standalone
 schema, and streams are not standalone artifacts. They are the `streams` array
-inside `humanish.run-bundle.v1`, normalizing UI, browser, terminal, TUI,
+inside the run bundle (`humanish.run-bundle.v2`), normalizing UI, browser, terminal, TUI,
 code-agent UI, artifact, and summary streams, each with transport, terminal
 tail, completion, meaningful-use verdicts, and artifact pointers. See
 [`run-bundle.md`](run-bundle.md#completion-and-meaningful-use-verdicts) for

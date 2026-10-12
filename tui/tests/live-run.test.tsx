@@ -124,6 +124,7 @@ async function openLiveRun(
   detail: RunDetail | null,
   columns = 80,
   overrides: Partial<TuiCapabilities> = {},
+  waitFor = detail === null ? "starting…" : "Connecting fields",
 ) {
   const surface = await renderToText(
     <App options={options(detail, RUNS, overrides)} now={NOW} tick={0} />,
@@ -142,9 +143,7 @@ async function openLiveRun(
   // Wait for the detail-bearing frame: entering the run screen renders its own facts first and the
   // participants a moment later, so matching the status line alone captures the frame before the
   // thing under test has arrived.
-  const frame = await surface.press(KEY.enter, (candidate) =>
-    candidate.includes(detail === null ? "starting…" : "Connecting fields"),
-  );
+  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes(waitFor));
   return { surface, frame };
 }
 
@@ -175,6 +174,28 @@ describe("watching a run", () => {
     surface.unmount();
     expect(frame).toContain("Connecting fields for relationships");
     expect(frame).not.toContain("**");
+  });
+
+  it("says a participant's evidence is unavailable, with the reason, in place of a thought", async () => {
+    const { thought: _thought, ...participant } = LIVE_DETAIL.participants[0]!;
+    const { surface, frame } = await openLiveRun(
+      {
+        ...LIVE_DETAIL,
+        participants: [
+          {
+            ...participant,
+            evidenceUnavailable:
+              "Participant stream-001's trace was not read: actors/stream-001.json does not match the sha256 run.json records for it.",
+          },
+        ],
+      },
+      80,
+      {},
+      "Evidence unavailable",
+    );
+    surface.unmount();
+    expect(frame).toContain("Evidence unavailable");
+    expect(frame).toContain("does not match the sha256");
   });
 
   it("offers Stop, then Observer, while a run is still going, and never Run again", async () => {

@@ -10,9 +10,10 @@ import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import {
   expectationLine,
   formatDuration,
-  studySummaryLine,
   listWindow,
   normalizeThought,
+  participantNote,
+  studySummaryLine,
 } from "../../../src/run/projection.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
@@ -435,10 +436,11 @@ function LiveRun({
   const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
   const of = expectedMs === undefined ? "" : ` of ~${clockOf(expectedMs)}`;
+  const note = participant === undefined ? undefined : participantNote(participant);
   const thought =
-    participant?.thought === undefined
+    note === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, {
+      : normalizeThought(note, {
           width: Math.max(16, columns - 6),
           maxLines: 3,
         });

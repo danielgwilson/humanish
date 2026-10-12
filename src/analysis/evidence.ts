@@ -3,7 +3,13 @@ import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
-import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
+import {
+  RUN_BUNDLE_FILE,
+  RUN_BUNDLE_SCHEMA,
+  RUN_BUNDLE_V1_SCHEMA,
+  type RunBundle,
+} from "../run/bundle.js";
+import { loadStreamTraces } from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
@@ -57,7 +63,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
     !isRecord(value) ||
-    value.schema !== "humanish.run-bundle.v1" ||
+    (value.schema !== RUN_BUNDLE_SCHEMA && value.schema !== RUN_BUNDLE_V1_SCHEMA) ||
     value.runId !== runIdOf(prepared) ||
     !Array.isArray(value.streams) ||
     value.streams.length > EVIDENCE_LIMITS.participants ||
@@ -80,28 +86,8 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
       throw new Error("ANALYSIS_SOURCE_INVALID");
     }
     ids.add(stream.id);
-    const actor = stream.actor;
-    if (
-      actor !== undefined &&
-      (!isRecord(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)
-    ) {
+    if (stream.actor !== undefined && !isRecord(stream.actor))
       throw new Error("ANALYSIS_SOURCE_INVALID");
-    }
-    const eventIds = new Set<string>();
-    for (const item of isRecord(actor) ? (actor.items as unknown[]) : []) {
-      if (
-        !isRecord(item) ||
-        typeof item.id !== "string" ||
-        item.id.length === 0 ||
-        item.id.length > 256 ||
-        eventIds.has(item.id) ||
-        typeof item.kind !== "string" ||
-        typeof item.title !== "string" ||
-        (item.text !== undefined && typeof item.text !== "string")
-      )
-        throw new Error("ANALYSIS_SOURCE_INVALID");
-      eventIds.add(item.id);
-    }
   }
   for (const event of value.events) {
     if (
@@ -113,6 +99,49 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
       throw new Error("ANALYSIS_SOURCE_INVALID");
   }
   return value as unknown as RunBundle;
+}
+
+/**
+ * run.json's bundle with each stream's trace loaded. The source limit applies to each trace file
+ * as it does to run.json; run.json's digest, which the analysis record binds, binds each trace's
+ * sha256.
+ */
+async function readSource(
+  prepared: PreparedRunArtifactPaths,
+  bytes: Buffer,
+  traceBytes: number,
+): Promise<RunBundle> {
+  const stored = parseSource(prepared, bytes);
+  if (stored.streams.some((stream) => (stream.trace?.bytes ?? 0) > traceBytes))
+    throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  const loaded = await loadStreamTraces(prepared, stored, { maxBytes: traceBytes });
+  if (loaded.refused.length > 0) throw new Error("ANALYSIS_SOURCE_INVALID");
+  for (const stream of loaded.bundle.streams) validateTraceItems(stream.actor);
+  return loaded.bundle;
+}
+
+function validateTraceItems(actor: unknown): void {
+  if (
+    actor !== undefined &&
+    (!isRecord(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)
+  ) {
+    throw new Error("ANALYSIS_SOURCE_INVALID");
+  }
+  const eventIds = new Set<string>();
+  for (const item of isRecord(actor) ? (actor.items as unknown[]) : []) {
+    if (
+      !isRecord(item) ||
+      typeof item.id !== "string" ||
+      item.id.length === 0 ||
+      item.id.length > 256 ||
+      eventIds.has(item.id) ||
+      typeof item.kind !== "string" ||
+      typeof item.title !== "string" ||
+      (item.text !== undefined && typeof item.text !== "string")
+    )
+      throw new Error("ANALYSIS_SOURCE_INVALID");
+    eventIds.add(item.id);
+  }
 }
 
 /** Select once from retained source. Models receive no filesystem or network resolver. */
@@ -134,7 +163,7 @@ export async function captureEvidence(
   if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
   const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
-  const bundle = parseSource(prepared, bundleBytes);
+  const bundle = await readSource(prepared, bundleBytes, limits.sourceBytes);
   const captureVersion = ACTION_CAPTURE_VERSION;
   if (
     bundle.streams.some(
@@ -558,7 +587,7 @@ export async function validateAnalysisEvidence(
 ): Promise<void> {
   if (artifact.captureVersion !== undefined && artifact.captureVersion !== ACTION_CAPTURE_VERSION)
     throw new Error("ANALYSIS_CAPTURE_VERSION_INVALID");
-  const bundle = parseSource(prepared, bundleBytes);
+  const bundle = await readSource(prepared, bundleBytes, EVIDENCE_LIMITS.sourceBytes);
   if (artifact.runId !== bundle.runId || artifact.sourceRunSha256 !== sha256(bundleBytes))
     throw new Error("ANALYSIS_SOURCE_CHANGED");
   const included = new Set(artifact.coverage.includedStreamIds);

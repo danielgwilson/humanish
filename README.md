@@ -335,7 +335,7 @@ and the library exports.
 - Breaking changes ship together in one minor release. Its release notes carry a migration
   table: each old form, its new form, and the change to make.
 - The study file and the run bundle carry versioned schemas, `humanish.study.v3` and
-  `humanish.run-bundle.v1`. A breaking change to either one bumps its version.
+  `humanish.run-bundle.v2`. A breaking change to either one bumps its version.
 
 Pin the exact version in `package.json` and read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 

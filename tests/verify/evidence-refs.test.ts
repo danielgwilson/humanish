@@ -9,6 +9,7 @@ import { draftFeedback, verifyFeedback } from "../../src/feedback/feedback.js";
 import { runSyntheticLive } from "../helpers/synthetic-live-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const RUN = "declared-evidence";
 
@@ -31,8 +32,15 @@ describe("verify declared evidence references", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
+  // An actor is written as the run writer writes v2, its items in the trace file. In-progress
+  // items in a finished run (the synthetic run has an outcome) are the v1 shape only.
   const save = async () => {
-    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+    if (bundle.streams.some((stream) => stream.liveActor !== undefined))
+      await writeFile(
+        path.join(runDir, "run.json"),
+        JSON.stringify({ ...bundle, schema: "humanish.run-bundle.v1" }),
+      );
+    else await writeRunBundle(runDir, bundle);
   };
   const setActor = (
     field: "actor" | "liveActor",

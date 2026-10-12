@@ -18,6 +18,7 @@ import path from "node:path";
 import { measuredChromeDesktop } from "../../helpers/measured-chrome-desktop.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { readRunWithTraces } from "../../helpers/run-traces.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1137,7 +1138,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.schema).toBe("humanish.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v2");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
@@ -1319,7 +1320,7 @@ describe("runCuaActorLab", () => {
 
     // The persisted bundle fills the provider-neutral actor seam and keeps evidence local.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const bundle = (await readRunWithTraces(runDir)) as ReturnType<typeof JSON.parse>;
     expect(bundle.streams[0].actor.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
     expect(bundle.streams[0].actor.provider).toBe("openai-responses-cu");
@@ -1345,9 +1346,9 @@ describe("runCuaActorLab", () => {
     const screenshotFiles = await readdir(path.join(runDir, "screenshots"));
     expect(screenshotFiles.length).toBe(screenshotArtifacts.length);
 
-    // actor.json trace artifact exists and matches the stream seam.
+    // actor.json is the stream's trace file: the actor trace and its screenshot entries.
     const traceOnDisk = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
-    expect(traceOnDisk).toEqual(bundle.streams[0].actor);
+    expect(traceOnDisk).toEqual({ ...bundle.streams[0].actor, artifacts: screenshotArtifacts });
 
     // The runtime-only stream URL (carries an auth key) never lands anywhere: not on the
     // result (the sandbox is dead by then: only presence is reported) nor in any artifact.
@@ -2817,7 +2818,7 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const bundle = (await readRunWithTraces(runDir)) as ReturnType<typeof JSON.parse>;
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("raw");
     expect(
       bundle.streams[0].actor.items
@@ -2876,7 +2877,7 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const bundle = (await readRunWithTraces(runDir)) as ReturnType<typeof JSON.parse>;
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("blurred");
     expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(
       false,
@@ -6994,7 +6995,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(live?.items.every((item) => typeof item.at === "string")).toBe(true);
 
     // Final: the real actor replaces the partial; liveActor never survives completion.
-    const finalBundle = JSON.parse(await readFile(runJsonPath(), "utf8")) as {
+    const finalBundle = (await readRunWithTraces(path.dirname(runJsonPath()))) as unknown as {
       streams: Array<{
         status: string;
         assignment?: unknown;

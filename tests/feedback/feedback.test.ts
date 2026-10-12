@@ -242,6 +242,8 @@ describe("feedback issue drafts", () => {
       const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
         streams: Array<{ actor?: unknown }>;
       };
+      // An inline actor without items: a v1 run.json.
+      (bundle as { schema?: string }).schema = "humanish.run-bundle.v1";
       bundle.streams[0]!.actor = {
         schema: ACTOR_TRACE_SCHEMA,
         redaction: {

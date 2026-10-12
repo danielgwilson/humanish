@@ -16,6 +16,7 @@ import { buildRunSource } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { rawScreenshotActorTrace, writeLocalOnlyRun } from "../helpers/local-only-run.js";
+import { writeRunBundle } from "../helpers/run-traces.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
@@ -780,7 +781,7 @@ describe("serve library: labeled cost estimate", () => {
     });
     const runDir = path.join(cwd, ".humanish", "runs", runId);
     await mkdir(runDir, { recursive: true });
-    await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+    await writeRunBundle(runDir, bundle);
     await writeFile(
       path.join(runDir, "review.json"),
       `${JSON.stringify(bundle.review, null, 2)}\n`,
@@ -796,7 +797,6 @@ describe("serve library: labeled cost estimate", () => {
       `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
       "utf8",
     );
-    await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
     // Render the observer so observer-data.json (which the library reads) carries the cost summary.
     expect((await renderObserver(cwd, runId)).ok).toBe(true);
   }

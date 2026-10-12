@@ -5,6 +5,7 @@ import {
   REVIEW_SCHEMA,
   type ReviewSummary,
   RUN_BUNDLE_SCHEMA,
+  RUN_BUNDLE_V1_SCHEMA,
   type RunAdapterArtifact,
   type RunAdapterScore,
   type RunBundle,
@@ -35,7 +36,7 @@ import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./typ
 export function isRunBundle(value: unknown): value is RunBundle {
   return (
     isRecord(value) &&
-    value.schema === RUN_BUNDLE_SCHEMA &&
+    (value.schema === RUN_BUNDLE_SCHEMA || value.schema === RUN_BUNDLE_V1_SCHEMA) &&
     (value.commsReceiving === undefined || isCommsReceivingEvidence(value.commsReceiving)) &&
     (value.publication === undefined ||
       (isRecord(value.publication) &&

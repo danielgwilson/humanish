@@ -2785,6 +2785,8 @@ try {
       assert.equal((await runDryRun({ cwd, dryRun: true, runId })).ok, true);
       const runDir = path.join(cwd, ".humanish", "runs", runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      // The proof writes its actor trace inline, as a v1 run.json held it.
+      bundle.schema = "humanish.run-bundle.v1";
       const captures = [0, 30, 95].map((seconds, index) => ({
         id: `capture-${index}`,
         kind: "screenshot",

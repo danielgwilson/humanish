@@ -118,7 +118,8 @@ describe("runtime desktop iframe authority", () => {
       runtimeDesktop: true,
     };
     await writeFile(path.join(runRoot, "observer", "observer-data.json"), JSON.stringify(fallback));
-    await writeFile(path.join(runRoot, "run.json"), "{");
+    // The saved data is read only while the run has no run.json.
+    await rm(path.join(runRoot, "run.json"));
     expect(
       (await served(new URL("observer-data.json", server.url))).streams[0]?.embed?.runtimeDesktop,
     ).toBeUndefined();

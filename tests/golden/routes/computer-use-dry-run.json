@@ -221,7 +221,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v1",
+      "bundleSchema": "humanish.run-bundle.v2",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -241,7 +241,7 @@
   },
   "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 1 participant would use http://127.0.0.1:3000/. Nothing was launched and $0 was spent.\n\n## Gaps\n- Live desktop session not yet run (dry run only).\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v1",
+    "schema": "humanish.run-bundle.v2",
     "runId": "[run]",
     "mode": "dry-run",
     "simCount": 1,

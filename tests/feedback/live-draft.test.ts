@@ -185,6 +185,8 @@ describe("the live fallback draft describes the run that happened", () => {
         await runDryRun({ cwd, dryRun: true, runId: "legacy-draft-test" });
         const runJsonPath = path.join(cwd, ".humanish/runs/legacy-draft-test/run.json");
         const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
+        // An actor without items is a shape only a v1 run.json, which held items inline, can have.
+        bundle.schema = "humanish.run-bundle.v1";
         bundle.mode = "live";
         bundle.review.participants = {
           total: 1,
@@ -308,6 +310,8 @@ describe("a multi-participant study's second finding is one flag away", () => {
       expect(candidates).toHaveLength(2);
       const runJsonPath = path.join(cwd, ".humanish", "runs", "candidate-test", "run.json");
       const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
+      // The fixture writes the actor trace inline, as a v1 run.json held it.
+      bundle.schema = "humanish.run-bundle.v1";
       bundle.mode = "live";
       bundle.feedbackCandidates = candidates;
       // A real run's actor trace registers every frame it keeps, with its redaction. Without that,

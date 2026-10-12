@@ -47,6 +47,7 @@ import {
   type HostSuspension,
 } from "./host-suspension.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
+import { splitStreamTraces } from "./stream-trace.js";
 
 interface StartRunOptions {
   /** Project directory, in the form the route resolved it. */
@@ -412,7 +413,11 @@ function runPublisher(args: {
       cwd: PUBLIC_TARGET_CWD,
       ...(recorded === undefined ? {} : { outcome: recorded }),
     });
-    await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
+    // Each trace file first, so run.json never indexes a file that is not yet written. The review
+    // and the Observer data below read the whole in-memory bundle.
+    const split = splitStreamTraces(publicBundle);
+    for (const file of split.files) await writeContainedOutputFile(paths, file.path, file.bytes);
+    await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(split.bundle), "utf8");
     await afterBundle(publicBundle);
     // The run writes its own status.json; one it refuses renders as a missing one does.
     const status =

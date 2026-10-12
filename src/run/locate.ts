@@ -21,6 +21,7 @@ import {
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
+import { loadRunTraces } from "./stream-trace.js";
 import { readUnchangedFile, type BoundedFileResult } from "./evidence-files.js";
 
 /** The run input that resolves through latest.json rather than naming a run directory. */
@@ -193,7 +194,8 @@ export async function loadRunBundlePrepared(
   }
 
   return {
-    bundle,
+    // A trace that does not match its index throws StreamTraceRefusedError, naming the participant.
+    bundle: await loadRunTraces(runPaths, bundle),
     bundlePath: path.relative(cwd, bundlePath),
     runDir: runPaths.absoluteRunRoot,
   };

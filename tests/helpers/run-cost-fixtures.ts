@@ -16,6 +16,7 @@ import {
 } from "../../src/run/status.js";
 import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";
 import { rawScreenshotActorTrace } from "./local-only-run.js";
+import { writeRunBundle } from "./run-traces.js";
 
 // Two synthetic live runs priced like the 0.108.0 try-live smoke: participant tokens with no
 // dollar price, $0.016123 of desktop time, then analysis on the OpenAI API key. One run has one
@@ -84,7 +85,7 @@ async function writeRun(cwd: string, runId: string, createdAt: string): Promise<
   const runDir = path.join(cwd, ".humanish", "runs", runId);
   await mkdir(runDir, { recursive: true });
   const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
-  await writeFile(path.join(runDir, "run.json"), json(bundle), "utf8");
+  await writeRunBundle(runDir, bundle);
   await writeFile(path.join(runDir, "review.json"), json(bundle.review), "utf8");
   await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n`, "utf8");
   await writeFile(
@@ -92,7 +93,6 @@ async function writeRun(cwd: string, runId: string, createdAt: string): Promise<
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
     "utf8",
   );
-  await writeFile(path.join(runDir, "actor.json"), json(trace), "utf8");
   // The status record the run index reads first, with the outcome a published run writes.
   const completedAt = new Date(Date.parse(createdAt) + 120_000).toISOString();
   const status: RunStatusRecord = {

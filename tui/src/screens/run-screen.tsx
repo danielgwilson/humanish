@@ -4,7 +4,7 @@ import React from "react";
 import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
 import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
-import { formatDuration, normalizeThought } from "../../../src/run/projection.js";
+import { formatDuration, normalizeThought, participantNote } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
@@ -177,10 +177,11 @@ function FinishedFacts({
 }): React.ReactElement {
   // The participant's own closing words, quoted. `completionReason` is the harness's word for the
   // same moment; theirs is the one worth the space.
+  const note = participant === undefined ? undefined : participantNote(participant);
   const closing =
-    participant?.thought === undefined
+    note === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, { width: Math.max(16, columns), maxLines: 3 });
+      : normalizeThought(note, { width: Math.max(16, columns), maxLines: 3 });
 
   // Why a run failed when its execution did, such as a sandbox whose teardown is unproven.
   const { reason } = runDisplay(run);
