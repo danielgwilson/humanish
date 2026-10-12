@@ -160,7 +160,7 @@ function closingReportWarning(plan: StudyPlan): string | undefined {
   ).length;
   if (scheduled === 0) return undefined;
   const subject = scheduled === 1 ? "it ends" : "each ends";
-  return `${plural(scheduled, "participant")} ${scheduled === 1 ? "has" : "have"} a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so ${subject} with the scheduled end as its reason and no closing account. A computer-use model (actors[0].type: openai-computer-use) or Codex (actors[0].localAgent: codex) writes one.`;
+  return `${plural(scheduled, "participant")} ${scheduled === 1 ? "has" : "have"} a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so ${subject} with the scheduled end as its reason and no closing account. A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.`;
 }
 
 function planRoute(
