@@ -447,9 +447,10 @@ function cutShort(kept: string, fields: readonly string[], shape: Shape): string
 }
 
 // A literal cut short after parsing still leaks, so a file leaks a field when it holds the first
-// 20 characters of any of the field's literals. Each literal is longer, and its first 20 characters
-// differ from every other field's.
-const FRAGMENT = 20;
+// 22 characters of any of the field's literals. The shortest literal has 22, and up to field f999
+// no field's first 22 characters appear in another field's literals. At 20, f10's URL would match
+// f100's.
+const FRAGMENT = 22;
 
 /** `<field> in <file>` for each field whose planted value a file of the run holds. */
 function leaks(run: DryRun, fields: readonly string[]): string[] {
