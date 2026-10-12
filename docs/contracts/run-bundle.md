@@ -73,7 +73,10 @@ refused shows none of the items run.json or a file supplied for it: its stream c
 `traceUnavailable` with the reason, its Observer timeline a `trace.unavailable` warning, and its
 run-detail entry `evidenceUnavailable`. The Observer server reads the saved observer-data.json
 only while a run has no run.json at all; a run.json that is there and cannot be read, parsed or
-used as a bundle answers 404 with the reason, never the saved projection.
+used as a bundle answers 404 with the reason, never the saved projection. In safe serving
+(`observe --all --safe`) every read is checked against the files admitted with the run's
+share_ready verification, so a run.json changed after admission is refused and the admitted
+projection is served.
 observer-data.json is built from the loaded bundle and has the same shape as before.
 
 Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema

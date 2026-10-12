@@ -270,9 +270,10 @@ async function readObserverData(
 /**
  * The run's Observer data, or why there is none. run.json is the source: each trace is loaded
  * through the loader, and a participant whose trace it refuses shows as unavailable, with no
- * fallback. The saved observer-data.json is read only while the run has no run.json at all; a
- * run.json that is there and cannot be read, parsed or used as a bundle (which a browser poll can
- * meet mid-write) gives the reason, a 404 the poller retries, never the saved projection.
+ * fallback. The saved observer-data.json is read only while the run has no run.json at all, or in
+ * safe serving, where only its admitted bytes can be read. Otherwise a run.json that is there and
+ * cannot be read, parsed or used as a bundle (which a browser poll can meet mid-write) gives the
+ * reason, a 404 the poller retries, never the saved projection.
  */
 async function observerDataOrReason(
   runRoot: PinnedDirectory,
@@ -287,7 +288,11 @@ async function observerDataOrReason(
       () => false,
       (error: unknown) => isNodeError(error) && error.code === "ENOENT",
     ));
-  if (absent) return savedObserverData(runRoot, record, runtimeStreamUrls);
+  // A root admitted for safe serving checks every read against the identity and digest admitted
+  // with the run's share_ready verification, so a run.json changed since then is refused, and the
+  // saved projection it may serve is the one admitted with the verified run.
+  if (absent || (bundleBytes === null && runRoot.admitsContent !== undefined))
+    return savedObserverData(runRoot, record, runtimeStreamUrls);
   if (bundleBytes === null)
     return { unavailable: "run.json is there but could not be read: it is a link or changed." };
   let stored: Parameters<typeof buildObserverData>[0];
