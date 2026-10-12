@@ -74,7 +74,16 @@ public-safe metadata.
 
 The browser polls `observer-feed.json` with `no-store` caching: the server's
 projection of the run as `{ data, items }`, observer-data.json's content and the
-items, from one read of the run per poll. Static
+items, from one read of the run per poll. While a participant runs, its entry in
+`items` carries `live`, a cursor `<position>.<generation>.<items>.<bytes>` naming its
+live file (`live/<position>.<generation>.ndjson`) and how far the list goes. The page
+sends the cursors of its last body back as `?after=<cursor>,<cursor>`, and the server
+then reads and sends only the items past each one, marking that entry with
+`liveAfter`, the cursor they follow (`src/observer/feed-cursors.ts`). A cursor for an
+earlier generation, past the index or off a line end gets the participant's full list,
+and so does every participant of a finished run. A tail is checked for line ends and
+its line count; the sha256 run.json records is checked whenever a list is read whole.
+A page that cannot join a body sends no cursors with its next poll. Static
 `file://` opening still works for immutable review, but follow mode is the
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.

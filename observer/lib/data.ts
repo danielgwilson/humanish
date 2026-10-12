@@ -47,13 +47,63 @@ export async function readInlineObserverData(doc: Document): Promise<ObserverDat
 
 /** Data the served page polls: observer-feed.json's run data and items, joined. */
 export function observerDataFromFeed(value: unknown): ObserverData | null {
+  return observerFeedFrom(value, null)?.data ?? null;
+}
+
+/**
+ * A cursor the page can send back as it came: digits and dots, as the server spells them. The page
+ * holds no other, so its next poll asks for that participant's full list.
+ */
+const SENDABLE_CURSOR = /^[0-9.]{1,80}$/;
+
+/**
+ * What the page holds from its feed: the run's data and, by stream id, the live cursor each
+ * running participant's list ends at. The page sends the cursors back with its next poll.
+ */
+export interface ObserverFeed {
+  data: ObserverData;
+  live: ReadonlyMap<string, string>;
+}
+
+/**
+ * The feed after a poll's body. An entry with `liveAfter` holds only the participant's items past
+ * that cursor, and they follow the list `held` has for that stream when `held` holds exactly that
+ * cursor for this run. Null when an entry follows a list `held` does not have, or the joined data
+ * does not hold together.
+ */
+export function observerFeedFrom(value: unknown, held: ObserverFeed | null): ObserverFeed | null {
   if (typeof value !== "object" || value === null) return null;
   const feed = value as { data?: unknown; items?: unknown };
   try {
-    return isObserverItems(feed.items) ? observerDataFrom(feed.data, feed.items) : null;
+    if (!isObserverItems(feed.items)) return null;
+    const items = joinedItems(feed.items, held);
+    const data = items === null ? null : observerDataFrom(feed.data, items);
+    if (data === null) return null;
+    const live = new Map<string, string>();
+    for (const [id, entry] of Object.entries(feed.items.streams))
+      if (entry.live !== undefined && SENDABLE_CURSOR.test(entry.live)) live.set(id, entry.live);
+    return { data, live };
   } catch {
     return null;
   }
+}
+
+/** `items` with each tail joined onto the list `held` has at its cursor; null for a tail it has not. */
+function joinedItems(items: ObserverItems, held: ObserverFeed | null): ObserverItems | null {
+  const streams: ObserverItems["streams"] = Object.create(null) as ObserverItems["streams"];
+  for (const [id, entry] of Object.entries(items.streams)) {
+    if (entry.liveAfter === undefined) {
+      streams[id] = entry;
+      continue;
+    }
+    const before =
+      held !== null && held.data.run.runId === items.runId && held.live.get(id) === entry.liveAfter
+        ? held.data.streams.find((stream) => stream.id === id)?.liveActor?.items
+        : undefined;
+    if (!Array.isArray(before) || !Array.isArray(entry.liveActor)) return null;
+    streams[id] = { ...entry, liveActor: [...before, ...entry.liveActor] };
+  }
+  return { ...items, streams };
 }
 
 function observerDataFrom(shell: unknown, items: ObserverItems): ObserverData | null {
@@ -103,6 +153,10 @@ function isObserverItems(value: unknown): value is ObserverItems {
         ["actor", "liveActor", "artifacts"].every((key) => {
           const list = (entry as Record<string, unknown>)[key];
           return list === undefined || Array.isArray(list);
+        }) &&
+        ["live", "liveAfter"].every((key) => {
+          const cursor = (entry as Record<string, unknown>)[key];
+          return cursor === undefined || typeof cursor === "string";
         }),
     )
   );

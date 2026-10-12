@@ -45,6 +45,12 @@ export function isLiveItemsIndex(value: unknown): value is LiveItemsIndex {
   );
 }
 
+/** Where a reader's copy of a live file ends: its first `items` lines, `bytes` bytes. */
+export interface LiveItemsCursor {
+  items: number;
+  bytes: number;
+}
+
 /**
  * The items the indexed prefix of a live file holds, or why the bytes do not match the index:
  * `bytes` must be exactly the indexed byte count, hash to the indexed sha256, and hold the indexed
@@ -60,28 +66,58 @@ export function liveItemsFromBytes(
     };
   if (createHash("sha256").update(bytes).digest("hex") !== index.sha256)
     return { refused: `${index.path} does not match the sha256 run.json records for it` };
+  return itemLinesOf(bytes, index.items, index.path);
+}
+
+/**
+ * The items past `after` in the indexed prefix of a live file, from the file's bytes between
+ * `after.bytes - 1` and the indexed end, or why they do not fit: the first byte must end the line
+ * before the cursor, and the rest must hold exactly the lines between the cursor's count and the
+ * indexed count, each a JSON object. A line end at `after.bytes - 1` fixes how many lines precede
+ * it, so a cursor whose `items` is not that count fails on the line count. The sha256 run.json
+ * records covers the whole prefix and is not checked here: what precedes the cursor is the
+ * reader's, and a generation's bytes never change once written.
+ */
+export function liveItemsAfter(
+  bytes: Buffer,
+  index: LiveItemsIndex,
+  after: LiveItemsCursor,
+): { items: ActorTraceItem[] } | { refused: string } {
+  if (bytes.length !== index.bytes - after.bytes + 1)
+    return {
+      refused: `${index.path} holds ${bytes.length - 1} bytes past byte ${after.bytes} and run.json records ${index.bytes - after.bytes}`,
+    };
+  if (bytes[0] !== 0x0a)
+    return { refused: `${index.path} has no line end before byte ${after.bytes}` };
+  return itemLinesOf(bytes.subarray(1), index.items - after.items, index.path);
+}
+
+/** The JSON object on each of `count` lines in `bytes`, which must be UTF-8 and end a line. */
+function itemLinesOf(
+  bytes: Buffer,
+  count: number,
+  file: string,
+): { items: ActorTraceItem[] } | { refused: string } {
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
-    return { refused: `${index.path} is not UTF-8 text` };
+    return { refused: `${file} is not UTF-8 text` };
   }
   const lines = text === "" ? [] : text.split("\n");
   if (lines.length > 0 && lines.pop() !== "")
-    return { refused: `${index.path} does not end its indexed bytes at a line end` };
-  if (lines.length !== index.items)
-    return {
-      refused: `${index.path} holds ${lines.length} items and run.json records ${index.items}`,
-    };
+    return { refused: `${file} does not end its indexed bytes at a line end` };
+  if (lines.length !== count)
+    return { refused: `${file} holds ${lines.length} items and run.json records ${count}` };
   const items: ActorTraceItem[] = [];
   for (const line of lines) {
     let item: unknown;
     try {
       item = JSON.parse(line);
     } catch {
-      return { refused: `${index.path} holds a line that is not JSON` };
+      return { refused: `${file} holds a line that is not JSON` };
     }
-    if (!isRecord(item)) return { refused: `${index.path} holds a line that is not an item` };
+    if (!isRecord(item)) return { refused: `${file} holds a line that is not an item` };
     items.push(item as unknown as ActorTraceItem);
   }
   return { items };

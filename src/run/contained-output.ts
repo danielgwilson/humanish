@@ -465,18 +465,20 @@ export async function readOpenedAtMost(
 /**
  * The first `length` bytes of one regular file, under the checks readContainedRegularFile makes,
  * or all of a file that holds fewer. Bytes past `length`, such as a later append, are not read.
+ * With `start`, the bytes from `start` to `length`.
  */
 export async function readContainedPrefix(
   rootInput: PreparedOutputRoot,
   relativePath: string,
   length: number,
+  start = 0,
 ): Promise<ContainedRead> {
   const opened = await openContained(rootInput, relativePath);
   if (opened.status === "missing") return opened;
   if (opened.status === "refused")
     return { status: "refused", reason: opened.reason, limit: length };
   try {
-    return { status: "read", bytes: await readOpenedPrefix(opened.handle, length) };
+    return { status: "read", bytes: await readOpenedPrefix(opened.handle, length, start) };
   } catch {
     return { status: "refused", reason: "unreadable", limit: length };
   } finally {
@@ -484,12 +486,19 @@ export async function readContainedPrefix(
   }
 }
 
-/** The first `length` bytes of an opened file, read by position, or all of a shorter one. */
-export async function readOpenedPrefix(handle: FileHandle, length: number): Promise<Buffer> {
-  const bytes = Buffer.allocUnsafe(length);
+/**
+ * The first `length` bytes of an opened file, read by position, or all of a shorter one. With
+ * `start`, the bytes from `start` to `length`.
+ */
+export async function readOpenedPrefix(
+  handle: FileHandle,
+  length: number,
+  start = 0,
+): Promise<Buffer> {
+  const bytes = Buffer.allocUnsafe(Math.max(0, length - start));
   let total = 0;
-  while (total < length) {
-    const { bytesRead } = await handle.read(bytes, total, length - total, total);
+  while (total < bytes.length) {
+    const { bytesRead } = await handle.read(bytes, total, bytes.length - total, start + total);
     if (bytesRead === 0) break;
     total += bytesRead;
   }

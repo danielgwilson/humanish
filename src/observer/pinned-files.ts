@@ -34,19 +34,19 @@ interface PinnedFileIdentity {
  * The file's bytes, or null when it cannot be read under the root's checks. With `maxBytes`, a
  * file larger than that is refused from its opened size and the read stops there, so a large file
  * is never held in memory. With `length`, only the file's first `length` bytes are read, or all of
- * a shorter file.
+ * a shorter file; with `start` as well, the bytes from `start` to `length`.
  */
 export async function readContainedFile(
   root: PinnedDirectory,
   filePathInput: string,
-  options: { maxBytes?: number; length?: number } = {},
+  options: { maxBytes?: number; length?: number; start?: number } = {},
 ): Promise<Buffer | null> {
   const opened = await openContainedFile(root, filePathInput);
   if (!opened) return null;
   try {
     const body =
       options.length !== undefined
-        ? await readOpenedPrefix(opened.handle, options.length)
+        ? await readOpenedPrefix(opened.handle, options.length, options.start)
         : options.maxBytes === undefined
           ? await opened.handle.readFile()
           : opened.size > options.maxBytes

@@ -1,7 +1,7 @@
 import { traceItems } from "../../src/run/run-clock.js";
 import { historyRunHref } from "./artifact-href";
 import type { ObserverData, ObserverStream } from "./observer-data";
-import { observerDataFromFeed } from "./data";
+import { observerDataFromFeed, observerFeedFrom, type ObserverFeed } from "./data";
 import { runDisplay } from "./validate";
 
 export const OBSERVER_POLL_MS = 5000;
@@ -44,6 +44,39 @@ export async function fetchObserverData(
   } catch {
     return null;
   }
+}
+
+/**
+ * The most characters of cursors a poll's URL carries, about 400 participants. A Node server
+ * refuses a request whose head passes 16 KiB, so a larger run's page asks for every list instead.
+ */
+const MAX_AFTER_CHARS = 8_000;
+
+/**
+ * One poll of the served run's feed, sending back the cursors `held` has. `unjoined` is a body the
+ * server sent that does not join `held`, so the next poll should send no cursors; `failed` is no
+ * answer or an error status, which leaves what the page holds as it was.
+ */
+export async function fetchObserverFeed(
+  fetchImpl: typeof fetch,
+  held: ObserverFeed | null,
+  signal?: AbortSignal,
+): Promise<{ status: "joined"; feed: ObserverFeed } | { status: "unjoined" | "failed" }> {
+  let body: unknown;
+  try {
+    const after = [...(held?.live.values() ?? [])].join(",");
+    const url =
+      after === "" || after.length > MAX_AFTER_CHARS
+        ? "observer-feed.json"
+        : `observer-feed.json?after=${encodeURIComponent(after)}`;
+    const response = await fetchImpl(url, { cache: "no-store", signal: signal ?? null });
+    if (!response.ok) return { status: "failed" };
+    body = await response.json();
+  } catch {
+    return { status: "failed" };
+  }
+  const feed = observerFeedFrom(body, held);
+  return feed === null ? { status: "unjoined" } : { status: "joined", feed };
 }
 
 interface HistoryRun {
