@@ -2,8 +2,7 @@ import { Select } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
-import { Tabs } from "@base-ui/react/tabs";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
 import { liveEmbedSandbox } from "@/lib/live";
@@ -12,53 +11,29 @@ import {
   boundedWindow,
   frameAtElapsedMs,
   frameElapsedMs,
-  groupPlayerRows,
   isActionRow,
-  isFindingRow,
   isWaitRow,
   rowElapsedMs,
   type PlayerModel,
-  type PlayerRow,
 } from "@/lib/player-model";
 import type { PlayerView } from "@/lib/player-state";
 import type { StudyPlayerControl } from "@/lib/use-study-playback";
 import { usePlayerPlayback } from "@/lib/use-player-playback";
-import { INSPECTOR_WIDTH, usePlayerPreferences } from "@/lib/use-player-preferences";
+import { usePlayerPreferences } from "@/lib/use-player-preferences";
 import { formatHash } from "@/lib/route";
 import { participantLabels } from "@/lib/participant-label";
-import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
-import { PlayerRunNotices } from "./player-run-notices";
-import { ParticipantAssignment } from "./participant-assignment";
+import { PlayerInspector } from "./player-inspector";
 import { recordingContains } from "@/lib/grid-recording";
 import {
   formatRunTime,
   recordingInterval as streamRecordingInterval,
 } from "../../src/run/run-clock.js";
 import { RecordingVideo } from "./recording-video";
-import { ParticipantAnalysis } from "./participant-analysis";
-import { ParticipantFeedback } from "./participant-feedback";
 import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
 import "@/styles/player.css";
 
-type Tab = "actions" | "details" | "report";
-type FeedFilter = "all" | "actions" | "thoughts" | "findings";
 const FILMSTRIP_LIMIT = 40;
-const FEED_LIMIT = 100;
-
-// Text-only rendering of the participant's reported narration, never HTML/markdown links.
-function renderThoughtText(text: string): (string | { bold: string })[] {
-  const parts: (string | { bold: string })[] = [];
-  const pattern = /\*\*([^*]+)\*\*/g;
-  let last = 0;
-  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
-    if (match.index > last) parts.push(text.slice(last, match.index));
-    parts.push({ bold: match[1] ?? "" });
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-}
 
 export function Player({
   data,
@@ -99,10 +74,6 @@ export function Player({
   const prefs = usePlayerPreferences();
   const { preferences } = prefs;
   const [zoom, setZoom] = useState<Zoom>("fit");
-  const [tab, setTab] = useState<Tab>("actions");
-  const [filter, setFilter] = useState<FeedFilter>("all");
-  const [groupWaits, setGroupWaits] = useState(true);
-  const [showThoughts, setShowThoughts] = useState(true);
   const [feedPage, setFeedPage] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [manualLink, setManualLink] = useState<string | null>(null);
@@ -133,24 +104,16 @@ export function Player({
   const lifecycle = preparing ? "Preparing" : "Running";
   const viewerRef = useRef<HTMLDivElement>(null);
   const filmRef = useRef<HTMLDivElement>(null);
-  const feedRef = useRef<HTMLDivElement>(null);
-  const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const frames = model.frames;
-  const actor = stream.actor;
-  const viewport = stream.viewport;
   // Computer-use actions use desktop pixels, not the browser CSS layout viewport.
   // Older browser recordings lack desktopGeometry and retain their viewport mapping.
   const coordinateSpace =
-    stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? viewport;
-  const raw = current?.redaction === "none" || actor?.redaction.screenshots === "raw";
-  const endingLabel = completionLabel(stream);
-  const notableEnd = endingLabel !== undefined;
+    stream.desktopGeometry?.screen.verified ??
+    stream.desktopGeometry?.screen.requested ??
+    stream.viewport;
+  const raw = current?.redaction === "none" || stream.actor?.redaction.screenshots === "raw";
+  const notableEnd = rowIndex.notableEnd;
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
-  const timing = controlled
-    ? "study timeline"
-    : model.paced === "recorded"
-      ? "recorded pace"
-      : "avg-paced";
   const recordingInterval = studyPlayback ? streamRecordingInterval(stream.recording) : null;
   const recordingKey = recordingInterval
     ? `${stream.id}:${recordingInterval.recording.path}`
@@ -164,63 +127,18 @@ export function Player({
     return () => clearInterval(timer);
   }, [active]);
 
-  const filteredRows = useMemo(
-    () =>
-      model.rows.filter((row) => {
-        if (filter === "all" && !showThoughts && row.kind === "reasoning") return false;
-        return (
-          filter === "all" ||
-          (filter === "thoughts" && row.kind === "reasoning") ||
-          (filter === "actions" && isActionRow(row)) ||
-          (filter === "findings" && isFindingRow(row))
-        );
-      }),
-    [model.rows, filter, showThoughts],
-  );
-  const runNotices = useMemo(
-    () => stream.timeline.filter((event) => event.level === "warn" || event.level === "error"),
-    [stream.timeline],
-  );
-  const groups = useMemo(
-    () => groupPlayerRows(filteredRows, groupWaits),
-    [filteredRows, groupWaits],
-  );
-  const rowPositions = useMemo(
-    () => new Map(model.rows.map((row, index) => [row.id, index])),
-    [model.rows],
-  );
-  const selectedPosition = selectedRow ? rowPositions.get(selectedRow.id) : undefined;
-  const groupSelected = (first: PlayerRow, last: PlayerRow) =>
-    selectedPosition !== undefined &&
-    selectedPosition >= (rowPositions.get(first.id) ?? -1) &&
-    selectedPosition <= (rowPositions.get(last.id) ?? -1);
-  const activeGroup = Math.max(
-    0,
-    groups.findIndex((group) =>
-      selectedRow
-        ? groupSelected(group.first, group.last)
-        : group.first.frameIndex <= frame && group.last.frameIndex >= frame,
-    ),
-  );
-  const feedWindow = boundedWindow(groups.length, feedPage ?? activeGroup, FEED_LIMIT);
+  const selectedPosition = selectedRow ? rowIndex.positions.get(selectedRow.id) : undefined;
   const filmWindow = boundedWindow(frames.length, Math.max(0, frame), FILMSTRIP_LIMIT);
   useEffect(() => {
-    const revealWithin = (pane: HTMLDivElement | null, selector: string, horizontal: boolean) => {
-      const row = pane?.querySelector(selector);
-      if (!pane || !(row instanceof HTMLElement)) return;
-      const p = pane.getBoundingClientRect();
-      const r = row.getBoundingClientRect();
-      if (horizontal) {
-        if (r.left < p.left) pane.scrollLeft += r.left - p.left;
-        else if (r.right > p.right) pane.scrollLeft += r.right - p.right;
-      } else if (feedPage === null) {
-        if (r.top < p.top) pane.scrollTop += r.top - p.top;
-        else if (r.bottom > p.bottom) pane.scrollTop += r.bottom - p.bottom;
-      }
-    };
-    revealWithin(filmRef.current, "[data-on]", true);
-    revealWithin(feedRef.current, selectedRow ? "[data-selected]" : "[data-on]", false);
-  }, [frame, feedPage, tab, selectedRow?.id]);
+    // Scroll only as far as it takes to show the selected thumbnail.
+    const pane = filmRef.current;
+    const thumb = pane?.querySelector("[data-on]");
+    if (!pane || !(thumb instanceof HTMLElement)) return;
+    const p = pane.getBoundingClientRect();
+    const t = thumb.getBoundingClientRect();
+    if (t.left < p.left) pane.scrollLeft += t.left - p.left;
+    else if (t.right > p.right) pane.scrollLeft += t.right - p.right;
+  }, [frame]);
 
   const toggleFullscreen = async () => {
     try {
@@ -782,273 +700,19 @@ export function Player({
           </div>
         ) : null}
       </div>
-      {preferences.inspector ? (
-        <>
-          <div
-            className="inspector-resize"
-            role="separator"
-            aria-label="Inspector width"
-            aria-orientation="vertical"
-            tabIndex={0}
-            aria-valuemin={INSPECTOR_WIDTH.min}
-            aria-valuemax={INSPECTOR_WIDTH.max}
-            aria-valuenow={preferences.width}
-            onKeyDown={(event) => {
-              if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-              event.preventDefault();
-              event.stopPropagation();
-              prefs.resizeInspector((width) => width + (event.key === "ArrowLeft" ? 20 : -20));
-            }}
-            onPointerDown={(event) => {
-              resizeRef.current = { x: event.clientX, width: preferences.width };
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-            onPointerMove={(event) => {
-              const start = resizeRef.current;
-              if (start) prefs.resizeInspector(() => start.width + start.x - event.clientX);
-            }}
-            onPointerUp={() => {
-              resizeRef.current = null;
-            }}
-            onLostPointerCapture={() => {
-              resizeRef.current = null;
-            }}
-          />
-          <Tabs.Root
-            className="inspector"
-            style={{ width: preferences.width }}
-            value={tab}
-            onValueChange={(value) => setTab(value as Tab)}
-          >
-            <Tabs.List className="itabs" aria-label="Participant inspector">
-              {(["actions", "details", "report"] as const).map((name) => (
-                <Tabs.Tab key={name} value={name}>
-                  {name === "report" ? "Feedback" : name}
-                </Tabs.Tab>
-              ))}
-            </Tabs.List>
-            <Tabs.Panel value="actions" className="action-panel">
-              <div className="feed-controls">
-                <label>
-                  Show{" "}
-                  <Select
-                    label="Filter activity"
-                    value={filter}
-                    onValueChange={(value) => {
-                      setFilter(value as FeedFilter);
-                      setFeedPage(null);
-                    }}
-                    options={[
-                      { value: "all", label: "All evidence" },
-                      { value: "actions", label: "Actions" },
-                      { value: "thoughts", label: "Reported thinking" },
-                      { value: "findings", label: "Warnings & findings" },
-                    ]}
-                  />
-                </label>
-                <label>
-                  <Checkbox checked={groupWaits} onCheckedChange={setGroupWaits} /> Group waits
-                </label>
-                {filter === "all" ? (
-                  <label>
-                    <Checkbox checked={showThoughts} onCheckedChange={setShowThoughts} /> Thinking
-                  </label>
-                ) : null}
-              </div>
-              <div className="ipanel acts" ref={feedRef}>
-                {groups.length === 0 && !(filter === "findings" && runNotices.length > 0) ? (
-                  <p className="feed-empty">No recorded entries match this filter.</p>
-                ) : null}
-                {feedWindow.start > 0 ? (
-                  <button
-                    type="button"
-                    className="tbtn feed-page"
-                    onClick={() =>
-                      setFeedPage(Math.max(0, feedWindow.start - Math.floor(FEED_LIMIT / 2)))
-                    }
-                  >
-                    Earlier entries
-                  </button>
-                ) : null}
-                {groups
-                  .slice(feedWindow.start, feedWindow.end)
-                  .map(({ first: row, last, count }) => {
-                    const stamp = formatRunTime(rowElapsedMs(model, row));
-                    const text = row.text || row.title;
-                    const attrs = {
-                      "data-entry-id": row.id,
-                      ...(row.isFrame ? { "data-frame-row": row.frameIndex } : {}),
-                      ...(selectedRow
-                        ? groupSelected(row, last)
-                          ? { "data-on": "", "data-selected": "", "aria-current": "true" as const }
-                          : {}
-                        : !eventId && row.frameIndex <= frame && last.frameIndex >= frame
-                          ? { "data-on": "" }
-                          : {}),
-                    };
-                    return row.kind === "reasoning" ? (
-                      <details className="thought-detail" key={row.id}>
-                        <summary
-                          className="arow thought"
-                          {...attrs}
-                          title="Reported thinking: the participant's own narration, not ground truth"
-                          onClick={() => seekEntry(row)}
-                        >
-                          <span className="tc">{stamp}</span>
-                          <span className="atext">
-                            {renderThoughtText(text).map((part, index) =>
-                              typeof part === "string" ? (
-                                part
-                              ) : (
-                                <strong key={index}>{part.bold}</strong>
-                              ),
-                            )}
-                          </span>
-                        </summary>
-                        <p className="thought-full">{text}</p>
-                      </details>
-                    ) : (
-                      <button
-                        key={row.id}
-                        type="button"
-                        className={row.isFrame ? "arow shot" : "arow"}
-                        {...attrs}
-                        onClick={() => seekEntry(row)}
-                      >
-                        <span className="tc">{stamp}</span>
-                        <span className="atext">
-                          {count > 1
-                            ? `${count} recorded waits · ${stamp}–${formatRunTime(rowElapsedMs(model, last))}`
-                            : `${row.title}${row.text ? `: ${row.text}` : ""}`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                {feedWindow.end < groups.length ? (
-                  <button
-                    type="button"
-                    className="tbtn feed-page"
-                    onClick={() => setFeedPage(feedWindow.end + Math.floor(FEED_LIMIT / 2))}
-                  >
-                    Later entries
-                  </button>
-                ) : null}
-                {groups.length > FEED_LIMIT ? (
-                  <p className="feed-window">
-                    Entries {feedWindow.start + 1}–{feedWindow.end} of {groups.length} · original
-                    events retained
-                  </p>
-                ) : null}
-                {filter === "findings" && runNotices.length > 0 ? (
-                  <PlayerRunNotices notices={runNotices} />
-                ) : null}
-              </div>
-            </Tabs.Panel>
-            <Tabs.Panel value="details" className="ipanel">
-              {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
-              <ParticipantAssignment stream={stream} />
-              <div className="kv">
-                <span className="k">Persona</span>
-                <span className="v">{stream.sim.personaId}</span>
-                <span className="k">Scenario</span>
-                <span className="v">{data.run.scenario.title}</span>
-                <span className="k">Participant</span>
-                <span className="v">{participantName}</span>
-                {actor ? (
-                  <>
-                    <span className="k">Actor</span>
-                    <span className="v">
-                      {actor.provider}
-                      {actor.ids.model !== undefined ? ` · ${actor.ids.model}` : ""}
-                    </span>
-                    <span className="k">Duration</span>
-                    <span className="v">{formatDuration(actor.durationMs)}</span>
-                  </>
-                ) : null}
-                <span className="k">Recorded</span>
-                <span className="v">
-                  {rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}
-                  {rowIndex.thoughtCount > 0
-                    ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}`
-                    : ""}
-                </span>
-                <span className="k">Timing</span>
-                <span className="v">{timing}</span>
-                {viewport ? (
-                  <>
-                    <span className="k">Viewport</span>
-                    <span className="v">
-                      {viewport.width}×{viewport.height}
-                    </span>
-                  </>
-                ) : null}
-                {actor?.affordanceUse ? (
-                  <>
-                    <span className="k">Affordances</span>
-                    <span className="v">
-                      {Object.entries(actor.affordanceUse.counts)
-                        .map(([kind, count]) => `${kind} ${count}`)
-                        .join(" · ")}
-                      {` · shortcuts ${actor.affordanceUse.shortcutTotal}`}
-                    </span>
-                  </>
-                ) : null}
-                {actor ? (
-                  <>
-                    <span className="k">Redaction</span>
-                    <span className="v">screenshots {actor.redaction.screenshots}</span>
-                  </>
-                ) : null}
-                <span className="k">Artifacts</span>
-                <span className="v">
-                  {(stream.artifacts ?? []).length + data.artifactLinks.length} linked files
-                </span>
-              </div>
-            </Tabs.Panel>
-            <Tabs.Panel value="report" className="ipanel">
-              <div className="blk">
-                <span className="o-label">Outcome</span>
-                <p className="verbatim">
-                  {stream.statusLabel}
-                  {endingLabel !== undefined ? ` · ⚑ ${endingLabel}` : ""}
-                </p>
-              </div>
-              {actor ? (
-                <div className="blk">
-                  <span className="o-label">Recorded reason, verbatim</span>
-                  <p className="verbatim">“{actor.reason}”</p>
-                </div>
-              ) : null}
-              <ParticipantFeedback data={data} stream={stream} />
-              {data.run.knownGaps.length > 0 ? (
-                <div className="blk">
-                  <span className="o-label">Study-level gaps</span>
-                  {data.run.knownGaps.map((gap) => (
-                    <p key={gap} className="verbatim dim">
-                      {gap}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {actor?.executionProfile?.billing === "account-unknown" ? (
-                <div className="blk">
-                  <span className="o-label">Account usage</span>
-                  <p className="verbatim">Codex account · dollar cost unknown</p>
-                </div>
-              ) : actor?.estimatedCost &&
-                typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
-                <div className="blk">
-                  <span className="o-label">Est. participant cost</span>
-                  <p className="verbatim">
-                    ~${actor.estimatedCost.estimatedCostUsd.toFixed(2)} (rates as of{" "}
-                    {actor.estimatedCost.ratesAsOf})
-                  </p>
-                </div>
-              ) : null}
-            </Tabs.Panel>
-          </Tabs.Root>
-        </>
-      ) : null}
+      <PlayerInspector
+        open={preferences.inspector}
+        width={preferences.width}
+        onResize={prefs.resizeInspector}
+        data={data}
+        stream={stream}
+        model={model}
+        playback={playback}
+        analysisReview={analysisReview}
+        name={participantName}
+        feedPage={feedPage}
+        onFeedPage={setFeedPage}
+      />
     </div>
   );
 }
