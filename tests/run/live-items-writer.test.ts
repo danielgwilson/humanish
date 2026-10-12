@@ -220,6 +220,41 @@ describe("the run writer's live items", () => {
     expect((await readRunWithTraces(runDir())).streams[0]!.liveActor?.items).toEqual([a, b]);
   });
 
+  it("refuses a write whose indexed live actors come back in another stream order", async () => {
+    const [a, b] = [item(1, "First participant."), item(2, "Second participant.")];
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a], [b]));
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      await expect(
+        run.writeSnapshot({ ...inProgress([a], [b]), streams: [...stored.streams].reverse() }),
+      ).rejects.toThrow(/live\/2\.1\.ndjson, which is not the file this run last wrote/);
+    });
+    expect(await readText("live/1.1.ndjson")).toBe(line(a));
+    expect(await readText("live/2.1.ndjson")).toBe(line(b));
+    const loaded = await readRunWithTraces(runDir());
+    expect(loaded.streams.map((stream) => stream.liveActor?.items)).toEqual([[a], [b]]);
+  });
+
+  it("refuses an indexed live actor at a stream whose live file the run no longer holds", async () => {
+    const early = item(1, "The page names synthetic-sandbox-three in its footer.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([early]));
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      const { liveActor: _live, ...withoutLive } = stored.streams[0]!;
+      await run.writeSnapshot({ ...inProgress([early]), streams: [withoutLive] });
+      await appendSandboxReceipt(run.paths, {
+        at: "2026-10-12T08:00:05.000Z",
+        laneId: "participant-1",
+        sandboxId: "synthetic-sandbox-three",
+      });
+      await expect(
+        run.writeSnapshot({ ...inProgress([early]), streams: stored.streams }),
+      ).rejects.toThrow(/live\/1\.1\.ndjson, which is not the file this run last wrote/);
+    });
+    expect(await liveFiles()).toEqual([]);
+    expect(JSON.parse(await readText("run.json")).streams[0].liveActor).toBeUndefined();
+  });
+
   it("keeps the live files of a run that ends without its final write, readable by the loader", async () => {
     const [a, b] = [item(1), item(2)];
     await withRun(async (run) => {

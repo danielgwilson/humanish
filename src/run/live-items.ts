@@ -92,9 +92,10 @@ export interface LiveItemsWriter {
   /**
    * `streams` with each running participant's items in its live file: every `liveActor` that
    * carries `items` becomes humanish.live-actor.v2 with `itemsFile` in their place. A `liveActor`
-   * that already carries `itemsFile` (a bundle built from a run.json this writer wrote) carries the
-   * list this writer last wrote for its position, and gets the same checks; at a position where
-   * this writer holds no generation, it is kept as given. Items past what the participant's current
+   * that already carries `itemsFile` (a bundle built from a run.json this writer wrote) stands for
+   * the list this writer last wrote for its position, and gets the same checks; any other index
+   * (another position's file, an earlier generation, a file this writer did not write) rejects the
+   * write, since the writer can vouch for and scan only its own files. Items past what the participant's current
    * generation holds are appended, each through publicSandboxView with `sandboxIds`; a new
    * generation holding the full list starts when appending cannot keep the file equal to the list.
    * Every byte is on disk when this resolves, so a run.json written after it indexes nothing
@@ -143,6 +144,28 @@ function itemLines(items: readonly ActorTraceItem[], sandboxIds: readonly string
     items.map((item) => `${JSON.stringify(publicSandboxView(item, sandboxIds))}\n`).join(""),
     "utf8",
   );
+}
+
+/**
+ * The list behind `index` when it is the index of `held`, the generation the writer last wrote for
+ * stream `position`; any other index throws.
+ */
+function heldItems(
+  held: Generation | undefined,
+  position: number,
+  index: LiveItemsIndex,
+): readonly ActorTraceItem[] {
+  if (
+    held === undefined ||
+    index.path !== held.path ||
+    index.items !== held.items ||
+    index.bytes !== held.bytes ||
+    index.sha256 !== held.hash.copy().digest("hex")
+  )
+    throw new Error(
+      `The live actor of stream ${position} indexes ${index.path}, which is not the file this run last wrote for that stream. Pass the participant's items instead of an index.`,
+    );
+  return held.written;
 }
 
 export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
@@ -246,13 +269,13 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
       for (const [index, stream] of streams.entries()) {
         const position = index + 1;
         const liveActor = stream.liveActor;
-        // A live actor written as its index carries what its generation holds, so an id learned
+        // A live actor written as its index stands for what its generation holds, so an id learned
         // now is looked for in that generation too before the ids count as known.
         const items = Array.isArray(liveActor?.items)
           ? liveActor.items
           : liveActor?.itemsFile === undefined
             ? undefined
-            : current.get(position)?.written;
+            : heldItems(current.get(position), position, liveActor.itemsFile);
         if (liveActor === undefined || items === undefined) {
           written.push(stream);
           continue;
