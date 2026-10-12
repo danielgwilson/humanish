@@ -3,7 +3,7 @@
 // items after it, or with the full list when it cannot use the cursor. Every case runs the real
 // run writer and polls the real library server.
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -103,7 +103,7 @@ interface FeedEntry {
   liveAfter?: string;
 }
 interface FeedBody {
-  data: { run: { runId: string }; streams: { id: string }[] };
+  data: { run: { runId: string }; streams: { id: string; traceUnavailable?: string }[] };
   items: { runId: string; streams: Record<string, FeedEntry> };
 }
 
@@ -133,8 +133,8 @@ async function poll(after?: string): Promise<FeedBody> {
 }
 
 /** The items entry of stream `position` (from 0). */
-const entry = (body: FeedBody, position: number): FeedEntry =>
-  body.items.streams[body.data.streams[position]!.id]!;
+const entry = (body: FeedBody, position: number): FeedEntry | undefined =>
+  body.items.streams[body.data.streams[position]!.id];
 const ids = (items: ActorTraceItem[] | undefined) => items?.map((value) => value.id);
 /** A body without the times each response stamps. */
 const withoutClock = (body: FeedBody) =>
@@ -151,10 +151,10 @@ describe("the Observer feed's live cursors", () => {
     await withRun(async (run) => {
       await run.writeSnapshot(inProgress([a, b], [c]));
       const first = await poll();
-      expect(ids(entry(first, 0).liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
-      expect(entry(first, 0).live).toBe(`1.1.2.${bytes(a, b)}`);
-      expect(entry(first, 0).liveAfter).toBeUndefined();
-      expect(entry(first, 1).live).toBe(`2.1.1.${bytes(c)}`);
+      expect(ids(entry(first, 0)?.liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
+      expect(entry(first, 0)?.live).toBe(`1.1.2.${bytes(a, b)}`);
+      expect(entry(first, 0)?.liveAfter).toBeUndefined();
+      expect(entry(first, 1)?.live).toBe(`2.1.1.${bytes(c)}`);
     });
   });
 
@@ -165,12 +165,12 @@ describe("the Observer feed's live cursors", () => {
       const first = await poll();
       await run.writeSnapshot(inProgress([a, b, d], [c]));
       const next = await poll(cursorsOf(first));
-      expect(ids(entry(next, 0).liveActor)).toEqual(["reasoning-004"]);
-      expect(entry(next, 0).liveAfter).toBe(`1.1.2.${bytes(a, b)}`);
-      expect(entry(next, 0).live).toBe(`1.1.3.${bytes(a, b, d)}`);
-      expect(entry(next, 1).liveActor).toEqual([]);
-      expect(entry(next, 1).liveAfter).toBe(`2.1.1.${bytes(c)}`);
-      expect(entry(next, 1).live).toBe(`2.1.1.${bytes(c)}`);
+      expect(ids(entry(next, 0)?.liveActor)).toEqual(["reasoning-004"]);
+      expect(entry(next, 0)?.liveAfter).toBe(`1.1.2.${bytes(a, b)}`);
+      expect(entry(next, 0)?.live).toBe(`1.1.3.${bytes(a, b, d)}`);
+      expect(entry(next, 1)?.liveActor).toEqual([]);
+      expect(entry(next, 1)?.liveAfter).toBe(`2.1.1.${bytes(c)}`);
+      expect(entry(next, 1)?.live).toBe(`2.1.1.${bytes(c)}`);
     });
   });
 
@@ -183,14 +183,31 @@ describe("the Observer feed's live cursors", () => {
       const replaced = { ...a };
       await run.writeSnapshot(inProgress([replaced, b, d], [c]));
       const next = await poll(cursorsOf(first));
-      expect(ids(entry(next, 0).liveActor)).toEqual([
+      expect(ids(entry(next, 0)?.liveActor)).toEqual([
         "reasoning-001",
         "reasoning-002",
         "reasoning-004",
       ]);
-      expect(entry(next, 0).liveAfter).toBeUndefined();
-      expect(entry(next, 0).live).toBe(`1.2.3.${bytes(a, b, d)}`);
-      expect(entry(next, 1).liveAfter).toBe(`2.1.1.${bytes(c)}`);
+      expect(entry(next, 0)?.liveAfter).toBeUndefined();
+      expect(entry(next, 0)?.live).toBe(`1.2.3.${bytes(a, b, d)}`);
+      expect(entry(next, 1)?.liveAfter).toBe(`2.1.1.${bytes(c)}`);
+    });
+  });
+
+  it("reads only the bytes past a cursor, so a change before it shows on the next whole read", async () => {
+    const [a, b, c] = [item(1), item(2), item(3)];
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b]));
+      const first = await poll();
+      // One byte of item 1's line changes in place; the file keeps its length.
+      const file = await open(runFile("live/1.1.ndjson"), "r+");
+      await file.write("X", 2);
+      await file.close();
+      await run.writeSnapshot(inProgress([a, b, c]));
+      expect(ids(entry(await poll(cursorsOf(first)), 0)?.liveActor)).toEqual(["reasoning-003"]);
+      const whole = await poll();
+      expect(whole.data.streams[0]!.traceUnavailable).toMatch(/live\/1\.1\.ndjson does not match/);
+      expect(entry(whole, 0)?.live).toBeUndefined();
     });
   });
 
@@ -207,9 +224,9 @@ describe("the Observer feed's live cursors", () => {
       await run.writeSnapshot(inProgress([a, b]));
       for (const cursor of cases) {
         const body = await poll(cursor);
-        expect(ids(entry(body, 0).liveActor), cursor).toEqual(["reasoning-001", "reasoning-002"]);
-        expect(entry(body, 0).liveAfter, cursor).toBeUndefined();
-        expect(entry(body, 0).live, cursor).toBe(`1.1.2.${bytes(a, b)}`);
+        expect(ids(entry(body, 0)?.liveActor), cursor).toEqual(["reasoning-001", "reasoning-002"]);
+        expect(entry(body, 0)?.liveAfter, cursor).toBeUndefined();
+        expect(entry(body, 0)?.live, cursor).toBe(`1.1.2.${bytes(a, b)}`);
       }
     });
   });
@@ -221,11 +238,11 @@ describe("the Observer feed's live cursors", () => {
       const good = `1.1.1.${bytes(a)}`;
       for (const after of [`${good},01.1.1.5`, `${good},${good}`, `${good},2.1.x.1`, `${good},`]) {
         const body = await poll(after);
-        expect(ids(entry(body, 0).liveActor), after).toEqual(["reasoning-001", "reasoning-002"]);
-        expect(entry(body, 0).liveAfter, after).toBeUndefined();
+        expect(ids(entry(body, 0)?.liveActor), after).toEqual(["reasoning-001", "reasoning-002"]);
+        expect(entry(body, 0)?.liveAfter, after).toBeUndefined();
       }
       // The well-formed cursor alone is used.
-      expect(ids(entry(await poll(good), 0).liveActor)).toEqual(["reasoning-002"]);
+      expect(ids(entry(await poll(good), 0)?.liveActor)).toEqual(["reasoning-002"]);
     });
   });
 
@@ -267,9 +284,9 @@ describe("the Observer feed of a run with no live files", () => {
     await writeFile(runFile("run.json"), `${JSON.stringify(v2, null, 2)}\n`);
     await rm(runFile("live"), { recursive: true, force: true });
     const body = await poll(`1.1.1.${bytes(a)}`);
-    expect(ids(entry(body, 0).liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
-    expect(entry(body, 0).live).toBeUndefined();
-    expect(entry(body, 0).liveAfter).toBeUndefined();
+    expect(ids(entry(body, 0)?.liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
+    expect(entry(body, 0)?.live).toBeUndefined();
+    expect(entry(body, 0)?.liveAfter).toBeUndefined();
   });
 
   it("gives the saved observer-data.json of a run with no run.json, with no cursor", async () => {
@@ -290,9 +307,9 @@ describe("the Observer feed of a run with no live files", () => {
     await rm(runFile("run.json"));
     await rm(runFile("live"), { recursive: true, force: true });
     const body = await poll(`1.1.1.${bytes(a)}`);
-    expect(ids(entry(body, 0).liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
-    expect(entry(body, 0).live).toBeUndefined();
-    expect(entry(body, 0).liveAfter).toBeUndefined();
+    expect(ids(entry(body, 0)?.liveActor)).toEqual(["reasoning-001", "reasoning-002"]);
+    expect(entry(body, 0)?.live).toBeUndefined();
+    expect(entry(body, 0)?.liveAfter).toBeUndefined();
   });
 });
 

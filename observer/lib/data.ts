@@ -51,6 +51,12 @@ export function observerDataFromFeed(value: unknown): ObserverData | null {
 }
 
 /**
+ * A cursor the page can send back as it came: digits and dots, as the server spells them. The page
+ * holds no other, so its next poll asks for that participant's full list.
+ */
+const SENDABLE_CURSOR = /^[0-9.]{1,80}$/;
+
+/**
  * What the page holds from its feed: the run's data and, by stream id, the live cursor each
  * running participant's list ends at. The page sends the cursors back with its next poll.
  */
@@ -75,7 +81,7 @@ export function observerFeedFrom(value: unknown, held: ObserverFeed | null): Obs
     if (data === null) return null;
     const live = new Map<string, string>();
     for (const [id, entry] of Object.entries(feed.items.streams))
-      if (entry.live !== undefined) live.set(id, entry.live);
+      if (entry.live !== undefined && SENDABLE_CURSOR.test(entry.live)) live.set(id, entry.live);
     return { data, live };
   } catch {
     return null;

@@ -62,13 +62,13 @@ export async function fetchObserverFeed(
   held: ObserverFeed | null,
   signal?: AbortSignal,
 ): Promise<{ status: "joined"; feed: ObserverFeed } | { status: "unjoined" | "failed" }> {
-  const after = [...(held?.live.values() ?? [])].join(",");
-  const url =
-    after === "" || after.length > MAX_AFTER_CHARS
-      ? "observer-feed.json"
-      : `observer-feed.json?after=${encodeURIComponent(after)}`;
   let body: unknown;
   try {
+    const after = [...(held?.live.values() ?? [])].join(",");
+    const url =
+      after === "" || after.length > MAX_AFTER_CHARS
+        ? "observer-feed.json"
+        : `observer-feed.json?after=${encodeURIComponent(after)}`;
     const response = await fetchImpl(url, { cache: "no-store", signal: signal ?? null });
     if (!response.ok) return { status: "failed" };
     body = await response.json();

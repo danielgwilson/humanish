@@ -155,4 +155,18 @@ describe("the page's live feed", () => {
     expect(sent).toEqual([null, "1.1.2.308,2.1.1.154", null]);
     expect(state()).toBe("current");
   });
+
+  it("holds no cursor it could not send back, and keeps polling", async () => {
+    const odd = body(0);
+    odd.items.streams["sim-01-ui"]!.live = "\ud800";
+    answers = [odd, body(0), body(1)];
+    await mount();
+    await advance(5000);
+    await advance(5000);
+    expect(sent).toEqual([null, "2.1.1.154", "1.1.2.308,2.1.1.154"]);
+    expect(shown()).toEqual([
+      ["reasoning-001", "reasoning-002", "reasoning-004"],
+      ["reasoning-003"],
+    ]);
+  });
 });

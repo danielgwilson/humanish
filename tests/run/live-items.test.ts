@@ -11,7 +11,11 @@ import type { ActorTraceItem } from "../../src/actors/contract.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { loadStreamTraces, splitStreamTraces } from "../../src/run/stream-trace.js";
+import {
+  loadStreamTraces,
+  splitStreamTraces,
+  type TraceFileReader,
+} from "../../src/run/stream-trace.js";
 import type { RunStream } from "../../src/run/streams.js";
 
 const FIXTURE = path.resolve("tests/fixtures/runs-0107/source-convention-only");
@@ -192,30 +196,6 @@ describe("loading a running participant's live items", () => {
     ]);
   });
 
-  it("re-reads run.json once when the generation a cursor names is gone, and reads the next whole", async () => {
-    // The caller holds the first item of generation 1; the writer moved to generation 2 and
-    // removed generation 1 after this reader read run.json.
-    const later = `${TWO_LINES}${JSON.stringify({ ...SECOND, id: "ui_action-003" })}\n`;
-    await writeFile(path.join(runRoot, "live/1.2.ndjson"), later);
-    const current = inProgress(liveStream("live/1.2.ndjson", later));
-    await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(current, null, 2)}\n`);
-    const held = { items: 1, bytes: Buffer.byteLength(`${JSON.stringify(FIRST)}\n`) };
-    const loaded = await loadStreamTraces(
-      runPaths,
-      inProgress(liveStream("live/1.1.ndjson", TWO_LINES)),
-      { liveAfter: (index) => (index.path === "live/1.1.ndjson" ? held : undefined) },
-    );
-    expect(loaded.refused).toEqual([]);
-    expect(loaded.bundle.streams[0]!.liveActor!.items.map((item) => item.id)).toEqual([
-      "reasoning-001",
-      "ui_action-002",
-      "ui_action-003",
-    ]);
-    expect(loaded.live).toEqual([
-      { streamId: "stream-001", index: current.streams[0]!.liveActor!.itemsFile },
-    ]);
-  });
-
   it("re-reads run.json once when the run finished and removed its live files", async () => {
     await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(stored, null, 2)}\n`);
     const loaded = await loadStreamTraces(
@@ -245,6 +225,45 @@ describe("loading a running participant's live items", () => {
     });
     expect(seen.filter((entry) => entry.path.startsWith("live/"))).toEqual([
       { path: "live/1.1.ndjson", text: TWO_LINES },
+    ]);
+  });
+});
+
+describe("loading the live items past a caller's cursor", () => {
+  it("re-reads run.json once when the generation a cursor names is gone, and reads the next whole", async () => {
+    // The caller holds the first item of generation 1; the writer moved to generation 2 and
+    // removed generation 1 after this reader read run.json.
+    const later = `${TWO_LINES}${JSON.stringify({ ...SECOND, id: "ui_action-003" })}\n`;
+    await writeFile(path.join(runRoot, "live/1.2.ndjson"), later);
+    const current = inProgress(liveStream("live/1.2.ndjson", later));
+    await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(current, null, 2)}\n`);
+    const held = { items: 1, bytes: Buffer.byteLength(`${JSON.stringify(FIRST)}\n`) };
+    // A reader over the run folder that records what the loader asks of it.
+    const reads: { path: string; start?: number }[] = [];
+    const reader: TraceFileReader = async (relativePath, _maxBytes, length, start) => {
+      reads.push({ path: relativePath, ...(start === undefined ? {} : { start }) });
+      const bytes = await readFile(path.join(runRoot, relativePath)).catch(() => null);
+      if (bytes === null) return { refused: `${relativePath} is missing` };
+      return { bytes: length === undefined ? bytes : bytes.subarray(start ?? 0, length) };
+    };
+    const loaded = await loadStreamTraces(
+      reader,
+      inProgress(liveStream("live/1.1.ndjson", TWO_LINES)),
+      { liveAfter: (index) => (index.path === "live/1.1.ndjson" ? held : undefined) },
+    );
+    expect(reads.filter((read) => !read.path.startsWith("actors/"))).toEqual([
+      { path: "live/1.1.ndjson", start: held.bytes - 1 },
+      { path: "run.json" },
+      { path: "live/1.2.ndjson" },
+    ]);
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams[0]!.liveActor!.items.map((item) => item.id)).toEqual([
+      "reasoning-001",
+      "ui_action-002",
+      "ui_action-003",
+    ]);
+    expect(loaded.live).toEqual([
+      { streamId: "stream-001", index: current.streams[0]!.liveActor!.itemsFile },
     ]);
   });
 });
