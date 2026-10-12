@@ -291,7 +291,7 @@ export async function finishCuaRun(
   const appUrl = plannedAppUrl(plan.runner.subject);
   const { runId } = run;
   const participantCount = participantRuns.length;
-  const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
+  const { outcomes, receiving, receivingWarnings, externalCommsWarnings } = ran;
   // Per-participant subject projections.
   const subjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
 
@@ -317,7 +317,6 @@ export async function finishCuaRun(
     outcomes,
     subjects,
     aggregateSubject,
-    ...(failFastReason === undefined ? {} : { failFastReason }),
     ...(hostSuspension === undefined ? {} : { hostSuspension }),
   });
 

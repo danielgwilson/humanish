@@ -58,7 +58,7 @@ export function makeParticipantWriteScreenshot(
   };
 }
 
-/** A blocked participant outcome (pipeline gate / fail-fast skipped it before it ran). */
+/** A blocked participant outcome: the pipeline gate or the study budget skipped it. */
 function skippedOutcome(
   spec: DesktopParticipantRun,
   reason: string,
@@ -155,8 +155,8 @@ export async function runCuaParticipant(
     warnings,
   );
 
-  // A provider-cleanup or provider-policy failure still trips fail-fast and counts in the
-  // participant summary's harness errors.
+  // A provider-cleanup or provider-policy failure counts in the participant summary's harness
+  // errors.
   const harnessError =
     sessionError !== undefined ||
     providerCleanupError !== undefined ||
@@ -237,12 +237,11 @@ function pipelineGate(open: boolean, onClose: () => void) {
 
 /**
  * Run N>1 E2B participants on the study's schedule (runOnSchedule: each at its start offset, at
- * most `concurrency` at once), behind the pipeline gate when the subject is set up in each sandbox,
- * and session fail-fast on harness errors only (queued participants become `blocked` with a pinned
- * reason + a fail-fast event; mission verdicts never trip it). A participant that stops before its
- * session has failed on its own and trips no fail-fast. A closed gate or a fail-fast ends every
- * wait for a later start at once. Each participant tears down its own sandbox by id; nothing here
- * ever enumerates.
+ * most `concurrency` at once), behind the pipeline gate when the subject is set up in each sandbox.
+ * A harness error ends only its own participant: one desktop's stall or one provider failure does
+ * not predict the next participant's, so the schedule goes on. Only a closed gate ends every wait
+ * for a later start at once, and the participants it skips are `blocked` with its reason. Each
+ * participant tears down its own sandbox by id; nothing here ever enumerates.
  *
  * Exported for the total-runner tests: the injectable runner lets a test make one participant
  * throw (the exact class the guard exists for) without a live sandbox. Production always uses
@@ -253,13 +252,12 @@ export async function runCuaParticipants(
   deps: Omit<CuaParticipantDeps, "signalReady">,
   concurrency: number,
   runParticipant: typeof runCuaParticipant = runCuaParticipant,
-): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason?: string }> {
-  const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
+): Promise<ParticipantRunOutcome[]> {
   const stopping = new AbortController();
   // An app-url subject is only opened, so one participant's start says nothing about another's.
   const gate = pipelineGate(deps.subject.kind === "app-url", () => stopping.abort());
 
-  const outcomes = await runOnSchedule(
+  return runOnSchedule(
     runs,
     {
       startAfterMs: (spec) => spec.planned.startAfterMs,
@@ -268,11 +266,6 @@ export async function runCuaParticipants(
       signal: stopping.signal,
     },
     async (spec, _index, { scheduledAt }): Promise<ParticipantRunOutcome> => {
-      if (failFast.tripped) {
-        return skippedOutcome(spec, `skipped: ${failFast.reason}`, { scheduledAt });
-      }
-      // A participant trips fail-fast only after the gate opened, or as it closes the gate, so no
-      // participant is still waiting at the gate when fail-fast skips the rest.
       const id = spec.planned.id;
       if ((await gate.enter(id)) === "closed") {
         return skippedOutcome(
@@ -317,15 +310,10 @@ export async function runCuaParticipants(
           endedAt: deps.now(),
         };
       }
-      // A participant that stopped before its session failed on its own and trips no fail-fast.
-      // Without a desktop it says nothing about the subject, so the next participant starts first.
-      // A runner that threw is a harness defect: it closes the gate and trips fail-fast.
+      // A participant that stopped before its session without a desktop says nothing about the
+      // subject, so the next participant starts first. A runner that threw is a harness defect: it
+      // closes the gate.
       if (!ready) gate.failed(id, { handOver: !threw && outcome.sandboxId === undefined });
-      if (outcome.harnessError && (ready || threw) && !failFast.tripped) {
-        failFast.tripped = true;
-        failFast.reason = `a prior participant (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
-        stopping.abort();
-      }
       // A participant the study budget skipped never requested its desktop.
       return {
         ...outcome,
@@ -333,8 +321,6 @@ export async function runCuaParticipants(
       };
     },
   );
-
-  return { outcomes, ...(failFast.tripped ? { failFastReason: failFast.reason } : {}) };
 }
 
 /** Project one participant outcome (or a dry-run contract spec) into the public CuaParticipantResult. */
@@ -436,14 +422,15 @@ export function toParticipantResult(
 
 /**
  * Run every participant of a live run. The in-process route drives its single participant in this
- * process; one hosted participant runs alone; a fan-out runs at the plan's concurrency and may stop early.
+ * process; one hosted participant runs alone; a fan-out runs at the plan's concurrency, and stops
+ * early only when the pipeline gate closes.
  */
 export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],
   deps: Omit<CuaParticipantDeps, "signalReady">,
   participantPlan: CuaParticipantPlan,
   inProcess: boolean,
-): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason: string | undefined }> {
+): Promise<ParticipantRunOutcome[]> {
   // A participant that runs alone starts with the run.
   const alone = { ...deps, ...scheduledParticipantDeps(runs[0]!.planned, deps, deps.now()) };
   if (inProcess) {
@@ -452,10 +439,8 @@ export async function runAllCuaParticipants(
       ...alone,
       createDesktop: () => createInProcessDesktop(deps),
     });
-    return { outcomes: [outcome], failFastReason: undefined };
+    return [outcome];
   }
-  if (runs.length === 1)
-    return { outcomes: [await runCuaParticipant(runs[0]!, alone)], failFastReason: undefined };
-  const ran = await runCuaParticipants([...runs], deps, participantPlan.concurrency);
-  return { outcomes: ran.outcomes, failFastReason: ran.failFastReason };
+  if (runs.length === 1) return [await runCuaParticipant(runs[0]!, alone)];
+  return runCuaParticipants([...runs], deps, participantPlan.concurrency);
 }

@@ -183,7 +183,7 @@ whose message names its start, end, length and offset into the run (`src/run/hos
 
 On a computer-use run, a participant that failed in the harness or at its session time limit, and
 was in flight across a suspension, likely failed because of it. So did a participant skipped after
-such a failure (the pipeline gate, fail-fast). When any did, the outcome's first failure has
+such a failure (the pipeline gate). When any did, the outcome's first failure has
 `kind: run` and one sentence, such as "The host was suspended for 6m 5s at +1m; the 34
 participant failures after it are likely its effect.", ahead of each participant's own failure.
 `review.summary` starts with the same sentence, the attributed participants share one gap line,

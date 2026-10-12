@@ -483,8 +483,8 @@ async function publishInProgress(
 }
 
 // Launch N actor sandboxes independently on the study's schedule (runCuaParticipant +
-// runOnSchedule; runCuaParticipants would add a pipeline gate and fail-fast). Each actor's window is
-// measured on the one orchestrator clock.
+// runOnSchedule; runCuaParticipants would add a pipeline gate). Each actor's window is measured on
+// the one orchestrator clock.
 function runParticipants(
   plane: SubjectPlane,
   ctx: PlaneContext,

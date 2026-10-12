@@ -201,7 +201,8 @@ export interface CuaParticipantPlan {
 }
 
 /** One participant's outcome in the result projection. Always present in `result.lanes` (length
- *  1 at N=1). A `blocked` participant is one the pipeline-gate / fail-fast skipped before it ran. */
+ *  1 at N=1). A `blocked` participant is one the pipeline gate or the study budget skipped before
+ *  it ran. */
 export interface CuaParticipantResult {
   id: string;
   actorType?: string;
@@ -212,7 +213,7 @@ export interface CuaParticipantResult {
   device: string;
   /** Requested E2B/X screen resolution. See the run stream's desktopGeometry for measurements. */
   resolution: [number, number];
-  /** Terminal participant status; "blocked" = skipped (gate/fail-fast); "contract_proof_only" = dry-run. */
+  /** Terminal participant status; "blocked" = skipped (gate or study budget); "contract_proof_only" = dry-run. */
   status: ActorStatus | "blocked" | "contract_proof_only";
   ok: boolean;
   session?: {
@@ -244,7 +245,7 @@ export interface CuaParticipantSummary {
   total: number;
   /** Participants whose own verdict is ok (terminal, engaged, no harness error). */
   passed: number;
-  /** Participants skipped by the pipeline gate / fail-fast. */
+  /** Participants skipped by the pipeline gate or the study budget. */
   skipped: number;
   /** Participants that ended in a harness error. */
   harnessErrors: number;
@@ -587,7 +588,7 @@ export interface ParticipantRunOutcome {
    *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */
   phaseRecords: SubjectPhaseEvent[];
   warnings: string[];
-  /** Set when the participant was skipped by the pipeline gate / fail-fast (a pinned reason). */
+  /** Set when the pipeline gate or the study budget skipped the participant (a pinned reason). */
   skippedReason?: string;
   /** When a fan-out participant was due and when its desktop was requested. */
   arrival?: ParticipantArrival;
@@ -628,7 +629,6 @@ export interface CuaFanoutBundleArgs {
   source: RunBundle["source"];
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
-  failFastReason?: string;
   /** The run's host suspensions and the participant failures they likely caused. */
   hostSuspension?: HostSuspensionReading;
   publicRepo?: string;

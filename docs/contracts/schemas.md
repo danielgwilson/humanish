@@ -479,9 +479,9 @@ length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSumma
 mirror the first participant and `subject.commit` is unanimity-gated across participants
 (omitted with a divergence warning when participants resolve different commits). At N=1
 the run bundle is byte-stable with the pre-fan-out output; only the result
-projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
-(and a `cua-lab.fanout.fail-fast` event when a harness error in a participant's session skips
-queued participants);
+projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event, and
+each participant's outcome event (`cua-lab.session.<completionReason>`, `cua-lab.session.error`
+or `cua-lab.session.blocked`) carries its reason;
 `ok = observer.ok ∧ every participant ok ∧ no failed adapter or declared-scorer verdict`,
 where a dry-run participant is ok as synthetic and a live participant must pass
 `participantPassed` (`src/run/judge.ts`): not skipped, status `passed`, no harness

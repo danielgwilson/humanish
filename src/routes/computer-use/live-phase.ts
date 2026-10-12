@@ -101,10 +101,9 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
   }
   // Run the participants (dry-run runs none). In-process is always one.
   let outcomes: ParticipantRunOutcome[] | undefined;
-  let failFastReason: string | undefined;
   try {
     if (!dryRun)
-      ({ outcomes, failFastReason } = await runAllCuaParticipants(
+      outcomes = await runAllCuaParticipants(
         participantRuns,
         {
           ...deps,
@@ -116,7 +115,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
         },
         participantPlan,
         inProcess,
-      ));
+      );
   } finally {
     try {
       await receiving?.finish();
@@ -145,7 +144,6 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
   return {
     ok: true as const,
     outcomes,
-    failFastReason,
     receiving,
     receivingWarnings,
     externalCommsWarnings,
