@@ -43,14 +43,16 @@ export async function readScreenshot(
   relativePath: string,
 ): Promise<ScreenshotRead> {
   const filePath = relativePath.replace(/\\/g, "/");
+  // Created before the first await: reads of one run overlap, and each must add to the same map.
   let entries = known.get(runPaths);
-  const entry = entries?.get(relativePath);
+  if (entries === undefined) known.set(runPaths, (entries = new Map()));
+  const entry = entries.get(relativePath);
   if (entry !== undefined && (await isUnchangedFile(runPaths, filePath, entry.stamp)))
     return entry.facts;
   const startedNs = BigInt(Date.now()) * 1_000_000n;
   const read = await readUnchangedFile(runPaths, filePath, RUN_ARTIFACT_MAX_BYTES);
   if (read.state !== "read") {
-    entries?.delete(relativePath);
+    entries.delete(relativePath);
     return read.state === "limit" ? { state: "limit" } : read;
   }
   const facts: Facts = {
@@ -59,9 +61,8 @@ export async function readScreenshot(
     error: screenshotEvidenceError(relativePath, read.bytes),
     redactedShape: isRedactedFrameShape(read.bytes),
   };
-  if (read.stamp.ctimeNs <= startedNs - RACY_WINDOW_NS) {
-    if (entries === undefined) known.set(runPaths, (entries = new Map()));
+  if (read.stamp.ctimeNs <= startedNs - RACY_WINDOW_NS)
     entries.set(relativePath, { stamp: read.stamp, facts });
-  } else entries?.delete(relativePath);
+  else entries.delete(relativePath);
   return facts;
 }

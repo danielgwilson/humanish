@@ -21,12 +21,19 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
+import { screenshotEvidenceError } from "../../src/evidence/image.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { verifyRun, verifyRunPrepared, type VerifyResult } from "../../src/verify/verify.js";
 import { writeRunBundle } from "../helpers/run-traces.js";
+
+// The PNG check is the cost the memo saves, so the spy counts it; it still runs the real check.
+vi.mock("../../src/evidence/image.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/evidence/image.js")>();
+  return { ...actual, screenshotEvidenceError: vi.fn(actual.screenshotEvidenceError) };
+});
 
 // The redactor's output shape: share_ready under a blurred claim (screenshot-claims.test.ts).
 const PNG_4X4 = PNG.sync.write(new PNG({ width: 4, height: 4 }));
@@ -37,19 +44,28 @@ const FRAME = "screenshots/frame.png";
 const FRAME_MTIME = Math.floor(Date.now() / 1000) - 60;
 const runId = "screenshot-reads";
 
-/** The run's first stream registers one frame, claimed blurred, under `reference`. */
-async function registerFrame(runDir: string, reference: string): Promise<void> {
+/**
+ * The run's first stream registers one frame under each reference, claimed blurred. Each reference
+ * names a file of PNG_4X4 at its own path (`\\` read as `/`).
+ */
+async function registerFrames(runDir: string, references: readonly string[]): Promise<void> {
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await writeFile(path.join(runDir, FRAME), PNG_4X4);
-  await utimes(path.join(runDir, FRAME), FRAME_MTIME, FRAME_MTIME);
+  for (const reference of references) {
+    const file = path.join(runDir, reference.replace(/\\/g, "/"));
+    await writeFile(file, PNG_4X4);
+    await utimes(file, FRAME_MTIME, FRAME_MTIME);
+  }
   const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
-  const screenshotRef = { path: reference, redaction: "blurred" };
   Object.assign(bundle.streams[0]!, {
     actor: {
       schema: ACTOR_TRACE_SCHEMA,
-      items: [
-        { id: "item-1", kind: "screenshot", lifecycle: "completed", title: "frame", screenshotRef },
-      ],
+      items: references.map((reference, index) => ({
+        id: `item-${index + 1}`,
+        kind: "screenshot",
+        lifecycle: "completed",
+        title: "frame",
+        screenshotRef: { path: reference, redaction: "blurred" },
+      })),
       redaction: { status: "passed", screenshots: "blurred", notes: "Synthetic." },
     },
   });
@@ -68,10 +84,10 @@ describe("a second verify through the same prepared run", () => {
   let runDir: string;
   let prepared: PreparedRunArtifactPaths;
 
-  async function setUp(reference: string): Promise<void> {
+  async function setUp(...references: string[]): Promise<void> {
     await runDryRun({ cwd, dryRun: true, runId });
     runDir = path.join(cwd, ".humanish", "runs", runId);
-    await registerFrame(runDir, reference);
+    await registerFrames(runDir, references);
     prepared = (await resolveRunPath(cwd, runId))!;
     vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 10_000 });
   }
@@ -83,6 +99,7 @@ describe("a second verify through the same prepared run", () => {
   });
   afterEach(async () => {
     vi.useRealTimers();
+    vi.mocked(screenshotEvidenceError).mockClear();
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -140,6 +157,16 @@ describe("a second verify through the same prepared run", () => {
     });
     expect(evidenceCheck(second)).toBe(`missing local evidence artifacts: ${FRAME}`);
     expect(second).toEqual(await verifyRun(cwd, runId));
+  });
+
+  it("checks each frame once, with more frames than verify reads at a time", async () => {
+    // Nine frames: verify reads eight at once, so first reads of one run overlap.
+    const frames = Array.from({ length: 9 }, (_, index) => `screenshots/frame-${index}.png`);
+    await setUp(...frames);
+    expect(grade(await verifyAgain())).toEqual({ status: "share_ready", codes: [] });
+    expect(vi.mocked(screenshotEvidenceError)).toHaveBeenCalledTimes(9);
+    expect(grade(await verifyAgain())).toEqual({ status: "share_ready", codes: [] });
+    expect(vi.mocked(screenshotEvidenceError)).toHaveBeenCalledTimes(9);
   });
 
   it("reads a frame the trace names with a backslash", async () => {
