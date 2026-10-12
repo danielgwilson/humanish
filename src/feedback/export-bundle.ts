@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
-import { buildObserverData } from "../observer/data.js";
 import { inventorySandboxIds, publicSandboxView, scrubSandboxIdBytes } from "../run/sandbox-ids.js";
 import { splitStreamTraces } from "../run/stream-trace.js";
 import { redactScreenshot, redactText } from "../evidence/redaction.js";
@@ -596,13 +595,7 @@ async function buildDerivative(
     note: "A redacted copy of the same study, not a new attempt. Original pixels are not present. Text and findings still require human review before sharing.",
     files: transformed.entries,
   };
-  const transformedBundle = await loadRunBundlePrepared(stage.physicalPath, stagePaths);
-  if (!transformedBundle) throw new Error("Derivative bundle could not be loaded.");
-  await writeContainedOutputFile(
-    stagePaths,
-    "observer/observer-data.json",
-    jsonBytes(buildObserverData(transformedBundle.bundle)),
-  );
+  // Rendering writes observer-data.json and index.html from the derivative's run.json.
   const rendered = await renderObserver(stage.physicalPath, runId, { open: false });
   if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
   const generated = [];

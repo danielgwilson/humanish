@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { fixture, analysisFixture, screenshot } from "./observer-browser-fixtures.mjs";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
+import { observerDataElements } from "../dist/observer/page-data.js";
+import { splitObserverData } from "../dist/observer/participant-items.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const option = (name, fallback) => {
   const i = process.argv.indexOf(name);
@@ -35,15 +37,12 @@ const data = fixture({ laneCount: 4, frames: 5 });
 // Recorded pixels, not a possibly stale declared viewport, are authoritative.
 for (const stream of data.streams) stream.viewport = { width: 1280, height: 800 };
 const analysis = analysisFixture(data);
-let artifact = html;
-for (const [id, value] of [
-  ["observer-data", data],
-  ["study-analysis", analysis],
-])
-  artifact = artifact.replace(
-    new RegExp(`<script id="${id}"[^>]*>[\\s\\S]*?<\\/script>`),
+const artifact = html
+  .replace(/<script id="observer-data"[^>]*>[\s\S]*?<\/script>/, () => observerDataElements(data))
+  .replace(
+    /<script id="study-analysis"[^>]*>[\s\S]*?<\/script>/,
     () =>
-      `<script id="${id}" type="application/json">${JSON.stringify(value).replace(/</g, "\\u003c")}</script>`,
+      `<script id="study-analysis" type="application/json">${JSON.stringify(analysis).replace(/</g, "\\u003c")}</script>`,
   );
 const delays = new Map(),
   pixels = new Map(),
@@ -56,9 +55,10 @@ const handleRequest = async (req, res) => {
     res.end(artifact);
     return;
   }
-  if (pathname === "/observer/observer-data.json") {
+  if (pathname === "/observer/observer-feed.json") {
+    const { shell, items } = splitObserverData(data);
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(data));
+    res.end(JSON.stringify({ data: shell, items }));
     return;
   }
   if (pathname === "/observer/study-analysis.json") {

@@ -10,6 +10,7 @@ import { projectShareCheckedAnalysis, analysisSharingProblems } from "../analysi
 import type { LoadedAnalysis } from "../analysis/types.js";
 import type { RunNotes } from "../run/note-files.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
+import { escapeJsonScript, observerDataElements } from "./page-data.js";
 
 const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
 
@@ -200,10 +201,7 @@ function renderObserverAppHtml(
         )
       : artifact
   )
-    .replace(
-      OBSERVER_DATA_SLOT,
-      () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`,
-    )
+    .replace(OBSERVER_DATA_SLOT, () => observerDataElements(data))
     .replace(
       /<script id="study-analysis" type="application\/json">[\s\S]*?<\/script>/,
       () =>
@@ -310,13 +308,4 @@ function escapeHtml(value: string): string {
         return "&#39;";
     }
   });
-}
-
-function escapeJsonScript(value: unknown): string {
-  return JSON.stringify(value)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029");
 }

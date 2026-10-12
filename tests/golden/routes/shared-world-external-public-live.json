@@ -311,8 +311,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -391,69 +391,8 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
         "id": "stream-001",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "fake-cua",
-          "protocol": "cua-loop",
-          "lane": "computer-use",
-          "persona": {
-            "id": "party-host",
-            "traitsApplied": [],
-            "promptDigest": "07e0454012db815d"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "fake trace (no frames captured)"
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "passed (goal_satisfied)",
-          "ids": {},
-          "counts": {
-            "actions": 1,
-            "messages": 1,
-            "screenshots": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "computer-use"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "proprietary"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          },
-          "items": [
-            {
-              "id": "i-msg",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message",
-              "text": "did my task"
-            },
-            {
-              "id": "i-act",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click"
-            }
-          ]
-        },
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
@@ -461,69 +400,8 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
         "id": "stream-002",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "fake-cua",
-          "protocol": "cua-loop",
-          "lane": "computer-use",
-          "persona": {
-            "id": "competitive-friend",
-            "traitsApplied": [],
-            "promptDigest": "a04d5d55d81a8655"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "fake trace (no frames captured)"
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "passed (goal_satisfied)",
-          "ids": {},
-          "counts": {
-            "actions": 1,
-            "messages": 1,
-            "screenshots": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "computer-use"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "proprietary"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          },
-          "items": [
-            {
-              "id": "i-msg",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message",
-              "text": "did my task"
-            },
-            {
-              "id": "i-act",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click"
-            }
-          ]
-        },
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
@@ -531,69 +409,8 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
         "id": "stream-003",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "fake-cua",
-          "protocol": "cua-loop",
-          "lane": "computer-use",
-          "persona": {
-            "id": "casual-friend",
-            "traitsApplied": [],
-            "promptDigest": "d2a455bb9992e2c5"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "fake trace (no frames captured)"
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "passed (goal_satisfied)",
-          "ids": {},
-          "counts": {
-            "actions": 1,
-            "messages": 1,
-            "screenshots": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "computer-use"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "proprietary"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          },
-          "items": [
-            {
-              "id": "i-msg",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message",
-              "text": "did my task"
-            },
-            {
-              "id": "i-act",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click"
-            }
-          ]
-        },
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",

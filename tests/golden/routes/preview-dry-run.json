@@ -23,8 +23,8 @@
   },
   "events.ndjson": "[same as run.json events]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",

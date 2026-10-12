@@ -112,7 +112,8 @@ async function runtimeFiles(directory: string): Promise<string[]> {
 
 // The CLI modules the app may bundle: the run cost, the participant caption and the finding lead
 // every surface shows, the closing report's limits, the analysis limits and revision boundaries,
-// the analysis cost refusal and the reviewer note shape. Each must keep only type imports, which
+// the analysis cost refusal, the reviewer note shape, the run clock and the join of the run's data
+// with its participants' items. Each must keep only type imports, which
 // the test below checks, so no CLI code comes with them.
 const SHARED_CLI_MODULES = [
   path.join(CLI_ROOT, "run", "run-cost.ts"),
@@ -123,6 +124,7 @@ const SHARED_CLI_MODULES = [
   path.join(CLI_ROOT, "analysis", "admission.ts"),
   path.join(CLI_ROOT, "run", "note-shape.ts"),
   path.join(CLI_ROOT, "run", "run-clock.ts"),
+  path.join(CLI_ROOT, "observer", "participant-items.ts"),
 ];
 
 function runtimeCliEdges(file: string, source: string): string[] {

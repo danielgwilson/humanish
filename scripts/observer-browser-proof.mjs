@@ -18,6 +18,8 @@ import {
 } from "./observer-browser-fixtures.mjs";
 
 import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
+import { observerDataElements } from "../dist/observer/page-data.js";
+import { splitObserverData } from "../dist/observer/participant-items.js";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -73,14 +75,12 @@ const escape = (value) =>
     /[&<>"']/g,
     (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char],
   );
-const inject = (data) =>
-  html.replace(
-    slot,
-    `<script id="observer-data" type="application/json">${JSON.stringify(data)
-      .replace(/</g, "\\u003c")
-      .replace(/>/g, "\\u003e")
-      .replace(/&/g, "\\u0026")}</script>`,
-  );
+// The page and the poll carry the data the way the CLI does; `pnpm build` writes these modules.
+const inject = (data) => html.replace(slot, () => observerDataElements(data));
+const feed = (data) => {
+  const { shell, items } = splitObserverData(data);
+  return JSON.stringify({ data: shell, items });
+};
 const analysisSlot = `<script id="study-analysis" type="application/json">__HUMANISH_STUDY_ANALYSIS__</script>`;
 let analysis = null;
 let analysisMode = "ok";
@@ -106,7 +106,7 @@ const server = createServer((request, response) => {
   const entry = { path: url.pathname, at: new Date().toISOString(), status: 200 };
   requests.push(entry);
   if (serverStopped) {
-    if (url.pathname === "/observer/observer-data.json") pollCount += 1;
+    if (url.pathname === "/observer/observer-feed.json") pollCount += 1;
     entry.status = 0;
     request.socket.destroy();
     return;
@@ -141,7 +141,7 @@ const server = createServer((request, response) => {
     }
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify(analysis));
-  } else if (url.pathname === "/observer/observer-data.json") {
+  } else if (url.pathname === "/observer/observer-feed.json") {
     pollCount += 1;
     entry.mode = responseMode;
     response.setHeader("content-type", "application/json");
@@ -154,8 +154,8 @@ const server = createServer((request, response) => {
       response.writeHead(503);
       response.end('{"error":"Controlled transient snapshot failure"}');
     } else if (responseMode === "invalid") {
-      response.end('{"schema":"humanish.observer-data.v1","streams":"malformed"}');
-    } else response.end(JSON.stringify(data));
+      response.end('{"data":{"schema":"humanish.observer-data.v2","streams":"malformed"}}');
+    } else response.end(feed(data));
   } else if (url.pathname === "/_humanish/history.json") {
     response.setHeader("content-type", "application/json");
     response.end(
@@ -174,10 +174,10 @@ const server = createServer((request, response) => {
     );
   } else if (
     otherData &&
-    url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/observer-data.json`
+    url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/observer-feed.json`
   ) {
     response.setHeader("content-type", "application/json");
-    response.end(JSON.stringify(otherData));
+    response.end(feed(otherData));
   } else if (
     otherData &&
     url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/index.html`
@@ -3570,7 +3570,7 @@ try {
     await until(() => pollCount > prior, "Held HTTP request did not start");
     await snap("pending-update-before-leaving");
     const pending = requests.findLast(
-      (r) => r.path === "/observer/observer-data.json" && r.mode === "held",
+      (r) => r.path === "/observer/observer-feed.json" && r.mode === "held",
     );
     await page.goto("about:blank");
     await until(

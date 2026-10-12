@@ -83,7 +83,7 @@ export function Comparison({
     setLoadState("Loading recorded evidence…");
     void fetchObserverData(
       (input, init) => window.fetch(input, init),
-      href.replace(/index\.html$/, "observer-data.json"),
+      href.replace(/index\.html$/, "observer-feed.json"),
       controller.signal,
     ).then((next) => {
       if (disposed) return;

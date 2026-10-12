@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest";
 import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../../src/observer/data.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 
-// Contract freeze for humanish.observer-data.v1. The Observer rebuild is a
+// Contract freeze for humanish.observer-data.v2. The Observer rebuild is a
 // rendering-layer swap only if the data it renders cannot drift underneath it, so this
 // test pins the bundle -> observer-data transform against committed goldens derived from
 // the deterministic lab goldens in tests/golden/labs/ (same inputs as lab-golden.test.ts).
+// A golden is the data the page renders, with each participant's items; observer-data.json
+// holds it without them (tests/observer/participant-items.test.ts).
 //
 // The committed observer-data goldens double as the dev fixtures the new observer/
 // workspace renders, so a shape change here is visible in the same diff that causes it.
@@ -52,7 +54,7 @@ function normalize(value: unknown, inGitState = false): unknown {
   return value;
 }
 
-describe("observer-data.v1 contract freeze", () => {
+describe("observer-data.v2 contract freeze", () => {
   for (const id of GOLDENS) {
     it(`${id} golden bundle produces the frozen observer-data shape`, async () => {
       const bundle = JSON.parse(
@@ -61,7 +63,7 @@ describe("observer-data.v1 contract freeze", () => {
 
       const data = buildObserverData(bundle, FIXED_GENERATED_AT);
       expect(data.schema).toBe(OBSERVER_DATA_SCHEMA);
-      expect(data.schemaVersion).toBe(1);
+      expect(data.schemaVersion).toBe(2);
 
       const goldenPath = path.join(GOLDEN_DIR, `${id}.json`);
       if (process.env.UPDATE_OBSERVER_DATA_GOLDENS) {

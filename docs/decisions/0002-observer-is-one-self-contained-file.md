@@ -13,7 +13,8 @@ exactly those cases.
 The `observer/` workspace builds with Vite into a single HTML file with fonts inlined and no
 network references. The root build copies it to `dist/observer-app.html`. `renderObserverHtml`
 is the one path every surface (observe, observe --all, watch, studies) uses; it injects the run's
-`humanish.observer-data.v1` snapshot into that file. There is no second renderer and no feature
+`humanish.observer-data.v2` snapshot into that file, with the participants' trace items beside it
+gzip-compressed (docs/architecture/observer.md). There is no second renderer and no feature
 flag; rolling back means pinning an older package version.
 
 ## Consequences

@@ -25,6 +25,7 @@ import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
+import { splitObserverData } from "./participant-items.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./http.js";
 import { listenOnLoopback } from "./listen.js";
 import { NOTES_PATH } from "../run/note-shape.js";
@@ -225,7 +226,7 @@ export async function renderObserver(
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "observer-data.json"),
-    `${JSON.stringify(observerData, null, 2)}\n`,
+    `${JSON.stringify(splitObserverData(observerData).shell, null, 2)}\n`,
     "utf8",
   );
   await writeContainedOutputFile(

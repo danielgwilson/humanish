@@ -24,9 +24,22 @@ Observer commands may add derived artifacts:
     observer-data.json
 ```
 
-`run.json` remains the source bundle. `observer/observer-data.json` is the
-normalized view model consumed by the Observer. `events.ndjson` is the appendable
-event stream contract that live adapters update while a run is active.
+`run.json` remains the source bundle. `observer/observer-data.json`
+(`humanish.observer-data.v2`) is the normalized view model consumed by the Observer,
+with every participant except their trace items and the screenshot entries of their
+artifact list. A participant working for hours records thousands of items and a
+screenshot each turn, so these are most of a long run's bytes; apart, the saved file
+stays small enough for `verify` to read. The items stay in the run's traces
+(`actors/<stream>.json`). `events.ndjson` is the appendable event stream
+contract that live adapters update while a run is active.
+
+`observer/index.html` carries both parts: the data slot holds observer-data.json's
+content, and `<script id="observer-items" type="application/octet-stream"
+data-encoding="gzip">` holds the items and full artifact lists (`humanish.observer-items.v1`, by stream id)
+gzip-compressed in base64, which a `file://` page decodes without a fetch. Real
+trace items compress about eight times. The page joins the two before it renders
+(`joinObserverData` in `src/observer/participant-items.ts`), so every view reads the
+same data as before.
 
 ## Stream Model
 
@@ -55,7 +68,9 @@ public-safe metadata.
 4. opens the served Observer URL;
 5. keeps the shell attached until Ctrl-C.
 
-The browser polls `observer-data.json` with `no-store` caching. Static
+The browser polls `observer-feed.json` with `no-store` caching: the server's
+projection of the run as `{ data, items }`, observer-data.json's content and the
+items, from one read of the run per poll. Static
 `file://` opening still works for immutable review, but follow mode is the
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
@@ -253,7 +268,7 @@ These remain adapter work:
 ## The rendering layer
 
 The renderer is the `observer/` workspace: a Vite single-file build on the
-`@humanish` registry tokens, frozen against `humanish.observer-data.v1`
+`@humanish` registry tokens, frozen against `humanish.observer-data.v2`
 (`tests/observer/data-contract.test.ts`). The root build copies the workspace
 artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
 artifact auto-builds, and an unconditional preflight at CLI startup makes a

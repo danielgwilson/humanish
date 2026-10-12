@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { analysisFixture, fixture, screenshot } from "./observer-browser-fixtures.mjs";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
+import { observerDataElements } from "../dist/observer/page-data.js";
+import { splitObserverData } from "../dist/observer/participant-items.js";
 
 // Bounded supplement to observer-browser-proof: appearance, pin visibility,
 // library motion and fitted card geometry over synthetic retained recordings.
@@ -23,10 +25,7 @@ const slot =
 assert.equal(html.split(slot).length, 2, "Build the unfilled Observer first");
 const analysis = analysisFixture(data);
 const artifact = html
-  .replace(
-    slot,
-    `<script id="observer-data" type="application/json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`,
-  )
+  .replace(slot, () => observerDataElements(data))
   .replace(
     '<script id="study-analysis" type="application/json">__HUMANISH_STUDY_ANALYSIS__</script>',
     `<script id="study-analysis" type="application/json">${JSON.stringify(analysis).replace(/</g, "\\u003c")}</script>`,
@@ -38,9 +37,10 @@ const server = createServer((request, response) => {
   if (url.pathname === "/observer/index.html") {
     response.setHeader("content-type", "text/html");
     response.end(artifact);
-  } else if (url.pathname === "/observer/observer-data.json") {
+  } else if (url.pathname === "/observer/observer-feed.json") {
+    const { shell, items } = splitObserverData(data);
     response.setHeader("content-type", "application/json");
-    response.end(JSON.stringify(data));
+    response.end(JSON.stringify({ data: shell, items }));
   } else if (url.pathname === "/observer/study-analysis.json") {
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify(analysis));

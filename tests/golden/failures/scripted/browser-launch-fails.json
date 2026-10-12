@@ -166,8 +166,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -230,90 +230,8 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts",
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts actor",
         "id": "scripted-desktop-stream",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "browser-persona",
-          "protocol": "scripted-steps",
-          "lane": "scripted-browser",
-          "persona": {
-            "id": "synthetic-new-user",
-            "traitsApplied": [],
-            "promptDigest": "41dea98c2dc4"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "failed",
-          "completionReason": "harness_error",
-          "reason": "Scripted browser launch failed: chromium executable missing",
-          "ids": {},
-          "counts": {
-            "steps": 4,
-            "actions": 0,
-            "assertions": 0,
-            "blocked": 4,
-            "screenshots": 0
-          },
-          "tokenUsage": {
-            "input": 0,
-            "output": 0,
-            "total": 0,
-            "costUsd": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "scripted-browser"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "open"
-          },
-          "items": [
-            {
-              "id": "step-01-load",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "blocked",
-              "title": "goto: Load landing page",
-              "text": "Scripted browser launch failed: chromium executable missing"
-            },
-            {
-              "id": "step-02-fill-email",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "blocked",
-              "title": "fill: Fill the signup email",
-              "text": "Scripted browser launch failed: chromium executable missing"
-            },
-            {
-              "id": "step-03-submit",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "blocked",
-              "title": "click: Submit the form",
-              "text": "Scripted browser launch failed: chromium executable missing"
-            },
-            {
-              "id": "step-04-confirm",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "blocked",
-              "title": "waitForText: Confirm success copy",
-              "text": "Scripted browser launch failed: chromium executable missing"
-            }
-          ]
-        },
         "sim": "[same as run.json simulation scripted-desktop]",
         "kindLabel": "Browser",
         "statusLabel": "Failed",

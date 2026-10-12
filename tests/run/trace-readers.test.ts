@@ -136,12 +136,14 @@ describe("readers of a v2 run's traces", () => {
     /** The saved observer-data.json with a forged item on the first participant's timeline. */
     async function forgeSaved(): Promise<void> {
       const saved = path.join(runDir, "observer", "observer-data.json");
+      // The saved projection holds each participant without its items, so the mark goes on the
+      // participant's recorded reason.
       const data = JSON.parse(await readFile(saved, "utf8")) as {
-        streams: { actor?: { items: unknown[] } }[];
+        streams: { actor?: { reason?: string } }[];
       };
       data.streams[0] = {
         ...data.streams[0],
-        actor: { items: thought("FORGED-SAVED-DATA").items },
+        actor: { ...data.streams[0]!.actor, reason: "FORGED-SAVED-DATA" },
       };
       await writeFile(saved, JSON.stringify(data));
     }

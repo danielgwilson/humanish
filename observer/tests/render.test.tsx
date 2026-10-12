@@ -319,7 +319,7 @@ describe("portable snapshot feed mode", () => {
     vi.stubGlobal("fetch", fetch);
     try {
       await mount(<App data={{ ...data, snapshot: true } as ObserverData} />);
-      expect(fetch).toHaveBeenCalledWith("observer-data.json", expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith("observer-feed.json", expect.any(Object));
       expect(container.querySelector(".run-status-update")?.textContent).toContain(
         "Updates unavailable",
       );

@@ -13,6 +13,7 @@ import {
 import type { AutomaticAnalysisView } from "../lib/automatic-analysis";
 import { useObserverFeed } from "../lib/use-observer-feed";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
+import { feed } from "./feed";
 
 // UI/transport fixtures only. These tests do not claim an automatic provider dispatch.
 const data = fixtures.fixture();
@@ -68,8 +69,8 @@ beforeEach(() => {
   root = createRoot(container);
   remote = { ...NO_ANALYSIS, automatic: job("queued") };
   vi.spyOn(window, "fetch").mockImplementation(async (input) =>
-    String(input) === "observer-data.json"
-      ? new Response(JSON.stringify(data))
+    String(input) === "observer-feed.json"
+      ? new Response(feed(data))
       : String(input) === "study-analysis.json"
         ? new Response(JSON.stringify(remote))
         : new Response(null, { status: 404 }),
@@ -209,8 +210,8 @@ describe("automatic analysis within the existing study shell", () => {
         return new Promise<Response>((_, reject) =>
           init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))),
         );
-      return String(input) === "observer-data.json"
-        ? new Response(JSON.stringify(data))
+      return String(input) === "observer-feed.json"
+        ? new Response(feed(data))
         : new Response(null, { status: 404 });
     });
     function Probe() {
@@ -220,7 +221,7 @@ describe("automatic analysis within the existing study shell", () => {
     await mount(<Probe />);
     await advance(10_000);
     expect(container.textContent).toBe("current");
-    expect(fetched.filter((url) => url === "observer-data.json")).toHaveLength(3);
+    expect(fetched.filter((url) => url === "observer-feed.json")).toHaveLength(3);
     expect(fetched.filter((url) => url === "study-analysis.json")).toHaveLength(1);
   });
   it.each(["failed", "cancelled", "skipped", "unknown", "complete", "partial"] as const)(

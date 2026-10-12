@@ -35,8 +35,10 @@ import {
   type RunStatusRecord,
 } from "../run/status.js";
 import { renderObserverHtml } from "./artifact.js";
+import { splitObserverData } from "./participant-items.js";
 import {
   buildObserverData,
+  observerDataFromSaved,
   recordedStreamEmbed,
   withObserverEndings,
   type ObserverData,
@@ -187,7 +189,12 @@ export async function serveRunPath(
     return;
   }
 
-  if (cleanedRelativePath === "observer/observer-data.json") {
+  // observer-data.json is the run without its participants' items, as the run saves it. The page
+  // polls observer-feed.json, the same data with the items, so one projection serves each poll.
+  if (
+    cleanedRelativePath === "observer/observer-data.json" ||
+    cleanedRelativePath === "observer/observer-feed.json"
+  ) {
     const observerData = await observerDataOrReason(runRoot, runtimeStreamUrls);
     if ("unavailable" in observerData) {
       writeResponse(
@@ -198,10 +205,13 @@ export async function serveRunPath(
       );
       return;
     }
+    const { shell, items } = splitObserverData(observerData);
     writeResponse(
       response,
       200,
-      JSON.stringify(observerData, null, 2),
+      cleanedRelativePath === "observer/observer-data.json"
+        ? JSON.stringify(shell, null, 2)
+        : JSON.stringify({ data: shell, items }),
       "application/json; charset=utf-8",
     );
     return;
@@ -329,7 +339,7 @@ async function savedObserverData(
     return withRuntimeStreamUrls(
       withLocalRunStatus(
         record,
-        withObserverEndings(JSON.parse(observerBytes.toString("utf8")) as ObserverData),
+        withObserverEndings(observerDataFromSaved(JSON.parse(observerBytes.toString("utf8")))),
       ),
       runtimeStreamUrls,
     );

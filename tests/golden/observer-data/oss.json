@@ -1,6 +1,6 @@
 {
-  "schema": "humanish.observer-data.v1",
-  "schemaVersion": 1,
+  "schema": "humanish.observer-data.v2",
+  "schemaVersion": 2,
   "generatedAt": "2026-01-01T00:00:00.000Z",
   "run": {
     "runId": "golden-oss",

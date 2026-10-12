@@ -16,7 +16,7 @@ import { readInlineRunNotes } from "./lib/run-notes";
 import type { ObserverData } from "./lib/observer-data";
 
 async function boot(): Promise<void> {
-  let data: ObserverData | null = readInlineObserverData(document);
+  let data: ObserverData | null = await readInlineObserverData(document);
 
   // Dev only: render the committed contract goldens (?fixture=first-run|oss). The
   // dynamic import is dead-code-eliminated from the production artifact, which the

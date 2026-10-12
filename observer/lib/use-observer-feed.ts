@@ -59,7 +59,7 @@ export function useObserverFeed(
       controller = new AbortController();
       const deadline = setTimeout(() => controller?.abort(), 15_000);
       try {
-        const next = await fetchObserverData(fetchImpl, "observer-data.json", controller.signal);
+        const next = await fetchObserverData(fetchImpl, "observer-feed.json", controller.signal);
         if (disposed) return;
         // A response of any status means a server is there. Only silence counts toward a stop,
         // and not while the browser itself reports no network.
