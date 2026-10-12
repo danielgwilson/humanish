@@ -77,7 +77,9 @@ used as a bundle answers 404 with the reason, never the saved projection. In saf
 (`observe --all --safe`) every read is checked against the files admitted with the run's
 share_ready verification, so a run.json changed after admission is refused and the admitted
 projection is served.
-observer-data.json is built from the loaded bundle and has the same shape as before.
+observer-data.json is built from the loaded bundle. From 0.124.0 it is
+`humanish.observer-data.v2`: the same data without each participant's trace items, which stay in
+the traces (docs/architecture/observer.md).
 
 Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema
 (`run schema` fails in verify, analysis refuses the source). This release reads v1 bundles as

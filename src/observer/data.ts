@@ -10,8 +10,9 @@ import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actors/goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
 import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
 import type { RunStream, RunStreamKind } from "../run/streams.js";
+import { joinObserverData, shellNeedsItems, type ObserverShell } from "./participant-items.js";
 
-export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
+export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v2";
 
 interface ObserverArtifactLink {
   label: string;
@@ -21,7 +22,7 @@ interface ObserverArtifactLink {
 
 export interface ObserverData {
   schema: typeof OBSERVER_DATA_SCHEMA;
-  schemaVersion: 1;
+  schemaVersion: 2;
   generatedAt: string;
   /** Served-only liveness observation. Never a replacement for the recorded evidence verdict. */
   runtime?: {
@@ -225,7 +226,7 @@ export function buildObserverData(
 
   return withObserverEndings({
     schema: OBSERVER_DATA_SCHEMA,
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt,
     run: {
       runId: bundle.runId,
@@ -285,6 +286,21 @@ export function buildObserverData(
       artifactRoot: bundle.artifactRoot,
     },
   });
+}
+
+/**
+ * A saved Observer projection as this version reads it, unchecked as before: an observer-data.json
+ * written before v2 holds every participant's items. A v2 one holds none, so it is read only when
+ * no participant has any: showing participants with no steps would say they did nothing, and the
+ * items are in the run's traces. Null for a v2 projection that leaves items out.
+ */
+export function observerDataFromSaved(value: unknown): ObserverData | null {
+  const saved = value as ObserverData | ObserverShell;
+  if ((saved as { schema?: unknown }).schema === "humanish.observer-data.v1")
+    return { ...(saved as ObserverData), schema: OBSERVER_DATA_SCHEMA, schemaVersion: 2 };
+  return shellNeedsItems(saved as ObserverShell)
+    ? null
+    : joinObserverData(saved as ObserverShell, null);
 }
 
 /** Refresh presentation from recorded actor evidence, including older exported snapshots. */

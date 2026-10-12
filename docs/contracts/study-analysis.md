@@ -367,7 +367,7 @@ and an impression alone supports only a finding about what the participant said.
 
 ## Durable records
 
-The frozen `humanish.observer-data.v1` schema is unchanged. A companion
+The `humanish.observer-data.v2` schema is unchanged by analysis. A companion
 `humanish.study-analysis.v1` artifact records source/config/input hashes,
 participant context, evidence manifest, coverage, provider/model/prompt version,
 status, usage and validated findings. The Observer's projection of it,

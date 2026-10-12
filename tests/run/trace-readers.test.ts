@@ -42,8 +42,8 @@ describe("readers of a v2 run's traces", () => {
   const writeStored = (bundle: RunBundle) =>
     writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`);
 
-  /** The Observer server's data for the run. */
-  async function served(expectedStatus = 200): Promise<string> {
+  /** The Observer server's data for the run, or with `feed` the data and its participants' items. */
+  async function served(expectedStatus = 200, file = "observer-data.json"): Promise<string> {
     const started = await serveObserverLibrary(cwd, {
       port: 0,
       safe: false,
@@ -53,7 +53,7 @@ describe("readers of a v2 run's traces", () => {
     if (!started.ok) throw new Error(started.error.message);
     try {
       const response = await fetch(
-        new URL(`/_humanish/runs/${RUN}/observer/observer-data.json`, started.server.url),
+        new URL(`/_humanish/runs/${RUN}/observer/${file}`, started.server.url),
       );
       expect(response.status).toBe(expectedStatus);
       return await response.text();
@@ -133,23 +133,28 @@ describe("readers of a v2 run's traces", () => {
   });
 
   describe("the Observer server's saved projection", () => {
-    /** The saved observer-data.json with a forged item on the first participant's timeline. */
-    async function forgeSaved(): Promise<void> {
+    /**
+     * The saved observer-data.json with a forged item on the first participant: in the v1 shape,
+     * which holds the items, or the v2 shape, which names the actor and leaves its items out.
+     */
+    async function forgeSaved(version: 1 | 2 = 1): Promise<void> {
       const saved = path.join(runDir, "observer", "observer-data.json");
-      const data = JSON.parse(await readFile(saved, "utf8")) as {
-        streams: { actor?: { items: unknown[] } }[];
+      const data = JSON.parse(await readFile(saved, "utf8")) as Record<string, unknown> & {
+        streams: Record<string, unknown>[];
       };
-      data.streams[0] = {
-        ...data.streams[0],
-        actor: { items: thought("FORGED-SAVED-DATA").items },
-      };
+      const items = thought("FORGED-SAVED-DATA").items;
+      const actor = version === 1 ? { items } : { reason: "FORGED-SAVED-DATA" };
+      Object.assign(data, { schema: `humanish.observer-data.v${version}`, schemaVersion: version });
+      data.streams[0] = { ...data.streams[0], actor };
       await writeFile(saved, JSON.stringify(data));
     }
 
-    it("is served only while the run has no run.json", async () => {
+    it("is served only while the run has no run.json, and never when it leaves items out", async () => {
       await forgeSaved();
       await rm(path.join(runDir, "run.json"));
-      expect(await served()).toContain("FORGED-SAVED-DATA");
+      expect(await served(200, "observer-feed.json")).toContain("FORGED-SAVED-DATA");
+      await forgeSaved(2);
+      expect(await served(404)).not.toContain("FORGED-SAVED-DATA");
     });
 
     it.each([

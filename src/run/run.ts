@@ -6,6 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { redactText } from "../evidence/redaction.js";
 import { buildObserverData } from "../observer/data.js";
+import { splitObserverData } from "../observer/participant-items.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import {
   RUN_BUNDLE_FILE,
@@ -436,7 +437,7 @@ function runPublisher(args: {
     await writeContainedOutputFile(
       paths,
       "observer/observer-data.json",
-      json(buildObserverData(publicBundle, undefined, status)),
+      json(splitObserverData(buildObserverData(publicBundle, undefined, status)).shell),
       "utf8",
     );
   };

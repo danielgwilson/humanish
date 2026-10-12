@@ -162,8 +162,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -262,68 +262,8 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed terminal ui artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed terminal ui artifacts actor",
         "id": "stream-001",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "codex",
-          "runtime": {
-            "schema": "humanish.actor-runtime.v1",
-            "package": "@openai/codex",
-            "doNotTrack": true,
-            "requestedVersion": "latest",
-            "versionStatus": "unobserved",
-            "requestedModel": "gpt-5.6-sol",
-            "modelStatus": "humanish_default",
-            "usageGranularity": "runtime_turn"
-          },
-          "protocol": "terminal-exec",
-          "lane": "terminal",
-          "persona": {
-            "id": "autonomous-creative-agent",
-            "traitsApplied": [],
-            "promptDigest": "[promptDigest]"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "Terminal output captured through commands.run onStdout and onStderr; known values are scrubbed and shape patterns redacted before anything is stored. This route takes no screenshots."
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "failed",
-          "completionReason": "harness_error",
-          "reason": "runtime bootstrap could not ensure Node/npm before codex exec: exit status 1",
-          "ids": {},
-          "counts": {
-            "commands": 0,
-            "runtimeParticipantItems": 0,
-            "actions": 0,
-            "messages": 0,
-            "terminalEvents": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "terminal"
-            ],
-            "producesScreenshots": false,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "open",
-            "keyPlacement": "in-sandbox-command-scoped"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          },
-          "items": []
-        },
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "CLI",
         "statusLabel": "Failed",

@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { App } from "../app";
 import type { ObserverData } from "../lib/observer-data";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
+import { feed } from "./feed";
 
 // A served page whose server process exits: the feed poll gets no response at all.
 let container: HTMLDivElement, root: Root, serving: boolean, data: ObserverData;
@@ -50,8 +51,8 @@ beforeEach(() => {
   vi.spyOn(window, "fetch").mockImplementation(async (input) => {
     if (!serving) throw new TypeError("Failed to fetch");
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    return url === "observer-data.json"
-      ? new Response(JSON.stringify(data))
+    return url === "observer-feed.json"
+      ? new Response(feed(data))
       : new Response(null, { status: 404 });
   });
 });

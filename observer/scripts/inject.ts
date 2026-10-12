@@ -1,25 +1,17 @@
-// Injection helper for the observer artifact's humanish.observer-data.v1 slot.
+// Injection helper for the observer artifact's data slot, filled the way the CLI fills it.
 //
 // The built dist/index.html carries one placeholder slot; static mode fills it with
 // the run's snapshot at write time (a file:// page cannot fetch() sibling files, so
-// inlining is what makes the artifact durable). This is the reference implementation
-// the CLI adopts at cutover; tests/artifact-smoke.test.ts proves the
-// round trip against the built artifact and the frozen goldens.
+// inlining is what makes the artifact durable). The elements come from
+// src/observer/page-data.ts, as in the CLI; tests/artifact-smoke.test.ts proves the round
+// trip against the built artifact and the frozen goldens.
+
+import type { ObserverData } from "../../src/observer/data";
+import { observerDataElements } from "../../src/observer/page-data";
 
 export const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
 
 const SLOT = `<script id="observer-data" type="application/json">${OBSERVER_DATA_PLACEHOLDER}</script>`;
-
-/** Same escaping policy as src/observer/artifact.ts escapeJsonScript: keep the JSON inert
- *  inside a script element (no </script> breakout, no HTML entity surprises). */
-function escapeJsonScript(value: unknown): string {
-  return JSON.stringify(value)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029");
-}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => {
@@ -44,10 +36,7 @@ export function injectObserverData(html: string, data: unknown): string {
       "observer artifact: observer-data slot not found (placeholder missing or already filled)",
     );
   }
-  let out = html.replace(
-    SLOT,
-    `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`,
-  );
+  let out = html.replace(SLOT, () => observerDataElements(data as ObserverData));
   const runId = (data as { run?: { runId?: unknown } } | null)?.run?.runId;
   if (typeof runId === "string" && runId !== "") {
     out = out.replace(

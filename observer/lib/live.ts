@@ -1,7 +1,8 @@
 import { traceItems } from "../../src/run/run-clock.js";
 import { historyRunHref } from "./artifact-href";
 import type { ObserverData, ObserverStream } from "./observer-data";
-import { isObserverData, runDisplay } from "./validate";
+import { observerDataFromFeed } from "./data";
+import { runDisplay } from "./validate";
 
 export const OBSERVER_POLL_MS = 5000;
 export const HISTORY_POLL_MS = 30_000;
@@ -30,16 +31,16 @@ export function followTarget(prevFrame: number, prevCount: number, nextCount: nu
   return prevFrame >= prevCount - 1 ? nextCount - 1 : prevFrame;
 }
 
+/** A served run's data and its participants' items, from its observer-feed.json. */
 export async function fetchObserverData(
   fetchImpl: typeof fetch,
-  url = "observer-data.json",
+  url = "observer-feed.json",
   signal?: AbortSignal,
 ): Promise<ObserverData | null> {
   try {
     const response = await fetchImpl(url, { cache: "no-store", signal: signal ?? null });
     if (!response.ok) return null;
-    const parsed: unknown = await response.json();
-    return isObserverData(parsed) ? parsed : null;
+    return observerDataFromFeed(await response.json());
   } catch {
     return null;
   }

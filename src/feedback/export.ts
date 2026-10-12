@@ -15,7 +15,12 @@ import path from "node:path";
 
 import { renderObserver } from "../observer/render.js";
 import { renderObserverHtml, type ObserverExportAssets } from "../observer/artifact.js";
-import { buildObserverData, type ObserverData } from "../observer/data.js";
+import {
+  buildObserverData,
+  OBSERVER_DATA_SCHEMA,
+  observerDataFromSaved,
+  type ObserverData,
+} from "../observer/data.js";
 import { resolveRunPath } from "../run/locate.js";
 import { loadRunTraces, StreamTraceRefusedError } from "../run/stream-trace.js";
 import { verifyRun, type VerifyResult } from "../verify/verify.js";
@@ -27,6 +32,7 @@ import { cli } from "../cli/invocation.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedFile } from "../run/evidence-files.js";
+import { isRecord } from "../run/type-guards.js";
 import { shellQuote } from "../substrates/shell.js";
 import { plural } from "../run/text.js";
 
@@ -161,7 +167,7 @@ export async function exportRun(
       cwd,
       runInput,
       "HUMANISH_EXPORT_VERIFY_FAILED",
-      "Source evidence changed while preparing the analysis export.",
+      "The run's evidence changed, or a participant's trace could not be read, while preparing the export.",
     );
   const omittedRecording = omitRecordings(data.value);
   if (omittedRecording) warnings.push(MEDIA_OMISSION);
@@ -356,7 +362,9 @@ async function readObserverSlot(
 /**
  * The Observer data to export. A current report must travel with the current source projection,
  * even if an older saved HTML was never refreshed; old recording-only exports keep the saved slot.
- * Undefined when run.json no longer matches the analysis.
+ * A page saved since observer-data v2 holds no participant's items in its slot, and verify does not
+ * read the page's compressed copy, so its export is the current projection of the run and its
+ * traces. Undefined when run.json no longer matches the analysis, or a v2 page's run cannot be read.
  */
 async function currentObserverData(
   runPaths: RunPaths,
@@ -364,20 +372,37 @@ async function currentObserverData(
   slot: string,
 ): Promise<{ value: unknown } | undefined> {
   const saved: unknown = JSON.parse(slot);
-  if (analysis.state !== "ready" || !analysis.analysis) return { value: saved };
-  const source = await readBoundedFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
+  const source = async () => readBoundedFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
+  if (analysis.state !== "ready" || !analysis.analysis) {
+    const schema = (saved as { schema?: unknown } | null)?.schema;
+    if (schema === "humanish.observer-data.v1") return { value: observerDataFromSaved(saved) };
+    if (schema !== OBSERVER_DATA_SCHEMA) return { value: saved };
+    const bundle = await sourceTraces(runPaths, await source());
+    return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
+  }
+  const bytes = await source();
   if (
-    !source ||
-    createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
+    !bytes ||
+    createHash("sha256").update(bytes).digest("hex") !== analysis.analysis.sourceRunSha256
   )
     return undefined;
-  const stored = JSON.parse(source.toString("utf8")) as RunBundle;
+  const bundle = await sourceTraces(runPaths, bytes);
+  return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
+}
+
+/** The run with its traces read, or undefined when run.json is missing or a trace is refused. */
+async function sourceTraces(
+  runPaths: RunPaths,
+  bytes: Buffer | null,
+): Promise<RunBundle | undefined> {
+  if (!bytes) return undefined;
+  const stored: unknown = JSON.parse(bytes.toString("utf8"));
+  if (!isRecord(stored) || !Array.isArray(stored.streams)) return undefined;
   // A trace that no longer matches run.json's index is a source that no longer matches.
-  const bundle = await loadRunTraces(runPaths, stored).catch((error: unknown) => {
+  return loadRunTraces(runPaths, stored as unknown as RunBundle).catch((error: unknown) => {
     if (error instanceof StreamTraceRefusedError) return undefined;
     throw error;
   });
-  return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
 }
 
 /** Portable HTML keeps the lightweight evidence; media remains in the source run. */

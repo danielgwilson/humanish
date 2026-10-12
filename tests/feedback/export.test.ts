@@ -17,6 +17,7 @@ import { tallyParticipantOutcomes } from "../../src/run/outcomes.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { noteFile, noteId, writeNoteFile } from "../helpers/note-files.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
+import { readObserverPage } from "../helpers/observer-page.js";
 
 const PNG = syntheticPng1x1();
 const PNG_HASH = createHash("sha256").update(PNG).digest("hex");
@@ -254,6 +255,32 @@ describe("humanish export", () => {
     );
   });
 
+  it("exports a v2 page with the run's current participants, not the page's saved ones", async () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+    // A page rendered while the first participant was still running.
+    const current = buildObserverData(bundle);
+    const { actor, ...running } = current.streams[0]!;
+    const stale = {
+      ...current,
+      streams: [
+        {
+          ...running,
+          liveActor: { schema: "humanish.live-actor.v1", updatedAt: "t", items: [] },
+        },
+        ...current.streams.slice(1),
+      ],
+    } as ObserverData;
+    await writeFile(path.join(runDir, "observer", "index.html"), renderObserverHtml(stale));
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = readObserverPage(await readFile(path.join(cwd, result.path), "utf8"));
+    expect(exported.streams[0]!.liveActor).toBeUndefined();
+    expect(exported.streams[0]!.actor?.items.map((item) => item.id)).toEqual(
+      actor!.items.map((item) => item.id),
+    );
+  });
+
   it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     const stream = bundle.streams[0]!;
@@ -278,7 +305,8 @@ describe("humanish export", () => {
     delete oldData.streams[0]!.ending;
     oldData.streams[0]!.statusLabel = "Ran out of session";
     oldData.run.participantsLine = "0/1 reached the goal, 1 ran out of session";
-    const oldHtml = `<html><script id="observer-data" type="application/json">${JSON.stringify(oldData)}</script></html>`;
+    // A page saved before observer-data v2 carried every participant's items in its data slot.
+    const oldHtml = `<html><script id="observer-data" type="application/json">${JSON.stringify({ ...oldData, schema: "humanish.observer-data.v1", schemaVersion: 1 })}</script></html>`;
     const index = path.join(runDir, "observer", "index.html");
     await writeFile(index, oldHtml);
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
@@ -287,7 +315,8 @@ describe("humanish export", () => {
     const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
       exported,
     );
-    const refreshed = JSON.parse(slot![1]!) as ObserverData;
+    expect(slot).not.toBeNull();
+    const refreshed = readObserverPage(exported);
     expect(refreshed.streams[0]!.ending?.label).toBe("provider token limit");
     expect(refreshed.streams[0]!.statusLabel).toBe("Interrupted");
     expect(refreshed.run.participantsLine).toBe(
@@ -323,15 +352,11 @@ describe("humanish export", () => {
     const index = path.join(runDir, "observer", "index.html");
     await writeFile(
       index,
-      `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`,
+      `<html><script id="observer-data" type="application/json">${JSON.stringify({ ...data, schema: "humanish.observer-data.v1", schemaVersion: 1 })}</script></html>`,
     );
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
-    const exported = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
-      exported,
-    );
-    const refreshed = JSON.parse(slot![1]!) as ObserverData;
+    const refreshed = readObserverPage(await readFile(path.join(cwd, result.path), "utf8"));
     expect(refreshed.streams[0]?.ending).toEqual({
       cause: "adapter_limit",
       label: "adapter admission limit",

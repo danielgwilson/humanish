@@ -181,8 +181,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -242,158 +242,14 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui",
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts actor",
         "id": "scripted-desktop-stream",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "browser-persona",
-          "protocol": "scripted-steps",
-          "lane": "scripted-browser",
-          "persona": {
-            "id": "synthetic-new-user",
-            "traitsApplied": [],
-            "promptDigest": "41dea98c2dc4"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "raw",
-            "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
-          "ids": {},
-          "counts": {
-            "steps": 4,
-            "actions": 4,
-            "assertions": 3,
-            "blocked": 0,
-            "screenshots": 4
-          },
-          "tokenUsage": {
-            "input": 0,
-            "output": 0,
-            "total": 0,
-            "costUsd": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "scripted-browser"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "open"
-          },
-          "items": [
-            {
-              "id": "step-01-load",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "passed",
-              "title": "goto: Load landing page",
-              "screenshotRef": {
-                "path": "screenshots/desktop-step-01-load.png",
-                "redaction": "none"
-              },
-              "text": "goto completed for Load landing page.\nselector-visible: passed (Expected selector was visible.)"
-            },
-            {
-              "id": "step-02-fill-email",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "passed",
-              "title": "fill: Fill the signup email",
-              "screenshotRef": {
-                "path": "screenshots/desktop-step-02-fill-email.png",
-                "redaction": "none"
-              },
-              "text": "fill completed for Fill the signup email."
-            },
-            {
-              "id": "step-03-submit",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "passed",
-              "title": "click: Submit the form",
-              "screenshotRef": {
-                "path": "screenshots/desktop-step-03-submit.png",
-                "redaction": "none"
-              },
-              "text": "click completed for Submit the form.\nstate-changed: passed (Visible page state changed.)"
-            },
-            {
-              "id": "step-04-confirm",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "status": "passed",
-              "title": "waitForText: Confirm success copy",
-              "screenshotRef": {
-                "path": "screenshots/desktop-step-04-confirm.png",
-                "redaction": "none"
-              },
-              "text": "waitForText completed for Confirm success copy.\ntext-present: passed (Expected text was present.)"
-            }
-          ]
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          },
-          {
-            "label": "desktop browser trace",
-            "path": "traces/desktop.json",
-            "kind": "trace"
-          },
-          {
-            "label": "desktop actor trace",
-            "path": "actor-desktop.json",
-            "kind": "trace"
-          },
-          {
-            "label": "desktop screenshot 01 (raw)",
-            "path": "screenshots/desktop-step-01-load.png",
-            "kind": "screenshot"
-          },
-          {
-            "label": "desktop screenshot 02 (raw)",
-            "path": "screenshots/desktop-step-02-fill-email.png",
-            "kind": "screenshot"
-          },
-          {
-            "label": "desktop screenshot 03 (raw)",
-            "path": "screenshots/desktop-step-03-submit.png",
-            "kind": "screenshot"
-          },
-          {
-            "label": "desktop screenshot 04 (raw)",
-            "path": "screenshots/desktop-step-04-confirm.png",
-            "kind": "screenshot"
-          }
-        ],
         "sim": "[same as run.json simulation scripted-desktop]",
         "kindLabel": "Browser",
         "statusLabel": "Passed",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 4
       }
     ],
     "events": "[same as run.json events]",

@@ -286,8 +286,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v1",
-    "schemaVersion": 1,
+    "schema": "humanish.observer-data.v2",
+    "schemaVersion": 2,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -359,195 +359,14 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui artifacts actor",
         "id": "stream-001",
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "openai-responses-cu",
-          "providerVersion": "gpt-5.6-sol",
-          "conversation": {
-            "mode": "threaded",
-            "summarizedTurns": 0,
-            "requests": [
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded",
-                "kind": "impressions"
-              }
-            ]
-          },
-          "protocol": "cua-loop",
-          "lane": "computer-use",
-          "persona": {
-            "id": "cua-operator",
-            "traitsApplied": [],
-            "promptDigest": "9cd5cf5309bc5e74"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "raw",
-            "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "Done.",
-          "ids": {
-            "model": "gpt-5.6-sol",
-            "turnId": "resp_2"
-          },
-          "modelSettings": {
-            "reasoningEffort": "medium"
-          },
-          "waitSettings": {
-            "maxWaitMs": 120000,
-            "idleWaitMs": 5000,
-            "settleWaitMs": 500
-          },
-          "counts": {
-            "turns": 2,
-            "actions": 1,
-            "materialActions": 1,
-            "screenshots": 2,
-            "reasonings": 0,
-            "messages": 1,
-            "idleTurns": 0,
-            "noProgressTurns": 0,
-            "debriefCalls": 1
-          },
-          "affordanceUse": {
-            "schema": "humanish.affordance-use.v1",
-            "counts": {
-              "pointer": 1
-            },
-            "total": 1,
-            "shortcutTotal": 0
-          },
-          "debrief": {
-            "trigger": "participant_end",
-            "status": "failed",
-            "reason": "the reply did not contain valid impressions",
-            "usageReported": false
-          },
-          "impressions": {
-            "status": "not_collected",
-            "reason": "the impressions request failed: the reply did not contain valid impressions"
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "computer-use"
-            ],
-            "producesScreenshots": true,
-            "byoModel": false,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "proprietary"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          },
-          "items": [
-            {
-              "id": "screenshot-001",
-              "kind": "screenshot",
-              "lifecycle": "completed",
-              "title": "turn-00-start",
-              "screenshotRef": {
-                "path": "screenshots/turn-00-start.png",
-                "redaction": "none"
-              },
-              "at": "[ts]"
-            },
-            {
-              "id": "ui_action-002",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click (11, 22)",
-              "coord": {
-                "x": 11,
-                "y": 22
-              },
-              "at": "[ts]"
-            },
-            {
-              "id": "screenshot-003",
-              "kind": "screenshot",
-              "lifecycle": "completed",
-              "title": "turn-01",
-              "screenshotRef": {
-                "path": "screenshots/turn-01.png",
-                "redaction": "none"
-              },
-              "at": "[ts]"
-            },
-            {
-              "id": "message-004",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message turn 2",
-              "text": "Done.",
-              "at": "[ts]"
-            },
-            {
-              "id": "notice-005",
-              "kind": "notice",
-              "lifecycle": "completed",
-              "status": "warn",
-              "title": "participant impressions request failed",
-              "text": "the reply did not contain valid impressions",
-              "at": "[ts]"
-            }
-          ]
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          },
-          {
-            "label": "actor trace",
-            "path": "actor.json",
-            "kind": "trace"
-          },
-          {
-            "label": "screenshot 01 (raw)",
-            "path": "screenshots/turn-00-start.png",
-            "kind": "screenshot"
-          },
-          {
-            "label": "screenshot 02 (raw)",
-            "path": "screenshots/turn-01.png",
-            "kind": "screenshot"
-          }
-        ],
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       }
     ],
     "events": "[same as run.json events]",

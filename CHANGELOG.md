@@ -8,6 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+The Observer's saved data no longer holds every participant's trace items, so a long study's
+Observer files stay within what `verify` reads. `observer/observer-data.json` is now
+`humanish.observer-data.v2`: the run and each participant without their trace items and the
+screenshot entries of their artifact list, which stay in the run's traces. The Observer page
+carries them gzip-compressed beside the data (`humanish.observer-items.v1`) and joins the two
+before it renders, so it still opens from disk; a served page polls `observer-feed.json` for both.
+On a synthetic run of 24 participants working 8 hours each, observer-data.json fell from 155 MiB
+to 0.33 MiB and index.html from 94 MiB to 16 MiB; verify reads at most 32 MiB of a file, so the
+earlier files left such a run unable to grade `share_ready`. A reader of observer-data.json that
+needs a participant's items reads the run's traces (docs/architecture/observer.md). `humanish
+export` takes a v2 page's items from the run's traces, never from the page's compressed copy,
+and exports a page saved by an earlier version with its items as before.
+
 ## 0.123.0: Run bundle v2 writes each trace once, bundle size estimate (2026-10-12)
 
 humanish 0.123.0 writes each participant's trace once, outside run.json, so long studies stay

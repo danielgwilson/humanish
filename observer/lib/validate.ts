@@ -62,8 +62,8 @@ export function runDisplay(value: unknown): boolean {
 export function isObserverData(value: unknown): value is ObserverData {
   if (
     !object(value) ||
-    value.schema !== "humanish.observer-data.v1" ||
-    value.schemaVersion !== 1 ||
+    value.schema !== "humanish.observer-data.v2" ||
+    value.schemaVersion !== 2 ||
     typeof value.generatedAt !== "string" ||
     !object(value.run) ||
     !strings(value.run, ["runId", "mode", "status", "title", "createdAt"]) ||
