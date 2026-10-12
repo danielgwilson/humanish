@@ -96,8 +96,10 @@ describe("run index cost, measured against the existing listing", () => {
 
     // The gate. On this tree the index measured about 0.1 of the listing's work and the warm index
     // about 0.5 of the cold. An index that walks every run tree measured 0.44 on the first, and a
-    // cache that never hits measured 0.87 to 1.05 on the second.
+    // cache that never hits measured 0.87 to 1.05 on the second. The warm and cold reads take about
+    // 10 ms each, so a busy runner can move their ratio by a tenth; 0.8 still fails a cache that
+    // never hits.
     expect(fastest.cold / fastest.listing, work).toBeLessThan(0.25);
-    expect(fastest.warm / fastest.cold, work).toBeLessThan(0.7);
+    expect(fastest.warm / fastest.cold, work).toBeLessThan(0.8);
   });
 });
