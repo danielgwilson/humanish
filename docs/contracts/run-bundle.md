@@ -46,7 +46,11 @@ impressions, token usage and estimated cost. Each trace is written once.
 `src/run/stream-shape.ts` holds the rule, and the writer, the shape check and the loader all use
 it. Any other path, such as `observer/index.html`, fails the shape check.
 
-Readers load a stream through `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
+A reader outside humanish loads a run through the package's `loadRunBundle(cwd, run)`, with `run`
+a run id or `latest`: it returns run.json with every trace file and live file joined and checked
+as below, for v1, v2 and v3 bundles, and throws an Error named `StreamTraceRefusedError` for a
+file that does not match its index. Inside humanish, readers load a stream through
+`loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
 An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
 source limit for each trace) and refused unless its size, sha256, item count and screenshot count
 match the index. A trace file belongs to one participant: every stream whose index names a file

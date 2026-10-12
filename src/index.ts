@@ -15,6 +15,7 @@ export type { StudyConfig } from "./study/types.js";
 
 // Read a run.
 export { verifyRun } from "./verify/verify.js";
+export { loadRunBundle } from "./run/locate.js";
 export type { VerifyResult } from "./verify/verify.js";
 export { renderObserver } from "./observer/render.js";
 export type { ObserverResult } from "./observer/render.js";

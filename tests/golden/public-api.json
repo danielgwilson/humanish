@@ -5,6 +5,7 @@
     "browserScorer",
     "createOpenAiResponsesProvider",
     "defaultRedactionHooks",
+    "loadRunBundle",
     "parseStudy",
     "renderObserver",
     "routeOf",

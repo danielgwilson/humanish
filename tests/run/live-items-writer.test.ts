@@ -10,6 +10,7 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
+import { loadRunBundle } from "../../src/index.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { readRunDetail } from "../../src/run/detail.js";
@@ -245,6 +246,14 @@ describe("readers of a run in progress", () => {
     const verified = await verifyRun(cwd, RUN);
     expect(verified.shareSafety.status).toBe("local_only");
     expect(verified.shareSafety.reasons.map((reason) => reason.code)).toContain("RUN_NOT_FINISHED");
+  });
+
+  it("the package's loadRunBundle gives an adopter the participant's items so far", async () => {
+    const loaded = await loadRunBundle(cwd, RUN);
+    expect(loaded?.bundle.streams[0]!.liveActor?.items.map((entry) => entry.text)).toEqual([
+      "Step 1 on the list.",
+      "The second patient is waiting.",
+    ]);
   });
 
   it("run detail quotes the participant's latest thought from the live file", async () => {

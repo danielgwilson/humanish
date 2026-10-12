@@ -483,7 +483,7 @@ for the supported library seam.
 
 - run a study: `runStudy`, `RunStudyOptions`, `StudyOutcome`, `StudyResult`, `StudyEvent`, `routeOf`,
   `parseStudy`, `STUDY_SCHEMA`;
-- read a run: `verifyRun`, `renderObserver`, `RunBundle`, `ActorTrace`;
+- read a run: `verifyRun`, `loadRunBundle`, `renderObserver`, `RunBundle`, `ActorTrace`;
 - bring a participant: `ComputerUseProvider`, `ComputerUseExecutor`, `ProviderContext`,
   `createOpenAiResponsesProvider`, `runComputerUseLoop`, `defaultRedactionHooks`;
 - score a run: `AdapterScorerModule` and its scoring contexts.

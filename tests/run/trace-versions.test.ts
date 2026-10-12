@@ -19,7 +19,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { parseStudy } from "../../src/study/config.js";
-import { verifyRun, type VerifyResult } from "../../src/verify/verify.js";
+import { loadRunBundle, verifyRun, type VerifyResult } from "../../src/index.js";
 import { lab } from "../admission/fixtures.js";
 import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../helpers/fanout-desktop.js";
 import { readRunWithTraces } from "../helpers/run-traces.js";
@@ -115,6 +115,22 @@ describe("a run kept as run.json v1, v2 and v3", () => {
     expect(v3.images.length).toBeGreaterThan(0);
     expect(await capture(v2Project)).toEqual(v3);
     expect(await capture(v1Project)).toEqual(v3);
+  });
+
+  it("gives an adopter the same participants through the package's loadRunBundle", async () => {
+    const participants = async (project: string) => {
+      const loaded = await loadRunBundle(project, runId);
+      if (loaded === null) throw new Error("the run did not load");
+      return loaded.bundle.streams.map((stream) => ({
+        id: stream.id,
+        items: stream.actor?.items,
+        screenshots: stream.artifacts.filter((artifact) => artifact.kind === "screenshot"),
+      }));
+    };
+    const v3 = await participants(v3Project);
+    expect(v3.every((stream) => (stream.items?.length ?? 0) > 0)).toBe(true);
+    expect(await participants(v2Project)).toEqual(v3);
+    expect(await participants(v1Project)).toEqual(v3);
   });
 
   it("exports the same derivative, written as v3", async () => {
