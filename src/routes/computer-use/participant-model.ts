@@ -142,6 +142,7 @@ export function participantSessionOptions(
       : spec.instructions,
     persona: spec.persona,
     timeoutMs: deps.timeoutMs,
+    ...participantClock(spec.planned.limits.timeZone, deps),
     // The brain is either a keyed API client or a CLI the operator is already signed in to.
     // Everything below this line (loop, executor, trace, affordances) is identical either
     // way, which is what makes a local-agent run comparable to an API one.
@@ -394,5 +395,24 @@ export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
         ? `the run's estimated model spend $${round6(totalUsd)} crossed caps.maxTotalUsd=$${maxTotalUsd}`
         : undefined;
     },
+  };
+}
+
+/**
+ * The participant's clock: its time zone, and its scheduled end on the run's clock. A participant
+ * with an end runs its session on the run's clock, so the end and the schedule read one clock.
+ */
+function participantClock(
+  timeZone: string | undefined,
+  deps: Pick<ParticipantModelDeps, "scheduledEnd" | "now">,
+): Pick<CuaActorSessionOptions, "clock" | "now"> {
+  const { scheduledEnd } = deps;
+  if (timeZone === undefined && scheduledEnd === undefined) return {};
+  return {
+    clock: {
+      ...(timeZone === undefined ? {} : { timeZone }),
+      ...(scheduledEnd === undefined ? {} : { end: scheduledEnd }),
+    },
+    ...(scheduledEnd === undefined ? {} : { now: deps.now }),
   };
 }

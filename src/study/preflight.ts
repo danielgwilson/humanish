@@ -9,7 +9,7 @@ import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./prefli
 import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.js";
 import { type StudyRoute, planStudy, routeOf } from "./plan.js";
 import type { PlanRefusal, StudyPlan } from "./plan-types.js";
-import { describeArrivals } from "./arrivals.js";
+import { describeArrivals, describeWindows } from "./arrivals.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
@@ -203,6 +203,8 @@ export async function runStudyPreflight(
   }
   const schedule = scheduleCheck(planned.planned.plan);
   if (schedule !== undefined) ctx.checks.push(schedule);
+  const windows = windowsCheck(planned.planned.plan);
+  if (windows !== undefined) ctx.checks.push(windows);
 
   const machine = machineCheck(ctx.config);
   // A local study's app and desktops run on this machine, so the hosted probes do not apply.
@@ -256,6 +258,13 @@ function scheduleCheck(plan: StudyPlan): StudyPreflightCheck | undefined {
   if (plan.route !== "computer-use" && plan.route !== "shared-world") return undefined;
   if (!plan.arrivals.declared) return undefined;
   return { name: "schedule", ok: true, message: describeArrivals(plan.arrivals) };
+}
+
+/** Each participant's window, for a computer-use study in which a participant declares an end. */
+function windowsCheck(plan: StudyPlan): StudyPreflightCheck | undefined {
+  if (plan.route !== "computer-use") return undefined;
+  const message = describeWindows(plan.runner.participants, plan.sessionBudgetMs);
+  return message === undefined ? undefined : { name: "windows", ok: true, message };
 }
 
 /** What study check leaves to doctor: this machine's setup for the study, and the command. */

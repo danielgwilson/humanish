@@ -149,17 +149,30 @@ export interface BackstopStep {
   readonly tripReason: string | undefined;
 }
 
-/** Fold one acted turn and the observation after it into the backstop. */
+/**
+ * Fold one acted turn and the observation after it into the backstop. `waitingIsTheTask` says the
+ * participant has a scheduled end still to come: waiting for it is its job, so an idle turn counts
+ * toward neither streak and earns no nudge. A turn that acts is folded as usual.
+ */
 export function advanceBackstop(
   previous: Backstop,
   turn: {
     actions: readonly CuaAction[];
     observation: CuaObservation;
     heardNewSpeech: boolean;
+    waitingIsTheTask?: boolean;
   },
   limits: BackstopLimits,
 ): BackstopStep {
   const idle = isIdleTurn(turn.actions);
+  if (idle && turn.waitingIsTheTask === true)
+    return {
+      backstop: { ...previous, progressKey: progressKeyOf(turn.observation), consecutiveIdle: 0 },
+      idle,
+      progressed: true,
+      hints: [],
+      tripReason: undefined,
+    };
   const progressKey = progressKeyOf(turn.observation);
   const frameChanged = progressKey !== previous.progressKey;
 

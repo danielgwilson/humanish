@@ -1,3 +1,4 @@
+import { scheduledParticipantDeps } from "./participant-runs.js";
 import { judgeParticipantRecords } from "../../run/judge.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
@@ -284,6 +285,7 @@ export async function runCuaParticipants(
       try {
         outcome = await runParticipant(spec, {
           ...deps,
+          ...scheduledParticipantDeps(spec.planned, deps, scheduledAt),
           signalReady: () => {
             ready = true;
             gate.ready();
@@ -429,14 +431,16 @@ export async function runAllCuaParticipants(
   participantPlan: CuaParticipantPlan,
   inProcess: boolean,
 ): Promise<ParticipantRunOutcome[]> {
+  // A participant that runs alone starts with the run.
+  const alone = { ...deps, ...scheduledParticipantDeps(runs[0]!.planned, deps, deps.now()) };
   if (inProcess) {
     // The caller's executor stands in for a desktop, and the shared runner drives the participant.
     const outcome = await runCuaParticipant(runs[0]!, {
-      ...deps,
+      ...alone,
       createDesktop: () => createInProcessDesktop(deps),
     });
     return [outcome];
   }
-  if (runs.length === 1) return [await runCuaParticipant(runs[0]!, deps)];
+  if (runs.length === 1) return [await runCuaParticipant(runs[0]!, alone)];
   return runCuaParticipants([...runs], deps, participantPlan.concurrency);
 }

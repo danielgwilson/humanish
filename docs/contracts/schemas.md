@@ -227,6 +227,25 @@ The rest of this section names keys by their v3 spelling:
   and the most participants at once with every session at its full budget, and the provisioned
   shared world's subject sandbox serves until the last session can end, which the plan checks
   against the sandbox ceiling. A rerun starts its selected participants together;
+- `participants[].endAfterMs` and `windDownMs` (computer-use only): when the participant's
+  session ends, in whole milliseconds on the `startAfterMs` clock and after its start, and how
+  long before that each turn tells it the end time and the minutes left (default 600,000).
+  Refused: an end at or before the start, a `windDownMs` without `endAfterMs`, an end on
+  `shared-world`, and a window whose sandbox deadline passes the sandbox ceiling. The
+  participant's session budget is its window plus 5 minutes (`participantSessionMs` in
+  `src/study/arrivals.ts`) in place of `execution.timeoutMs`, and its sandbox deadline adds the
+  route's headroom to that. At the end the loop requests the closing report (`debrief.trigger:
+  scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. Before
+  the end, a turn that requests no action does not end the session: the trace records a
+  `participant ended before its scheduled end` notice, the next request says the time left, and
+  the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
+  screenshots counts toward neither backstop streak (`advanceBackstop`'s `waitingIsTheTask`). The
+  plan entry carries `endAfterMs`, and `study check` prints a `windows` row;
+- `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
+  participant's `actor.idleWaitMs`, in the same range and refused above an explicit
+  `actor.maxWaitMs` (`waitLimitValidationReason`). Its trace records it in `waitSettings`;
+- `actor.clock.timeZone` (computer-use): a tz database time zone name, such as `Europe/London`. Each turn's context hint carries
+  the local time in it, and a scheduled end is given in it (UTC without it);
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
   simultaneously: both routes resolve it when they plan, from the final participant count
@@ -1014,7 +1033,8 @@ Core-owned fields:
   applied, in milliseconds, defaults included. `maxWaitMs` is the longest one
   wait action lasts (`actor.maxWaitMs`); a longer wait is shortened to it.
   `idleWaitMs` is how long a wait that names no duration lasts in a turn that
-  only waits or takes screenshots (`actor.idleWaitMs`), and `settleWaitMs` how
+  only waits or takes screenshots (`participants[].idleWaitMs`, else
+  `actor.idleWaitMs`), and `settleWaitMs` how
   long such a wait lasts after an action in the same turn. Each `ui_action` for
   a wait is titled with the length it lasted. Absent on other routes and on
   earlier bundles

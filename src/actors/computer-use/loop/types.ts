@@ -18,6 +18,12 @@ import type { DwellWindow, StopWhen } from "../../stop-conditions.js";
 import type { StudyTask } from "../../../study/tasks.js";
 import type { ReasoningEffort } from "../../reasoning-effort.js";
 
+/** The participant's clock: its local time zone and its scheduled end, on the loop's clock. */
+export interface ParticipantClock {
+  readonly timeZone?: string;
+  readonly end?: { readonly atMs: number; readonly windDownMs: number };
+}
+
 // The ports of the computer-use loop: the model behind CuaProvider, the desktop behind
 // CuaExecutor, and the options and result of runComputerUseLoop. src/actors/computer-use/loop.ts
 // re-exports every name here; import them from there.
@@ -344,6 +350,14 @@ export interface CuaLoopOptions {
   dwell?: DwellWindow;
   /** Injected pause for the dwell window's cadence; tests advance their clock through it. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * What each turn tells the participant about the time (loop/clock.ts). With `timeZone`, a time zone
+   * name, every request carries the local time. With `end`, from `end.atMs - end.windDownMs`
+   * every request names the end time (in `timeZone`, else UTC) and the minutes left, and at
+   * `end.atMs`, read on `now`, the loop asks for the closing report and ends the session with
+   * stop cause `scheduled_end`.
+   */
+  clock?: ParticipantClock;
   /**
    * The study's declared protocol: discrete tasks whose completion is corroborated by the
    * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's

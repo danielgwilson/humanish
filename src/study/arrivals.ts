@@ -1,6 +1,8 @@
-// When each participant of a computer-use or shared-world run starts. A study may give each
-// participant an offset from the moment the run starts its participants
-// (`participants[].startAfterMs`). The plan simulates the start queue to report the schedule and
+// When each participant of a computer-use or shared-world run starts, and on computer use when it
+// ends. A study may give each participant an offset from the moment the run starts its participants
+// (`participants[].startAfterMs`) and, on computer use, an end on the same clock
+// (`participants[].endAfterMs`), with a wind-down before it in which each turn tells the
+// participant the time left (`windDownMs`). The plan simulates the start queue to report the schedule and
 // when the last session ends at the latest; the routes start their participants through
 // runOnSchedule, which waits for each one's time and then for a free slot. A participant's desktop
 // is created when it starts, so a late start holds no sandbox before then.
@@ -26,6 +28,122 @@ export function isStartAfterMs(value: unknown): value is number {
     value >= 0 &&
     value <= LATEST_START_AFTER_MS
   );
+}
+
+/** How long before its end a participant is told the time left, unless it declares `windDownMs`. */
+export const DEFAULT_WIND_DOWN_MS = 10 * 60_000;
+
+/**
+ * Room a scheduled participant's session keeps past its end for the turn in flight and the closing
+ * report. The loop ends the session at the end; this keeps the session's own time limit, and the
+ * sandbox sized from it, from cutting the closing report short.
+ */
+const SCHEDULED_END_ROOM_MS = 5 * 60_000;
+
+/** A participant's declared window: when it starts and when it ends, on the run's clock. */
+export interface ParticipantWindow {
+  readonly id?: string;
+  readonly startAfterMs?: number;
+  readonly endAfterMs?: number;
+  readonly windDownMs?: number;
+}
+
+/**
+ * Why a participant's declared end cannot run, or undefined: an end that is not a whole number of
+ * milliseconds up to 24 hours, one at or before its start, or a wind-down that is not a whole
+ * number of milliseconds or has no end. `path` names the entry, as in "participants[1]".
+ */
+export function windowReason(
+  entry: {
+    readonly id?: string;
+    readonly startAfterMs?: number;
+    readonly endAfterMs?: unknown;
+    readonly windDownMs?: unknown;
+  },
+  path: string,
+): string | undefined {
+  const { endAfterMs, windDownMs } = entry;
+  if (windDownMs !== undefined && endAfterMs === undefined)
+    return `${path}.windDownMs is how long before its endAfterMs a participant is told the time left, so it needs ${path}.endAfterMs. Add the end, or remove windDownMs.`;
+  if (windDownMs !== undefined && !isStartAfterMs(windDownMs))
+    return `${path}.windDownMs must be a whole number of milliseconds from 0 to ${LATEST_START_AFTER_MS} (24 hours): how long before its end the participant is told the time left.`;
+  if (endAfterMs === undefined) return undefined;
+  if (!isStartAfterMs(endAfterMs))
+    return `${path}.endAfterMs must be a whole number of milliseconds up to ${LATEST_START_AFTER_MS} (24 hours): when the participant's session ends, after the run starts its participants.`;
+  const startAfterMs = entry.startAfterMs ?? 0;
+  if (endAfterMs <= startAfterMs) {
+    const who = entry.id === undefined ? "" : ` ("${entry.id}")`;
+    return `${path}.endAfterMs${who} is ${endAfterMs} ms and its startAfterMs is ${startAfterMs} ms, so it would end before it starts. Set endAfterMs after startAfterMs.`;
+  }
+  return undefined;
+}
+
+/**
+ * A participant's session budget: with a declared end, its window plus SCHEDULED_END_ROOM_MS in
+ * place of the study's `sessionMs` (execution.timeoutMs or its default); else `sessionMs`.
+ */
+export function participantSessionMs(participant: ParticipantWindow, sessionMs: number): number {
+  if (participant.endAfterMs === undefined) return sessionMs;
+  return participant.endAfterMs - (participant.startAfterMs ?? 0) + SCHEDULED_END_ROOM_MS;
+}
+
+/**
+ * When a participant that was due at `scheduledAt` (runOnSchedule's ScheduledStart) ends, on the
+ * same clock, or undefined when it declares no end. A participant that waited for a slot still ends
+ * at its declared time.
+ */
+export function scheduledEndAt(
+  participant: ParticipantWindow,
+  scheduledAt: number,
+): { readonly atMs: number; readonly windDownMs: number } | undefined {
+  if (participant.endAfterMs === undefined) return undefined;
+  return {
+    atMs: scheduledAt - (participant.startAfterMs ?? 0) + participant.endAfterMs,
+    windDownMs: participant.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+  };
+}
+
+/**
+ * Why the sandbox of the first participant whose window passes `ceilingMs` cannot live that long,
+ * or undefined. Its deadline is its session (participantSessionMs) plus `headroomMs`, what the
+ * route adds to a session for setup and teardown (sandboxHeadroomMs).
+ */
+export function windowDeadlineRefusal(
+  participants: readonly ParticipantWindow[],
+  sandbox: { readonly sessionMs: number; readonly headroomMs: number },
+  ceilingMs: number,
+): string | undefined {
+  const inMinutes = (ms: number) => Math.round(ms / 60_000);
+  for (const participant of participants) {
+    if (participant.endAfterMs === undefined) continue;
+    const deadlineMs = participantSessionMs(participant, sandbox.sessionMs) + sandbox.headroomMs;
+    if (deadlineMs <= ceilingMs) continue;
+    const name = participant.id === undefined ? "A participant" : `Participant "${participant.id}"`;
+    return `${name} works from +${formatDuration(participant.startAfterMs ?? 0)} to +${formatDuration(participant.endAfterMs)}, so its sandbox needs a ${inMinutes(deadlineMs)}m deadline: the window, ${inMinutes(SCHEDULED_END_ROOM_MS)}m for its closing report and ${inMinutes(sandbox.headroomMs)}m to set up and tear down. A sandbox may not live longer than ${ceilingMs / 60_000}m. Shorten its window.${ceilingAdvice(deadlineMs)}`;
+  }
+  return undefined;
+}
+
+/**
+ * Each participant's window for `study check`, when any participant declares an end: when it starts
+ * and ends and when it is first told the time left, or when it starts and its session budget.
+ */
+export function describeWindows(
+  participants: readonly ParticipantWindow[],
+  sessionMs: number,
+): string | undefined {
+  if (!participants.some((participant) => participant.endAfterMs !== undefined)) return undefined;
+  const windows = participants.map((participant) => {
+    const start = `${participant.id ?? "participant"} from +${formatDuration(participant.startAfterMs ?? 0)}`;
+    if (participant.endAfterMs === undefined)
+      return `${start} for up to ${formatDuration(sessionMs)}`;
+    const told = Math.max(
+      participant.startAfterMs ?? 0,
+      participant.endAfterMs - (participant.windDownMs ?? DEFAULT_WIND_DOWN_MS),
+    );
+    return `${start} to +${formatDuration(participant.endAfterMs)}, told the time left from +${formatDuration(told)}`;
+  });
+  return `${windows.join("; ")}.`;
 }
 
 /** The refusal of a start offset that is not one, naming its `field`. */
@@ -86,14 +204,17 @@ export interface StartQueue {
  * The schedule a roster's declared offsets give under the queue (`undefined` is 0: the participant
  * starts with the run). Participants start in schedule order, by offset and then roster position,
  * each at its time or when a slot frees, whichever is later; this is the rule runOnSchedule
- * follows.
+ * follows. `sessionsMs` gives a participant with a declared end its own session budget
+ * (participantSessionMs); the others hold their slot for `queue.sessionMs`.
  */
 export function planArrivals(
   offsets: readonly (number | undefined)[],
   queue: StartQueue,
+  sessionsMs: readonly number[] = [],
 ): ArrivalPlan {
   const due = offsets.map((offset) => offset ?? 0);
-  const starts = queueStarts(due, queue);
+  const session = (index: number) => sessionsMs[index] ?? queue.sessionMs;
+  const starts = queueStarts(due, queue, session);
   let waiting = 0;
   let longestWaitMs = 0;
   for (const [index, start] of starts.entries()) {
@@ -105,10 +226,10 @@ export function planArrivals(
     declared: offsets.some((offset) => offset !== undefined),
     firstStartMs: Math.min(...due),
     lastStartMs: Math.max(...due),
-    peak: mostAtOnce(starts, queue.sessionMs),
+    peak: mostAtOnce(starts, session),
     waiting,
     longestWaitMs,
-    lastEndMs: Math.max(...starts) + queue.sessionMs,
+    lastEndMs: Math.max(...starts.map((start, index) => start + session(index))),
     sessionMs: queue.sessionMs,
   };
 }
@@ -133,13 +254,14 @@ export function describeArrivals(arrivals: ArrivalPlan): string {
  * roster in waves.
  */
 export function planStarts(
-  participants: readonly { readonly startAfterMs?: number }[],
+  participants: readonly ParticipantWindow[],
   queue: StartQueue,
   lowered: string | undefined,
 ): { arrivals: ArrivalPlan; warnings: string[] } {
   const arrivals = planArrivals(
     participants.map((participant) => participant.startAfterMs),
     queue,
+    participants.map((participant) => participantSessionMs(participant, queue.sessionMs)),
   );
   return { arrivals, warnings: startQueueWarnings(arrivals, queue, lowered) };
 }
@@ -196,8 +318,12 @@ function scheduleOrder(due: readonly number[]): number[] {
   return due.map((_, index) => index).sort((a, b) => due[a]! - due[b]! || a - b);
 }
 
-/** Each participant's start in roster order, when every session holds its slot for `sessionMs`. */
-function queueStarts(due: readonly number[], queue: StartQueue): number[] {
+/** Each participant's start in roster order, when each session holds its slot for `session(index)`. */
+function queueStarts(
+  due: readonly number[],
+  queue: StartQueue,
+  session: (index: number) => number,
+): number[] {
   const starts = [...due];
   const queued = scheduleOrder(due).filter((index) => index !== queue.ownSlot);
   const pooled = queue.ownSlot === undefined ? queue.slots : queue.slots - 1;
@@ -207,17 +333,17 @@ function queueStarts(due: readonly number[], queue: StartQueue): number[] {
     const slot = free.indexOf(Math.min(...free));
     const start = Math.max(due[index]!, free[slot]!);
     starts[index] = start;
-    free[slot] = start + queue.sessionMs;
+    free[slot] = start + session(index);
   }
   return starts;
 }
 
-function mostAtOnce(starts: readonly number[], sessionMs: number): number {
+function mostAtOnce(starts: readonly number[], session: (index: number) => number): number {
   // An end sorts before a start at the same instant: that slot is free again.
   const changes = starts
-    .flatMap((start) => [
+    .flatMap((start, index) => [
       { at: start, by: 1 },
-      { at: start + sessionMs, by: -1 },
+      { at: start + session(index), by: -1 },
     ])
     .sort((a, b) => a.at - b.at || a.by - b.by);
   let live = 0;

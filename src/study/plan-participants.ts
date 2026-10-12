@@ -1,6 +1,7 @@
 // Who takes part in a study: one record per participant, built from the declared roster or a count.
 // Computer-use and shared-world participants share the desktop fields; each kind adds its own.
 
+import { DEFAULT_WIND_DOWN_MS } from "./arrivals.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
@@ -50,11 +51,20 @@ interface DesktopParticipant extends Participant {
     readonly maxOutputTokens?: number;
     /** actor.maxWaitMs: the longest one wait action lasts. */
     readonly maxWaitMs?: number;
-    /** actor.idleWaitMs: how long a wait with no duration lasts while the participant only waits. */
+    /**
+     * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts
+     * while the participant only waits.
+     */
     readonly idleWaitMs?: number;
+    /** actor.clock.timeZone: the participant's local time zone, which each turn tells it the time in. */
+    readonly timeZone?: string;
   };
   /** When it starts, in ms after the run starts its participants; absent, with the run. */
   readonly startAfterMs?: number;
+  /** Computer use: when it ends, on the same clock; absent, it runs for the study's session budget. */
+  readonly endAfterMs?: number;
+  /** With endAfterMs: how long before the end each turn tells it the time left (default applied). */
+  readonly windDownMs?: number;
 }
 
 /** Only independent computer-use participants consume a task protocol and their own target. */
@@ -108,7 +118,8 @@ function desktopParticipant(
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
   const maxWaitMs = actor?.maxWaitMs;
-  const idleWaitMs = actor?.idleWaitMs;
+  const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
+  const timeZone = actor?.clock?.timeZone;
   return {
     id: participantIdAt(index, entry?.id, kind),
     index,
@@ -130,8 +141,15 @@ function desktopParticipant(
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
       ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
+      ...(timeZone === undefined ? {} : { timeZone }),
     },
     ...(entry?.startAfterMs === undefined ? {} : { startAfterMs: entry.startAfterMs }),
+    ...(entry?.endAfterMs === undefined
+      ? {}
+      : {
+          endAfterMs: entry.endAfterMs,
+          windDownMs: entry.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+        }),
   };
 }
 

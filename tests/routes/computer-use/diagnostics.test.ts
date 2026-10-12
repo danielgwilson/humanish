@@ -41,6 +41,28 @@ describe("CUA diagnostic control evidence", () => {
     ).toEqual({ category: "session_interrupted", stopCause: cause });
   });
 
+  it("reads a scheduled end as the participant's planned outcome, like one it ended itself", () => {
+    const scheduled = cuaParticipantDiagnostics({
+      dryRun: false,
+      session: { status: "passed", completionReason: "goal_satisfied", stopCause: "scheduled_end" },
+    });
+    const ownEnd = cuaParticipantDiagnostics({
+      dryRun: false,
+      session: { status: "passed", completionReason: "goal_satisfied" },
+    });
+    expect(scheduled).toEqual({ category: "participant_outcome" });
+    expect(
+      summarizeCuaDiagnostics({
+        dryRun: false,
+        evidenceInvalid: false,
+        participants: [
+          { status: "passed", ok: true, diagnostics: scheduled },
+          { status: "passed", ok: true, diagnostics: ownEnd },
+        ],
+      }),
+    ).toEqual({ category: "participant_outcome" });
+  });
+
   it("does not invent a provider cause for a legacy budget stop or unknown cause", () => {
     expect(
       cuaParticipantDiagnostics({

@@ -171,6 +171,8 @@ export interface CuaParticipantPlanEntry {
   targetDigest?: string;
   /** The participant's declared start, in ms after the run starts its participants. */
   startAfterMs?: number;
+  /** The participant's declared end, on the same clock. */
+  endAfterMs?: number;
 }
 
 /** The pre-flight spend and participant plan (pure; printed to stderr + recorded as a bundle event before
@@ -488,6 +490,13 @@ export interface ParticipantModelDeps {
   env: Record<string, string | undefined>;
   openaiApiKey: string;
   timeoutMs: number;
+  /**
+   * The participant's scheduled end on `now`'s clock, when it declares participants[].endAfterMs
+   * (scheduledParticipantDeps). Its session ends there with stop cause `scheduled_end`.
+   */
+  scheduledEnd?: { readonly atMs: number; readonly windDownMs: number };
+  /** The run's clock. A participant with a scheduled end runs its session on it. */
+  now: () => number;
   participantCount: number;
   artifactRoot: PreparedOutputRoot;
   redactScreenshots: boolean;

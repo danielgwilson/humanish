@@ -77,19 +77,21 @@ const FIELDS = [
 
 /**
  * Why these wait fields cannot run, or null. `prefix` names their owner in the message: `actor.`
- * in a study file, empty for loop options.
+ * in a study file, empty for loop options. `maxPrefix` names the owner of maxWaitMs when it is
+ * another, as for a participant's own idleWaitMs under actor.maxWaitMs.
  */
 export function waitFieldsReason(
   fields: { readonly maxWaitMs?: unknown; readonly idleWaitMs?: unknown },
   prefix: string,
+  maxPrefix: string = prefix,
 ): string | null {
   for (const [name, meaning] of FIELDS) {
     if (fields[name] !== undefined && !isWaitMs(fields[name]))
-      return `${prefix}${name}, ${meaning}, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMs} to ${CUA_WAIT_LIMITS.mostMs}.`;
+      return `${name === "maxWaitMs" ? maxPrefix : prefix}${name}, ${meaning}, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMs} to ${CUA_WAIT_LIMITS.mostMs}.`;
   }
   const { maxWaitMs, idleWaitMs } = fields;
   if (typeof maxWaitMs === "number" && typeof idleWaitMs === "number" && idleWaitMs > maxWaitMs)
-    return `${prefix}idleWaitMs (${idleWaitMs}) is longer than ${prefix}maxWaitMs (${maxWaitMs}), the longest one wait action lasts. Lower ${prefix}idleWaitMs or raise ${prefix}maxWaitMs.`;
+    return `${prefix}idleWaitMs (${idleWaitMs}) is longer than ${maxPrefix}maxWaitMs (${maxWaitMs}), the longest one wait action lasts. Lower ${prefix}idleWaitMs or raise ${maxPrefix}maxWaitMs.`;
   return null;
 }
 
