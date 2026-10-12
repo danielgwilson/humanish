@@ -17,6 +17,7 @@ import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunStudyOptions } from "../run-study.js";
 import type { StudyDeps } from "./study-deps.js";
 import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
+import { bundleLimitReason, estimateBundle, type BundleEstimate } from "./bundle-estimate.js";
 import { planBase } from "./plan-base.js";
 import type { StudyPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
 import { routeOf, type StudyRoute } from "./routing.js";
@@ -109,6 +110,8 @@ export function planStudy(
   };
   const result = planRoute(routeOf(config), study, options, input, deps, e2b);
   if (!result.ok) return result;
+  const bundle = plannedBundle(result.plan);
+  if (!bundle.ok) return bundle;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
   const warnings = [...recordedStudyWarnings(study), ...(result.plan.warnings ?? [])];
@@ -117,7 +120,35 @@ export function planStudy(
     ...(options.study === undefined ? {} : { study: options.study }),
     ...(warnings.length === 0 ? {} : { warnings }),
   };
-  return { ok: true, planned: { plan } };
+  return {
+    ok: true,
+    planned: { plan, ...(bundle.estimate === undefined ? {} : { bundle: bundle.estimate }) },
+  };
+}
+
+/**
+ * The bundle a computer-use plan's participants leave, each session at the plan's budget, or the
+ * refusal of a live plan whose estimate passes a bundle limit. A dry run records no turns.
+ */
+function plannedBundle(
+  plan: StudyPlan,
+):
+  | { readonly ok: true; readonly estimate?: BundleEstimate }
+  | { readonly ok: false; readonly refusal: PlanRefusal } {
+  if (plan.route !== "computer-use") return { ok: true };
+  const estimate = estimateBundle(plan.runner.participants, plan.sessionBudgetMs);
+  const reason = plan.dryRun ? undefined : bundleLimitReason(estimate);
+  if (reason === undefined) return { ok: true, estimate };
+  return {
+    ok: false,
+    refusal: {
+      route: "computer-use",
+      code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
+      message: reason,
+      stage: "after-personas",
+      actor: plan.actor,
+    },
+  };
 }
 
 function planRoute(

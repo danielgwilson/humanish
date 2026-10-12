@@ -78,6 +78,7 @@ spend: none
 After live runs: explicit analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable.
 - ok study file: resolved committed study file
 - ok route: selected the computer-use route
+- ok bundle size: run.json about 0.1 MiB of the 16 MiB analysis reads; largest file about 1.2 MiB of the 32 MiB verify reads; about 62 files and folders of the 20,000 the public-safety scan reads; about 5 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.
 - ok reachability: metadata-only; no network, sandbox, or model calls. Target reachability was not checked.
 - not checked this machine: Credentials, local login and dependencies were not checked. Run humanish doctor --study two-newcomers to check them.
 ```

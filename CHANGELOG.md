@@ -8,6 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `study check` and the plan of a computer-use study estimate its run bundle: the `run.json` size,
+  the largest file, the file count and the total, from each participant's window (`endAfterMs`,
+  else `execution.timeoutMs` up to 3 minutes), a model turn every 10 seconds and any dwell
+  window's frames. `study check` prints the estimate as `bundle size`. A live study whose estimate
+  passes the 16 MiB `run.json` analysis reads, the 32 MiB file verify reads, or the files the
+  public-safety scan reads is refused before any sandbox is created, with
+  `HUMANISH_COMPUTER_USE_FANOUT_INVALID` and a message that names the limit, the estimate and what
+  to change. Five participants working an 8-hour window beside 25 short ones are refused; at 4
+  hours they fit, with an estimated `run.json` of 15.7 MiB (#1766).
+
+### Changed
+
+- The public-safety scan reads 10,000 files and folders of a run plus 5,000 for each participant
+  its `run.json` records, counting at most 128 participants. It read 10,000 for every run, which
+  four participants working 8 hours pass with their screenshots alone (#1766).
+
 ## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 
 humanish 0.122.0 lets a participant end at a scheduled time and keeps one participant's harness

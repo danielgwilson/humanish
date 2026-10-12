@@ -14,6 +14,7 @@ import {
 import { openContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
+import { runEntryLimit } from "./scan-limit.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import {
@@ -29,20 +30,17 @@ import { isZeroEventTerminalTrace } from "./actor.js";
 /** Public-safety and evidence-reference findings stop at this many per list. */
 export const MAX_REPORTED_FINDINGS = 50;
 
-/**
- * The most entries, files and directories, the public-safety scan visits in one run. Bundle export
- * refuses a run with more, so the scan never passes a run whose files it did not all read.
- */
-export const MAX_RUN_ENTRIES = 10_000;
-
 /** What the public-safety scan did not read. A run with any of it cannot grade share_ready. */
 export interface UnscannedArtifacts {
   /** Run files it could not read as text, by run-relative path. */
   readonly files: string[];
   /** Folders it could not list, by run-relative path ("" is the run folder). */
   readonly unlistedFolders: string[];
-  /** The folder it was listing when it reached MAX_RUN_ENTRIES. It read nothing listed after. */
-  stoppedIn?: string;
+  /**
+   * Where the scan stopped: the folder it was listing when it passed its entry limit
+   * (runEntryLimit) and that limit. It read nothing listed after.
+   */
+  stopped?: { readonly folder: string; readonly limit: number };
 }
 
 // The UNSCANNED_ARTIFACT reason names this many paths of each kind and counts the rest.
@@ -64,12 +62,12 @@ export function unscannedMessage(unscanned: UnscannedArtifacts): string | undefi
     sentences.push(
       `The public-safety scan could not list ${plural(folders.length, "folder")}, so it read none of the files in ${folders.length === 1 ? "it" : "them"}: ${listed(folders)}.`,
     );
-  if (unscanned.stoppedIn !== undefined)
+  if (unscanned.stopped !== undefined)
     sentences.push(
-      `The public-safety scan stopped at its limit of ${MAX_RUN_ENTRIES} files and folders while listing ${folderName(unscanned.stoppedIn)}, so it read nothing listed after that point.`,
+      `The public-safety scan stopped at its limit of ${unscanned.stopped.limit} files and folders while listing ${folderName(unscanned.stopped.folder)}, so it read nothing listed after that point.`,
     );
   if (sentences.length === 0) return undefined;
-  const onlyFiles = folders.length === 0 && unscanned.stoppedIn === undefined;
+  const onlyFiles = folders.length === 0 && unscanned.stopped === undefined;
   sentences.push(
     onlyFiles ? "Review them before sharing." : "Review the run folder before sharing.",
   );
@@ -435,19 +433,21 @@ interface RegisteredStreamMedia {
  * registered stream media and that the scan cannot read as text (readPlainText), cannot read at
  * all, or that holds more than RUN_ARTIFACT_MAX_BYTES goes to `unscanned.files`, so the caller can
  * keep the run from grading share_ready. A directory it cannot list goes to
- * `unscanned.unlistedFolders`, and the directory it was listing when it passed MAX_RUN_ENTRIES
- * entries is `unscanned.stoppedIn`.
+ * `unscanned.unlistedFolders`. It visits at most runEntryLimit(`participants`) entries, the
+ * participants the run's run.json records, and where it stopped past them is `unscanned.stopped`.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
   derivedFindings: string[],
   media: RegisteredStreamMedia,
   unscanned: UnscannedArtifacts,
+  participants: number,
 ): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
   await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned, {
     entries: 0,
+    limit: runEntryLimit(participants),
   });
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
@@ -460,7 +460,7 @@ async function scanRunPublicSafetyDirectory(
   derivedFindings: string[],
   media: RegisteredStreamMedia,
   unscanned: UnscannedArtifacts,
-  walk: { entries: number },
+  walk: { entries: number; readonly limit: number },
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -478,9 +478,9 @@ async function scanRunPublicSafetyDirectory(
   }
   for (const entryName of entries) {
     walk.entries += 1;
-    if (walk.entries > MAX_RUN_ENTRIES) {
+    if (walk.entries > walk.limit) {
       // Every directory the walk returns through comes here once more; the first one stopped it.
-      unscanned.stoppedIn ??= relativeDirectory;
+      unscanned.stopped ??= { folder: relativeDirectory, limit: walk.limit };
       return;
     }
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
