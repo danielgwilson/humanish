@@ -55,23 +55,37 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # The release PR's CI already ran the gate on the same tree the squash merge produced, so
+          # its finished checks stand in for main's push run, which only starts at the merge. Any
+          # other tagged commit waits for its own run.
+          gate_sha="$GITHUB_SHA"
+          pr_head="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            -q '[.[] | select(.merged_at != null)] | first | .head.sha // ""')"
+          if [ -n "$pr_head" ]; then
+            tag_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${GITHUB_SHA}" -q .tree.sha)"
+            pr_tree="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${pr_head}" -q .tree.sha)"
+            if [ "$pr_tree" = "$tag_tree" ]; then
+              gate_sha="$pr_head"
+              echo "Reading the release PR's checks on $pr_head, whose tree is the tagged tree."
+            fi
+          fi
           deadline=$((SECONDS + 2400))
           for name in "test (node-floor)" "test (node-lts)" "secret-scan"; do
             while :; do
               # Empty while any run of the check is unfinished (a rerun included), else the latest
               # run's conclusion.
-              conclusion="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+              conclusion="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/commits/${gate_sha}/check-runs" \
                 -f check_name="$name" -q 'if (.check_runs | length) == 0 or any(.check_runs[]; .status != "completed") then "" else (.check_runs | sort_by(.completed_at) | last | .conclusion) end')"
               if [ "$conclusion" = "success" ]; then
                 echo "$name: success"
                 break
               fi
               if [ -n "$conclusion" ]; then
-                echo "::error::CI check '$name' on $GITHUB_SHA concluded $conclusion. Fix or rerun it before publishing."
+                echo "::error::CI check '$name' on $gate_sha concluded $conclusion. Fix or rerun it before publishing."
                 exit 1
               fi
               if [ "$SECONDS" -ge "$deadline" ]; then
-                echo "::error::CI check '$name' on $GITHUB_SHA did not finish within 40 minutes."
+                echo "::error::CI check '$name' on $gate_sha did not finish within 40 minutes."
                 exit 1
               fi
               sleep 20
