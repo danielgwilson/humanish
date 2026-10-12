@@ -142,6 +142,7 @@ describe("runGate and the pre-push hook", () => {
     const { work, push } = await repo();
     const result = await gate(work, [{ name: "check", command: passesUnderCi }]);
     expect(result.code, result.output).toBe(0);
+    expect(result.output).toMatch(/^check {2}passed in \d+\.\d s$/m);
 
     git(work, "commit", "--quiet", "--amend", "-m", "first, reworded");
     expect(push("origin", "HEAD:refs/heads/topic").status).toBe(0);

@@ -144,7 +144,7 @@ export async function runGate({ cwd, plan, write }) {
     const { code, signal } = await runStage(stage.command, cwd, join(cwd, log));
     const seconds = Math.round((performance.now() - started) / 100) / 10;
     if (code === 0) {
-      write(`passed in ${seconds} s\n`);
+      write(`passed in ${seconds.toFixed(1)} s\n`);
       passed.push({ name: stage.name, seconds });
       continue;
     }
@@ -153,7 +153,7 @@ export async function runGate({ cwd, plan, write }) {
       : code === null
         ? "no exit code"
         : `exit code ${code}`;
-    write(`failed with ${ending} after ${seconds} s\n`);
+    write(`failed with ${ending} after ${seconds.toFixed(1)} s\n`);
     write(
       `--- last ${TAIL_LINES} lines of ${log} ---\n${lastLines(join(cwd, log), TAIL_LINES)}\n---\n`,
     );

@@ -26,7 +26,7 @@ const paths = changedPaths();
 write(
   paths === undefined
     ? `gate: no merge-base with ${BASE}, so every stage runs.\n`
-    : `gate: ${paths.length} paths changed since the merge-base with ${BASE}.\n`,
+    : `gate: ${paths.length} ${paths.length === 1 ? "path" : "paths"} changed since the merge-base with ${BASE}.\n`,
 );
 try {
   process.exitCode = await runGate({
