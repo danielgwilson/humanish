@@ -30,12 +30,28 @@ disposable browser VM on your machine. On the computer-use route a model drives 
 participant: every turn it reads a screenshot and answers with mouse and keyboard actions, until
 the participant finishes, gets stuck or reaches a limit.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://humanish.dev/runs/lobby-0927/observer-player-dark.webp">
+  <img alt="The Observer with one participant open: its desktop during a round of a movie-guessing game, replay controls and a filmstrip of captures below, and on the right its trace, with the participant's reasoning and each TAB and ENTER keypress" src="https://humanish.dev/runs/lobby-0927/observer-player-light.webp">
+</picture>
+
+Player four from the run above, a keyboard-only participant: its screen, and beside it each
+keypress and the reasoning it wrote before acting.
+
 The run writes its evidence to gitignored `.humanish/runs/<run id>/`: screenshots, every
 action, each participant's report and the estimated cost. The Observer replays it,
 `humanish review` prints the findings of the analysis that follows a live run, and
 `humanish verify` grades whether the evidence is safe to share.
 [How a study works](https://humanish.dev/docs/concepts) walks through one annotated study file,
 and the [study file reference](https://humanish.dev/docs/study-files) lists every field.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://humanish.dev/runs/lobby-0927/observer-findings-dark.webp">
+  <img alt="The Observer's Findings tab: the first of seven findings, that three participants found keyboard guessing hard to track and one stopped mid-game, with the analysis's summary, what to check next, a cited capture and the timeline of evidence moments behind it" src="https://humanish.dev/runs/lobby-0927/observer-findings-light.webp">
+</picture>
+
+The first of the seven findings the analysis wrote for the same run, with the evidence moments
+it cites.
 
 ## Try it without keys
 
