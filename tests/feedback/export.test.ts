@@ -255,6 +255,32 @@ describe("humanish export", () => {
     );
   });
 
+  it("exports a v2 page with the run's current participants, not the page's saved ones", async () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+    // A page rendered while the first participant was still running.
+    const current = buildObserverData(bundle);
+    const { actor, ...running } = current.streams[0]!;
+    const stale = {
+      ...current,
+      streams: [
+        {
+          ...running,
+          liveActor: { schema: "humanish.live-actor.v1", updatedAt: "t", items: [] },
+        },
+        ...current.streams.slice(1),
+      ],
+    } as ObserverData;
+    await writeFile(path.join(runDir, "observer", "index.html"), renderObserverHtml(stale));
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = readObserverPage(await readFile(path.join(cwd, result.path), "utf8"));
+    expect(exported.streams[0]!.liveActor).toBeUndefined();
+    expect(exported.streams[0]!.actor?.items.map((item) => item.id)).toEqual(
+      actor!.items.map((item) => item.id),
+    );
+  });
+
   it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     const stream = bundle.streams[0]!;

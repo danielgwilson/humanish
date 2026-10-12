@@ -13,6 +13,8 @@ export const OBSERVER_ITEMS_SCHEMA = "humanish.observer-items.v1";
 type ObserverShellStream = Omit<ObserverStream, "actor" | "liveActor"> & {
   actor?: Omit<NonNullable<ObserverStream["actor"]>, "items">;
   liveActor?: Omit<NonNullable<ObserverStream["liveActor"]>, "items">;
+  /** How many screenshot entries of `artifacts` travel with the items, when any do. */
+  screenshotArtifacts?: number;
 };
 
 /** observer-data.json: the Observer's data with no participant's trace items. */
@@ -53,6 +55,7 @@ export function splitObserverData(data: ObserverData): {
     ) {
       entry.artifacts = stream.artifacts;
       shell.artifacts = stream.artifacts.filter((artifact) => artifact.kind !== "screenshot");
+      shell.screenshotArtifacts = stream.artifacts.length - shell.artifacts.length;
     }
     if (actor !== undefined) {
       const { items: actorItems, ...summary } = actor;
@@ -83,9 +86,23 @@ export function itemsCoverShell(shell: ObserverShell, items: ObserverItems): boo
     const entry = Object.hasOwn(items.streams, stream.id) ? items.streams[stream.id] : undefined;
     return (
       (stream.actor === undefined || Array.isArray(entry?.actor)) &&
-      (stream.liveActor === undefined || Array.isArray(entry?.liveActor))
+      (stream.liveActor === undefined || Array.isArray(entry?.liveActor)) &&
+      (stream.screenshotArtifacts === undefined ||
+        (Array.isArray(entry?.artifacts) &&
+          entry.artifacts.filter((artifact) => artifact.kind === "screenshot").length ===
+            stream.screenshotArtifacts))
     );
   });
+}
+
+/** Whether the data leaves out items or screenshot entries that only an items document holds. */
+export function shellNeedsItems(shell: ObserverShell): boolean {
+  return shell.streams.some(
+    (stream) =>
+      stream.actor !== undefined ||
+      stream.liveActor !== undefined ||
+      stream.screenshotArtifacts !== undefined,
+  );
 }
 
 /**
@@ -99,7 +116,7 @@ export function joinObserverData(shell: ObserverShell, items: ObserverItems | nu
     ...shell,
     streams: shell.streams.map((stream): ObserverStream => {
       const entry = Object.hasOwn(byStream, stream.id) ? byStream[stream.id] : undefined;
-      const { actor, liveActor, ...rest } = stream;
+      const { actor, liveActor, screenshotArtifacts: _moved, ...rest } = stream;
       return {
         ...rest,
         artifacts: entry?.artifacts ?? stream.artifacts,

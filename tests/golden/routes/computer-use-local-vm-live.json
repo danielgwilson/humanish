@@ -365,7 +365,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       }
     ],
     "events": "[same as run.json events]",

@@ -248,7 +248,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Passed",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 4
       }
     ],
     "events": "[same as run.json events]",

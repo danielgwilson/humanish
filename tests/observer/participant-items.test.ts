@@ -79,6 +79,10 @@ describe("the Observer's data apart from its participants' items", () => {
     expect(itemsCoverShell(shell, items)).toBe(true);
     expect(itemsCoverShell(shell, { ...items, runId: "another-run" })).toBe(false);
     expect(itemsCoverShell(shell, { ...items, streams: {} })).toBe(false);
+    const withoutScreenshots = Object.fromEntries(
+      Object.entries(items.streams).map(([id, { artifacts: _moved, ...entry }]) => [id, entry]),
+    );
+    expect(itemsCoverShell(shell, { ...items, streams: withoutScreenshots })).toBe(false);
   });
 
   it("shows a participant with no recorded steps when the items are missing or another run's", async () => {

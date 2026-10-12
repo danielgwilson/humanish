@@ -1015,7 +1015,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       },
       {
         "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
@@ -1024,7 +1025,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       },
       {
         "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
@@ -1033,7 +1035,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       },
       {
         "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts actor",
@@ -1042,7 +1045,8 @@
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": "[same as run.json events for this stream]"
+        "timeline": "[same as run.json events for this stream]",
+        "screenshotArtifacts": 2
       }
     ],
     "events": "[same as run.json events]",

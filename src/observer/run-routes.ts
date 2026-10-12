@@ -336,11 +336,10 @@ async function savedObserverData(
       path.join(runRoot.physicalPath, "observer", "observer-data.json"),
     );
     if (!observerBytes) throw new Error("observer-data.json unavailable");
+    const saved = observerDataFromSaved(JSON.parse(observerBytes.toString("utf8")));
+    if (saved === null) throw new Error("observer-data.json holds no participant's items");
     return withRuntimeStreamUrls(
-      withLocalRunStatus(
-        record,
-        withObserverEndings(observerDataFromSaved(JSON.parse(observerBytes.toString("utf8")))),
-      ),
+      withLocalRunStatus(record, withObserverEndings(saved)),
       runtimeStreamUrls,
     );
   } catch {

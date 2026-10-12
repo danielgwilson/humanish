@@ -21,11 +21,6 @@ import {
   observerDataFromSaved,
   type ObserverData,
 } from "../observer/data.js";
-import {
-  joinObserverData,
-  splitObserverData,
-  type ObserverShell,
-} from "../observer/participant-items.js";
 import { resolveRunPath } from "../run/locate.js";
 import { loadRunTraces, StreamTraceRefusedError } from "../run/stream-trace.js";
 import { verifyRun, type VerifyResult } from "../verify/verify.js";
@@ -367,9 +362,9 @@ async function readObserverSlot(
 /**
  * The Observer data to export. A current report must travel with the current source projection,
  * even if an older saved HTML was never refreshed; old recording-only exports keep the saved slot.
- * A saved v2 slot holds no participant's items, and verify does not read the page's compressed
- * copy, so they come from the run's traces. Undefined when run.json no longer matches the analysis,
- * or a v2 slot's traces cannot be read.
+ * A page saved since observer-data v2 holds no participant's items in its slot, and verify does not
+ * read the page's compressed copy, so its export is the current projection of the run and its
+ * traces. Undefined when run.json no longer matches the analysis, or a v2 page's run cannot be read.
  */
 async function currentObserverData(
   runPaths: RunPaths,
@@ -383,9 +378,7 @@ async function currentObserverData(
     if (schema === "humanish.observer-data.v1") return { value: observerDataFromSaved(saved) };
     if (schema !== OBSERVER_DATA_SCHEMA) return { value: saved };
     const bundle = await sourceTraces(runPaths, await source());
-    if (bundle === undefined) return undefined;
-    const { items } = splitObserverData(buildObserverData(bundle));
-    return { value: joinObserverData(saved as ObserverShell, items) };
+    return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
   }
   const bytes = await source();
   if (
