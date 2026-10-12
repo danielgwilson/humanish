@@ -205,26 +205,6 @@ describe("the run writer's live items", () => {
     expect(await readText("live/1.2.ndjson")).toBe(line(a) + line(b) + line(c));
   });
 
-  it("scrubs a known sandbox id from new items, and rewrites a generation that holds one learned later", async () => {
-    const early = item(1, "The page names synthetic-sandbox-one in its footer.");
-    const later = item(2, "synthetic-sandbox-one again.");
-    await withRun(async (run) => {
-      await run.writeSnapshot(inProgress([early]));
-      expect(await readText("live/1.1.ndjson")).toContain("synthetic-sandbox-one");
-      await appendSandboxReceipt(run.paths, {
-        at: "2026-10-12T08:00:05.000Z",
-        laneId: "participant-1",
-        sandboxId: "synthetic-sandbox-one",
-      });
-      await run.writeSnapshot(inProgress([early, later]));
-    });
-    expect(await liveFiles()).toEqual(["1.2.ndjson"]);
-    const text = await readText("live/1.2.ndjson");
-    expect(text).not.toContain("synthetic-sandbox-one");
-    expect(text.split("\n").filter(Boolean)).toHaveLength(2);
-    expect(text).toContain("[redacted-sandbox-id ");
-  });
-
   it("keeps a live file when a later write carries the live actor as run.json indexes it", async () => {
     const [a, b] = [item(1), item(2)];
     await withRun(async (run) => {
@@ -257,6 +237,48 @@ describe("the run writer's live items", () => {
     });
     await expect(stat(path.join(runDir(), "live"))).rejects.toThrow(/ENOENT/);
     expect(JSON.parse(await readText("run.json")).streams[0].liveActor).toBeUndefined();
+  });
+});
+
+describe("the run writer's scrub of sandbox ids in live files", () => {
+  it("scrubs a known sandbox id from new items, and rewrites a generation that holds one learned later", async () => {
+    const early = item(1, "The page names synthetic-sandbox-one in its footer.");
+    const later = item(2, "synthetic-sandbox-one again.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([early]));
+      expect(await readText("live/1.1.ndjson")).toContain("synthetic-sandbox-one");
+      await appendSandboxReceipt(run.paths, {
+        at: "2026-10-12T08:00:05.000Z",
+        laneId: "participant-1",
+        sandboxId: "synthetic-sandbox-one",
+      });
+      await run.writeSnapshot(inProgress([early, later]));
+    });
+    expect(await liveFiles()).toEqual(["1.2.ndjson"]);
+    const text = await readText("live/1.2.ndjson");
+    expect(text).not.toContain("synthetic-sandbox-one");
+    expect(text.split("\n").filter(Boolean)).toHaveLength(2);
+    expect(text).toContain("[redacted-sandbox-id ");
+  });
+
+  it("rewrites a generation that holds a sandbox id learned in a write that carries the live actor as its index", async () => {
+    const sandboxId = "synthetic-sandbox-two";
+    const early = item(1, "The page names synthetic-sandbox-two in its footer.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([early]));
+      await appendSandboxReceipt(run.paths, {
+        at: "2026-10-12T08:00:05.000Z",
+        laneId: "participant-1",
+        sandboxId,
+      });
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      await run.writeSnapshot({ ...inProgress([early]), streams: stored.streams });
+    });
+    const files = await liveFiles();
+    for (const file of files) expect(await readText(`live/${file}`), file).not.toContain(sandboxId);
+    expect(files).toEqual(["1.2.ndjson"]);
+    const loaded = await readRunWithTraces(runDir());
+    expect(loaded.streams[0]!.liveActor?.items).toHaveLength(1);
   });
 });
 

@@ -90,14 +90,17 @@ export function liveItemsFromBytes(
 export interface LiveItemsWriter {
   /**
    * `streams` with each running participant's items in its live file: every `liveActor` that
-   * carries `items` becomes humanish.live-actor.v2 with `itemsFile` in their place. Items past what
-   * the participant's current generation holds are appended, each through publicSandboxView with
-   * `sandboxIds`; a new generation holding the full list starts when appending cannot keep the
-   * file equal to the list. Every byte is on disk when this resolves, so a run.json written after
-   * it indexes nothing missing. Call `published` once run.json naming the returned streams is
-   * written: it removes every superseded generation those streams do not name, including the file
-   * of a stream that no longer carries live items. A generation whose removal fails, or whose
-   * write's run.json failed so `published` never ran, is removed by the next `published`.
+   * carries `items` becomes humanish.live-actor.v2 with `itemsFile` in their place. A `liveActor`
+   * that already carries `itemsFile` (a bundle built from a run.json this writer wrote) carries the
+   * list this writer last wrote for its position, and gets the same checks; at a position where
+   * this writer holds no generation, it is kept as given. Items past what the participant's current
+   * generation holds are appended, each through publicSandboxView with `sandboxIds`; a new
+   * generation holding the full list starts when appending cannot keep the file equal to the list.
+   * Every byte is on disk when this resolves, so a run.json written after it indexes nothing
+   * missing. Call `published` once run.json naming the returned streams is written: it removes
+   * every superseded generation those streams do not name, including the file of a stream that no
+   * longer carries live items. A generation whose removal fails, or whose write's run.json failed
+   * so `published` never ran, is removed by the next `published`.
    */
   write(
     streams: readonly RunStream[],
@@ -218,16 +221,21 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
       const live = new Set<number>();
       const written: RunStream[] = [];
       for (const [index, stream] of streams.entries()) {
+        const position = index + 1;
         const liveActor = stream.liveActor;
-        if (liveActor === undefined || !Array.isArray(liveActor.items)) {
-          // A live actor already written as its index still names its file, which stays.
-          if (liveActor?.itemsFile !== undefined) live.add(index + 1);
+        // A live actor written as its index carries what its generation holds, so an id learned
+        // now is looked for in that generation too before the ids count as known.
+        const items = Array.isArray(liveActor?.items)
+          ? liveActor.items
+          : liveActor?.itemsFile === undefined
+            ? undefined
+            : current.get(position)?.written;
+        if (liveActor === undefined || items === undefined) {
           written.push(stream);
           continue;
         }
-        const position = index + 1;
         live.add(position);
-        const held = await writeItems(position, liveActor.items, sandboxIds, learned);
+        const held = await writeItems(position, items, sandboxIds, learned);
         const { items: _items, ...summary } = liveActor;
         const itemsFile: LiveItemsIndex = {
           path: held.path,
