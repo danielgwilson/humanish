@@ -285,9 +285,12 @@ export async function appendContainedOutputFile(
   const before = await lstat(filePath, { bigint: true });
   if (!before.isFile() || before.nlink > 1n)
     throw new Error(`${relativePath} is not a single-link regular file.`);
+  // O_NONBLOCK: a file swapped for a FIFO after the lstat fails the open at once (no reader), where
+  // a blocking open would wait for a reader and hold up every later write in the run's queue.
+  // Writes to a regular file ignore it.
   const handle = await open(
     filePath,
-    constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW,
+    constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW | constants.O_NONBLOCK,
   );
   try {
     const after = await handle.stat({ bigint: true });
