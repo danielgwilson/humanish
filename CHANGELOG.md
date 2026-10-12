@@ -8,38 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 
-- A computer-use participant can end at a set time: `participants[].endAfterMs`, on the same
-  clock as `startAfterMs`, with `windDownMs` (default 10 minutes). From the start of the
-  wind-down each turn tells the participant the end time and the minutes left. At the end the
-  participant is asked for its closing report, and its session ends as passed with stop cause
-  `scheduled_end`. Before its end, a turn that only waits counts toward neither the idle nor the
-  no-progress backstop, so a staff participant can wait out a quiet shift. A participant that
-  ends its own session before its end is told the time left and keeps going; repeated attempts
-  to end count toward the idle backstop. Its session lasts its window plus 5 minutes in place of
-  `execution.timeoutMs`, and its sandbox deadline is sized from that, so a short patient and a
-  long staff shift can share a study. The plan refuses an end at or before the start, a window
-  whose sandbox would outlive the sandbox ceiling, and an end on `shared-world`. `study check`
-  prints each participant's window, and the plan line shows `end=+<time>` (#1764).
-- `actor.clock: { timeZone }` adds the local time in that time zone (a tz database name such as `Europe/London`) to each computer-use turn, and
-  gives a scheduled end in that zone (#1764).
-- `participants[].idleWaitMs`, also on `count:` groups, sets one participant's idle wait over
-  `actor.idleWaitMs`, so a staff member can wait a minute at a time while patients keep 5
-  seconds. It takes the same range and is refused above an explicit `actor.maxWaitMs`; the
-  participant's trace records it in `waitSettings` (#1764).
+humanish 0.122.0 lets a participant end at a scheduled time and keeps one participant's harness
+error from stopping the rest of a study. `participants[].endAfterMs`, on the same clock as
+`startAfterMs`, ends a participant's session at that time with stop cause `scheduled_end`,
+counted as reaching the goal; from `endAfterMs - windDownMs` (10 minutes by default) each turn
+tells the participant the end time and the minutes left, its turns that only wait no longer count
+toward the idle limits before then, and its sandbox is sized from its own window. `actor.clock {
+timeZone }` adds the local time to each turn, and `participants[].idleWaitMs` sets one
+participant's wait length, so staff on a long shift can check the screen less often than patients.
+A participant's harness error now ends only that participant: the study-wide fail-fast is removed,
+and every later participant starts on its schedule.
 
-### Fixed
-
-- One participant's harness error in a hosted computer-use study no longer skips the participants
-  after it. The first harness error in a session tripped a study-wide fail-fast, so every
-  participant still due by `startAfterMs`, or waiting for a free slot, was recorded `blocked` with
-  "a prior participant (<id>) ended in a harness error (fail-fast)", and a 4-hour study lost
-  everything after one desktop stall. A harness error now ends only that participant: the run
-  records it as failed with its reason in its lane, its review gap line and its events.ndjson
-  event, and every later participant starts at its time. The `cua-lab.fanout.fail-fast` event is
-  no longer written. A `clone`, `local-tree` or `desktop-cli` subject that fails to set up in the
-  first participant's sandbox still blocks the rest (#1765).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.122.0)
 
 ## 0.121.0: One failed desktop fails alone, host sleep named as the cause (2026-10-10)
 
