@@ -4,6 +4,9 @@ name: Caps
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+  # A merge group carries diffs whose cap direction their PRs already passed; the check reads a
+  # PR's label and body, which a merge group does not have, so there it reports success.
+  merge_group:
 
 permissions:
   contents: read
@@ -24,7 +27,8 @@ jobs:
         with:
           node-version: "24"
 
-      - run: node scripts/check-cap-direction.mjs --base "origin/$BASE_REF"
+      - if: github.event_name == 'pull_request'
+        run: node scripts/check-cap-direction.mjs --base "origin/$BASE_REF"
         env:
           BASE_REF: ${{ github.base_ref }}
           RAISE_CAP: ${{ contains(github.event.pull_request.labels.*.name, 'raise-cap') }}
