@@ -1,12 +1,23 @@
 # humanish
 
+[![npm version](https://img.shields.io/npm/v/humanish)](https://www.npmjs.com/package/humanish) [![npm downloads per month](https://img.shields.io/npm/dm/humanish)](https://www.npmjs.com/package/humanish) [![CI status on main](https://img.shields.io/github/actions/workflow/status/danielgwilson/humanish/ci.yml?branch=main&label=CI)](https://github.com/danielgwilson/humanish/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/npm/l/humanish)](LICENSE) [![Node.js version](https://img.shields.io/node/v/humanish)](https://nodejs.org/)
+
 Synthetic user research for apps, CLIs, and agent-facing product flows. AI participants with a persona and a task use your app on real desktops, and each run leaves evidence you can verify: what they did, where they got stuck, and what it cost.
 
-[![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
+<a href="https://humanish.dev/demo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://humanish.dev/runs/lobby-0927/observer-grid-dark.webp">
+    <img alt="The humanish Observer replaying a saved study five minutes into its 13-minute recording: a grid of eight participants' desktops in a multiplayer movie-guessing game, seven in the same round and one held at the join page, under tabs for 8 participants and 7 findings" src="https://humanish.dev/runs/lobby-0927/observer-grid-light.webp">
+  </picture>
+</a>
 
-**[Watch a saved run](https://humanish.dev/demo).** Eight synthetic participants joined one
-lobby of a multiplayer game on its live deployment, each on its own hosted desktop. The page
-replays the real Observer; nothing runs from it.
+**[Watch the replay](https://humanish.dev/demo).** The image is the Observer partway through a
+saved study. Eight synthetic participants joined one lobby of a multiplayer movie-guessing game
+on its live deployment, each on its own hosted desktop, and each tile shows one participant's
+screen at the same moment of the recording. Six reached the final standings. Two were blocked,
+among them Player six, who arrived after the game started and is still on the join page. The
+Findings tab holds the seven findings the analysis wrote. The demo page replays this run in the
+Observer, and nothing runs from it.
 
 ## Learn how a study works
 
