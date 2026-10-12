@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  checks: read
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -47,8 +48,39 @@ jobs:
             exit 1
           fi
 
+      # The tagged commit is main's release merge, and CI's push run on main runs the whole release
+      # gate on it. Publishing waits for that gate instead of running it a third time.
+      - name: Wait for CI's release gate on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 2400))
+          for name in "test (node-floor)" "test (node-lts)" "secret-scan"; do
+            while :; do
+              # Empty while any run of the check is unfinished (a rerun included), else the latest
+              # run's conclusion.
+              conclusion="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+                -f check_name="$name" -q 'if (.check_runs | length) == 0 or any(.check_runs[]; .status != "completed") then "" else (.check_runs | sort_by(.completed_at) | last | .conclusion) end')"
+              if [ "$conclusion" = "success" ]; then
+                echo "$name: success"
+                break
+              fi
+              if [ -n "$conclusion" ]; then
+                echo "::error::CI check '$name' on $GITHUB_SHA concluded $conclusion. Fix or rerun it before publishing."
+                exit 1
+              fi
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "::error::CI check '$name' on $GITHUB_SHA did not finish within 40 minutes."
+                exit 1
+              fi
+              sleep 20
+            done
+          done
+
       - run: pnpm install --frozen-lockfile
-      - run: pnpm release:check
+      # npm publish builds the package again in prepack; the scan reads that same payload.
+      - run: pnpm build && pnpm public-surface:scan
         env:
           HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}
       - run: npm publish --access public
