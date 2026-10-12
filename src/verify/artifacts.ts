@@ -1,6 +1,5 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
-import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
@@ -14,6 +13,7 @@ import {
 import { openContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
+import { mapWithConcurrency } from "../run/concurrency.js";
 import { runEntryLimit } from "./scan-limit.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
@@ -26,6 +26,7 @@ import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
 import { plural } from "../run/text.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
+import { readScreenshot } from "./screenshot-reads.js";
 
 /** Public-safety and evidence-reference findings stop at this many per list. */
 export const MAX_REPORTED_FINDINGS = 50;
@@ -173,48 +174,50 @@ export async function missingLocalEvidenceArtifacts(
     }
   }
 
-  const missing: string[] = [];
-  for (const [artifactPath, requirements] of requiredPaths) {
-    const recording = recordings.get(artifactPath);
-    if (recording) {
-      const handle = await openContainedRegularFile(runPaths, artifactPath);
-      try {
-        if (!handle || (await handle.stat()).size !== recording.bytes) missing.push(artifactPath);
-        else {
-          const header = Buffer.alloc(12);
-          const read = await handle.read(header, 0, header.length, 0);
-          if (read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp")
-            missing.push(`${artifactPath} (invalid MP4 header)`);
-        }
-      } finally {
-        await handle?.close();
-      }
-      continue;
-    }
-    const artifact = await readSafeRunArtifact(runPaths, artifactPath);
-    if (artifact.state === "limit") {
-      missing.push(
-        `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`,
-      );
-      continue;
-    }
-    if (
-      artifact.state === "unavailable" ||
-      (artifact.bytes.length === 0 && !requirements.allowEmpty)
-    ) {
-      missing.push(artifactPath);
-      continue;
-    }
+  // Reads overlap, so one frame's file system calls run while another frame's PNG is checked.
+  const found = await mapWithConcurrency(
+    [...requiredPaths],
+    EVIDENCE_READ_CONCURRENCY,
+    ([artifactPath, requirements]) =>
+      missingArtifact(runPaths, artifactPath, requirements, recordings.get(artifactPath)),
+  );
+  return found.filter((entry) => entry !== null);
+}
 
-    if (requirements.screenshot) {
-      const imageError = screenshotEvidenceError(artifactPath, artifact.bytes);
-      if (imageError) {
-        missing.push(`${artifactPath} (${imageError})`);
-      }
+// Evidence files verify reads at once. Each read holds at most RUN_ARTIFACT_MAX_BYTES.
+const EVIDENCE_READ_CONCURRENCY = 8;
+
+/** Why one required path fails its requirements, or null when it meets them. */
+async function missingArtifact(
+  runPaths: PreparedRunArtifactPaths,
+  artifactPath: string,
+  requirements: { screenshot: boolean; allowEmpty: boolean },
+  recording: { bytes: number } | undefined,
+): Promise<string | null> {
+  if (recording) {
+    const handle = await openContainedRegularFile(runPaths, artifactPath);
+    try {
+      if (!handle || (await handle.stat()).size !== recording.bytes) return artifactPath;
+      const header = Buffer.alloc(12);
+      const read = await handle.read(header, 0, header.length, 0);
+      return read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp"
+        ? `${artifactPath} (invalid MP4 header)`
+        : null;
+    } finally {
+      await handle?.close();
     }
   }
-
-  return missing;
+  const read = requirements.screenshot
+    ? await readScreenshot(runPaths, artifactPath)
+    : await readSafeRunArtifact(runPaths, artifactPath);
+  if (read.state === "limit")
+    return `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`;
+  if (
+    read.state === "unavailable" ||
+    (("size" in read ? read.size : read.bytes.length) === 0 && !requirements.allowEmpty)
+  )
+    return artifactPath;
+  return "error" in read && read.error !== null ? `${artifactPath} (${read.error})` : null;
 }
 
 function declaredActorScreenshotReferences(
@@ -367,17 +370,17 @@ export async function redactedShapeFramePaths(
   runPaths: PreparedRunArtifactPaths,
   bundle: RunBundle,
 ): Promise<Set<string>> {
-  const shaped = new Set<string>();
-  for (const stream of bundle.streams) {
-    for (const reference of declaredActorScreenshotReferences(stream)) {
-      if (!isRunRootEvidenceReference(reference.path)) continue;
-      const normalized = normalizedFramePath(reference.path);
-      if (shaped.has(normalized)) continue;
-      const bytes = await readSafeRunArtifactBytes(runPaths, normalized).catch(() => null);
-      if (bytes !== null && isRedactedFrameShape(bytes)) shaped.add(normalized);
-    }
-  }
-  return shaped;
+  const frames = new Set<string>();
+  for (const stream of bundle.streams)
+    for (const reference of declaredActorScreenshotReferences(stream))
+      if (isRunRootEvidenceReference(reference.path))
+        frames.add(normalizedFramePath(reference.path));
+  const reads = await mapWithConcurrency([...frames], EVIDENCE_READ_CONCURRENCY, (frame) =>
+    readScreenshot(runPaths, frame),
+  );
+  return new Set(
+    [...frames].filter((_, index) => reads[index]!.state === "read" && reads[index]!.redactedShape),
+  );
 }
 
 function normalizedFramePath(value: string): string {
