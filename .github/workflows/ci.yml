@@ -279,7 +279,8 @@ jobs:
           fi
           # package.json `files`, with dist/ replaced by what builds it, and the check itself.
           mapfile -t paths < <(node -p 'require("./package.json").files.filter((file) => file !== "dist").join("\n")')
-          paths+=(src observer tui tsconfig.build.json scripts/finish-build.mjs pnpm-lock.yaml)
+          paths+=(src observer tui tsconfig.json tsconfig.build.json scripts/finish-build.mjs)
+          paths+=(pnpm-lock.yaml pnpm-workspace.yaml)
           paths+=(package.json scripts/packed-check.sh .github/workflows/ci.yml)
           if git diff --quiet "$PR_BASE" HEAD -- "${paths[@]}"; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
