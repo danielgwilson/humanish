@@ -39,7 +39,11 @@ data-encoding="gzip">` holds the items and full artifact lists (`humanish.observ
 gzip-compressed in base64, which a `file://` page decodes without a fetch. Real
 trace items compress about eight times. The page joins the two before it renders
 (`joinObserverData` in `src/observer/participant-items.ts`), so every view reads the
-same data as before.
+same data as before. A stream whose screenshot entries moved records how many in
+`screenshotArtifacts`, and the page renders nothing from items that are another
+run's or miss a participant's items or screenshot entries. The server answers a
+saved v2 observer-data.json that leaves items out as unavailable, since it has no
+items to join.
 
 ## Stream Model
 
