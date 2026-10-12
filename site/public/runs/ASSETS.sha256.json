@@ -1,8 +1,12 @@
 {
  "note": "Captures from kept humanish run bundles, converted to JPEG for the site and reviewed frame by frame before publication. try-live: cua-2026-10-03T10-43-07-890Z-833df699 (drawDB, one participant). lobby-0927: concurrent-shared-world-2026-09-27T20-57-56-664Z-1e8c9646 (a multiplayer movie-guessing game the maintainer built, eight participants, its production deployment under synthetic player names; the game is not named in this repo). lobby-0927/observer-grid-light.webp and observer-grid-dark.webp are the README image: the Observer built from observer/ replaying that run about 5 minutes into its 13-minute recording. Regenerate with scripts/site-run-assets-manifest.mjs.",
  "assets": {
+  "site/public/runs/lobby-0927/observer-findings-dark.webp": "e7cce5614eaa05c85619dc85caee59ba8003b94ab7b36607ea142bea47f74344",
+  "site/public/runs/lobby-0927/observer-findings-light.webp": "81d1321c40d6c1b7f135c0536f5e704e0dbcb763e1dce65e866280ab1fefed38",
   "site/public/runs/lobby-0927/observer-grid-dark.webp": "9d7d4a4e43dd50b3408d0223ac383cd2d6b7fb4a14331634344bd7e2f49d29d6",
   "site/public/runs/lobby-0927/observer-grid-light.webp": "be13746084de32b65afbc588303d90c3c5712f253c2ecb45942724918c28c2cb",
+  "site/public/runs/lobby-0927/observer-player-dark.webp": "9af8341314a31341d4c9f734e53538829e7cc31aaf6d70afead9764196ffa247",
+  "site/public/runs/lobby-0927/observer-player-light.webp": "7af64cf3eaeebaa8eaaad1a6c44f7920a221841f3c5851c1ce39682ac2addef9",
   "site/public/runs/lobby-0927/poster.jpg": "497b81cf3df20709290c0ddbc2a0712df767ca9415fd283680394095d2c8781e",
   "site/public/runs/lobby-0927/screenshots/lobby-host/turn-00-start.jpg": "9eec05391cac0703ce33afb521562ef1acb4c33518f315501d74b35261e47a1c",
   "site/public/runs/lobby-0927/screenshots/lobby-host/turn-01.jpg": "9eec05391cac0703ce33afb521562ef1acb4c33518f315501d74b35261e47a1c",
