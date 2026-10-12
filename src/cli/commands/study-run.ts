@@ -9,6 +9,7 @@ import {
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
+import type { PlanResult } from "../../study/plan-types.js";
 import { keyNamesOf } from "../../study/requirements.js";
 import { type StudyRoute, routeOf } from "../../study/plan.js";
 import { computerUseParticipantCount } from "../../study/routing.js";
@@ -108,7 +109,13 @@ export async function runStudyCommand(args: {
   // the keys its plan reads. This comes after the option refusals above, which read no key, and
   // before the route's CLI setup and prepareStudy, which do.
   if (resolveStudyDryRun(config, args.options.dryRun, true) === false) {
-    const announced = announcedKeyNames(config, args.options);
+    const planned = planStudy(config, { cwd: args.options.cwd, dryRun: false });
+    // The plan's warnings, such as a bundle estimated past a limit, before anything is created.
+    // The study file's own were printed above.
+    if (planned.ok)
+      for (const warning of planned.planned.plan.warnings ?? [])
+        if (!resolved.warnings.includes(warning)) warnAndQueue(args.command, args.io, warning);
+    const announced = announcedKeyNames(config, args.options, planned);
     await discoverCliKeys({
       io: args.io,
       cwd: args.options.cwd,
@@ -188,9 +195,9 @@ export async function runStudyCommand(args: {
 function announcedKeyNames(
   config: StudyConfig,
   options: StudyCommandOptions,
+  planned: PlanResult,
 ): ReadonlySet<string> | undefined {
   if (options.scorer !== undefined || config.review?.scorer !== undefined) return undefined;
-  const planned = planStudy(config, { cwd: options.cwd, dryRun: false });
   return planned.ok ? keyNamesOf(planned.planned.plan) : undefined;
 }
 

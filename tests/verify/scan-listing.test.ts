@@ -2,7 +2,7 @@
 // entries past the most it lists, hold files it never read, so the run cannot grade share_ready.
 // `humanish verify` names each as a folder, not as a file it could not read.
 import { CommanderError, type Command } from "commander";
-import { mkdir, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
@@ -79,20 +79,26 @@ describe("the public-safety scan's directory listing", () => {
     ]);
   });
 
-  it("stops after 10,000 entries and names the stop as unscanned", async () => {
+  it("reads 15,000 entries of a one-participant run and names the stop past them", async () => {
     const cwd = await makeTestTempDir("humanish-scan-entries-");
     const { runId, runDir } = await shareSafetyDryRun(cwd);
-    // Empty directories: the walk counts them without reading any file.
+    const runEntries = (await readdir(runDir, { recursive: true })).length;
+    // Empty directories: the walk counts them without reading any file. The run's own files and
+    // these come to the limit for one participant: 10,000 for any run and 5,000 for each participant.
     const many = path.join(runDir, "many");
     await mkdir(many);
-    for (let index = 0; index < 10_001; index += 1)
+    for (let index = 0; index < 15_000 - runEntries - 1; index += 1)
       await mkdir(path.join(many, String(index).padStart(5, "0")));
+    expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
 
+    // Enough more that many/ alone passes the limit, whatever order the run folder lists in.
+    for (let index = 0; index <= runEntries; index += 1)
+      await mkdir(path.join(many, `more-${index}`));
     const verified = await verifyCli(cwd, runId);
 
     expect(verified.exitCode).toBe(0);
     expect(verified.shareSafety).toEqual([
-      "share-safety: UNSCANNED_ARTIFACT: The public-safety scan stopped at its limit of 10000 files and folders while listing many/, so it read nothing listed after that point. Review the run folder before sharing.",
+      "share-safety: UNSCANNED_ARTIFACT: The public-safety scan stopped at its limit of 15000 files and folders while listing many/, so it read nothing listed after that point. Review the run folder before sharing.",
     ]);
     expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("local_only");
   }, 60_000);

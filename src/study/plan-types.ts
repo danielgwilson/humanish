@@ -11,6 +11,7 @@ import type { ScriptedRefusal } from "../routes/scripted/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunStudyProvenance } from "../run/study-provenance.js";
 import type { ArrivalPlan } from "./arrivals.js";
+import type { BundleEstimate } from "./bundle-estimate.js";
 import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
 import type { SharedWorldRefusal } from "../routes/shared-world/plan.js";
 import type {
@@ -275,6 +276,8 @@ export type StudyPlan =
 
 interface PlannedStudy {
   readonly plan: StudyPlan;
+  /** A computer-use plan's estimated bundle, which planStudy checked against the bundle limits. */
+  readonly bundle?: BundleEstimate;
 }
 
 /**

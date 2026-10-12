@@ -10,6 +10,7 @@ import { digest, fail, finalize, STUDY_CHECK_SCHEMA } from "./preflight-result.j
 import { type StudyRoute, planStudy, routeOf } from "./plan.js";
 import type { PlanRefusal, StudyPlan } from "./plan-types.js";
 import { describeArrivals, describeWindows } from "./arrivals.js";
+import { describeBundle } from "./bundle-estimate.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
@@ -205,6 +206,12 @@ export async function runStudyPreflight(
   if (schedule !== undefined) ctx.checks.push(schedule);
   const windows = windowsCheck(planned.planned.plan);
   if (windows !== undefined) ctx.checks.push(windows);
+  const bundle = planned.planned.bundle;
+  if (bundle !== undefined)
+    ctx.checks.push({ name: "bundle size", ok: true, message: describeBundle(bundle) });
+  // The plan's warnings, which the run records; the study file's own are already listed.
+  for (const warning of planned.planned.plan.warnings ?? [])
+    if (!ctx.warnings.includes(warning)) ctx.warnings.push(warning);
 
   const machine = machineCheck(ctx.config);
   // A local study's app and desktops run on this machine, so the hosted probes do not apply.

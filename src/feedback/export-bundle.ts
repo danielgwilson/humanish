@@ -19,7 +19,8 @@ import {
 } from "../evidence/redaction.js";
 import { decodeEscapes, readingsOf } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
-import { MAX_RUN_ENTRIES, streamScreenshotPaths } from "../verify/artifacts.js";
+import { streamScreenshotPaths } from "../verify/artifacts.js";
+import { MAX_RUN_ENTRIES } from "../verify/scan-limit.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
