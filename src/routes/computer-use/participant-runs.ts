@@ -20,6 +20,7 @@ import {
   CUA_FANOUT_STRATEGY,
   CUA_MAX_CONCURRENCY_ENV,
   type CuaActorStudyErrorCode,
+  type CuaParticipantDeps,
   type CuaParticipantPlan,
   type CuaParticipantPlanEntry,
   type DesktopParticipantRun,
@@ -34,7 +35,13 @@ import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-p
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
 import { plural } from "../../run/text.js";
 import { formatDuration } from "../../run/projection.js";
-import { describeArrivals, planArrivals } from "../../study/arrivals.js";
+import {
+  describeArrivals,
+  participantSessionMs,
+  planArrivals,
+  scheduledEndAt,
+  type ParticipantWindow,
+} from "../../study/arrivals.js";
 
 /**
  * The session budget of a study that declares no execution.timeoutMs. On a provisioned route it is
@@ -67,6 +74,39 @@ export function resolveParticipantSandboxMs(config: StudyConfig, ceilingMs: numb
     timeoutMs +
       sandboxHeadroomMs(provisionedRoute ? { seed: config.subject.state?.seed ?? [] } : undefined)
   );
+}
+
+/**
+ * A participant's own session budget and sandbox deadline: the study's, or with a declared end its
+ * window plus room for the closing report (participantSessionMs), with the same setup and
+ * teardown headroom the study's sandbox has over its session.
+ */
+function participantWindow(
+  participant: ParticipantWindow,
+  study: { readonly sessionBudgetMs: number; readonly sandboxMs: number },
+): { timeoutMs: number; sandboxMs: number } {
+  const timeoutMs = participantSessionMs(participant, study.sessionBudgetMs);
+  return { timeoutMs, sandboxMs: study.sandboxMs - study.sessionBudgetMs + timeoutMs };
+}
+
+/**
+ * The deps one participant runs with once its start comes: its own session budget and sandbox
+ * deadline, and with a declared end, that end on the run's clock (`scheduledAt` is when it was
+ * due, from runOnSchedule).
+ */
+export function scheduledParticipantDeps(
+  participant: ParticipantWindow,
+  deps: { readonly timeoutMs: number; readonly sandboxMs: number },
+  scheduledAt: number,
+): Pick<CuaParticipantDeps, "timeoutMs" | "sandboxMs" | "scheduledEnd"> {
+  const end = scheduledEndAt(participant, scheduledAt);
+  return {
+    ...participantWindow(participant, {
+      sessionBudgetMs: deps.timeoutMs,
+      sandboxMs: deps.sandboxMs,
+    }),
+    ...(end === undefined ? {} : { scheduledEnd: end }),
+  };
 }
 
 /**
@@ -155,14 +195,19 @@ export function participantRunsAndPlan(
 
   const resolved = envLoweredConcurrency(plan.concurrency, participantCount, env);
   const concurrency = resolved.bound;
-  const { sessionBudgetMs, sandboxMs } = plan;
+  const { sessionBudgetMs } = plan;
   const schedule =
     resolved.envLoweredFrom === undefined
       ? plan.arrivals
       : planArrivals(
           participants.map((participant) => participant.startAfterMs),
           { slots: concurrency, sessionMs: sessionBudgetMs },
+          participants.map((participant) => participantSessionMs(participant, sessionBudgetMs)),
         );
+  const sandboxesMs = participants.reduce(
+    (sum, participant) => sum + participantWindow(participant, plan).sandboxMs,
+    0,
+  );
   const participantPlan: CuaParticipantPlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
@@ -172,7 +217,7 @@ export function participantRunsAndPlan(
       : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
     waves: Math.ceil(participantCount / concurrency),
     perLaneSessionBudgetMs: sessionBudgetMs,
-    worstCaseSandboxMinutes: Math.round((participantCount * sandboxMs) / 60_000),
+    worstCaseSandboxMinutes: Math.round(sandboxesMs / 60_000),
     ...(schedule.declared ? { schedule } : {}),
     dryRun: plan.dryRun,
     lanes: runs.map((spec) => ({
@@ -203,6 +248,7 @@ export function participantRunsAndPlan(
       ...(spec.planned.startAfterMs === undefined
         ? {}
         : { startAfterMs: spec.planned.startAfterMs }),
+      ...(spec.planned.endAfterMs === undefined ? {} : { endAfterMs: spec.planned.endAfterMs }),
     })),
   };
   return { runs, participantPlan };
@@ -233,6 +279,7 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
     entry.caseGroup ? `case=${entry.caseGroup}` : undefined,
     entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
     entry.startAfterMs === undefined ? undefined : `start=+${formatDuration(entry.startAfterMs)}`,
+    entry.endAfterMs === undefined ? undefined : `end=+${formatDuration(entry.endAfterMs)}`,
   ].filter((part): part is string => part !== undefined);
   return `${entry.id}: persona=${entry.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${entry.device} ${entry.resolution[0]}x${entry.resolution[1]} prompt#${entry.instructionDigest}${entry.targetDigest ? ` target#${entry.targetDigest}` : ""}`;
 }

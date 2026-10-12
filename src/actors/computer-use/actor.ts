@@ -17,7 +17,7 @@ import {
   type CuaProvider,
   type CuaSafetyCheck,
 } from "./loop.js";
-import type { LoopRunOptions } from "./loop/types.js";
+import type { LoopRunOptions, ParticipantClock } from "./loop/types.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopExecutorOptions,
@@ -71,6 +71,8 @@ export interface CuaActorSessionOptions {
   maxWaitMs?: number;
   /** How long a wait with no duration lasts in an idle turn. See LoopRunOptions.idleWaitMs. */
   idleWaitMs?: number;
+  /** The participant's time zone and scheduled end, forwarded to the loop. See CuaLoopOptions.clock. */
+  clock?: ParticipantClock;
   /**
    * Redact persisted screenshots (blur+downscale). Default `false`: full fidelity for local use.
    * Set true for unowned subjects or share-as-is bundles. The provider always sees raw frames.
@@ -145,6 +147,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
     ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
     ...(options.dwell === undefined ? {} : { dwell: options.dwell }),
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.tasks === undefined ? {} : { tasks: options.tasks }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
     ...(options.estimateTurnCostUsd === undefined

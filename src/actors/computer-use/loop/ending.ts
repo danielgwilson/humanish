@@ -23,7 +23,7 @@ import { plural } from "../../../run/text.js";
  * the participant's own ending when only its impressions are missing.
  */
 export interface DebriefTrigger {
-  readonly kind: "stop_when" | "dwell" | "participant_end";
+  readonly kind: "stop_when" | "dwell" | "scheduled_end" | "participant_end";
   /** The final observation, already captured; the debrief request sends it without observing. */
   readonly observation: CuaObservation;
 }

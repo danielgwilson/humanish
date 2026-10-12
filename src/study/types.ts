@@ -344,6 +344,19 @@ export interface StudyParticipantEntry {
    * Absent, the participant starts with the run. src/study/arrivals.ts schedules the start.
    */
   startAfterMs?: number;
+  /**
+   * Computer use: when this participant's session ends, in milliseconds after the run starts its
+   * participants, on the same clock as startAfterMs and after it. At the end the participant is
+   * asked for its closing report and the session ends as passed, with stop cause `scheduled_end`.
+   * Its session lasts the window plus 5 minutes in place of execution.timeoutMs, and its sandbox
+   * is sized from that.
+   */
+  endAfterMs?: number;
+  /**
+   * With endAfterMs: how long before the end each turn tells the participant the end time and the
+   * minutes left. Default 600000 (10 minutes).
+   */
+  windDownMs?: number;
 }
 
 export interface StudyActor {
@@ -389,6 +402,12 @@ export interface StudyActor {
    * 500 ms. OpenAI's computer-use `wait` never names a duration.
    */
   idleWaitMs?: number;
+  /**
+   * Computer use: the participant's clock. `timeZone`, a time zone name such as "Europe/London", adds
+   * the local time to each turn, for missions that refer to appointment times, and gives a
+   * scheduled end (participants[].endAfterMs) in that zone. A hosted desktop shows no clock.
+   */
+  clock?: { timeZone: string };
   /**
    * `local-agent` only: which locally signed-in coding agent is the brain. Absent = codex.
    *

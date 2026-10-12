@@ -17,7 +17,7 @@ import {
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { participantList } from "./study-fields.js";
-import { isStartAfterMs, rosterStartsReason, startAfterMessage } from "./arrivals.js";
+import { isStartAfterMs, rosterStartsReason, startAfterMessage, windowReason } from "./arrivals.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
@@ -97,6 +97,8 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
       if (entry.startAfterMs !== undefined && !isStartAfterMs(entry.startAfterMs)) {
         return startAfterMessage(`participants[${index}].startAfterMs`);
       }
+      const window = windowReason(entry, `participants[${index}]`);
+      if (window !== undefined) return window;
       const id = entry.id;
       if (id === undefined) {
         continue;
@@ -125,6 +127,10 @@ function rosterStructuralValidationReason(config: StudyConfig): string | null {
  * runStudyWith takes a config that skipped the parser.
  */
 export function sharedWorldValidationReason(config: StudyConfig): string | null {
+  // The subject sandbox's deadline assumes every participant runs for execution.timeoutMs.
+  const ending = participantList(config)?.findIndex((entry) => entry?.endAfterMs !== undefined);
+  if (ending !== undefined && ending >= 0)
+    return `participants[${ending}].endAfterMs ends a participant at a set time on route: computer-use only. A shared-world participant runs for execution.timeoutMs; remove endAfterMs and windDownMs.`;
   return config.subject.source === "app-url"
     ? externalPublicSharedWorldValidationReason(config)
     : concurrentSharedWorldValidationReason(config);

@@ -1,7 +1,13 @@
 import { closingReportSchema } from "../closing-report.js";
 import { ComputerUseProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
-import { advanceBackstop, startBackstop, type BackstopStep } from "./loop/backstop.js";
+import {
+  advanceBackstop,
+  startBackstop,
+  type Backstop,
+  type BackstopStep,
+} from "./loop/backstop.js";
+import { beforeScheduledEnd, clockHint, scheduledEndStop } from "./loop/clock.js";
 import { requestDebrief } from "./loop/debrief.js";
 import * as stops from "./loop/ending.js";
 import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
@@ -36,6 +42,7 @@ export type {
   CuaSpendGate,
   CuaTurn,
   CuaTurnRequest,
+  ParticipantClock,
 } from "./loop/types.js";
 export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
@@ -68,6 +75,8 @@ interface Conversation {
   // are staged here rather than written onto the request already sent.
   acknowledgedSafetyChecks: CuaSafetyCheck[] | undefined;
   contextHint: string | undefined;
+  /** The participant tried to end its session before its scheduled end; the next request says so. */
+  askedToEnd: boolean;
 }
 
 /**
@@ -110,6 +119,7 @@ export async function runComputerUseLoopWithTaps(options: LoopRunOptions): Promi
     previousExecution: undefined,
     acknowledgedSafetyChecks: undefined,
     contextHint: undefined,
+    askedToEnd: false,
   };
   let stop: Stop;
   try {
@@ -142,7 +152,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
   // A request whose reply was cut off by the output limit, to be sent once more.
   let resend: CuaTurnRequest | undefined;
   for (;;) {
-    const halt = haltBeforeTurn(session);
+    const halt = haltBeforeTurn(session, observation);
     if (halt !== undefined) return halt;
 
     turnNumber += 1;
@@ -170,6 +180,12 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     recordNarration(session, turn, turnNumber, "completed");
     const blocked = reviewSafetyChecks(session, conversation, turn);
     if (blocked !== undefined) return blocked;
+    if ((turn.done || turn.actions.length === 0) && beforeScheduledEnd(session)) {
+      const held = keepWorking(session, conversation, backstop, observation);
+      if ("stop" in held) return held.stop;
+      backstop = held.backstop;
+      continue;
+    }
     if (turn.done || turn.actions.length === 0) {
       // The declared outcome is kept even if redacting the participant's summary fails.
       session.declaredOutcome = declaredOutcomeOf(turn);
@@ -210,6 +226,36 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
 }
 
 /**
+ * A participant with a scheduled end that ended its own session before the end keeps going: the
+ * next request tells it the time left. The turn took no action, so it counts toward the idle
+ * backstop, which ends a participant that only keeps trying to stop.
+ */
+function keepWorking(
+  session: LoopSession,
+  conversation: Conversation,
+  backstop: Backstop,
+  observation: CuaObservation,
+): { backstop: Backstop } | { stop: Stop } {
+  session.trace.record("notice", () =>
+    notice(
+      "warn",
+      "participant ended before its scheduled end",
+      "The participant ended its session before its scheduled end, so the session continues and the participant is told the time left.",
+    ),
+  );
+  conversation.askedToEnd = true;
+  // The turn executed nothing, so the next request acknowledges nothing.
+  conversation.previousExecution = undefined;
+  const step = advanceBackstop(
+    backstop,
+    { actions: [], observation, heardNewSpeech: false },
+    { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
+  );
+  const stalled = applyBackstop(session, conversation, step, []);
+  return stalled === undefined ? { backstop: step.backstop } : { stop: stalled };
+}
+
+/**
  * Count the turn's idle and no-progress flags, stage every hint for the next request, and stop
  * when a streak tripped. The
  * turn's own hints (a dwell window, a rejected action) come first, then the backstop's nudges.
@@ -237,18 +283,28 @@ function refuseAccountBilledCaps(options: CuaLoopOptions): void {
   }
 }
 
-function haltBeforeTurn(session: LoopSession): Stop | undefined {
+function haltBeforeTurn(session: LoopSession, observation: CuaObservation): Stop | undefined {
   if (session.signal?.aborted) return stops.harnessAborted;
-  if (session.remaining() < 0) return stops.timeLimit(session);
-  return undefined;
+  return (
+    scheduledEndStop(session, observation) ??
+    (session.remaining() < 0 ? stops.timeLimit(session) : undefined)
+  );
 }
 
-/** Build the next request; the context hint and safety acknowledgements ride it once. */
+/**
+ * Build the next request; the context hint and safety acknowledgements ride it once. The
+ * participant's clock text rides every request, after any other hint.
+ */
 function nextRequest(
   session: LoopSession,
   conversation: Conversation,
   observation: CuaObservation,
 ): CuaTurnRequest {
+  const clock = clockHint(session.settings.clock, session.now, conversation.askedToEnd);
+  conversation.askedToEnd = false;
+  if (clock !== undefined)
+    conversation.contextHint =
+      conversation.contextHint === undefined ? clock : `${conversation.contextHint} ${clock}`;
   const request: CuaTurnRequest = {
     instructions: session.settings.instructions,
     observation,

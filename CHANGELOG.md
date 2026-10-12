@@ -8,6 +8,21 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- A computer-use participant can end at a set time: `participants[].endAfterMs`, on the same
+  clock as `startAfterMs`, with `windDownMs` (default 10 minutes). From the start of the
+  wind-down each turn tells the participant the end time and the minutes left. At the end the
+  participant is asked for its closing report, and its session ends as passed with stop cause
+  `scheduled_end`. A participant that ends its own session before its end is told the time left
+  and keeps going; only its idle backstop ends it earlier. Its session lasts its window plus 5 minutes in place of
+  `execution.timeoutMs`, and its sandbox deadline is sized from that, so a short patient and a
+  long staff shift can share a study. The plan refuses an end at or before the start, a window
+  whose sandbox would outlive the sandbox ceiling, and an end on `shared-world`. `study check`
+  prints each participant's window, and the plan line shows `end=+<time>` (#1764).
+- `actor.clock: { timeZone }` adds the local time in that time zone (a tz database name such as `Europe/London`) to each computer-use turn, and
+  gives a scheduled end in that zone (#1764).
+
 ## 0.121.0: One failed desktop fails alone, host sleep named as the cause (2026-10-10)
 
 humanish 0.121.0 keeps one participant's failed desktop from costing a whole hosted study, and

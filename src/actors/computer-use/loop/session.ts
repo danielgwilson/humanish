@@ -39,6 +39,7 @@ export type LoopSettings = {
       | "redaction"
       | "stopWhen"
       | "dwell"
+      | "clock"
       | "tasks"
       | "maxUsd"
       | "overRunBudget"
@@ -140,6 +141,7 @@ export class LoopSession {
       writeScreenshot = async (name) => `screenshots/${name}`,
       stopWhen,
       dwell,
+      clock,
       sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
       tasks,
       maxUsd,
@@ -157,6 +159,7 @@ export class LoopSession {
       redaction,
       stopWhen,
       dwell,
+      clock,
       tasks,
       maxUsd,
       overRunBudget,

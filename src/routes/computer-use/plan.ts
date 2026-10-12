@@ -21,7 +21,7 @@ import {
   provisionedSubject,
 } from "../../study/plan-base.js";
 import { computerUseParticipants, declaredTargets } from "../../study/plan-participants.js";
-import { planStarts, type ArrivalPlan } from "../../study/arrivals.js";
+import { planStarts, windowDeadlineRefusal, type ArrivalPlan } from "../../study/arrivals.js";
 import type {
   AppUrlSubject,
   ComputerUsePlan,
@@ -352,6 +352,12 @@ function startsOf(
       : ({ ok: true, count: concurrency } as const);
   if (!atOnce.ok) return atOnce;
   const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
+  // A participant with a declared end gets a sandbox sized from its own window.
+  if (runner.desktop === "e2b-desktop") {
+    const headroomMs = resolveParticipantSandboxMs(config, ceilingMs) - sessionMs;
+    const window = windowDeadlineRefusal(runner.participants, { sessionMs, headroomMs }, ceilingMs);
+    if (window !== undefined) return { ok: false, message: window };
+  }
   const slots = { slots: atOnce.count, sessionMs };
   return {
     ok: true,
