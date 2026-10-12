@@ -188,4 +188,20 @@ export const BROKEN_PNGS: [string, Buffer][] = [
   ],
   ["a palette image a row short", withIhdr(indexed, (d) => d.writeUInt32BE(HEIGHT + 1, 4))],
   ["a 1-bit image a row short", withIhdr(bilevel, (d) => d.writeUInt32BE(HEIGHT + 1, 4))],
+  [
+    // pngjs accepts this one on every read, so it shows a palette image gets the stream checks.
+    "a 1x1 palette image with bytes after its zlib stream",
+    (() => {
+      const ihdr = Buffer.from([0, 0, 0, 1, 0, 0, 0, 1, 8, 3, 0, 0, 0]);
+      return pngOf([
+        { type: "IHDR", data: ihdr },
+        { type: "PLTE", data: Buffer.alloc(12, 90) },
+        {
+          type: "IDAT",
+          data: Buffer.concat([deflateSync(Buffer.from([0, 3])), Buffer.from("note")]),
+        },
+        { type: "IEND", data: Buffer.alloc(0) },
+      ]);
+    })(),
+  ],
 ];

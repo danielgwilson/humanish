@@ -14,7 +14,8 @@ from 32.6 ms. It read every screenshot through a full decode, so a run of 24 par
 from its structure: every chunk's CRC, the IHDR fields, one run of image data, and a native
 inflate to exactly the bytes its rows need, each row starting with a valid filter type. A palette
 image is still decoded. On 8,883 retained screenshots the two checks agreed on every file and the
-total time fell from 258 s to 18 s. The new check also refuses a few files the decoder accepted:
+total time fell from 258 s to 18 s, and verify of a synthetic run of 3 participants working 8 hours
+(8,895 screenshots of 147 KB) took 51 s, down from 282 s. The new check also refuses a few files the decoder accepted:
 image data cut short or followed by other bytes, image data split by another chunk, and a second
 IHDR.
 
