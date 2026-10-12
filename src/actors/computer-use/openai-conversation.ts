@@ -135,15 +135,6 @@ export class OpenAiConversation {
     return true;
   }
 
-  /**
-   * Whether the server holds the whole session, so a closing report threaded on it reads every
-   * turn. An explicit-context conversation summarizes its oldest turns past its budget, configured
-   * or switched to at runtime.
-   */
-  get serverHoldsSession(): boolean {
-    return this.mode === "threaded" && this.lastResponseId !== undefined;
-  }
-
   /** The trace's account of how the conversation was carried (ActorConversation). */
   record(): ActorConversation {
     return this.evidence.snapshot(this.mode);

@@ -262,9 +262,7 @@ const BRAINS: Record<ActorId, Record<string, ClosingCase>> = {
   "openai-computer-use": {
     "threaded, after a stop": { collects: () => openAi(false) },
     "threaded, ending the session itself": { collects: () => openAi(false, true) },
-    "explicit_context, after a stop, which keeps no session for a closing report": {
-      notCollected: () => openAi(true),
-    },
+    "explicit_context, after a stop": { collects: () => openAi(true) },
     "explicit_context, ending the session itself": { collects: () => openAi(true, true) },
   },
   "local-agent": {

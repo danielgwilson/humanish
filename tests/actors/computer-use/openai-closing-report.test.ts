@@ -99,7 +99,6 @@ describe("captured OpenAI closing-report contract", () => {
 
   it("continues the actual pending computer call once, disables tools, and preserves typed report and usage", async () => {
     const h = harness();
-    expect(h.provider.debrief).toBeUndefined();
     await h.provider.nextTurn(request, signal);
     const result = await h.provider.debrief!(request, signal);
     expect(h.bodies).toHaveLength(2);
@@ -187,20 +186,26 @@ describe("captured OpenAI closing-report contract", () => {
     expect(h.delayFn).not.toHaveBeenCalled();
   });
 
-  it("does not offer a retrospective report without retained conversation history", async () => {
+  it("asks for the report on the conversation the client carries, with tools off", async () => {
+    const bodies: Record<string, unknown>[] = [];
     const provider = createOpenAiResponsesProvider({
       apiKey: "synthetic-key",
       zeroDataRetention: true,
       env: {},
-      fetchFn: async () => ({
-        ok: true,
-        status: 200,
-        text: async () => "",
-        json: async () => pending,
-      }),
+      fetchFn: async (_url: string, init?: { body?: unknown }) => {
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return { ok: true, status: 200, text: async () => "", json: async () => pending };
+      },
     });
     await provider.nextTurn(request, signal);
-    expect(provider.debrief).toBeUndefined();
+    await provider.debrief!(request, signal);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toMatchObject({ store: false, tool_choice: "none" });
+    expect(bodies[1]).not.toHaveProperty("previous_response_id");
+    // The report request carries the first turn's opening message and reply.
+    expect(JSON.stringify(bodies[1]!.input)).toContain(
+      JSON.stringify(bodies[0]!.input).slice(1, 40),
+    );
   });
 });
 

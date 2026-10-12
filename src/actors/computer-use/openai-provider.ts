@@ -649,14 +649,11 @@ export function createOpenAiResponsesProvider(
     get conversation(): ActorConversation {
       return conversation.record();
     },
-    // A retrospective report reads the session the server holds; see serverHoldsSession.
-    get debrief() {
-      return conversation.serverHoldsSession
-        ? (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, "report")
-        : undefined;
-    },
-    // Offered in both modes. An explicit_context conversation carries its newest screens whole and
-    // earlier turns as text, which serves impressions; a closing report needs the whole session.
+    // Both are offered in both modes. A threaded request reads the session the server holds; an
+    // explicit_context one carries its newest screens whole and its oldest turns summarized past
+    // the budget, which the trace's conversation record counts. A participant that worked a long
+    // shift writes its closing account from what it carries, as a person writes one from memory.
+    debrief: (req, signal) => requestTurn(req, signal, "report"),
     requestImpressions: (req, signal) => requestTurn(req, signal, "impressions"),
   };
 }

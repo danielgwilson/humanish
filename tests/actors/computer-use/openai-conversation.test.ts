@@ -196,21 +196,6 @@ describe("reasoning summaries", () => {
   });
 });
 
-describe("a closing report", () => {
-  it("needs the server to hold the whole session", () => {
-    const threaded = start();
-    expect(threaded.serverHoldsSession).toBe(false);
-    exchange(threaded, 1);
-    expect(threaded.serverHoldsSession).toBe(true);
-    threaded.switchToExplicitContext("stored_item");
-    expect(threaded.serverHoldsSession).toBe(false);
-
-    const carried = start(true);
-    exchange(carried, 1);
-    expect(carried.serverHoldsSession).toBe(false);
-  });
-});
-
 describe("an impressions request", () => {
   it.each([true, false])(
     "carries and records the next turn's context after a long session with explicit context %s",

@@ -208,3 +208,31 @@ describe("study check", () => {
     );
   });
 });
+
+describe("a scheduled end on a participant model with no closing request", () => {
+  const closingWarning = (result: PlanResult): string[] =>
+    (planned(result).warnings ?? []).filter((warning) => warning.includes("closing"));
+
+  it("warns that Claude as a local agent leaves its participants with no closing account", () => {
+    const local = study("cuAppUrl", clinicDay);
+    const result = plan(
+      { ...local, actor: { ...local.actor, type: "local-agent", localAgent: "claude" } },
+      {
+        [CEILING]: "1440",
+      },
+    );
+    expect(closingWarning(result)).toEqual([
+      "1 participant has a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so it ends with the scheduled end as its reason and no closing account. A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.",
+    ]);
+  });
+
+  it("says nothing for a computer-use model or Codex, which write the closing report", () => {
+    const hosted = study("cuAppUrl", clinicDay);
+    const codex = {
+      ...hosted,
+      actor: { ...hosted.actor, type: "local-agent", localAgent: "codex" },
+    };
+    for (const config of [hosted, codex] as StudyConfig[])
+      expect(closingWarning(plan(config, { [CEILING]: "1440" }))).toEqual([]);
+  });
+});
