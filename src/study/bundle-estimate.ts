@@ -16,8 +16,11 @@ import { runEntryLimit } from "../verify/scan-limit.js";
 // more among every kept run since August. Synthetic: runStudyWith on fake desktops, with the live median
 // of about 270 characters of reasoning and message a turn, from 10 to 2,000 turns and from 1 to
 // 16 participants. An adopter's 39-minute run grew run.json about 7 KB a minute for a participant
-// working the whole window; these rates give 12.6 KB, so the estimate errs high.
+// working the whole window; these rates give 12.6 KB, so the estimate errs high, and a limit it
+// passes is a warning.
 const RATES = Object.freeze({
+  /** run.json bytes a minute of the one long live participant measured: the adopter's run. */
+  measuredLongRunBytesPerMinute: 7_000,
   /** run.json bytes for the run itself: its header, study and scenario. */
   runBytes: 400,
   /** run.json bytes for each participant before its turns: its records, events and cost lines. */
@@ -136,24 +139,24 @@ export function estimateBundle(
 }
 
 /**
- * Why a run of this estimate would pass a limit, or undefined: each limit it passes, what the
- * estimate counted, and what to change.
+ * The warning for a run whose estimate passes a limit, or undefined: each limit it passes, what the
+ * estimate counted, how high it runs, and what to change.
  */
 export function bundleLimitReason(estimate: BundleEstimate): string | undefined {
   const passed = [
     ...(estimate.runFileBytes > EVIDENCE_LIMITS.sourceBytes
       ? [
-          `This study's run.json would grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads.`,
+          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads.`,
         ]
       : []),
     ...(estimate.largestFileBytes > RUN_ARTIFACT_MAX_BYTES
       ? [
-          `Its largest file, observer/observer-data.json, would grow to about ${mib(estimate.largestFileBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file.`,
+          `Its largest file, observer/observer-data.json, may grow to about ${mib(estimate.largestFileBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file.`,
         ]
       : []),
     ...(estimate.entries > estimate.entryLimit
       ? [
-          `It would hold about ${count(estimate.entries)} files and folders, past the ${count(estimate.entryLimit)} the public-safety scan reads in a run of ${plural(estimate.basis.participants, "participant")}.`,
+          `It may hold about ${count(estimate.entries)} files and folders, past the ${count(estimate.entryLimit)} the public-safety scan reads in a run of ${plural(estimate.basis.participants, "participant")}.`,
         ]
       : []),
   ];
@@ -177,10 +180,12 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   ];
   const split = "split the participants across studies";
   const advice = changes.length === 0 ? split : `${changes.join(", ")}, or ${split}`;
+  const perMinute = (RATES.turnBytes * 60) / RATES.secondsPerTurn;
   return [
     ...passed,
     `The estimate counts ${counted.join(" and ")}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)} that adds about ${(RATES.turnBytes / 1000).toFixed(1)} KB.`,
-    `${advice[0]!.toUpperCase()}${advice.slice(1)}.`,
+    `It runs high, about ${(perMinute / RATES.measuredLongRunBytesPerMinute).toFixed(1)} times the one long live run measured, so the run goes ahead.`,
+    `To stay under the limit, ${advice}.`,
   ].join(" ");
 }
 

@@ -209,6 +209,9 @@ export async function runStudyPreflight(
   const bundle = planned.planned.bundle;
   if (bundle !== undefined)
     ctx.checks.push({ name: "bundle size", ok: true, message: describeBundle(bundle) });
+  // The plan's warnings, which the run records; the study file's own are already listed.
+  for (const warning of planned.planned.plan.warnings ?? [])
+    if (!ctx.warnings.includes(warning)) ctx.warnings.push(warning);
 
   const machine = machineCheck(ctx.config);
   // A local study's app and desktops run on this machine, so the hosted probes do not apply.

@@ -13,12 +13,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `study check` and the plan of a computer-use study estimate its run bundle: the `run.json` size,
   the largest file, the file count and the total, from each participant's window (`endAfterMs`,
   else `execution.timeoutMs` up to 3 minutes), a model turn every 10 seconds and any dwell
-  window's frames. `study check` prints the estimate as `bundle size`. A live study whose estimate
+  window's frames. `study check` prints the estimate as `bundle size`. When a live study's estimate
   passes the 16 MiB `run.json` analysis reads, the 32 MiB file verify reads, or the files the
-  public-safety scan reads is refused before any sandbox is created, with
-  `HUMANISH_COMPUTER_USE_FANOUT_INVALID` and a message that names the limit, the estimate and what
-  to change. Five participants working an 8-hour window beside 25 short ones are refused; at 4
-  hours they fit, with an estimated `run.json` of 15.7 MiB (#1766).
+  public-safety scan reads, the plan warns: `study check`, `humanish run` and `doctor --study`
+  print the warning before any sandbox is created, the run records it, and the run goes ahead.
+  The warning names the limit, the estimate, that the estimate runs about 1.8 times the one long
+  live run measured, and what to change. Five participants working an 8-hour window beside 25
+  short ones are estimated at 30.2 MiB; at 4 hours, 15.7 MiB (#1766).
 
 ### Changed
 

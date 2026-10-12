@@ -277,6 +277,10 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
       keys: [],
       checks: [...checks, { name: "live route", ok: false, message: planned.refusal.message }],
     };
+  // A plan warning, such as a bundle estimated past a limit, is a note: the run still goes ahead.
+  for (const warning of planned.planned.plan.warnings ?? [])
+    if (!resolved.warnings.includes(warning))
+      checks.push({ name: "plan", ok: true, status: "note", message: warning });
   const requirements = planned.planned.plan.requirements;
   const keys = requiredKeys(requirements, args.keyPresent);
   // This flag controls the hosted desktop SDK check as well as its API key.

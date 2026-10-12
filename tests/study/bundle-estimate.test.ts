@@ -1,22 +1,19 @@
 // Before a computer-use study runs, the plan estimates how large its bundle grows: the run.json
-// analysis reads, the largest file verify reads and the files the public-safety scan visits. A live
-// study whose estimate passes one of those limits is refused before any sandbox is created, by
-// `humanish run` and by `study check`.
+// analysis reads, the largest file verify reads and the files the public-safety scan visits. The
+// estimate runs high, so a live study whose estimate passes one of those limits gets a plan
+// warning, which `study check` and `humanish run` print before any sandbox is created, and runs.
 //
 // The worked examples use the measured rates in src/study/bundle-estimate.ts: a model turn every
 // 10 s adding 2,100 bytes of run.json, 14,400 bytes for each participant, 400 for the run, 2,600
 // more for each participant in observer-data.json, and 3 minutes for a participant with no
 // declared end.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 
-import {
-  runCuaActorSession,
-  type CuaActorSessionOptions,
-} from "../../src/actors/computer-use/actor.js";
+import type { RunBundle } from "../../src/run/bundle.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { estimateBundle, bundleLimitReason } from "../../src/study/bundle-estimate.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -25,10 +22,12 @@ import type { PlanResult } from "../../src/study/plan-types.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, type Patch } from "../admission/fixtures.js";
-import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../helpers/fanout-desktop.js";
+import { makeFanoutModule } from "../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const HOURS = 60 * 60_000;
+const WARN8 =
+  "This study's run.json may grow to about 30.2 MiB, past the 16 MiB analysis reads. The estimate counts 5 participants working their declared windows of up to 8h and 25 for up to 3m each, at a model turn every 10s that adds about 2.1 KB. It runs high, about 1.8 times the one long live run measured, so the run goes ahead. To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.";
 // Room for 8-hour windows and 30 sandboxes at once, as on an E2B Pro plan.
 const ENV = {
   HUMANISH_E2B_MAX_SANDBOX_MINUTES: "1440",
@@ -59,19 +58,14 @@ function plan(config: StudyConfig, dryRun = false): PlanResult {
 }
 
 describe("the plan's bundle estimate", () => {
-  it("refuses a clinic day whose staff work 8 hours, naming the analysis limit", () => {
+  it("warns about a clinic day whose staff work 8 hours, naming the analysis limit", () => {
     const result = plan(study(clinic(8)));
 
     // run.json: 400 + 30 × 14,400 + (5 × 2,880 + 25 × 18) turns × 2,100 = 31,617,400 bytes.
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.refusal).toMatchObject({
-      route: "computer-use",
-      code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-    });
-    expect(result.refusal.message).toBe(
-      "This study's run.json would grow to about 30.2 MiB, past the 16 MiB analysis reads. The estimate counts 5 participants working their declared windows of up to 8h and 25 for up to 3m each, at a model turn every 10s that adds about 2.1 KB. Shorten the longest windows (participants[].endAfterMs), or split the participants across studies.",
-    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.planned.bundle?.runFileBytes).toBe(31_617_400);
+    expect(result.planned.plan.warnings).toContain(WARN8);
   });
 
   it("plans the same day when the staff work 4 hours, near the analysis limit", () => {
@@ -136,8 +130,12 @@ describe("the plan's bundle estimate", () => {
     expect(result.planned.bundle?.entries).toBe(42);
   });
 
-  it("does not refuse a dry run, which records no turns", () => {
-    expect(plan(study(clinic(8)), true).ok).toBe(true);
+  it("does not warn about a dry run, which records no turns", () => {
+    const result = plan(study(clinic(8)), true);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.planned.plan.warnings ?? []).not.toContain(WARN8);
   });
 });
 
@@ -155,33 +153,47 @@ describe("the estimate against the scan's file limit", () => {
     // 20 + 2 × (3 + 8,640 + 3,601).
     expect(estimate.entries).toBe(24_508);
     expect(bundleLimitReason(estimate)).toMatch(
-      /It would hold about 24,508 files and folders, past the 20,000 the public-safety scan reads in a run of 2 participants\./,
+      /It may hold about 24,508 files and folders, past the 20,000 the public-safety scan reads in a run of 2 participants\./,
     );
   });
 });
 
-describe("refusing before any sandbox", () => {
-  it("returns the refusal from humanish run and creates no desktop", async () => {
-    const cwd = await makeTestTempDir("humanish-bundle-refusal-");
+describe("humanish run", () => {
+  it("runs a study past a limit and records the warning in its bundle", async () => {
+    const cwd = await makeTestTempDir("humanish-bundle-warning-");
     const handle = makeFanoutModule();
+    // The clinic day with every patient at the start, so the run does not wait for arrivals.
+    const config = study({
+      ...clinic(8),
+      participants: [
+        { id: "staff", count: 5, endAfterMs: 8 * HOURS },
+        { id: "patient", count: 25 },
+      ],
+    });
     const outcome = await runStudyWith(
-      study(clinic(8)),
+      config,
       { cwd, env: { ...ENV, OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" } },
       {
         desktopModule: async () => handle.module,
-        runSession: async (options: CuaActorSessionOptions) =>
-          runCuaActorSession({
-            ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          }),
+        // Each session fails at once: the test needs the run to start, not to work.
+        runSession: async () => {
+          throw new Error("synthetic session failure");
+        },
         analysis: { run: vi.fn() },
       },
     );
 
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
-    expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
-    expect(handle.created).toEqual([]);
+    expect(handle.created).toHaveLength(30);
+    const bundle = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", outcome.result.runId!, "run.json"),
+        "utf8",
+      ),
+    ) as RunBundle;
+    expect(
+      bundle.events.filter((event) => event.type === "study.warning").map((event) => event.message),
+    ).toContain(WARN8);
   });
 });
 
@@ -205,13 +217,10 @@ describe("study check", () => {
     );
   });
 
-  it("fails a study whose estimate passes a limit, with the run's refusal", async () => {
+  it("passes a study whose estimate passes a limit, with the warning", async () => {
     const result = await check(clinic(8));
 
-    expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
-    expect(result.checks.find((row) => row.name === "plan")?.message).toMatch(
-      /^This study's run\.json would grow to about 30\.2 MiB, past the 16 MiB analysis reads\./,
-    );
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toContain(WARN8);
   });
 });

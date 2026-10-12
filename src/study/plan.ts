@@ -111,10 +111,13 @@ export function planStudy(
   const result = planRoute(routeOf(config), study, options, input, deps, e2b);
   if (!result.ok) return result;
   const bundle = plannedBundle(result.plan);
-  if (!bundle.ok) return bundle;
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
-  const warnings = [...recordedStudyWarnings(study), ...(result.plan.warnings ?? [])];
+  const warnings = [
+    ...recordedStudyWarnings(study),
+    ...(result.plan.warnings ?? []),
+    ...(bundle.warning === undefined ? [] : [bundle.warning]),
+  ];
   const plan = {
     ...result.plan,
     ...(options.study === undefined ? {} : { study: options.study }),
@@ -127,28 +130,17 @@ export function planStudy(
 }
 
 /**
- * The bundle a computer-use plan's participants leave, each session at the plan's budget, or the
- * refusal of a live plan whose estimate passes a bundle limit. A dry run records no turns.
+ * The bundle a computer-use plan's participants leave, each session at the plan's budget, and the
+ * warning for a live plan whose estimate passes a bundle limit. A dry run records no turns.
  */
-function plannedBundle(
-  plan: StudyPlan,
-):
-  | { readonly ok: true; readonly estimate?: BundleEstimate }
-  | { readonly ok: false; readonly refusal: PlanRefusal } {
-  if (plan.route !== "computer-use") return { ok: true };
+function plannedBundle(plan: StudyPlan): {
+  readonly estimate?: BundleEstimate;
+  readonly warning?: string;
+} {
+  if (plan.route !== "computer-use") return {};
   const estimate = estimateBundle(plan.runner.participants, plan.sessionBudgetMs);
-  const reason = plan.dryRun ? undefined : bundleLimitReason(estimate);
-  if (reason === undefined) return { ok: true, estimate };
-  return {
-    ok: false,
-    refusal: {
-      route: "computer-use",
-      code: "HUMANISH_COMPUTER_USE_FANOUT_INVALID",
-      message: reason,
-      stage: "after-personas",
-      actor: plan.actor,
-    },
-  };
+  const warning = plan.dryRun ? undefined : bundleLimitReason(estimate);
+  return warning === undefined ? { estimate } : { estimate, warning };
 }
 
 function planRoute(
