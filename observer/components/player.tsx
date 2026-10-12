@@ -3,17 +3,15 @@ import { Checkbox } from "./ui/checkbox";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
 import { Tabs } from "@base-ui/react/tabs";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
-import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
+import { liveEmbedSandbox } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import {
   boundedWindow,
   frameAtElapsedMs,
   frameElapsedMs,
-  frameEntry,
-  frameHoldMs,
   groupPlayerRows,
   isActionRow,
   isFindingRow,
@@ -22,9 +20,11 @@ import {
   type PlayerModel,
   type PlayerRow,
 } from "@/lib/player-model";
-import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
+import type { PlayerView } from "@/lib/player-state";
 import type { StudyPlayerControl } from "@/lib/use-study-playback";
-import { formatHash, parseHash, replaceHash } from "@/lib/route";
+import { usePlayerPlayback } from "@/lib/use-player-playback";
+import { INSPECTOR_WIDTH, usePlayerPreferences } from "@/lib/use-player-preferences";
+import { formatHash } from "@/lib/route";
 import { participantLabels } from "@/lib/participant-label";
 import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
@@ -43,35 +43,8 @@ import "@/styles/player.css";
 
 type Tab = "actions" | "details" | "report";
 type FeedFilter = "all" | "actions" | "thoughts" | "findings";
-const SPEEDS = [1, 2, 4, 8, 16] as const;
 const FILMSTRIP_LIMIT = 40;
 const FEED_LIMIT = 100;
-const PREFS_KEY = "humanish-player-v1";
-interface Preferences {
-  speed: number;
-  skipWaits: boolean;
-  inspector: boolean;
-  width: number;
-}
-function readPreferences(): Preferences {
-  const fallback = { speed: 1, skipWaits: false, inspector: true, width: 340 };
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
-    if (!value || typeof value !== "object") return fallback;
-    const prefs = value as Partial<Preferences>;
-    return {
-      speed: typeof prefs.speed === "number" && SPEEDS.includes(prefs.speed as 1) ? prefs.speed : 1,
-      skipWaits: prefs.skipWaits === true,
-      inspector: prefs.inspector !== false,
-      width:
-        typeof prefs.width === "number" && Number.isFinite(prefs.width)
-          ? Math.max(280, Math.min(520, prefs.width))
-          : 340,
-    };
-  } catch {
-    return fallback;
-  }
-}
 
 // Text-only rendering of the participant's reported narration, never HTML/markdown links.
 function renderThoughtText(text: string): (string | { bold: string })[] {
@@ -123,41 +96,8 @@ export function Player({
   updating?: boolean;
   onViewChange?: (view: PlayerView) => void;
 }) {
-  const controlled = studyPlayback !== undefined;
-  const preparing = stream.status === "queued" || stream.status === "preparing";
-  const active = updating && (stream.status === "running" || preparing);
-  const lifecycle = preparing ? "Preparing" : "Running";
-  const sourcePlayback = useCallback(
-    (addressed: number | null, mode: "live" | "replay" | null, eventId?: string | null) =>
-      openPlayback(
-        model,
-        active,
-        !updating && mode === "live" && addressed === null
-          ? Math.max(0, model.frames.length - 1)
-          : addressed,
-        updating ? mode : "replay",
-        eventId,
-      ),
-    [model, active, updating],
-  );
-  const [state, setState] = useState(() =>
-    sourcePlayback(initialFrame, initialMode, initialEventId),
-  );
-  const [previousUpdating, setPreviousUpdating] = useState(updating);
-  if (previousUpdating !== updating) {
-    setPreviousUpdating(updating);
-    if (!controlled && !updating && state.mode === "live")
-      setState(seekPlayback(model, playbackIndex(state, model)));
-  }
-  // A URL navigation is a new instruction even in the same participant. Adjust before
-  // commit so a stale frame cannot overwrite the incoming address in a later effect.
-  const address = `${stream.id}:${initialMode ?? "auto"}:${initialFrame ?? "none"}:${initialEventId ?? "none"}:${navigationRevision}`;
-  const [previousAddress, setPreviousAddress] = useState(address);
-  if (address !== previousAddress) {
-    setPreviousAddress(address);
-    if (!controlled) setState(sourcePlayback(initialFrame, initialMode, initialEventId));
-  }
-  const [preferences, setPreferences] = useState(readPreferences);
+  const prefs = usePlayerPreferences();
+  const { preferences } = prefs;
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [tab, setTab] = useState<Tab>("actions");
   const [filter, setFilter] = useState<FeedFilter>("all");
@@ -170,38 +110,32 @@ export function Player({
   const [scrubPreview, setScrubPreview] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now);
   const [streamRevision, setStreamRevision] = useState(0);
+  const playback = usePlayerPlayback({
+    stream,
+    model,
+    initialFrame,
+    initialMode,
+    initialEventId,
+    navigationRevision,
+    updating,
+    studyPlayback,
+    speed: preferences.speed,
+    skipWaits: preferences.skipWaits,
+    onViewChange,
+    onNavigate: (reason) => {
+      setFeedPage(null);
+      if (reason === "seek") setNotice(null);
+    },
+  });
+  const { frame, current, eventId, selectedRow, controlled, active, preparing } = playback;
+  const { following, live, playing, elapsed, hold, skipDuration, rows: rowIndex } = playback;
+  const { seek, seekEntry, togglePlay, jumpToLive, pins: currentPins } = playback;
+  const lifecycle = preparing ? "Preparing" : "Running";
   const viewerRef = useRef<HTMLDivElement>(null);
   const filmRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const frames = model.frames;
-  const controlledFrameId =
-    studyPlayback?.moment.kind === "capture" ? studyPlayback.moment.frame.itemId : null;
-  const frame = studyPlayback
-    ? !studyPlayback.unavailableFrame && controlledFrameId !== null
-      ? frames.findIndex((candidate) => candidate.itemId === controlledFrameId)
-      : -1
-    : playbackIndex(state, model);
-  const current = frame >= 0 ? frames[frame] : undefined;
-  const eventId = studyPlayback ? studyPlayback.eventId : state.eventId;
-  const selectedRow = eventId ? frameEntry(model, eventId, frame) : undefined;
-  const following = studyPlayback ? !studyPlayback.reviewing && active : state.mode === "live";
-  const live = following && active ? liveEmbedUrl(stream) : null;
-  const playing = studyPlayback ? studyPlayback.playing : state.playing;
-  const viewMode: PlayerView["mode"] = following && active ? "live" : "replay";
-  const selectedFrame = current?.index ?? null;
-  const onViewChangeRef = useRef(onViewChange);
-  useEffect(() => {
-    onViewChangeRef.current = onViewChange;
-  }, [onViewChange]);
-  useEffect(() => {
-    onViewChangeRef.current?.({
-      frame: selectedFrame,
-      mode: viewMode,
-      playing,
-      ...(eventId ? { eventId } : {}),
-    });
-  }, [selectedFrame, viewMode, playing, eventId]);
   const actor = stream.actor;
   const viewport = stream.viewport;
   // Computer-use actions use desktop pixels, not the browser CSS layout viewport.
@@ -211,43 +145,12 @@ export function Player({
   const raw = current?.redaction === "none" || actor?.redaction.screenshots === "raw";
   const endingLabel = completionLabel(stream);
   const notableEnd = endingLabel !== undefined;
-  const elapsed = frameElapsedMs(model, Math.max(0, frame));
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
   const timing = controlled
     ? "study timeline"
     : model.paced === "recorded"
       ? "recorded pace"
       : "avg-paced";
-  const hold = frameHoldMs(model, Math.max(0, frame));
-  const rowIndex = useMemo(() => {
-    const pins = new Map<number, typeof model.rows>();
-    const actions = new Set<number>();
-    const findings = new Set<number>();
-    const waits = new Set<number>();
-    let thoughtCount = 0;
-    let actionCount = 0;
-    for (const row of model.rows) {
-      if (row.coord) pins.set(row.frameIndex, [...(pins.get(row.frameIndex) ?? []), row]);
-      if (isActionRow(row)) actions.add(row.frameIndex);
-      if (isFindingRow(row)) findings.add(row.frameIndex);
-      if (isWaitRow(row)) waits.add(row.frameIndex);
-      if (row.kind === "reasoning") thoughtCount += 1;
-      else if (isActionRow(row) || isWaitRow(row)) actionCount += 1;
-    }
-    if (notableEnd && frames.length > 0) findings.add(frames.length - 1);
-    return {
-      pins,
-      actions: [...actions],
-      findings: [...findings],
-      waits,
-      thoughtCount,
-      actionCount,
-    };
-  }, [model, notableEnd, frames.length]);
-  const studyCursor =
-    studyPlayback?.moment.kind === "capture" && current?.atMs !== undefined
-      ? current.atMs + studyPlayback.moment.ageMs
-      : null;
   const recordingInterval = studyPlayback ? streamRecordingInterval(stream.recording) : null;
   const recordingKey = recordingInterval
     ? `${stream.id}:${recordingInterval.recording.path}`
@@ -255,171 +158,11 @@ export function Player({
   const recordingFailed = recordingKey !== null && unavailableRecording === recordingKey;
   const showRecording =
     studyPlayback && !recordingFailed && recordingContains(recordingInterval, studyPlayback.atMs);
-  const intervalPins = rowIndex.pins.get(frame) ?? [];
-  const currentPins = eventId
-    ? selectedRow?.coord
-      ? [selectedRow]
-      : []
-    : controlled
-      ? intervalPins.filter(
-          (row) => studyCursor !== null && row.atMs !== undefined && row.atMs <= studyCursor,
-        )
-      : intervalPins;
-  const skipDuration =
-    !controlled &&
-    preferences.skipWaits &&
-    rowIndex.waits.has(frame) &&
-    !rowIndex.actions.includes(frame)
-      ? Math.max(0, hold - 1000)
-      : 0;
-  const seek = useCallback(
-    (index: number) => {
-      if (studyPlayback) {
-        if (!model.frames.length) return;
-        studyPlayback.onSeekFrame(Math.max(0, Math.min(model.frames.length - 1, index)));
-      } else setState(seekPlayback(model, index));
-      setFeedPage(null);
-      setNotice(null);
-    },
-    [model, studyPlayback],
-  );
-  const seekEntry = useCallback(
-    (row: PlayerRow) => {
-      if (studyPlayback) {
-        if (!model.frames.length) return;
-        studyPlayback.onSeekFrame(
-          Math.max(0, Math.min(model.frames.length - 1, row.frameIndex)),
-          row.isFrame ? undefined : row.id,
-        );
-      } else setState(seekPlayback(model, row.frameIndex, false, row.isFrame ? undefined : row.id));
-      setFeedPage(null);
-      setNotice(null);
-    },
-    [model, studyPlayback],
-  );
-  const togglePlay = useCallback(() => {
-    if (studyPlayback) {
-      studyPlayback.onToggle();
-      return;
-    }
-    if (frames.length === 0) return;
-    if (playing) setState(seekPlayback(model, Math.max(0, frame)));
-    else setState(seekPlayback(model, frame >= frames.length - 1 || frame < 0 ? 0 : frame, true));
-  }, [model, frames.length, frame, playing, studyPlayback]);
-  const jumpToLive = () => {
-    if (studyPlayback) studyPlayback.onLive();
-    else setState(openPlayback(model, active, null, "live"));
-    setFeedPage(null);
-  };
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(preferences));
-    } catch {
-      /* storage can be disabled in an offline artifact */
-    }
-  }, [preferences]);
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [active]);
-  useEffect(() => {
-    if (controlled) return;
-    const navigate = () => {
-      const route = parseHash(window.location.hash);
-      if (route.laneId !== stream.id) return;
-      setState(sourcePlayback(route.frame, route.mode ?? null, route.eventId));
-      setFeedPage(null);
-    };
-    window.addEventListener("hashchange", navigate);
-    window.addEventListener("popstate", navigate);
-    return () => {
-      window.removeEventListener("hashchange", navigate);
-      window.removeEventListener("popstate", navigate);
-    };
-  }, [sourcePlayback, stream.id, controlled]);
-  useEffect(() => {
-    // Keep following intent in the address, including before the first capture.
-    if (following && active) replaceHash(formatHash(stream.id, null, "live"));
-    else if (current) replaceHash(formatHash(stream.id, current.index, null, eventId));
-    else if (controlled && !studyPlayback?.unavailableFrame)
-      replaceHash(formatHash(stream.id, null, "replay"));
-  }, [
-    following,
-    active,
-    playing,
-    current,
-    stream.id,
-    eventId,
-    controlled,
-    studyPlayback?.unavailableFrame,
-  ]);
-  const nextFrameId = frames[frame + 1]?.itemId ?? null;
-  useEffect(() => {
-    if (controlled || !playing || frame < 0) return;
-    if (nextFrameId === null) {
-      setState((value) => ({ ...value, playing: false }));
-      return;
-    }
-    // An unchanged evidence poll must not reset a seven-second capture interval every
-    // five seconds. Depend on the actual transition, never the snapshot object identity.
-    const timer = setTimeout(
-      () =>
-        setState({
-          mode: "replay",
-          frameId: nextFrameId,
-          requestedFrame: frame + 1,
-          playing: true,
-        }),
-      Math.max(120, (hold - skipDuration) / preferences.speed),
-    );
-    return () => clearTimeout(timer);
-  }, [playing, frame, nextFrameId, hold, skipDuration, preferences.speed, controlled]);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      )
-        return;
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest(
-          'input, textarea, select, button, a, summary, [contenteditable]:not([contenteditable="false"]), [role="dialog"], [role="menu"], [role="slider"], [role="tab"], [role="combobox"], [role="listbox"], [role="checkbox"]',
-        )
-      )
-        return;
-      if (event.key === " ") {
-        event.preventDefault();
-        togglePlay();
-      }
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        seek(Math.max(0, frame - 1));
-      }
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        seek(frame + 1);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [frame, seek, togglePlay]);
-  useEffect(() => {
-    // Neighbor-only preload/decode: no eager decoding of a long screenshot recording.
-    const neighbors = [frames[frame - 1], frames[frame + 1]];
-    for (const neighbor of neighbors) {
-      if (!neighbor) continue;
-      const image = new Image();
-      image.src = neighbor.href;
-      void image.decode?.().catch(() => undefined);
-    }
-  }, [frames, frame]);
 
   const filteredRows = useMemo(
     () =>
@@ -618,7 +361,7 @@ export function Player({
             className="tbtn"
             aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"}
             aria-expanded={preferences.inspector}
-            onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}
+            onClick={prefs.toggleInspector}
           >
             Inspector {preferences.inspector ? "−" : "+"}
           </button>
@@ -803,12 +546,7 @@ export function Player({
               type="button"
               className="tbtn speed"
               aria-label="Playback speed"
-              onClick={() =>
-                setPreferences((value) => ({
-                  ...value,
-                  speed: SPEEDS[(SPEEDS.indexOf(value.speed as 1) + 1) % SPEEDS.length] ?? 1,
-                }))
-              }
+              onClick={prefs.cycleSpeed}
             >
               {preferences.speed}×
             </button>
@@ -861,13 +599,8 @@ export function Player({
             </>
           ) : (
             <label>
-              <Checkbox
-                checked={preferences.skipWaits}
-                onCheckedChange={(checked) =>
-                  setPreferences((value) => ({ ...value, skipWaits: checked }))
-                }
-              />{" "}
-              Skip waits
+              <Checkbox checked={preferences.skipWaits} onCheckedChange={prefs.setSkipWaits} /> Skip
+              waits
             </label>
           )}
           <button
@@ -1057,20 +790,14 @@ export function Player({
             aria-label="Inspector width"
             aria-orientation="vertical"
             tabIndex={0}
-            aria-valuemin={280}
-            aria-valuemax={520}
+            aria-valuemin={INSPECTOR_WIDTH.min}
+            aria-valuemax={INSPECTOR_WIDTH.max}
             aria-valuenow={preferences.width}
             onKeyDown={(event) => {
               if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
               event.preventDefault();
               event.stopPropagation();
-              setPreferences((value) => ({
-                ...value,
-                width: Math.max(
-                  280,
-                  Math.min(520, value.width + (event.key === "ArrowLeft" ? 20 : -20)),
-                ),
-              }));
+              prefs.resizeInspector((width) => width + (event.key === "ArrowLeft" ? 20 : -20));
             }}
             onPointerDown={(event) => {
               resizeRef.current = { x: event.clientX, width: preferences.width };
@@ -1078,11 +805,7 @@ export function Player({
             }}
             onPointerMove={(event) => {
               const start = resizeRef.current;
-              if (start)
-                setPreferences((value) => ({
-                  ...value,
-                  width: Math.max(280, Math.min(520, start.width + start.x - event.clientX)),
-                }));
+              if (start) prefs.resizeInspector(() => start.width + start.x - event.clientX);
             }}
             onPointerUp={() => {
               resizeRef.current = null;
