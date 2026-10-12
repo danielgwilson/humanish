@@ -22,6 +22,21 @@ participant through the first-contact study against it. It needs provider keys a
 dollar of agent tokens; the study's own caps hold product spend to $0. CI never runs it. Read what
 the participant said before you tag.
 
+Run the packed check on the release commit too:
+
+```bash
+pnpm packed:check
+```
+
+It packs the tree with `npm pack` and runs each row of `scripts/packed-check.sh` against the
+tarball through `npx`, in a temporary project with a temporary `HOME` and no provider key: the CLI's
+commands and refusals, the library, and the TUI at a pseudo-terminal. No row makes a model request
+or creates a desktop. It needs Chrome or Chromium, python3 and Bun on PATH, and network access to
+npm and E2B's API. It prints a table of the rows and exits 1 when any row fails. CI's `packed` job
+runs the same rows on a pull request that changes a file the package ships or builds from, but it
+is not a required check, so a release runs it here. A failed row is a behavior change or a row that
+needs updating; the release PR fixes one or the other.
+
 For a minor release that changes what a participant sees or does, or what the analysis reads,
 also run the efficacy benchmark on the release commit and commit what it writes. When a release
 changes neither, say so in the notes and skip it; the previous result stands.
@@ -87,6 +102,14 @@ release PR's checks when that PR's head has the same tree as the tagged commit (
 does), otherwise the tagged commit's own run on main, waiting for it to finish; it builds the package and runs
 `pnpm public-surface:scan` on that payload before `npm publish`. The GitHub Release for the tag carries the full notes, and its
 opening paragraph is the CHANGELOG entry.
+
+When the publish workflow finishes, run the rows against the published version. This adds the
+registry rows: `npm view` finds the version and its integrity hash, `dist-tags.latest` names it,
+and unpkg serves four of its files.
+
+```bash
+pnpm packed:check -- "humanish@${VERSION}"
+```
 
 ## Keep Trusted Publishing bound to the repository
 

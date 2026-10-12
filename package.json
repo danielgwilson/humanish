@@ -78,6 +78,7 @@
     "tui:smoke": "node scripts/tui-smoke.mjs",
     "tui:test": "pnpm --filter humanish-tui test",
     "release:dogfood": "node scripts/release-dogfood.mjs",
+    "packed:check": "bash scripts/packed-check.sh",
     "bench": "tsx bench/run.ts",
     "arch:bench": "tsx scripts/arch-bench.ts",
     "browser-control:proof": "node scripts/browser-control-proof.mjs",
