@@ -204,7 +204,8 @@ describe("loading a run's participant traces", () => {
   });
 
   it("reads in-progress items only in a v2 run.json whose run has not finished", async () => {
-    const stored = await writeV2(v1);
+    // 0.123.0 and 0.124.0 wrote these files under run.json v2, with live items inline.
+    const stored = { ...(await writeV2(v1)), schema: "humanish.run-bundle.v2" as const };
     const live = {
       ...stored.streams[0]!,
       liveActor: {

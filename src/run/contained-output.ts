@@ -459,6 +459,40 @@ export async function readOpenedAtMost(
   }
 }
 
+/**
+ * The first `length` bytes of one regular file, under the checks readContainedRegularFile makes,
+ * or all of a file that holds fewer. Bytes past `length`, such as a later append, are not read.
+ */
+export async function readContainedPrefix(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+  length: number,
+): Promise<ContainedRead> {
+  const opened = await openContained(rootInput, relativePath);
+  if (opened.status === "missing") return opened;
+  if (opened.status === "refused")
+    return { status: "refused", reason: opened.reason, limit: length };
+  try {
+    return { status: "read", bytes: await readOpenedPrefix(opened.handle, length) };
+  } catch {
+    return { status: "refused", reason: "unreadable", limit: length };
+  } finally {
+    await opened.handle.close().catch(() => {});
+  }
+}
+
+/** The first `length` bytes of an opened file, read by position, or all of a shorter one. */
+export async function readOpenedPrefix(handle: FileHandle, length: number): Promise<Buffer> {
+  const bytes = Buffer.allocUnsafe(length);
+  let total = 0;
+  while (total < length) {
+    const { bytesRead } = await handle.read(bytes, total, length - total, total);
+    if (bytesRead === 0) break;
+    total += bytesRead;
+  }
+  return bytes.subarray(0, total);
+}
+
 /** The caller owns this checked descriptor and must close it after reading/streaming. */
 export async function openContainedRegularFile(
   rootInput: PreparedOutputRoot,

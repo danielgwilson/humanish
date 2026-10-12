@@ -7,7 +7,7 @@ import { constants as fsConstants } from "node:fs";
 import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
-import { readOpenedAtMost } from "../run/contained-output.js";
+import { readOpenedAtMost, readOpenedPrefix } from "../run/contained-output.js";
 import { isPathInside, isSafeRunIdSegment } from "../run/paths.js";
 
 /** internal: consumed by src/observer/serve.ts */
@@ -33,22 +33,25 @@ interface PinnedFileIdentity {
 /**
  * The file's bytes, or null when it cannot be read under the root's checks. With `maxBytes`, a
  * file larger than that is refused from its opened size and the read stops there, so a large file
- * is never held in memory.
+ * is never held in memory. With `length`, only the file's first `length` bytes are read, or all of
+ * a shorter file.
  */
 export async function readContainedFile(
   root: PinnedDirectory,
   filePathInput: string,
-  options: { maxBytes?: number } = {},
+  options: { maxBytes?: number; length?: number } = {},
 ): Promise<Buffer | null> {
   const opened = await openContainedFile(root, filePathInput);
   if (!opened) return null;
   try {
     const body =
-      options.maxBytes === undefined
-        ? await opened.handle.readFile()
-        : opened.size > options.maxBytes
-          ? null
-          : await readOpenedAtMost(opened.handle, options.maxBytes);
+      options.length !== undefined
+        ? await readOpenedPrefix(opened.handle, options.length)
+        : options.maxBytes === undefined
+          ? await opened.handle.readFile()
+          : opened.size > options.maxBytes
+            ? null
+            : await readOpenedAtMost(opened.handle, options.maxBytes);
     if (body === null) return null;
     // A write that landed during the read changed the file's mtime and ctime.
     if (

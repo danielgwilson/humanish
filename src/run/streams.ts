@@ -196,6 +196,19 @@ export interface StreamTraceIndex {
   screenshots: number;
 }
 
+/**
+ * A v3 run.json's index of a running participant's live file (src/run/live-items.ts): its path
+ * `live/<position>.<generation>.ndjson`, the generation, and the prefix written so far, as its item
+ * (line) count, byte count and sha256. The file only grows, so the prefix stays as indexed.
+ */
+export interface LiveItemsIndex {
+  path: string;
+  generation: number;
+  items: number;
+  bytes: number;
+  sha256: string;
+}
+
 /** The original participant-facing assignment, before runtime access/coordination details. */
 export interface RunParticipantAssignment {
   mission: string;
@@ -311,10 +324,11 @@ export interface RunStream {
    * grow. It is deliberately not an ActorTrace: a running participant has no final status,
    * completionReason, or completedAt, and this shape cannot claim them. Present only on
    * `inProgress` bundles; the final write replaces it with the real `actor` and never
-   * carries it.
+   * carries it. A v3 run.json holds `humanish.live-actor.v2` with `itemsFile` in place of `items`;
+   * the trace loader (src/run/stream-trace.ts) reads the file and puts the items back.
    */
   liveActor?: {
-    schema: "humanish.live-actor.v1";
+    schema: "humanish.live-actor.v1" | "humanish.live-actor.v2";
     executionProfile?: ActorTrace["executionProfile"];
     providerRequests?: ActorTrace["providerRequests"];
     historyTurnsOmitted?: number;
@@ -324,6 +338,8 @@ export interface RunStream {
     /** When this flush was written (ISO-8601). */
     updatedAt: string;
     items: ActorTraceItem[];
+    /** In a v3 run.json, in place of `items`: the live file that holds them. */
+    itemsFile?: LiveItemsIndex;
   };
   completion?: RunStreamCompletion;
   recording?: RunDesktopRecording;
