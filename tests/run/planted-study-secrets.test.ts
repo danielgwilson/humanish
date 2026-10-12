@@ -26,7 +26,7 @@ import { lab, SCENARIO_YAML, type RawLab } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 // Fields whose planted text reaches the bundle unredacted today. The last test of each route fails
-// when a field here is redacted on a route that records it; remove the field then.
+// when a field here is redacted on a route that records it; remove the field then. TODO(#1790)
 const KNOWN_GAPS = ["title", "actor.persona", "participants.persona", "execution.desktop.template"];
 
 // Fields whose text names a file the run reads, so a run with any other text there is refused. The
