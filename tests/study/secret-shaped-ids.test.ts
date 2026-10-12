@@ -1,6 +1,7 @@
-// A persona id names a persona file and a desktop template names the image a run launches on, and
-// the run records both. Redacting one would name another file or image, so the parser refuses one
-// that looks like a secret or a local path. The values come from SECRET_FORMATS, each of which
+// A persona id names a persona file, a desktop template names the image a run launches on, and a
+// desktop file's `as` names where it lands, and the run records all three. Redacting one would
+// name another file, image or path, so the parser refuses one that looks like a secret or a local
+// path. The values come from SECRET_FORMATS, each of which
 // makes verify grade a run blocked; tests/run/planted-study-secrets.test.ts checks the bundles.
 import { describe, expect, it } from "vitest";
 
@@ -18,6 +19,11 @@ const FIELDS: readonly (readonly [string, (text: string) => RawLab])[] = [
   [
     "execution.desktop.template",
     (text) => lab("cuAppUrl", { execution: { desktop: { template: text } } }),
+  ],
+  [
+    "participants[0].files[0].as",
+    (text) =>
+      lab("cuAppUrl", { participants: [{ id: "p1", files: [{ from: "card.png", as: text }] }] }),
   ],
 ];
 

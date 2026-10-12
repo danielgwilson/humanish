@@ -165,6 +165,15 @@ export interface V2Study {
   readonly terminalTimeout: boolean;
 }
 
+// Participant keys that arrived after v2, so a v2 participant cannot carry them.
+const AFTER_V2_PARTICIPANT_KEYS = [
+  "startAfterMs",
+  "endAfterMs",
+  "windDownMs",
+  "idleWaitMs",
+  "files",
+];
+
 // The keys of a humanish.lab.v2 file, in the order its parser listed them: the v3 sections with
 // `subject.topology`, the actor list with its participant keys, `execution.caps`, `personas` and
 // the `scenario` object.
@@ -177,11 +186,10 @@ const V2_KEYS: KeyShape = {
   actors: {
     type: true,
     count: true,
-    // The participant's window and idle wait arrived after v2, so a v2 participant cannot carry them.
-    lanes: without(PARTICIPANT_ENTRY, "startAfterMs", "endAfterMs", "windDownMs", "idleWaitMs"),
+    lanes: without(PARTICIPANT_ENTRY, ...AFTER_V2_PARTICIPANT_KEYS),
     // Roster groups are participants with a count; the parser expanded them into `lanes[]`.
     roster: {
-      ...without(PARTICIPANT_ENTRY, "startAfterMs", "endAfterMs", "windDownMs", "idleWaitMs"),
+      ...without(PARTICIPANT_ENTRY, ...AFTER_V2_PARTICIPANT_KEYS),
       count: true,
     },
     // maxWaitMs, idleWaitMs and clock arrived after v2, so a v2 file cannot carry them.
