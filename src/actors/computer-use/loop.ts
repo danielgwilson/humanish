@@ -214,7 +214,12 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
 
     const step = advanceBackstop(
       backstop,
-      { actions: turn.actions, observation, heardNewSpeech: observer.heardNewSpeech },
+      {
+        actions: turn.actions,
+        observation,
+        heardNewSpeech: observer.heardNewSpeech,
+        waitingIsTheTask: beforeScheduledEnd(session),
+      },
       { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
     );
     backstop = step.backstop;

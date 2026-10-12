@@ -357,6 +357,11 @@ export interface StudyParticipantEntry {
    * minutes left. Default 600000 (10 minutes).
    */
   windDownMs?: number;
+  /**
+   * Computer use and shared world: this participant's actor.idleWaitMs, how long a wait that names
+   * no duration lasts while it only waits. Same range, and no longer than actor.maxWaitMs.
+   */
+  idleWaitMs?: number;
 }
 
 export interface StudyActor {

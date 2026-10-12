@@ -170,3 +170,67 @@ describe("a participant with a scheduled end", () => {
     expect(result.completionReason).toBe("gave_up");
   });
 });
+
+/**
+ * A staff participant on a quiet shift: every turn only waits, 10 s of the clock apart, on a
+ * screen that never changes.
+ */
+async function quietShift(clock: ParticipantClock | undefined): Promise<{
+  result: CuaLoopResult;
+  turns: number;
+}> {
+  let t = NINE_UTC;
+  let turns = 0;
+  const provider: CuaProvider = {
+    id: "staff",
+    capabilities: CAPS,
+    async nextTurn() {
+      turns += 1;
+      t += 10_000;
+      return { actions: [{ kind: "wait" }], pendingSafetyChecks: [], done: false };
+    },
+    async debrief() {
+      return {
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        closingReport: { summary: "No patient came.", frictionReports: [] },
+      };
+    },
+  };
+  const result = await runComputerUseLoop({
+    instructions: "Wait at the front desk for patients until your shift ends.",
+    provider,
+    executor: {
+      observe: async () => ({ screenshot: FRAME, stateSignature: "empty waiting room" }),
+      execute: async () => undefined,
+    },
+    persona,
+    redaction: defaultRedactionHooks,
+    timeoutMs: 60 * MINUTE,
+    now: () => t,
+    sleep: async () => undefined,
+    ...(clock === undefined ? {} : { clock }),
+  });
+  return { result, turns };
+}
+
+describe("waiting on a quiet shift", () => {
+  it("does not end a participant with a scheduled end for waiting before its end", async () => {
+    // 60 waiting turns, past both the 24-turn idle and the 20-turn no-progress streaks.
+    const { result, turns } = await quietShift({
+      end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE },
+    });
+    expect(turns).toBe(60);
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.trace.stopCause).toBe("scheduled_end");
+    expect(result.trace.debrief?.status).toBe("completed");
+  });
+
+  it("still ends a participant without a scheduled end that only waits", async () => {
+    // Turn 1 sets the repetition baseline; turns 2 to 21 repeat the wait on an unchanged screen.
+    const { result, turns } = await quietShift(undefined);
+    expect(result.completionReason).toBe("gave_up");
+    expect(turns).toBe(21);
+  });
+});

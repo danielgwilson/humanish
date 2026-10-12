@@ -51,7 +51,10 @@ interface DesktopParticipant extends Participant {
     readonly maxOutputTokens?: number;
     /** actor.maxWaitMs: the longest one wait action lasts. */
     readonly maxWaitMs?: number;
-    /** actor.idleWaitMs: how long a wait with no duration lasts while the participant only waits. */
+    /**
+     * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts
+     * while the participant only waits.
+     */
     readonly idleWaitMs?: number;
     /** actor.clock.timeZone: the participant's local time zone, which each turn tells it the time in. */
     readonly timeZone?: string;
@@ -115,7 +118,7 @@ function desktopParticipant(
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
   const maxWaitMs = actor?.maxWaitMs;
-  const idleWaitMs = actor?.idleWaitMs;
+  const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
   const timeZone = actor?.clock?.timeZone;
   return {
     id: participantIdAt(index, entry?.id, kind),

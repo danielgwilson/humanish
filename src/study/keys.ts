@@ -68,6 +68,7 @@ export const PARTICIPANT_ENTRY = {
   startAfterMs: true,
   endAfterMs: true,
   windDownMs: true,
+  idleWaitMs: true,
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,

@@ -141,4 +141,45 @@ describe("a staff participant with a scheduled end", () => {
       1 * MIN + 10 * MIN,
     ]);
   });
+
+  it("records each participant's own idle wait in its wait settings", async () => {
+    const parsed = parseStudy(
+      lab("cuAppUrl", {
+        mode: "live",
+        actor: { type: "openai-computer-use", idleWaitMs: 5_000 },
+        participants: [
+          { id: "staff", idleWaitMs: 60_000 },
+          { id: "patient", startAfterMs: 100 },
+        ],
+      }),
+    );
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const handle = makeFanoutModule();
+    const outcome = await runStudyWith(
+      parsed.config,
+      { cwd, env: KEYS },
+      {
+        desktopModule: async () => handle.module,
+        runSession: async (options: CuaActorSessionOptions) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        analysis: { run: vi.fn() },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    expect(outcome.result.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const idleWaits = await Promise.all(
+      bundle.simulations.map(async (record) => {
+        const trace = JSON.parse(
+          await readFile(path.join(runDir, "actors", `${record.streamIds[0]}.json`), "utf8"),
+        ) as ActorTrace;
+        return trace.waitSettings?.idleWaitMs;
+      }),
+    );
+    expect(idleWaits).toEqual([60_000, 5_000]);
+  });
 });

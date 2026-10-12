@@ -238,8 +238,12 @@ The rest of this section names keys by their v3 spelling:
   scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. Before
   the end, a turn that requests no action does not end the session: the trace records a
   `participant ended before its scheduled end` notice, the next request says the time left, and
-  the turn counts toward the idle backstop. The
+  the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
+  screenshots counts toward neither backstop streak (`advanceBackstop`'s `waitingIsTheTask`). The
   plan entry carries `endAfterMs`, and `study check` prints a `windows` row;
+- `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
+  participant's `actor.idleWaitMs`, in the same range and refused above an explicit
+  `actor.maxWaitMs` (`waitLimitValidationReason`). Its trace records it in `waitSettings`;
 - `actor.clock.timeZone` (computer-use): a tz database time zone name, such as `Europe/London`. Each turn's context hint carries
   the local time in it, and a scheduled end is given in it (UTC without it);
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
@@ -1029,7 +1033,8 @@ Core-owned fields:
   applied, in milliseconds, defaults included. `maxWaitMs` is the longest one
   wait action lasts (`actor.maxWaitMs`); a longer wait is shortened to it.
   `idleWaitMs` is how long a wait that names no duration lasts in a turn that
-  only waits or takes screenshots (`actor.idleWaitMs`), and `settleWaitMs` how
+  only waits or takes screenshots (`participants[].idleWaitMs`, else
+  `actor.idleWaitMs`), and `settleWaitMs` how
   long such a wait lasts after an action in the same turn. Each `ui_action` for
   a wait is titled with the length it lasted. Absent on other routes and on
   earlier bundles

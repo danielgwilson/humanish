@@ -294,11 +294,23 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
 }
 
 /**
- * Refuse a wait field out of range, or an idle wait longer than the longest wait. On a route whose
- * participants take no wait actions the fields are inert (warnings.ts).
+ * Refuse a wait field out of range, or an idle wait longer than the longest wait: the actor's, and
+ * each participant's own idleWaitMs under actor.maxWaitMs. On a route whose participants take no
+ * wait actions the fields are inert (warnings.ts).
  */
 export function waitLimitValidationReason(config: StudyConfig): string | null {
-  return config.actor === undefined ? null : waitFieldsReason(config.actor, "actor.");
+  const actorReason = config.actor === undefined ? null : waitFieldsReason(config.actor, "actor.");
+  if (actorReason !== null) return actorReason;
+  for (const [index, entry] of (participantList(config) ?? []).entries()) {
+    if (entry?.idleWaitMs === undefined) continue;
+    const reason = waitFieldsReason(
+      { idleWaitMs: entry.idleWaitMs, maxWaitMs: config.actor?.maxWaitMs },
+      `participants[${index}].`,
+      "actor.",
+    );
+    if (reason !== null) return reason;
+  }
+  return null;
 }
 
 /**
