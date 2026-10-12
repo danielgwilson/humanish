@@ -34,7 +34,7 @@ export function PlayerInspector({
 }: {
   open: boolean;
   width: number;
-  /** Receives a function from the current width to the next; the caller clamps. */
+  /** Takes a function from the current width to the next one. */
   onResize: (update: (width: number) => number) => void;
   data: ObserverData;
   stream: ObserverStream;
