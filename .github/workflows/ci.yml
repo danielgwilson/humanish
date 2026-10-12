@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  # The merge queue tests each PR on top of main and the PRs ahead of it before it merges.
+  merge_group:
 
 permissions:
   contents: read
@@ -203,7 +205,7 @@ jobs:
       - name: Detect guest changes
         id: changes
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           base="${PR_BASE:-HEAD^}"
           # A release changes package.json's version alone; that builds no different guest image.
