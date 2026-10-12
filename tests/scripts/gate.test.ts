@@ -185,6 +185,15 @@ describe("runGate and the pre-push hook", () => {
     expect(existsSync(ran)).toBe(true);
   });
 
+  it("sees untracked files when the contributor's git config hides them from status", async () => {
+    const { work } = await repo();
+    git(work, "config", "status.showUntrackedFiles", "no");
+    await writeFile(join(work, "helper.js"), "export {};\n");
+    const refused = await gate(work, [{ name: "check", command: passesUnderCi }]);
+    expect(refused.code).toBe(1);
+    expect(refused.output).toContain("?? helper.js");
+  });
+
   it("stops at a failing stage with its exit code, log tail and log path, and records no pass", async () => {
     const { work, push } = await repo();
     const failing = node(

@@ -80,8 +80,12 @@ function git(cwd, ...args) {
   return run.stdout;
 }
 
-/** Tracked changes and untracked files, one porcelain line each; ignored files do not count. */
-const uncommitted = (cwd) => git(cwd, "status", "--porcelain").split("\n").filter(Boolean);
+/**
+ * Tracked changes and untracked files, one porcelain line each; ignored files do not count. The
+ * flag overrides a status.showUntrackedFiles=no config, which would hide untracked files.
+ */
+const uncommitted = (cwd) =>
+  git(cwd, "status", "--porcelain", "--untracked-files=normal").split("\n").filter(Boolean);
 const headTree = (cwd) => git(cwd, "rev-parse", "HEAD^{tree}").trim();
 
 /** Runs one command with CI=true, its output to `logFile`; resolves with how it ended. */
