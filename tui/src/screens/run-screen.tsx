@@ -2,10 +2,9 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
-import { participantNote } from "../../../src/run/detail.js";
 import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
-import { formatDuration, normalizeThought } from "../../../src/run/projection.js";
+import { formatDuration, normalizeThought, participantNote } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";

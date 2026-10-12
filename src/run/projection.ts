@@ -8,6 +8,7 @@
 //   - truncation is reported, never silent;
 //   - a participant's reported thinking is quoted, never paraphrased or summarized.
 
+import type { RunParticipant } from "./detail.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { indexedRunCost } from "./run-cost.js";
 
@@ -210,6 +211,19 @@ export interface NormalizedThought {
   lines: string[];
   /** True when the source text did not fit and was cut; shown, never silent. */
   truncated: boolean;
+}
+
+/**
+ * What a screen quotes for a participant of a run detail: why its evidence is unavailable, else
+ * its latest thought. It lives here, beside normalizeThought, so the TUI bundle does not load the
+ * run-detail reader.
+ */
+export function participantNote(
+  participant: Pick<RunParticipant, "evidenceUnavailable" | "thought">,
+): string | undefined {
+  return participant.evidenceUnavailable === undefined
+    ? participant.thought?.text
+    : `Evidence unavailable: ${participant.evidenceUnavailable}`;
 }
 
 /**

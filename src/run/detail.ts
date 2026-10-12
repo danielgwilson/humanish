@@ -74,13 +74,6 @@ export interface RunParticipant {
   evidenceUnavailable?: string;
 }
 
-/** What a screen quotes for a participant: why its evidence is unavailable, else its latest thought. */
-export function participantNote(participant: RunParticipant): string | undefined {
-  return participant.evidenceUnavailable === undefined
-    ? participant.thought?.text
-    : `Evidence unavailable: ${participant.evidenceUnavailable}`;
-}
-
 export interface RunDetail {
   automaticAnalysis?: AutomaticAnalysisView;
   schema: typeof RUN_DETAIL_SCHEMA;

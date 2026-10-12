@@ -3,7 +3,6 @@ import React from "react";
 
 import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
-import { participantNote } from "../../../src/run/detail.js";
 import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
@@ -11,9 +10,10 @@ import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import {
   expectationLine,
   formatDuration,
-  studySummaryLine,
   listWindow,
   normalizeThought,
+  participantNote,
+  studySummaryLine,
 } from "../../../src/run/projection.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
