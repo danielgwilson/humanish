@@ -2,6 +2,7 @@
 // and the requirement and subject helpers.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
+import { redactText } from "../evidence/redaction.js";
 import type {
   Brain,
   ComputerUsePlan,
@@ -151,7 +152,9 @@ export function planBase(
   const analysis = input.analysis?.config;
   return {
     studyId: config.id,
-    ...(config.title === undefined ? {} : { title: config.title }),
+    // Every bundle writer takes the title from here, and review.md, run.json and the Observer show
+    // it, so a key or sandbox URL in it would make verify grade the run blocked.
+    ...(config.title === undefined ? {} : { title: redactText(config.title) }),
     residual: residualOf(config),
     dryRun: input.dryRun,
     ...(analysis === undefined

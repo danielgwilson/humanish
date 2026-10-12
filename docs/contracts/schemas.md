@@ -293,7 +293,8 @@ The rest of this section names keys by their v3 spelling:
   desktop template (image) name or ID the run launches on, for a subject that
   needs runtimes the stock `desktop` image lacks (e.g. node/bun/a local Postgres
   baked into an adopter-maintained image). Any non-empty string is a valid
-  name/id (no allowlist); a blank/whitespace value is rejected. Threaded to the
+  name/id (no allowlist); a blank/whitespace value is rejected, and so is one that
+  verify would flag as a secret or local path, as written or encoded. Threaded to the
   SDK's `Sandbox.create(template, opts)` on every desktop-creating route (the
   single-participant and fan-out cua participants, and the shared-world subject and every actor
   sandbox); when absent the call

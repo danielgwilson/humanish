@@ -19,6 +19,7 @@ import {
 import { invalid, str } from "./values.js";
 import type { StudyActor, StudyParticipantEntry, StudyParseFailure } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
+import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { isStartAfterMs, startAfterMessage, windowReason } from "../arrivals.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
@@ -60,6 +61,24 @@ export function parseActorType(
   return { ok: true, value: type };
 }
 
+/**
+ * A persona id. It names the persona file `humanish/personas/<id>.yaml`, and the run records it, so
+ * text verify would flag, as written or encoded, is refused here: redacting it would name a
+ * different file.
+ */
+function parsePersonaId(
+  raw: unknown,
+  path: string,
+): { ok: true; value: string | undefined } | StudyParseFailure {
+  const persona = str(raw);
+  if (persona !== undefined && scanEncodedText(persona).sensitive) {
+    return invalid(
+      `\`${path}\` looks like a secret or a local path, and the run records it. A persona id names the persona file humanish/personas/<id>.yaml: use a plain file name such as skeptical-shopper, and put the persona's details in that file.`,
+    );
+  }
+  return { ok: true, value: persona };
+}
+
 /** An actor's keys other than `type`. */
 type ActorFields = Omit<StudyActor, "type">;
 
@@ -72,8 +91,9 @@ export function parseActorFields(
   path: string,
 ): { ok: true; value: ActorFields } | StudyParseFailure {
   const actor: ActorFields = {};
-  const persona = str(entry.persona);
-  if (persona) actor.persona = persona;
+  const persona = parsePersonaId(entry.persona, `${path}.persona`);
+  if (!persona.ok) return persona;
+  if (persona.value !== undefined) actor.persona = persona.value;
   const mission = str(entry.mission);
   if (mission) actor.mission = mission;
   const model = str(entry.model);
@@ -183,8 +203,9 @@ export function parseParticipantEntries(
       }
       parsedEntry.device = device;
     }
-    const persona = str(entry.persona);
-    if (persona !== undefined) parsedEntry.persona = persona;
+    const persona = parsePersonaId(entry.persona, `${paths.entry(entryIndex)}.persona`);
+    if (!persona.ok) return persona;
+    if (persona.value !== undefined) parsedEntry.persona = persona.value;
     const actorType = parseEntryMetadata(entry.actorType, `${paths.entry(entryIndex)}.actorType`);
     if (!actorType.ok) return actorType;
     if (actorType.value !== undefined) parsedEntry.actorType = actorType.value;

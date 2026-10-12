@@ -13,6 +13,18 @@ the site and Observer steps of CI's required jobs that the changed paths reach, 
 keyed by the tree of HEAD. The opt-in pre-push hook (`git config core.hooksPath .githooks`) refuses
 a push whose commit has no pass. CONTRIBUTING.md lists the checks the gate leaves to CI.
 
+### Fixed
+
+- A key, a Bearer value or a sandbox URL in a study's `title` no longer makes its run fail
+  verification. The run review, `run.json` and `observer/observer-data.json` record the title with
+  those redacted. `study list`, `study show` and the TUI still print it as written (#1790).
+- A study whose `actor.persona`, `participants[].persona` or `execution.desktop.template` holds
+  text that verify flags as a secret or a local path, as written or encoded, now fails at parse
+  with a message that names the field. Before, the run recorded the value as written and verify
+  graded it `blocked`. A persona id names a persona file and a template names the image a run
+  launches on, so redacting either one would change what it names. `humanish migrate` refuses a
+  v2 file with such a persona id the same way (#1790).
+
 ## 0.124.0: Small Observer files for long studies, faster verify, closing reports under zero data retention (2026-10-12)
 
 humanish 0.124.0 keeps a long study's Observer files small, checks screenshots about eight times

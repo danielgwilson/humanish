@@ -15,6 +15,7 @@ import type {
   StudyReview,
 } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
+import { scanEncodedText } from "../../evidence/encoded-text.js";
 
 export function parseExecution(
   raw: unknown,
@@ -193,11 +194,18 @@ function parseDesktop(
   // A custom E2B desktop template name or ID. Trimmed non-empty when present; deliberately not
   // allowlisted (any string is a valid template name/id; over-restricting would reject real
   // adopter images). An explicitly-set but blank/whitespace value is a mistake, not a template.
+  // The run records the template it launched on, so text verify would flag, as written or
+  // encoded, is refused: redacting it in the record would name an image other than the one that ran.
   if (raw.template !== undefined) {
     const template = str(raw.template);
     if (template === undefined) {
       return invalid(
         "`execution.desktop.template` must be a non-empty E2B desktop template name or ID when it is set. Any name is accepted.",
+      );
+    }
+    if (scanEncodedText(template).sensitive) {
+      return invalid(
+        "`execution.desktop.template` looks like a secret or a local path, and the run records the template it launched on. Set it to the E2B template's name or ID only.",
       );
     }
     desktop.template = template;

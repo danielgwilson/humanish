@@ -25,10 +25,6 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { lab, SCENARIO_YAML, type RawLab } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
-// Fields whose planted text reaches the bundle unredacted today. The last test of each route fails
-// when a field here is redacted on a route that records it; remove the field then. TODO(#1790)
-const KNOWN_GAPS = ["title", "actor.persona", "participants.persona", "execution.desktop.template"];
-
 // Fields whose text names a file the run reads, so a run with any other text there is refused. The
 // runs keep the base study's value in them. A new one makes the control run fail.
 const REFERENCES = ["scenario"];
@@ -282,12 +278,6 @@ const SHAPES: Readonly<Record<string, Shape>> = {
     literals: ["bearer"],
   },
 };
-
-/** Every shape in one value, for the known-gap runs. */
-const everyShape: FieldText = (field) =>
-  Object.values(SHAPES)
-    .map(({ text }) => text(field))
-    .join(" ");
 
 /** Set `value` at a dotted path in every entry of each list on the way. True when it set one. */
 function setAt(node: unknown, segments: readonly string[], value: unknown): boolean {
@@ -547,7 +537,6 @@ describe("secrets planted in the text of a study", () => {
         expect(control.ok).toBe(true);
         // A field whose planted value the parser refuses never reaches a run.
         const planted = fields.flatMap((field) => {
-          if (KNOWN_GAPS.includes(field.field)) return [];
           const config = accepted(withText(study, [field], shape.text));
           return config === undefined ? [] : [{ field, kept: JSON.stringify(config) }];
         });
@@ -571,15 +560,5 @@ describe("secrets planted in the text of a study", () => {
         expect(verdict(run)).toEqual(verdict(control));
       },
     );
-
-    it("reach the bundle unredacted in each known-gap field the route records", async () => {
-      const { study, fields, personaIds, recorded } = await route(name);
-      const gapFields = fields.filter(({ field }) => KNOWN_GAPS.includes(field));
-      const gaps = gapFields.map(({ field }) => field);
-      const plantedStudy = withText(withText(study, fields, marker), gapFields, everyShape);
-      const run = await dryRun(plantedStudy, personaIds, marker);
-      const leaked = gaps.filter((field) => leaks(run, [field]).length > 0);
-      expect(leaked).toEqual(gaps.filter((field) => recorded.includes(field)));
-    });
   });
 });
