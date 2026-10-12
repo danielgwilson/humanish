@@ -8,8 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `study check` and the plan of a computer-use study estimate its run bundle: the `run.json` size,
+  the largest file, the file count and the total, from each participant's window (`endAfterMs`,
+  else `execution.timeoutMs` up to 3 minutes), a model turn every 10 seconds and any dwell
+  window's frames. `study check` prints the estimate as `bundle size`. When a live study's estimate
+  passes the 16 MiB `run.json` analysis reads, the 32 MiB file verify reads, or the files the
+  public-safety scan reads, the plan warns: `study check`, `humanish run` and `doctor --study`
+  print the warning before any sandbox is created, the run records it, and the run goes ahead.
+  The warning names the limit, the estimate, that the estimate runs about 1.8 times the one long
+  live run measured, and what to change. Five participants working an 8-hour window beside 25
+  short ones are estimated at 30.2 MiB; at 4 hours, 15.7 MiB (#1766).
+
 ### Changed
 
+- The public-safety scan reads 10,000 files and folders of a run plus 5,000 for each participant
+  its `run.json` records, counting at most 128 participants. It read 10,000 for every run, which
+  four participants working 8 hours pass with their screenshots alone (#1766).
 - Run bundles are now `humanish.run-bundle.v2`. Each participant's trace items and screenshot
   entries are written once, to its trace file (`actor.json` for one participant,
   `actors/<stream>.json` for more), and run.json keeps the participant's summary with

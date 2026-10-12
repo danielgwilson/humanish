@@ -189,6 +189,7 @@ export async function verifyResolvedRun(
       sandboxIdFiles,
     },
     unscannedArtifacts,
+    isRunBundle(bundle) ? bundle.simulations.length : 0,
   );
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.

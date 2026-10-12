@@ -797,8 +797,9 @@ writes every frame, and the recordings `streams[].recording` registers. Every
 other file the scan cannot read as text, cannot read at all, or that is larger
 than 32 MiB (verify reads at most that much of one file) contributes
 `UNSCANNED_ARTIFACT`. So does a folder the scan cannot list, and the rest of a
-run past its first 10,000 files and folders, the most `export --format bundle`
-takes. The reason's message lists the paths, and it keeps otherwise valid
+run past its first 10,000 files and folders plus 5,000 for each participant
+`run.json` records, counting at most 128. `export --format bundle` takes at most
+10,000. The reason's message lists the paths, and it keeps otherwise valid
 evidence `local_only`. This includes images that only feedback candidates,
 adapter artifacts or stream artifact entries cite, and a PNG an actor trace
 references outside `screenshots/`. An adapter artifact larger than 32 MiB grades
