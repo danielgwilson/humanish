@@ -40,7 +40,8 @@ export function splitObserverData(data: ObserverData): {
   shell: ObserverShell;
   items: ObserverItems;
 } {
-  const items: ObserverItems["streams"] = {};
+  // No prototype, so a stream id such as `__proto__` is an entry like any other.
+  const items: ObserverItems["streams"] = Object.create(null) as ObserverItems["streams"];
   const streams = data.streams.map((stream): ObserverShellStream => {
     const { actor, liveActor, ...rest } = stream;
     const entry: ObserverItems["streams"][string] = {};
@@ -70,6 +71,21 @@ export function splitObserverData(data: ObserverData): {
     shell: { ...data, streams },
     items: { schema: OBSERVER_ITEMS_SCHEMA, runId: data.run.runId, streams: items },
   };
+}
+
+/**
+ * Whether `items` are this run's and hold every participant's items that the data leaves out. The
+ * page reads nothing short of that: participants shown with no steps would say they did nothing.
+ */
+export function itemsCoverShell(shell: ObserverShell, items: ObserverItems): boolean {
+  if (items.runId !== shell.run.runId) return false;
+  return shell.streams.every((stream) => {
+    const entry = Object.hasOwn(items.streams, stream.id) ? items.streams[stream.id] : undefined;
+    return (
+      (stream.actor === undefined || Array.isArray(entry?.actor)) &&
+      (stream.liveActor === undefined || Array.isArray(entry?.liveActor))
+    );
+  });
 }
 
 /**

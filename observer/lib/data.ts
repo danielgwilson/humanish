@@ -1,4 +1,5 @@
 import {
+  itemsCoverShell,
   joinObserverData,
   OBSERVER_ITEMS_SCHEMA,
   type ObserverItems,
@@ -58,6 +59,7 @@ export function observerDataFromFeed(value: unknown): ObserverData | null {
 function observerDataFrom(shell: unknown, items: ObserverItems): ObserverData | null {
   const value = shell as { schema?: unknown; streams?: unknown };
   if (value?.schema !== OBSERVER_DATA_SCHEMA || !Array.isArray(value.streams)) return null;
+  if (!itemsCoverShell(shell as ObserverShell, items)) return null;
   const joined = joinObserverData(shell as ObserverShell, items);
   return isObserverData(joined) ? joined : null;
 }

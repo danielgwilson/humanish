@@ -53,4 +53,19 @@ describe("the page's run data", () => {
     expect(await fetchObserverData(served)).toEqual(data);
     expect(asked).toBe("observer-feed.json");
   });
+
+  it("refuses a feed whose items are another run's or leave a participant out", async () => {
+    const data = await live();
+    const body = JSON.parse(feed(data)) as { data: unknown; items: { runId: string } };
+    for (const items of [
+      { ...body.items, runId: "another-run" },
+      { ...body.items, streams: {} },
+    ]) {
+      const served = (async () => ({
+        ok: true,
+        json: async () => ({ data: body.data, items }),
+      })) as unknown as typeof fetch;
+      expect(await fetchObserverData(served)).toBeNull();
+    }
+  });
 });
