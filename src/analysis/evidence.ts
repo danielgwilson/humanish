@@ -3,12 +3,7 @@ import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
-import {
-  RUN_BUNDLE_FILE,
-  RUN_BUNDLE_SCHEMA,
-  RUN_BUNDLE_V1_SCHEMA,
-  type RunBundle,
-} from "../run/bundle.js";
+import { isReadRunBundleSchema, RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
 import { loadStreamTraces } from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 import {
@@ -63,7 +58,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
     !isRecord(value) ||
-    (value.schema !== RUN_BUNDLE_SCHEMA && value.schema !== RUN_BUNDLE_V1_SCHEMA) ||
+    !isReadRunBundleSchema(value.schema) ||
     value.runId !== runIdOf(prepared) ||
     !Array.isArray(value.streams) ||
     value.streams.length > EVIDENCE_LIMITS.participants ||

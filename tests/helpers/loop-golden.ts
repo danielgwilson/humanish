@@ -14,6 +14,7 @@ import {
 import type { LoopRunOptions } from "../../src/actors/computer-use/loop/types.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 
+import { frozenLiveFlush } from "./frozen-live-flush.js";
 import { loopGoldenText } from "./loop-golden-log.js";
 
 // Characterization harness for runComputerUseLoopWithTaps. A scenario records every port call the loop
@@ -122,6 +123,8 @@ export function baseOptions(
   executor: CuaExecutor,
   overrides: Partial<LoopRunOptions> = {},
 ): LoopRunOptions {
+  // Every scenario's items pass through the production live flush, which freezes them.
+  const live = frozenLiveFlush();
   return {
     instructions: "Act as the synthetic persona and finish the task.",
     provider,
@@ -134,8 +137,10 @@ export function baseOptions(
       probe.push("writeScreenshot", name, bytes.length);
       return `screenshots/${name}`;
     },
-    onTrace: (items, usage, metadata) =>
-      probe.push("onTrace", items.length, usage, metadata ?? null),
+    onTrace: (items, usage, metadata) => {
+      live.onTrace(items, usage, metadata);
+      probe.push("onTrace", items.length, usage, metadata ?? null);
+    },
     onMessage: (text) => probe.push("onMessage", text),
     onObservedUrl: (url) => probe.push("onObservedUrl", url ?? null),
     onScreenshot: (bytes) => probe.push("onScreenshot", bytes.length),

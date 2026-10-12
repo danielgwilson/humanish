@@ -31,7 +31,8 @@ import {
 } from "./paths.js";
 import { registerActiveRun } from "./active-runs.js";
 import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
-import { scrubRunSandboxIds, withPublicSandboxIds } from "./sandbox-ids.js";
+import { liveItemsWriter, type LiveItemsWriter } from "./live-items.js";
+import { publicSandboxView, readRunSandboxIds, scrubRunSandboxIds } from "./sandbox-ids.js";
 import { RunSecrets } from "./secrets.js";
 import {
   RUN_STATUS_FILE,
@@ -143,7 +144,8 @@ interface Run {
   /** The literal values the route scrubs from this run's evidence; a value found later is added here. */
   readonly secrets: RunSecrets;
   /**
-   * Publish an in-progress bundle: run.json, review.json, review.md, events.ndjson and
+   * Publish an in-progress bundle: each running participant's new items appended to its live file
+   * (src/run/live-items.ts), then run.json, review.json, review.md, events.ndjson and
    * observer/observer-data.json, plus the latest pointer until one pointer write has succeeded,
    * so a live run is `latest` from its first snapshot and a later flush never takes the pointer
    * back from a newer run. status.json stays running. Writes are serialized with each other and
@@ -167,7 +169,7 @@ interface Run {
   /**
    * The one final publication: run.json with `outcome` set from `outcome`, then the status
    * outcome copied from it, then review.json, review.md, events.ndjson,
-   * observer/observer-data.json, and last the latest pointer. The status goes after run.json so
+   * observer/observer-data.json, then the removal of the live files, and last the latest pointer. The status goes after run.json so
    * the index never gets ahead of the evidence, and the pointer goes last so `latest` never
    * selects a run whose projections are incomplete. Every projection reads the outcome, so none
    * shows a pass for a run whose ok is false. Rejects before writing on a second call, after the
@@ -328,6 +330,32 @@ function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
       };
 }
 
+/**
+ * run.json for `bundle`, written after every live file and trace file it indexes, then the removal
+ * of the live files it no longer names. Returns the bundle the review and the projections read:
+ * raw sandbox ids scrubbed, each finished trace inline, each running participant's items as the
+ * index of its live file, and the live files' warning among the events. Live items are scrubbed
+ * as they are appended, so the scrub of the bundle no longer walks them.
+ */
+async function writeRunJson(
+  paths: PreparedRunArtifactPaths,
+  liveItems: LiveItemsWriter,
+  bundle: RunBundle,
+): Promise<RunBundle> {
+  const sandboxIds = await readRunSandboxIds(paths);
+  const live = await liveItems.write(bundle.streams, sandboxIds);
+  const events = [
+    ...bundle.events.filter((event) => !live.events.some((mine) => mine.id === event.id)),
+    ...live.events,
+  ];
+  const publicBundle = publicSandboxView({ ...bundle, streams: live.streams, events }, sandboxIds);
+  const split = splitStreamTraces(publicBundle);
+  for (const file of split.files) await writeContainedOutputFile(paths, file.path, file.bytes);
+  await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(split.bundle), "utf8");
+  await live.published();
+  return publicBundle;
+}
+
 /** The writes of one run, queued in order: its snapshots, its final publication and its interrupt. */
 interface RunPublisher {
   snapshot(bundle: RunBundle): Promise<void>;
@@ -398,6 +426,8 @@ function runPublisher(args: {
     pointerWritten = true;
   };
 
+  // Each running participant's items so far, appended to its live file as the flushes arrive.
+  const liveItems = liveItemsWriter(paths);
   /** run.json with its outcome, then `afterBundle`, then the review and projections. */
   const writeBundleFiles = async (
     bundle: RunBundle,
@@ -408,17 +438,12 @@ function runPublisher(args: {
     // The run owns `outcome`: a bundle read back from disk keeps none of its own.
     const { outcome: _previous, ...evidence } = bundle;
     const recorded = interrupted ?? outcome;
-    const publicBundle = await withPublicSandboxIds(paths, {
+    const publicBundle = await writeRunJson(paths, liveItems, {
       ...evidence,
       events: withRunEvents(evidence.events),
       cwd: PUBLIC_TARGET_CWD,
       ...(recorded === undefined ? {} : { outcome: recorded }),
     });
-    // Each trace file first, so run.json never indexes a file that is not yet written. The review
-    // and the Observer data below read the whole in-memory bundle.
-    const split = splitStreamTraces(publicBundle);
-    for (const file of split.files) await writeContainedOutputFile(paths, file.path, file.bytes);
-    await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(split.bundle), "utf8");
     await afterBundle(publicBundle);
     // The run writes its own status.json; one it refuses renders as a missing one does.
     const status =
@@ -457,6 +482,8 @@ function runPublisher(args: {
     await writeBundleFiles(bundle, finishedOutcome(outcome), (publicBundle) =>
       runStatus.finish(runStatusOutcome(publicBundle)),
     );
+    // The final run.json indexes each finished trace, so the live files are journal no reader needs.
+    await liveItems.remove();
     await scrubRunSandboxIds(paths);
     await writePointer();
     let current: RecordedOutcome = { ok: outcome.ok, execution: outcome.execution };

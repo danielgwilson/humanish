@@ -261,9 +261,10 @@ export async function serveRunPath(
 
 /** The run's trace files, read through its pinned folder. */
 function pinnedTraceReader(runRoot: PinnedDirectory): TraceFileReader {
-  return async (relativePath, maxBytes) => {
+  return async (relativePath, maxBytes, length) => {
     const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath), {
       maxBytes,
+      ...(length === undefined ? {} : { length }),
     }).catch(() => null);
     return bytes === null ? { refused: `${relativePath} could not be read` } : { bytes };
   };

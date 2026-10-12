@@ -1,5 +1,14 @@
 import { constants, type BigIntStats } from "node:fs";
-import { lstat, mkdir, open, realpath, rename, unlink, type FileHandle } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  open,
+  realpath,
+  rename,
+  rmdir,
+  unlink,
+  type FileHandle,
+} from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -256,6 +265,78 @@ export async function createContainedOutputFile(
   await handle.close();
 }
 
+/**
+ * Appends `data` to an existing single-link regular file inside the root that holds exactly
+ * `size` bytes, the count the caller says it wrote, so an append never lands after bytes the
+ * caller did not write. The checks writeContainedOutputFile makes run before the open; the opened
+ * file must be the one checked, and the root and its folders are checked again before the write.
+ * The data is synced before this resolves, so a run.json written after it never indexes bytes the
+ * disk may not hold.
+ */
+export async function appendContainedOutputFile(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+  data: Uint8Array,
+  size: number,
+): Promise<void> {
+  const filePath = await prepareContainedOutputFile(rootInput, relativePath);
+  const root = await resolveOutputRoot(rootInput);
+  await assertContainedDirectoryChain(root, path.dirname(filePath));
+  const before = await lstat(filePath, { bigint: true });
+  if (!before.isFile() || before.nlink > 1n)
+    throw new Error(`${relativePath} is not a single-link regular file.`);
+  // O_NONBLOCK: a file swapped for a FIFO after the lstat fails the open at once (no reader), where
+  // a blocking open would wait for a reader and hold up every later write in the run's queue.
+  // Writes to a regular file ignore it.
+  const handle = await open(
+    filePath,
+    constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
+  try {
+    const after = await handle.stat({ bigint: true });
+    if (!after.isFile() || after.nlink > 1n || after.dev !== before.dev || after.ino !== before.ino)
+      throw new Error(`${relativePath} changed while it was opened.`);
+    if (after.size !== BigInt(size))
+      throw new Error(`${relativePath} holds ${after.size} bytes, not ${size}.`);
+    if ((await resolveOutputRoot(rootInput)) !== root)
+      throw new Error("Output root changed after it was prepared.");
+    await assertContainedDirectoryChain(root, path.dirname(filePath));
+    const { bytesWritten } = await handle.write(data, 0, data.length);
+    if (bytesWritten !== data.length) throw new Error(`${relativePath} was not appended in full.`);
+    await handle.datasync();
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Removes a single-link regular file or an empty folder inside the root. Nothing at the path, or a
+ * folder on it missing, is not an error. A link, a hard-linked file or a folder that holds anything
+ * is refused and kept.
+ */
+export async function removeContainedOutputFile(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+): Promise<void> {
+  assertSafeRelativeOutputPath(relativePath, false);
+  const root = await resolveOutputRoot(rootInput);
+  const candidate = path.resolve(root, normalizeRelativeOutputPath(relativePath));
+  if (!isPathInside(root, candidate) || candidate === root)
+    throw new Error("Output file must stay inside its selected root.");
+  let stats: BigIntStats;
+  try {
+    await assertContainedDirectoryChain(root, path.dirname(candidate));
+    stats = await lstat(candidate, { bigint: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return;
+    throw error;
+  }
+  if (stats.isDirectory()) return rmdir(candidate);
+  if (!stats.isFile() || stats.nlink > 1n)
+    throw new Error(`${relativePath} is not a single-link regular file.`);
+  await unlink(candidate);
+}
+
 // The most humanish reads of one file of each kind. A larger file is refused unread.
 
 /**
@@ -379,6 +460,40 @@ export async function readOpenedAtMost(
     if (total > maxBytes) return null;
     chunks.push(chunk.subarray(0, bytesRead));
   }
+}
+
+/**
+ * The first `length` bytes of one regular file, under the checks readContainedRegularFile makes,
+ * or all of a file that holds fewer. Bytes past `length`, such as a later append, are not read.
+ */
+export async function readContainedPrefix(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+  length: number,
+): Promise<ContainedRead> {
+  const opened = await openContained(rootInput, relativePath);
+  if (opened.status === "missing") return opened;
+  if (opened.status === "refused")
+    return { status: "refused", reason: opened.reason, limit: length };
+  try {
+    return { status: "read", bytes: await readOpenedPrefix(opened.handle, length) };
+  } catch {
+    return { status: "refused", reason: "unreadable", limit: length };
+  } finally {
+    await opened.handle.close().catch(() => {});
+  }
+}
+
+/** The first `length` bytes of an opened file, read by position, or all of a shorter one. */
+export async function readOpenedPrefix(handle: FileHandle, length: number): Promise<Buffer> {
+  const bytes = Buffer.allocUnsafe(length);
+  let total = 0;
+  while (total < length) {
+    const { bytesRead } = await handle.read(bytes, total, length - total, total);
+    if (bytesRead === 0) break;
+    total += bytesRead;
+  }
+  return bytes.subarray(0, total);
 }
 
 /** The caller owns this checked descriptor and must close it after reading/streaming. */

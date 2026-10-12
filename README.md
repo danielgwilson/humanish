@@ -335,7 +335,7 @@ and the library exports.
 - Breaking changes ship together in one minor release. Its release notes carry a migration
   table: each old form, its new form, and the change to make.
 - The study file and the run bundle carry versioned schemas, `humanish.study.v3` and
-  `humanish.run-bundle.v2`. A breaking change to either one bumps its version.
+  `humanish.run-bundle.v3`. A breaking change to either one bumps its version.
 
 Pin the exact version in `package.json` and read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 
@@ -483,7 +483,7 @@ for the supported library seam.
 
 - run a study: `runStudy`, `RunStudyOptions`, `StudyOutcome`, `StudyResult`, `StudyEvent`, `routeOf`,
   `parseStudy`, `STUDY_SCHEMA`;
-- read a run: `verifyRun`, `renderObserver`, `RunBundle`, `ActorTrace`;
+- read a run: `verifyRun`, `loadRunBundle`, `renderObserver`, `RunBundle`, `ActorTrace`;
 - bring a participant: `ComputerUseProvider`, `ComputerUseExecutor`, `ProviderContext`,
   `createOpenAiResponsesProvider`, `runComputerUseLoop`, `defaultRedactionHooks`;
 - score a run: `AdapterScorerModule` and its scoring contexts.

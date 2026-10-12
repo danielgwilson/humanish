@@ -144,7 +144,7 @@
       "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v2",
+      "bundleSchema": "humanish.run-bundle.v3",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -160,7 +160,7 @@
   },
   "review.md": "# humanish Run Review\n\nRun: [run]\n\nMode: dry-run\n\nVerdict: dry run\n\nOutcome: dry run\n\nDry run: humanish wrote a synthetic run bundle. No product behavior was tested.\n\n## Public-Safety\n\n- Redaction: passed\n- Notes: Dry-run bundle: synthetic data only, nothing from a product.\n\n## Gaps\n\n- No browser was launched.\n- No product state was verified.\n- No model, provider, or E2B substrate was used.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v2",
+    "schema": "humanish.run-bundle.v3",
     "runId": "[run]",
     "mode": "dry-run",
     "simCount": 1,

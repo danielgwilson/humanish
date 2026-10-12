@@ -443,7 +443,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v2",
+      "bundleSchema": "humanish.run-bundle.v3",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -478,7 +478,7 @@
   },
   "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 1 participant took part: 1/1 reported reaching the goal. How it ended: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 5 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v2",
+    "schema": "humanish.run-bundle.v3",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,

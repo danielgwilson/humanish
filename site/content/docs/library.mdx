@@ -54,15 +54,23 @@ route a config takes, and `StudyResult<route>` is that route's result type.
 ## Read a run
 
 ```ts
-import { readFile } from "node:fs/promises";
-import { renderObserver, verifyRun, type RunBundle } from "humanish";
+import { loadRunBundle, renderObserver, verifyRun } from "humanish";
 
 const checked = await verifyRun(process.cwd(), "latest");
-if (!checked.ok || !checked.bundlePath) throw new Error("the run did not verify");
-const bundle = JSON.parse(await readFile(checked.bundlePath, "utf8")) as RunBundle;
+if (!checked.ok) throw new Error("the run did not verify");
+const loaded = await loadRunBundle(process.cwd(), checked.run);
+if (loaded === null) throw new Error("the run has no run bundle");
+const { bundle } = loaded;
 console.log(bundle.review.verdict, checked.shareSafety.status);
+for (const stream of bundle.streams) console.log(stream.id, stream.actor?.items.length ?? 0);
 await renderObserver(process.cwd(), checked.run, { open: false });
 ```
+
+`loadRunBundle` returns run.json with each participant's trace file joined, and while the run is in
+progress each participant's live file, so `stream.actor.items` and `stream.liveActor.items` hold
+the participant's steps. It checks every file against the size and sha256 run.json records for it,
+and throws an Error named `StreamTraceRefusedError` for one that does not match. run.json read on
+its own has each participant's summary and no items.
 
 `bundle.review.verdict` is what the participants experienced. A route result's `ok`, also
 written to the run's `status.json` as `outcome.ok`, says whether the run worked as an

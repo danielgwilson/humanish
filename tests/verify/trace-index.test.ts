@@ -91,7 +91,7 @@ describe("verify on an indexed trace", () => {
     };
     await writeStored({ ...inline, schema: "humanish.run-bundle.v1" });
     expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
-    await writeStored(inline);
+    await writeStored({ ...inline, schema: "humanish.run-bundle.v2" });
     const relabelled = await verifyRun(cwd, RUN);
     expect(relabelled.ok).toBe(false);
     expect(relabelled.shareSafety.status).toBe("blocked");
@@ -100,8 +100,10 @@ describe("verify on an indexed trace", () => {
   it("keeps a v2 run with in-progress items from share_ready, and blocks them in a finished run", async () => {
     const stored = await writeTwoParticipants(["Saved the record.", "Opened the list."]);
     const { outcome: _outcome, ...unfinished } = stored;
+    // 0.123.0 and 0.124.0 wrote a running participant's items inline in run.json v2.
     const live = {
       ...unfinished,
+      schema: "humanish.run-bundle.v2" as const,
       streams: [
         stored.streams[0]!,
         {

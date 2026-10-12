@@ -162,6 +162,16 @@ export async function readSafeRunArtifactJson(
   }
 }
 
+/**
+ * A run's bundle as `humanish verify` reads it, for a reader outside humanish: run.json of run
+ * `runInput` (a run id, or `latest`) under `cwdInput`'s `.humanish/runs/`, with every participant's
+ * trace file and, while the run is in progress, live file joined, so each stream has its
+ * `actor.items`, its screenshot entries and its `liveActor.items` as a v1 run.json held them. It
+ * reads run bundles v1, v2 and v3. Each file must match the index run.json records for it (path,
+ * size, sha256, item count); one that does not throws an Error named `StreamTraceRefusedError`
+ * that names the participant. Resolves to null when there is no such run, or its run.json is not
+ * a run bundle. `bundlePath` is run.json relative to `cwdInput`, `runDir` the run folder.
+ */
 export async function loadRunBundle(
   cwdInput: string,
   runInput: string,

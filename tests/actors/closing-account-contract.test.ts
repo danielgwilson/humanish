@@ -23,6 +23,7 @@ import { createLocalAgentProvider, type LocalAgentId } from "../../src/actors/lo
 import { startClaudeSession } from "../../src/actors/local-agent/claude-session.js";
 import { actorRegistry, type ActorId } from "../../src/actors/registry.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
+import { frozenLiveFlush } from "../helpers/frozen-live-flush.js";
 
 // The impressions in typed-closing-report-impressions.json, which the Codex fake gives as well.
 const codex = vi.hoisted(() => ({
@@ -92,11 +93,16 @@ function frame(shade: number): Buffer {
   return PNG.sync.write(image);
 }
 
-/** One action saves the task; the study stops when the screen says so. */
+/**
+ * One action saves the task; the study stops when the screen says so. The items pass through the
+ * production live flush, which freezes them, so a brain whose session edits a recorded item fails.
+ */
 async function session(provider: CuaProvider): Promise<ActorTrace> {
   let actions = 0;
   let time = 0;
+  const live = frozenLiveFlush();
   const result = await runComputerUseLoopWithTaps({
+    onTrace: live.onTrace,
     instructions: "Rename the task.",
     provider,
     executor: {
@@ -118,6 +124,7 @@ async function session(provider: CuaProvider): Promise<ActorTrace> {
     redaction: defaultRedactionHooks,
     stopWhen: { any: [{ textIncludes: "saved" }] },
   });
+  await live.stop();
   return result.trace;
 }
 

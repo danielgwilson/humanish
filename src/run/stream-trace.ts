@@ -1,18 +1,33 @@
 // Where a participant's trace lives. A v1 run.json holds every stream's trace items and screenshot
 // entries inline. From v2 the run writer moves them into one file per stream and leaves an index
-// in run.json, so run.json stays a summary whatever the length of the sessions. Every reader that
-// needs the items loads them here, which accepts both versions and checks a file against its index.
+// in run.json, so run.json stays a summary whatever the length of the sessions. From v3 a running
+// participant's items so far are in a live file run.json indexes too (src/run/live-items.ts).
+// Every reader that needs the items loads them here, which accepts every version and checks each
+// file against its index.
 
 import { createHash } from "node:crypto";
 
 import type { ActorTrace } from "../actors/contract.js";
-import { RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
+import {
+  RUN_BUNDLE_FILE,
+  RUN_BUNDLE_SCHEMA,
+  RUN_BUNDLE_V2_SCHEMA,
+  type RunBundle,
+} from "./bundle.js";
+import { isRunBundle } from "./bundle-shape.js";
 import {
   type PreparedOutputRoot,
+  readContainedPrefix,
   readContainedRegularFile,
   refusalText,
   RUN_ARTIFACT_MAX_BYTES,
 } from "./contained-output.js";
+import {
+  isLiveItemsIndex,
+  LIVE_ACTOR_SCHEMA,
+  LIVE_ACTOR_V1_SCHEMA,
+  liveItemsFromBytes,
+} from "./live-items.js";
 import { isRunStreamArtifact, isStreamTraceIndex, isStreamTracePath } from "./stream-shape.js";
 import type { RunStream, StreamTraceIndex } from "./streams.js";
 import { isRecord } from "./type-guards.js";
@@ -110,17 +125,23 @@ export function splitStreamTraces(bundle: RunBundle): {
 
 /**
  * Where a loader reads trace files from: the bytes at a run-relative path, at most `maxBytes`, or
- * why it could not. Prepared run paths read through the contained reader; the Observer server
- * passes a reader over its pinned run folder.
+ * why it could not. With `length`, the first `length` bytes, or all of a shorter file: a live file
+ * grows past what run.json indexes, and the loader reads only the indexed prefix. Prepared run
+ * paths read through the contained reader; the Observer server passes a reader over its pinned run
+ * folder.
  */
 export type TraceFileReader = (
   relativePath: string,
   maxBytes: number,
+  length?: number,
 ) => Promise<{ bytes: Buffer } | { refused: string }>;
 
 function containedReader(runPaths: PreparedOutputRoot): TraceFileReader {
-  return async (relativePath, maxBytes) => {
-    const read = await readContainedRegularFile(runPaths, relativePath, maxBytes);
+  return async (relativePath, maxBytes, length) => {
+    const read =
+      length === undefined
+        ? await readContainedRegularFile(runPaths, relativePath, maxBytes)
+        : await readContainedPrefix(runPaths, relativePath, length);
     if (read.status === "missing") return { refused: `${relativePath} is missing` };
     if (read.status === "refused") return { refused: refusalText(relativePath, read) };
     return { bytes: read.bytes };
@@ -177,17 +198,70 @@ function assertIndex(stream: RunStream): asserts stream is RunStream & { trace: 
     throw new StreamTraceRefusedError(stream.id, "run.json holds items beside its trace index");
 }
 
-/** The stream with its trace joined, and the bytes it was joined from when it has an index. */
+/** A live actor whose items run.json holds inline: humanish.live-actor.v1, or one with no schema. */
+const isInlineLiveActor = (live: NonNullable<RunStream["liveActor"]>): boolean =>
+  live.schema === LIVE_ACTOR_V1_SCHEMA || (live.schema as unknown) === undefined;
+
+/** A live file that could not be read, which a writer that moved on may have removed. */
+class LiveFileUnreadableError extends StreamTraceRefusedError {}
+
+/**
+ * The stream with its live actor's items joined from the indexed prefix of its live file, and the
+ * file's path and those bytes. A live actor with inline items (humanish.live-actor.v1) is returned
+ * as it is; bundleRefusal refuses one in a v3 run.json.
+ */
+async function readLiveItems(
+  read: TraceFileReader,
+  stream: RunStream,
+  maxBytes: number,
+): Promise<{ stream: RunStream; live?: { path: string; bytes: Buffer } }> {
+  const live = stream.liveActor;
+  if (live === undefined || isInlineLiveActor(live)) return { stream };
+  const refuse = (detail: string): never => {
+    throw new StreamTraceRefusedError(stream.id, detail);
+  };
+  if (live.schema !== LIVE_ACTOR_SCHEMA)
+    refuse(
+      `run.json records live actor schema ${String(live.schema)}, which this version does not read`,
+    );
+  const index = live.itemsFile;
+  if (!isLiveItemsIndex(index)) return refuse("run.json records a malformed live items index");
+  if (live.items !== undefined) refuse("run.json holds in-progress items beside their live file");
+  if (index.bytes > maxBytes)
+    refuse(`${index.path} is indexed at ${index.bytes} bytes, more than the ${maxBytes} read`);
+  const file = await read(index.path, maxBytes, index.bytes);
+  if ("refused" in file) throw new LiveFileUnreadableError(stream.id, file.refused);
+  // Only the indexed prefix: a reader that ignores `length` hands over the bytes appended since.
+  const joined = liveItemsFromBytes(file.bytes.subarray(0, index.bytes), index);
+  if ("refused" in joined) return refuse(joined.refused);
+  const { itemsFile: _index, ...summary } = live;
+  return {
+    stream: { ...stream, liveActor: { ...summary, items: joined.items } },
+    live: { path: index.path, bytes: file.bytes.subarray(0, index.bytes) },
+  };
+}
+
+/**
+ * The stream with its trace and live items joined, and each file's path and the bytes it was
+ * joined from.
+ */
 async function readStreamTrace(
   read: TraceFileReader,
   stream: RunStream,
   maxBytes: number,
-): Promise<{ stream: RunStream; bytes?: Buffer }> {
-  if (stream.trace === undefined) return { stream };
-  assertIndex(stream);
-  const file = await read(stream.trace.path, maxBytes);
-  if ("refused" in file) throw new StreamTraceRefusedError(stream.id, file.refused);
-  return { stream: joinTrace(stream, file.bytes), bytes: file.bytes };
+): Promise<{ stream: RunStream; files: { path: string; bytes: Buffer }[] }> {
+  const files: { path: string; bytes: Buffer }[] = [];
+  let joined = stream;
+  if (stream.trace !== undefined) {
+    assertIndex(stream);
+    const file = await read(stream.trace.path, maxBytes);
+    if ("refused" in file) throw new StreamTraceRefusedError(stream.id, file.refused);
+    joined = joinTrace(stream, file.bytes);
+    files.push({ path: stream.trace.path, bytes: file.bytes });
+  }
+  const live = await readLiveItems(read, joined, maxBytes);
+  if (live.live !== undefined) files.push(live.live);
+  return { stream: live.stream, files };
 }
 
 /**
@@ -212,8 +286,10 @@ export async function loadStreamTrace(
  * case-insensitive file system compares them, is refused. In v2 the writer
  * indexes every actor on every write, mid-run flushes included, so a v2 actor without an index lost
  * its trace file, and inline items never come from the writer. A run still writing carries its
- * participants' items so far as `liveActor` (humanish.live-actor.v1), which no index binds; a
- * run.json whose outcome says the run finished never does, since the final write replaces it.
+ * participants' items so far as `liveActor`: inline in v2 (humanish.live-actor.v1), in a live file
+ * from v3 (humanish.live-actor.v2), so a v3 run.json with inline live items did not come from the
+ * writer. A run.json whose outcome says the run finished never carries `liveActor`, since the
+ * final write replaces it.
  */
 function bundleRefusal(
   bundle: RunBundle,
@@ -225,12 +301,24 @@ function bundleRefusal(
     : undefined;
   if (shared !== undefined && shared.length > 1)
     return `run.json indexes ${String(stream.trace!.path)} for participants ${shared.join(", ")} (paths that differ only in case name one file on some file systems), and a trace file belongs to one participant`;
-  if (bundle.schema !== RUN_BUNDLE_SCHEMA) return undefined;
+  if (bundle.schema !== RUN_BUNDLE_SCHEMA && bundle.schema !== RUN_BUNDLE_V2_SCHEMA)
+    return undefined;
   if (stream.actor !== undefined && stream.trace === undefined)
     return "run.json holds its actor and names no trace file";
   if (stream.liveActor !== undefined && bundle.outcome?.state === "finished")
     return "run.json records a finished run and still holds in-progress items";
+  if (
+    bundle.schema === RUN_BUNDLE_SCHEMA &&
+    stream.liveActor !== undefined &&
+    isInlineLiveActor(stream.liveActor)
+  )
+    return "run.json v3 holds in-progress items inline, which the writer keeps in a live file";
   return undefined;
+}
+
+interface LoadedTraces {
+  bundle: RunBundle;
+  refused: StreamTraceRefusedError[];
 }
 
 /**
@@ -238,15 +326,47 @@ function bundleRefusal(
  * of each stream that could not be (see bundleRefusal for the rules that need the whole bundle).
  * Each refused stream is kept as run.json holds it; a reader that shows the run passes the result
  * to displayedTraces. `source` is the run's prepared paths, or a TraceFileReader. `onTrace`
- * receives each trace file's path and the bytes the stream was joined from, after they matched
- * the index, so a caller scans exactly what it reads.
+ * receives each trace and live file's path and the bytes the stream was joined from, after they
+ * matched the index, so a caller scans exactly what it reads.
+ *
+ * A live file that cannot be read may have been removed by the writer after `bundle` was read: it
+ * removes a superseded generation once run.json names the next one, and every live file once the
+ * run finished. The loader then reads run.json again, once, through the same reader, and loads
+ * that bundle instead when it is a run bundle of the same run.
  */
 export async function loadStreamTraces(
   source: PreparedOutputRoot | TraceFileReader,
   bundle: RunBundle,
   options: { maxBytes?: number; onTrace?: (path: string, bytes: Buffer) => void } = {},
-): Promise<{ bundle: RunBundle; refused: StreamTraceRefusedError[] }> {
+): Promise<LoadedTraces> {
   const read = typeof source === "function" ? source : containedReader(source);
+  const maxBytes = options.maxBytes ?? RUN_ARTIFACT_MAX_BYTES;
+  let loaded = await loadEveryStream(read, bundle, maxBytes);
+  if (loaded.refused.some((error) => error instanceof LiveFileUnreadableError)) {
+    const current = await rereadBundle(read, bundle.runId);
+    if (current !== undefined) loaded = await loadEveryStream(read, current, maxBytes);
+  }
+  for (const file of loaded.files) options.onTrace?.(file.path, file.bytes);
+  return { bundle: loaded.bundle, refused: loaded.refused };
+}
+
+/** run.json as it is now, when it is a run bundle of run `runId`. */
+async function rereadBundle(read: TraceFileReader, runId: string): Promise<RunBundle | undefined> {
+  const file = await read(RUN_BUNDLE_FILE, RUN_ARTIFACT_MAX_BYTES);
+  if ("refused" in file) return undefined;
+  try {
+    const value: unknown = JSON.parse(file.bytes.toString("utf8"));
+    return isRunBundle(value) && value.runId === runId ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function loadEveryStream(
+  read: TraceFileReader,
+  bundle: RunBundle,
+  maxBytes: number,
+): Promise<LoadedTraces & { files: { path: string; bytes: Buffer }[] }> {
   const owners = new Map<string, string[]>();
   for (const stream of bundle.streams)
     if (isRecord(stream.trace)) {
@@ -255,16 +375,13 @@ export async function loadStreamTraces(
     }
   const streams: RunStream[] = [];
   const refused: StreamTraceRefusedError[] = [];
+  const files: { path: string; bytes: Buffer }[] = [];
   for (const stream of bundle.streams) {
     try {
       const reason = bundleRefusal(bundle, stream, owners);
       if (reason !== undefined) throw new StreamTraceRefusedError(stream.id, reason);
-      const loaded = await readStreamTrace(
-        read,
-        stream,
-        options.maxBytes ?? RUN_ARTIFACT_MAX_BYTES,
-      );
-      if (loaded.bytes !== undefined) options.onTrace?.(stream.trace!.path, loaded.bytes);
+      const loaded = await readStreamTrace(read, stream, maxBytes);
+      files.push(...loaded.files);
       streams.push(loaded.stream);
     } catch (error) {
       if (!(error instanceof StreamTraceRefusedError)) throw error;
@@ -272,7 +389,7 @@ export async function loadStreamTraces(
       streams.push(stream);
     }
   }
-  return { bundle: { ...bundle, streams }, refused };
+  return { bundle: { ...bundle, streams }, refused, files };
 }
 
 /**

@@ -148,14 +148,6 @@ export async function readRunSandboxIds(root: PreparedOutputRoot): Promise<strin
 }
 
 /**
- * `value` as a run writes it: raw sandbox ids stay in the run's sandbox-receipts.ndjson, and the
- * file names each by marker and digest.
- */
-export async function withPublicSandboxIds<T>(root: PreparedOutputRoot, value: T): Promise<T> {
-  return publicSandboxView(value, await readRunSandboxIds(root));
-}
-
-/**
  * The bytes of `file` with each raw id replaced by its label: the same buffer when none occurs, or
  * when the bytes are not the plain text verify and export read as text.
  */

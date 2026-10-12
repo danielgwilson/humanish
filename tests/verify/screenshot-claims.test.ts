@@ -204,7 +204,8 @@ async function registerFrame(runDir: string, frame: FrameCase): Promise<void> {
   ];
   const stream = bundle.streams[0]!;
   if (frame.live) {
-    // In-progress items: a v2 run.json carries them only while its run has not finished.
+    // In-progress items: a v2 run.json carries them inline only while its run has not finished.
+    bundle.schema = "humanish.run-bundle.v2";
     delete stream.actor;
     delete bundle.outcome;
     Object.assign(stream, {
