@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+The Observer's live feed sends each running participant's new items only. A served page sends back,
+with each poll of `observer-feed.json`, the cursor its last body gave for each participant's live
+file (`?after=<position>.<generation>.<items>.<bytes>,...`), and the server reads and sends only
+the items past it, marking the entry with `liveAfter`. A new generation, a cursor the server cannot
+use, a finished run, a v1 or v2 run.json and a `--safe` server get full lists, as before. On a
+synthetic run of 24 participants working 8 hours, a poll sent about 90 KB in about 25 ms at 10%,
+50% and 100% of the run, where 0.125.0 sent 7.0, 34.7 and 69.5 MB in 0.14, 0.63 and 1.2 s. A
+page's first poll is still full. A page from 0.125.0 sends no cursors and gets full lists; a newer
+page polling 0.125.0 gets full lists and sends none.
+
 ### Changed
 
 - The Observer's filmstrip scrolls back to the selected capture only when the selected capture

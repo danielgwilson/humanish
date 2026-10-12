@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchStudyAnalysis, NO_ANALYSIS, type LoadedAnalysis } from "./study-analysis";
+import type { ObserverFeed } from "./data";
 import type { ObserverData } from "./observer-data";
 import {
   fetchHistoryIndex,
-  fetchObserverData,
+  fetchObserverFeed,
   isServedOrigin,
   type HistoryIndex,
   OBSERVER_POLL_MS,
@@ -38,8 +39,14 @@ export function useObserverFeed(
   const retry = useCallback(() => setRevision((v) => v + 1), []);
   // Retry restarts polling. The count survives it, so a notice stays until a server answers.
   const unanswered = useRef(0);
+  // The last feed a poll joined, whose cursors the next poll sends back; another run starts over.
+  const held = useRef<{ initial: ObserverData | null; feed: ObserverFeed | null }>({
+    initial,
+    feed: null,
+  });
   useEffect(() => {
     if (snapshot || !isServedOrigin(window.location.protocol)) return;
+    if (held.current.initial !== initial) held.current = { initial, feed: null };
     let disposed = false;
     let runId = initial?.run.runId;
     let inFlight = false;
@@ -59,15 +66,20 @@ export function useObserverFeed(
       controller = new AbortController();
       const deadline = setTimeout(() => controller?.abort(), 15_000);
       try {
-        const next = await fetchObserverData(fetchImpl, "observer-feed.json", controller.signal);
+        const polled = await fetchObserverFeed(fetchImpl, held.current.feed, controller.signal);
         if (disposed) return;
         // A response of any status means a server is there. Only silence counts toward a stop,
         // and not while the browser itself reports no network.
         if (answered) unanswered.current = 0;
         else if (navigator.onLine !== false) unanswered.current += 1;
-        if (next && (runId === undefined || next.run.runId === runId)) {
-          runId = next.run.runId;
-          setData(next);
+        // A body that does not join what the page holds: the next poll asks for every list.
+        if (polled.status === "unjoined" && held.current.feed !== null)
+          held.current.feed = { data: held.current.feed.data, live: new Map() };
+        const next = polled.status === "joined" ? polled.feed : null;
+        if (next && (runId === undefined || next.data.run.runId === runId)) {
+          runId = next.data.run.runId;
+          held.current.feed = next;
+          setData(next.data);
           setConnection({ state: "current", lastReceivedAt: Date.now() });
         } else
           setConnection((prev) => ({
