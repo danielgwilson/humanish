@@ -107,7 +107,13 @@ export function loopResult(
   debrief: ActorTrace["debrief"],
 ): CuaLoopResult {
   const { provider, settings, trace: recorder, usage } = session;
-  const { completionReason, reason, stopCause } = stop;
+  const { completionReason, stopCause } = stop;
+  // A participant whose session ended on the clock has its closing account as its reason, as one
+  // that ended the session itself has its last message; the stop cause keeps the scheduled end.
+  const reason =
+    stopCause === "scheduled_end" && debrief?.report !== undefined
+      ? debrief.report.summary
+      : stop.reason;
   const completedAtMs = session.now();
   const status = statusForCompletionReason(completionReason);
   const ids: ActorTrace["ids"] = {};

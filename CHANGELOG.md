@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+A participant that reaches its scheduled end on `openai-computer-use` now writes its closing
+report, and the report's summary is its `reason` and its stream's final `ui.state`. The provider
+offered the closing report only on a conversation the server held, so a study under zero data
+retention, which carries the conversation on the client, skipped it and left "the participant's
+scheduled end ... was reached" as the participant's whole account. The report is now asked on the
+carried conversation too: its newest screens whole and its oldest turns summarized past the token
+budget, which the trace's conversation record counts. `stopCause` still says `scheduled_end`, and a
+participant whose report does not come back keeps the scheduled end as its reason. Claude as a
+`local-agent` participant model has no closing request, so `study check` and `run` now warn when
+its participants have a scheduled end.
+
 `verify` checks each screenshot about eight times faster: 3.8 ms for a 1440x950 capture, down
 from 32.6 ms. It read every screenshot through a full decode, so a run of 24 participants working
 8 hours, about 69,000 screenshots, took about 37 minutes to verify. A screenshot is now checked

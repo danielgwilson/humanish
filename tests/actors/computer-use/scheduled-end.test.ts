@@ -37,7 +37,7 @@ const NINE_UTC = Date.UTC(2026, 9, 12, 9, 0);
  */
 function shift(
   clock: ParticipantClock,
-  options: { endsItself?: (turn: number) => boolean; idleSteps?: number } = {},
+  options: { endsItself?: (turn: number) => boolean; idleSteps?: number; report?: false } = {},
 ): {
   done: Promise<CuaLoopResult>;
   seen: CuaTurnRequest[];
@@ -73,7 +73,9 @@ function shift(
         pendingSafetyChecks: [],
         done: true,
         message: "Shift over.",
-        closingReport: { summary: "I saw ten patients.", frictionReports: [] },
+        ...(options.report === false
+          ? {}
+          : { closingReport: { summary: "I saw ten patients.", frictionReports: [] } }),
       };
     },
   };
@@ -117,7 +119,7 @@ describe("a participant with a scheduled end", () => {
     ]);
   });
 
-  it("ends at its time with a closing report, as a planned end that passes", async () => {
+  it("ends at its time with its closing report as its reason, as a planned end that passes", async () => {
     const run = shift({ end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } });
     const result = await run.done;
     expect(run.seen).toHaveLength(10);
@@ -125,12 +127,25 @@ describe("a participant with a scheduled end", () => {
     expect(result.status).toBe("passed");
     expect(result.completionReason).toBe("goal_satisfied");
     expect(result.trace.stopCause).toBe("scheduled_end");
-    expect(result.reason).toBe("the participant's scheduled end at 09:10 UTC was reached");
+    expect(result.reason).toBe("I saw ten patients.");
+    expect(result.trace.reason).toBe("I saw ten patients.");
     expect(result.trace.debrief).toMatchObject({
       trigger: "scheduled_end",
       status: "completed",
       report: { summary: "I saw ten patients.", frictionReports: [] },
     });
+  });
+
+  it("keeps the scheduled end as its reason when no closing report came back", async () => {
+    const run = shift(
+      { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
+      {
+        report: false,
+      },
+    );
+    const result = await run.done;
+    expect(result.trace.debrief).toMatchObject({ trigger: "scheduled_end", status: "failed" });
+    expect(result.reason).toBe("the participant's scheduled end at 09:10 UTC was reached");
   });
 
   it("adds the local time to every turn when the actor declares a time zone", async () => {
