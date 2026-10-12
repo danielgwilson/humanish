@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The Observer's filmstrip scrolls back to the selected capture only when the selected capture
+  changes. It no longer jumps back when you switch inspector tabs or page the activity list.
+  Reopening the inspector shows the selected entry in the activity list, where it opened at the
+  top before.
+
 ## 0.125.0: Run bundle v3 with live items in append-only files, loadRunBundle, faster repeated verify (2026-10-12)
 
 humanish 0.125.0 keeps each live flush of a long study small, exports the run bundle loader, and
