@@ -218,6 +218,8 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
       for (const [index, stream] of streams.entries()) {
         const liveActor = stream.liveActor;
         if (liveActor === undefined || !Array.isArray(liveActor.items)) {
+          // A live actor already written as its index still names its file, which stays.
+          if (liveActor?.itemsFile !== undefined) live.add(index + 1);
           written.push(stream);
           continue;
         }

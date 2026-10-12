@@ -209,6 +209,17 @@ describe("the run writer's live items", () => {
     expect(text).toContain("[redacted-sandbox-id ");
   });
 
+  it("keeps a live file when a later write carries the live actor as run.json indexes it", async () => {
+    const [a, b] = [item(1), item(2)];
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b]));
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      await run.writeSnapshot({ ...inProgress([a, b]), streams: stored.streams });
+    });
+    expect(await liveFiles()).toEqual(["1.1.ndjson"]);
+    expect((await readRunWithTraces(runDir())).streams[0]!.liveActor?.items).toEqual([a, b]);
+  });
+
   it("keeps the live files of a run that ends without its final write, readable by the loader", async () => {
     const [a, b] = [item(1), item(2)];
     await withRun(async (run) => {
