@@ -14,7 +14,7 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
-import type { RunBundle } from "../../../src/run/bundle.js";
+import type { RunBundle, RunEvent } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import type { StudyConfig } from "../../../src/study/types.js";
@@ -104,6 +104,15 @@ async function runJson(cwd: string, runId: string | undefined): Promise<RunBundl
   ) as RunBundle;
 }
 
+async function runEvents(cwd: string, runId: string | undefined): Promise<RunEvent[]> {
+  if (runId === undefined) throw new Error("the run wrote no bundle");
+  const text = await readFile(path.join(cwd, ".humanish", "runs", runId, "events.ndjson"), "utf8");
+  return text
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as RunEvent);
+}
+
 // Not transient by the provider retry's rule, so the create fails at once.
 const DESKTOP_DID_NOT_START = new Error("desktop did not start: the display server exited");
 
@@ -132,8 +141,6 @@ describe("a hosted fan-out whose first participant fails to start", () => {
     expect(result.lanes?.slice(1).map((lane) => lane.status)).toEqual(Array(10).fill("passed"));
     expect(handle.created).toHaveLength(10);
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
-    const bundle = await runJson(cwd, result.runId);
-    expect(bundle.events.some((event) => event.type === "cua-lab.fanout.fail-fast")).toBe(false);
   });
 
   it("runs the other 10 of 11 app-url participants when the first desktop fails after it was created", async () => {
@@ -199,11 +206,19 @@ describe("a hosted fan-out whose first participant fails to start", () => {
     expect(handle.killed).toEqual(handle.createdIds);
     expect(result.laneSummary).toMatchObject({ passed: 0, skipped: 3, harnessErrors: 1 });
     const first = result.lanes?.[0]?.id;
+    const reason = `skipped: participant ${first} failed to provision its world (pipeline gate)`;
+    const bundle = await runJson(cwd, result.runId);
+    const events = await runEvents(cwd, result.runId);
     for (const lane of result.lanes?.slice(1) ?? []) {
       expect(lane.status).toBe("blocked");
-      expect(lane.skippedReason).toBe(
-        `skipped: participant ${first} failed to provision its world (pipeline gate)`,
-      );
+      expect(lane.skippedReason).toBe(reason);
+      // The run's review and its events.ndjson name each skipped participant with the reason.
+      expect(bundle.review.gaps).toContain(`${lane.id}: ${reason}`);
+      expect(
+        events
+          .filter((event) => event.type === "cua-lab.session.blocked")
+          .map((event) => event.message),
+      ).toContain(`Participant ${lane.id} ${reason}.`);
     }
   });
 

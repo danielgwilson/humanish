@@ -676,7 +676,7 @@ describe("a judgment's verdict and passed come from one value", () => {
 
   it("judges a skipped participant the way the bundle and result write it", () => {
     const skipped = { skipped: true, noEngagement: false, selfReportedBlocker: false };
-    // computer-use's fail-fast skip: the fan-out stream and the result's participant say blocked.
+    // computer-use's pipeline-gate skip: the fan-out stream and the result's participant say blocked.
     expect(judgedStatus(skipped)).toBe("blocked");
     // shared-world's handoff skip also carries a session error: its participant records say failed.
     expect(judgedStatus({ ...skipped, sessionError: "handoff barrier: timed out" })).toBe("failed");

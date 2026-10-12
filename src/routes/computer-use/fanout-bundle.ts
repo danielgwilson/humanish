@@ -233,9 +233,8 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
 /**
  * Project N>1 fan-out participants into a humanish.run-bundle.v1 (the evidence schema is unchanged; this
  * is a new producer for the multi-stream shape). One sim + one stream per participant; per-participant
- * provenance/session events; a recorded `cua-lab.fanout.plan` event (and a `cua-lab.fanout.fail-fast`
- * event when a harness error skipped queued participants). N-ary verify/Observer already handle multiple
- * streams. A single-participant run without a rerun never reaches here: buildCuaRunBundle
+ * provenance/session events; a recorded `cua-lab.fanout.plan` event. N-ary verify/Observer already
+ * handle multiple streams. A single-participant run without a rerun never reaches here: buildCuaRunBundle
  * (bundle.ts) sends it to buildSingleParticipantBundle (single-bundle.ts).
  */
 export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
@@ -279,16 +278,6 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     streams.push(records.stream);
     events.push(...records.events);
   });
-
-  if (args.failFastReason) {
-    events.push({
-      id: nextEventId("fanout-fail-fast"),
-      at: args.run.createdAt,
-      level: "warn",
-      type: "cua-lab.fanout.fail-fast",
-      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight participants finished; queued participants were skipped (blocked); completed evidence is retained.`,
-    });
-  }
 
   const review = fanoutReview(args, streams, judgment);
 

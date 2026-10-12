@@ -77,7 +77,7 @@ export interface ParticipantFacts {
   completionReason?: ActorCompletionReason;
   /** The harness failed before the session reached a terminal status. */
   sessionError?: string;
-  /** The pipeline gate or fail-fast skipped the participant. */
+  /** The pipeline gate or the study budget skipped the participant. */
   skipped: boolean;
   /** hollowCompletion held for its session. */
   noEngagement: boolean;

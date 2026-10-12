@@ -349,8 +349,8 @@ describe("ready desktop participant contract", () => {
 
     const result = await runCuaParticipant(f.spec, f.deps);
 
-    // An unconfirmed provider cleanup is an execution failure apart from the session: it still
-    // trips fail-fast (harnessError) but leaves the session's own ending alone.
+    // An unconfirmed provider cleanup is an execution failure apart from the session: it counts
+    // as a harness error but leaves the session's own ending alone.
     expect(result.harnessError).toBe(true);
     expect(result.providerCleanupError).toBe("Model provider cleanup is unconfirmed.");
     expect(result.sessionError).toBeUndefined();
@@ -437,8 +437,8 @@ describe("ready desktop participant contract", () => {
     });
     f.deps.runSession = runCuaActorSession;
     const result = await runCuaParticipant(f.spec, f.deps);
-    // An unconfirmed provider cleanup is an execution failure apart from the session: it still
-    // trips fail-fast (harnessError) but leaves the session's own ending alone.
+    // An unconfirmed provider cleanup is an execution failure apart from the session: it counts
+    // as a harness error but leaves the session's own ending alone.
     expect(result.harnessError).toBe(true);
     expect(result.providerCleanupError).toBe("Model provider cleanup is unconfirmed.");
     expect(result.sessionError).toBeUndefined();

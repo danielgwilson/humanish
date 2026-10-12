@@ -1989,7 +1989,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     });
   });
 
-  it("fail-fast on a harness error: in-flight participants finish, queued participants are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
+  it("a harness error mid-session ends only that participant: the queued participants still run, run ok=false, evidence intact", async () => {
     const handle = makeFanoutModule();
     const outcome = await runStudyWith(
       fanoutConfig({ concurrency: 2 }),
@@ -2000,8 +2000,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          // Participant "small-skimmer" (index 1) hits a harness error; participant 0 finishes in
-          // flight.
+          // Participant "small-skimmer" (index 1) hits a harness error while participant 0 is in
+          // flight and two more wait for a slot.
           if (options.persona.id === "impatient-skimmer") {
             await delay(5);
             throw new Error("provider exploded mid-session");
@@ -2018,20 +2018,18 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.laneSummary?.harnessErrors).toBe(1);
-    expect(result.laneSummary?.skipped).toBeGreaterThanOrEqual(1);
-    // Only the in-flight participants (0 and 1) ever created a sandbox; queued participants were
-    // skipped.
-    expect(handle.created.length).toBeLessThanOrEqual(2);
-    // Every created sandbox was torn down by id (no leak, no enumerate).
+    expect(result.laneSummary).toMatchObject({ passed: 3, skipped: 0, harnessErrors: 1 });
+    expect(result.lanes?.[1]?.error?.message).toBe("provider exploded mid-session");
+    // Every participant created its own sandbox, and each was torn down by id (no leak, no
+    // enumerate).
+    expect(handle.created).toHaveLength(4);
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    // A fail-fast event is recorded.
-    expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.fail-fast")).toBe(
-      true,
-    );
+    expect(
+      bundle.events.filter((e: { type: string }) => e.type === "cua-lab.session.blocked"),
+    ).toEqual([]);
     // Completed evidence intact: participant 0 reached a terminal session with an actor trace.
     const laneZero = bundle.streams.find((s: { id: string }) => s.id === "stream-001");
     expect(laneZero?.actor?.lane).toBe("computer-use");
@@ -2064,7 +2062,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
 
     expect(result.ok).toBe(false);
     expect(result.laneSummary?.hollow).toBe(1);
-    // No fail-fast: a mission/hollow verdict never trips it; all participants still ran.
+    // A hollow verdict is the participant's own: all participants still ran.
     expect(handle.created).toHaveLength(4);
 
     const verified = await verifyRun(cwd, result.runId);
@@ -2410,20 +2408,15 @@ describe("runCuaParticipants total-runner guard", () => {
 
   it("a throwing participant records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
-    const { outcomes, failFastReason } = await runCuaParticipants(
-      specs,
-      deps,
-      1,
-      async (s, laneDeps) => {
-        if (s.planned.index === 0) {
-          laneDeps.signalReady?.();
-          return okOutcome(s);
-        }
-        if (s.planned.id === "lane-02")
-          throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
+    const outcomes = await runCuaParticipants(specs, deps, 1, async (s, laneDeps) => {
+      if (s.planned.index === 0) {
+        laneDeps.signalReady?.();
         return okOutcome(s);
-      },
-    );
+      }
+      if (s.planned.id === "lane-02")
+        throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
+      return okOutcome(s);
+    });
 
     // Every participant appears exactly once with a terminal status: nothing vanished.
     expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
@@ -2433,15 +2426,14 @@ describe("runCuaParticipants total-runner guard", () => {
       "participant runner threw outside the session guard",
     );
     expect(outcomes[1]!.sessionError).toContain("ENOSPC");
-    // fail-fast tripped by the harness error, so the queued participant is blocked with a pinned
-    // reason rather than silently launching after the run already failed.
-    expect(outcomes[2]!.skippedReason).toContain("fail-fast");
-    expect(failFastReason).toContain("lane-02");
+    // The throw came after the gate opened, so it ends only its own participant.
+    expect(outcomes[2]!.skippedReason).toBeUndefined();
+    expect(outcomes[2]!.harnessError).toBe(false);
   });
 
   it("participant 0 throwing before it is ready closes the gate and releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
-    const { outcomes } = await runCuaParticipants(specs, deps, 3, async (s) => {
+    const outcomes = await runCuaParticipants(specs, deps, 3, async (s) => {
       if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");
       return okOutcome(s);
     });
