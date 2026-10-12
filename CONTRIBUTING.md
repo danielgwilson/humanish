@@ -58,7 +58,8 @@ pnpm install --frozen-lockfile # as CI installs
 pnpm vitest run tests/<file>   # while editing: one test file, a few seconds
 pnpm docs:check                # after editing a doc: paths, anchors, symbols, the CLI reference
 pnpm format                    # oxfmt; run before every commit
-pnpm release:check             # once before pushing: the gate CI runs, split into shards
+pnpm release:check             # the gate CI runs, split into shards
+pnpm gate                      # once before pushing: release:check and the other CI steps it reaches
 ```
 
 `release:check` runs `pnpm check` (format, lint, knip, the prose, vocabulary and site CSS caps, typecheck,
@@ -109,6 +110,43 @@ removes a cap against the base branch, unless the PR has the `raise-cap` label a
 line in its body that says why. `pnpm lint` prints the warnings that already exist, several hundred
 of them; that is expected. `pnpm knip` fails on unused files, dependencies and exports, and on any
 import cycle.
+
+## Run the gate before you push
+
+`pnpm gate` runs the checks CI requires that can run on your machine, on the commit you are about
+to push, and records a pass for that commit's tree. It tests HEAD's tree, so it refuses a worktree
+with uncommitted or untracked files; gitignored files do not count. It runs `pnpm release:check`
+with `CI=true`, which is what CI's `test (node-lts)` check runs. Under `CI=true`, a test that skips
+when no Chromium resolves on your machine fails instead, as it does on CI. The gate then adds the
+steps of CI's other required jobs that `release:check` leaves out, chosen from the paths changed
+since the merge-base with `origin/main`:
+
+| A changed path under                                                   | Adds                                             |
+| ---------------------------------------------------------------------- | ------------------------------------------------ |
+| `site/`, or `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`    | the site's typecheck, `registry:check` and build |
+| `observer/`, `src/`, `tests/`, `scripts/`, or one of those three files | the Observer's tests                             |
+
+With no merge-base, every stage runs. The `tui` job's typecheck and tests already run inside
+`release:check`. The gate prints one line per passing stage with its duration. A failing stage
+prints its exit code and the last 40 lines of its log, and the full log is in `.humanish/gate/`.
+A full pass writes `$(git rev-parse --git-common-dir)/humanish-gate/<tree sha>` with the stages it
+ran, the checks it deferred, the Node version and the time.
+
+These checks stay in CI: the site hero proof and the Observer browser proofs, which drive
+Chromium; `secret-scan`, which runs gitleaks in Docker; `cap-direction`, which reads the PR's label
+and body; `guest-desktop`, which builds the guest image; the `release:check` run on Node 22.19.0;
+and the public-surface denylist, which CI reads from a secret.
+
+To make `git push` refuse a commit that has no gate pass, opt in once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-push` looks for the pass recorded for each pushed branch's tree and never runs the
+checks itself, so a push stays fast. A pass is keyed by tree: amending only the commit message
+keeps it, and any change to a file needs a new `pnpm gate`. Tags and branch deletions push
+without one, and `git push --no-verify` skips the check once.
 
 ## Useful Commands
 

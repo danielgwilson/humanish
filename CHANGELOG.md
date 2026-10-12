@@ -8,6 +8,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+Contributors can run `pnpm gate` before pushing. It runs `pnpm release:check` with `CI=true`, then
+the site and Observer steps of CI's required jobs that the changed paths reach, and records a pass
+keyed by the tree of HEAD. The opt-in pre-push hook (`git config core.hooksPath .githooks`) refuses
+a push whose commit has no pass. CONTRIBUTING.md lists the checks the gate leaves to CI.
+
 ## 0.124.0: Small Observer files for long studies, faster verify, closing reports under zero data retention (2026-10-12)
 
 humanish 0.124.0 keeps a long study's Observer files small, checks screenshots about eight times
