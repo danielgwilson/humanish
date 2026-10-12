@@ -333,9 +333,9 @@ function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
 /**
  * run.json for `bundle`, written after every live file and trace file it indexes, then the removal
  * of the live files it no longer names. Returns the bundle the review and the projections read:
- * raw sandbox ids scrubbed, each finished trace inline and each running participant's items as the
- * index of its live file. Live items are scrubbed as they are appended, so the scrub of the bundle
- * no longer walks them.
+ * raw sandbox ids scrubbed, each finished trace inline, each running participant's items as the
+ * index of its live file, and the live files' warning among the events. Live items are scrubbed
+ * as they are appended, so the scrub of the bundle no longer walks them.
  */
 async function writeRunJson(
   paths: PreparedRunArtifactPaths,
@@ -344,7 +344,11 @@ async function writeRunJson(
 ): Promise<RunBundle> {
   const sandboxIds = await readRunSandboxIds(paths);
   const live = await liveItems.write(bundle.streams, sandboxIds);
-  const publicBundle = publicSandboxView({ ...bundle, streams: live.streams }, sandboxIds);
+  const events = [
+    ...bundle.events.filter((event) => !live.events.some((mine) => mine.id === event.id)),
+    ...live.events,
+  ];
+  const publicBundle = publicSandboxView({ ...bundle, streams: live.streams, events }, sandboxIds);
   const split = splitStreamTraces(publicBundle);
   for (const file of split.files) await writeContainedOutputFile(paths, file.path, file.bytes);
   await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(split.bundle), "utf8");

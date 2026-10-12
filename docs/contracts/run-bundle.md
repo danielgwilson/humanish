@@ -108,6 +108,11 @@ run.json write keeps the earlier generations until the next run.json is written,
 them. The live flush deep-freezes each item it is handed, so a producer that edits an item after
 recording it throws there; a producer records a new item instead.
 
+A write that starts a new generation copies the participant's whole list, as every flush did
+before v3. When a participant's generation is replaced on two writes in a row, the run records one
+warn event in `events`, type `live-items.rewritten`, with that stream's `streamId`, and keeps it in
+every later write. A run records at most one.
+
 `Run.finish` writes the final trace files and run.json, then removes every live file it wrote and
 `live/`, so a finished v3 bundle holds no live files and differs from v2 only in its schema name.
 A run that ends without its final write (interrupted, or killed) keeps its live files and the

@@ -16,6 +16,8 @@ count, sha256) in place of `items`. On a synthetic run of 24 participants workin
 wrote about 0.23 MB in about 0.24 s at 10%, 50% and 100% of the run, where 0.124.0 wrote 12, 60
 and 120 MB in 0.37, 1.7 and 3.0 s. `humanish run` removes the live files after the final run.json,
 so a finished v3 bundle differs from v2 only in its schema name; an interrupted run keeps them.
+A run whose participant's live file starts over on two flushes in a row records one
+`live-items.rewritten` warn event, since each such flush rewrites that participant's whole list.
 Every reader loads the live items through the trace loader, which checks each file against its
 index. The package now exports that loader as `loadRunBundle(cwd, run)`: it returns run.json with
 every participant's trace and live items joined and checked, for v1, v2 and v3 bundles. This release

@@ -10,6 +10,7 @@
 import { createHash, type Hash } from "node:crypto";
 
 import type { ActorTraceItem } from "../actors/contract.js";
+import type { RunEvent } from "./bundle.js";
 import {
   appendContainedOutputFile,
   createContainedOutputFile,
@@ -100,12 +101,14 @@ export interface LiveItemsWriter {
    * missing. Call `published` once run.json naming the returned streams is written: it removes
    * every superseded generation those streams do not name, including the file of a stream that no
    * longer carries live items. A generation whose removal fails, or whose write's run.json failed
-   * so `published` never ran, is removed by the next `published`.
+   * so `published` never ran, is removed by the next `published`. `events` is the one warn event
+   * the run records once a participant's generation was replaced on two writes in a row, from that
+   * write on; empty until then.
    */
   write(
     streams: readonly RunStream[],
     sandboxIds: readonly string[],
-  ): Promise<{ streams: RunStream[]; published: () => Promise<void> }>;
+  ): Promise<{ streams: RunStream[]; events: RunEvent[]; published: () => Promise<void> }>;
   /** Remove every live file this writer created, and live/ once empty: after the final run.json. */
   remove(): Promise<void>;
 }
@@ -120,6 +123,18 @@ interface Generation {
   bytes: number;
   /** sha256 of the file's bytes so far; copied for each digest, so no write rehashes the file. */
   readonly hash: Hash;
+}
+
+/** The warning for a participant whose live items were written in full on two writes in a row. */
+function rewrittenEvent(stream: RunStream, position: number): RunEvent {
+  return {
+    id: "event-live-items-rewritten",
+    at: stream.liveActor?.updatedAt ?? stream.updatedAt,
+    level: "warn",
+    type: "live-items.rewritten",
+    streamId: stream.id,
+    message: `The live items of ${stream.id} were written again in full on two flushes in a row (live/${position}.<generation>.ndjson). A full write copies every item recorded so far, so as long as this goes on, each flush takes longer and writes more to disk than the one before. It happens when an item already written was replaced or removed, or an append to the live file failed. Check that the disk holding the run has free space and no write errors. If the disk is fine, report this run: the participant's recorder is replacing items it already recorded.`,
+  };
 }
 
 /** Each item as its line in a live file, scrubbed of the run's raw sandbox ids. */
@@ -140,6 +155,10 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
   /** Generations no current index names: removed once a published run.json names none of them. */
   const superseded = new Set<string>();
   let knownIds = new Set<string>();
+  /** Positions whose generation the previous write replaced, and the current write. */
+  let replacedBefore = new Set<number>();
+  let replaced = new Set<number>();
+  let rewritten: RunEvent | undefined;
 
   const startGeneration = async (
     position: number,
@@ -153,7 +172,10 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
     created.add(path);
     await createContainedOutputFile(root, path, bytes.toString("utf8"));
     const previous = current.get(position);
-    if (previous !== undefined) superseded.add(previous.path);
+    if (previous !== undefined) {
+      superseded.add(previous.path);
+      replaced.add(position);
+    }
     appendFailed.delete(position);
     const next: Generation = {
       path,
@@ -218,6 +240,7 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
   return {
     async write(streams, sandboxIds) {
       const learned = sandboxIds.filter((id) => !knownIds.has(id));
+      replaced = new Set();
       const live = new Set<number>();
       const written: RunStream[] = [];
       for (const [index, stream] of streams.entries()) {
@@ -256,9 +279,15 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
           superseded.add(held.path);
           current.delete(position);
         }
+      // Replaced on two writes in a row: each flush rewrites the whole list, as before live files.
+      const churning = [...replaced].find((position) => replacedBefore.has(position));
+      if (rewritten === undefined && churning !== undefined)
+        rewritten = rewrittenEvent(streams[churning - 1]!, churning);
+      replacedBefore = replaced;
       const named = new Set(written.map((stream) => stream.liveActor?.itemsFile?.path));
       return {
         streams: written,
+        events: rewritten === undefined ? [] : [rewritten],
         published: async () => {
           // A removal that fails stays pending for the next published run.json.
           for (const path of superseded)

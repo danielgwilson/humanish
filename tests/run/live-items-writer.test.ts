@@ -74,6 +74,10 @@ afterEach(async () => {
 const runDir = () => path.join(cwd, ".humanish", "runs", RUN);
 const readText = (file: string) => readFile(path.join(runDir(), file), "utf8");
 const liveFiles = async () => (await readdir(path.join(runDir(), "live")).catch(() => [])).sort();
+const rewrittenEvents = async () =>
+  (JSON.parse(await readText("run.json")) as RunBundle).events.filter(
+    (event) => event.type === "live-items.rewritten",
+  );
 const storedLive = async (position = 0) =>
   (JSON.parse(await readText("run.json")) as RunBundle).streams[position]!.liveActor;
 
@@ -317,6 +321,40 @@ describe("the run writer's superseded generations", () => {
       await run.writeSnapshot(inProgress([a, replaced, c]));
     });
     expect(await liveFiles()).toEqual(["1.2.ndjson"]);
+  });
+
+  it("records one warning when a participant's generation is replaced on two writes in a row", async () => {
+    const a = item(1);
+    const again = (n: number) => item(2, `Step 2, said for the ${n}th time.`);
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, item(2)]));
+      await run.writeSnapshot(inProgress([a, again(2)]));
+      expect(await rewrittenEvents()).toEqual([]);
+      await run.writeSnapshot(inProgress([a, again(3)]));
+      await run.writeSnapshot(inProgress([a, again(4)]));
+    });
+    expect(await liveFiles()).toEqual(["1.4.ndjson"]);
+    const events = await rewrittenEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      level: "warn",
+      streamId: template.streams[0]!.id,
+      at: "2026-10-12T08:00:09.000Z",
+    });
+  });
+
+  it("records no warning when replaced generations are not on consecutive writes", async () => {
+    const [a, c] = [item(1), item(3)];
+    const replaced = item(2, "Step 2, said again.");
+    const replacedAgain = item(2, "Step 2, said once more.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, item(2)]));
+      await run.writeSnapshot(inProgress([a, replaced]));
+      await run.writeSnapshot(inProgress([a, replaced, c]));
+      await run.writeSnapshot(inProgress([a, replacedAgain, c]));
+    });
+    expect(await liveFiles()).toEqual(["1.3.ndjson"]);
+    expect(await rewrittenEvents()).toEqual([]);
   });
 });
 
