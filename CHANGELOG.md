@@ -13,6 +13,14 @@ the site and Observer steps of CI's required jobs that the changed paths reach, 
 keyed by the tree of HEAD. The opt-in pre-push hook (`git config core.hooksPath .githooks`) refuses
 a push whose commit has no pass. CONTRIBUTING.md lists the checks the gate leaves to CI.
 
+A finished live study verifies its run up to five times: for the Observer, before and during
+analysis, and twice more to refresh the Observer. Each verify read and checked every screenshot
+again. verify now keeps what one read of a screenshot showed for the rest of the command, and reads
+the file again when its size, times or inode change. It also reads up to eight evidence files at
+once. On a synthetic study of 3 participants with 1,203 screenshots of 147 KB, the five verifies
+took 10 s in all, down from 35 s: about 5 s for the first and 0.9 to 2.1 s for each later one,
+which took about 7 s each before.
+
 ### Fixed
 
 - A key, a Bearer value or a sandbox URL in a study's `title` no longer makes its run fail
