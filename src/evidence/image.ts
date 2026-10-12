@@ -1,3 +1,5 @@
+import { crc32, inflateSync, type ZlibOptions } from "node:zlib";
+
 import { PNG } from "pngjs";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -167,11 +169,88 @@ export function screenshotEvidenceError(relativePath: string, bytes: Buffer): st
     return "PNG IEND chunk must be empty";
   }
 
+  return chunks === null || !pngStructureHolds(bytes, chunks)
+    ? "could not decode PNG evidence"
+    : null;
+}
+
+/** The bit depths PNG allows for each color type. */
+const PNG_BIT_DEPTHS: Readonly<Record<number, readonly number[]>> = {
+  0: [1, 2, 4, 8, 16],
+  2: [8, 16],
+  3: [1, 2, 4, 8],
+  4: [8, 16],
+  6: [8, 16],
+};
+const PNG_CHANNELS: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+/** The fewest bytes the decoder reads from a chunk; a shorter one fails to decode. */
+const PNG_MIN_CHUNK_BYTES: Readonly<Record<string, number>> = { gAMA: 4 };
+
+/**
+ * Whether a PNG that passed pngDecodeRefusal decodes, read from its structure: the file ends at an
+ * empty IEND, every chunk's CRC matches, IHDR comes once with fields PNG defines, the image data is
+ * one run of IDAT chunks, and it inflates, with zlib's native code, to exactly the
+ * bytes its rows need with nothing after the stream, each row starting with a filter type from 0
+ * to 4. For an image without a palette that is all a decode establishes, at about an eighth of
+ * the time of pngjs, which unfilters every pixel in JavaScript; a run holds a screenshot for each
+ * turn. A palette image is decoded, since each pixel must index a palette that comes before the
+ * image data; in any other image a palette chunk is only a suggestion, wherever it is.
+ */
+function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean {
+  const last = chunks.at(-1);
+  if (last?.type !== "IEND" || last.end !== bytes.length) return false;
+  const crcHolds = (chunk: PngChunk) =>
+    crc32(bytes.subarray(chunk.start + 4, chunk.end - 4)) === bytes.readUInt32BE(chunk.end - 4);
+  if (!chunks.every(crcHolds)) return false;
+  const types = chunks.map((chunk) => chunk.type);
+  const firstIdat = types.indexOf("IDAT");
+  const idats = chunks.filter((chunk) => chunk.type === "IDAT");
+  if (
+    types.lastIndexOf("IHDR") !== 0 ||
+    firstIdat < 0 ||
+    types.lastIndexOf("IDAT") !== firstIdat + idats.length - 1
+  )
+    return false;
+  const [width, height] = [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
+  const [depth, colorType, compression, filter] = [bytes[24]!, bytes[25]!, bytes[26], bytes[27]];
+  if (!PNG_BIT_DEPTHS[colorType]?.includes(depth) || compression !== 0 || filter !== 0)
+    return false;
+  if (colorType === 3) return pngDecodes(bytes);
+  const trnsBytes = colorType === 0 ? 2 : colorType === 2 ? 6 : 0;
+  const tooShort = (chunk: PngChunk) =>
+    chunk.end - chunk.start - 12 <
+    (chunk.type === "tRNS" ? trnsBytes : (PNG_MIN_CHUNK_BYTES[chunk.type] ?? 0));
+  if (chunks.some(tooShort)) return false;
+  const rowBytes = 1 + Math.ceil((width * PNG_CHANNELS[colorType]! * depth) / 8);
+  const data = Buffer.concat(idats.map((chunk) => bytes.subarray(chunk.start + 8, chunk.end - 4)));
+  let rows: Buffer;
   try {
-    const decoded = PNG.sync.read(bytes, { checkCRC: true });
-    return pngDimensionsError(decoded.width, decoded.height);
+    // A stream that would inflate past the rows the image needs stops there, so a small file
+    // cannot claim gigabytes.
+    const options: ZlibOptions & { info: true } = {
+      maxOutputLength: rowBytes * height,
+      info: true,
+    };
+    const inflated = inflateSync(data, options) as unknown as {
+      buffer: Buffer;
+      engine: { bytesWritten: number };
+    };
+    if (inflated.engine.bytesWritten !== data.length) return false;
+    rows = inflated.buffer;
   } catch {
-    return "could not decode PNG evidence";
+    return false;
+  }
+  if (rows.length !== rowBytes * height) return false;
+  for (let row = 0; row < rows.length; row += rowBytes) if (rows[row]! > 4) return false;
+  return true;
+}
+
+function pngDecodes(bytes: Buffer): boolean {
+  try {
+    PNG.sync.read(bytes, { checkCRC: true });
+    return true;
+  } catch {
+    return false;
   }
 }
 

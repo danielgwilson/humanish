@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+`verify` checks each screenshot about eight times faster: 3.8 ms for a 1440x950 capture, down
+from 32.6 ms. It read every screenshot through a full decode, so a run of 24 participants working
+8 hours, about 69,000 screenshots, took about 37 minutes to verify. A screenshot is now checked
+from its structure: every chunk's CRC, the IHDR fields, one run of image data, and a native
+inflate to exactly the bytes its rows need, each row starting with a valid filter type. A palette
+image is still decoded. On 8,883 retained screenshots the two checks agreed on every file and the
+total time fell from 258 s to 18 s. The new check also refuses a few files the decoder accepted:
+image data cut short or followed by other bytes, image data split by another chunk, and a second
+IHDR.
+
 The Observer's saved data no longer holds every participant's trace items, so a long study's
 Observer files stay within what `verify` reads. `observer/observer-data.json` is now
 `humanish.observer-data.v2`: the run and each participant without their trace items and the

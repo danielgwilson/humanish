@@ -9,12 +9,25 @@ import {
 } from "../../src/evidence/image.js";
 import { redactScreenshot } from "../../src/evidence/redaction.js";
 import { pngTextChunk, withPngChunk, withPngChunkData } from "../helpers/png-chunks.js";
+import { BROKEN_PNGS, VALID_PNGS } from "../helpers/png-cases.js";
 
 function encodePng(width = 2, height = 2): Buffer {
   const png = new PNG({ width, height });
   png.data.fill(255);
   return PNG.sync.write(png);
 }
+
+describe("a screenshot PNG's structure", () => {
+  it.each(VALID_PNGS)("accepts %s", (_name, bytes) => {
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+  });
+
+  it.each(BROKEN_PNGS)("refuses %s", (_name, bytes) => {
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+      "could not decode PNG evidence",
+    );
+  });
+});
 
 describe("screenshot evidence", () => {
   it("accepts a valid small PNG", () => {

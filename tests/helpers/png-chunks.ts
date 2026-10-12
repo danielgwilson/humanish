@@ -45,3 +45,25 @@ export function withPngChunkData(png: Buffer, type: "IHDR" | "IEND", data: Buffe
   }
   throw new Error(`no ${type} chunk`);
 }
+
+/** The chunks of `png` in order, each as its type and data. */
+export function pngChunks(png: Buffer): { type: string; data: Buffer }[] {
+  const chunks: { type: string; data: Buffer }[] = [];
+  for (let offset = 8; offset + 8 <= png.length;) {
+    const length = png.readUInt32BE(offset);
+    chunks.push({
+      type: png.toString("latin1", offset + 4, offset + 8),
+      data: png.subarray(offset + 8, offset + 8 + length),
+    });
+    offset += 12 + length;
+  }
+  return chunks;
+}
+
+/** A PNG of these chunks in order, each with a correct CRC. */
+export function pngOf(chunks: { type: string; data: Buffer }[]): Buffer {
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    ...chunks.map(({ type, data }) => chunk(type, data)),
+  ]);
+}
