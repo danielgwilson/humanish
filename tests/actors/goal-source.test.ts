@@ -227,6 +227,8 @@ describe("computer-use completion provenance", () => {
       await runDryRun({ cwd, dryRun: true, runId: "review-source-test" });
       const root = path.join(cwd, ".humanish/runs/review-source-test");
       const raw = JSON.parse(await readFile(path.join(root, "run.json"), "utf8"));
+      // Legacy provenance: an inline actor trace with incomplete items is a v1 run.json.
+      raw.schema = "humanish.run-bundle.v1";
       const review = {
         ...raw.review,
         participants: tallyParticipantOutcomes(["passed"]),

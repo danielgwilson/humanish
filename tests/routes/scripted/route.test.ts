@@ -53,6 +53,7 @@ import type { ScriptedBrowserSessionResult } from "../../../src/actors/scripted-
 import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { readRunWithTraces } from "../../helpers/run-traces.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { runAdmitted, runComputerUse, runScripted } from "../../helpers/route-run.js";
@@ -566,7 +567,7 @@ describe("runScriptedBrowserLab", () => {
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("humanish.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v2");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(2);
     expect(bundle.cwd).toBe("[target-cwd]");
@@ -684,7 +685,7 @@ describe("runScriptedBrowserLab", () => {
         }
 
         const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-        const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+        const bundle = (await readRunWithTraces(runDir)) as ReturnType<typeof JSON.parse>;
         expect(bundle.mode).toBe("live");
         expect(bundle.simCount).toBe(2);
         expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([
@@ -712,7 +713,12 @@ describe("runScriptedBrowserLab", () => {
           const actorTrace = JSON.parse(
             await readFile(path.join(runDir, `actor-${surface}.json`), "utf8"),
           );
-          expect(actorTrace).toEqual(stream.actor);
+          expect(actorTrace).toEqual({
+            ...stream.actor,
+            artifacts: stream.artifacts.filter(
+              (artifact: { kind: string }) => artifact.kind === "screenshot",
+            ),
+          });
         }
 
         // Screenshots referenced by streams exist on disk (4 steps × 2 surfaces).

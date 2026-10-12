@@ -19,6 +19,7 @@ import { writeAnalysisExecutionReceipt } from "../../src/analysis/store-executio
 import { loadAnalysis } from "../../src/analysis/load.js";
 import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
+import { readRunWithTraces } from "../helpers/run-traces.js";
 
 it("redacts legacy analysis-directory evidence while omitting generated analysis records", async () => {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analysis-export-"));
@@ -69,6 +70,8 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
       },
     };
     const bundle = JSON.parse(await readFile(path.join(root, "run.json"), "utf8")) as RunBundle;
+    // A legacy run keeps its actor trace inline (run.json v1).
+    bundle.schema = "humanish.run-bundle.v1";
     bundle.streams[0]!.actor = actor;
     bundle.streams[0]!.artifacts.push({
       kind: "screenshot",
@@ -126,9 +129,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     expect(result).toMatchObject({ embeddedImages: 1, shareSafety: { status: "share_ready" } });
     const shared = path.join(cwd, "shared");
     const derivative = (await resolveRunPath(shared, runId))!;
-    const copied = JSON.parse(
-      await readFile(path.join(derivative.physicalRunRoot, "run.json"), "utf8"),
-    ) as RunBundle;
+    const copied = await readRunWithTraces(derivative.physicalRunRoot);
     expect(copied.streams[0]!.actor!.items[0]!.screenshotRef).toMatchObject({
       path: "screenshots/frame.png",
       redaction: "blurred",
@@ -166,6 +167,8 @@ it("refuses to export a frame a trace registers outside screenshots/", async () 
       PNG.sync.write(new PNG({ width: 4, height: 4 })),
     );
     const bundle = JSON.parse(await readFile(path.join(root, "run.json"), "utf8")) as RunBundle;
+    // An inline actor trace: a legacy run.json (v1).
+    bundle.schema = "humanish.run-bundle.v1";
     Object.assign(bundle.streams[0]!, {
       actor: {
         schema: ACTOR_TRACE_SCHEMA,

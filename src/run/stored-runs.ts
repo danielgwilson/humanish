@@ -16,7 +16,7 @@ import {
 } from "./contained-output.js";
 import { RUN_BUNDLE_FILE, type ReviewSummary } from "./bundle.js";
 import type { RunPointer } from "./results.js";
-import { isReviewSummary, isRunOutcome } from "./bundle-shape.js";
+import { isReviewSummary, isRunBundle, isRunOutcome } from "./bundle-shape.js";
 import {
   bundleDisplayFacts,
   displayedReview,
@@ -27,6 +27,7 @@ import {
 import { RUN_STATUS_FILE } from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
+import { loadRunTraces } from "./stream-trace.js";
 import { isNodeError, isRecord } from "./type-guards.js";
 import {
   invalidRunStorageVerifyResult,
@@ -235,10 +236,15 @@ export async function readReview(
   const bundle = runPaths
     ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE))
     : null;
-  const projected =
-    isRecord(bundle) && Array.isArray(bundle.streams)
-      ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord))
-      : review;
+  // The completion provenance reads each participant's items. A trace verify refused is read
+  // without them, as a v1 stream without items is.
+  const streams =
+    runPaths && isRunBundle(bundle)
+      ? (await loadRunTraces(runPaths, bundle).catch(() => bundle)).streams
+      : isRecord(bundle) && Array.isArray(bundle.streams)
+        ? bundle.streams.filter(isRecord)
+        : undefined;
+  const projected = streams ? withCuaReviewProvenance(review, streams) : review;
   const displayed = displayedBundle(bundle);
   const { display } = runPaths ? await listedRunDisplay(runPaths, bundle) : {};
   return {

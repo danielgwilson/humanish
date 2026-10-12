@@ -6,10 +6,10 @@ import { createProgram } from "../../src/cli/program.js";
 import { buildObserverData, type ObserverData } from "../../src/observer/data.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
-import type { RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { listRuns } from "../../src/run/stored-runs.js";
+import { readRunWithTraces } from "../helpers/run-traces.js";
 import {
   outcomeCases,
   outcomeRoot,
@@ -74,7 +74,7 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
       : (counted[0] ?? "none");
   states["stats pass count"] = stats.studies[0]?.passed === 1 ? "passed" : "not passed";
 
-  const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+  const bundle = await readRunWithTraces(runDir);
   states["Observer data"] = ofObserverData(
     buildObserverData(
       bundle,

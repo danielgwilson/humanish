@@ -1,5 +1,5 @@
 {
-  "schema": "humanish.run-bundle.v1",
+  "schema": "humanish.run-bundle.v2",
   "runId": "post-auth-return-dry-run-fixture",
   "mode": "dry-run",
   "simCount": 1,

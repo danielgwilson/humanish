@@ -8,7 +8,7 @@ disagree.
   (`RunStudyOptions`) and the exports removed in 0.107.0.
 - [core.md](core.md): the records a run writes under `.humanish/runs/<id>/` and how each route
   starts a run.
-- [run-bundle.md](run-bundle.md): `humanish.run-bundle.v1`, the evidence contract that `verify`
+- [run-bundle.md](run-bundle.md): `humanish.run-bundle.v2`, the evidence contract that `verify`
   checks.
 - [policy.md](policy.md): credential, network, spend, redaction, sharing and assisted-run
   boundaries.

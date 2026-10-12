@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Run bundles are now `humanish.run-bundle.v2`. Each participant's trace items and screenshot
+  entries are written once, to its trace file (`actor.json` for one participant,
+  `actors/<stream>.json` for more), and run.json keeps the participant's summary with
+  `streams[].trace: { path, bytes, sha256, items, screenshots }`. run.json no longer grows with
+  each turn: on a synthetic run of 8 participants with 1,000 turns each it is 74 KB, down from
+  17.0 MB. humanish reads v1 bundles as they are, with no migration, and refuses a trace whose
+  size or sha256 differs from run.json. npm 0.122.0 and earlier refuse a v2 bundle by its schema
+  (verify fails `run schema`); upgrade humanish to read runs this version writes. `humanish
+  export --format bundle` writes its copy as v2 from either version (#1766).
+
 ## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 
 humanish 0.122.0 lets a participant end at a scheduled time and keeps one participant's harness

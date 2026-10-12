@@ -119,6 +119,8 @@ if (command === "author") {
       const prepared = await resolveRunPath(cwd, runId);
       const root = prepared.physicalRunRoot;
       const bundle = await readJson(path.join(root, "run.json"));
+      // The reconstruction writes each actor trace inline, as a v1 run.json held it.
+      bundle.schema = "humanish.run-bundle.v1";
       const template = bundle.streams[0];
       const simulation = bundle.simulations[0];
       const sourceFrames = [];

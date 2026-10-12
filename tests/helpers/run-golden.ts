@@ -16,6 +16,11 @@ const TEXT_EXTENSIONS = new Set([".md", ".txt", ".log", ".yaml", ".yml", ".html"
 // files sit next to it and are snapshotted like any other JSON.
 const OBSERVER_PAGE = path.join("observer", "index.html");
 
+// A v2 stream's index of its trace file: the file's size and digest cover its timestamps and
+// durations, so they differ on every run. The path and the counts stay pinned.
+const isTraceIndex = (key: string, value: unknown): value is Record<string, unknown> =>
+  key === "trace" && value !== null && typeof value === "object" && "sha256" in value;
+
 // Integers in this range are epoch milliseconds (2001 to 2286), which only a clock produces.
 const isEpochMs = (value: unknown) =>
   Number.isInteger(value) && (value as number) >= 1e12 && (value as number) < 1e13;
@@ -27,11 +32,13 @@ function mask(value: unknown, keys: ReadonlySet<string>): unknown {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [
         key,
-        (AMBIENT_KEYS.has(key) && typeof entry === "number") ||
-        AMBIENT_TEXT_KEYS.has(key) ||
-        keys.has(key)
-          ? `[${key}]`
-          : mask(entry, keys),
+        isTraceIndex(key, entry)
+          ? { ...entry, bytes: "[bytes]", sha256: "[sha256]" }
+          : (AMBIENT_KEYS.has(key) && typeof entry === "number") ||
+              AMBIENT_TEXT_KEYS.has(key) ||
+              keys.has(key)
+            ? `[${key}]`
+            : mask(entry, keys),
       ]),
     );
   }

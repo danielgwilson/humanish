@@ -4,6 +4,8 @@ import { phaseEvent, type StudyEvent } from "../../../src/study/run-study-events
 import type { BrowserScorer } from "../../../src/study/adapter-extension.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
+import { readRunWithTraces } from "../../helpers/run-traces.js";
+import { splitStreamTraces } from "../../../src/run/stream-trace.js";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1873,9 +1875,13 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
     expect(ok).toBe(true);
     const baseline = await verifyRun(cwd, runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle must verify (so a failure is attributable)
-    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
-    mutate(bundle);
-    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+    // The forgery a reader must catch rewrites the trace files and their index too.
+    const bundle = await readRunWithTraces(path.dirname(bundlePath));
+    mutate(bundle as unknown as Parameters<BundleMutation>[0]);
+    const split = splitStreamTraces(bundle);
+    for (const file of split.files)
+      await writeFile(path.join(path.dirname(bundlePath), file.path), file.bytes);
+    await writeFile(bundlePath, `${JSON.stringify(split.bundle, null, 2)}\n`, "utf8");
     return (await verifyRun(cwd, runId)).ok;
   }
 
@@ -1897,7 +1903,9 @@ describe("concurrent shared-world verify findings golden", () => {
     (shared ??= (async () => {
       const project = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-golden-"));
       const run = await goodConcurrentRun(undefined, project);
-      return { project, ...run, original: await readFile(run.bundlePath, "utf8") };
+      // The bundle with its traces loaded; each case writes its edit of it back, traces included.
+      const original = JSON.stringify(await readRunWithTraces(path.dirname(run.bundlePath)));
+      return { project, ...run, original };
     })());
   afterAll(async () => {
     const good = await shared?.catch(() => undefined);
@@ -1921,30 +1929,37 @@ describe("concurrent shared-world verify findings golden", () => {
     ...failingLanes.map(([name]) => name),
   ];
   const pinned = new Map<string, PinnedVerifyResult>();
-  async function pinBundle(name: string, text: string): Promise<PinnedVerifyResult> {
+  /** Verify the good run after `mutate` edits its loaded bundle, written back with its traces. */
+  async function pinBundle(
+    name: string,
+    mutate: (bundle: Record<string, unknown>) => void,
+  ): Promise<PinnedVerifyResult> {
     const good = await goodRun();
-    await writeFile(good.bundlePath, text, "utf8");
+    const runDir = path.dirname(good.bundlePath);
+    const bundle = JSON.parse(good.original) as RunBundle;
+    mutate(bundle as unknown as Record<string, unknown>);
+    const split = splitStreamTraces(bundle);
+    for (const file of split.files) await writeFile(path.join(runDir, file.path), file.bytes);
+    await writeFile(good.bundlePath, `${JSON.stringify(split.bundle, null, 2)}\n`, "utf8");
     const result = await pinnedVerifyResult(good.project, good.runId);
     pinned.set(name, result);
     return result;
   }
-  const bundleText = (bundle: Record<string, unknown>) => `${JSON.stringify(bundle, null, 2)}\n`;
 
   it("pins verify for the good run", async () => {
-    expect((await pinBundle("good run", (await goodRun()).original)).ok).toBe(true);
+    expect((await pinBundle("good run", () => {})).ok).toBe(true);
   });
 
   it.each(variants)("pins verify's failing checks for %s", async (name, mutate) => {
-    const bundle = JSON.parse((await goodRun()).original) as Record<string, unknown>;
-    mutate(bundle);
-    expect((await pinBundle(name, bundleText(bundle))).ok).toBe(false);
+    expect((await pinBundle(name, mutate)).ok).toBe(false);
   });
 
   it("pins verify's failing checks for every variant at once", async () => {
     // Several invariants fail at once, so the golden also pins the order across them.
-    const combined = JSON.parse((await goodRun()).original) as Record<string, unknown>;
-    for (const [, mutate] of variants) mutate(combined);
-    expect((await pinBundle("every variant at once", bundleText(combined))).ok).toBe(false);
+    const all = (bundle: Record<string, unknown>) => {
+      for (const [, mutate] of variants) mutate(bundle);
+    };
+    expect((await pinBundle("every variant at once", all)).ok).toBe(false);
   });
 
   it.each(failingLanes)("pins verify's failing checks when %s", async (name, laneOverride) => {

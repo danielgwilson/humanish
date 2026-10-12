@@ -11,6 +11,7 @@ import {
 } from "./service.js";
 import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
 import { captureEvidence } from "./evidence.js";
+import { loadRunTraces } from "../run/stream-trace.js";
 import { hashAnalysisValue } from "./validation.js";
 import { refusedCost, type RefusedAnalysisCost } from "./admission.js";
 import {
@@ -141,7 +142,7 @@ async function readAutomaticSource(
   let config = configInput;
   try {
     const bytes = await readCompletedAnalysisSource(cwd, prepared);
-    const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
+    const bundle = await loadRunTraces(prepared, JSON.parse(bytes.toString("utf8")) as RunBundle);
     if (bundle.streams.some((stream) => stream.actor?.stopCause === "harness_aborted"))
       return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
     const participantEvidence = hasParticipantEvidence(bundle);

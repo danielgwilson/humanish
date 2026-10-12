@@ -11,8 +11,14 @@ import {
   type RunSimulationStatus,
   type RunStream,
   type RunStreamKind,
+  type StreamTraceIndex,
 } from "./streams.js";
-import { isFiniteNumber, isPositiveFiniteNumber, isRecord } from "./type-guards.js";
+import {
+  isFiniteNumber,
+  isNonNegativeSafeInteger,
+  isPositiveFiniteNumber,
+  isRecord,
+} from "./type-guards.js";
 
 export function isRunStream(value: unknown): value is RunStream {
   return (
@@ -33,6 +39,7 @@ export function isRunStream(value: unknown): value is RunStream {
     (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry)) &&
     (value.recording === undefined || isRunDesktopRecording(value.recording)) &&
     hasConsistentStreamGeometry(value) &&
+    (value.trace === undefined || isStreamTraceIndex(value.trace)) &&
     Array.isArray(value.artifacts) &&
     value.artifacts.every(isRunStreamArtifact) &&
     hasConsistentRecordingArtifact(value.recording, value.artifacts)
@@ -157,7 +164,7 @@ function isMeasuredSize(value: unknown): value is { width: number; height: numbe
   );
 }
 
-function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {
+export function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {
   return (
     isRecord(value) &&
     typeof value.label === "string" &&
@@ -171,6 +178,20 @@ function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][nu
       value.kind === "log" ||
       value.kind === "filesystem" ||
       value.kind === "recording")
+  );
+}
+
+/** A v2 stream's index of its trace file: a local path, its size and sha256, and what it holds. */
+export function isStreamTraceIndex(value: unknown): value is StreamTraceIndex {
+  return (
+    isRecord(value) &&
+    typeof value.path === "string" &&
+    isLocalEvidenceArtifactPath(value.path) &&
+    isNonNegativeSafeInteger(value.bytes) &&
+    typeof value.sha256 === "string" &&
+    /^[0-9a-f]{64}$/.test(value.sha256) &&
+    isNonNegativeSafeInteger(value.items) &&
+    isNonNegativeSafeInteger(value.screenshots)
   );
 }
 

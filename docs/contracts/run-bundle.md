@@ -1,6 +1,6 @@
 # Run Bundle Contract
 
-`humanish.run-bundle.v1` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+`humanish.run-bundle.v2` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
 (with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
 `src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
 source of truth. This page explains the stable public fields and the extension rules; it does not
@@ -13,6 +13,49 @@ and `terminal-ledgers.json`. `true` means participant and product setup commands
 in the JSON message of the `terminal-lab.runtime.declared` event. Older bundles omit it.
 The setting does not attest that the studied CLI honors the variable.
 
+## Participant traces
+
+From v2, run.json holds each participant's summary and the trace file holds its items. The run
+writer (`src/run/run.ts`, through `splitStreamTraces` in `src/run/stream-trace.ts`) writes, for
+each stream with an `actor`:
+
+- the trace file: the actor trace (`humanish.actor-trace.v1`) with every item, plus `artifacts`,
+  the stream's screenshot entries. Its path is the stream's actor trace artifact (`actor.json` for
+  one participant, `actors/<stream>.json` for more, `actor-<surface>.json` on the scripted route),
+  or `actors/<stream id>.json` for a stream with none;
+- in run.json, `streams[].actor` without `items`, `streams[].artifacts` without the screenshot
+  entries, and the index:
+
+```yaml
+trace:
+  path: actors/stream-001.json
+  bytes: 5480211 # the file's size
+  sha256: "<hex digest of the file>"
+  items: 23104 # entries in the file's items
+  screenshots: 2881 # entries in the file's artifacts
+```
+
+run.json keeps every field readers list runs by: each stream's status, judged status,
+assignment and geometry, and the actor's status, completion reason, counts, persona, debrief,
+impressions, token usage and estimated cost. Each trace is written once.
+
+Readers load a stream through `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
+An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
+source limit for each trace) and refused unless its size, sha256, item count and screenshot count
+match the index. In a v2 run.json a stream with an `actor` and no index is refused, and so is
+one with both an index and inline `items`. verify reports a refused trace in the
+`local evidence artifacts exist` check. run.json's digest, which an analysis record binds,
+covers each index and so each trace.
+
+A mid-run flush (`inProgress`) still writes `streams[].liveActor.items` inline; the final write
+replaces `liveActor` with the indexed actor. observer-data.json is built from the loaded bundle
+and has the same shape as before.
+
+Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema
+(`run schema` fails in verify, analysis refuses the source). This release reads v1 bundles as
+they are, with no migration. An exported copy (`humanish export --format bundle`) is written as
+v2 whatever the source version.
+
 ## Purpose
 
 A run bundle is the durable evidence packet for one harness run. It should be
@@ -22,7 +65,7 @@ feedback drafts and future public issues.
 ## Minimum Bundle Shape
 
 ```yaml
-schema: humanish.run-bundle.v1
+schema: humanish.run-bundle.v2 # v1 bundles are still read
 runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
@@ -522,8 +565,12 @@ For run id `example-2026-06-02t10-00-00-000z-proof`, the core layout is:
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/review.md
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/observer/observer-data.json
 .humanish/runs/example-2026-06-02t10-00-00-000z-proof/events.ndjson
+.humanish/runs/example-2026-06-02t10-00-00-000z-proof/actors/stream-001.json
 .humanish/runs/latest.json
 ```
+
+`actors/<stream>.json` (or `actor.json` for one participant) is a participant's trace file; see
+[Participant traces](#participant-traces).
 
 Absolute paths, traversal segments, remotes, hosted logs, and private artifact
 URLs are not part of the core layout.
@@ -715,7 +762,8 @@ receipt records a sandbox not gone or misses a journaled one, and `unknown` othe
 including a receipt from humanish 0.110.0 or earlier, which did not search by tag.
 
 The local-evidence check includes screenshots declared only by
-`streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,
+`streams[].actor.items[].screenshotRef` (in the trace file for a v2 bundle) or
+`streams[].liveActor.items[].screenshotRef`,
 as well as every feedback candidate's evidence. Actor frame paths are relative
 to the run root; missing, malformed or nonlocal references fail verification.
 Screenshots use the existing bounded PNG decoder. Nonimage candidate evidence

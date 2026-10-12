@@ -203,7 +203,8 @@
       "estimatedCostUsd": null,
       "reason": "no_token_usage",
       "ratesAsOf": null
-    }
+    },
+    "artifacts": []
   },
   "actors/stream-003.json": {
     "schema": "humanish.actor-trace.v1",
@@ -264,7 +265,8 @@
       "estimatedCostUsd": null,
       "reason": "no_token_usage",
       "ratesAsOf": null
-    }
+    },
+    "artifacts": []
   },
   "analysis-automatic/job.json": {
     "schema": "humanish.automatic-study-analysis.v1",
@@ -380,8 +382,69 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts",
         "id": "stream-001",
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-cua",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "persona-1",
+            "traitsApplied": [],
+            "promptDigest": "48b083174eecbf02"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "fake trace (no frames captured)"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "ids": {},
+          "counts": {
+            "actions": 1,
+            "messages": 1,
+            "screenshots": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          },
+          "items": [
+            {
+              "id": "i-msg",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message",
+              "text": "did my task"
+            },
+            {
+              "id": "i-act",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click"
+            }
+          ]
+        },
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
@@ -398,8 +461,69 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId assignment kind label status judgedStatus transport updatedAt embed viewport desktopGeometry ui artifacts",
         "id": "stream-003",
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-cua",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "persona-3",
+            "traitsApplied": [],
+            "promptDigest": "856019c3a4631b9f"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "fake trace (no frames captured)"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "ids": {},
+          "counts": {
+            "actions": 1,
+            "messages": 1,
+            "screenshots": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          },
+          "items": [
+            {
+              "id": "i-msg",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message",
+              "text": "did my task"
+            },
+            {
+              "id": "i-act",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click"
+            }
+          ]
+        },
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
@@ -445,7 +569,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v1",
+      "bundleSchema": "humanish.run-bundle.v2",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -471,7 +595,7 @@
   },
   "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- outcome: failed: harness: persona-02: boom in actor 1\n- summary: 3 participants used one shared app at the same time. 2 of 3 reached the goal; the gaps list the other 1. The app's shared state changed 1 time during the run.\n- plane: Shared app: clone of example-org/collab-app@abc123def4567890abc1, served at a public sandbox URL humanish created; seed recipe da2a491995d48367; synthetic subject, as the study declares; env names: DATABASE_URL (values never stored).\n- concurrency: Concurrency: 3 participants, up to 3 live at once (cap 3), overlap shown; stateSeries 2 snapshots, 1 delta. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: boom in actor 1\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v1",
+    "schema": "humanish.run-bundle.v2",
     "runId": "[run]",
     "mode": "live",
     "simCount": 3,
@@ -653,21 +777,6 @@
             "messages": 1,
             "screenshots": 0
           },
-          "items": [
-            {
-              "id": "i-msg",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message",
-              "text": "did my task"
-            },
-            {
-              "id": "i-act",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click"
-            }
-          ],
           "capabilities": {
             "headless": true,
             "structuredTrace": true,
@@ -708,7 +817,14 @@
             "path": "actors/stream-001.json",
             "kind": "trace"
           }
-        ]
+        ],
+        "trace": {
+          "path": "actors/stream-001.json",
+          "bytes": "[bytes]",
+          "sha256": "[sha256]",
+          "items": 2,
+          "screenshots": 0
+        }
       },
       {
         "id": "stream-002",
@@ -862,21 +978,6 @@
             "messages": 1,
             "screenshots": 0
           },
-          "items": [
-            {
-              "id": "i-msg",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message",
-              "text": "did my task"
-            },
-            {
-              "id": "i-act",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "click"
-            }
-          ],
           "capabilities": {
             "headless": true,
             "structuredTrace": true,
@@ -917,7 +1018,14 @@
             "path": "actors/stream-003.json",
             "kind": "trace"
           }
-        ]
+        ],
+        "trace": {
+          "path": "actors/stream-003.json",
+          "bytes": "[bytes]",
+          "sha256": "[sha256]",
+          "items": 2,
+          "screenshots": 0
+        }
       }
     ],
     "events": [

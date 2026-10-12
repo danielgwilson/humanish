@@ -280,7 +280,7 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.schema).toBe("humanish.run-bundle.v1");
+    expect(bundle.schema).toBe("humanish.run-bundle.v2");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(4);
     expect(bundle.streams).toHaveLength(4);

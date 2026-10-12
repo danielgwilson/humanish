@@ -5,9 +5,15 @@ import { analysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js";
 import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
-import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
+import {
+  RUN_BUNDLE_FILE,
+  RUN_BUNDLE_SCHEMA,
+  RUN_BUNDLE_V1_SCHEMA,
+  type RunBundle,
+} from "../run/bundle.js";
 import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
+import { loadStreamTraces } from "../run/stream-trace.js";
 import {
   readRunJsonIfExists,
   readRunTextIfExists,
@@ -147,7 +153,9 @@ export async function verifyResolvedRun(
 
   const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
   const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
-  const bundle = runJsonValue(bundleRead);
+  // Every check below reads the streams with their traces loaded; a trace that does not match its
+  // index fails the evidence-artifacts check and its stream is checked without its items.
+  const { bundle, refusedTraces } = await loadTraces(runPaths, runJsonValue(bundleRead));
   const cleanupRead = await readRunJsonIfExists(runPaths, "cleanup.json");
   const review = {
     json: await readRunJsonIfExists(runPaths, "review.json"),
@@ -206,18 +214,16 @@ export async function verifyResolvedRun(
     ? await redactedShapeFramePaths(runPaths, bundle)
     : new Set<string>();
   const invalidEvidenceReferences = isRunBundle(bundle) ? invalidRunEvidenceReferences(bundle) : [];
-  checks.push({
-    name: "local evidence artifacts exist",
-    ok: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0,
-    message:
-      missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0
-        ? isRunBundle(bundle)
-          ? "every referenced screenshot, trace, log and filesystem artifact is present"
-          : SHAPE_UNCHECKED
-        : invalidEvidenceReferences.length > 0
-          ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
-          : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`,
-  });
+  checks.push(
+    evidenceArtifactsCheck(isRunBundle(bundle), [
+      ...refusedTraces,
+      ...(invalidEvidenceReferences.length > 0
+        ? [`invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`]
+        : missingEvidenceArtifacts.length > 0
+          ? [`missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`]
+          : []),
+    ]),
+  );
   checks.push(...(await evidenceChecks(runPaths, bundle, cleanupRead)));
 
   const recordingOk = checks.every((check) => check.ok);
@@ -301,6 +307,33 @@ export async function verifyRunPrepared(
 
 type VerifyCheck = VerifyResult["checks"][number];
 
+/** The evidence-artifacts check: refused traces, then invalid references or missing files. */
+function evidenceArtifactsCheck(shaped: boolean, problems: string[]): VerifyCheck {
+  return {
+    name: "local evidence artifacts exist",
+    ok: problems.length === 0,
+    message:
+      problems.length > 0
+        ? problems.join(" ")
+        : shaped
+          ? "every referenced screenshot, trace, log and filesystem artifact is present"
+          : SHAPE_UNCHECKED,
+  };
+}
+
+/**
+ * run.json with each stream's trace loaded, one file at a time, and the refusal of each trace that
+ * does not match its index. A run.json that fails the shape guard is returned as it is.
+ */
+async function loadTraces(
+  runPaths: PreparedRunArtifactPaths,
+  stored: unknown,
+): Promise<{ bundle: unknown; refusedTraces: string[] }> {
+  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [] };
+  const { bundle, refused } = await loadStreamTraces(runPaths, stored);
+  return { bundle, refusedTraces: refused.map((error) => error.message) };
+}
+
 /** The top-level run.json sections the shape guard requires. */
 const REQUIRED_SECTIONS = [
   "source",
@@ -327,7 +360,7 @@ function bundlePresenceChecks(
   const bundle = runJsonValue(bundleRead);
   const record = isRecord(bundle) ? bundle : undefined;
   const schema = record?.schema;
-  const schemaOk = schema === RUN_BUNDLE_SCHEMA;
+  const schemaOk = schema === RUN_BUNDLE_SCHEMA || schema === RUN_BUNDLE_V1_SCHEMA;
   const redactionRecord = record?.redaction;
   const redaction = isRecord(redactionRecord) ? redactionRecord.status : undefined;
   const missingSections = REQUIRED_SECTIONS.filter((key) => record?.[key] === undefined);
@@ -358,10 +391,10 @@ function bundlePresenceChecks(
       name: "run schema",
       ok: schemaOk,
       message: schemaOk
-        ? `run.json declares ${RUN_BUNDLE_SCHEMA}`
+        ? `run.json declares ${String(schema)}`
         : record === undefined
           ? "no readable run.json, so no schema"
-          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}`,
+          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
     },
     {
       name: "run bundle shape",

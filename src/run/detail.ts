@@ -24,7 +24,8 @@ import {
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
 } from "./contained-output.js";
-import { isPathInside, resolvePhysicalCwd } from "./paths.js";
+import { isPathInside, type PreparedRunArtifactPaths, resolvePhysicalCwd } from "./paths.js";
+import { loadStreamTrace } from "./stream-trace.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 
@@ -189,6 +190,28 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
 }
 
 /**
+ * Each finished stream with the items of its trace file. A trace that cannot be read leaves its
+ * stream without them: this is a screen, and verify is the check that names the file.
+ */
+async function withTraces(
+  runPaths: PreparedRunArtifactPaths,
+  streams: StreamFacts[],
+): Promise<StreamFacts[]> {
+  const loaded: StreamFacts[] = [];
+  for (const stream of streams) {
+    const indexed = (stream as unknown as Partial<RunStream>).trace !== undefined;
+    loaded.push(
+      indexed
+        ? ((await loadStreamTrace(runPaths, stream as unknown as RunStream).catch(
+            () => stream,
+          )) as StreamFacts)
+        : stream,
+    );
+  }
+  return loaded;
+}
+
+/**
  * Read one run's participants. Returns null when the run has no readable bundle yet, an ordinary
  * state for a run that has just started, not a failure. Throws when run.json is there and cannot
  * be read: larger than RUN_ARTIFACT_MAX_BYTES, a link, or refused by the system.
@@ -225,7 +248,7 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     return null;
   }
 
-  const streams = Array.isArray(bundle.streams) ? bundle.streams : [];
+  const streams = await withTraces(runPaths, Array.isArray(bundle.streams) ? bundle.streams : []);
   const observerAbsolute = path.join(runPaths.absoluteRunRoot, "observer", "index.html");
 
   const automaticAnalysis = await readAutomaticAnalysis(cwd, runId);

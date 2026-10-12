@@ -18,6 +18,9 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
+import { joinStreamTrace } from "../run/stream-trace.js";
+import type { RunStream } from "../run/streams.js";
 import {
   MAX_NOTE_FILE_BYTES,
   readRunNotes,
@@ -237,6 +240,25 @@ export async function serveRunPath(
   }
 }
 
+/** Each stream with its trace file joined, read through the pinned run folder. */
+async function loadPinnedTraces(
+  runRoot: PinnedDirectory,
+  streams: RunStream[],
+): Promise<RunStream[]> {
+  const loaded: RunStream[] = [];
+  for (const stream of streams) {
+    const bytes =
+      stream.trace === undefined
+        ? undefined
+        : await readContainedFile(runRoot, path.join(runRoot.physicalPath, stream.trace.path), {
+            maxBytes: RUN_ARTIFACT_MAX_BYTES,
+          });
+    if (bytes === null) throw new Error(`${stream.trace!.path} unavailable`);
+    loaded.push(bytes === undefined ? stream : joinStreamTrace(stream, bytes));
+  }
+  return loaded;
+}
+
 async function readObserverData(
   runRoot: PinnedDirectory,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
@@ -253,9 +275,10 @@ async function readObserverData(
       path.join(runRoot.physicalPath, "run.json"),
     );
     if (!bundleBytes) throw new Error("run.json unavailable");
-    const bundle = JSON.parse(bundleBytes.toString("utf8")) as Parameters<
+    const stored = JSON.parse(bundleBytes.toString("utf8")) as Parameters<
       typeof buildObserverData
     >[0];
+    const bundle = { ...stored, streams: await loadPinnedTraces(runRoot, stored.streams) };
     return withRuntimeStreamUrls(
       withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
       runtimeStreamUrls,

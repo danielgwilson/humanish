@@ -7,7 +7,10 @@ import { studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import type { RunInterruptSignal } from "./status.js";
 import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js";
 
-export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
+/** The run bundle version this release writes: each stream's trace is a file run.json indexes. */
+export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v2";
+/** The version 0.122.0 and earlier wrote, with every trace inline. It is still read. */
+export const RUN_BUNDLE_V1_SCHEMA = "humanish.run-bundle.v1";
 /** The run bundle file, relative to the run directory. */
 export const RUN_BUNDLE_FILE = "run.json";
 
@@ -260,7 +263,7 @@ type RunAttributionClass = "isolated" | "shared-world";
 export interface RunBundle {
   publication?: { restrictions: ["real-communications"] };
   commsReceiving?: CommsReceivingEvidence;
-  schema: typeof RUN_BUNDLE_SCHEMA;
+  schema: typeof RUN_BUNDLE_SCHEMA | typeof RUN_BUNDLE_V1_SCHEMA;
   runId: string;
   mode: "dry-run" | "live";
   simCount: number;
