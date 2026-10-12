@@ -8,38 +8,21 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.123.0: Run bundle v2 writes each trace once, bundle size estimate (2026-10-12)
 
-- `study check` and the plan of a computer-use study estimate its run bundle: the `run.json` size,
-  the largest file, the file count and the total, from each participant's window (`endAfterMs`,
-  else `execution.timeoutMs` up to 3 minutes), a model turn every 10 seconds and any dwell
-  window's frames. `study check` prints the estimate as `bundle size`. When a live study's estimate
-  passes the 16 MiB `run.json` analysis reads, the 32 MiB file verify reads, or the files the
-  public-safety scan reads, the plan warns: `study check`, `humanish run` and `doctor --study`
-  print the warning before any sandbox is created, the run records it, and the run goes ahead.
-  The warning names the limit, the estimate, that the estimate runs about 1.8 times the one long
-  live run measured, and what to change. Five participants working an 8-hour window beside 25
-  short ones are estimated at 30.2 MiB; at 4 hours, 15.7 MiB (#1766).
+humanish 0.123.0 writes each participant's trace once, outside run.json, so long studies stay
+within the bundle's size limits, and estimates a study's bundle before it runs. Run bundles are now
+`humanish.run-bundle.v2`: a participant's trace items live only in its trace file
+(`actor.json`, `actors/<stream>.json` or `actor-<surface>.json`), and run.json indexes each one by
+path, size and sha256. On a synthetic 8-participant, 1,000-turn run, run.json fell from 17 MB to
+74 KB. Every reader loads traces through one loader that checks the index and refuses a missing,
+altered or shared trace; a refused trace shows as evidence unavailable, and an unfinished run
+grades `local_only`. Bundles from earlier versions still load unchanged; npm 0.122.0 and earlier
+refuse a v2 bundle by name. `study check` and `run` estimate the bundle's size and file count and
+warn before any sandbox is created when it may pass the analysis or verify limit, and the
+public-safety scan's file limit grows with the number of participants.
 
-### Changed
-
-- The public-safety scan reads 10,000 files and folders of a run plus 5,000 for each participant
-  its `run.json` records, counting at most 128 participants. It read 10,000 for every run, which
-  four participants working 8 hours pass with their screenshots alone (#1766).
-- Run bundles are now `humanish.run-bundle.v2`. Each participant's trace items and screenshot
-  entries are written once, to its trace file (`actor.json` for one participant,
-  `actors/<stream>.json` for more), and run.json keeps the participant's summary with
-  `streams[].trace: { path, bytes, sha256, items, screenshots }`. run.json no longer grows with
-  each turn: on a synthetic run of 8 participants with 1,000 turns each it is 74 KB, down from
-  17.0 MB. humanish reads v1 bundles as they are, with no migration. verify blocks a v2 bundle
-  whose trace differs from its index in size or sha256, whose index names a file other than a
-  trace file or a file another participant indexes, or whose actor has no index. The Observer,
-  run detail and the TUI show such a participant's evidence as unavailable, with the reason. An
-  unfinished v2 run that holds a participant's in-progress items grades `local_only` with the new
-  share-safety reason `RUN_NOT_FINISHED`. npm 0.122.0 and earlier refuse a v2 bundle by its
-  schema (verify fails `run schema`); upgrade humanish to read runs this version writes.
-  `humanish export --format bundle` writes its copy as v2 from either version, and counts a run's
-  files against the scan's limit for its participants in place of a flat 10,000 (#1766).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.123.0)
 
 ## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 
