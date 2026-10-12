@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- One participant's harness error in a hosted computer-use study no longer skips the participants
+  after it. The first harness error in a session tripped a study-wide fail-fast, so every
+  participant still due by `startAfterMs`, or waiting for a free slot, was recorded `blocked` with
+  "a prior participant (<id>) ended in a harness error (fail-fast)", and a 4-hour study lost
+  everything after one desktop stall. A harness error now ends only that participant: the run
+  records it as failed with its reason in its lane, its review gap line and its events.ndjson
+  event, and every later participant starts at its time. The `cua-lab.fanout.fail-fast` event is
+  no longer written. A `clone`, `local-tree` or `desktop-cli` subject that fails to set up in the
+  first participant's sandbox still blocks the rest (#1765).
+
 ## 0.121.0: One failed desktop fails alone, host sleep named as the cause (2026-10-10)
 
 humanish 0.121.0 keeps one participant's failed desktop from costing a whole hosted study, and

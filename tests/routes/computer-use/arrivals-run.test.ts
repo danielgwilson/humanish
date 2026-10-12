@@ -1,7 +1,8 @@
 // A computer-use study with a declared schedule, run on fake desktops ($0, real orchestration and
 // real time with sub-second offsets): each participant's desktop is created at its start, a
 // participant whose start comes while every slot is busy waits, and run.json records each
-// participant's scheduled and actual start. A dry run records the offsets.
+// participant's scheduled and actual start. One participant's harness error ends only that
+// participant. A dry run records the offsets.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -12,7 +13,8 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
-import type { RunBundle } from "../../../src/run/bundle.js";
+import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
+import type { RunBundle, RunEvent } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import type { StudyConfig } from "../../../src/study/types.js";
@@ -67,6 +69,15 @@ async function runJson(cwd: string, runId: string | undefined): Promise<RunBundl
   return JSON.parse(
     await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
   ) as RunBundle;
+}
+
+async function runEvents(cwd: string, runId: string | undefined): Promise<RunEvent[]> {
+  if (runId === undefined) throw new Error("the run wrote no bundle");
+  const text = await readFile(path.join(cwd, ".humanish", "runs", runId, "events.ndjson"), "utf8");
+  return text
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as RunEvent);
 }
 
 function arrivals(bundle: RunBundle) {
@@ -220,5 +231,87 @@ describe("a computer-use study with a declared schedule", () => {
     ]);
     const plan = bundle.events.find((event) => event.type === "cua-lab.fanout.plan");
     expect(plan?.message).toContain("the last at +1m");
+  });
+});
+
+describe("a computer-use study whose participant fails partway through the schedule", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-arrivals-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("starts every later arrival on time when one participant's desktop stalls 10 minutes in", async () => {
+    // One minute of the schedule is 20 ms here: patients arrive at +5, +15, +25 and +35 minutes,
+    // and the nurse's desktop stops answering 10 minutes into its session.
+    const minute = 20;
+    const stall = "desktop executor error: deadline_exceeded; disposition: outcome_uncertain";
+    let stalledAt: number | undefined;
+    const timed = timedModule();
+    const passing = seams(timed.module);
+    const outcome = await runStudyWith(
+      clinic({
+        participants: [
+          { id: "nurse", persona: "power-user" },
+          { id: "patient", count: 4, startAfterMs: 5 * minute, startEveryMs: 10 * minute },
+        ],
+        execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 5 },
+      }),
+      { cwd, env: KEYS },
+      {
+        ...passing,
+        runSession: async (options: CuaActorSessionOptions) => {
+          if (options.persona.id !== "power-user") return passing.runSession(options);
+          return runCuaActorSession({
+            ...options,
+            executor: {
+              observe: () => options.executor!.observe(),
+              execute: async () => {
+                await new Promise((resolve) => setTimeout(resolve, 10 * minute));
+                stalledAt = Date.now();
+                throw new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
+              },
+            },
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    const { result } = outcome;
+
+    expect(result.laneSummary).toMatchObject({ passed: 4, skipped: 0, harnessErrors: 1 });
+    expect(result.lanes?.map((lane) => [lane.id, lane.status])).toEqual([
+      ["nurse", "failed"],
+      ["patient-01", "passed"],
+      ["patient-02", "passed"],
+      ["patient-03", "passed"],
+      ["patient-04", "passed"],
+    ]);
+    expect(result.lanes?.[0]?.error?.message).toBe(
+      `Computer-use session ended with a harness error: ${stall}`,
+    );
+    expect(timed.createdAt).toHaveLength(5);
+
+    const bundle = await runJson(cwd, result.runId);
+    const starts = arrivals(bundle);
+    // The schedule ran past the stall: at least two patients were due after it.
+    expect(starts.filter((start) => start.scheduledAt > stalledAt!).length).toBeGreaterThan(1);
+    for (const start of starts) expect(start.startedAt).toBeGreaterThanOrEqual(start.scheduledAt);
+    // One gap line per participant that did not pass, then the review's fixed provenance line.
+    expect(bundle.review.gaps.filter((gap) => /^(nurse|patient)/.test(gap))).toEqual([
+      `nurse: ${stall}`,
+    ]);
+
+    const events = await runEvents(cwd, result.runId);
+    const nurse = bundle.simulations[0]!.id;
+    expect(
+      events
+        .filter((event) => event.simId === nurse && event.type.startsWith("cua-lab.session."))
+        .map((event) => [event.type, event.message]),
+    ).toEqual([["cua-lab.session.harness_error", `Participant nurse failed: ${stall}`]]);
+    expect(events.filter((event) => event.type === "cua-lab.session.blocked")).toEqual([]);
   });
 });

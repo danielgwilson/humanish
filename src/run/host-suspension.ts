@@ -142,8 +142,8 @@ function inFlight(participant: SuspendedParticipant, suspension: HostSuspension)
  * without a suspension. A frozen loop's failures surface at the wake (macOS fires every overdue
  * timer at once) or up to a turn timeout later (Linux timers do not count suspended time), so the
  * rule reads who was in flight across the suspension. A skip follows another participant's
- * harness error (the pipeline gate, fail-fast), so skips count only when the run had harness
- * errors and every one was in flight across a suspension.
+ * harness error (the pipeline gate), so skips count only when the run had harness errors and
+ * every one was in flight across a suspension.
  */
 export function readHostSuspensions(
   suspensions: readonly HostSuspension[],

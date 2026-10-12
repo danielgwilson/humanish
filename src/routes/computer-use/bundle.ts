@@ -77,7 +77,6 @@ interface CuaRunBundleState {
   outcomes: ParticipantRunOutcome[] | undefined;
   subjects: RunSubjectProvenance[];
   aggregateSubject: RunSubjectProvenance;
-  failFastReason?: string;
   /** The final bundle's reading of the run's host suspensions. */
   hostSuspension?: HostSuspensionReading;
   inProgress?: true;
@@ -106,7 +105,6 @@ export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleSta
     source: base.source,
     participantPlan: base.participantPlan,
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
-    ...(state.failFastReason === undefined ? {} : { failFastReason: state.failFastReason }),
     ...(state.hostSuspension === undefined ? {} : { hostSuspension: state.hostSuspension }),
     ...(base.publicRepo === undefined ? {} : { publicRepo: base.publicRepo }),
     ...inProgress,
