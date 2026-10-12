@@ -81,9 +81,10 @@ git push origin "v${VERSION}"
 
 The publish workflow runs on a `v*` tag. It fails unless the tag commit is an ancestor of
 `origin/main` and the tag name matches `package.json`'s version, so a tag on a local commit that
-never merged publishes nothing. It then waits for CI's `test (node-floor)`, `test (node-lts)` and
-`secret-scan` checks on the tagged commit (main's push run of the release merge) and stops if any
-of them did not pass, instead of running the gate again; it builds the package and runs
+never merged publishes nothing. It then reads CI's `test (node-floor)`, `test (node-lts)` and
+`secret-scan` checks and stops if any of them did not pass, instead of running the gate again: the
+release PR's checks when that PR's head has the same tree as the tagged commit (a squash merge
+does), otherwise the tagged commit's own run on main, waiting for it to finish; it builds the package and runs
 `pnpm public-surface:scan` on that payload before `npm publish`. The GitHub Release for the tag carries the full notes, and its
 opening paragraph is the CHANGELOG entry.
 
