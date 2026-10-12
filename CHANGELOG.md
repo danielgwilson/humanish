@@ -33,12 +33,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   each turn: on a synthetic run of 8 participants with 1,000 turns each it is 74 KB, down from
   17.0 MB. humanish reads v1 bundles as they are, with no migration. verify blocks a v2 bundle
   whose trace differs from its index in size or sha256, whose index names a file other than a
-  trace file, or whose actor has no index, and grades an unfinished v2 run that holds a
-  participant's in-progress items `local_only` with the new share-safety reason
-  `RUN_NOT_FINISHED`. npm 0.122.0 and earlier refuse a v2 bundle by its schema
-  (verify fails `run schema`); upgrade humanish to read runs this version writes. `humanish
-  export --format bundle` writes its copy as v2 from either version, and counts a run's files
-  against the scan's limit for its participants in place of a flat 10,000 (#1766).
+  trace file or a file another participant indexes, or whose actor has no index. The Observer,
+  run detail and the TUI show such a participant's evidence as unavailable, with the reason. An
+  unfinished v2 run that holds a participant's in-progress items grades `local_only` with the new
+  share-safety reason `RUN_NOT_FINISHED`. npm 0.122.0 and earlier refuse a v2 bundle by its
+  schema (verify fails `run schema`); upgrade humanish to read runs this version writes.
+  `humanish export --format bundle` writes its copy as v2 from either version, and counts a run's
+  files against the scan's limit for its participants in place of a flat 10,000 (#1766).
 
 ## 0.122.0: Participants end on the clock, a harness error ends only its participant (2026-10-12)
 

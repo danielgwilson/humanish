@@ -25,7 +25,7 @@ import {
   RUN_ARTIFACT_MAX_BYTES,
 } from "./contained-output.js";
 import { isPathInside, type PreparedRunArtifactPaths, resolvePhysicalCwd } from "./paths.js";
-import { loadStreamTrace } from "./stream-trace.js";
+import { displayedTraces, loadStreamTraces } from "./stream-trace.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 
@@ -66,6 +66,19 @@ export interface RunParticipant {
   thoughts?: number;
   /** `null` when declared absent; absent when never recorded. Never coerced to 0. */
   estimatedCostUsd?: number | null;
+  /**
+   * Why this participant's evidence cannot be shown: the loader refused its trace (a file that does
+   * not match run.json, or run.json items no trace file binds). The participant then has no
+   * thought or thought count.
+   */
+  evidenceUnavailable?: string;
+}
+
+/** What a screen quotes for a participant: why its evidence is unavailable, else its latest thought. */
+export function participantNote(participant: RunParticipant): string | undefined {
+  return participant.evidenceUnavailable === undefined
+    ? participant.thought?.text
+    : `Evidence unavailable: ${participant.evidenceUnavailable}`;
 }
 
 export interface RunDetail {
@@ -100,6 +113,7 @@ interface StreamFacts extends Pick<RunStream, "laneId">, Partial<Pick<RunStream,
   status?: string;
   actor?: ActorTraceFacts;
   liveActor?: ActorTraceFacts;
+  traceUnavailable?: string;
 }
 
 /**
@@ -160,6 +174,9 @@ function participantFrom(
     ...(typeof trace.counts?.actions === "number" ? { actions: trace.counts.actions } : {}),
     ...(thoughts > 0 ? { thoughts } : {}),
     ...costOf(trace),
+    ...(stream.traceUnavailable === undefined
+      ? {}
+      : { evidenceUnavailable: stream.traceUnavailable }),
   };
 }
 
@@ -190,25 +207,17 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
 }
 
 /**
- * Each finished stream with the items of its trace file. A trace that cannot be read leaves its
- * stream without them: this is a screen, and verify is the check that names the file.
+ * The run's streams with their traces loaded through the loader and its bundle rules, as a screen
+ * shows them: a participant whose trace the loader refused carries the reason and none of the
+ * items run.json or a file supplied for it.
  */
-async function withTraces(
+async function displayedStreams(
   runPaths: PreparedRunArtifactPaths,
   streams: StreamFacts[],
+  bundle: object,
 ): Promise<StreamFacts[]> {
-  const loaded: StreamFacts[] = [];
-  for (const stream of streams) {
-    const indexed = (stream as unknown as Partial<RunStream>).trace !== undefined;
-    loaded.push(
-      indexed
-        ? ((await loadStreamTrace(runPaths, stream as unknown as RunStream).catch(
-            () => stream,
-          )) as StreamFacts)
-        : stream,
-    );
-  }
-  return loaded;
+  const loaded = await loadStreamTraces(runPaths, { ...bundle, streams } as unknown as RunBundle);
+  return displayedTraces(loaded).streams as unknown as StreamFacts[];
 }
 
 /**
@@ -248,7 +257,11 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     return null;
   }
 
-  const streams = await withTraces(runPaths, Array.isArray(bundle.streams) ? bundle.streams : []);
+  const streams = await displayedStreams(
+    runPaths,
+    Array.isArray(bundle.streams) ? bundle.streams : [],
+    bundle,
+  );
   const observerAbsolute = path.join(runPaths.absoluteRunRoot, "observer", "index.html");
 
   const automaticAnalysis = await readAutomaticAnalysis(cwd, runId);

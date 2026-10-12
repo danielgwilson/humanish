@@ -24,31 +24,31 @@ import {
 const FIXTURE = path.resolve("tests/fixtures/runs-0107/source-convention-only");
 const RUN = "fanout-proof-2026-10-01t00-00-00-000z-v2";
 
-describe("a run's participant traces", () => {
-  let cwd: string;
-  let runRoot: string;
-  let runPaths: PreparedRunArtifactPaths;
-  let v1: RunBundle;
+let cwd: string;
+let runRoot: string;
+let runPaths: PreparedRunArtifactPaths;
+let v1: RunBundle;
 
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-stream-trace-"));
-    runRoot = path.join(cwd, ".humanish", "runs", RUN);
-    await cp(FIXTURE, runRoot, { recursive: true });
-    v1 = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
-    runPaths = (await resolveRunPath(cwd, RUN))!;
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "humanish-stream-trace-"));
+  runRoot = path.join(cwd, ".humanish", "runs", RUN);
+  await cp(FIXTURE, runRoot, { recursive: true });
+  v1 = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
+  runPaths = (await resolveRunPath(cwd, RUN))!;
+});
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true });
+});
 
-  /** Writes the bundle as the run writer does: each trace file, then run.json. */
-  async function writeV2(bundle: RunBundle): Promise<RunBundle> {
-    const split = splitStreamTraces(bundle);
-    for (const file of split.files) await writeFile(path.join(runRoot, file.path), file.bytes);
-    await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(split.bundle, null, 2)}\n`);
-    return split.bundle;
-  }
+/** Writes the bundle as the run writer does: each trace file, then run.json. */
+async function writeV2(bundle: RunBundle): Promise<RunBundle> {
+  const split = splitStreamTraces(bundle);
+  for (const file of split.files) await writeFile(path.join(runRoot, file.path), file.bytes);
+  await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(split.bundle, null, 2)}\n`);
+  return split.bundle;
+}
 
+describe("writing a run's participant traces", () => {
   it("keeps each stream's summary and index in run.json and its items in the trace file", async () => {
     const stored = await writeV2(v1);
     expect(stored.schema).toBe("humanish.run-bundle.v2");
@@ -85,6 +85,38 @@ describe("a run's participant traces", () => {
     ]);
   });
 
+  it.each([
+    ["a trace artifact named after another participant", ["one", "actors/two.json"], ["two"]],
+    ["an id that is not a file name before stream-001", ["bad id"], ["stream-001"]],
+  ] as const)("gives each participant its own trace file with %s", async (_name, ...specs) => {
+    const base = v1.streams[0]!;
+    const streams = specs.map((spec, index) => {
+      const [id, tracePath] = spec as readonly [string, string?];
+      return {
+        ...base,
+        id,
+        artifacts: [
+          ...base.artifacts.filter((artifact) => artifact.kind !== "trace"),
+          ...(tracePath === undefined
+            ? []
+            : [{ label: "trace", path: tracePath, kind: "trace" as const }]),
+        ],
+        actor: { ...base.actor!, items: base.actor!.items.slice(index, index + 1) },
+      };
+    });
+    const split = splitStreamTraces({ ...v1, streams });
+    const paths = split.files.map((file) => file.path);
+    expect(new Set(paths).size).toBe(2);
+    await writeV2({ ...v1, streams });
+    const loaded = await loadStreamTraces(runPaths, split.bundle);
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams.map((stream) => stream.actor?.items)).toEqual(
+      streams.map((stream) => stream.actor.items),
+    );
+  });
+});
+
+describe("loading a run's participant traces", () => {
   it("loads a v1 stream as it is and a v2 stream back to the same stream", async () => {
     expect(await loadStreamTrace(runPaths, v1.streams[1]!)).toEqual(v1.streams[1]);
     const stored = await writeV2(v1);

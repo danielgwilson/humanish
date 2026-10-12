@@ -18,10 +18,8 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
-import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
-import { isStreamTraceIndex } from "../run/stream-shape.js";
-import { joinStreamTrace } from "../run/stream-trace.js";
-import type { RunStream } from "../run/streams.js";
+import { displayedTraces, loadStreamTraces, type TraceFileReader } from "../run/stream-trace.js";
+import { isRecord } from "../run/type-guards.js";
 import {
   MAX_NOTE_FILE_BYTES,
   readRunNotes,
@@ -241,26 +239,14 @@ export async function serveRunPath(
   }
 }
 
-/** Each stream with its trace file joined, read through the pinned run folder. */
-async function loadPinnedTraces(
-  runRoot: PinnedDirectory,
-  streams: RunStream[],
-): Promise<RunStream[]> {
-  const loaded: RunStream[] = [];
-  for (const stream of streams) {
-    // An index naming a file that is not a trace file name is never read; join refuses it.
-    const bytes =
-      stream.trace === undefined
-        ? undefined
-        : isStreamTraceIndex(stream.trace)
-          ? await readContainedFile(runRoot, path.join(runRoot.physicalPath, stream.trace.path), {
-              maxBytes: RUN_ARTIFACT_MAX_BYTES,
-            })
-          : Buffer.alloc(0);
-    if (bytes === null) throw new Error(`${stream.trace!.path} unavailable`);
-    loaded.push(bytes === undefined ? stream : joinStreamTrace(stream, bytes));
-  }
-  return loaded;
+/** The run's trace files, read through its pinned folder. */
+function pinnedTraceReader(runRoot: PinnedDirectory): TraceFileReader {
+  return async (relativePath, maxBytes) => {
+    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath), {
+      maxBytes,
+    }).catch(() => null);
+    return bytes === null ? { refused: `${relativePath} could not be read` } : { bytes };
+  };
 }
 
 async function readObserverData(
@@ -268,26 +254,31 @@ async function readObserverData(
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
 ): Promise<ObserverData | null> {
   const record = await readLocalRunStatus(runRoot);
-  // Best-effort load from either source. Both reads swallow all errors on
-  // purpose: this runs on every browser poll of a live run, where run.json may
-  // be absent, still being written (a partial-JSON parse error), or superseded
-  // by observer-data.json. A transient failure just falls through to the next
-  // source, or to null -> a 404 the poller retries; it must not surface a 500.
+  // run.json is the source: each trace is loaded through the loader, and a participant whose
+  // trace it refuses shows as unavailable, with no fallback. The saved observer-data.json is read
+  // only when there is no run.json to load: absent, or torn while a browser poll meets it
+  // mid-write. Either read's failure falls through to null -> a 404 the poller retries.
+  let stored: Parameters<typeof buildObserverData>[0] | undefined;
   try {
     const bundleBytes = await readContainedFile(
       runRoot,
       path.join(runRoot.physicalPath, "run.json"),
     );
-    if (!bundleBytes) throw new Error("run.json unavailable");
-    const stored = JSON.parse(bundleBytes.toString("utf8")) as Parameters<
-      typeof buildObserverData
-    >[0];
-    const bundle = { ...stored, streams: await loadPinnedTraces(runRoot, stored.streams) };
-    return withRuntimeStreamUrls(
-      withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
-      runtimeStreamUrls,
-    );
+    const parsed = bundleBytes ? (JSON.parse(bundleBytes.toString("utf8")) as unknown) : undefined;
+    if (isRecord(parsed) && Array.isArray(parsed.streams))
+      stored = parsed as unknown as Parameters<typeof buildObserverData>[0];
   } catch {}
+  if (stored !== undefined) {
+    try {
+      const bundle = displayedTraces(await loadStreamTraces(pinnedTraceReader(runRoot), stored));
+      return withRuntimeStreamUrls(
+        withLocalRunStatus(record, buildObserverData(bundle, undefined, record), bundle.outcome),
+        runtimeStreamUrls,
+      );
+    } catch {
+      return null;
+    }
+  }
 
   try {
     const observerBytes = await readContainedFile(

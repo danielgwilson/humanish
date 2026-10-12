@@ -4,88 +4,39 @@
 // items (liveActor) keep a run from grading share_ready.
 
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  ACTOR_TRACE_SCHEMA,
-  CODEX_APP_SERVER_CAPABILITIES,
-  type ActorTrace,
-} from "../../src/actors/contract.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { splitStreamTraces } from "../../src/run/stream-trace.js";
 import { verifyRun } from "../../src/verify/verify.js";
+import { syntheticActor as actor, writeTwoParticipantRun } from "../helpers/run-traces.js";
 
 const RUN = "synthetic-trace-index";
 // A secret-shaped value the text scan finds only after gunzipping base64.
 const PAYLOAD = gzipSync("sk-" + "syntheticvalue1234567890abcdef").toString("base64");
-
-function actor(text: string): ActorTrace {
-  return {
-    schema: ACTOR_TRACE_SCHEMA,
-    provider: "synthetic-fixture",
-    protocol: "cua-loop",
-    lane: "computer-use",
-    persona: { id: "synthetic-new-user", traitsApplied: [], promptDigest: "0123456789abcdef" },
-    redaction: { status: "passed", screenshots: "blurred", notes: "Synthetic fixture." },
-    startedAt: "2026-09-01T00:00:00.000Z",
-    completedAt: "2026-09-01T00:00:01.000Z",
-    durationMs: 1000,
-    status: "passed",
-    completionReason: "goal_satisfied",
-    reason: "Synthetic fixture completed.",
-    ids: {},
-    modelSettings: { reasoningEffort: "low", maxOutputTokens: 4096 },
-    counts: { messages: 1, actions: 0 },
-    items: [{ id: "i1", kind: "message", lifecycle: "completed", title: "message", text }],
-    capabilities: {
-      ...CODEX_APP_SERVER_CAPABILITIES,
-      lanes: ["computer-use"],
-      producesScreenshots: true,
-    },
-  };
-}
 
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
 describe("verify on an indexed trace", () => {
   let cwd: string;
   let runDir: string;
-  let dryRun: RunBundle;
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-trace-index-"));
     await runDryRun({ cwd, dryRun: true, runId: RUN });
     runDir = path.join(cwd, ".humanish", "runs", RUN);
-    dryRun = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
   /** The dry run with two participants' actors, written as the run writer writes v2. */
-  async function writeTwoParticipants(texts: [string, string]): Promise<RunBundle> {
-    const second = { ...dryRun.streams[0]!, id: "stream-two", simId: dryRun.simulations[0]!.id };
-    const bundle: RunBundle = {
-      ...dryRun,
-      streams: [
-        { ...dryRun.streams[0]!, actor: actor(texts[0]) },
-        { ...second, actor: actor(texts[1]) },
-      ],
-      simulations: [
-        { ...dryRun.simulations[0]!, streamIds: [dryRun.streams[0]!.id, "stream-two"] },
-      ],
-    };
-    const split = splitStreamTraces(bundle);
-    await mkdir(path.join(runDir, "actors"), { recursive: true });
-    for (const file of split.files) await writeFile(path.join(runDir, file.path), file.bytes);
-    await writeStored(split.bundle);
-    return split.bundle;
-  }
+  const writeTwoParticipants = (texts: [string, string]): Promise<RunBundle> =>
+    writeTwoParticipantRun(runDir, [actor(texts[0]), actor(texts[1])]);
 
   const writeStored = (bundle: RunBundle) =>
     writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`);

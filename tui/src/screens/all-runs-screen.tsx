@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { RunDetail } from "../../../src/run/detail.js";
+import { participantNote } from "../../../src/run/detail.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, listWindow, normalizeThought } from "../../../src/run/projection.js";
 import { indexedRunCost } from "../../../src/run/run-cost.js";
@@ -58,10 +59,11 @@ export function AllRunsScreen({
   const focused = runs[Math.min(Math.max(0, selected), runs.length - 1)];
   const focusedDetail = focused === undefined ? undefined : details.get(focused.runId);
   const participant = focusedDetail?.participants[0];
+  const note = participant === undefined ? undefined : participantNote(participant);
   const thought =
-    participant?.thought === undefined
+    note === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, {
+      : normalizeThought(note, {
           width: Math.max(16, columns - 2),
           maxLines: 2,
         });

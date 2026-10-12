@@ -242,6 +242,12 @@ export interface RunStream {
    *  and the client is typed against this contract. */
   liveEnded?: boolean;
   /**
+   * Set by a reader that shows the run (displayedTraces in src/run/stream-trace.ts) when the loader
+   * refused this participant's trace: the reason. Runtime-only and never persisted; the stream then
+   * carries none of the refused items.
+   */
+  traceUnavailable?: string;
+  /**
    * Browser CSS layout viewport. Deterministic browser adapters may declare and render this
    * exactly; hosted-desktop CUA producers set it only from a runtime measurement. Historical
    * hosted CUA bundles may contain the requested screen size here instead.

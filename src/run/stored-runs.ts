@@ -27,7 +27,7 @@ import {
 import { RUN_STATUS_FILE } from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
-import { loadRunTraces } from "./stream-trace.js";
+import { displayedTraces, loadStreamTraces } from "./stream-trace.js";
 import { isNodeError, isRecord } from "./type-guards.js";
 import {
   invalidRunStorageVerifyResult,
@@ -236,11 +236,11 @@ export async function readReview(
   const bundle = runPaths
     ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE))
     : null;
-  // The completion provenance reads each participant's items. A trace verify refused is read
-  // without them, as a v1 stream without items is.
+  // The completion provenance reads each participant's items, loaded through the loader; a
+  // participant whose trace it refused counts without them.
   const streams =
     runPaths && isRunBundle(bundle)
-      ? (await loadRunTraces(runPaths, bundle).catch(() => bundle)).streams
+      ? displayedTraces(await loadStreamTraces(runPaths, bundle)).streams
       : isRecord(bundle) && Array.isArray(bundle.streams)
         ? bundle.streams.filter(isRecord)
         : undefined;

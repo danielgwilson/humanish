@@ -3,6 +3,7 @@ import React from "react";
 
 import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
+import { participantNote } from "../../../src/run/detail.js";
 import { runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
@@ -435,10 +436,11 @@ function LiveRun({
   const started = run.startedAt === undefined ? Number.NaN : Date.parse(run.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
   const of = expectedMs === undefined ? "" : ` of ~${clockOf(expectedMs)}`;
+  const note = participant === undefined ? undefined : participantNote(participant);
   const thought =
-    participant?.thought === undefined
+    note === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, {
+      : normalizeThought(note, {
           width: Math.max(16, columns - 6),
           maxLines: 3,
         });
