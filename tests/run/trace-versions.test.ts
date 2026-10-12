@@ -1,6 +1,8 @@
-// One live run on fake desktops ($0), kept twice: as this release writes it (run.json v2 with each
-// trace in its file) and as 0.122.0 wrote it (run.json v1 with every trace inline). verify,
-// analysis evidence capture and bundle export read both through the trace loader and must agree.
+// One live run on fake desktops ($0), kept three times: as this release writes it (run.json v3 with
+// each trace in its file), as 0.123.0 and 0.124.0 wrote it (the same files with run.json v2, since a
+// finished v3 bundle differs from v2 only in its schema name) and as 0.122.0 wrote it (run.json v1
+// with every trace inline). verify, analysis evidence capture and bundle export read all three
+// through the trace loader and must agree.
 
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -36,12 +38,14 @@ function graded(result: VerifyResult) {
   };
 }
 
-describe("a run kept as run.json v1 and as v2", () => {
+describe("a run kept as run.json v1, v2 and v3", () => {
+  let v3Project: string;
   let v2Project: string;
   let v1Project: string;
   let runId: string;
 
   beforeAll(async () => {
+    v3Project = await mkdtemp(path.join(tmpdir(), "humanish-trace-v3-"));
     v2Project = await mkdtemp(path.join(tmpdir(), "humanish-trace-v2-"));
     v1Project = await mkdtemp(path.join(tmpdir(), "humanish-trace-v1-"));
     const parsed = parseStudy(
@@ -51,7 +55,7 @@ describe("a run kept as run.json v1 and as v2", () => {
     const handle = makeFanoutModule();
     const outcome = await runStudyWith(
       parsed.config,
-      { cwd: v2Project, env: KEYS },
+      { cwd: v3Project, env: KEYS },
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) =>
@@ -64,25 +68,35 @@ describe("a run kept as run.json v1 and as v2", () => {
     );
     if (outcome.route !== "computer-use" || !outcome.result.ok) throw new Error("run failed");
     runId = outcome.result.runId!;
+    const v3Dir = path.join(v3Project, ".humanish", "runs", runId);
     const v2Dir = path.join(v2Project, ".humanish", "runs", runId);
     const v1Dir = path.join(v1Project, ".humanish", "runs", runId);
-    await cp(path.join(v2Project, ".humanish"), path.join(v1Project, ".humanish"), {
-      recursive: true,
-    });
+    for (const project of [v2Project, v1Project])
+      await cp(path.join(v3Project, ".humanish"), path.join(project, ".humanish"), {
+        recursive: true,
+      });
+    const written = JSON.parse(await readFile(path.join(v3Dir, "run.json"), "utf8")) as RunBundle;
+    expect(written.schema).toBe("humanish.run-bundle.v3");
+    await writeFile(
+      path.join(v2Dir, "run.json"),
+      `${JSON.stringify({ ...written, schema: "humanish.run-bundle.v2" }, null, 2)}\n`,
+    );
     // run.json as 0.122.0 wrote it: every stream's items and screenshot entries inline, no index.
-    const loaded = await readRunWithTraces(v2Dir);
+    const loaded = await readRunWithTraces(v3Dir);
     const v1: RunBundle = { ...loaded, schema: "humanish.run-bundle.v1" };
     await writeFile(path.join(v1Dir, "run.json"), `${JSON.stringify(v1, null, 2)}\n`);
   });
   afterAll(async () => {
+    await rm(v3Project, { recursive: true, force: true });
     await rm(v2Project, { recursive: true, force: true });
     await rm(v1Project, { recursive: true, force: true });
   });
 
   it("is graded the same by verify", async () => {
-    const v2 = await verifyRun(v2Project, runId);
-    expect(v2.ok).toBe(true);
-    expect(graded(await verifyRun(v1Project, runId))).toEqual(graded(v2));
+    const v3 = await verifyRun(v3Project, runId);
+    expect(v3.ok).toBe(true);
+    expect(graded(await verifyRun(v2Project, runId))).toEqual(graded(v3));
+    expect(graded(await verifyRun(v1Project, runId))).toEqual(graded(v3));
   });
 
   it("gives analysis the same evidence", async () => {
@@ -96,13 +110,14 @@ describe("a run kept as run.json v1 and as v2", () => {
       } = await captureEvidence(prepared, bytes);
       return input;
     };
-    const v2 = await capture(v2Project);
-    expect(v2.evidence.length).toBeGreaterThan(0);
-    expect(v2.images.length).toBeGreaterThan(0);
-    expect(await capture(v1Project)).toEqual(v2);
+    const v3 = await capture(v3Project);
+    expect(v3.evidence.length).toBeGreaterThan(0);
+    expect(v3.images.length).toBeGreaterThan(0);
+    expect(await capture(v2Project)).toEqual(v3);
+    expect(await capture(v1Project)).toEqual(v3);
   });
 
-  it("exports the same derivative, written as v2", async () => {
+  it("exports the same derivative, written as v3", async () => {
     const exported = async (project: string) => {
       const result = await exportRun(project, runId, {
         format: "bundle",
@@ -126,15 +141,16 @@ describe("a run kept as run.json v1 and as v2", () => {
         embeddedImages: (result as { embeddedImages?: number }).embeddedImages,
       };
     };
-    const v2 = await exported(v2Project);
-    expect(v2.schema).toBe("humanish.run-bundle.v2");
-    expect(v2.indexed).toEqual(
-      v2.streams.map((stream) => ({ index: `actors/${stream.id}.json`, inline: false })),
+    const v3 = await exported(v3Project);
+    expect(v3.schema).toBe("humanish.run-bundle.v3");
+    expect(v3.indexed).toEqual(
+      v3.streams.map((stream) => ({ index: `actors/${stream.id}.json`, inline: false })),
     );
-    expect(v2.shareSafety.status).toBe("share_ready");
+    expect(v3.shareSafety.status).toBe("share_ready");
     expect(
-      v2.streams[0]!.artifacts.find((artifact) => artifact.kind === "screenshot")?.label,
+      v3.streams[0]!.artifacts.find((artifact) => artifact.kind === "screenshot")?.label,
     ).toMatch(/blurred at export/);
-    expect(await exported(v1Project)).toEqual(v2);
+    expect(await exported(v2Project)).toEqual(v3);
+    expect(await exported(v1Project)).toEqual(v3);
   });
 });

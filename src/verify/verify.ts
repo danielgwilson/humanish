@@ -6,9 +6,11 @@ import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js
 import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
+  isReadRunBundleSchema,
   RUN_BUNDLE_FILE,
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V1_SCHEMA,
+  RUN_BUNDLE_V2_SCHEMA,
   type RunBundle,
 } from "../run/bundle.js";
 import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
@@ -384,7 +386,7 @@ function bundlePresenceChecks(
   const bundle = runJsonValue(bundleRead);
   const record = isRecord(bundle) ? bundle : undefined;
   const schema = record?.schema;
-  const schemaOk = schema === RUN_BUNDLE_SCHEMA || schema === RUN_BUNDLE_V1_SCHEMA;
+  const schemaOk = isReadRunBundleSchema(schema);
   const redactionRecord = record?.redaction;
   const redaction = isRecord(redactionRecord) ? redactionRecord.status : undefined;
   const missingSections = REQUIRED_SECTIONS.filter((key) => record?.[key] === undefined);
@@ -418,7 +420,7 @@ function bundlePresenceChecks(
         ? `run.json declares ${String(schema)}`
         : record === undefined
           ? "no readable run.json, so no schema"
-          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
+          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}, ${RUN_BUNDLE_V2_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
     },
     {
       name: "run bundle shape",
@@ -642,10 +644,11 @@ function buildShareSafety(args: {
   }
   const unscanned = unscannedMessage(args.unscannedArtifacts);
   if (unscanned !== undefined) reasons.push({ code: "UNSCANNED_ARTIFACT", message: unscanned });
-  // A v2 run.json binds each finished participant's items by its trace index. Items written while
-  // a participant was still working (liveActor) have no index, so such a run stays local.
+  // From v2, run.json binds each finished participant's items by its trace index. Items written
+  // while a participant was still working (liveActor) belong to no finished trace, so such a run
+  // stays local.
   const live = args.bundle.streams.filter((stream) => stream.liveActor !== undefined);
-  if (args.bundle.schema === RUN_BUNDLE_SCHEMA && live.length > 0)
+  if (args.bundle.schema !== RUN_BUNDLE_V1_SCHEMA && live.length > 0)
     reasons.push({
       code: "RUN_NOT_FINISHED",
       message: `The run did not finish: run.json holds in-progress items for ${live.map((stream) => stream.id).join(", ")}, which no trace file binds. Review it locally; rerun the study for evidence you can share.`,

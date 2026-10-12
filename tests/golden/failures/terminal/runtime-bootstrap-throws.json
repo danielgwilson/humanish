@@ -309,7 +309,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v2",
+      "bundleSchema": "humanish.run-bundle.v3",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -336,7 +336,7 @@
   },
   "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- outcome: failed: harness: exit status 1\n- summary: 1 participant took part: 0/1 recorded completions, 1 lost to a harness failure. How it ended: runtime bootstrap could not ensure Node/npm before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: runtime bootstrap could not ensure Node/npm before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v2",
+    "schema": "humanish.run-bundle.v3",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,

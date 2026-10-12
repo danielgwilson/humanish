@@ -1,6 +1,6 @@
 # Run Bundle Contract
 
-`humanish.run-bundle.v2` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+`humanish.run-bundle.v3` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
 (with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
 `src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
 source of truth. This page explains the stable public fields and the extension rules; it does not
@@ -95,7 +95,7 @@ feedback drafts and future public issues.
 ## Minimum Bundle Shape
 
 ```yaml
-schema: humanish.run-bundle.v2 # v1 bundles are still read
+schema: humanish.run-bundle.v3 # v2 and v1 bundles are still read
 runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1

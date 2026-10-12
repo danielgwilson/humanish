@@ -567,7 +567,7 @@ describe("runScriptedBrowserLab", () => {
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.schema).toBe("humanish.run-bundle.v2");
+    expect(bundle.schema).toBe("humanish.run-bundle.v3");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(2);
     expect(bundle.cwd).toBe("[target-cwd]");

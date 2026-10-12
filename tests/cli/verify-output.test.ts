@@ -98,7 +98,7 @@ describe("humanish verify output", () => {
     expect(result.exitCode).toBe(2);
     expect(result.stdout.split("\n")).toEqual([
       `verify failed: ${runId} · blocked · 4 of 16 checks failed`,
-      "- run.json declares humanish.run-bundle.v0; verify reads humanish.run-bundle.v2 and humanish.run-bundle.v1",
+      "- run.json declares humanish.run-bundle.v0; verify reads humanish.run-bundle.v3, humanish.run-bundle.v2 and humanish.run-bundle.v1",
       "- sections not checked, because the schema differs",
       "- redaction did not pass (status: pending)",
       "- review.md is missing",

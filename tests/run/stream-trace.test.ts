@@ -51,7 +51,7 @@ async function writeV2(bundle: RunBundle): Promise<RunBundle> {
 describe("writing a run's participant traces", () => {
   it("keeps each stream's summary and index in run.json and its items in the trace file", async () => {
     const stored = await writeV2(v1);
-    expect(stored.schema).toBe("humanish.run-bundle.v2");
+    expect(stored.schema).toBe("humanish.run-bundle.v3");
     const stream = stored.streams[0]!;
     expect(stream.actor).not.toHaveProperty("items");
     expect(stream.actor?.status).toBe(v1.streams[0]!.actor?.status);

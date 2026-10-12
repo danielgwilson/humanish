@@ -520,7 +520,7 @@
     "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
   },
   "raw": {
-    "bundleSchema": "humanish.run-bundle.v2",
+    "bundleSchema": "humanish.run-bundle.v3",
     "artifactRoot": ".humanish/runs/golden-first-run"
   }
 }

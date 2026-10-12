@@ -1138,7 +1138,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.schema).toBe("humanish.run-bundle.v2");
+    expect(bundle.schema).toBe("humanish.run-bundle.v3");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");

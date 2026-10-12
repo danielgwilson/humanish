@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 
 import type { ActorTrace } from "../actors/contract.js";
-import { RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
+import { RUN_BUNDLE_SCHEMA, RUN_BUNDLE_V2_SCHEMA, type RunBundle } from "./bundle.js";
 import {
   type PreparedOutputRoot,
   readContainedRegularFile,
@@ -225,7 +225,8 @@ function bundleRefusal(
     : undefined;
   if (shared !== undefined && shared.length > 1)
     return `run.json indexes ${String(stream.trace!.path)} for participants ${shared.join(", ")} (paths that differ only in case name one file on some file systems), and a trace file belongs to one participant`;
-  if (bundle.schema !== RUN_BUNDLE_SCHEMA) return undefined;
+  if (bundle.schema !== RUN_BUNDLE_SCHEMA && bundle.schema !== RUN_BUNDLE_V2_SCHEMA)
+    return undefined;
   if (stream.actor !== undefined && stream.trace === undefined)
     return "run.json holds its actor and names no trace file";
   if (stream.liveActor !== undefined && bundle.outcome?.state === "finished")
