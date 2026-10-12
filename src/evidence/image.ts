@@ -193,8 +193,8 @@ const PNG_MIN_CHUNK_BYTES: Readonly<Record<string, number>> = { gAMA: 4 };
  * bytes its rows need with nothing after the stream, each row starting with a filter type from 0
  * to 4. For an image without a palette that is all a decode establishes, at about an eighth of
  * the time of pngjs, which unfilters every pixel in JavaScript; a run holds a screenshot for each
- * turn. A palette image is decoded, since each pixel must index a palette that comes before the
- * image data; in any other image a palette chunk is only a suggestion, wherever it is.
+ * turn. A palette image is also decoded, since each pixel must index a palette that comes before
+ * the image data; in any other image a palette chunk is only a suggestion, wherever it is.
  */
 function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean {
   const last = chunks.at(-1);
@@ -215,13 +215,15 @@ function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean 
   const [depth, colorType, compression, filter] = [bytes[24]!, bytes[25]!, bytes[26], bytes[27]];
   if (!PNG_BIT_DEPTHS[colorType]?.includes(depth) || compression !== 0 || filter !== 0)
     return false;
-  if (colorType === 3) return pngDecodes(bytes);
+  // The decoder sizes a row in 32-bit arithmetic and refuses one wider; no screenshot is.
+  const rowBits = width * PNG_CHANNELS[colorType]! * depth;
+  if (rowBits + 7 > 0x7fffffff) return false;
   const trnsBytes = colorType === 0 ? 2 : colorType === 2 ? 6 : 0;
   const tooShort = (chunk: PngChunk) =>
     chunk.end - chunk.start - 12 <
     (chunk.type === "tRNS" ? trnsBytes : (PNG_MIN_CHUNK_BYTES[chunk.type] ?? 0));
   if (chunks.some(tooShort)) return false;
-  const rowBytes = 1 + Math.ceil((width * PNG_CHANNELS[colorType]! * depth) / 8);
+  const rowBytes = 1 + Math.ceil(rowBits / 8);
   const data = Buffer.concat(idats.map((chunk) => bytes.subarray(chunk.start + 8, chunk.end - 4)));
   let rows: Buffer;
   try {
@@ -242,7 +244,7 @@ function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean 
   }
   if (rows.length !== rowBytes * height) return false;
   for (let row = 0; row < rows.length; row += rowBytes) if (rows[row]! > 4) return false;
-  return true;
+  return colorType !== 3 || pngDecodes(bytes);
 }
 
 function pngDecodes(bytes: Buffer): boolean {

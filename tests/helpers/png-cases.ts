@@ -72,22 +72,42 @@ const rgb = noisy({ colorType: 2 });
 const raw = inflateSync(idat(rgb));
 const rowBytes = 1 + WIDTH * 3;
 
-/** A palette image of `entries` colors whose pixels use index `index`. */
-function palette(entries: number, index: number, withPlte = true): Buffer {
+/** A PNG of the cases' size whose rows are `rowBytes` bytes of `fill` after filter type 0. */
+function rowsPng(
+  colorType: number,
+  depth: number,
+  rowBytes: number,
+  fill: number,
+  extra: { type: string; data: Buffer }[] = [],
+): Buffer {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(WIDTH, 0);
   ihdr.writeUInt32BE(HEIGHT, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 3;
-  const rows = Buffer.alloc(HEIGHT * (1 + WIDTH), index);
-  for (let row = 0; row < HEIGHT; row += 1) rows[row * (1 + WIDTH)] = 0;
+  ihdr[8] = depth;
+  ihdr[9] = colorType;
+  const rows = Buffer.alloc(HEIGHT * (1 + rowBytes), fill);
+  for (let row = 0; row < HEIGHT; row += 1) rows[row * (1 + rowBytes)] = 0;
   return pngOf([
     { type: "IHDR", data: ihdr },
-    ...(withPlte ? [{ type: "PLTE", data: Buffer.alloc(entries * 3, 90) }] : []),
+    ...extra,
     { type: "IDAT", data: deflateSync(rows) },
     { type: "IEND", data: Buffer.alloc(0) },
   ]);
 }
+
+/** A palette image of `entries` colors whose pixels use index `index`. */
+const palette = (entries: number, index: number, withPlte = true): Buffer =>
+  rowsPng(
+    3,
+    8,
+    WIDTH,
+    index,
+    withPlte ? [{ type: "PLTE", data: Buffer.alloc(entries * 3, 90) }] : [],
+  );
+
+const indexed = palette(4, 3);
+/** A 1-bit grayscale image: its width is odd, so each row ends in a partly used byte. */
+const bilevel = rowsPng(0, 1, Math.ceil(WIDTH / 8), 0xaa);
 
 export const VALID_PNGS: [string, Buffer][] = [
   ["8-bit RGB", rgb],
@@ -95,8 +115,11 @@ export const VALID_PNGS: [string, Buffer][] = [
   ["8-bit grayscale", noisy({ colorType: 0 })],
   ["8-bit grayscale with alpha", noisy({ colorType: 4 })],
   ["16-bit RGBA", noisy({ colorType: 6, bitDepth: 16 })],
-  ["a palette image", palette(4, 3)],
+  ["a palette image", indexed],
   ["image data split across IDAT chunks", withIdat(rgb, idat(rgb), 100)],
+  ["1-bit grayscale of an odd width", bilevel],
+  ["16-bit RGB", noisy({ colorType: 2, bitDepth: 16 })],
+  ["16-bit grayscale", noisy({ colorType: 0, bitDepth: 16 })],
 ];
 
 export const BROKEN_PNGS: [string, Buffer][] = [
@@ -150,4 +173,19 @@ export const BROKEN_PNGS: [string, Buffer][] = [
   ["bytes after the zlib stream", withIdat(rgb, Buffer.concat([idat(rgb), Buffer.from("note")]))],
   ["a gAMA shorter than 4 bytes", withChunkBeforeIdat(rgb, "gAMA", Buffer.alloc(3))],
   ["a tRNS shorter than an RGB color", withChunkBeforeIdat(rgb, "tRNS", Buffer.alloc(5))],
+  [
+    "a zlib header that names no deflate stream",
+    withIdat(rgb, Buffer.concat([Buffer.from([0x79, 0x9c]), idat(rgb).subarray(2)])),
+  ],
+  [
+    "a zlib stream that needs a preset dictionary",
+    withIdat(rgb, Buffer.concat([Buffer.from([0x78, 0xbb]), idat(rgb).subarray(2)])),
+  ],
+  ["a palette image's zlib stream cut short", withIdat(indexed, idat(indexed).subarray(0, -6))],
+  [
+    "a palette image with bytes after the zlib stream",
+    withIdat(indexed, Buffer.concat([idat(indexed), Buffer.from("note")])),
+  ],
+  ["a palette image a row short", withIhdr(indexed, (d) => d.writeUInt32BE(HEIGHT + 1, 4))],
+  ["a 1-bit image a row short", withIhdr(bilevel, (d) => d.writeUInt32BE(HEIGHT + 1, 4))],
 ];
