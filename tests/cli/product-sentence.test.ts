@@ -5,11 +5,11 @@ import { ORIENTATION_SCHEMA, formatOrientationHuman } from "../../src/cli/orient
 import { PRODUCT_SENTENCE } from "../../src/cli/product-sentence.js";
 import { createProgram } from "../../src/cli/program.js";
 
-/** The first line of `README.md` that is neither blank nor a heading: the tagline under the title. */
+/** The first line of `README.md` that is not blank, a heading or the badge row: the tagline under the title. */
 async function readmeTagline(): Promise<string | undefined> {
   return (await readFile("README.md", "utf8"))
     .split("\n")
-    .find((line) => line.trim() !== "" && !line.startsWith("#"));
+    .find((line) => line.trim() !== "" && !line.startsWith("#") && !line.startsWith("[!["));
 }
 
 describe("the product sentence", () => {
