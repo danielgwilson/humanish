@@ -8,49 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-Breaking: run bundles are now `humanish.run-bundle.v3`, and a run in progress keeps each running
-participant's items in an append-only live file. Each live flush appends only the items recorded
-since the last one, to `live/<position>.<generation>.ndjson`, and run.json's `liveActor`
-(`humanish.live-actor.v2`) indexes the file with `itemsFile` (path, generation, item count, byte
-count, sha256) in place of `items`. On a synthetic run of 24 participants working 8 hours, a flush
-wrote about 0.23 MB in about 0.24 s at 10%, 50% and 100% of the run, where 0.124.0 wrote 12, 60
-and 120 MB in 0.37, 1.7 and 3.0 s. `humanish run` removes the live files after the final run.json,
-so a finished v3 bundle differs from v2 only in its schema name; an interrupted run keeps them.
-A run whose participant's live file starts over on two flushes in a row records one
-`live-items.rewritten` warn event, since each such flush rewrites that participant's whole list.
-Every reader loads the live items through the trace loader, which checks each file against its
-index. The package now exports that loader as `loadRunBundle(cwd, run)`: it returns run.json with
-every participant's trace and live items joined and checked, for v1, v2 and v3 bundles. This release
-reads v1 and v2 bundles as they are; 0.124.0 and earlier refuse a v3 run.json by its schema.
+## 0.125.0: Run bundle v3 with live items in append-only files, loadRunBundle, faster repeated verify (2026-10-12)
 
-| Old form                                                                                                                          | New form                                                                                                                                                                    | Change to make                                                                                                                                                      |
-| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `humanish.run-bundle.v2` run.json, whose running participants carry `streams[].liveActor.items` inline (`humanish.live-actor.v1`) | `humanish.run-bundle.v3` run.json, whose running participants carry `streams[].liveActor.itemsFile` naming `live/<position>.<generation>.ndjson` (`humanish.live-actor.v2`) | Accept `humanish.run-bundle.v3` where you check the schema, and read participants' items through `loadRunBundle(cwd, run)` instead of `liveActor.items` in run.json |
+humanish 0.125.0 keeps each live flush of a long study small, exports the run bundle loader, and
+verifies a finished study faster. Run bundles are now `humanish.run-bundle.v3`: a running
+participant's items so far live in an append-only file under `live/`, and each flush appends only
+the items recorded since the last one. On a synthetic run of 24 participants working 8 hours, a
+flush wrote about 0.23 MB in about 0.24 s, where 0.124.0 wrote up to 120 MB in 3.0 s. A finished
+v3 bundle differs from v2 only in its schema name; 0.124.0 and earlier refuse it by name.
+`loadRunBundle(cwd, run)` returns run.json with every trace and live file joined and checked, for
+v1, v2 and v3 bundles. The five verifies of a finished study read each screenshot once: 10 s in
+all for 1,203 screenshots, down from 35 s. A key in a study's title is redacted from the bundle,
+and one in a persona id or desktop template fails at parse instead of blocking the run.
 
-Contributors can run `pnpm gate` before pushing. It runs `pnpm release:check` with `CI=true`, then
-the site and Observer steps of CI's required jobs that the changed paths reach, and records a pass
-keyed by the tree of HEAD. The opt-in pre-push hook (`git config core.hooksPath .githooks`) refuses
-a push whose commit has no pass. CONTRIBUTING.md lists the checks the gate leaves to CI.
-
-A finished live study verifies its run up to five times: for the Observer, before and during
-analysis, and twice more to refresh the Observer. Each verify read and checked every screenshot
-again. verify now keeps what one read of a screenshot showed for the rest of the command, and reads
-the file again when its size, times or inode change. It also reads up to eight evidence files at
-once. On a synthetic study of 3 participants with 1,203 screenshots of 147 KB, the five verifies
-took 10 s in all, down from 35 s: about 5 s for the first and 0.9 to 2.1 s for each later one,
-which took about 7 s each before.
-
-### Fixed
-
-- A key, a Bearer value or a sandbox URL in a study's `title` no longer makes its run fail
-  verification. The run review, `run.json` and `observer/observer-data.json` record the title with
-  those redacted. `study list`, `study show` and the TUI still print it as written (#1790).
-- A study whose `actor.persona`, `participants[].persona` or `execution.desktop.template` holds
-  text that verify flags as a secret or a local path, as written or encoded, now fails at parse
-  with a message that names the field. Before, the run recorded the value as written and verify
-  graded it `blocked`. A persona id names a persona file and a template names the image a run
-  launches on, so redacting either one would change what it names. `humanish migrate` refuses a
-  v2 file with such a persona id the same way (#1790).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.125.0)
 
 ## 0.124.0: Small Observer files for long studies, faster verify, closing reports under zero data retention (2026-10-12)
 
