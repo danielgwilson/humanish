@@ -75,8 +75,13 @@ describe("release readiness", () => {
     );
     expect(packageJson.scripts["pack:dry-run"]).toBe("npm pack --dry-run");
     expect(packageJson.scripts["api:proof"]).toBe("node scripts/public-api-proof.mjs");
+    // CI runs the gate as `check:pre`, sharded `test` and `release:check:rest`; these compose it.
+    expect(packageJson.scripts.check).toBe("pnpm check:pre && pnpm test && pnpm check:post");
     expect(packageJson.scripts["release:check"]).toBe(
-      "pnpm check && pnpm api:proof && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
+      "pnpm check:pre && pnpm test && pnpm release:check:rest",
+    );
+    expect(packageJson.scripts["release:check:rest"]).toBe(
+      "pnpm check:post && pnpm api:proof && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
     );
   });
 
@@ -161,12 +166,19 @@ describe("npm publishing", () => {
     expect(publish).toContain("Verify release tag is on main and matches package version");
     expect(publish).toContain('git merge-base --is-ancestor "$GITHUB_SHA" origin/main');
     expect(publish).toContain('[ "v${PACKAGE_VERSION}" != "$GITHUB_REF_NAME" ]');
-    expect(publish).toContain("pnpm release:check");
+    // Publishing waits for CI's gate on the tagged commit, then scans the payload it publishes.
+    for (const check of ["test (node-floor)", "test (node-lts)", "secret-scan"])
+      expect(publish).toContain(`"${check}"`);
+    expect(publish).toContain("checks: read");
     expect(publish).toContain(
       "HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}",
     );
-    expect(publish).toContain("npm publish --access public");
+    expect(publish.indexOf("pnpm public-surface:scan")).toBeGreaterThan(-1);
+    expect(publish.indexOf("pnpm public-surface:scan")).toBeLessThan(
+      publish.indexOf("npm publish --access public"),
+    );
     expect(ci).toMatch(/pnpm\/action-setup@v\d+/);
-    expect(ci).toContain("pnpm release:check");
+    expect(ci).toContain("pnpm check:pre && pnpm release:check:rest");
+    expect(ci).toContain("pnpm test --shard=");
   });
 });

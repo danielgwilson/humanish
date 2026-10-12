@@ -58,7 +58,7 @@ pnpm install --frozen-lockfile # as CI installs
 pnpm vitest run tests/<file>   # while editing: one test file, a few seconds
 pnpm docs:check                # after editing a doc: paths, anchors, symbols, the CLI reference
 pnpm format                    # oxfmt; run before every commit
-pnpm release:check             # once before pushing: the gate CI's test job runs
+pnpm release:check             # once before pushing: the gate CI runs, split into shards
 ```
 
 `release:check` runs `pnpm check` (format, lint, knip, the prose, vocabulary and site CSS caps, typecheck,
