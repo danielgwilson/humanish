@@ -102,10 +102,11 @@ never indexes bytes that are not on disk. The sha256 is a running hash, so no wr
 file. The writer starts the next generation, holding the participant's full list, when appending
 cannot keep the file equal to that list: the list shrank, an item already written is not the same
 object it wrote, an append failed, or a sandbox id the run learned since occurs in the current
-generation. Once run.json naming the new generation is written, the writer removes the earlier
-one, so at most two generations of a participant exist at once. The live flush deep-freezes each
-item it is handed, so a producer that edits an item after recording it throws there; a producer
-records a new item instead.
+generation. Once run.json naming the new generation is written, the writer removes every earlier
+one, so at most two generations of a participant exist at once. A failed removal or a failed
+run.json write keeps the earlier generations until the next run.json is written, which removes
+them. The live flush deep-freezes each item it is handed, so a producer that edits an item after
+recording it throws there; a producer records a new item instead.
 
 `Run.finish` writes the final trace files and run.json, then removes every live file it wrote and
 `live/`, so a finished v3 bundle holds no live files and differs from v2 only in its schema name.

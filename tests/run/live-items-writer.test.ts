@@ -4,10 +4,10 @@
 // the run loads the items back through the trace loader.
 
 import { createHash } from "node:crypto";
-import { appendFile, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { loadRunBundle } from "../../src/index.js";
@@ -21,6 +21,22 @@ import type { RunStream } from "../../src/run/streams.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import { readRunWithTraces } from "../helpers/run-traces.js";
+
+// The next unlink of a path ending in `unlinkFails` fails as a disk error would.
+const fault = vi.hoisted(() => ({ unlinkFails: "" }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    unlink: async (...args: Parameters<typeof actual.unlink>) => {
+      if (fault.unlinkFails !== "" && String(args[0]).endsWith(fault.unlinkFails)) {
+        fault.unlinkFails = "";
+        throw Object.assign(new Error("EIO: i/o error, unlink"), { code: "EIO" });
+      }
+      return actual.unlink(...args);
+    },
+  };
+});
 
 const RUN = "synthetic-live-items";
 const item = (n: number, text = `Step ${n} on the list.`): ActorTraceItem => ({
@@ -241,6 +257,44 @@ describe("the run writer's live items", () => {
     });
     await expect(stat(path.join(runDir(), "live"))).rejects.toThrow(/ENOENT/);
     expect(JSON.parse(await readText("run.json")).streams[0].liveActor).toBeUndefined();
+  });
+});
+
+describe("the run writer's superseded generations", () => {
+  it("removes a superseded generation at the next run.json written after one that failed", async () => {
+    const [a, b, c, d] = [item(1), item(2), item(3), item(4)];
+    const replaced = item(2, "Step 2, said again.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b]));
+      // A folder where run.json goes: the next write starts generation 2, then cannot write run.json.
+      await rm(path.join(runDir(), "run.json"));
+      await mkdir(path.join(runDir(), "run.json"));
+      await expect(run.writeSnapshot(inProgress([a, replaced, c]))).rejects.toThrow(
+        /single-link regular files/,
+      );
+      await rmdir(path.join(runDir(), "run.json"));
+      await run.writeSnapshot(inProgress([a, replaced, c, d]));
+    });
+    expect(await liveFiles()).toEqual(["1.2.ndjson"]);
+    expect((await readRunWithTraces(runDir())).streams[0]!.liveActor?.items).toEqual([
+      a,
+      replaced,
+      c,
+      d,
+    ]);
+  });
+
+  it("removes a superseded generation at the next run.json when its first removal fails", async () => {
+    const [a, b, c] = [item(1), item(2), item(3)];
+    const replaced = item(2, "Step 2, said again.");
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b]));
+      fault.unlinkFails = path.join("live", "1.1.ndjson");
+      await run.writeSnapshot(inProgress([a, replaced]));
+      expect(await liveFiles()).toEqual(["1.1.ndjson", "1.2.ndjson"]);
+      await run.writeSnapshot(inProgress([a, replaced, c]));
+    });
+    expect(await liveFiles()).toEqual(["1.2.ndjson"]);
   });
 });
 

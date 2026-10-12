@@ -95,8 +95,9 @@ export interface LiveItemsWriter {
    * `sandboxIds`; a new generation holding the full list starts when appending cannot keep the
    * file equal to the list. Every byte is on disk when this resolves, so a run.json written after
    * it indexes nothing missing. Call `published` once run.json naming the returned streams is
-   * written: it removes the generations they no longer name, including the file of a stream that
-   * no longer carries live items.
+   * written: it removes every superseded generation those streams do not name, including the file
+   * of a stream that no longer carries live items. A generation whose removal fails, or whose
+   * write's run.json failed so `published` never ran, is removed by the next `published`.
    */
   write(
     streams: readonly RunStream[],
@@ -133,7 +134,8 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
   /** Positions whose last append failed: their next write starts a new generation. */
   const appendFailed = new Set<number>();
   const created = new Set<string>();
-  let superseded: string[] = [];
+  /** Generations no current index names: removed once a published run.json names none of them. */
+  const superseded = new Set<string>();
   let knownIds = new Set<string>();
 
   const startGeneration = async (
@@ -148,7 +150,7 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
     created.add(path);
     await createContainedOutputFile(root, path, bytes.toString("utf8"));
     const previous = current.get(position);
-    if (previous !== undefined) superseded.push(previous.path);
+    if (previous !== undefined) superseded.add(previous.path);
     appendFailed.delete(position);
     const next: Generation = {
       path,
@@ -243,16 +245,20 @@ export function liveItemsWriter(root: PreparedOutputRoot): LiveItemsWriter {
       knownIds = new Set([...knownIds, ...sandboxIds]);
       for (const [position, held] of current)
         if (!live.has(position)) {
-          superseded.push(held.path);
+          superseded.add(held.path);
           current.delete(position);
         }
-      const removable = superseded;
-      superseded = [];
+      const named = new Set(written.map((stream) => stream.liveActor?.itemsFile?.path));
       return {
         streams: written,
         published: async () => {
-          // A file left behind is removed with the rest once the run finishes.
-          for (const path of removable) await removeContainedOutputFile(root, path).catch(() => {});
+          // A removal that fails stays pending for the next published run.json.
+          for (const path of superseded)
+            if (!named.has(path))
+              await removeContainedOutputFile(root, path).then(
+                () => superseded.delete(path),
+                () => undefined,
+              );
         },
       };
     },
