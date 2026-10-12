@@ -75,11 +75,14 @@ export async function readBoundedFile(
   return result.state === "read" ? result.bytes : null;
 }
 
+/** The fields of a file's lstat that sameFile compares: which file it is, its size and times. */
+export type FileStamp = Pick<BigIntStats, "dev" | "ino" | "size" | "mtimeNs" | "ctimeNs">;
+
 /**
  * Still the same single-link regular file, unchanged since `before`. Every recheck uses this one
  * field set; ctime catches a chmod or link change that leaves size and mtime alone.
  */
-function sameFile(before: BigIntStats, current: BigIntStats): boolean {
+function sameFile(before: FileStamp, current: BigIntStats): boolean {
   return (
     current.isFile() &&
     !current.isSymbolicLink() &&
@@ -107,7 +110,7 @@ export async function pathMissing(filePath: string): Promise<boolean> {
 }
 
 export type BoundedFileResult =
-  | { state: "read"; bytes: Buffer }
+  | { state: "read"; bytes: Buffer; stamp: FileStamp }
   | { state: "limit"; size: bigint }
   | { state: "unavailable" };
 const unavailable = { state: "unavailable" } as const;
@@ -127,49 +130,21 @@ export async function readBoundedFileResult(
  * At most `maxBytes` of a contained single-link regular file that stays the same file, with the
  * same size and times, from the first check to the last. Size refusals are distinguished only after
  * the same checks. `relativePath` uses `/`, and any name a contained read accepts
- * (isSafeRelativeFilePath) is read: verify and export read the names they always did.
+ * (isSafeRelativeFilePath) is read: verify and export read the names they always did. A read
+ * returns the stamp it held the file to.
  */
 export async function readUnchangedFile(
   root: PreparedOutputRoot,
   relativePath: string,
   maxBytes: number,
 ): Promise<BoundedFileResult> {
-  if (
-    !isSafeRelativeFilePath(relativePath) ||
-    relativePath.includes("\\") ||
-    !Number.isSafeInteger(maxBytes) ||
-    maxBytes < 1
-  )
-    return unavailable;
-  const validateRoot = async (): Promise<string> => {
-    if ("physicalRunRoot" in root) {
-      await validatePreparedRunRootIdentity(root);
-      return root.physicalRunRoot;
-    }
-    await assertPreparedSelectedOutputDirectory(root);
-    return root.physicalPath;
-  };
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) return unavailable;
   try {
-    const physicalRoot = await validateRoot();
-    const candidate = path.join(physicalRoot, relativePath);
-    if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return unavailable;
-    const validateParents = async (): Promise<void> => {
-      let current = physicalRoot;
-      for (const segment of relativePath.split("/").slice(0, -1)) {
-        current = path.join(current, segment);
-        const info = await lstat(current);
-        if (!info.isDirectory() || info.isSymbolicLink())
-          throw new Error("Unsafe analysis input directory.");
-      }
-    };
-    await validateParents();
-    const before = await lstat(candidate, { bigint: true });
-    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) return unavailable;
-    if ((await realpath(candidate)) !== candidate) return unavailable;
+    const located = await locateContainedFile(root, relativePath);
+    if (located === null) return unavailable;
+    const { candidate, before, stillSameFile } = located;
     if (before.size > BigInt(maxBytes)) {
-      if ((await validateRoot()) !== physicalRoot) return unavailable;
-      await validateParents();
-      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
+      if (!(await stillSameFile(before))) return unavailable;
       return { state: "limit", size: before.size };
     }
     // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
@@ -186,14 +161,82 @@ export async function readUnchangedFile(
         bytes.length !== Number(before.size)
       )
         return unavailable;
-      if ((await validateRoot()) !== physicalRoot) return unavailable;
-      await validateParents();
-      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
-      return { state: "read", bytes };
+      if (!(await stillSameFile(before))) return unavailable;
+      const { dev, ino, size, mtimeNs, ctimeNs } = before;
+      return { state: "read", bytes, stamp: { dev, ino, size, mtimeNs, ctimeNs } };
     } finally {
       await handle.close();
     }
   } catch {
     return unavailable;
   }
+}
+
+/**
+ * True when the file readUnchangedFile would read at `relativePath` is still the file `stamp`
+ * describes: it passes the same root, parent and leaf checks, before and after its lstat matches
+ * the stamp. Opens nothing.
+ */
+export async function isUnchangedFile(
+  root: PreparedOutputRoot,
+  relativePath: string,
+  stamp: FileStamp,
+): Promise<boolean> {
+  try {
+    const located = await locateContainedFile(root, relativePath);
+    return (
+      located !== null && sameFile(stamp, located.before) && (await located.stillSameFile(stamp))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The contained single-link regular file at `relativePath`: its path, its lstat, and a recheck that
+ * the root, its parents and the leaf are unchanged since. Null for a path or leaf a read refuses;
+ * a root or parent that fails its check throws.
+ */
+async function locateContainedFile(
+  root: PreparedOutputRoot,
+  relativePath: string,
+): Promise<{
+  candidate: string;
+  before: BigIntStats;
+  stillSameFile: (stamp: FileStamp) => Promise<boolean>;
+} | null> {
+  if (!isSafeRelativeFilePath(relativePath) || relativePath.includes("\\")) return null;
+  const validateRoot = async (): Promise<string> => {
+    if ("physicalRunRoot" in root) {
+      await validatePreparedRunRootIdentity(root);
+      return root.physicalRunRoot;
+    }
+    await assertPreparedSelectedOutputDirectory(root);
+    return root.physicalPath;
+  };
+  const physicalRoot = await validateRoot();
+  const candidate = path.join(physicalRoot, relativePath);
+  if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return null;
+  const validateParents = async (): Promise<void> => {
+    let current = physicalRoot;
+    for (const segment of relativePath.split("/").slice(0, -1)) {
+      current = path.join(current, segment);
+      const info = await lstat(current);
+      if (!info.isDirectory() || info.isSymbolicLink())
+        throw new Error("Unsafe analysis input directory.");
+    }
+  };
+  await validateParents();
+  const before = await lstat(candidate, { bigint: true });
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) return null;
+  if ((await realpath(candidate)) !== candidate) return null;
+  return {
+    candidate,
+    before,
+    stillSameFile: async (stamp) => {
+      if ((await validateRoot()) !== physicalRoot) return false;
+      await validateParents();
+      return sameFile(stamp, await lstat(candidate, { bigint: true }));
+    },
+  };
 }

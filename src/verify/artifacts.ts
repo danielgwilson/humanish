@@ -1,6 +1,5 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
-import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
 import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
@@ -26,6 +25,7 @@ import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
 import { plural } from "../run/text.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
+import { readScreenshot } from "./screenshot-reads.js";
 
 /** Public-safety and evidence-reference findings stop at this many per list. */
 export const MAX_REPORTED_FINDINGS = 50;
@@ -191,27 +191,20 @@ export async function missingLocalEvidenceArtifacts(
       }
       continue;
     }
-    const artifact = await readSafeRunArtifact(runPaths, artifactPath);
-    if (artifact.state === "limit") {
+    const read = requirements.screenshot
+      ? await readScreenshot(runPaths, artifactPath)
+      : await readSafeRunArtifact(runPaths, artifactPath);
+    if (read.state === "limit")
       missing.push(
         `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`,
       );
-      continue;
-    }
-    if (
-      artifact.state === "unavailable" ||
-      (artifact.bytes.length === 0 && !requirements.allowEmpty)
-    ) {
+    else if (
+      read.state === "unavailable" ||
+      (("size" in read ? read.size : read.bytes.length) === 0 && !requirements.allowEmpty)
+    )
       missing.push(artifactPath);
-      continue;
-    }
-
-    if (requirements.screenshot) {
-      const imageError = screenshotEvidenceError(artifactPath, artifact.bytes);
-      if (imageError) {
-        missing.push(`${artifactPath} (${imageError})`);
-      }
-    }
+    else if ("error" in read && read.error !== null)
+      missing.push(`${artifactPath} (${read.error})`);
   }
 
   return missing;
@@ -373,8 +366,8 @@ export async function redactedShapeFramePaths(
       if (!isRunRootEvidenceReference(reference.path)) continue;
       const normalized = normalizedFramePath(reference.path);
       if (shaped.has(normalized)) continue;
-      const bytes = await readSafeRunArtifactBytes(runPaths, normalized).catch(() => null);
-      if (bytes !== null && isRedactedFrameShape(bytes)) shaped.add(normalized);
+      const frame = await readScreenshot(runPaths, normalized);
+      if (frame.state === "read" && frame.redactedShape) shaped.add(normalized);
     }
   }
   return shaped;
