@@ -60,12 +60,63 @@ apart from its walk of the run folder, so no path exemption the walk makes appli
 run.json's digest, which an analysis record binds, covers each index and so each trace.
 
 Mid-run flushes: the writer indexes every finished participant on every write, flushes included,
-so a v2 run.json never holds `actor.items`. A participant still working has its items so far in
-`streams[].liveActor.items` (`humanish.live-actor.v1`), which no index binds. A v2 run.json may
-carry `liveActor` only while its run has not finished: one whose `outcome.state` is `finished`
-and still holds `liveActor` is refused. An unfinished v2 run.json with `liveActor` (a flush, or
-the last write of an interrupted run) verifies as `local_only` with the share-safety reason
-`RUN_NOT_FINISHED`, never `share_ready`. v1 bundles keep their earlier behavior.
+so a run.json from v2 on never holds `actor.items`. A participant still working has its items so
+far in `streams[].liveActor`. A run.json may carry `liveActor` only while its run has not
+finished: one whose `outcome.state` is `finished` and still holds `liveActor` is refused. An
+unfinished run.json with `liveActor` (a flush, or the last write of an interrupted run) verifies
+as `local_only` with the share-safety reason `RUN_NOT_FINISHED`, never `share_ready`. v1 bundles
+keep their earlier behavior.
+
+## Live items
+
+From v3, a running participant's items so far are in a live file, so a flush appends only the
+items recorded since the last one instead of rewriting run.json with every item. The run writer
+(`liveItemsWriter` in `src/run/live-items.ts`, called from `src/run/run.ts`) keeps, for each
+stream with a `liveActor`:
+
+- the live file `live/<position>.<generation>.ndjson`, `position` the stream's place in
+  `streams[]` (from 1). Each line is one trace item as JSON, scrubbed of the run's raw sandbox ids
+  as it is appended. A live file is never truncated or rewritten;
+- in run.json, `liveActor` as `humanish.live-actor.v2`: its summary fields (`updatedAt`,
+  `persona`, `tokenUsage`, `ids`, `executionProfile`, `providerRequests`, `historyTurnsOmitted`,
+  `estimatedCost`) and, in place of `items`, the index of the prefix written so far:
+
+```yaml
+liveActor:
+  schema: humanish.live-actor.v2
+  updatedAt: "<ISO timestamp>"
+  itemsFile:
+    path: live/1.1.ndjson
+    generation: 1
+    items: 4210 # lines in the indexed prefix
+    bytes: 1048211 # the indexed prefix's size
+    sha256: "<hex digest of the indexed prefix>"
+```
+
+Each write appends the items past the indexed count, syncs them, then writes run.json, so run.json
+never indexes bytes that are not on disk. The sha256 is a running hash, so no write rehashes a
+file. The writer starts the next generation, holding the participant's full list, when appending
+cannot keep the file equal to that list: the list shrank, an item already written is not the same
+object it wrote, an append failed, or a sandbox id the run learned since occurs in the current
+generation. Once run.json naming the new generation is written, the writer removes the earlier
+one, so at most two generations of a participant exist at once. The live flush deep-freezes each
+item it is handed, so a producer that edits an item after recording it throws there; a producer
+records a new item instead.
+
+`Run.finish` writes the final trace files and run.json, then removes every live file it wrote and
+`live/`, so a finished v3 bundle holds no live files and differs from v2 only in its schema name.
+A run that ends without its final write (interrupted, or killed) keeps its live files and the
+last run.json that indexes them.
+
+Readers load live items through the same loader as traces: `loadStreamTraces` reads exactly the
+indexed bytes of the live file (bytes appended after run.json was written are not read), refuses
+them unless their size, sha256 and line count match the index and each line is a JSON object,
+and returns the stream with `liveActor.items` and without `itemsFile`. It refuses a `liveActor`
+schema it does not know, and inline live items (`humanish.live-actor.v1`) in a v3 run.json. A
+reader that cannot read a live file reads run.json again once and loads that bundle instead, since
+the writer may have removed a superseded generation, or every live file at finish, after the
+reader read run.json. v1 and v2 run.json keep `liveActor.items` inline (`humanish.live-actor.v1`)
+and load as before.
 
 Readers that show a run (the Observer server, run detail and the TUI, the review command's
 provenance) load traces through the same loader and rules. A participant whose trace the loader
@@ -81,10 +132,11 @@ observer-data.json is built from the loaded bundle. From 0.124.0 it is
 `humanish.observer-data.v2`: the same data without each participant's trace items, which stay in
 the traces (docs/architecture/observer.md).
 
-Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 run.json by its schema
-(`run schema` fails in verify, analysis refuses the source). This release reads v1 bundles as
-they are, with no migration. An exported copy (`humanish export --format bundle`) is written as
-v2 whatever the source version.
+Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 or v3 run.json by its
+schema (`run schema` fails in verify, analysis refuses the source); 0.123.0 and 0.124.0 read v1
+and v2 and refuse v3 the same way. This release reads v1 and v2 bundles as they are, with no
+migration. An exported copy (`humanish export --format bundle`) is written as v3 whatever the
+source version.
 
 ## Purpose
 

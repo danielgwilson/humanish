@@ -231,12 +231,13 @@ async function readLiveItems(
     refuse(`${index.path} is indexed at ${index.bytes} bytes, more than the ${maxBytes} read`);
   const file = await read(index.path, maxBytes, index.bytes);
   if ("refused" in file) throw new LiveFileUnreadableError(stream.id, file.refused);
-  const joined = liveItemsFromBytes(file.bytes, index);
+  // Only the indexed prefix: a reader that ignores `length` hands over the bytes appended since.
+  const joined = liveItemsFromBytes(file.bytes.subarray(0, index.bytes), index);
   if ("refused" in joined) return refuse(joined.refused);
   const { itemsFile: _index, ...summary } = live;
   return {
     stream: { ...stream, liveActor: { ...summary, items: joined.items } },
-    live: { path: index.path, bytes: file.bytes },
+    live: { path: index.path, bytes: file.bytes.subarray(0, index.bytes) },
   };
 }
 

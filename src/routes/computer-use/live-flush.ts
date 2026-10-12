@@ -7,8 +7,12 @@ import type { RunStudyHomes } from "../../study/run-study-homes.js";
 import type { DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {
-  /** Record a participant's recorded-so-far items; the bundle rewrite follows on the flush
-   *  schedule. */
+  /**
+   * Record a participant's recorded-so-far items; the bundle write follows on the flush schedule.
+   * Each item is deep-frozen here: the run writer appends an item to the participant's live file
+   * once, so an item edited after it was recorded would leave the file stale. A producer that
+   * needs a different item records a new one.
+   */
   flush: (
     participantId: string,
     items: readonly ActorTraceItem[],
@@ -21,8 +25,9 @@ export interface LiveTraceFlush {
 
 /**
  * Incremental live flush: as each participant's loop reports its recorded-so-far items,
- * rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
- * Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
+ * publish the in-progress bundle with per-stream `liveActor` partials so the attached
+ * Observer's 5s poll sees the timeline grow; the run writer appends each participant's new items
+ * to its live file. Throttled (one write per interval, trailing
  * write guaranteed). `write` is the run's `writeSnapshot`, which serializes writes and refuses
  * any snapshot once the final write began, so a late flush cannot resurrect the in-progress
  * bundle. A flush failure is swallowed: mid-run observability must never break the run itself.
@@ -87,7 +92,9 @@ export function startLiveTraceFlush(args: {
                         ids: { model },
                       }),
                   ...liveMetadataByStream.get(stream.id),
-                  items: [...liveItems],
+                  // The flush's own copy, replaced and never changed, so the run writer compares
+                  // each write's items with the last by identity.
+                  items: liveItems,
                 },
               };
         }),
@@ -121,6 +128,7 @@ export function startLiveTraceFlush(args: {
     if (items.length === 0) return;
     const streamId = streamIdByParticipant.get(participantId);
     if (streamId === undefined) return;
+    for (const item of items) deepFreeze(item);
     liveItemsByStream.set(streamId, items.slice());
     if (metadata !== undefined) liveMetadataByStream.set(streamId, metadata);
     if (usage !== undefined) liveUsageByStream.set(streamId, usage);
@@ -136,6 +144,13 @@ export function startLiveTraceFlush(args: {
     await flushWriting;
   };
   return { flush, stop };
+}
+
+/** `value` and every object and array it holds, frozen. */
+function deepFreeze(value: unknown): void {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) return;
+  Object.freeze(value);
+  for (const child of Object.values(value)) deepFreeze(child);
 }
 
 /**

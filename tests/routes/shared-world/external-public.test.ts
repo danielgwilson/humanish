@@ -1,5 +1,6 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { readRunWithTraces } from "../../helpers/run-traces.js";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -1598,10 +1599,8 @@ describe("the in-progress bundle on the external-public plane", () => {
       // do.
       const deadline = Date.now() + 15_000;
       while (Date.now() < deadline) {
-        midRun = await readFile(runJson, "utf8").then(
-          (text) => JSON.parse(text) as RunBundle,
-          () => undefined,
-        );
+        // run.json with each participant's live file joined, as every reader loads it.
+        midRun = await readRunWithTraces(path.dirname(runJson)).catch(() => undefined);
         const traced = midRun?.streams.every((stream) =>
           stream.liveActor?.items.some((item) => item.id === "live-click"),
         );

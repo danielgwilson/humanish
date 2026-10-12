@@ -2675,11 +2675,13 @@ describe("concurrent run lifetime", () => {
       const readBundle = async (): Promise<RunBundle> =>
         JSON.parse(await readFile(path.join(runsRoot, runId, "run.json"), "utf8")) as RunBundle;
       await waitForCondition(
-        "every seat's live trace in run.json",
+        "every seat's live trace in run.json and its live files",
         async () =>
-          (await readBundle()).streams.every((stream) =>
+          (
+            await readRunWithTraces(path.join(runsRoot, runId)).catch(() => undefined)
+          )?.streams.every((stream) =>
             stream.liveActor?.items.some((item) => item.id === "live-click"),
-          ),
+          ) === true,
         // The participant flush writes at most every 2 s; with the 8 s wait above this stays under
         // the 20 s test timeout.
         10_000,

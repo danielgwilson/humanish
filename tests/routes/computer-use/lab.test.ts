@@ -6897,9 +6897,9 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     };
     let midRunBundle: MidRunBundle | undefined;
 
-    // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
-    // flush of turn 1's items: the flush is fire-and-forget, so a bounded poll (real fs,
-    // fake substrate, $0) observes it without a test-only seam.
+    // Two material turns then done. Turn 2's nextTurn polls the persisted run.json, its live files
+    // joined by the trace loader, for the flush of turn 1's items: the flush is fire-and-forget,
+    // so a bounded poll (real fs, fake substrate, $0) observes it without a test-only seam.
     const runJsonPath = (): string => path.join(cwd, ".humanish", "runs", "run-flush", "run.json");
     function flushProvider(clock: { t: number }): CuaProvider {
       let turn = 0;
@@ -6914,7 +6914,9 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
           if (turn === 2) {
             for (let attempt = 0; attempt < 100 && midRunBundle === undefined; attempt += 1) {
               try {
-                const parsed = JSON.parse(await readFile(runJsonPath(), "utf8")) as MidRunBundle;
+                const parsed = (await readRunWithTraces(
+                  path.dirname(runJsonPath()),
+                )) as unknown as MidRunBundle;
                 const flushed = parsed.streams.some(
                   (stream) =>
                     stream.liveActor?.items.some((item) => item.kind === "ui_action") === true,
@@ -6990,7 +6992,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       tasks: [{ id: "settings", goal: "Save with [REDACTED_SECRET]." }],
     });
     const live = liveStream?.liveActor;
-    expect(live?.schema).toBe("humanish.live-actor.v1");
+    expect(live?.schema).toBe("humanish.live-actor.v2");
     expect(live?.items.some((item) => item.kind === "ui_action")).toBe(true);
     expect(live?.items.every((item) => typeof item.at === "string")).toBe(true);
 
