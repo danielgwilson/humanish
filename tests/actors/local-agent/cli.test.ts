@@ -76,7 +76,9 @@ describe("the turn prompt", () => {
       "/tmp/turn.png",
     );
     expect(prompt).toContain("only waits ends when the screen changes and holds still");
-    expect(prompt).toContain("A turn whose waits all set ms lasts their ms each time");
+    expect(prompt).toContain(
+      "A turn whose waits all set ms lasts their ms each time, and at least as long as a wait whose ms is null",
+    );
     expect(prompt).toContain("with a wait whose ms is null lasts twice as long as the one before");
   });
 });

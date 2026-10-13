@@ -99,15 +99,21 @@ const NEW_ROW = frame(true);
  */
 async function waitInCall(
   waitMs: number,
-  options: { maxWaitMs?: number; speechEnabled?: boolean; changesAtMs?: number } = {},
+  options: {
+    maxWaitMs?: number;
+    idleWaitMs?: number;
+    speechEnabled?: boolean;
+    changesAtMs?: number;
+  } = {},
 ): Promise<{ result: CuaLoopResult; executed: CuaAction[]; firstReply: Record<string, unknown> }> {
-  const { maxWaitMs, speechEnabled = false, changesAtMs = Infinity } = options;
+  const { maxWaitMs, idleWaitMs, speechEnabled = false, changesAtMs = Infinity } = options;
   native.waitMs = waitMs;
   native.replies.length = 0;
   native.descriptions.length = 0;
   // As the routes build it: the participant and the loop read speech from the same desktop.
   const participant = createRestrictedCodexParticipant({
     ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+    ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     ...(speechEnabled ? { speechEnabled: true } : {}),
   });
   const executed: CuaAction[] = [];
@@ -135,6 +141,7 @@ async function waitInCall(
     },
     writeScreenshot: async (name: string) => `screenshots/${name}`,
     ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+    ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
   });
   await participant.close();
   return {
@@ -178,18 +185,21 @@ describe("a Codex participant that asks for a long wait", () => {
   });
 
   it.each([
-    { options: {}, perWait: 120_000, watched: 600_000 },
-    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000 },
-    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000 },
+    { options: {}, perWait: 120_000, watched: 600_000, shortest: 5_000 },
+    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000, shortest: 5_000 },
+    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000, shortest: 5_000 },
+    { options: { idleWaitMs: 60_000 }, perWait: 120_000, watched: 600_000, shortest: 60_000 },
   ])(
     "is told the longest a call of only waits and a wait among other actions last: $watched and $perWait ms",
-    async ({ options, perWait, watched }) => {
+    async ({ options, perWait, watched, shortest }) => {
       await waitInCall(1_000, options);
 
       expect(native.descriptions[0]).toContain(
         `after its waits' ms, together at most ${watched} ms`,
       );
-      expect(native.descriptions[0]).toContain("A call whose waits all give ms waits that long");
+      expect(native.descriptions[0]).toContain(
+        `A call whose waits all give ms waits that long each time, and at least ${shortest} ms.`,
+      );
       expect(native.descriptions[0]).toContain(
         `with a wait that gives no ms waits twice as long as the one before, up to ${watched} ms`,
       );
