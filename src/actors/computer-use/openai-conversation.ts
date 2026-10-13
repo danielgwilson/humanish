@@ -136,7 +136,7 @@ export class OpenAiConversation {
         this.evidence.requested(this.mode, this.carried, sent, closing);
       const completed = asRecord(reply).status === "completed";
       const parsed = parseOpenAiResponse(reply);
-      const account = completed ? closingAccount(parsed.turn.message, closing) : undefined;
+      const account = completed ? closingAccount(parsed.turn.message, closing, schema) : undefined;
       return { parsed, account, retry: completed && account === undefined };
     };
     const first = await ask(false);
@@ -276,10 +276,15 @@ function replyForm(closing: ClosingRequest): unknown {
   return inputMessage("user", [{ type: "input_text", text }]);
 }
 
-/** The account a closing reply's text gives: JSON the request's schema accepts, or none. */
+/**
+ * The account a closing reply's text gives: JSON the request's schema accepts, or none. A reply
+ * sent without text.format must give every field the stated schema requires. With text.format the
+ * provider holds the reply to that schema, and the check is the one any provider's report gets.
+ */
 function closingAccount(
   message: string | undefined,
   closing: ClosingRequest,
+  strict: boolean,
 ): Pick<CuaTurn, "closingReport"> | Pick<CuaTurn, "impressions"> | undefined {
   let reply: unknown;
   try {
@@ -288,7 +293,7 @@ function closingAccount(
     return undefined;
   }
   if (closing === "report") {
-    const report = closingReportSchema.safeParse(reply);
+    const report = (strict ? closingReportSchema : closingReportSchema.required()).safeParse(reply);
     return report.success ? { closingReport: report.data } : undefined;
   }
   const impressions = impressionsReplySchema.safeParse(reply);

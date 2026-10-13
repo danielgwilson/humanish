@@ -105,7 +105,7 @@ describe("captured OpenAI closing-report contract", () => {
   });
 
   it("continues the actual pending computer call once, disables tools, and preserves typed report and usage", async () => {
-    const h = harness();
+    const h = harness(withImpressions);
     await h.provider.nextTurn(request, signal);
     const result = await h.provider.debrief!(request, signal);
     expect(h.bodies).toHaveLength(2);
@@ -123,7 +123,7 @@ describe("captured OpenAI closing-report contract", () => {
         }),
       ]),
     );
-    expect(result.closingReport).toEqual(JSON.parse(closing.output[0].content[0].text));
+    expect(result.closingReport).toEqual(JSON.parse(withImpressions.output[0].content[0].text));
     expect(result.actions).toEqual([]);
     expect(result.usage).toMatchObject({ input: 13543, output: 221, cacheWriteInput: 13468 });
     expect(h.delayFn).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe("captured OpenAI closing-report contract", () => {
       env: {},
       fetchFn: async (_url: string, init?: { body?: unknown }) => {
         bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        const value = bodies.length === 1 ? pending : closing;
+        const value = bodies.length === 1 ? pending : withImpressions;
         return { ok: true, status: 200, text: async () => "", json: async () => value };
       },
     });
@@ -415,8 +415,22 @@ describe("the trace of a closing report", () => {
   const withoutSchemaRow = { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 };
   const withSchemaRow = { input: 13543, output: 221, cachedInput: 0, cacheWriteInput: 13468 };
 
+  it.each([
+    ["an outcome", { summary: "I saved the task.", frictionReports: [], impressions: [] }],
+    ["impressions", { outcome: "reached", summary: "I saved the task.", frictionReports: [] }],
+  ])("asks once more for a reply without the schema that leaves out %s", async (_field, report) => {
+    const { trace, bodies } = await stoppedSession([
+      closingSaying(JSON.stringify(report)),
+      withImpressions,
+    ]);
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).toHaveProperty("text.format.strict", true);
+    expect(trace.debrief).toMatchObject({ status: "completed" });
+    expect(trace.debrief?.report?.summary).toMatch(/^Added “Draft proposal,”/);
+  });
+
   it("has one usage row past the participant's requests when the reply needed no retry", async () => {
-    const reply = closingSaying(closing.output[0].content[0].text);
+    const reply = closingSaying(withImpressions.output[0].content[0].text);
     const { trace, bodies } = await stoppedSession([reply]);
     expect(bodies).toHaveLength(2);
     expect(trace.debrief).toMatchObject({ trigger: "stop_when", status: "completed" });

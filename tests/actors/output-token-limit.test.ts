@@ -12,7 +12,7 @@ const captured = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 const pending = captured("openai-closing-report/pending-computer-call");
 const incomplete = captured("openai-incomplete/reasoning-only");
-const report = captured("openai-closing-report/typed-closing-report");
+const report = captured("openai-closing-report/typed-closing-report-impressions");
 const screenshot = PNG.sync.write(new PNG({ width: 2, height: 2 }));
 const request = {
   instructions: "Synthetic output-limit check.",
