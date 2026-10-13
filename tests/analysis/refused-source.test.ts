@@ -74,7 +74,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
     });
   });
 
-  it("names the participant and the item id when two items of its trace share an id", async () => {
+  it("names the participant and the two items' places when two items of its trace share an id", async () => {
     const actor = syntheticActor("I saved the item.", { id: "step-1" });
     actor.items.push({ ...actor.items[0]!, text: "I saved it again." });
     await writeRunBundle(runRoot, {
@@ -90,7 +90,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
         ok: false,
         error: {
           code: "ANALYSIS_SOURCE_INVALID",
-          message: `Analysis did not read participant ${stream}'s trace: it holds two items with the id "step-1", and analysis cites each item by its id. No request was sent.`,
+          message: `Analysis did not read participant ${stream}'s trace: items 1 and 2 share an id, and analysis cites each item by its id. No request was sent.`,
         },
       }),
     });

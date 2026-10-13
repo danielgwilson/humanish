@@ -143,7 +143,8 @@ function validateTraceItems(stream: RunStream): void {
   if (actor === undefined) return;
   if (!isRecord(actor) || !Array.isArray(actor.items))
     throw traceInvalid(stream.id, "it has no items list.");
-  const itemIds = new Set<string>();
+  // The place each id was first seen. A refusal names places, since an id is trace text.
+  const firstPlace = new Map<string, number>();
   for (const [index, item] of (actor.items as unknown[]).entries()) {
     if (
       !isRecord(item) ||
@@ -158,11 +159,12 @@ function validateTraceItems(stream: RunStream): void {
         stream.id,
         `item ${index + 1} needs an id of 1 to 256 characters, a kind and a title, and a text that is a string if it has one.`,
       );
-    if (itemIds.has(item.id))
+    const first = firstPlace.get(item.id);
+    if (first !== undefined)
       throw traceInvalid(
         stream.id,
-        `it holds two items with the id ${JSON.stringify(item.id)}, and analysis cites each item by its id.`,
+        `items ${first + 1} and ${index + 1} share an id, and analysis cites each item by its id.`,
       );
-    itemIds.add(item.id);
+    firstPlace.set(item.id, index);
   }
 }
