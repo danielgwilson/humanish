@@ -1153,6 +1153,51 @@ describe("handoff timeout fail-closed", () => {
     const followerOutcomes = bundle.sharedWorld?.outcomes?.filter((o) => o.roleId !== "host") ?? [];
     expect(followerOutcomes.every((o) => o.ok === false)).toBe(true);
   });
+
+  it("counts the followers skipped at the handoff apart from the participant that used the app", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    const runRoot = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
+    const expectedSummary =
+      "1 participant used one public app. 1 of 1 reached the goal. 2 participants were skipped before their sessions started; the gaps say why. humanish did not see them all end up in the same lobby.";
+    expect(bundle.review.summary).toBe(expectedSummary);
+    expect(bundle.review.gaps).toEqual(["player-2: handoff-timeout", "player-3: handoff-timeout"]);
+    expect(await readFile(path.join(runRoot, "review.md"), "utf8")).toContain(
+      `- summary: ${expectedSummary}`,
+    );
+  });
+
+  it("prints a follower skipped at the handoff as blocked, with its skip reason", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    const output = formatConcurrentSharedWorldStudyHuman(result);
+    const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    expect(lines.filter((line) => line.startsWith("Player "))).toEqual([
+      "Player 2: blocked, not ok · handoff-timeout",
+      "Player 3: blocked, not ok · handoff-timeout",
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

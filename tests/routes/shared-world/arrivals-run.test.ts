@@ -120,8 +120,8 @@ describe("a provisioned shared world with a declared schedule", () => {
 
     // The app's sandbox and the first participant's desktop; none for the second.
     expect(created.map((options) => options.metadata?.kind)).toHaveLength(2);
-    // As for a follower the handoff stopped: no session in the result, blocked in run.json.
-    expect(result.roles[1]?.status).toBe("failed");
+    // As for a follower the handoff stopped: no session, blocked in the result and in run.json.
+    expect(result.roles[1]?.status).toBe("blocked");
     expect(result.roles[1]?.error?.message).toContain("caps.maxTotalUsd");
     expect(result.ok).toBe(false);
     const bundle = JSON.parse(

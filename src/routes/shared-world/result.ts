@@ -82,9 +82,12 @@ function concurrentParticipantResults(
     }
     const session = result.outcome.session;
     const thisOk = participantOk(result);
+    const { skippedReason } = result.outcome;
     return {
       ...base,
-      status: session ? session.status : "failed",
+      // A skipped participant never started its session, so it did not fail one.
+      status: session ? session.status : skippedReason === undefined ? "failed" : "blocked",
+      ...(skippedReason === undefined ? {} : { skippedReason }),
       ok: thisOk,
       window: { startedAt: result.startedAt, endedAt: result.endedAt },
       ...(session

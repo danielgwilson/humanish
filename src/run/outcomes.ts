@@ -238,6 +238,20 @@ export function gapsListClause(listed: number, total: number): string {
   return total === 1 ? "; the gaps say why" : `; the gaps list all ${total}`;
 }
 
+/**
+ * The sentence that counts the participants a run skipped before their sessions started, or ""
+ * when it skipped none. A skipped participant never used the app, so a summary counts it here and
+ * leaves it out of the sentence about those that took part. `pointAtGaps` is false when that
+ * sentence already points at the gaps.
+ */
+export function skippedSentence(skipped: number, pointAtGaps: boolean): string {
+  const why = pointAtGaps ? "; the gaps say why" : "";
+  if (skipped === 1) return `1 participant was skipped before its session started${why}.`;
+  if (skipped > 1)
+    return `${skipped} participants were skipped before their sessions started${why}.`;
+  return "";
+}
+
 /** One line a stakeholder can read, with the denominator attached to every number. */
 export function formatParticipantOutcomes(
   outcomes: ParticipantOutcomes,

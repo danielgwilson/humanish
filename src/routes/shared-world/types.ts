@@ -128,6 +128,8 @@ export interface ConcurrentSharedWorldParticipantResult {
   session?: { status: string; completionReason: string; reason: string; screenshots: number };
   /** The actor sandbox lifecycle proof (the getHost/key value is never surfaced here). */
   sandbox?: { sandboxId: string; sandboxIdDigest?: string; killed: boolean };
+  /** Set when the run skipped the participant before its session started (status `blocked`). */
+  skippedReason?: string;
   error?: { code: ConcurrentSharedWorldStudyErrorCode; message: string };
 }
 
