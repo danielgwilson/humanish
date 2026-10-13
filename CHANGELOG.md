@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Analysis no longer refuses a run by how many run events, trace items or screenshot frames it
+  holds. It refused a run.json with more than 100,000 events or a participant trace with more than
+  100,000 items (`ANALYSIS_SOURCE_INVALID`), and an evidence entry whose screenshot frame passed
+  100,000 (`ANALYSIS_INPUT_INVALID`). Analysis still reads run.json and each trace file only up to
+  16 MiB, and refuses the whole run when one of them is larger. A trace reaches 16 MiB after about
+  3,570 model turns at the 4,700 bytes a turn the bundle estimate counts, 9.9 hours at its 10
+  seconds a turn, and after about 8,540 turns at the live fit of 1,965 bytes a turn. verify and the
+  Observer read each file up to 32 MiB, so they still accept a run between 16 and 32 MiB that
+  analysis refuses. (#1824)
+
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
 humanish 0.128.0 keeps run.json small in long studies. Run bundles are now

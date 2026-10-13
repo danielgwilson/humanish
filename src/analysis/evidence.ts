@@ -63,7 +63,6 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
     !Array.isArray(value.streams) ||
     value.streams.length > EVIDENCE_LIMITS.participants ||
     !Array.isArray(value.events) ||
-    value.events.length > 100000 ||
     (value.commsReceiving !== undefined && !isCommsReceivingEvidence(value.commsReceiving))
   )
     throw new Error("ANALYSIS_SOURCE_INVALID");
@@ -116,12 +115,8 @@ async function readSource(
 }
 
 function validateTraceItems(actor: unknown): void {
-  if (
-    actor !== undefined &&
-    (!isRecord(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)
-  ) {
+  if (actor !== undefined && (!isRecord(actor) || !Array.isArray(actor.items)))
     throw new Error("ANALYSIS_SOURCE_INVALID");
-  }
   const eventIds = new Set<string>();
   for (const item of isRecord(actor) ? (actor.items as unknown[]) : []) {
     if (

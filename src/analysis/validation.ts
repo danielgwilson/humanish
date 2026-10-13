@@ -191,7 +191,7 @@ const analysisEvidenceSchema = z
     quoteEligible: z.boolean(),
     at: timestamp.nullable(),
     elapsedMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
-    frame: z.number().int().min(0).max(100000).nullable(),
+    frame: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
     capture: z
       .object({
         eventId: sourceId,
