@@ -276,6 +276,31 @@ describe("the wait_for_change tool", () => {
     expect(imagesIn(bodies[1]!)).toBe(1);
   });
 
+  it("is watched next to a computer screenshot, whose output carries the screen", async () => {
+    const { result, bodies } = await runOpenAi([
+      replyOf(
+        1,
+        computerCall("call_c", [{ type: "screenshot" }]),
+        fnCall("call_w", '{"minutes":2}'),
+      ),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    expect(watchesOf(result).map((watch) => watch.limitMs)).toEqual([120_000]);
+    expect(bodies[1]?.input).toEqual([
+      {
+        type: "computer_call_output",
+        call_id: "call_c",
+        output: { type: "computer_screenshot", image_url: IMAGE },
+      },
+      {
+        type: "function_call_output",
+        call_id: "call_w",
+        output: expect.stringMatching(/^Your wait lasted 2 minutes;/),
+      },
+    ]);
+  });
+
   it("goes to the desktop among other actions, at most maxWaitMs, and its output says so", async () => {
     const { result, bodies, executed } = await runOpenAi([
       replyOf(
