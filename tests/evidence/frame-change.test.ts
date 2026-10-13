@@ -84,13 +84,13 @@ describe("watchFrames on retained frames", () => {
     });
   });
 
-  it("settles a panel clock's tens digit on its own at a minute tick after it has held 65 s", () => {
+  it("never settles a panel clock's tens digit while its ones digit ticks each minute", () => {
     // The fixtures read 22:29 and 22:30: the tens digit (x 1385 to 1391) sits in the tile column
     // at x 1376 and the ones digit (x 1392 to 1399) in the column at x 1392. Both move at 30 s.
-    // At 90 s and 150 s only the ones digit moves, drawn here by inverting its pixels. From 95 s
-    // the still ones tiles join the tens tiles, whose region then waits on them; at 150 s the ones
-    // tiles move, the tens tiles form a region alone, still for 120 s, and settle. On a hosted
-    // desktop this ends a wait in each 10 minutes, after the tens digit changes.
+    // At 90 s and 150 s only the ones digit moves, drawn here by inverting its pixels. At 150 s
+    // the tens tiles form a region alone, still for 120 s, but the ones tiles next to them ticked
+    // (moves 60 s apart), so they are held back. The earlier rule woke the participant here, once
+    // in each 10 minutes on a hosted desktop (wave 7 live run 1a: 6 wakes in an hour).
     const onesDigit = { x: 1392, y: 7, width: 8, height: 11 };
     const clock2231 = inverted(CLOCK_2230, onesDigit);
     const clock2232 = inverted(clock2231, { x: 1392, y: 12, width: 8, height: 6 });
@@ -103,14 +103,11 @@ describe("watchFrames on retained frames", () => {
             ? clock2231
             : clock2232,
     );
-    expect(settledTimes(verdicts)).toEqual([150_000]);
-    expect(verdicts.find(([atMs]) => atMs === 90_000)?.[1]).toEqual({
+    expect(settledTimes(verdicts)).toEqual([]);
+    expect(verdicts.at(-1)?.[1]).toEqual({
       verdict: "changing",
       lookSoon: false,
-    });
-    expect(verdicts.at(-1)?.[1]).toEqual({
-      verdict: "settled",
-      area: { x: 1376, y: 0, width: 16, height: 32 },
+      held: { x: 1376, y: 0, width: 16, height: 32 },
     });
   });
 
@@ -124,6 +121,127 @@ describe("watchFrames on retained frames", () => {
       verdict: "settled",
       area: { x: 1376, y: 0, width: 32, height: 32 },
     });
+  });
+});
+
+// The synthetic checks of the wave 9 pixel-rule study (rules/pixel/RESULT.md, "Synthetic checks"),
+// on a 320 x 160 screen of 20 x 10 tiles whose row 0 is the panel. A glyph is 40 dark pixels in one
+// tile, placed by its seed, so two seeds draw different pixels in the same tile. Each watch looks
+// every 5 s for 600 s; the expected wakes are the study's column for the proposed rule.
+
+type Glyph = readonly [column: number, row: number, seed: number];
+
+function glyphs(list: readonly Glyph[]): Buffer {
+  const image = new PNG({ width: 320, height: 160 });
+  image.data.fill(240);
+  for (const [column, row, seed] of list) {
+    let state = (seed * 2654435761) >>> 0;
+    for (let dot = 0; dot < 40; dot += 1) {
+      state = (state * 1103515245 + 12345) >>> 0;
+      const at =
+        ((row * 16 + ((state >>> 16) % 16)) * 320 + column * 16 + ((state >>> 8) % 16)) * 4;
+      image.data.fill(30, at, at + 3);
+    }
+  }
+  return PNG.sync.write(image);
+}
+
+/** How often a counter has changed by `atMs`, when it changes at `fromMs` and every `everyMs`. */
+const ticksBy = (atMs: number, everyMs: number, fromMs: number): number =>
+  atMs < fromMs ? 0 : 1 + Math.floor((atMs - fromMs) / everyMs);
+
+/** The first look of a 600 s watch over `scene` that settled, as [time, verdict]. */
+const firstSettled = (scene: (atMs: number) => Buffer): [number, FrameVerdict] | undefined =>
+  watch(scene(0), everyFiveSeconds(5, 600), scene).find(
+    ([, verdict]) => verdict.verdict === "settled",
+  );
+
+describe("watchFrames on the wave 9 synthetic screens", () => {
+  it("never settles a panel clock's tens tile beside its ticking minutes tile", () => {
+    // The minutes tile (column 18) changes at 30 s and every 60 s after; the tens tile (column 17)
+    // changes once at 30 s. The earlier rule woke at 150 s.
+    const scene = (atMs: number) =>
+      glyphs([
+        [18, 0, 100 + ticksBy(atMs, 60_000, 30_000)],
+        [17, 0, atMs < 30_000 ? 1 : 2],
+      ]);
+    expect(firstSettled(scene)).toBeUndefined();
+  });
+
+  it("never settles a relative timestamp's tail 4 tiles from its ticking digit", () => {
+    // Live run 2a: "1 minute ago" became "2 minutes ago", so the tail (columns 8 to 10) shifted
+    // once at 30 s, while the digit (column 4) changes every 60 s. The earlier rule woke at 100 s.
+    const scene = (atMs: number) =>
+      glyphs([
+        [4, 5, 100 + ticksBy(atMs, 60_000, 30_000)],
+        ...[8, 9, 10].map((column): Glyph => [column, 5, column + (atMs < 30_000 ? 0 : 50)]),
+      ]);
+    expect(firstSettled(scene)).toBeUndefined();
+  });
+
+  it("never settles a label beside a moving chart of 36 tiles", () => {
+    // The chart (rows 7 to 9, columns 2 to 13) changes at every look; a 3-tile label appears in
+    // row 5 at 20 s. The chart's tiles move every look, so they never tick; they move with a
+    // region of more than 24 tiles. The earlier rule woke at 90 s.
+    const scene = (atMs: number) => {
+      const chart: Glyph[] = [];
+      for (let column = 2; column < 14; column += 1)
+        for (const row of [7, 8, 9])
+          chart.push([column, row, 3000 + Math.floor(atMs / 5_000) * 64 + column * 3 + row]);
+      const label: Glyph[] = [6, 7, 8].map((column) => [column, 5, 700 + column]);
+      return glyphs(atMs < 20_000 ? chart : [...chart, ...label]);
+    };
+    expect(firstSettled(scene)).toBeUndefined();
+  });
+
+  it("settles a label beside a spinner tile that changes at every look, at 90 s", () => {
+    // The spinner (column 5, row 5) moves every 5 s, so it never ticks; the label in columns 6 to
+    // 8 appears at 20 s and is still for 70 s at 90 s.
+    const spinner = (atMs: number): Glyph => [5, 5, 500 + Math.floor(atMs / 5_000)];
+    const scene = (atMs: number) =>
+      glyphs([
+        spinner(atMs),
+        ...(atMs < 20_000 ? [] : [6, 7, 8].map((column): Glyph => [column, 5, 700 + column])),
+      ]);
+    expect(firstSettled(scene)).toEqual([
+      90_000,
+      { verdict: "settled", area: { x: 96, y: 80, width: 48, height: 16 } },
+    ]);
+  });
+
+  it("settles a one-time 3-tile label 70 s after it appears", () => {
+    // The label appears at 100 s in columns 12 to 14 of row 7, with nothing else moving.
+    const scene = (atMs: number) =>
+      glyphs(atMs < 100_000 ? [] : [12, 13, 14].map((column): Glyph => [column, 7, 900 + column]));
+    expect(firstSettled(scene)).toEqual([
+      170_000,
+      { verdict: "settled", area: { x: 192, y: 112, width: 48, height: 16 } },
+    ]);
+  });
+
+  it("settles a 30-tile popup over the panel at the look after it appears", () => {
+    // Rows 0 and 1, columns 5 to 19, from 10 s: still at the 15 s look, and large.
+    const popup: Glyph[] = [];
+    for (let column = 5; column < 20; column += 1)
+      for (const row of [0, 1]) popup.push([column, row, 1000 + column + row]);
+    expect(firstSettled((atMs) => glyphs(atMs < 10_000 ? [] : popup))).toEqual([
+      15_000,
+      { verdict: "settled", area: { x: 80, y: 0, width: 240, height: 32 } },
+    ]);
+  });
+
+  it("settles a 30-tile row beside a spinner at the look after it appears", () => {
+    // The spinner (column 5, row 5) moves every 5 s; the row (rows 6 and 7, columns 2 to 16)
+    // appears at 50 s.
+    const row: Glyph[] = [];
+    for (let column = 2; column < 17; column += 1)
+      for (const line of [6, 7]) row.push([column, line, 1200 + column + line]);
+    const scene = (atMs: number) =>
+      glyphs([[5, 5, 500 + Math.floor(atMs / 5_000)], ...(atMs < 50_000 ? [] : row)]);
+    expect(firstSettled(scene)).toEqual([
+      55_000,
+      { verdict: "settled", area: { x: 32, y: 96, width: 240, height: 32 } },
+    ]);
   });
 });
 
