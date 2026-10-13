@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   runComputerUseLoopWithTaps,
+  type CuaAction,
   type CuaLoopResult,
 } from "../../../src/actors/computer-use/loop.js";
 import type { LoopRunOptions } from "../../../src/actors/computer-use/loop/types.js";
@@ -61,6 +62,32 @@ const doneReply = (n: number) => ({
   ],
 });
 
+/** A reply with `output` as its items. */
+const replyOf = (n: number, ...output: unknown[]) => ({
+  id: `resp_${n}`,
+  status: "completed",
+  output,
+});
+/** A function call item, wait_for_change unless `name` says otherwise. */
+const fnCall = (callId: string, args: string, name = "wait_for_change") => ({
+  type: "function_call",
+  id: `fc_${callId}`,
+  call_id: callId,
+  name,
+  arguments: args,
+  status: "completed",
+});
+/** A computer_call item with `actions`. */
+const computerCall = (callId: string, actions: unknown[]) => ({
+  type: "computer_call",
+  id: `cu_${callId}`,
+  call_id: callId,
+  actions,
+});
+const IMAGE = `data:image/png;base64,${QUIET.toString("base64")}`;
+/** How many times a request body carries the screenshot. */
+const imagesIn = (body: Body): number => JSON.stringify(body.input).split(IMAGE).length - 1;
+
 /** A reply to a closing request: its JSON, as text, with `fields`. */
 const closingReply = (n: number, fields: Record<string, unknown>) => ({
   id: `resp_${n}`,
@@ -85,9 +112,10 @@ const IMPRESSIONS = { impressions: [] };
 async function runOpenAi(
   replies: unknown[],
   loop: Partial<LoopRunOptions> = {},
-): Promise<{ result: CuaLoopResult; bodies: Body[]; sentAt: number[] }> {
+): Promise<{ result: CuaLoopResult; bodies: Body[]; sentAt: number[]; executed: CuaAction[] }> {
   let t = 0;
   const bodies: Body[] = [];
+  const executed: CuaAction[] = [];
   const sentAt: number[] = [];
   const fetchFn: FetchLike = async (_url, init) => {
     bodies.push(JSON.parse(init.body) as Body);
@@ -111,7 +139,9 @@ async function runOpenAi(
     }),
     executor: {
       observe: async () => ({ screenshot: QUIET, stateSignature: perceptualSignature(QUIET) }),
-      execute: async () => undefined,
+      execute: async (action) => {
+        executed.push(action);
+      },
     },
     persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },
     redaction: defaultRedactionHooks,
@@ -122,7 +152,7 @@ async function runOpenAi(
     },
     ...loop,
   });
-  return { result, bodies, sentAt };
+  return { result, bodies, sentAt, executed };
 }
 
 describe("the wait_for_change tool", () => {
@@ -221,5 +251,110 @@ describe("the wait_for_change tool", () => {
         ],
       },
     ]);
+  });
+
+  it("answers each of several calls in one reply once, with the screen and the note in the first", async () => {
+    const { result, bodies } = await runOpenAi([
+      replyOf(1, fnCall("call_a", '{"minutes":2}'), fnCall("call_b", '{"minutes":1}')),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    expect(watchesOf(result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [180_000, "limit"],
+    ]);
+    expect(bodies[1]?.input).toEqual([
+      {
+        type: "function_call_output",
+        call_id: "call_a",
+        output: [
+          { type: "input_text", text: expect.stringMatching(/^Your wait lasted 3 minutes;/) },
+          { type: "input_image", image_url: IMAGE },
+        ],
+      },
+      { type: "function_call_output", call_id: "call_b", output: "The wait ended." },
+    ]);
+    expect(imagesIn(bodies[1]!)).toBe(1);
+  });
+
+  it("goes to the desktop among other actions, at most maxWaitMs, and its output says so", async () => {
+    const { result, bodies, executed } = await runOpenAi([
+      replyOf(
+        1,
+        computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+        fnCall("call_w", '{"minutes":3}'),
+      ),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    expect(watchesOf(result)).toEqual([]);
+    const waited = executed.flatMap((action) => (action.kind === "wait" ? [action.ms] : []));
+    expect(waited.reduce((sum, ms) => sum! + ms!, 0)).toBe(120_000);
+    expect(bodies[1]?.input).toEqual([
+      {
+        type: "computer_call_output",
+        call_id: "call_c",
+        output: { type: "computer_screenshot", image_url: IMAGE },
+      },
+      {
+        type: "function_call_output",
+        call_id: "call_w",
+        output:
+          "This wait was sent with other actions, so it did not end early when the screen changed. Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
+      },
+    ]);
+  });
+
+  it("answers a call to a tool it does not have, on the impressions request too", async () => {
+    const { bodies } = await runOpenAi([
+      replyOf(
+        1,
+        {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: "Nothing new came in." }],
+        },
+        fnCall("call_x", "{}", "read_page"),
+      ),
+      closingReply(2, IMPRESSIONS),
+    ]);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]?.input[0]).toEqual({
+      type: "function_call_output",
+      call_id: "call_x",
+      output: [
+        { type: "input_text", text: 'There is no tool named "read_page".' },
+        { type: "input_image", image_url: IMAGE },
+      ],
+    });
+    expect(imagesIn(bodies[1]!)).toBe(1);
+  });
+
+  it("answers every call on the closing request, with the screen once and the ask as a message", async () => {
+    const { bodies } = await runOpenAi(
+      [
+        replyOf(1, fnCall("call_a", '{"minutes":3}'), fnCall("call_b", '{"minutes":3}')),
+        closingReply(2, REPORT),
+      ],
+      { clock: { end: { atMs: 2 * MINUTE, windDownMs: 2 * MINUTE, kind: "session_cap" } } },
+    );
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]?.input.slice(0, 3)).toEqual([
+      {
+        type: "function_call_output",
+        call_id: "call_a",
+        output: [{ type: "input_image", image_url: IMAGE }],
+      },
+      { type: "function_call_output", call_id: "call_b", output: "The wait ended." },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: expect.stringMatching(/^The interactive session has ended\./),
+          },
+        ],
+      },
+    ]);
+    expect(imagesIn(bodies[1]!)).toBe(1);
   });
 });

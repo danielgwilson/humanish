@@ -122,9 +122,15 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
 export interface ParsedOpenAiResponse {
   turn: CuaTurn;
   callIds: string[];
-  /** wait_for_change call ids, each owed a function_call_output. */
-  waitCallIds: string[];
+  /** The function calls, in reply order, each owed a function_call_output. */
+  functionCalls: FunctionCall[];
   outputItems: unknown[];
+}
+
+/** A function call a reply made: its id, and its name, which is wait_for_change unless it erred. */
+export interface FunctionCall {
+  readonly callId: string;
+  readonly name: string;
 }
 
 /**
@@ -183,7 +189,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 
   const actions: CuaAction[] = [];
   const callIds: string[] = [];
-  const waitCallIds: string[] = [];
+  const functionCalls: FunctionCall[] = [];
   const reasoningParts: string[] = [];
   const messageParts: string[] = [];
   const safetyChecks: CuaSafetyCheck[] = [];
@@ -238,9 +244,10 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
       }
       case "function_call": {
         const callId = optionalString(item.call_id);
-        if (asString(item.name) !== "wait_for_change" || callId === undefined) break;
-        waitCallIds.push(callId);
-        actions.push(waitForChangeAction(item.arguments));
+        if (callId === undefined) break;
+        const name = asString(item.name);
+        functionCalls.push({ callId, name });
+        if (name === "wait_for_change") actions.push(waitForChangeAction(item.arguments));
         break;
       }
       default:
@@ -298,7 +305,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     ...(usage === undefined ? {} : { usage }),
   };
 
-  return { turn, callIds, waitCallIds, outputItems: output };
+  return { turn, callIds, functionCalls, outputItems: output };
 }
 
 // ---------------------------------------------------------------------------
@@ -456,21 +463,24 @@ export function buildCallOutput(
 }
 
 /**
- * The answer to a wait_for_change call: the note on how the wait ended, when there is one, and the
- * screen at its end.
+ * The answer to a function call: `text`, followed by the screen when `screenshot` is given. An
+ * answer with no screen is the text alone.
  */
-export function buildWaitOutput(
+export function buildFunctionOutput(
   callId: string,
-  screenshot: Buffer | undefined,
-  note: string | undefined,
+  text: string,
+  screenshot?: Buffer,
 ): Record<string, unknown> {
   return {
     type: "function_call_output",
     call_id: callId,
-    output: [
-      ...(note ? [{ type: "input_text", text: note }] : []),
-      { type: "input_image", image_url: screenshotUrl(screenshot) },
-    ],
+    output:
+      screenshot === undefined
+        ? text
+        : [
+            ...(text ? [{ type: "input_text", text }] : []),
+            { type: "input_image", image_url: screenshotUrl(screenshot) },
+          ],
   };
 }
 

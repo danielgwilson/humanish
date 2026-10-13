@@ -6,18 +6,20 @@ import {
   strictOutputSchema,
 } from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
+import { isIdleTurn } from "./loop/actions.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   asArray,
   asRecord,
   buildCallOutput,
   buildContinuationRequest,
+  buildFunctionOutput,
   buildInitialRequest,
-  buildWaitOutput,
   hintItems,
   inputMessage,
   openingMessage,
   parseOpenAiResponse,
+  type FunctionCall,
   type OpenAiCuContext,
   type OpenAiReasoningSummary,
   type ParsedOpenAiResponse,
@@ -90,8 +92,10 @@ export class OpenAiConversation {
   private lastResponseId: string | undefined;
   /** computer_call ids the next request owes an output for. */
   private pendingCallIds: readonly string[] = [];
-  /** wait_for_change call ids the next request owes an output for. */
-  private pendingWaitCallIds: readonly string[] = [];
+  /** The function calls the next request owes an output for. */
+  private pendingFunctionCalls: readonly FunctionCall[] = [];
+  /** Whether the latest reply acted, so its waits went to the desktop with its other actions. */
+  private pendingActed = false;
   /** Accepted replies so far; the next request is number `replies + 1`. */
   private replies = 0;
   /** The whole conversation, which explicit-context requests carry within its token budget. */
@@ -180,21 +184,36 @@ export class OpenAiConversation {
 
   /**
    * The items a request adds to the conversation: the opening message with the first screen, or
-   * an output for each pending computer_call with the latest screenshot and any hint.
+   * an output for each pending call with the latest screenshot, and any hint. Each computer_call
+   * output carries the screenshot. Function call outputs follow in reply order: with no
+   * computer_call the first carries the screenshot, and every other one carries text only, so the
+   * screenshot is sent once. A turn's hint goes into the first function call output, so it reads
+   * as how the wait ended; a closing request's hint asks for the closing account and stays a user
+   * message. A wait sent with other actions ran on the desktop for its length, and its output says
+   * so (callNote).
    */
   private newItems(req: CuaTurnRequest, closing?: ClosingRequest): readonly unknown[] {
     if (this.replies === 0) return [openingMessage(req.instructions, req.observation.screenshot)];
-    // A turn's hint says how the wait ended, so it answers a wait_for_change call in place of a
-    // message. A closing request's hint asks for the closing account and stays a user message.
-    const note = closing === undefined && this.pendingWaitCallIds.length > 0;
+    const { screenshot } = req.observation;
+    const calls = this.pendingFunctionCalls;
+    const hintInCall = closing === undefined && calls.length > 0;
     return [
       ...this.pendingCallIds.map((id) =>
-        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),
+        buildCallOutput(id, screenshot, req.acknowledgedSafetyChecks),
       ),
-      ...this.pendingWaitCallIds.map((id) =>
-        buildWaitOutput(id, req.observation.screenshot, note ? req.contextHint : undefined),
-      ),
-      ...(note ? [] : hintItems(req.contextHint)),
+      ...calls.map((call, index) => {
+        const withScreen = index === 0 && this.pendingCallIds.length === 0;
+        const text = [
+          callNote(call, this.pendingActed),
+          index === 0 && hintInCall ? req.contextHint : undefined,
+        ]
+          .filter((part) => part !== undefined && part !== "")
+          .join(" ");
+        return withScreen
+          ? buildFunctionOutput(call.callId, text, screenshot)
+          : buildFunctionOutput(call.callId, text || "The wait ended.");
+      }),
+      ...(hintInCall ? [] : hintItems(req.contextHint)),
     ];
   }
 
@@ -271,10 +290,23 @@ export class OpenAiConversation {
   private moveOn(parsed: ParsedOpenAiResponse, sent: readonly unknown[]): void {
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
-    this.pendingWaitCallIds = parsed.waitCallIds;
+    this.pendingFunctionCalls = parsed.functionCalls;
+    this.pendingActed = !isIdleTurn(parsed.turn.actions);
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
   }
+}
+
+/**
+ * What a function call's output says about the call itself: that no such tool exists, or that a
+ * wait sent with other actions ran on the desktop for its length. Undefined otherwise.
+ */
+function callNote(call: FunctionCall, acted: boolean): string | undefined {
+  if (call.name !== "wait_for_change")
+    return `There is no tool named ${JSON.stringify(call.name)}.`;
+  return acted
+    ? "This wait was sent with other actions, so it did not end early when the screen changed."
+    : undefined;
 }
 
 /**
