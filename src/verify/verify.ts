@@ -533,8 +533,8 @@ const SHAPE_UNCHECKED = "not checked, because run.json failed the shape check";
 
 /**
  * The bundle-content checks of the loaded bundle `valid`, in report order. Without one (run.json
- * failed its shape guard) no check has findings. `refusedStreams` names the streams whose traces the loader refused, which the evidence-artifacts
- * check reports.
+ * failed its shape guard) no check has findings. `refusedStreams` names the streams whose traces
+ * the loader refused, which the evidence-artifacts check reports.
  */
 async function evidenceChecks(
   runPaths: PreparedRunArtifactPaths,
