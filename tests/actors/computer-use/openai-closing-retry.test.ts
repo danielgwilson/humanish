@@ -297,7 +297,12 @@ describe("the trace of a closing report", () => {
   it("has a usage row for each closing request when the reply was asked once more", async () => {
     const { trace, bodies } = await stoppedSession([closingSaying("I renamed it."), closing]);
     expect(bodies).toHaveLength(3);
-    expect(trace.debrief).toMatchObject({ trigger: "stop_when", status: "completed" });
+    expect(trace.debrief).toMatchObject({
+      trigger: "stop_when",
+      status: "completed",
+      reason:
+        "one read-only report; no additional desktop actions; original stop and task outcomes preserved; asked twice: the first reply was not the JSON the request asked for",
+    });
     expect(trace.conversation?.requests).toHaveLength(1);
     expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withSchemaRow]);
   });
@@ -309,7 +314,8 @@ describe("the trace of a closing report", () => {
     expect(trace.debrief).toEqual({
       trigger: "stop_when",
       status: "failed",
-      reason: "the closing response did not contain a valid structured participant report",
+      reason:
+        "the closing response did not contain a valid structured participant report; asked twice: the first reply was not the JSON the request asked for",
       usageReported: true,
     });
     expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withoutSchemaRow]);
