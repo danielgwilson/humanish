@@ -8,64 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.127.0: Clock-end passes counted by what participants declared, a scaled wind-down, the concurrency cap in the plan (2026-10-13)
 
-- A computer-use participant with `endAfterMs` or `maxSessionMs` and no `windDownMs` is told the
-  time left for the last quarter of its window, at most 10 minutes. The default was a fixed 10
-  minutes, so a window of 10 minutes or less was told its end from its first turn. A 10-minute cap
-  is now told from 7 minutes 30 seconds in, and a window of 40 minutes or more keeps 10 minutes. An
-  explicit `windDownMs` is used as written. `study check`'s `windows` row and the plan entry's
-  `windDownMs` show the new default.
-- The `participants[].files` refusal messages suggest `fixtures/photo.png` and
-  `Downloads/photo.png`, and the study-file docs examples use neutral roles (support agents,
-  customers, applicants).
-- `HUMANISH_CUA_MAX_CONCURRENCY` now lowers the plan itself. `study check`'s `schedule` row, the
-  plan's late-start warnings and the run's `schedule:` line use the lowered count; before, only
-  the run's participant table did, so `study check` could describe slots the run did not have.
-  The plan applies it before the E2B plan's limit, so an `execution.concurrency` above that limit
-  is no longer refused when the setting lowers it. A lowering adds a plan warning, as the E2B
-  plan's limit does; when that limit lowers the count further, the plan carries its warning
-  instead. The setting now applies to `shared-world` studies too, and a value under 2 refuses one,
-  since a shared world runs at least two participants at once.
+humanish 0.127.0 makes long scheduled studies report what happened. A participant that passes at
+its scheduled end or session cap without declaring `REACHED THE GOAL.` is now counted as running
+until that end (`participants.ranUntilEnd`), where 0.126.0 counted it as reaching the goal. The
+default wind-down is a quarter of the window, at most 10 minutes, so a short window is no longer
+told its end from its first turn. `HUMANISH_CUA_MAX_CONCURRENCY` now lowers the plan itself, on
+shared-world studies too, and a participant whose scheduled end passes while it waits for a slot
+is skipped before its desktop is created. The Observer keeps updating past 100,000 items for a
+participant, and the bundle estimate is re-derived for run bundle v3.
 
-### Fixed
-
-- A served Observer page keeps updating once a participant passes 100,000 items. Past that count
-  it refused every feed body and kept the last one it accepted, through the end of the run, so a
-  later generation of a live file that scrubbed a sandbox id the run learned late never reached
-  the page. A page opened after that count showed no run at all. The page no longer refuses a body
-  for the length of a list. The server still reads a participant's trace or live file only up to
-  32 MiB; past that the page shows the participant's trace as unavailable, with a warning.
-- A computer-use participant with `endAfterMs` that waits for a free slot until its end has passed
-  is skipped before its desktop is created, and its record is `blocked` with the reason. Before, it
-  created a desktop when a slot freed, was asked for its closing report at its first turn and
-  passed. The plan gives such a participant no slot when it works out the schedule, so the
-  participants after it start sooner in the plan, and it warns, naming each one it would skip.
-- The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
-  for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
-  bytes a model turn against the 16 MiB analysis reads, and each participant's trace against the
-  same limit at 4.7 KB a turn, the busiest participant measured; the average was about 2 KB. It
-  checks the Observer page against the 32 MiB verify reads, as the app, half of run.json and 0.12
-  of all the traces' bytes, and the file count against the public-safety scan. It no longer checks
-  observer-data.json, which stays within 7 % of run.json. Five participants working 8 hours beside
-  25 short ones were estimated at a 30.2 MiB run.json and warned about; they are now estimated at
-  3.7 MiB. The warning starts at 17 participants working 8 hours for the Observer page, 30 for
-  run.json, and a 10-hour window for one participant's trace. The `bundle size` row names the
-  largest trace and the Observer page in place of the largest file.
-- A computer-use participant that passes at a scheduled end or a session cap without declaring
-  `REACHED THE GOAL.` is no longer counted or described as reaching the goal. Its closing report
-  said `DID NOT REACH THE GOAL.` or declared nothing. The review counts it in a new
-  `participants.ranUntilEnd`, present when above 0, and its summary says
-  `1 ran until its session cap` or `1 ran until its scheduled end`. The participant's own summary
-  says the same, and the Observer labels it `Ran until session cap` or `Ran until scheduled end`.
-  It still passes. A participant that declared `REACHED THE GOAL.` still counts in `reachedGoal`.
-  An older bundle keeps its `reachedGoal` count when re-read, and its completion line names the
-  clock end. Analysis input still records `goalSource: participant_report` for such a participant,
-  as 0.125.0 did, so an analysis saved then stays valid; its `stopCause` and `declaredOutcome`
-  name the clock end.
-- The declared outcome skips a `>` blockquote line. A closing report or last message whose first
-  line quotes a page's `REACHED THE GOAL.` no longer declares it; the blocker scan already dropped
-  blockquote lines.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.127.0)
 
 ## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 
