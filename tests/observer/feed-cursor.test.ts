@@ -12,6 +12,7 @@ import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { buildObserverData } from "../../src/observer/data.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../../src/run/contained-output.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
 import type { RunStream } from "../../src/run/streams.js";
@@ -103,7 +104,14 @@ interface FeedEntry {
   liveAfter?: string;
 }
 interface FeedBody {
-  data: { run: { runId: string }; streams: { id: string; traceUnavailable?: string }[] };
+  data: {
+    run: { runId: string };
+    streams: {
+      id: string;
+      traceUnavailable?: string;
+      timeline: { type: string; level: string; message: string }[];
+    }[];
+  };
   items: { runId: string; streams: Record<string, FeedEntry> };
 }
 
@@ -350,6 +358,77 @@ describe("the bodies a page polls over one run", () => {
       return;
     }
     const golden = JSON.parse(await readFile(SEQUENCE_GOLDEN, "utf8")) as unknown;
+    expect(masked(sequence)).toEqual(masked(golden));
+  });
+});
+
+// The bodies a page meets when a participant's live file passes the read limit, kept for the page's
+// tests (observer/tests/feed-cursor.test.tsx). Rerun with UPDATE_OBSERVER_FEED_GOLDENS=1 as above.
+const PAST_LIMIT_GOLDEN = path.resolve("tests/golden/observer-feed/past-limit.json");
+
+describe("the Observer feed of a participant whose live file passes the read limit", () => {
+  it("keeps the page's items at its cursor and warns that later items are not read", async () => {
+    const [a, b] = [item(1), item(2)];
+    // One item whose text alone takes the live file past RUN_ARTIFACT_MAX_BYTES (32 MiB).
+    const large = { ...item(3), text: "x".repeat(RUN_ARTIFACT_MAX_BYTES) };
+    const sequence: { after: string | null; body: FeedBody }[] = [];
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b]));
+      const first = await poll();
+      sequence.push({ after: null, body: first });
+      await run.writeSnapshot(inProgress([a, b, large]));
+      const held = cursorsOf(first);
+      const next = await poll(held);
+      sequence.push({ after: held, body: next });
+      expect(entry(next, 0)?.liveActor).toEqual([]);
+      expect(entry(next, 0)?.liveAfter).toBe(held);
+      expect(entry(next, 0)?.live).toBe(held);
+      expect(next.data.streams[0]!.traceUnavailable).toBeUndefined();
+      const warnings = next.data.streams[0]!.timeline.filter(
+        (event) => event.type === "live-items.not-read",
+      );
+      expect(warnings.map((event) => event.level)).toEqual(["warn"]);
+      expect(warnings[0]!.message).toMatch(
+        new RegExp(
+          `items past 2 were not read: run.json records live/1\\.1\\.ndjson at \\d+ bytes, more than the ${RUN_ARTIFACT_MAX_BYTES} bytes`,
+        ),
+      );
+      // The page sends the same cursor again and gets the same answer.
+      expect(withoutClock(await poll(held))).toEqual(withoutClock(next));
+      // A page that holds none of the items gets the trace unavailable, with the file's size.
+      const fresh = await poll();
+      expect(fresh.data.streams[0]!.traceUnavailable).toMatch(
+        new RegExp(
+          `live/1\\.1\\.ndjson at \\d+ bytes, more than the ${RUN_ARTIFACT_MAX_BYTES} bytes`,
+        ),
+      );
+      expect(entry(fresh, 0)?.live).toBeUndefined();
+      // The finished participant's trace file is past the limit too: every page gets it unavailable.
+      const { trace: _trace, ...finished } = template.streams[0]!;
+      await run.finish(
+        {
+          ...template,
+          runId: RUN,
+          artifactRoot: path.join(".humanish", "runs", RUN),
+          streams: [{ ...finished, actor: { ...finished.actor!, items: [a, b, large] } }],
+        },
+        PASSING_OUTCOME,
+      );
+      const done = await poll(held);
+      expect(done.data.streams[0]!.traceUnavailable).toMatch(
+        new RegExp(
+          `run\\.json records actors/\\S+ at \\d+ bytes, more than the ${RUN_ARTIFACT_MAX_BYTES} bytes`,
+        ),
+      );
+      expect(entry(done, 0)?.actor).toEqual([]);
+      expect(entry(done, 0)?.live).toBeUndefined();
+    });
+    if (process.env.UPDATE_OBSERVER_FEED_GOLDENS) {
+      await mkdir(path.dirname(PAST_LIMIT_GOLDEN), { recursive: true });
+      await writeFile(PAST_LIMIT_GOLDEN, `${JSON.stringify(sequence, null, 2)}\n`);
+      return;
+    }
+    const golden = JSON.parse(await readFile(PAST_LIMIT_GOLDEN, "utf8")) as unknown;
     expect(masked(sequence)).toEqual(masked(golden));
   });
 });

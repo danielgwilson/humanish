@@ -19,6 +19,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import {
   displayedTraces,
   loadStreamTraces,
@@ -252,14 +253,26 @@ export async function serveRunPath(
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
   }
+  // run.json is read under the limit every other reader of it uses, by name as through the feed.
+  const runJson = cleanedRelativePath === "run.json";
   try {
     const body = await readContainedFile(
       runRoot,
       filePath,
-      notePath ? { maxBytes: MAX_NOTE_FILE_BYTES } : {},
+      notePath
+        ? { maxBytes: MAX_NOTE_FILE_BYTES }
+        : runJson
+          ? { maxBytes: RUN_ARTIFACT_MAX_BYTES }
+          : {},
     );
     if (!body) {
-      writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+      const tooLarge = runJson ? await pastReadLimit(runRoot, "run.json") : undefined;
+      writeResponse(
+        response,
+        404,
+        tooLarge === undefined ? "Not found" : `Not found: ${tooLarge}`,
+        "text/plain; charset=utf-8",
+      );
       return;
     }
     response.writeHead(200, {
@@ -317,7 +330,8 @@ async function readObserverData(
  * fallback. The saved observer-data.json is read only while the run has no run.json at all, or in
  * safe serving, where only its admitted bytes can be read. Otherwise a run.json that is there and
  * cannot be read, parsed or used as a bundle (which a browser poll can meet mid-write) gives the
- * reason, a 404 the poller retries, never the saved projection.
+ * reason, a 404 the poller retries, never the saved projection. Both files are read under
+ * RUN_ARTIFACT_MAX_BYTES, as every other reader of a run file reads them.
  */
 async function observerDataOrReason(
   runRoot: PinnedDirectory,
@@ -326,7 +340,9 @@ async function observerDataOrReason(
 ): Promise<ObservedRun | { unavailable: string }> {
   const record = await readLocalRunStatus(runRoot);
   const runJson = path.join(runRoot.physicalPath, "run.json");
-  const bundleBytes = await readContainedFile(runRoot, runJson).catch(() => null);
+  const bundleBytes = await readContainedFile(runRoot, runJson, {
+    maxBytes: RUN_ARTIFACT_MAX_BYTES,
+  }).catch(() => null);
   const absent =
     bundleBytes === null &&
     (await lstat(runJson).then(
@@ -341,7 +357,11 @@ async function observerDataOrReason(
     return "unavailable" in saved ? saved : { data: saved, live: [] };
   }
   if (bundleBytes === null)
-    return { unavailable: "run.json is there but could not be read: it is a link or changed." };
+    return {
+      unavailable:
+        (await pastReadLimit(runRoot, "run.json")) ??
+        "run.json is there but could not be read: it is a link or changed.",
+    };
   let stored: Parameters<typeof buildObserverData>[0];
   try {
     const parsed: unknown = JSON.parse(bundleBytes.toString("utf8"));
@@ -375,6 +395,24 @@ interface ObservedRun {
   live: readonly LiveItemsRead[];
 }
 
+/**
+ * Why run.json or a saved observer-data.json was not read, when the file at `relativePath` passes
+ * the root's checks and is larger than RUN_ARTIFACT_MAX_BYTES, the most the server reads of either;
+ * otherwise undefined. The size comes from the opened file, so no link or file outside the run
+ * folder is measured.
+ */
+async function pastReadLimit(
+  runRoot: PinnedDirectory,
+  relativePath: string,
+): Promise<string | undefined> {
+  const opened = await openContainedFile(runRoot, path.join(runRoot.physicalPath, relativePath));
+  if (opened === null) return undefined;
+  await opened.handle.close().catch(() => undefined);
+  return opened.size > RUN_ARTIFACT_MAX_BYTES
+    ? `${relativePath} is larger than ${RUN_ARTIFACT_MAX_BYTES} bytes, the most humanish reads of it.`
+    : undefined;
+}
+
 /** The saved observer-data.json of a run that has written no run.json yet. */
 async function savedObserverData(
   runRoot: PinnedDirectory,
@@ -385,8 +423,13 @@ async function savedObserverData(
     const observerBytes = await readContainedFile(
       runRoot,
       path.join(runRoot.physicalPath, "observer", "observer-data.json"),
+      { maxBytes: RUN_ARTIFACT_MAX_BYTES },
     );
-    if (!observerBytes) throw new Error("observer-data.json unavailable");
+    if (!observerBytes) {
+      const tooLarge = await pastReadLimit(runRoot, "observer/observer-data.json");
+      if (tooLarge !== undefined) return { unavailable: tooLarge };
+      throw new Error("observer-data.json unavailable");
+    }
     const saved = observerDataFromSaved(JSON.parse(observerBytes.toString("utf8")));
     if (saved === null) throw new Error("observer-data.json holds no participant's items");
     return withRuntimeStreamUrls(

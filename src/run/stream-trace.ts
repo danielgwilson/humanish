@@ -39,18 +39,39 @@ import { isRecord } from "./type-guards.js";
 
 type StreamArtifact = RunStream["artifacts"][number];
 
-/** A trace that does not match its index, or cannot be read. The message names the stream. */
+/**
+ * A trace that does not match its index, or cannot be read. The message names the stream, and ends
+ * with `advice`: by default, restore the run folder from a copy.
+ */
 export class StreamTraceRefusedError extends Error {
   constructor(
     readonly streamId: string,
     detail: string,
+    advice = "A trace file must stay as the run wrote it; restore the run folder from a copy.",
   ) {
-    super(
-      `Participant ${streamId}'s trace was not read: ${detail}. A trace file must stay as the run wrote it; restore the run folder from a copy.`,
-    );
+    super(`Participant ${streamId}'s trace was not read: ${detail}. ${advice}`);
     this.name = "StreamTraceRefusedError";
   }
 }
+
+/** Why the loader reads no trace or live file whose index records more than `maxBytes`. */
+const pastLimitDetail = (index: { path: string; bytes: number }, maxBytes: number): string =>
+  `run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file`;
+
+/**
+ * The refusal of a trace or live file whose index records more than `maxBytes`. The loader reads
+ * no file past the limit, so a copy of the file is refused too.
+ */
+const tooLarge = (
+  streamId: string,
+  index: { path: string; bytes: number },
+  maxBytes: number,
+): StreamTraceRefusedError =>
+  new StreamTraceRefusedError(
+    streamId,
+    pastLimitDetail(index, maxBytes),
+    "Restoring a copy does not help; open the file with another tool, such as jq, to read its items.",
+  );
 
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
@@ -303,13 +324,14 @@ class LiveFileUnreadableError extends StreamTraceRefusedError {}
 
 /**
  * A live file the loader joined into stream `streamId`: the index it read the items by, and the
- * cursor it read past when the stream holds only the items after one.
+ * cursor it read past when the stream holds only the items after one. A read with `stopped` has
+ * an index that records more than the loader reads of one file, so it read nothing and joined no
+ * items past `after`, which it always has; `stopped` is the warning a reader that shows the run
+ * gives.
  */
-export interface LiveItemsRead {
-  streamId: string;
-  index: LiveItemsIndex;
-  after?: LiveItemsCursor;
-}
+export type LiveItemsRead =
+  | { streamId: string; index: LiveItemsIndex; after?: LiveItemsCursor; stopped?: undefined }
+  | { streamId: string; index: LiveItemsIndex; after: LiveItemsCursor; stopped: string };
 
 /** For a live file's index, the prefix of that file the caller holds already, if any. */
 type LiveAfter = (index: LiveItemsIndex) => LiveItemsCursor | undefined;
@@ -344,10 +366,22 @@ async function readLiveItems(
   const index = live.itemsFile;
   if (!isLiveItemsIndex(index)) return refuse("run.json records a malformed live items index");
   if (live.items !== undefined) refuse("run.json holds in-progress items beside their live file");
-  if (index.bytes > maxBytes)
-    refuse(`${index.path} is indexed at ${index.bytes} bytes, more than the ${maxBytes} read`);
   const { itemsFile: _index, ...summary } = live;
   const after = liveAfter?.(index);
+  if (index.bytes > maxBytes) {
+    if (after === undefined || !cursorFits(index, after))
+      throw tooLarge(stream.id, index, maxBytes);
+    // The caller keeps the prefix it holds, read when the file was under the limit.
+    return {
+      stream: { ...stream, liveActor: { ...summary, items: [] } },
+      read: {
+        streamId: stream.id,
+        index,
+        after,
+        stopped: `Participant ${stream.id}'s items past ${after.items} were not read: ${pastLimitDetail(index, maxBytes)}. The items read before stay shown; open the file with another tool, such as jq, to read the rest.`,
+      },
+    };
+  }
   const tail = after === undefined ? undefined : await readLiveTail(read, stream, index, after);
   if (tail !== undefined)
     return {
@@ -368,6 +402,17 @@ async function readLiveItems(
 }
 
 /**
+ * Whether `after` can be a prefix of the file `index` describes: some bytes, no more items or bytes
+ * than the index, and at its end in both counts or in neither. Whether it ends on a line end is
+ * checked only when the tail is read.
+ */
+const cursorFits = (index: LiveItemsIndex, after: LiveItemsCursor): boolean =>
+  after.bytes > 0 &&
+  after.items <= index.items &&
+  after.bytes <= index.bytes &&
+  (after.items === index.items) === (after.bytes === index.bytes);
+
+/**
  * The items of the live file `index` describes past `after`, and the bytes they were read from;
  * undefined when the cursor does not fit the index or the file's lines, so the caller reads the
  * whole prefix. A cursor at the indexed end reads nothing. A file the reader cannot read throws
@@ -379,13 +424,7 @@ async function readLiveTail(
   index: LiveItemsIndex,
   after: LiveItemsCursor,
 ): Promise<{ items: ActorTrace["items"]; bytes: Buffer } | undefined> {
-  if (
-    after.bytes === 0 ||
-    after.items > index.items ||
-    after.bytes > index.bytes ||
-    (after.items === index.items) !== (after.bytes === index.bytes)
-  )
-    return undefined;
+  if (!cursorFits(index, after)) return undefined;
   if (after.bytes === index.bytes) return { items: [], bytes: Buffer.alloc(0) };
   const file = await read(index.path, index.bytes - after.bytes + 1, index.bytes, after.bytes - 1);
   if ("refused" in file) throw new LiveFileUnreadableError(stream.id, file.refused);
@@ -408,6 +447,7 @@ async function readStreamTrace(
   let joined = stream;
   if (stream.trace !== undefined) {
     assertIndex(stream);
+    if (stream.trace.bytes > maxBytes) throw tooLarge(stream.id, stream.trace, maxBytes);
     const file = await read(stream.trace.path, maxBytes);
     if ("refused" in file) throw new StreamTraceRefusedError(stream.id, file.refused);
     joined = joinTrace(stream, file.bytes);
@@ -423,7 +463,8 @@ async function readStreamTrace(
  * stream without an index is returned as it is (a v1 stream, or one with no actor). An indexed
  * stream's file must have a trace file name (isStreamTracePath); it is read under `maxBytes` and
  * checked against the index's byte count, sha256, item count and screenshot count, and any
- * difference throws StreamTraceRefusedError. The rules that need the whole bundle (an unindexed v2
+ * difference throws StreamTraceRefusedError. An index that records more than `maxBytes` throws
+ * before the file is read. The rules that need the whole bundle (an unindexed v2
  * actor, two participants indexing one file) are loadStreamTraces'.
  */
 export async function loadStreamTrace(
@@ -509,7 +550,9 @@ interface LoadedTraces {
  * `liveAfter` names, for a live file's index, the prefix the caller holds already (the Observer
  * feed's cursor). The loader then reads and joins only the items past it, checked by liveItemsAfter
  * without the indexed sha256, and `live` records the cursor; a cursor past the index or off the
- * file's lines gets the whole prefix, checked as always.
+ * file's lines gets the whole prefix, checked as always. A live file whose index records more than
+ * `maxBytes` is not read: for a cursor that fits the index the stream gets no items past it and
+ * `live` records `stopped`, and without one the stream is refused.
  *
  * A live file that cannot be read may have been removed by the writer after `bundle` was read: it
  * removes a superseded generation once run.json names the next one, and every live file once the
@@ -587,14 +630,17 @@ async function loadEveryStream(
  * summary, shows none of the items or per-request lists run.json or a file supplied for it (its
  * actor's items and lists, its in-progress items, its screenshot entries), and carries
  * `traceUnavailable` with the reason; a warn event on its timeline says the same. A reader that
- * shows the run then never prices or checks rows the loader refused.
+ * shows the run then never prices or checks rows the loader refused. A live file the loader
+ * stopped reading (LiveItemsRead's `stopped`) gives its stream a `live-items.not-read` warn event.
  */
 export function displayedTraces(loaded: {
   bundle: RunBundle;
   refused: readonly StreamTraceRefusedError[];
+  live?: readonly LiveItemsRead[];
 }): RunBundle {
   const reasons = new Map(loaded.refused.map((error) => [error.streamId, error.message]));
-  if (reasons.size === 0) return loaded.bundle;
+  const stopped = (loaded.live ?? []).filter((read) => read.stopped !== undefined);
+  if (reasons.size === 0 && stopped.length === 0) return loaded.bundle;
   const streams = loaded.bundle.streams.map((stream): RunStream => {
     const reason = reasons.get(stream.id);
     if (reason === undefined) return stream;
@@ -616,7 +662,19 @@ export function displayedTraces(loaded: {
       message: reasons.get(stream.id)!,
       streamId: stream.id,
     }));
-  return { ...loaded.bundle, streams, events: [...loaded.bundle.events, ...events] };
+  const notRead = stopped.map((read) => ({
+    id: `event-live-items-not-read-${read.streamId}`,
+    at: loaded.bundle.streams.find((stream) => stream.id === read.streamId)?.updatedAt ?? "",
+    level: "warn" as const,
+    type: "live-items.not-read",
+    message: read.stopped,
+    streamId: read.streamId,
+  }));
+  return {
+    ...loaded.bundle,
+    streams,
+    events: [...loaded.bundle.events, ...events, ...notRead],
+  };
 }
 
 /** The bundle with every stream loaded; the first refusal throws. */

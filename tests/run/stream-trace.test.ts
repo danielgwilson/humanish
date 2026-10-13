@@ -405,14 +405,32 @@ describe("loading a run's participant traces", () => {
     );
   });
 
-  it("refuses a trace over the read limit without reading it", async () => {
+  it("refuses a trace the run wrote past the read limit without reading it, and says a copy will not help", async () => {
     const stored = await writeV2(v1);
     const stream = stored.streams[2]!;
-    await expect(loadStreamTrace(runPaths, stream, stream.trace!.bytes - 1)).rejects.toThrow(
-      StreamTraceRefusedError,
+    const limit = stream.trace!.bytes - 1;
+    const asked: string[] = [];
+    const loaded = await loadStreamTraces(
+      async (relativePath) => {
+        asked.push(relativePath);
+        return { refused: `${relativePath} could not be read` };
+      },
+      { ...stored, streams: [stream] },
+      { maxBytes: limit },
     );
-    await expect(loadStreamTrace(runPaths, stream, stream.trace!.bytes - 1)).rejects.toThrow(
-      /larger than/,
+    expect(asked).toEqual([]);
+    expect(loaded.refused.map((error) => error.message)).toEqual([
+      `Participant stream-003's trace was not read: run.json records actors/stream-003.json at ${limit + 1} bytes, more than the ${limit} bytes humanish reads of one file. Restoring a copy does not help; open the file with another tool, such as jq, to read its items.`,
+    ]);
+    await expect(loadStreamTrace(runPaths, stream, limit)).rejects.toThrow(StreamTraceRefusedError);
+  });
+
+  it("tells the reader to restore a trace that grew past the read limit after the run wrote it", async () => {
+    const stored = await writeV2(v1);
+    const stream = stored.streams[2]!;
+    await writeFile(path.join(runRoot, "actors/stream-003.json"), "\n", { flag: "a" });
+    await expect(loadStreamTrace(runPaths, stream, stream.trace!.bytes)).rejects.toThrow(
+      /actors\/stream-003\.json is larger than \d+ bytes.*restore the run folder from a copy\.$/,
     );
   });
 

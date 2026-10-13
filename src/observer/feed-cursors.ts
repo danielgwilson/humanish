@@ -50,7 +50,9 @@ function cursorText(path: string, position: { items: number; bytes: number }): s
 
 /**
  * `items` with each live file's cursor on the entry of the stream it was joined into, and
- * `liveAfter`, the page's cursor, where the entry's `liveActor` holds only the items past it.
+ * `liveAfter`, the page's cursor, where the entry's `liveActor` holds only the items past it. A
+ * live file the loader stopped reading (LiveItemsRead's `stopped`) keeps the page's cursor as its
+ * own, so the page holds its items and sends that cursor again.
  */
 export function withFeedCursors(
   items: ObserverItems,
@@ -60,9 +62,10 @@ export function withFeedCursors(
   for (const read of live) {
     const entry = Object.hasOwn(streams, read.streamId) ? streams[read.streamId] : undefined;
     if (entry === undefined || !Array.isArray(entry.liveActor)) continue;
+    const end = read.stopped === undefined ? read.index : read.after;
     streams[read.streamId] = {
       ...entry,
-      live: cursorText(read.index.path, read.index),
+      live: cursorText(read.index.path, end),
       ...(read.after === undefined ? {} : { liveAfter: cursorText(read.index.path, read.after) }),
     };
   }

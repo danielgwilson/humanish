@@ -54,7 +54,12 @@ file that does not match its index. Inside humanish, readers load a stream throu
 `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
 An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
 source limit for each trace) and refused unless its size, sha256, item count and screenshot count
-match the index. A trace file belongs to one participant: every stream whose index names a file
+match the index. A trace or live file whose index records more than the limit is refused before it
+is read, and the refusal says the file is larger than humanish reads of one file and that
+restoring a copy does not help. A trace file whose index is under the limit and whose bytes are
+over it changed after the run wrote it, and its refusal says to restore the run folder from a copy.
+A live file may hold bytes past its index while the writer appends; the loader reads only the
+indexed bytes. A trace file belongs to one participant: every stream whose index names a file
 another stream's index names, compared without case as a case-insensitive file system compares
 names, is refused before any file is read. The writer claims names the same way. In a v2 run.json every `actor`
 must have an index: an actor with no index, with
@@ -133,8 +138,9 @@ Readers that show a run (the Observer server, run detail and the TUI, the review
 provenance) load traces through the same loader and rules. A participant whose trace the loader
 refused shows none of the items run.json or a file supplied for it: its stream carries
 `traceUnavailable` with the reason, its Observer timeline a `trace.unavailable` warning, and its
-run-detail entry `evidenceUnavailable`. The Observer server reads the saved observer-data.json
-only while a run has no run.json at all; a run.json that is there and cannot be read, parsed or
+run-detail entry `evidenceUnavailable`. The Observer server reads run.json, and the saved
+observer-data.json, under the same 32 MiB limit; past it the server answers 404 with a reason
+naming the limit. It reads the saved observer-data.json only while a run has no run.json at all; a run.json that is there and cannot be read, parsed or
 used as a bundle answers 404 with the reason, never the saved projection. In safe serving
 (`observe --all --safe`) every read is checked against the files admitted with the run's
 share_ready verification, so a run.json changed after admission is refused and the admitted

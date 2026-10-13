@@ -97,6 +97,19 @@ A page that cannot join a body sends no cursors with its next poll. Static
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
 
+The feed reads no live file whose index passes the 32 MiB read limit
+(`RUN_ARTIFACT_MAX_BYTES`); a request for the file by its path still gets the whole file. A page
+that sends a cursor for it keeps the items it holds: the
+server answers with no items past the cursor, gives the page's cursor back as `live`, and adds a
+`live-items.not-read` warning to the participant's timeline, so later polls send the same cursor
+and get the same answer. A poll that sends no cursor for that file gets the participant's trace
+as unavailable, with the file's size and the limit, and the page drops any items it held. Such a
+poll comes from a page opened after the file passed the limit or after the writer started a new
+generation, from the poll after a body the page could not join, and from a page whose cursors
+pass 8,000 characters (`MAX_AFTER_CHARS` in `observer/lib/live.ts`), which sends none. When the
+run finishes, a trace file past the limit is refused too, and every page shows that trace as
+unavailable.
+
 ### Reopening a run
 
 The TUI's **Open in Observer** action opens an HTTP view of the selected run's saved
