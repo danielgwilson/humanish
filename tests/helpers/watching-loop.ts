@@ -33,20 +33,21 @@ export const MINUTE = 60 * SECOND;
 
 type Box = { x: number; y: number; width: number; height: number };
 
-/** A 160 x 160 light frame (100 tiles of 16 px) with dark boxes drawn on it. */
-function frame(boxes: readonly Box[]): Buffer {
+/** A 160 x 160 light frame (100 tiles of 16 px, grey 240) with boxes of grey `shade` on it. */
+export function frame(boxes: readonly Box[], shade = 20): Buffer {
   const image = new PNG({ width: 160, height: 160 });
   image.data.fill(240);
   for (const box of boxes)
     for (let y = box.y; y < box.y + box.height; y += 1)
       for (let x = box.x; x < box.x + box.width; x += 1)
-        image.data.fill(20, (y * 160 + x) * 4, (y * 160 + x) * 4 + 3);
+        image.data.fill(shade, (y * 160 + x) * 4, (y * 160 + x) * 4 + 3);
   return PNG.sync.write(image);
 }
 
 export const QUIET = frame([]);
-/** A new row across the page: 10 x 3 = 30 tiles, a large change. */
-export const NEW_ROW = frame([{ x: 0, y: 64, width: 160, height: 48 }]);
+/** Where a new row appears: 10 x 3 = 30 tiles, a large change. */
+export const ROW = { x: 0, y: 64, width: 160, height: 48 };
+export const NEW_ROW = frame([ROW]);
 
 export const WAIT: CuaAction = { kind: "wait" };
 export const turnOf = (actions: CuaAction[]): CuaTurn => ({

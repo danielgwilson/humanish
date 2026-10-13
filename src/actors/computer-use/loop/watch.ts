@@ -178,9 +178,9 @@ async function watchScreen(
     const seen = compareLook(frames, referenceKey, look.observation, at);
     if (seen.changed) return ended("changed", seen.area);
     const windingDown = windDownAt !== undefined && at >= windDownAt;
-    // A large change still moving at the last look reaches the participant in that frame.
-    if (at >= limitAt || windingDown)
-      return ended(seen.largeMove ? "changed" : windingDown ? "clock" : "limit");
+    // A change still moving at the last look, such as a video, ended nothing: the participant
+    // sees it in that look's frame, and the next watch grows as after a still screen.
+    if (at >= limitAt || windingDown) return ended(windingDown ? "clock" : "limit");
     quickLooks = seen.largeMove && quickLooks < 2 ? quickLooks + 1 : 0;
     nextLookAt = at + (quickLooks > 0 ? settleWaitMs : lookEveryMs);
   }

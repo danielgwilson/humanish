@@ -6,7 +6,9 @@ import {
   MINUTE,
   NEW_ROW,
   QUIET,
+  ROW,
   WAIT,
+  frame,
   runWatching,
   turnOf,
   waitItems,
@@ -63,6 +65,27 @@ describe("the watch length over idle turns in a row", () => {
     // Steady state: one request per maxWaitMs.
     expect(run.requests.map((request) => request.at)).toEqual([
       0, 5_000, 15_000, 35_000, 75_000, 135_000, 195_000, 255_000,
+    ]);
+  });
+
+  it("doubles on a screen that never holds still, as with a video, and wakes on none of it", async () => {
+    // The row's grey changes at every observe, so no look sees one of its 30 tiles still: each
+    // watch ends at its limit and the next lasts twice as long, as on a static screen.
+    const shades = [20, 60, 100, 140, 180];
+    let observes = 0;
+    const run = await runWatching({
+      screen: () => frame([ROW], shades[observes++ % shades.length]),
+      turn: (_request, n) => (n <= 5 ? turnOf([WAIT]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [5_000, "limit"],
+      [10_000, "limit"],
+      [20_000, "limit"],
+      [40_000, "limit"],
+      [80_000, "limit"],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([
+      0, 5_000, 15_000, 35_000, 75_000, 155_000,
     ]);
   });
 
@@ -159,16 +182,21 @@ describe("the turn a watch ends", () => {
   });
 
   it("counts a change that woke the participant as progress the frame hash missed", async () => {
-    // The screen swaps between two frames every 5 s and the progress key never changes. Each 5 s
-    // watch sees a large change at its last look; without that, the fourth wait would trip the
-    // no-progress backstop at 3.
+    // Each turn waits 20 s and the progress key never changes. The row appears or goes 3 s into
+    // each watch: its look at 5 s sees it move and the quick look at 5.5 s sees it still, so the
+    // screen toggles at 3 s and then every 5.5 s. Without the wake counted, the fourth wait would
+    // trip the no-progress backstop at 3.
     const run = await runWatching({
-      screen: (atMs) => (Math.floor(atMs / 5_000) % 2 === 1 ? NEW_ROW : QUIET),
+      screen: (atMs) =>
+        atMs >= 3_000 && Math.floor((atMs - 3_000) / 5_500) % 2 === 0 ? NEW_ROW : QUIET,
       observe: () => ({ stateSignature: "same" }),
-      turn: (_request, n) => (n <= 6 ? turnOf([WAIT]) : DONE),
+      turn: (_request, n) => (n <= 6 ? turnOf([{ kind: "wait", ms: 20_000 }]) : DONE),
       loop: { noProgressSteps: 3 },
     });
     expect(watchesOf(run.result).map((watch) => watch.wake)).toEqual(Array(6).fill("changed"));
+    expect(run.requests.map((request) => request.at)).toEqual([
+      0, 5_500, 11_000, 16_500, 22_000, 27_500, 33_000,
+    ]);
     expect(run.result.completionReason).toBe("goal_satisfied");
     expect(run.result.trace.counts.noProgressTurns).toBe(0);
   });

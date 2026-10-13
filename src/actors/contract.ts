@@ -175,8 +175,8 @@ export interface ActorWatch {
   /**
    * Why it ended: `changed` (a change held still), `speech` (the participant heard speech),
    * `condition` (a study stop condition, dwell trigger or task matched a look), `limit` (its time
-   * passed with no change), `clock` (the participant's wind-down or end arrived), `stalled` (a
-   * look got no frame), `stopped` (the study budget or the session's time ran out).
+   * passed with no change holding still), `clock` (the participant's wind-down or end arrived),
+   * `stalled` (a look got no frame), `stopped` (the study budget or the session's time ran out).
    */
   wake: "changed" | "speech" | "condition" | "limit" | "clock" | "stalled" | "stopped";
   /** How many times it looked at the screen. */

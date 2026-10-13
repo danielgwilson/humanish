@@ -21,9 +21,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   has held still for more than 65 seconds. Nothing on the screen is ignored; a clock, a caret or a
   spinner keeps moving and ends no wait.
 - The first such turn lasts as long as its waits did before. Each further such turn in a row whose
-  time passed with no change lasts twice as long as the one before, up to `actor.maxWaitMs`, or 10
-  minutes when the study does not set it. Any other ending, or a turn with another action, starts
-  again from the first length. A participant that sends one wait per turn at the default
+  time passed with no change holding still lasts twice as long as the one before, up to
+  `actor.maxWaitMs`, or 10 minutes when the study does not set it. Any other ending, or a turn with
+  another action, starts again from the first length. A participant that sends one wait per turn at the default
   `idleWaitMs`, on a screen that changes once at minute 17, makes 9 model requests by then with
   `actor.maxWaitMs: 1800000`, where it made one every 5 seconds, about 200. On a screen that never
   changes it makes 12 in its first hour and 6 an hour after that.
