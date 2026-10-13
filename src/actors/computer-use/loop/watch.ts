@@ -148,7 +148,7 @@ async function watchScreen(
     );
     // An injected clock need not move with the injected sleep; the watch's schedule still does.
     const at = Math.max(session.now(), target);
-    // Lateness past the limit is the host's timer, not part of the wait.
+    // Lateness past the limit comes from the host's timer, so the wait's length leaves it out.
     const ms = Math.min(at, limitAt) - startedAt;
     // No observe after the end or the deadline: one started with no time left would fail, and at
     // the end the session would end as timed out.

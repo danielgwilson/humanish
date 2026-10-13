@@ -263,6 +263,38 @@ async function quietSession(clock: ParticipantClock | undefined): Promise<{
   return { result, turns };
 }
 
+describe("a turn that reaches the scheduled end", () => {
+  it("ends the session at its end when the turn trips the idle backstop", async () => {
+    // Each turn takes a minute and only takes a screenshot. Turn 2 reaches the end at 09:02,
+    // where the participant is no longer held, so its idle turn trips idleSteps: 1.
+    let t = NINE_UTC;
+    const provider: CuaProvider = {
+      id: "support-agent",
+      capabilities: CAPS,
+      async nextTurn() {
+        t += MINUTE;
+        return { actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false };
+      },
+    };
+    const result = await runComputerUseLoop({
+      instructions: "Watch the support queue until your session ends.",
+      provider,
+      executor: {
+        observe: async () => ({ screenshot: FRAME, stateSignature: "empty queue" }),
+        execute: async () => undefined,
+      },
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 60 * MINUTE,
+      now: () => t,
+      idleSteps: 1,
+      clock: { end: { atMs: NINE_UTC + 2 * MINUTE, windDownMs: MINUTE } },
+    });
+    expect(result.trace.stopCause).toBe("scheduled_end");
+    expect(result.completionReason).toBe("goal_satisfied");
+  });
+});
+
 describe("waiting through a quiet session", () => {
   it("does not end a participant with a scheduled end for waiting before its end", async () => {
     // 60 waiting turns, past both the 24-turn idle and the 20-turn no-progress streaks.
