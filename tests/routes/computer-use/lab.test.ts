@@ -1138,7 +1138,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.schema).toBe("humanish.run-bundle.v3");
+    expect(bundle.schema).toBe("humanish.run-bundle.v4");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
@@ -7245,9 +7245,12 @@ describe("runCuaActorLab cost estimates", () => {
     expect(est.placeholder).toBeUndefined();
     expect(est.modelId).toBe("gpt-5.6-sol");
     expect(est.breakdown.longContextTurns).toBe(1);
-    // The trace records the per-request usage ledger the tiering priced from: the interaction,
-    // the final reply and the impressions-only request after it.
-    expect(bundle.streams[0].actor.tokenUsage.turns).toHaveLength(3);
+    // The trace file records the per-request usage ledger the tiering priced from: the
+    // interaction, the final reply and the impressions-only request after it. run.json keeps the
+    // totals.
+    expect(bundle.streams[0].actor.tokenUsage.turns).toBeUndefined();
+    const traced = await readRunWithTraces(path.join(cwd, ".humanish", "runs", result.runId!));
+    expect(traced.streams[0]!.actor!.tokenUsage!.turns).toHaveLength(3);
 
     const cost = bundle.cost;
     expect(cost.schema).toBe("humanish.run-cost-summary.v1");

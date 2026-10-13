@@ -281,6 +281,25 @@ describe("humanish export", () => {
     );
   });
 
+  it("exports a page saved as observer-data v2 with every participant's steps", async () => {
+    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+    const current = buildObserverData(bundle);
+    // 0.124.0 to 0.126.0 wrote the slot as v2, without the participants' items.
+    const saved = { ...current, schema: "humanish.observer-data.v2", schemaVersion: 2 };
+    await writeFile(
+      path.join(runDir, "observer", "index.html"),
+      renderObserverHtml(saved as unknown as ObserverData),
+    );
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const exported = readObserverPage(await readFile(path.join(cwd, result.path), "utf8"));
+    expect(exported.schema).toBe("humanish.observer-data.v3");
+    expect(exported.streams.map((stream) => stream.actor?.items.map((item) => item.id))).toEqual(
+      bundle.streams.map((stream) => stream.actor?.items.map((item) => item.id)),
+    );
+  });
+
   it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     const stream = bundle.streams[0]!;

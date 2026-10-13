@@ -149,8 +149,8 @@
   },
   "events.ndjson": "[same as run.json events]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v2",
-    "schemaVersion": 2,
+    "schema": "humanish.observer-data.v3",
+    "schemaVersion": 3,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -305,7 +305,7 @@
       "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v3",
+      "bundleSchema": "humanish.run-bundle.v4",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -319,7 +319,7 @@
   },
   "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: failed: sandbox-cleanup: Sandbox teardown unproven (killed=true, remaining=1): kill(id) returned true (found and killed) but getInfo(id) still reports state=running; this sandbox's teardown is not confirmed by id\n- summary: 1 participant took part: 1/1 reached the goal. How it ended: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v3",
+    "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,

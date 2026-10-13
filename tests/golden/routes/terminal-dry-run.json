@@ -46,8 +46,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v2",
-    "schemaVersion": 2,
+    "schema": "humanish.observer-data.v3",
+    "schemaVersion": 3,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -156,7 +156,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v3",
+      "bundleSchema": "humanish.run-bundle.v4",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -177,7 +177,7 @@
   },
   "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 1 participant would try widgetsmith-cli from a terminal. No sandbox was created, no key was used and $0 was spent.\n- mission: Discover widgetsmith-cli from public surfaces.\n- subject: Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest 5bc9377b0c3e.\n- credentials: Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.\n- caps: Spend, job and time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run uses the runtime key only while a cap is in force, and derives its no-spend proof from the recorded cost ledger. This dry run spends $0: it makes no model request.\n\n## Gaps\n- This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.\n- No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v3",
+    "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
     "mode": "dry-run",
     "simCount": 1,

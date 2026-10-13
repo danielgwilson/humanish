@@ -153,8 +153,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v2",
-    "schemaVersion": 2,
+    "schema": "humanish.observer-data.v3",
+    "schemaVersion": 3,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -313,7 +313,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v3",
+      "bundleSchema": "humanish.run-bundle.v4",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -333,7 +333,7 @@
   },
   "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 1 participant took part: 1/1 reached the goal. How it ended: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. humanish has no source for the missing lines, and a study cannot supply one.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v3",
+    "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
     "mode": "live",
     "simCount": 1,

@@ -9,10 +9,17 @@ import {
 import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "../actors/goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
 import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
+import { withoutRequestLists } from "../run/stream-trace.js";
 import type { RunStream, RunStreamKind } from "../run/streams.js";
+import { isRecord } from "../run/type-guards.js";
 import { joinObserverData, shellNeedsItems, type ObserverShell } from "./participant-items.js";
 
-export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v2";
+/**
+ * The Observer's data. From v2 observer-data.json leaves out each participant's items, and from v3
+ * each participant's per-request lists (REQUEST_LISTS in src/run/stream-trace.ts), which no part
+ * of the page shows.
+ */
+export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v3";
 
 interface ObserverArtifactLink {
   label: string;
@@ -22,7 +29,7 @@ interface ObserverArtifactLink {
 
 export interface ObserverData {
   schema: typeof OBSERVER_DATA_SCHEMA;
-  schemaVersion: 2;
+  schemaVersion: 3;
   generatedAt: string;
   /** Served-only liveness observation. Never a replacement for the recorded evidence verdict. */
   runtime?: {
@@ -190,7 +197,7 @@ export function buildObserverData(
     byKind[stream.kind] += 1;
 
     return {
-      ...stream,
+      ...withoutStreamLists(stream),
       ...(stream.embed === undefined ? {} : { embed: recordedStreamEmbed(stream.embed) }),
       status,
       sim,
@@ -226,7 +233,7 @@ export function buildObserverData(
 
   return withObserverEndings({
     schema: OBSERVER_DATA_SCHEMA,
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt,
     run: {
       runId: bundle.runId,
@@ -288,19 +295,38 @@ export function buildObserverData(
   });
 }
 
+/** The stream without its participant's per-request lists; a saved stream that is not an object as it is. */
+function withoutStreamLists<T extends Partial<RunStream>>(stream: T): T {
+  if (!isRecord(stream)) return stream;
+  return {
+    ...stream,
+    ...(isRecord(stream.actor) ? { actor: withoutRequestLists(stream.actor) } : {}),
+    ...(isRecord(stream.liveActor) ? { liveActor: withoutRequestLists(stream.liveActor) } : {}),
+  };
+}
+
 /**
- * A saved Observer projection as this version reads it, unchecked as before: an observer-data.json
- * written before v2 holds every participant's items. A v2 one holds none, so it is read only when
- * no participant has any: showing participants with no steps would say they did nothing, and the
- * items are in the run's traces. Null for a v2 projection that leaves items out.
+ * A saved Observer projection as this version reads it, as v3 and unchecked as before. An
+ * observer-data.json written before v2 holds every participant's items, and its per-request lists,
+ * which are left out. A v2 or v3 one holds no items, so it is read only when no participant has
+ * any: showing participants with no steps would say they did nothing, and the items are in the
+ * run's traces. Null for a projection that leaves items out.
  */
 export function observerDataFromSaved(value: unknown): ObserverData | null {
   const saved = value as ObserverData | ObserverShell;
-  if ((saved as { schema?: unknown }).schema === "humanish.observer-data.v1")
-    return { ...(saved as ObserverData), schema: OBSERVER_DATA_SCHEMA, schemaVersion: 2 };
+  if ((saved as { schema?: unknown }).schema === "humanish.observer-data.v1") {
+    const streams = Array.isArray(saved.streams)
+      ? (saved as ObserverData).streams.map(withoutStreamLists)
+      : saved.streams;
+    return { ...(saved as ObserverData), streams, schema: OBSERVER_DATA_SCHEMA, schemaVersion: 3 };
+  }
   return shellNeedsItems(saved as ObserverShell)
     ? null
-    : joinObserverData(saved as ObserverShell, null);
+    : {
+        ...joinObserverData(saved as ObserverShell, null),
+        schema: OBSERVER_DATA_SCHEMA,
+        schemaVersion: 3,
+      };
 }
 
 const GOAL_SOURCE_LABELS: Record<CuaGoalSource, string> = {

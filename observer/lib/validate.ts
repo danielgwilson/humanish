@@ -1,5 +1,5 @@
 import type { ObserverData } from "./observer-data";
-import { validActorExecutionProfile, validActorProviderRequests } from "./actor-execution-profile";
+import { validActorExecutionProfile } from "./actor-execution-profile";
 
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -65,8 +65,8 @@ export function runDisplay(value: unknown): boolean {
 export function isObserverData(value: unknown): value is ObserverData {
   if (
     !object(value) ||
-    value.schema !== "humanish.observer-data.v2" ||
-    value.schemaVersion !== 2 ||
+    value.schema !== "humanish.observer-data.v3" ||
+    value.schemaVersion !== 3 ||
     typeof value.generatedAt !== "string" ||
     !object(value.run) ||
     !strings(value.run, ["runId", "mode", "status", "title", "createdAt"]) ||
@@ -253,13 +253,11 @@ function validStream(value: unknown): boolean {
       return false;
   }
   const live = value.liveActor;
+  // An account participant's receipts stay in the run's trace files: observer-data v3 leaves the
+  // per-request lists out.
   for (const trace of [actor, live]) {
     if (object(trace) && trace.executionProfile !== undefined) {
-      if (
-        !validActorExecutionProfile(trace.executionProfile) ||
-        !validActorProviderRequests(trace.providerRequests)
-      )
-        return false;
+      if (!validActorExecutionProfile(trace.executionProfile)) return false;
       if (
         trace.historyTurnsOmitted !== undefined &&
         (typeof trace.historyTurnsOmitted !== "number" ||

@@ -11,6 +11,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V1_SCHEMA,
   RUN_BUNDLE_V2_SCHEMA,
+  RUN_BUNDLE_V3_SCHEMA,
   type RunBundle,
 } from "../run/bundle.js";
 import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
@@ -433,7 +434,7 @@ function bundlePresenceChecks(
         ? `run.json declares ${String(schema)}`
         : record === undefined
           ? "no readable run.json, so no schema"
-          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}, ${RUN_BUNDLE_V2_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
+          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}, ${RUN_BUNDLE_V3_SCHEMA}, ${RUN_BUNDLE_V2_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
     },
     {
       name: "run bundle shape",

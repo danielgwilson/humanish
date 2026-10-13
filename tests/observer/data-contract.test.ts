@@ -3,10 +3,16 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../../src/observer/data.js";
+import {
+  OBSERVER_DATA_SCHEMA,
+  buildObserverData,
+  observerDataFromSaved,
+  type ObserverData,
+} from "../../src/observer/data.js";
 import type { RunBundle } from "../../src/run/bundle.js";
+import type { RunStream } from "../../src/run/streams.js";
 
-// Contract freeze for humanish.observer-data.v2. The Observer rebuild is a
+// Contract freeze for humanish.observer-data.v3. The Observer rebuild is a
 // rendering-layer swap only if the data it renders cannot drift underneath it, so this
 // test pins the bundle -> observer-data transform against committed goldens derived from
 // the deterministic lab goldens in tests/golden/labs/ (same inputs as lab-golden.test.ts).
@@ -54,7 +60,7 @@ function normalize(value: unknown, inGitState = false): unknown {
   return value;
 }
 
-describe("observer-data.v2 contract freeze", () => {
+describe("observer-data.v3 contract freeze", () => {
   for (const id of GOLDENS) {
     it(`${id} golden bundle produces the frozen observer-data shape`, async () => {
       const bundle = JSON.parse(
@@ -63,7 +69,7 @@ describe("observer-data.v2 contract freeze", () => {
 
       const data = buildObserverData(bundle, FIXED_GENERATED_AT);
       expect(data.schema).toBe(OBSERVER_DATA_SCHEMA);
-      expect(data.schemaVersion).toBe(2);
+      expect(data.schemaVersion).toBe(3);
 
       const goldenPath = path.join(GOLDEN_DIR, `${id}.json`);
       if (process.env.UPDATE_OBSERVER_DATA_GOLDENS) {
@@ -76,4 +82,93 @@ describe("observer-data.v2 contract freeze", () => {
       expect(normalize(data)).toEqual(normalize(golden));
     });
   }
+});
+
+const USAGE_ROW = { input: 3_100, output: 40 };
+const RECEIPT = {
+  ordinal: 1,
+  kind: "interaction" as const,
+  dispatched: true,
+  usageComplete: true,
+  cleanup: "confirmed" as const,
+  profileVerified: true,
+};
+
+/** The per-request lists the data holds across its participants. */
+function heldLists(data: { streams: readonly Partial<RunStream>[] }): number {
+  return data.streams
+    .flatMap((stream) => [stream.actor, stream.liveActor])
+    .reduce(
+      (count, trace) =>
+        count +
+        (trace?.tokenUsage?.turns?.length ?? 0) +
+        ((trace as RunStream["actor"])?.conversation?.requests?.length ?? 0) +
+        (trace?.providerRequests?.length ?? 0),
+      0,
+    );
+}
+
+describe("the Observer's data leaves the per-request lists out", () => {
+  it("of each participant's actor and live actor", async () => {
+    const bundle = JSON.parse(
+      await readFile(path.join(ROOT, "tests", "golden", "labs", "live.json"), "utf8"),
+    ) as RunBundle;
+    const [first] = bundle.streams;
+    const { actor, ...running } = first!;
+    const finished: RunStream = {
+      ...first!,
+      actor: {
+        ...actor!,
+        tokenUsage: { input: 6_200, output: 80, turns: [USAGE_ROW, USAGE_ROW] },
+        conversation: { mode: "threaded", summarizedTurns: 0, requests: [{ mode: "threaded" }] },
+        providerRequests: [RECEIPT],
+      },
+    };
+    const live: RunStream = {
+      ...running,
+      id: "running",
+      liveActor: {
+        schema: "humanish.live-actor.v1",
+        updatedAt: "2026-10-13T08:00:00.000Z",
+        tokenUsage: { input: 3_100, output: 40, turns: [USAGE_ROW] },
+        providerRequests: [RECEIPT],
+        items: actor!.items,
+      },
+    };
+    const data = buildObserverData({ ...bundle, streams: [finished, live] }, FIXED_GENERATED_AT);
+    expect(heldLists(data)).toBe(0);
+    expect(data.streams[0]!.actor?.tokenUsage).toEqual({ input: 6_200, output: 80 });
+    expect(data.streams[1]!.liveActor?.items).toHaveLength(actor!.items.length);
+  });
+
+  it("of a saved projection this version reads, which it reads as v3", async () => {
+    const golden = JSON.parse(
+      await readFile(path.join(GOLDEN_DIR, "live.json"), "utf8"),
+    ) as ObserverData;
+    const [first, ...rest] = golden.streams;
+    const turns = Array.from({ length: 24 }, () => USAGE_ROW);
+    // observer-data.json as 0.123.0 and earlier wrote it: v1, items and lists inline.
+    const v1 = {
+      ...golden,
+      schema: "humanish.observer-data.v1",
+      schemaVersion: 1,
+      streams: [{ ...first!, actor: { ...first!.actor!, tokenUsage: { turns } } }, ...rest],
+    };
+    const read = observerDataFromSaved(v1)!;
+    expect([read.schema, read.schemaVersion]).toEqual(["humanish.observer-data.v3", 3]);
+    expect(heldLists(read)).toBe(0);
+    expect(read.streams[0]!.actor?.items).toEqual(first!.actor!.items);
+    // A v2 file of a run with no participant trace yet, as 0.124.0 to 0.126.0 wrote it.
+    const shell = {
+      ...golden,
+      schema: "humanish.observer-data.v2",
+      schemaVersion: 2,
+      streams: golden.streams.map(({ actor: _actor, ...stream }) => stream),
+    };
+    const fromV2 = observerDataFromSaved(shell)!;
+    expect([fromV2.schema, fromV2.schemaVersion]).toEqual(["humanish.observer-data.v3", 3]);
+    // One that names an actor left its items out, and the run's traces hold them.
+    const named = { ...shell, streams: [{ ...shell.streams[0]!, actor: { reason: "x" } }] };
+    expect(observerDataFromSaved(named)).toBeNull();
+  });
 });

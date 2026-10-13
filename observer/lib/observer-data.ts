@@ -1,4 +1,4 @@
-// Type-only bridge to the humanish.observer-data.v2 contract. The
+// Type-only bridge to the humanish.observer-data.v3 contract. The
 // producer is src/observer/data.ts at the repo root; importing the types
 // from it keeps one source of truth with zero runtime coupling: no CLI code is ever
 // bundled into the artifact (tests/contract-lock.test.ts proves the schema id matches,

@@ -154,7 +154,7 @@ const server = createServer((request, response) => {
       response.writeHead(503);
       response.end('{"error":"Controlled transient snapshot failure"}');
     } else if (responseMode === "invalid") {
-      response.end('{"data":{"schema":"humanish.observer-data.v2","streams":"malformed"}}');
+      response.end('{"data":{"schema":"humanish.observer-data.v3","streams":"malformed"}}');
     } else response.end(feed(data));
   } else if (url.pathname === "/_humanish/history.json") {
     response.setHeader("content-type", "application/json");

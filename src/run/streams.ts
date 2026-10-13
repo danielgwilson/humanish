@@ -342,7 +342,10 @@ export interface RunStream {
    * completionReason, or completedAt, and this shape cannot claim them. Present only on
    * `inProgress` bundles; the final write replaces it with the real `actor` and never
    * carries it. A v3 run.json holds `humanish.live-actor.v2` with `itemsFile` in place of `items`;
-   * the trace loader (src/run/stream-trace.ts) reads the file and puts the items back.
+   * the trace loader (src/run/stream-trace.ts) reads the file and puts the items back. A v4
+   * run.json's live actor also leaves out `tokenUsage.turns` and `providerRequests`, which are
+   * written only in the trace when the participant finishes, and carries the `estimatedCost` the
+   * run writer priced from those rows.
    */
   liveActor?: {
     schema: "humanish.live-actor.v1" | "humanish.live-actor.v2";

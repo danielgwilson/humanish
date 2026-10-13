@@ -2,7 +2,12 @@
 // totals match their known lines, and account-billed participants never acquire a price.
 
 import { validActorExecutionProfile, validActorProviderRequests } from "../actors/contract.js";
-import type { RunBundle } from "../run/bundle.js";
+import {
+  RUN_BUNDLE_V1_SCHEMA,
+  RUN_BUNDLE_V2_SCHEMA,
+  RUN_BUNDLE_V3_SCHEMA,
+  type RunBundle,
+} from "../run/bundle.js";
 import { round6 } from "../run/pricing.js";
 import type { RunStream } from "../run/streams.js";
 
@@ -41,22 +46,31 @@ export function contradictsAccountBilling(
  * a null estimate, or a participant without estimatedCost is fine. A non-null figure must carry its
  * ratesAsOf date + source; a number total must equal round6(sum of only the non-null lines) and a
  * null line may never be coerced to 0. A null estimate must be declared (a reason + null
- * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. Account-billed participants
- * also have their execution profile and provider request receipts checked here.
+ * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. A running participant's
+ * estimate is checked the same way. Account-billed participants also have their execution profile
+ * and provider request receipts checked here. From v4 a running participant's receipts are written
+ * only in its trace when it finishes, so its live actor holds none.
  */
 export function costAndReceiptFindings(bundle: RunBundle): string[] {
   const findings: string[] = [];
   if (contradictsAccountBilling(bundle.streams, bundle.cost))
     findings.push("Run cost lines contradict account billing identity");
   findings.push(...costSummaryFindings(bundle.cost));
+  const liveReceipts = LIVE_RECEIPT_SCHEMAS.has(bundle.schema);
   for (const stream of bundle.streams) {
-    for (const actor of [stream.actor, stream.liveActor]) {
-      findings.push(...executionReceiptFindings(actor));
-    }
+    findings.push(...executionReceiptFindings(stream.actor, true));
+    findings.push(...executionReceiptFindings(stream.liveActor, liveReceipts));
     findings.push(...participantEstimateFindings(stream));
   }
   return findings;
 }
+
+/** The run bundle versions whose live actor carries an account participant's receipts so far. */
+const LIVE_RECEIPT_SCHEMAS: ReadonlySet<string> = new Set([
+  RUN_BUNDLE_V3_SCHEMA,
+  RUN_BUNDLE_V2_SCHEMA,
+  RUN_BUNDLE_V1_SCHEMA,
+]);
 
 function costSummaryFindings(cost: RunBundle["cost"]): string[] {
   const findings: string[] = [];
@@ -104,13 +118,19 @@ function costSummaryFindings(cost: RunBundle["cost"]): string[] {
   return findings;
 }
 
-/** An account-billed participant's execution profile and provider request receipts. */
-function executionReceiptFindings(actor: RunStream["actor"] | RunStream["liveActor"]): string[] {
+/**
+ * An account-billed participant's execution profile and, when `receipts` says the trace holds
+ * them, its provider request receipts.
+ */
+function executionReceiptFindings(
+  actor: RunStream["actor"] | RunStream["liveActor"],
+  receipts: boolean,
+): string[] {
   const findings: string[] = [];
   if (actor?.executionProfile === undefined) return findings;
   if (!validActorExecutionProfile(actor.executionProfile))
     findings.push("Invalid actor execution profile");
-  if (!validActorProviderRequests(actor.providerRequests))
+  if (receipts && !validActorProviderRequests(actor.providerRequests))
     findings.push("Invalid account participant request receipts");
   if (
     actor.historyTurnsOmitted !== undefined &&
@@ -126,14 +146,25 @@ function executionReceiptFindings(actor: RunStream["actor"] | RunStream["liveAct
   return findings;
 }
 
+/** The labeling of a participant's estimate: its finished actor's, and its live actor's while it runs. */
 function participantEstimateFindings(stream: RunStream): string[] {
-  const findings: string[] = [];
-  const estimate = stream.actor?.estimatedCost;
-  if (!estimate) return findings;
   const participantLabel = stream.laneId ?? stream.id;
+  return [
+    ...estimateFindings(stream.actor?.estimatedCost, participantLabel, "actor"),
+    ...estimateFindings(stream.liveActor?.estimatedCost, participantLabel, "live actor"),
+  ];
+}
+
+function estimateFindings(
+  estimate: NonNullable<RunStream["actor"]>["estimatedCost"],
+  participantLabel: string,
+  field: "actor" | "live actor",
+): string[] {
+  const findings: string[] = [];
+  if (!estimate) return findings;
   if (estimate.schema !== "humanish.actor-estimated-cost.v1") {
     findings.push(
-      `participant ${participantLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
+      `participant ${participantLabel} ${field} estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
     );
   }
   if (estimate.estimatedCostUsd !== null) {

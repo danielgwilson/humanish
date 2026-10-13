@@ -54,7 +54,7 @@ describe("the run writer", () => {
 
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
-    expect(bundle.schema).toBe("humanish.run-bundle.v3");
+    expect(bundle.schema).toBe("humanish.run-bundle.v4");
 
     const runPaths = (await resolveRunPath(cwd, outcome.result.runId!))!;
     expect(bundle.streams).toHaveLength(2);
