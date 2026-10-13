@@ -30,7 +30,8 @@ From the repo root (pnpm workspace):
 - `index.html`: app shell, pre-paint register init, and the `observer-data` slot the CLI fills
   per run.
 - `main.tsx` / `app.tsx`: boot (validated inline snapshot → polling → dev fixtures) and the
-  frame.
+  composition of the study views. `components/observer-shell.tsx` draws the frame around them,
+  and `components/participants-view.tsx` and `components/findings-view.tsx` are the two views.
 - `components/`: chrome, grid cards, review player and comparison, plus vendored registry
   components (see `PROVENANCE.md`).
 - `lib/`: type-only bridge to `src/observer/data.ts`, slot reading, dev fixtures.
