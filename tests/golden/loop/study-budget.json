@@ -154,6 +154,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-00-start.png",15],
     ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["overRunBudget",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},null],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}],
     ["overRunBudget",{"input":1000,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50}]},null],
     ["executor.execute",{"kind":"click","x":10,"y":20}],
@@ -162,6 +163,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-01.png",15],
     ["onTrace",3,{"input":1000,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50}]},{}],
+    ["overRunBudget",{"input":1000,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50}]},null],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
     ["overRunBudget",{"input":2000,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50}]},null],
     ["executor.execute",{"kind":"click","x":10,"y":20}],
@@ -170,6 +172,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-02.png",15],
     ["onTrace",5,{"input":2000,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50}]},{}],
+    ["overRunBudget",{"input":2000,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50}]},null],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"}}],
     ["overRunBudget",{"input":3000,"output":150,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":1000,"output":50},{"input":1000,"output":50},{"input":1000,"output":50}]},"study budget reached: $12.10 crossed caps.maxTotalUsd=$12"]
   ]

@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A computer-use participant checks the study budget (`caps.maxTotalUsd`) before each model
+  request. When another participant crossed the budget while this one was acting, it sent one more
+  request and stopped after that reply; it now stops as `budget_reached` before the request. The
+  check covers the first request too, so a participant whose desktop was still starting when the
+  budget was crossed sends none.
+
 ## 0.127.1: Clock-end closing reports declare their outcome; skipped participants named as skipped (2026-10-13)
 
 humanish 0.127.1 fixes two things the 0.127.0 release smoke found in scheduled studies. An OpenAI

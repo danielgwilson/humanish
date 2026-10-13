@@ -1638,6 +1638,8 @@
       ["executor.observe",0],
       ["onObservedUrl",null],
       ["onTrace",0,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["estimateTurnCostUsd",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},0],
+      ["overRunBudget",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},null],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"0","text":"editing"}}],
       ["estimateTurnCostUsd",{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},0.5],
       ["overRunBudget",{"input":10,"output":5,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":5}]},null],

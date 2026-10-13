@@ -288,11 +288,16 @@ function refuseAccountBilledCaps(options: CuaLoopOptions): void {
   }
 }
 
+/**
+ * The stops checked before every provider request. The spend caps are checked here as well as
+ * after each reply, because a sibling participant can exhaust the study budget while this one acts.
+ */
 function haltBeforeTurn(session: LoopSession, observation: CuaObservation): Stop | undefined {
   if (session.signal?.aborted) return stops.harnessAborted;
   return (
     clockEndStop(session, observation) ??
-    (session.remaining() < 0 ? stops.timeLimit(session) : undefined)
+    (session.remaining() < 0 ? stops.timeLimit(session) : undefined) ??
+    spendStop(session)
   );
 }
 

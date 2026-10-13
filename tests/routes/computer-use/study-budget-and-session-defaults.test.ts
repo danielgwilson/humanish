@@ -5,10 +5,14 @@
 // actions, so the loop never observed the participant's final state: both participants reached
 // the dashboard and the funnel said 0/2.
 
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
 import type { ActorCapabilities, ActorPersonaRef } from "../../../src/actors/contract.js";
+import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -18,10 +22,19 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
+import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
+import type {
+  CuaParticipantDeps,
+  CuaRunBudget,
+  ParticipantRunOutcome,
+} from "../../../src/routes/computer-use/types.js";
+import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { parseStudy } from "../../../src/study/config.js";
+import { STUDY_SCHEMA } from "../../../src/study/types.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { participantPlanOf } from "../../helpers/participant-run.js";
+import { participantPlanOf, participantRun } from "../../helpers/participant-run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -82,6 +95,127 @@ class ObservationSequenceExecutor implements CuaExecutor {
 function monotonicClock(step = 1000): () => number {
   let t = 0;
   return () => (t += step);
+}
+
+const temporary: string[] = [];
+afterEach(async () => {
+  await Promise.all(temporary.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+/** A model priced at gpt-5.5's rates that clicks on every turn and reports `input` tokens a turn. */
+function clickingProvider(input: number, requests: CuaTurnRequest[]): CuaProvider {
+  return {
+    id: "fake-cua",
+    version: "gpt-5.5",
+    capabilities: FAKE_CAPS,
+    async nextTurn(request) {
+      requests.push(request);
+      return {
+        actions: [{ kind: "click", x: 10, y: 20 }],
+        pendingSafetyChecks: [],
+        done: false,
+        usage: { input, output: 0 },
+      };
+    },
+  };
+}
+
+/** A live in-process study's participant runner inputs, sharing one study budget ledger. */
+async function inProcessParticipantDeps(
+  runBudget: CuaRunBudget,
+): Promise<(provider: CuaProvider, executor: CuaExecutor) => CuaParticipantDeps> {
+  const cwd = await mkdtemp(path.join(tmpdir(), "humanish-study-budget-"));
+  temporary.push(cwd);
+  const parsed = parseStudy({
+    schema: STUDY_SCHEMA,
+    id: "study-budget",
+    route: "computer-use",
+    mode: "live",
+    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+    actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
+    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+  });
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  const artifactRoot = await prepareSelectedOutputDirectory(cwd, "artifacts");
+  return (provider, executor) => {
+    const deps: CuaParticipantDeps = {
+      residual: parsed.config,
+      studyId: parsed.config.id,
+      caps: { maxTotalUsd: runBudget.maxTotalUsd },
+      brain: { kind: "caller" },
+      appUrl: "http://127.0.0.1:3000/",
+      subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },
+      env: {},
+      openaiApiKey: "",
+      e2bApiKey: "",
+      requestTimeoutMs: 60_000,
+      sandboxMs: 60_000,
+      timeoutMs: 60_000,
+      participantCount: 2,
+      artifactRoot,
+      studyCwd: cwd,
+      redactScreenshots: false,
+      scrubKnownValues: (value) => value,
+      runBudget,
+      runSession: runCuaActorSession,
+      now: Date.now,
+      desktopModule: async () => {
+        throw new Error("An in-process participant must never load an E2B desktop");
+      },
+      createProvider: async () => provider,
+      inProcessExecutor: async () => executor,
+      onStream: async () => undefined,
+      reportSubjectPhase: () => undefined,
+    };
+    deps.createDesktop = () => createInProcessDesktop(deps);
+    return deps;
+  };
+}
+
+/** A desktop whose every look shows a new screen; `during` runs inside each look or each action. */
+function changingDesktop(
+  during: { look?: () => Promise<void>; action?: () => Promise<void> } = {},
+): CuaExecutor {
+  let looks = 0;
+  const screenshot = frame();
+  return {
+    observe: async () => {
+      await during.look?.();
+      return { screenshot, stateSignature: `s${(looks += 1)}` };
+    },
+    execute: async () => {
+      await during.action?.();
+    },
+  };
+}
+
+/**
+ * Two participants share a $1 study budget. During the first participant's opening look or its
+ * first click, the second runs: its one reply crosses the budget and it stops. At gpt-5.5's $5 per
+ * million input tokens, the first participant's 10,000-token turn is $0.05 and the second's
+ * 400,000-token turn is $2.
+ */
+async function siblingCrossesBudget(during: "look" | "action") {
+  const runBudget = makeCuaRunBudget(1);
+  const participantDeps = await inProcessParticipantDeps(runBudget);
+  const persona = { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic" };
+  const run = (id: string, index: number) =>
+    participantRun({ id, index, persona, instructions: "Save a note." });
+  const siblingRequests: CuaTurnRequest[] = [];
+  const siblingDeps = participantDeps(
+    clickingProvider(400_000, siblingRequests),
+    changingDesktop(),
+  );
+  let sibling: ParticipantRunOutcome | undefined;
+  const runSibling = async () => {
+    sibling ??= await runCuaParticipant(run("second", 1), siblingDeps);
+  };
+  const requests: CuaTurnRequest[] = [];
+  const outcome = await runCuaParticipant(
+    run("first", 0),
+    participantDeps(clickingProvider(10_000, requests), changingDesktop({ [during]: runSibling })),
+  );
+  return { outcome, requests, sibling, siblingRequests };
 }
 
 describe("the closing observation feeds the funnel (first live study's miss)", () => {
@@ -167,6 +301,21 @@ describe("the study budget stops a participant with budget_reached", () => {
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.reason).toContain("maxTotalUsd");
+  });
+
+  it("sends no further request once a sibling's spend crosses the study budget", async () => {
+    const { outcome, requests, sibling, siblingRequests } = await siblingCrossesBudget("action");
+    expect(siblingRequests).toHaveLength(1);
+    expect(sibling?.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("sends no first request when a sibling crossed the study budget before it", async () => {
+    const { outcome, requests, sibling } = await siblingCrossesBudget("look");
+    expect(sibling?.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(requests).toHaveLength(0);
   });
 
   it("sums participant estimates on the shared ledger and ignores unpriceable readings", () => {

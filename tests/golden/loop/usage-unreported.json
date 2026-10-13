@@ -93,6 +93,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-00-start.png",15],
     ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["estimateTurnCostUsd",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},0],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}]
   ]
 }
