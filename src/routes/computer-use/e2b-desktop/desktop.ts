@@ -12,7 +12,12 @@ import {
   provisionParticipantSubject,
   verifyParticipantScreen,
 } from "./prepare.js";
-import { openParticipantSurface, startParticipantMedia, startParticipantStream } from "./start.js";
+import {
+  keepParticipantScreenOn,
+  openParticipantSurface,
+  startParticipantMedia,
+  startParticipantStream,
+} from "./start.js";
 import { desktopEvidenceOf, newParticipantState, type E2BParticipantContext } from "./state.js";
 import { finishE2BDesktop } from "./teardown.js";
 import { participantServeUrl, type E2BDesktopDeps, type DesktopParticipantRun } from "../types.js";
@@ -64,6 +69,7 @@ export function createE2BParticipantDesktop(
     await provisionParticipantSubject(ctx, state, desktop);
     await startParticipantMedia(ctx, state, desktop);
     await openParticipantSurface(ctx, state, desktop);
+    await keepParticipantScreenOn(ctx, desktop);
     prepared = true;
   }
 
