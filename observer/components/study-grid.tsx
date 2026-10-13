@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { isServedOrigin, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { GridDensity } from "@/lib/preferences";
@@ -43,6 +43,64 @@ export function gridSummary(
       `${reviewOutcomes.filter((outcome) => outcome.label === label).length}/${data.streams.length} ${label}`,
   );
   return [`Analyzed outcomes: ${outcomes.join(" · ")}`, ...costParts(data, spend)].join(" · ");
+}
+
+/**
+ * Which shown cards stream a live thumb: at most four of those in view, the most visible first and
+ * the card last under the pointer or focus ahead of them. The grid observes the cards' thumbs again
+ * only when the shown ids change (`shownKey`); without IntersectionObserver every shown card counts
+ * as in view. `enabled` is false while reviewing, on a snapshot or on a file page.
+ */
+function useLiveThumbs(
+  grid: RefObject<HTMLDivElement | null>,
+  shown: ObserverStream[],
+  shownKey: string,
+  enabled: boolean,
+): { liveThumbIds: Set<string>; prioritize: (target: Element) => void } {
+  const [priorityId, setPriorityId] = useState<string | null>(null);
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  useEffect(() => {
+    const cards = grid.current?.querySelectorAll<HTMLElement>("[data-stream-id] .thumb");
+    if (!cards) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisibleIds(shown.map((s) => s.id));
+      return;
+    }
+    const visible = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId;
+          if (id) {
+            if (entry.isIntersecting) visible.set(id, entry.intersectionRatio);
+            else visible.delete(id);
+          }
+        }
+        setVisibleIds([...visible].sort((a, b) => b[1] - a[1]).map(([id]) => id));
+      },
+      {
+        root: grid.current?.closest(".content") ?? null,
+        rootMargin: "0px",
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      },
+    );
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+    // The ids are the structural dependency; poll snapshots do not reconnect streams.
+  }, [shownKey]);
+  const liveThumbIds = new Set(
+    enabled
+      ? [...visibleIds]
+          .sort((a, b) => Number(b === priorityId) - Number(a === priorityId))
+          .filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null))
+          .slice(0, 4)
+      : [],
+  );
+  const prioritize = (target: Element) => {
+    const id = target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId;
+    if (id) setPriorityId(id);
+  };
+  return { liveThumbIds, prioritize };
 }
 
 const PAGE_SIZE = 36;
@@ -92,8 +150,6 @@ export function StudyGrid({
   updating?: boolean;
 }) {
   const labels = participantLabels(data.streams);
-  const [priorityId, setPriorityId] = useState<string | null>(null);
-  const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const grid = useRef<HTMLDivElement>(null);
   const section = useRef<HTMLElement>(null);
   const pageCount = Math.max(1, Math.ceil(streams.length / PAGE_SIZE));
@@ -105,48 +161,17 @@ export function StudyGrid({
   const shown = ordered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const shownKey = JSON.stringify(shown.map((s) => s.id));
   const pinWithMotion = usePinReorder(grid, JSON.stringify([shownKey, pinnedIds]), onPin);
-  useEffect(() => {
-    const cards = grid.current?.querySelectorAll<HTMLElement>("[data-stream-id] .thumb");
-    if (!cards) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisibleIds(shown.map((s) => s.id));
-      return;
-    }
-    const visible = new Map<string, number>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId;
-          if (id) {
-            if (entry.isIntersecting) visible.set(id, entry.intersectionRatio);
-            else visible.delete(id);
-          }
-        }
-        setVisibleIds([...visible].sort((a, b) => b[1] - a[1]).map(([id]) => id));
-      },
-      {
-        root: grid.current?.closest(".content") ?? null,
-        rootMargin: "0px",
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-      },
-    );
-    cards.forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-    // The ids are the structural dependency; poll snapshots do not reconnect streams.
-  }, [shownKey]);
+  const { liveThumbIds, prioritize } = useLiveThumbs(
+    grid,
+    shown,
+    shownKey,
+    !reviewing && updating && isServedOrigin(window.location.protocol),
+  );
   // The pager sits under the last card. Without this the new page opens at its own bottom.
   const turnPage = (next: number) => {
     onPageChange(next);
     section.current?.scrollIntoView({ block: "start" });
   };
-  const liveThumbIds = new Set(
-    !reviewing && updating && isServedOrigin(window.location.protocol)
-      ? [...visibleIds]
-          .sort((a, b) => Number(b === priorityId) - Number(a === priorityId))
-          .filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null))
-          .slice(0, 4)
-      : [],
-  );
   return (
     <section aria-label="Study grid" ref={section}>
       <h2 className="sr-only">Study participants</h2>
@@ -161,15 +186,8 @@ export function StudyGrid({
         <div
           className={`gallery density-${density}`}
           ref={grid}
-          onPointerOver={(event) => {
-            const id = (event.target as Element).closest<HTMLElement>("[data-stream-id]")?.dataset
-              .streamId;
-            if (id) setPriorityId(id);
-          }}
-          onFocusCapture={(event) => {
-            const id = event.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId;
-            if (id) setPriorityId(id);
-          }}
+          onPointerOver={(event) => prioritize(event.target as Element)}
+          onFocusCapture={(event) => prioritize(event.target)}
         >
           {shown.map((stream) => (
             <ParticipantCard
