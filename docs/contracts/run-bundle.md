@@ -207,7 +207,9 @@ read:
 | One of the three lists in run.json's `actor` or `liveActor` | read    | read    | read    | refused |
 
 A reader that shows a run (`displayedTraces`) shows a refused stream without the lists run.json
-held for it, so run detail never prices rows the loader refused. verify checks a running
+held for it, so run detail never prices rows the loader refused. Run detail shows a refused
+participant's cost only when run.json records an `estimatedCost` for it, since its totals alone
+could price under half of what its rows give. verify checks a running
 participant's `liveActor.estimatedCost` as it checks a finished one's: its schema, a `ratesAsOf`
 date and `source` beside a figure, and a reason beside a null figure. In a v4 run.json it no
 longer asks a running account participant for receipts; the check that account dollars stay

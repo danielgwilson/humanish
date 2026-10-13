@@ -259,8 +259,9 @@ describe("run bundle v4's per-request lists", () => {
     );
     const [participant] = (await readRunDetail(cwd, RUN))!.participants;
     expect(participant!.evidenceUnavailable).toMatch(/tokenUsage\.turns/);
-    // Priced from the totals, 320,000 x $4/M + 2,000 x $20/M; the refused rows would give $2.53.
-    expect(participant!.estimatedCostUsd).toBe(1.32);
+    // The totals alone would give $1.32 (320,000 x $4/M + 2,000 x $20/M) and the refused rows
+    // $2.53, so run detail shows no figure.
+    expect(participant).not.toHaveProperty("estimatedCostUsd");
   });
 
   it("refuses a trace file whose conversation has no requests list", async () => {
