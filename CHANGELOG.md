@@ -56,6 +56,15 @@ additive to `humanish.actor-trace.v1`.
 
 ### Fixed
 
+- The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
+  for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
+  bytes a model turn and each participant's trace at about 2.1 KB a turn against the 16 MiB
+  analysis reads, and the file count against the public-safety scan. It no longer checks
+  observer-data.json or the Observer page against the 32 MiB verify reads, since run.json passes
+  16 MiB first. Five participants working 8 hours beside 25 short ones were estimated at a 30.2 MiB
+  run.json and warned about; they are now estimated at 3.7 MiB. 30 participants working 8 hours
+  pass, and so does one participant's trace in a 23-hour window. The `bundle size` row names the
+  largest trace in place of the largest file.
 - A computer-use participant's closing report at a scheduled end or a session cap now sets the
   trace's `declaredOutcome`: the first line of its summary (`REACHED THE GOAL.`,
   `DID NOT REACH THE GOAL.` or `BLOCKED.`), or Codex's `outcome` field. The blocker rule reads a

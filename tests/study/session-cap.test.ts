@@ -238,8 +238,8 @@ describe("study check and the estimates", () => {
     if (!result.ok) throw new Error(result.refusal.message);
     // A participant that ends itself is counted for 3 minutes at most, or its budget when shorter:
     // 2 minutes, 3 minutes and the study's 1 minute, at a turn every 10 s, are 12 + 18 + 6 turns.
-    // run.json: 400 + 3 x 14,400 + 36 x 2,100 bytes.
-    expect(result.planned.bundle?.runFileBytes).toBe(119_200);
+    // run.json: 4,400 + 3 x 16,500 + 36 x 225 bytes.
+    expect(result.planned.bundle?.runFileBytes).toBe(62_000);
     expect(result.planned.bundle?.basis).toMatchObject({ scheduled: 0, open: 3, openMs: 3 * MIN });
   });
 
