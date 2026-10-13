@@ -1,0 +1,118 @@
+// The hosted desktop's screen saver on the computer-use route, on fake hosted desktops ($0). The
+// stock template's XFCE session starts with three writers of the X screen saver timeout:
+// xfce4-screensaver sets 300 s, xfce4-power-manager sets 600 s, and an autostart entry runs
+// `xset s off`. The last one wins, and a timeout of 300 s turns a waiting participant's screen
+// black after 5 minutes without input. humanish turns the screen saver off once the participant's
+// browser has opened and settled, after those writers have run.
+
+import { execFile } from "node:child_process";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
+import { describe, expect, it } from "vitest";
+
+import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
+import { runStudyWith } from "../../../src/run-study.js";
+import { parseStudy } from "../../../src/study/config.js";
+import { lab } from "../../admission/fixtures.js";
+import {
+  makeFanoutModule,
+  scriptedFetch,
+  TWO_TURN_SESSION,
+  type FanoutModuleOptions,
+} from "../../helpers/fanout-desktop.js";
+import { makeTestTempDir } from "../../helpers/temp-dir.js";
+
+const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
+
+/**
+ * Runs a two-participant app-url study on fake hosted desktops whose commands `onCommand` sees
+ * first, and returns the run's warnings.
+ */
+async function runTwo(onCommand: NonNullable<FanoutModuleOptions["commandHandler"]>) {
+  const parsed = parseStudy(
+    lab("cuAppUrl", {
+      mode: "live",
+      participants: [
+        { id: "first", instruction: "First visit." },
+        { id: "second", instruction: "Second visit." },
+      ],
+      review: { analysis: false },
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  const handle = makeFanoutModule({ commandHandler: onCommand });
+  const outcome = await runStudyWith(
+    parsed.config,
+    { cwd: await makeTestTempDir("humanish-desktop-screen-"), env: ENV, open: false },
+    {
+      desktopModule: async () => handle.module,
+      subjectPhaseSink: () => undefined,
+      runSession: async (session) =>
+        runCuaActorSession({
+          ...session,
+          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        }),
+    },
+  );
+  if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+  expect(outcome.result.ok).toBe(true);
+  return outcome.result.warnings;
+}
+
+/**
+ * Runs a desktop command on this machine's bash with one folder under `dir` as the whole search
+ * path, holding a stand-in xset when `withXset`, and returns each xset call's arguments.
+ */
+async function xsetCallsOnBash(script: string, dir: string, withXset: boolean): Promise<string[]> {
+  const bin = path.join(dir, "bin");
+  const calls = path.join(dir, "xset-calls.txt");
+  await mkdir(bin, { recursive: true });
+  await writeFile(calls, "");
+  if (withXset) {
+    const xset = path.join(bin, "xset");
+    await writeFile(xset, `#!/bin/bash\nprintf '%s\\n' "$*" >> '${calls}'\n`);
+    await chmod(xset, 0o755);
+  }
+  await promisify(execFile)("/bin/bash", ["-c", script], {
+    env: { PATH: bin, HOME: dir },
+    timeout: 15_000,
+  });
+  return (await readFile(calls, "utf8")).split("\n").filter((line) => line !== "");
+}
+
+describe("the hosted desktop's screen saver", () => {
+  it("is turned off on each participant's desktop after its browser opens", async () => {
+    const steps: Array<[number, string]> = [];
+    const screenCommands: string[] = [];
+    const warnings = await runTwo((laneIndex, command) => {
+      if (/^target_url=/m.test(command)) steps.push([laneIndex, "browser"]);
+      else if (command.includes("xset")) {
+        steps.push([laneIndex, "screen saver"]);
+        screenCommands.push(command);
+      }
+      return undefined;
+    });
+    const stepsOf = (index: number) =>
+      steps.filter(([laneIndex]) => laneIndex === index).map(([, step]) => step);
+    expect(stepsOf(0)).toEqual(["browser", "screen saver"]);
+    expect(stepsOf(1)).toEqual(["browser", "screen saver"]);
+    const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
+    const script = screenCommands[0]!;
+    expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual(["s off"]);
+    // A desktop without xset is left as it is.
+    expect(await xsetCallsOnBash(script, path.join(dir, "without"), false)).toEqual([]);
+    expect(warnings.filter((warning) => warning.includes("screen saver"))).toEqual([]);
+  });
+
+  it("warns, and runs the participant, when the screen saver cannot be turned off", async () => {
+    const warnings = await runTwo((_laneIndex, command) =>
+      command.includes("xset")
+        ? { stdout: "", exitCode: 1, stderr: 'xset:  unable to open display ":0"' }
+        : undefined,
+    );
+    expect(warnings).toContain(
+      'The desktop\'s screen saver for participant first could not be turned off, so its screen may go black after 5 minutes without input: xset:  unable to open display ":0"',
+    );
+  });
+});

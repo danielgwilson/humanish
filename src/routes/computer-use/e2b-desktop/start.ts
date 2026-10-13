@@ -1,6 +1,6 @@
 // The second half of an E2B desktop participant's preparation, and the start of its session: speech and
-// recording, then the browser or terminal the participant sees, then the live stream. Each step
-// fills the participant's state.
+// recording, then the browser or terminal the participant sees, then the screen saver turned off,
+// then the live stream. Each step fills the participant's state.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import {
@@ -18,6 +18,7 @@ import {
   startE2BDesktopMedia,
 } from "../../../substrates/e2b/desktop-media.js";
 import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-recording.js";
+import { turnOffScreenSaver } from "../../../substrates/e2b/desktop-screen.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
@@ -141,6 +142,24 @@ export async function openParticipantSurface(
     launchIdentity: state.browserLaunchIdentity,
     targetId: state.browserTargetId,
     warnings,
+  });
+}
+
+/**
+ * Turn the desktop's screen saver off, so the screen stays on while the participant waits without
+ * input. This runs after the browser or terminal has opened and settled: the XFCE session sets the
+ * screen saver's timeout in its first seconds, and the last write wins. A screen saver that cannot
+ * be turned off is a warning.
+ */
+export async function keepParticipantScreenOn(
+  ctx: E2BParticipantContext,
+  desktop: E2BDesktopSandbox,
+): Promise<void> {
+  const { spec, deps, warnings } = ctx;
+  await turnOffScreenSaver(desktop, deps.requestTimeoutMs).catch((error: unknown) => {
+    warnings.push(
+      `The desktop's screen saver for participant ${spec.planned.id} could not be turned off, so its screen may go black after 5 minutes without input: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+    );
   });
 }
 
