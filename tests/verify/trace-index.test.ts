@@ -11,7 +11,7 @@ import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorExecutionProfile } from "../../src/actors/contract.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import type { StoredRunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticActor as actor, writeTwoParticipantRun } from "../helpers/run-traces.js";
@@ -58,10 +58,10 @@ describe("verify on an indexed trace", () => {
   });
 
   /** The dry run with two participants' actors, written as the run writer writes v2. */
-  const writeTwoParticipants = (texts: [string, string]): Promise<RunBundle> =>
+  const writeTwoParticipants = (texts: [string, string]): Promise<StoredRunBundle> =>
     writeTwoParticipantRun(runDir, [actor(texts[0]), actor(texts[1])]);
 
-  const writeStored = (bundle: RunBundle) =>
+  const writeStored = (bundle: StoredRunBundle) =>
     writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`);
 
   it("grades the plain two-participant v2 run share_ready", async () => {
@@ -134,7 +134,7 @@ describe("verify on an indexed trace", () => {
 
   it("blocks an inline v1 run relabelled as v2", async () => {
     const stored = await writeTwoParticipants(["Saved the record.", "Opened the list."]);
-    const inline: RunBundle = {
+    const inline: StoredRunBundle = {
       ...stored,
       streams: stored.streams.map(({ trace: _index, ...stream }) => ({
         ...stream,
@@ -178,7 +178,7 @@ describe("verify on an indexed trace", () => {
     await writeStored({
       ...live,
       outcome: { state: "finished", ok: true, execution: { succeeded: true, failures: [] } },
-    } as RunBundle);
+    } as StoredRunBundle);
     const finished = await verifyRun(cwd, RUN);
     expect(finished.ok).toBe(false);
     expect(finished.shareSafety.status).toBe("blocked");

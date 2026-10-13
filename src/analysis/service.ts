@@ -21,7 +21,8 @@ import {
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
-import { pathMissing, readBoundedFile } from "../run/evidence-files.js";
+import { AnalysisSourceRefusedError, runFileTooLarge } from "./source.js";
+import { pathMissing, readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 import {
   estimateAnalysisAdmission,
   preferLargerAnalysisOutput,
@@ -125,8 +126,7 @@ const messages: Record<string, string> = {
   ANALYSIS_NO_PARTICIPANTS: "This run contains no participant evidence to analyze.",
   ANALYSIS_REQUIRES_LIVE_RUN:
     "A dry run has no participant behavior to analyze. Select a completed live run.",
-  ANALYSIS_SOURCE_UNAVAILABLE:
-    "The source recording is missing, unsafe, or exceeds the input limit.",
+  ANALYSIS_SOURCE_UNAVAILABLE: "The source recording is missing or unsafe.",
   ANALYSIS_SOURCE_CHANGED:
     "The source recording changed during analysis. The result cannot be published against different evidence.",
   ANALYSIS_BUSY:
@@ -167,14 +167,19 @@ const codexRecovery: Record<string, string> = {
   analysis_codex_cleanup_failed:
     "Codex analyst cleanup could not be confirmed. Inspect private codex-analysis-recovery markers in your user cache and humanish-codex-analysis-* directories in your system temp directory. Preserve any retained login state and run codex login before retrying.",
 };
-const fail = (run: string, dryRun: boolean, code: string): AnalyzeResult => ({
+const fail = (
+  run: string,
+  dryRun: boolean,
+  code: string,
+  message = messages[code] ?? messages.ANALYSIS_UNAVAILABLE!,
+): AnalyzeResult => ({
   schema: ANALYZE_RESULT_SCHEMA,
   ok: false,
   run,
   dryRun,
   reused: false,
   warnings: [],
-  error: { code, message: messages[code] ?? messages.ANALYSIS_UNAVAILABLE! },
+  error: { code, message },
 });
 
 /**
@@ -255,8 +260,10 @@ export async function readCompletedAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
 ): Promise<Buffer> {
-  const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
-  if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
+  const read = await readBoundedFileResult(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
+  if (read.state === "limit") throw runFileTooLarge(read.size, EVIDENCE_LIMITS.sourceBytes);
+  if (read.state !== "read") throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
+  const bytes = read.bytes;
   const verified = await verifyRunPrepared(cwd, runIdOf(prepared), prepared);
   if (!verified.ok && verified.recordingOk !== true) throw new Error("ANALYSIS_VERIFY_FAILED");
   const loaded = await loadRunBundlePrepared(cwd, prepared);
@@ -546,6 +553,8 @@ export async function analyzeRun(
     const execute = () => executeAnalysis({ cwd, run, prepared, config, options, deps, dryRun });
     return dryRun ? await execute() : await withAnalysisLock(prepared, execute);
   } catch (error) {
+    if (error instanceof AnalysisSourceRefusedError)
+      return fail(run, dryRun, error.message, `${error.reason} No request was sent.`);
     const code =
       error instanceof Error && Object.hasOwn(messages, error.message)
         ? error.message

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import type { StoredRunBundle } from "../../src/run/bundle.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -24,7 +24,7 @@ const forged = thought("FORGED").items;
 describe("readers of a v2 run's traces", () => {
   let cwd: string;
   let runDir: string;
-  let stored: RunBundle;
+  let stored: StoredRunBundle;
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-trace-readers-"));
@@ -39,7 +39,7 @@ describe("readers of a v2 run's traces", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  const writeStored = (bundle: RunBundle) =>
+  const writeStored = (bundle: StoredRunBundle) =>
     writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`);
 
   /** The Observer server's data for the run, or with `feed` the data and its participants' items. */
@@ -62,7 +62,7 @@ describe("readers of a v2 run's traces", () => {
     }
   }
 
-  const tampered: [string, (bundle: RunBundle) => void][] = [
+  const tampered: [string, (bundle: StoredRunBundle) => void][] = [
     [
       "an actor with inline items and no index",
       (bundle) => {

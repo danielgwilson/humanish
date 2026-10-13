@@ -11,6 +11,7 @@ import {
   type RunSimulationStatus,
   type RunStream,
   type RunStreamKind,
+  type StoredRunStream,
   type StreamTraceIndex,
 } from "./streams.js";
 import {
@@ -20,7 +21,7 @@ import {
   isRecord,
 } from "./type-guards.js";
 
-export function isRunStream(value: unknown): value is RunStream {
+export function isRunStream(value: unknown): value is StoredRunStream {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&

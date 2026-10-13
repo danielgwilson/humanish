@@ -299,6 +299,19 @@ describe("fair bounded study evidence selection", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("admits as many of one participant's entries as the evidence limit allows", async () => {
+    const participant = stream(
+      "p",
+      Array.from({ length: 40 }, (_, index) => message(`m${index}`, `Step ${index}.`)),
+    );
+    const input = await captureEvidence(prepared, await save([participant]), { evidence: 30 });
+    // Admission order: the ending, the start, then halves of the trace in turn. m30 is the 30th.
+    const omitted = new Set([8, 13, 18, 23, 28, 32, 33, 35, 37, 38].map((index) => `m${index}`));
+    expect(input.evidence.map((entry) => entry.eventId)).toEqual(
+      Array.from({ length: 40 }, (_, index) => `m${index}`).filter((id) => !omitted.has(id)),
+    );
+  });
+
   it("bounds attempted file reads while a malformed first participant cannot consume other capture reserves", async () => {
     const first = await captures("a-missing", 100, true),
       second = await captures("b-valid", 20);
@@ -315,6 +328,22 @@ describe("fair bounded study evidence selection", () => {
     ).toBeGreaterThanOrEqual(4);
     expect(input.evidence.find((entry) => entry.eventId === "b-valid-19")?.capture).not.toBeNull();
     expect(input.coverage.complete).toBe(false);
+  });
+
+  it("reads past missing captures up to twice the capture limit", async () => {
+    // With captures: 2 selection reads p-3, p-0, p-2, then p-1: the ending, the start, the view
+    // before the ending, then the middle.
+    const participant = await captures("p", 4);
+    for (const missing of ["p-3", "p-0"])
+      await fs.rm(path.join(prepared.physicalRunRoot, "screenshots", `${missing}.png`));
+    const input = await captureEvidence(prepared, await save([participant]), { captures: 2 });
+    expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.eventId)).toEqual([
+      "p-1",
+      "p-2",
+    ]);
+    expect(input.coverage.omissions).toContain(
+      "Some captures were missing, unsafe, oversized, or invalid PNG evidence.",
+    );
   });
 
   it("reserves bounded read bytes for a later valid participant despite several large invalid early participants", async () => {

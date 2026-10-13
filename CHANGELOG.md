@@ -100,6 +100,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A computer-use participant with `endAfterMs` whose last turn reached its end while the idle or
   no-progress backstop tripped ended as `gave_up`; it now ends at its scheduled end.
 
+## 0.130.0: Analysis reads traces up to 32 MiB one at a time and names what it refused; the bundle estimate counts the mission (2026-10-13)
+
+humanish 0.130.0 lets analysis read long runs that 0.129.0 refused. Analysis reads each
+participant's trace up to 32 MiB, as verify and the Observer do, one trace at a time, and keeps of
+each only what selection can use. `humanish analyze` names the file it refused and why. The bundle
+estimate counts the study's mission in run.json, so its run.json warning can fire. This is a minor
+release because a run.json past 16 MiB is now refused as `ANALYSIS_SOURCE_TOO_LARGE` where it was
+`ANALYSIS_SOURCE_UNAVAILABLE`.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.130.0)
+
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
 humanish 0.129.0 fixes three things long studies reach. Analysis no longer refuses a run by how

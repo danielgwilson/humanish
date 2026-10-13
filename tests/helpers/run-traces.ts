@@ -7,7 +7,7 @@ import {
   type ActorTrace,
   type ActorTraceItem,
 } from "../../src/actors/contract.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
 import { loadStreamTraces, splitStreamTraces } from "../../src/run/stream-trace.js";
 
 /**
@@ -28,7 +28,7 @@ export async function readRunWithTraces(runDir: string): Promise<RunBundle> {
  * Write a bundle into a run folder as the run writer does: each trace file through the
  * production splitter, then run.json v2.
  */
-export async function writeRunBundle(runDir: string, bundle: RunBundle): Promise<RunBundle> {
+export async function writeRunBundle(runDir: string, bundle: RunBundle): Promise<StoredRunBundle> {
   const split = splitStreamTraces(bundle);
   for (const file of split.files) {
     await mkdir(path.dirname(path.join(runDir, file.path)), { recursive: true });
@@ -69,7 +69,7 @@ export function syntheticActor(text: string, item: Partial<ActorTraceItem> = {})
 export async function writeTwoParticipantRun(
   runDir: string,
   actors: [ActorTrace, ActorTrace],
-): Promise<RunBundle> {
+): Promise<StoredRunBundle> {
   const dryRun = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
   const [template] = dryRun.streams;
   const [simulation] = dryRun.simulations;

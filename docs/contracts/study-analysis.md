@@ -183,7 +183,19 @@ stopped, an operator can remove the empty lock directory and retry.
 
 Each request's packet admits up to 16 participants, 800 evidence items, 40 PNG
 captures, 160 KiB of text and 20 MiB of images. Individual source files, image
-dimensions and result sizes have separate limits. Count and text budgets are
+dimensions and result sizes have separate limits. Analysis reads run.json up to
+16 MiB and each participant's trace up to 32 MiB, as verify and the Observer do.
+It reads the traces one at a time and keeps of each only what selection can
+reach: the participant's share of its request's 800 evidence items, worked out
+from run.json before any trace is read, and the first 80 captures selection may
+read. Beside the one trace it is reading, analysis holds at most 800 entries for
+each request and 80 for each participant; their size grows with each trace
+item's text. A run.json past 16 MiB is refused as `ANALYSIS_SOURCE_TOO_LARGE`, and
+a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
+each message names the file, says why, and says no request was sent. Analysis
+verifies the run before it reads a trace, so a trace that does not match its
+index in run.json, or whose index records more than 32 MiB, fails verify and
+`humanish analyze` reports `ANALYSIS_VERIFY_FAILED`. Count and text budgets are
 distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible
 participants with fewer admitted images, including those deferred by their

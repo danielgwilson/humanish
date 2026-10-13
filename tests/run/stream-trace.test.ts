@@ -9,8 +9,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorTrace } from "../../src/actors/contract.js";
-import type { RunBundle } from "../../src/run/bundle.js";
-import type { RunStream } from "../../src/run/streams.js";
+import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
+import type { RunStream, StoredRunStream } from "../../src/run/streams.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { isRunStream } from "../../src/run/stream-shape.js";
@@ -43,7 +43,7 @@ afterEach(async () => {
 });
 
 /** Writes the bundle as the run writer does: each trace file, then run.json. */
-async function writeV2(bundle: RunBundle): Promise<RunBundle> {
+async function writeV2(bundle: RunBundle): Promise<StoredRunBundle> {
   const split = splitStreamTraces(bundle);
   for (const file of split.files) await writeFile(path.join(runRoot, file.path), file.bytes);
   await writeFile(path.join(runRoot, "run.json"), `${JSON.stringify(split.bundle, null, 2)}\n`);
@@ -278,16 +278,16 @@ describe("run bundle v4's per-request lists", () => {
 });
 
 describe("the rules each run bundle version is read under", () => {
-  const unfinished = (bundle: RunBundle): RunBundle => {
+  const unfinished = (bundle: StoredRunBundle): StoredRunBundle => {
     const { outcome: _outcome, ...rest } = bundle;
-    return rest as RunBundle;
+    return rest as StoredRunBundle;
   };
-  const finished = (bundle: RunBundle): RunBundle => ({
+  const finished = (bundle: StoredRunBundle): StoredRunBundle => ({
     ...bundle,
     outcome: { state: "finished", ok: true, execution: { succeeded: true, failures: [] } },
   });
   /** The first stream as a running participant's whose items are in an empty live file. */
-  const runningFromFile = async (stream: RunStream): Promise<RunStream> => {
+  const runningFromFile = async (stream: StoredRunStream): Promise<StoredRunStream> => {
     await mkdir(path.join(runRoot, "live"), { recursive: true });
     await writeFile(path.join(runRoot, "live/1.1.ndjson"), "");
     const { actor: _actor, trace: _trace, ...rest } = stream;
@@ -304,64 +304,65 @@ describe("the rules each run bundle version is read under", () => {
           sha256: createHash("sha256").digest("hex"),
         },
       },
-    } as RunStream;
+    } as StoredRunStream;
   };
   // Each rule's run.json, built from the bundle the writer wrote, the versions that refuse it, and
   // the words of its refusal.
-  const rules: [string, (stored: RunBundle) => Promise<RunBundle>, string[], RegExp][] = [
+  const rules: [string, (stored: StoredRunBundle) => Promise<StoredRunBundle>, string[], RegExp][] =
     [
-      "two participants indexing one trace file",
-      async (stored) => {
-        const [first, second] = stored.streams;
-        return { ...stored, streams: [first!, { ...second!, trace: first!.trace! }] };
-      },
-      ["v1", "v2", "v3", "v4"],
-      /indexes .* for participants/,
-    ],
-    [
-      "an actor without a trace index",
-      async (stored) => ({ ...stored, streams: [v1.streams[0]!] }),
-      ["v2", "v3", "v4"],
-      /names no trace file/,
-    ],
-    [
-      "in-progress items in a finished run",
-      async (stored) =>
-        finished({ ...stored, streams: [await runningFromFile(stored.streams[0]!)] }),
-      ["v2", "v3", "v4"],
-      /finished run/,
-    ],
-    [
-      "in-progress items inline",
-      async (stored) => {
-        const { actor: _actor, trace: _trace, ...rest } = stored.streams[0]!;
-        const live: RunStream = {
-          ...rest,
-          liveActor: {
-            schema: "humanish.live-actor.v1",
-            updatedAt: "2026-10-13T08:00:00.000Z",
-            items: [],
-          },
-        };
-        return unfinished({ ...stored, streams: [live] });
-      },
-      ["v3", "v4"],
-      /inline/,
-    ],
-    [
-      "a per-request list in the actor",
-      async (stored) => {
-        const [first] = stored.streams;
-        const usage = { ...first!.actor!.tokenUsage, turns: USAGE_ROWS };
-        return {
-          ...stored,
-          streams: [{ ...first!, actor: { ...first!.actor!, tokenUsage: usage } }],
-        };
-      },
-      ["v4"],
-      /tokenUsage\.turns/,
-    ],
-  ];
+      [
+        "two participants indexing one trace file",
+        async (stored) => {
+          const [first, second] = stored.streams;
+          return { ...stored, streams: [first!, { ...second!, trace: first!.trace! }] };
+        },
+        ["v1", "v2", "v3", "v4"],
+        /indexes .* for participants/,
+      ],
+      [
+        "an actor without a trace index",
+        async (stored) => ({ ...stored, streams: [v1.streams[0]!] }),
+        ["v2", "v3", "v4"],
+        /names no trace file/,
+      ],
+      [
+        "in-progress items in a finished run",
+        async (stored) =>
+          finished({ ...stored, streams: [await runningFromFile(stored.streams[0]!)] }),
+        ["v2", "v3", "v4"],
+        /finished run/,
+      ],
+      [
+        "in-progress items inline",
+        async (stored) => {
+          const { actor: _actor, trace: _trace, ...rest } = stored.streams[0]!;
+          const live: StoredRunStream = {
+            ...rest,
+            liveActor: {
+              schema: "humanish.live-actor.v1",
+              updatedAt: "2026-10-13T08:00:00.000Z",
+              items: [],
+            },
+          };
+          return unfinished({ ...stored, streams: [live] });
+        },
+        ["v3", "v4"],
+        /inline/,
+      ],
+      [
+        "a per-request list in the actor",
+        async (stored) => {
+          const [first] = stored.streams;
+          const usage = { ...first!.actor!.tokenUsage, turns: USAGE_ROWS };
+          return {
+            ...stored,
+            streams: [{ ...first!, actor: { ...first!.actor!, tokenUsage: usage } }],
+          };
+        },
+        ["v4"],
+        /tokenUsage\.turns/,
+      ],
+    ];
   const cases = rules.flatMap(([rule, build, refusing, reason]) =>
     ["v1", "v2", "v3", "v4"].map(
       (version) => [rule, version, refusing.includes(version), build, reason] as const,
@@ -503,7 +504,7 @@ describe("loading a run's participant traces", () => {
         execution: { succeeded: true, failures: [] },
       },
     };
-    const loaded = await loadStreamTraces(runPaths, finished as RunBundle);
+    const loaded = await loadStreamTraces(runPaths, finished as StoredRunBundle);
     expect(loaded.refused.map((error) => error.message)).toEqual([
       expect.stringMatching(/stream-001.*finished run/),
     ]);

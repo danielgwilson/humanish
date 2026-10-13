@@ -1,16 +1,15 @@
-import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
-import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
-import { isRecord } from "../run/type-guards.js";
-import { isReadRunBundleSchema, RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
-import { loadStreamTraces } from "../run/stream-trace.js";
-import type { RunStream } from "../run/streams.js";
+import { type PreparedRunArtifactPaths } from "../run/paths.js";
+import { RUN_BUNDLE_FILE, type StoredRunBundle } from "../run/bundle.js";
+import type { StoredRunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
   type AnalysisArtifact,
   type AnalysisInput,
+  type AnalysisParticipantInput,
+  type CaptureVersion,
 } from "./types.js";
 import {
   digestAnalysisInput,
@@ -23,13 +22,15 @@ import {
   hasUnmappedCaptures,
   participantAssignment,
   participantSource,
+  participantSources,
   sourceEntries,
-  sourceOrder,
-  impressionEventIds,
+  sourceEntryCount,
+  type ParticipantSources,
   type SourceEntry,
 } from "./evidence-sources.js";
 import { readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 import { analysisCohortCount, analysisCohorts, EVIDENCE_LIMITS } from "./analysis-limits.js";
+import { parseAnalysisSource, readParticipantTraces, runFileTooLarge } from "./source.js";
 
 export { EVIDENCE_LIMITS };
 // A second guard for direct callers. The analysis service already requires every stream to be in
@@ -53,87 +54,6 @@ export type EvidenceLimits = {
 };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
-function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
-  if (bytes.length > EVIDENCE_LIMITS.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
-  const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  if (
-    !isRecord(value) ||
-    !isReadRunBundleSchema(value.schema) ||
-    value.runId !== runIdOf(prepared) ||
-    !Array.isArray(value.streams) ||
-    value.streams.length > EVIDENCE_LIMITS.participants ||
-    !Array.isArray(value.events) ||
-    (value.commsReceiving !== undefined && !isCommsReceivingEvidence(value.commsReceiving))
-  )
-    throw new Error("ANALYSIS_SOURCE_INVALID");
-  const ids = new Set<string>();
-  for (const stream of value.streams) {
-    if (
-      !isRecord(stream) ||
-      typeof stream.id !== "string" ||
-      stream.id.length === 0 ||
-      stream.id.length > 256 ||
-      ids.has(stream.id) ||
-      typeof stream.label !== "string" ||
-      typeof stream.status !== "string"
-    ) {
-      throw new Error("ANALYSIS_SOURCE_INVALID");
-    }
-    ids.add(stream.id);
-    if (stream.actor !== undefined && !isRecord(stream.actor))
-      throw new Error("ANALYSIS_SOURCE_INVALID");
-  }
-  for (const event of value.events) {
-    if (
-      !isRecord(event) ||
-      typeof event.id !== "string" ||
-      typeof event.message !== "string" ||
-      typeof event.type !== "string"
-    )
-      throw new Error("ANALYSIS_SOURCE_INVALID");
-  }
-  return value as unknown as RunBundle;
-}
-
-/**
- * run.json's bundle with each stream's trace loaded. The source limit applies to each trace file
- * as it does to run.json; run.json's digest, which the analysis record binds, binds each trace's
- * sha256.
- */
-async function readSource(
-  prepared: PreparedRunArtifactPaths,
-  bytes: Buffer,
-  traceBytes: number,
-): Promise<RunBundle> {
-  const stored = parseSource(prepared, bytes);
-  if (stored.streams.some((stream) => (stream.trace?.bytes ?? 0) > traceBytes))
-    throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
-  const loaded = await loadStreamTraces(prepared, stored, { maxBytes: traceBytes });
-  if (loaded.refused.length > 0) throw new Error("ANALYSIS_SOURCE_INVALID");
-  for (const stream of loaded.bundle.streams) validateTraceItems(stream.actor);
-  return loaded.bundle;
-}
-
-function validateTraceItems(actor: unknown): void {
-  if (actor !== undefined && (!isRecord(actor) || !Array.isArray(actor.items)))
-    throw new Error("ANALYSIS_SOURCE_INVALID");
-  const eventIds = new Set<string>();
-  for (const item of isRecord(actor) ? (actor.items as unknown[]) : []) {
-    if (
-      !isRecord(item) ||
-      typeof item.id !== "string" ||
-      item.id.length === 0 ||
-      item.id.length > 256 ||
-      eventIds.has(item.id) ||
-      typeof item.kind !== "string" ||
-      typeof item.title !== "string" ||
-      (item.text !== undefined && typeof item.text !== "string")
-    )
-      throw new Error("ANALYSIS_SOURCE_INVALID");
-    eventIds.add(item.id);
-  }
-}
-
 /** Select once from retained source. Models receive no filesystem or network resolver. */
 export async function captureEvidence(
   prepared: PreparedRunArtifactPaths,
@@ -150,10 +70,11 @@ export async function captureEvidence(
       throw new Error("ANALYSIS_INPUT_LIMIT_INVALID");
     }
   }
-  if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  if (bundleBytes.length > limits.sourceBytes)
+    throw runFileTooLarge(bundleBytes.length, limits.sourceBytes);
   const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
-  const bundle = await readSource(prepared, bundleBytes, limits.sourceBytes);
+  const bundle = parseAnalysisSource(prepared, bundleBytes);
   const captureVersion = ACTION_CAPTURE_VERSION;
   if (
     bundle.streams.some(
@@ -162,13 +83,26 @@ export async function captureEvidence(
   ) {
     throw new Error("ANALYSIS_RUN_UNFINISHED");
   }
-  const selected = bundle.streams.slice(0, limits.participants);
+  // Admission stops at a participant's evidence share. The shares come from run.json's counts, so
+  // only the first share of each participant's entries in admission order is kept of its trace.
+  const shares = evidenceShares(bundle, limits, captureVersion);
+  // A participant past limits.participants has its trace read and checked by the loader, and gives
+  // no entries, so nothing in its run events or items can refuse the participants that are kept.
+  const sources = await readParticipantTraces(prepared, bundle, (stream, index) =>
+    index < limits.participants
+      ? participantSources(bundle, bundle.streams[index]!, stream, captureVersion, {
+          evidenceShare: shares[index]!,
+          captures: maxCaptureReads(limits),
+        })
+      : null,
+  );
+  const selected = sources.filter((source) => source !== null);
   const evidence: AnalysisEvidence[] = [];
   const images: AnalysisInput["images"] = [];
   const omissions = new Set<string>();
-  const contextBytes = new Map<RunStream, number>();
-  const participants = selected.map((stream) => {
-    const participant = participantSource(stream, captureVersion);
+  const contextBytes = new Map<ParticipantSources, number>();
+  const participants = selected.map((sources) => {
+    const { participant, stream } = sources;
     const assignment = participantAssignment(stream, captureVersion);
     if (assignment === null || assignment.trim() === "")
       omissions.add("Some participants have no recorded assignment.");
@@ -178,21 +112,20 @@ export async function captureEvidence(
       participant.recordedReason !== (stream.actor?.reason ?? null)
     )
       omissions.add("Participant context exceeded the text limit.");
-    contextBytes.set(stream, Buffer.byteLength(JSON.stringify(participant)));
+    contextBytes.set(sources, Buffer.byteLength(JSON.stringify(participant)));
     return participant;
   });
   // Each cohort is one request's packet, selected under the full limits on its own.
   const packings: ParticipantPacking[] = [];
   const textByEntry = new Map<SourceEntry, string>();
   for (const cohort of analysisCohorts(selected)) {
-    const textBytes = cohort.reduce((total, stream) => total + contextBytes.get(stream)!, 0);
+    const textBytes = cohort.reduce((total, sources) => total + contextBytes.get(sources)!, 0);
     if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
     // Tie-breaking uses stable participant IDs, not the order of streams in a bundle.
     // The emitted packet still preserves participant and source event order.
     const cohortPackings = cohort
-      .map((stream) => ({
-        stream,
-        entries: sourceEntries(bundle, stream, captureVersion),
+      .map((sources) => ({
+        sources,
         captures: new Map<SourceEntry, Buffer>(),
         admitted: new Set<SourceEntry>(),
         captureCursor: 0,
@@ -201,7 +134,7 @@ export async function captureEvidence(
         imageBytes: 0,
         reservationBlocked: false,
       }))
-      .sort((a, b) => (a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0));
+      .sort((a, b) => byStreamId(a.sources.stream, b.sources.stream));
     const sel = planCaptureSelection(cohortPackings, limits);
     await selectCaptures(prepared, cohortPackings, sel, omissions);
     recordCaptureOmissions(cohortPackings, sel, omissions);
@@ -216,7 +149,7 @@ export async function captureEvidence(
   packEvidence(selected, packings, textByEntry, evidence, images);
   const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
   const coverage = {
-    includedStreamIds: selected.map((stream) => stream.id),
+    includedStreamIds: selected.map((sources) => sources.stream.id),
     omittedStreamIds,
     evidenceCount: evidence.length,
     captureCount: images.length,
@@ -240,11 +173,39 @@ export async function captureEvidence(
   return result;
 }
 
-/** A participant's part of the evidence packet: its stream, its source entries, and what selection
- * has admitted, captured and spent for it. */
+const byStreamId = (a: StoredRunStream, b: StoredRunStream): number =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+
+/**
+ * Each stream's part of its cohort's limits.evidence, by fairShares over the entries run.json
+ * gives it, in the stream id order selection breaks ties in. A stream past limits.participants
+ * gets none.
+ */
+function evidenceShares(
+  bundle: StoredRunBundle,
+  limits: Required<EvidenceLimits>,
+  captureVersion: CaptureVersion,
+): number[] {
+  const shares = bundle.streams.map(() => 0);
+  const included = bundle.streams.slice(0, limits.participants).map((stream, index) => ({
+    stream,
+    index,
+  }));
+  for (const cohort of analysisCohorts(included)) {
+    cohort.sort((a, b) => byStreamId(a.stream, b.stream));
+    const cohortShares = fairShares(
+      limits.evidence,
+      cohort.map(({ stream }) => sourceEntryCount(bundle, stream, captureVersion)),
+    );
+    for (const [position, { index }] of cohort.entries()) shares[index] = cohortShares[position]!;
+  }
+  return shares;
+}
+
+/** A participant's part of the evidence packet: its sources, and what selection has admitted,
+ * captured and spent for it. */
 interface ParticipantPacking {
-  stream: RunStream;
-  entries: SourceEntry[];
+  sources: ParticipantSources;
   captures: Map<SourceEntry, Buffer>;
   admitted: Set<SourceEntry>;
   captureCursor: number;
@@ -258,7 +219,6 @@ interface ParticipantPacking {
 interface CaptureSelection {
   readonly limits: Required<EvidenceLimits>;
   readonly evidenceShares: number[];
-  readonly captureOrders: SourceEntry[][];
   readonly captureShares: number[];
   readonly attemptShares: number[];
   readonly readShares: number[];
@@ -272,23 +232,27 @@ interface CaptureSelection {
   reserved: boolean;
 }
 
+/**
+ * The most capture reads one cohort's selection makes. Missing/invalid files cannot turn selection
+ * into an exhaustive file scan: at most 2 * captures bounded reads, each at most imageBytes;
+ * successfully returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes. A read
+ * moves its participant's cursor at most one capture on: a reserved read that meets the byte limit
+ * leaves the cursor for a later pass. So no participant's reads pass this many captures.
+ */
+const maxCaptureReads = (limits: Required<EvidenceLimits>): number => 2 * limits.captures;
+
 function planCaptureSelection(
   packings: readonly ParticipantPacking[],
   limits: Required<EvidenceLimits>,
 ): CaptureSelection {
-  // Missing/invalid files cannot turn selection into an exhaustive file scan.
-  // At most 2 * captures bounded reads, each at most imageBytes; successfully
-  // returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes.
-  const maxAttempts = 2 * limits.captures;
+  const maxAttempts = maxCaptureReads(limits);
   const readBudget = 2 * limits.totalImageBytes;
-  const evidenceShares = fairShares(
-    limits.evidence,
-    packings.map((packing) => packing.entries.length),
-  );
-  const captureOrders = packings.map((packing) => sourceOrder(packing.entries, true));
+  const evidenceShares = packings.map((packing) => packing.sources.evidenceShare);
   const captureShares = fairShares(
     limits.captures,
-    packings.map((_, index) => Math.min(evidenceShares[index]!, captureOrders[index]!.length)),
+    packings.map((packing, index) =>
+      Math.min(evidenceShares[index]!, packing.sources.captureCount),
+    ),
   );
   const attemptShares = captureShares.map((share) => 2 * share);
   const readShares = fairShares(
@@ -302,7 +266,6 @@ function planCaptureSelection(
   return {
     limits,
     evidenceShares,
-    captureOrders,
     captureShares,
     attemptShares,
     readShares,
@@ -335,7 +298,7 @@ async function selectCaptures(
       if (
         packing.captures.size >= sel.captureShares[index]! ||
         packing.attempts >= sel.attemptShares[index]! ||
-        packing.captureCursor >= sel.captureOrders[index]!.length ||
+        packing.captureCursor >= packing.sources.captureOrder.length ||
         sel.attemptedReads >= sel.maxAttempts ||
         (sel.reserved && packing.reservationBlocked)
       )
@@ -361,7 +324,7 @@ async function selectCaptures(
       attempted = true;
       packing.attempts++;
       sel.attemptedReads++;
-      const source = sel.captureOrders[index]![packing.captureCursor]!;
+      const source = packing.sources.captureOrder[packing.captureCursor]!;
       const result = await readBoundedFileResult(prepared, source.capturePath!, allowance);
       if (
         result.state === "limit" &&
@@ -414,11 +377,13 @@ function reclaimCaptureSlots(
   sel.attemptShares.forEach((share, index) => {
     if (share === 0 && sel.evidenceShares[index]! > 0) sel.attemptShares[index] = 2;
   });
+  // A pass reads only the captures in captureOrder. A slot granted past them is one no pass uses,
+  // and selectCaptures would reclaim it again forever.
   const available = packings.map((packing, index) =>
     packing.attempts < sel.attemptShares[index]!
       ? Math.min(
           sel.evidenceShares[index]! - packing.captures.size,
-          sel.captureOrders[index]!.length - packing.captureCursor,
+          packing.sources.captureOrder.length - packing.captureCursor,
           sel.attemptShares[index]! - packing.attempts,
         )
       : 0,
@@ -459,21 +424,20 @@ function recordCaptureOmissions(
 ): void {
   const { limits } = sel;
   for (const [index, packing] of packings.entries()) {
-    if (!packing.stream.actor)
+    const { sources } = packing;
+    if (!sources.stream.actor)
       omissions.add("Some participants have no normalized recorded trace.");
-    if (hasUnmappedCaptures(packing.stream))
+    if (sources.unmappedCaptures)
       omissions.add("Some declared captures have no normalized trace reference.");
     for (const source of packing.captures.keys()) packing.admitted.add(source);
-    for (const source of sourceOrder(packing.entries, false, impressionEventIds(packing.stream))) {
+    for (const source of sources.textOrder) {
       if (packing.admitted.size >= sel.evidenceShares[index]!) break;
       packing.admitted.add(source);
     }
-    if (packing.admitted.size < packing.entries.length)
+    if (packing.admitted.size < sources.entryCount)
       omissions.add("Some evidence was omitted by the packet size limit.");
-    if (
-      packing.entries.some((entry) => entry.capturePath !== null && !packing.captures.has(entry))
-    ) {
-      const pending = packing.captureCursor < sel.captureOrders[index]!.length;
+    if (sources.captureCount > packing.captures.size) {
+      const pending = packing.captureCursor < sources.captureCount;
       if (pending && sel.captureCount >= limits.captures)
         omissions.add("Some captures were omitted by the capture count limit.");
       if (pending && sel.imageBytes >= limits.totalImageBytes)
@@ -491,9 +455,8 @@ function recordCaptureOmissions(
         "Captures were sampled across participants and session boundaries; omitted moments may contain other issues.",
       );
     }
-    if (packing.entries.some((entry) => entry.captureDeclared && entry.capturePath === null)) {
+    if (sources.unresolvedCaptures)
       omissions.add("Some screenshot references were absent or nonlocal.");
-    }
   }
 }
 
@@ -529,15 +492,16 @@ function boundEvidenceText(
 }
 
 function packEvidence(
-  selected: readonly RunStream[],
+  selected: readonly ParticipantSources[],
   packings: readonly ParticipantPacking[],
   textByEntry: ReadonlyMap<SourceEntry, string>,
   evidence: AnalysisEvidence[],
   images: AnalysisInput["images"],
 ): void {
-  for (const stream of selected) {
-    const packing = packings.find((candidate) => candidate.stream === stream)!;
-    for (const source of packing.entries.filter((entry) => packing.admitted.has(entry))) {
+  for (const sources of selected) {
+    const { stream } = sources;
+    const packing = packings.find((candidate) => candidate.sources === sources)!;
+    for (const source of sources.entries.filter((entry) => packing.admitted.has(entry))) {
       const id = `e${String(evidence.length + 1).padStart(6, "0")}`;
       const bytes = packing.captures.get(source);
       const capture = bytes
@@ -569,6 +533,17 @@ function packEvidence(
   }
 }
 
+/** What validateAnalysisEvidence checks of one stream, taken while its trace is loaded. */
+interface CheckedStream {
+  readonly participant: AnalysisParticipantInput;
+  readonly unmappedCaptures: boolean;
+  readonly entryCount: number;
+  /** For each kind and event id the artifact cites in this stream, the source entries that match. */
+  readonly cited: ReadonlyMap<string, SourceEntry[]>;
+}
+
+const citation = (kind: string, eventId: string): string => JSON.stringify([kind, eventId]);
+
 /** Validate exact source membership before any stored path may be read. */
 export async function validateAnalysisEvidence(
   prepared: PreparedRunArtifactPaths,
@@ -577,7 +552,26 @@ export async function validateAnalysisEvidence(
 ): Promise<void> {
   if (artifact.captureVersion !== undefined && artifact.captureVersion !== ACTION_CAPTURE_VERSION)
     throw new Error("ANALYSIS_CAPTURE_VERSION_INVALID");
-  const bundle = await readSource(prepared, bundleBytes, EVIDENCE_LIMITS.sourceBytes);
+  const bundle = parseAnalysisSource(prepared, bundleBytes);
+  const citations = new Map<string, Set<string>>();
+  for (const entry of artifact.evidence)
+    citations.set(
+      entry.streamId,
+      (citations.get(entry.streamId) ?? new Set()).add(citation(entry.kind, entry.eventId)),
+    );
+  const checked = new Map(
+    await readParticipantTraces(prepared, bundle, (stream): [string, CheckedStream] => {
+      const entries = sourceEntries(bundle, stream, artifact.captureVersion);
+      const cited = new Map<string, SourceEntry[]>();
+      for (const entry of entries) {
+        const key = citation(entry.kind, entry.eventId);
+        if (citations.get(stream.id)?.has(key)) cited.set(key, [...(cited.get(key) ?? []), entry]);
+      }
+      const participant = participantSource(stream, artifact.captureVersion);
+      const unmappedCaptures = hasUnmappedCaptures(stream);
+      return [stream.id, { participant, unmappedCaptures, entryCount: entries.length, cited }];
+    }),
+  );
   if (artifact.runId !== bundle.runId || artifact.sourceRunSha256 !== sha256(bundleBytes))
     throw new Error("ANALYSIS_SOURCE_CHANGED");
   const included = new Set(artifact.coverage.includedStreamIds);
@@ -587,12 +581,6 @@ export async function validateAnalysisEvidence(
     included.size + omitted.size !== bundle.streams.length
   )
     throw new Error("ANALYSIS_SOURCE_COVERAGE_INVALID");
-  const sourceByStream = new Map(
-    bundle.streams.map((stream) => [
-      stream.id,
-      sourceEntries(bundle, stream, artifact.captureVersion),
-    ]),
-  );
   const context = new Map(
     artifact.participants.map((participant) => [participant.streamId, participant]),
   );
@@ -600,11 +588,8 @@ export async function validateAnalysisEvidence(
     throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
   for (const stream of bundle.streams.filter((candidate) => included.has(candidate.id))) {
     const participant = context.get(stream.id);
-    if (
-      !participant ||
-      hashAnalysisValue(participant) !==
-        hashAnalysisValue(participantSource(stream, artifact.captureVersion))
-    ) {
+    const source = checked.get(stream.id)!;
+    if (!participant || hashAnalysisValue(participant) !== hashAnalysisValue(source.participant)) {
       throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
     }
     if (
@@ -616,7 +601,7 @@ export async function validateAnalysisEvidence(
     if (
       artifact.captureVersion === ACTION_CAPTURE_VERSION &&
       artifact.coverage.complete &&
-      hasUnmappedCaptures(stream)
+      source.unmappedCaptures
     )
       throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
   }
@@ -627,9 +612,7 @@ export async function validateAnalysisEvidence(
   let checkedImageBytes = 0;
   for (const entry of artifact.evidence) {
     const matches =
-      sourceByStream
-        .get(entry.streamId)
-        ?.filter((source) => source.eventId === entry.eventId && source.kind === entry.kind) ?? [];
+      checked.get(entry.streamId)?.cited.get(citation(entry.kind, entry.eventId)) ?? [];
     const source = matches[0];
     const sourceKey = JSON.stringify([entry.streamId, entry.kind, entry.eventId]);
     if (sourceKeys.has(sourceKey)) throw new Error("ANALYSIS_SOURCE_REFERENCE_DUPLICATE");
@@ -680,7 +663,7 @@ export async function validateAnalysisEvidence(
   }
   if (
     artifact.coverage.complete &&
-    [...sourceByStream.values()].reduce((total, entries) => total + entries.length, 0) !==
+    [...checked.values()].reduce((total, stream) => total + stream.entryCount, 0) !==
       artifact.evidence.length
   ) {
     throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");

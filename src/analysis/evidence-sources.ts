@@ -2,8 +2,8 @@ import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import { eventRecordIdOf, recordIdOf, streamParticipantIdOf } from "../run/participant-records.js";
 import { cuaEndpointSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
-import type { RunBundle } from "../run/bundle.js";
-import type { RunStream } from "../run/streams.js";
+import type { StoredRunBundle } from "../run/bundle.js";
+import type { RunStream, StoredRunStream } from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import {
   ACTION_CAPTURE_VERSION,
@@ -14,8 +14,9 @@ import { decodesToPlainRelativePath, isEvidencePath } from "../run/evidence-file
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
-// count and byte budgets. captureEvidence selects from these, and validateAnalysisEvidence
-// re-derives them to check a stored analysis against its run.
+// count and byte budgets. captureEvidence selects from these, taking each participant's while its
+// trace is loaded (participantSources), and validateAnalysisEvidence re-derives them to check a
+// stored analysis against its run.
 
 const stamp = (value: unknown): string | null =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
@@ -83,7 +84,7 @@ function isObserverCapturePath(value: string): boolean {
 }
 
 export function participantAssignment(
-  stream: RunStream,
+  stream: StoredRunStream,
   captureVersion?: CaptureVersion,
 ): string | null {
   if (stream.assignment === undefined)
@@ -136,6 +137,28 @@ export function participantSource(
   };
 }
 
+const runEventsOf = (bundle: StoredRunBundle, stream: StoredRunStream): StoredRunBundle["events"] =>
+  bundle.events.filter(
+    (entry) =>
+      entry.streamId === stream.id ||
+      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
+  );
+
+/**
+ * How many entries sourceEntries gives of run.json's `stream` once its trace is loaded, counted
+ * before the trace is read: the trace loader refuses a trace that does not hold the item count its
+ * index records.
+ */
+export function sourceEntryCount(
+  bundle: StoredRunBundle,
+  stream: StoredRunStream,
+  captureVersion: CaptureVersion,
+): number {
+  const comms = captureVersion === ACTION_CAPTURE_VERSION && bundle.commsReceiving ? 1 : 0;
+  const items = stream.trace?.items ?? stream.actor?.items?.length ?? 0;
+  return comms + items + runEventsOf(bundle, stream).length;
+}
+
 export interface SourceEntry {
   eventId: string;
   kind: string;
@@ -149,7 +172,7 @@ export interface SourceEntry {
   failed: boolean;
 }
 export function sourceEntries(
-  bundle: RunBundle,
+  bundle: StoredRunBundle,
   stream: RunStream,
   captureVersion?: CaptureVersion,
 ): SourceEntry[] {
@@ -212,11 +235,7 @@ export function sourceEntries(
     });
   }
   const runEventIds = new Set<string>();
-  for (const event of bundle.events.filter(
-    (entry) =>
-      entry.streamId === stream.id ||
-      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
-  )) {
+  for (const event of runEventsOf(bundle, stream)) {
     if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
     runEventIds.add(event.id);
     entries.push({
@@ -269,14 +288,14 @@ function spreadOrder<T>(entries: T[]): T[] {
 }
 
 /** The trace messages that carry a participant's closing impressions. */
-export function impressionEventIds(stream: RunStream): ReadonlySet<string> {
+function impressionEventIds(stream: RunStream): ReadonlySet<string> {
   const impressions = stream.actor?.impressions;
   return new Set(
     impressions?.status === "collected" ? impressions.items.map((item) => item.messageId) : [],
   );
 }
 
-export function sourceOrder(
+function sourceOrder(
   entries: SourceEntry[],
   capturesOnly: boolean,
   impressions: ReadonlySet<string> = new Set(),
@@ -318,4 +337,63 @@ export function sourceOrder(
   if (capturesOnly) admit(candidates.at(-2));
   for (const entry of spreadOrder(candidates)) admit(entry);
   return [...ordered];
+}
+
+/**
+ * What selection reads of one participant, taken while its trace is loaded so the trace can be
+ * dropped: the counts of its source entries and captures, and only the entries selection can
+ * reach. Selection admits at most `evidenceShare` entries, in `textOrder`, and reads captures in
+ * `captureOrder`.
+ */
+export interface ParticipantSources {
+  /** run.json's stream, which holds no trace items from run bundle v2. */
+  readonly stream: StoredRunStream;
+  readonly participant: AnalysisParticipantInput;
+  /** hasUnmappedCaptures of the loaded stream. */
+  readonly unmappedCaptures: boolean;
+  /** Whether an entry declares a capture that has no local path. */
+  readonly unresolvedCaptures: boolean;
+  readonly entryCount: number;
+  /** The entries with a local capture path. */
+  readonly captureCount: number;
+  /** The participant's part of its cohort's evidence limit. */
+  readonly evidenceShare: number;
+  /** The first evidenceShare entries in admission order, the participant's impressions first. */
+  readonly textOrder: readonly SourceEntry[];
+  /** The first captures in the order selection reads them. */
+  readonly captureOrder: readonly SourceEntry[];
+  /** The entries of textOrder and captureOrder, in source order. */
+  readonly entries: readonly SourceEntry[];
+}
+
+/**
+ * ParticipantSources of `loaded`, the stream `stored` with its trace loaded, keeping the first
+ * `reach.evidenceShare` entries in admission order and the first `reach.captures` captures.
+ */
+export function participantSources(
+  bundle: StoredRunBundle,
+  stored: StoredRunStream,
+  loaded: RunStream,
+  captureVersion: CaptureVersion,
+  reach: { readonly evidenceShare: number; readonly captures: number },
+): ParticipantSources {
+  const all = sourceEntries(bundle, loaded, captureVersion);
+  const textOrder = sourceOrder(all, false, impressionEventIds(loaded)).slice(
+    0,
+    reach.evidenceShare,
+  );
+  const captureOrder = sourceOrder(all, true).slice(0, reach.captures);
+  const reachable = new Set([...textOrder, ...captureOrder]);
+  return {
+    stream: stored,
+    participant: participantSource(loaded, captureVersion),
+    unmappedCaptures: hasUnmappedCaptures(loaded),
+    unresolvedCaptures: all.some((entry) => entry.captureDeclared && entry.capturePath === null),
+    entryCount: all.length,
+    captureCount: all.filter((entry) => entry.capturePath !== null).length,
+    evidenceShare: reach.evidenceShare,
+    textOrder,
+    captureOrder,
+    entries: all.filter((entry) => reachable.has(entry)),
+  };
 }

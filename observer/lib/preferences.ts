@@ -56,9 +56,8 @@ export const isMoments = (v: unknown): v is SavedMoment[] =>
         (key) => typeof e[key] === "string" && (e[key] as string).length <= 256,
       ) &&
       typeof e.frame === "number" &&
-      Number.isInteger(e.frame) &&
+      Number.isSafeInteger(e.frame) &&
       e.frame >= 0 &&
-      e.frame < 100_000 &&
       (e.eventId === undefined ||
         (typeof e.eventId === "string" && e.eventId.length > 0 && e.eventId.length <= 256))
     );
