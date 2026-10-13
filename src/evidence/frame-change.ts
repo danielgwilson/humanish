@@ -72,9 +72,9 @@ export function watchFrames(reference: Buffer): {
   next(frame: Buffer, atMs: number): FrameVerdict;
 } {
   const base = decode(reference);
-  let previous = base;
-  /** Tile index to the last look it moved at, for each tile now differing from the reference. */
-  const movedAt = new Map<number, number>();
+  // Only tiles that differ from the reference are kept from the previous look, so a watch holds
+  // one decoded frame and not two.
+  const differing = new Map<number, DifferingTile>();
   return {
     next(frame, atMs) {
       const current = decode(frame);
@@ -84,11 +84,17 @@ export function watchFrames(reference: Buffer): {
         return frame.equals(reference) ? UNCHANGED : wholeFrame(current ?? base);
       if (current.width !== base.width || current.height !== base.height)
         return wholeFrame(current);
-      const verdict = compare(base, previous ?? base, current, atMs, movedAt);
-      previous = current;
-      return verdict;
+      return compare(base, current, atMs, differing);
     },
   };
+}
+
+/** A tile that differed from the reference at the previous look. */
+interface DifferingTile {
+  /** The time of the last look it moved at. */
+  movedAt: number;
+  /** Its pixels at the previous look, row by row. */
+  pixels: Uint8Array;
 }
 
 function wholeFrame(image: Decoded | undefined): FrameVerdict {
@@ -100,10 +106,9 @@ function wholeFrame(image: Decoded | undefined): FrameVerdict {
 
 function compare(
   base: Decoded,
-  previous: Decoded,
   current: Decoded,
   atMs: number,
-  movedAt: Map<number, number>,
+  differing: Map<number, DifferingTile>,
 ): FrameVerdict {
   const columns = Math.ceil(base.width / TILE_PX);
   const rows = Math.ceil(base.height / TILE_PX);
@@ -112,13 +117,14 @@ function compare(
   for (let row = 0; row < rows; row += 1)
     for (let column = 0; column < columns; column += 1) {
       const tile = row * columns + column;
-      if (!tileDiffers(base, current, column, row)) {
-        movedAt.delete(tile);
+      if (!framesDiffer(base, current, column, row)) {
+        differing.delete(tile);
         continue;
       }
+      const before = differing.get(tile);
       // A tile that starts differing has moved, whatever the previous look's pixels were.
-      if (!movedAt.has(tile) || tileDiffers(previous, current, column, row)) {
-        movedAt.set(tile, atMs);
+      if (before === undefined || tileDiffers(before.pixels, current, column, row)) {
+        differing.set(tile, { movedAt: atMs, pixels: tilePixels(current, column, row) });
         moved += 1;
       } else still.add(tile);
     }
@@ -126,7 +132,7 @@ function compare(
   const large = largest(regions.filter((region) => region.length > LARGE_REGION_TILES));
   const held = largest(
     regions.filter((region) =>
-      region.every((tile) => atMs - (movedAt.get(tile) ?? atMs) > SMALL_REGION_HOLD_MS),
+      region.every((tile) => atMs - (differing.get(tile)?.movedAt ?? atMs) > SMALL_REGION_HOLD_MS),
     ),
   );
   const settled = large ?? held;
@@ -137,7 +143,7 @@ function compare(
 }
 
 /** Whether any pixel of one tile differs between two frames of the same size. */
-function tileDiffers(a: Decoded, b: Decoded, column: number, row: number): boolean {
+function framesDiffer(a: Decoded, b: Decoded, column: number, row: number): boolean {
   const { width, height } = a;
   const xEnd = Math.min(width, (column + 1) * TILE_PX);
   const yEnd = Math.min(height, (row + 1) * TILE_PX);
@@ -148,6 +154,41 @@ function tileDiffers(a: Decoded, b: Decoded, column: number, row: number): boole
         Math.abs(a.data[at]! - b.data[at]!) > PIXEL_TOLERANCE ||
         Math.abs(a.data[at + 1]! - b.data[at + 1]!) > PIXEL_TOLERANCE ||
         Math.abs(a.data[at + 2]! - b.data[at + 2]!) > PIXEL_TOLERANCE
+      )
+        return true;
+    }
+  return false;
+}
+
+/** A copy of one tile's RGBA pixels, row by row. */
+function tilePixels(image: Decoded, column: number, row: number): Uint8Array {
+  const xStart = column * TILE_PX;
+  const xEnd = Math.min(image.width, xStart + TILE_PX);
+  const yEnd = Math.min(image.height, (row + 1) * TILE_PX);
+  const pixels = new Uint8Array((xEnd - xStart) * (yEnd - row * TILE_PX) * 4);
+  let to = 0;
+  for (let y = row * TILE_PX; y < yEnd; y += 1) {
+    const from = (y * image.width + xStart) * 4;
+    pixels.set(image.data.subarray(from, from + (xEnd - xStart) * 4), to);
+    to += (xEnd - xStart) * 4;
+  }
+  return pixels;
+}
+
+/** Whether any pixel of one tile of `image` differs from `pixels`, that tile's earlier pixels. */
+function tileDiffers(pixels: Uint8Array, image: Decoded, column: number, row: number): boolean {
+  const xStart = column * TILE_PX;
+  const xEnd = Math.min(image.width, xStart + TILE_PX);
+  const yEnd = Math.min(image.height, (row + 1) * TILE_PX);
+  const { data } = image;
+  let at = 0;
+  for (let y = row * TILE_PX; y < yEnd; y += 1)
+    for (let x = xStart; x < xEnd; x += 1, at += 4) {
+      const from = (y * image.width + x) * 4;
+      if (
+        Math.abs(pixels[at]! - data[from]!) > PIXEL_TOLERANCE ||
+        Math.abs(pixels[at + 1]! - data[from + 1]!) > PIXEL_TOLERANCE ||
+        Math.abs(pixels[at + 2]! - data[from + 2]!) > PIXEL_TOLERANCE
       )
         return true;
     }
