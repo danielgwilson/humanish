@@ -1,6 +1,6 @@
 import { closingReportSchema } from "../closing-report.js";
 import { ComputerUseProviderError } from "./provider-error.js";
-import { isIdleTurn, runActionBatch } from "./loop/actions.js";
+import { runActionBatch } from "./loop/actions.js";
 import {
   advanceBackstop,
   startBackstop,
@@ -19,7 +19,7 @@ import { LoopSession } from "./loop/session.js";
 import { spendStop, unknownSpendStop } from "./loop/spend.js";
 import { accountBillingConflicts } from "./loop/usage.js";
 import { loopResult, notice } from "./loop/trace.js";
-import { watchIdleTurn, type Watched } from "./loop/watch.js";
+import { IdleWatcher } from "./loop/watch.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
@@ -144,14 +144,13 @@ export async function runComputerUseLoopWithTaps(options: LoopRunOptions): Promi
  */
 async function runTurns(session: LoopSession, conversation: Conversation): Promise<Stop> {
   const observer = new DesktopObserver(session);
+  const watcher = new IdleWatcher(session, observer);
   const opening = await observer.checkpoint(0);
   if ("stop" in opening) return opening.stop;
   let { observation } = opening;
   if (opening.hint !== undefined) conversation.contextHint = opening.hint;
   let backstop = startBackstop(observation);
   let turnNumber = 0;
-  // The watch of the last turn while every turn since the last action only waited or looked.
-  let lastWatch: Watched | undefined;
   // A request whose reply was cut off by the output limit, to be sent once more.
   let resend: CuaTurnRequest | undefined;
   for (;;) {
@@ -209,15 +208,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         : ended;
     }
 
-    const watched = await watchIdleTurn(
-      session,
-      observer,
-      turnNumber,
-      observation,
-      turn.actions,
-      lastWatch,
-    );
-    lastWatch = watched ?? (isIdleTurn(turn.actions) ? lastWatch : undefined);
+    const watched = await watcher.watch(turnNumber, observation, turn.actions);
     const batch = await runActionBatch(session, turn.actions, watched?.waits);
     conversation.previousExecution = batch.execution;
     // An earlier reply's unknown usage still stops the session before its closing request.

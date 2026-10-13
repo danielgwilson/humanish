@@ -26,12 +26,6 @@ import type { CuaAction, CuaObservation } from "./types.js";
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
   readonly wake: ActorWatch["wake"];
-  /** How long the watch lasted. */
-  readonly ms: number;
-  /** How long it could last. */
-  readonly limitMs: number;
-  readonly looks: number;
-  readonly area?: FrameRegion;
   /**
    * The look that ended the watch, which the checkpoint takes in place of a fresh observe. Absent
    * when no look ended it: a stalled look, or the participant's end.
@@ -49,50 +43,75 @@ export interface Watched {
 }
 
 /** How a watch ended, before the turn's hint and waits are worked out from it. */
-type Ending = Omit<Watched, "limitMs" | "hint" | "waits">;
+interface Ending {
+  readonly wake: ActorWatch["wake"];
+  /** How long the watch lasted. */
+  readonly ms: number;
+  readonly looks: number;
+  readonly area?: FrameRegion;
+  readonly observation?: CuaObservation;
+  readonly stop?: Stop;
+}
 
 /**
- * Watch the screen for a turn that only waits or takes screenshots, in place of its waits.
- * Undefined, with nothing run, for a turn with another action or with no wait time (screenshots
- * only, or waits of 0 ms). `previous` is the watch of the idle turn before this one in an unbroken
- * run of idle turns. `reference` is the observation the participant chose to wait on.
+ * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
+ * doubling counts: a watch that ended at its limit makes the next one in the run longer, and a
+ * turn with another action ends the run.
  */
-export async function watchIdleTurn(
-  session: LoopSession,
-  observer: DesktopObserver,
-  turnNumber: number,
-  reference: CuaObservation,
-  actions: readonly CuaAction[],
-  previous: Watched | undefined,
-): Promise<Watched | undefined> {
-  if (!isIdleTurn(actions)) return undefined;
-  const lengths = actions.flatMap((action) =>
-    action.kind === "wait" ? [planWait(session.waits, action.ms, true).ms] : [],
-  );
-  const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
-  if (plannedMs === 0) return undefined;
-  const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
-  // Never shorter than the turn's own planned length, so a long named wait is not cut short.
-  const limitMs =
-    previous?.wake === "limit"
-      ? Math.min(capMs, Math.max(plannedMs, 2 * previous.limitMs))
-      : plannedMs;
-  const ending = await watchScreen(session, observer, turnNumber, reference, limitMs);
-  return {
-    ...ending,
-    limitMs,
-    hint: hintFor(ending, limitMs < capMs ? capMs : undefined),
-    waits: {
-      ...splitWatch(lengths, limitMs, ending.ms),
-      sessionEnded: ending.stop !== undefined,
-      watch: {
-        limitMs,
-        wake: ending.wake,
-        looks: ending.looks,
-        ...(ending.area === undefined ? {} : { area: { ...ending.area } }),
+export class IdleWatcher {
+  /** The limit of the run's last watch, while that watch ended at its limit. */
+  private grownFromMs: number | undefined;
+
+  constructor(
+    private readonly session: LoopSession,
+    private readonly observer: DesktopObserver,
+  ) {}
+
+  /**
+   * Watch the screen in place of this turn's waits. Undefined, with nothing run, for a turn with
+   * another action, which ends the run, or with no wait time (screenshots only, or waits of 0 ms),
+   * which leaves the run as it is. `reference` is the observation the participant chose to wait on.
+   */
+  async watch(
+    turnNumber: number,
+    reference: CuaObservation,
+    actions: readonly CuaAction[],
+  ): Promise<Watched | undefined> {
+    const { session } = this;
+    if (!isIdleTurn(actions)) {
+      this.grownFromMs = undefined;
+      return undefined;
+    }
+    const lengths = actions.flatMap((action) =>
+      action.kind === "wait" ? [planWait(session.waits, action.ms, true).ms] : [],
+    );
+    const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
+    if (plannedMs === 0) return undefined;
+    const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
+    // Never shorter than the turn's own planned length, so a long named wait is not cut short.
+    const limitMs =
+      this.grownFromMs === undefined
+        ? plannedMs
+        : Math.min(capMs, Math.max(plannedMs, 2 * this.grownFromMs));
+    const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
+    this.grownFromMs = ending.wake === "limit" ? limitMs : undefined;
+    return {
+      wake: ending.wake,
+      ...(ending.observation === undefined ? {} : { observation: ending.observation }),
+      ...(ending.stop === undefined ? {} : { stop: ending.stop }),
+      hint: hintFor(ending, limitMs < capMs ? capMs : undefined),
+      waits: {
+        ...splitWatch(lengths, limitMs, ending.ms),
+        sessionEnded: ending.stop !== undefined,
+        watch: {
+          limitMs,
+          wake: ending.wake,
+          looks: ending.looks,
+          ...(ending.area === undefined ? {} : { area: { ...ending.area } }),
+        },
       },
-    },
-  };
+    };
+  }
 }
 
 async function watchScreen(
