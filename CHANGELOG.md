@@ -16,7 +16,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   `declaredOutcome` reads the field before the summary's first line. Before, the request did not
   ask for the declared line, so a participant that reached its goal before its end counted in
   `participants.ranUntilEnd`. A provider port or stored trace without the field stays valid, and
-  a report after a stop condition or dwell window still sets no `declaredOutcome`.
+  a report after a stop condition or dwell window still sets no `declaredOutcome`. A provider
+  port's self-ending turn whose `closingReport` carries `outcome` sets `declaredOutcome` from it
+  too.
 
 ## 0.127.0: Clock-end passes counted by what participants declared, a scaled wind-down, the concurrency cap in the plan (2026-10-13)
 

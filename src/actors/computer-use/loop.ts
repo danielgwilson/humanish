@@ -187,12 +187,12 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       continue;
     }
     if (turn.done || turn.actions.length === 0) {
+      const report = closingReportSchema.safeParse(turn.closingReport).data;
       // The declared outcome is kept even if redacting the participant's summary fails.
-      session.declaredOutcome = declaredOutcomeOf(turn.outcome, turn.message);
+      session.declaredOutcome = declaredOutcomeOf(turn, report, turn.message);
       const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );
-      const report = closingReportSchema.safeParse(turn.closingReport).data;
       // A provider that can ask for impressions alone does so after the session, like a debrief.
       if (report?.impressions !== undefined || session.provider.requestImpressions === undefined) {
         session.impressions =

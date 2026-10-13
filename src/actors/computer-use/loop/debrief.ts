@@ -304,10 +304,7 @@ function readClosingReport(
   session.trace.bump("messages");
   session.impressions = recordImpressions(session, closing.data.impressions);
   if (trigger.kind === "scheduled_end" || trigger.kind === "session_cap")
-    session.declaredOutcome = declaredOutcomeOf(
-      closing.data.outcome ?? turn.outcome,
-      closing.data.summary,
-    );
+    session.declaredOutcome = declaredOutcomeOf(turn, closing.data, closing.data.summary);
   return {
     status: "completed",
     detail:

@@ -361,7 +361,9 @@ reports, records them in `ActorTrace.debrief`, and projects one readable message
 without invoking action or communication callbacks. Each impression becomes its own message
 and goes to `ActorTrace.impressions`; a session without them records why in the same field.
 A turn that ends the session itself may carry `closingReport` too, and the loop keeps its
-impressions the same way without a second request.
+impressions the same way without a second request. Its `declaredOutcome` is the report's
+`outcome`, then the turn's `outcome`, then the first line of its message, the order a closing
+report at a scheduled end is read in.
 
 `ComputerUseProvider.requestImpressions` is the optional request after the participant ended
 the session itself without impressions. It asks for impressions only, returns them as
