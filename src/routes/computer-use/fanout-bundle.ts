@@ -86,16 +86,21 @@ function fanoutSummary(
   const tookPart = count - facts.skipped;
   const outcomes = facts.outcomes ?? `0/${tookPart} finished a session`;
   const gaps = gapsListClause(tookPart - facts.passed, tookPart);
-  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gaps}.`;
+  const sentences: string[] = [];
+  // A run where every participant was skipped has no one to describe in this sentence.
+  if (tookPart > 0)
+    sentences.push(
+      `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gaps}.`,
+    );
   // The gaps are pointed at once: here only when the sentence before did not.
   const why = gaps === "" ? "; the gaps say why" : "";
-  const skipped =
-    facts.skipped === 0
-      ? ""
-      : facts.skipped === 1
-        ? ` 1 participant was skipped before its session started${why}.`
-        : ` ${facts.skipped} participants were skipped before their sessions started${why}.`;
-  return `${host}${rerun}${ran}${skipped}${tasks}`;
+  if (facts.skipped === 1)
+    sentences.push(`1 participant was skipped before its session started${why}.`);
+  if (facts.skipped > 1)
+    sentences.push(
+      `${facts.skipped} participants were skipped before their sessions started${why}.`,
+    );
+  return `${host}${rerun}${sentences.join(" ")}${tasks}`;
 }
 
 /**

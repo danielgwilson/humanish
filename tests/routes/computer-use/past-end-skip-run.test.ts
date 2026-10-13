@@ -33,16 +33,30 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
   });
 
   /** Runs the three participants above and returns the result and the fake desktops. */
-  async function runWithLateParticipant() {
+  function runWithLateParticipant() {
+    return runParticipants(
+      [
+        { id: "first" },
+        { id: "late", startAfterMs: 100, endAfterMs: 300 },
+        { id: "after", startAfterMs: 200 },
+      ],
+      { concurrency: 1 },
+    );
+  }
+
+  async function runParticipants(
+    participants: Record<string, unknown>[],
+    options: { concurrency?: number; now?: () => number },
+  ) {
     const parsed = parseStudy(
       lab("cuAppUrl", {
         mode: "live",
-        participants: [
-          { id: "first" },
-          { id: "late", startAfterMs: 100, endAfterMs: 300 },
-          { id: "after", startAfterMs: 200 },
-        ],
-        execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
+        participants,
+        execution: {
+          target: "e2b-desktop",
+          timeoutMs: 60_000,
+          ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
+        },
       }),
     );
     if (!parsed.ok) throw new Error(parsed.error.message);
@@ -51,6 +65,7 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
       parsed.config,
       { cwd, env: KEYS },
       {
+        ...(options.now === undefined ? {} : { now: options.now }),
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
           await new Promise((resolve) => setTimeout(resolve, 500));
@@ -120,6 +135,26 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
     );
     expect((await runFile(result.runId, "review.md")).split("\n")).toContain(
       `- summary: ${summary}`,
+    );
+  });
+
+  it("leaves the took-part sentence out when every participant's end came before its start", async () => {
+    // Each read of this clock is a second after the last, so both 1 ms windows have closed by the
+    // time the run checks each participant.
+    let clockMs = 1_000_000;
+    const { result, handle } = await runParticipants(
+      [
+        { id: "early", endAfterMs: 1 },
+        { id: "brief", endAfterMs: 1 },
+      ],
+      { now: () => (clockMs += 1_000) },
+    );
+    expect(handle.created).toEqual([]);
+    expect(result.laneSummary?.skipped).toBe(2);
+
+    const bundle = JSON.parse(await runFile(result.runId, "run.json")) as RunBundle;
+    expect(bundle.review.summary).toBe(
+      "2 participants were skipped before their sessions started; the gaps say why.",
     );
   });
 });
