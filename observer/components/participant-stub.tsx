@@ -38,12 +38,6 @@ export function ParticipantStub({
 }) {
   const selectedItem = traceItems(stream).find((item) => item.id === selectedEventId);
   const selectedEvent = stream.timeline.find((item) => item.id === selectedEventId);
-  const terminal = evidenceLines(stream.terminalPlain);
-  const [terminalPage, setTerminalPage] = useState<number | null>(null);
-  const [eventPage, setEventPage] = useState(0);
-  const terminalPages = Math.max(1, Math.ceil(terminal.length / 50));
-  const page = Math.min(terminalPage ?? terminalPages - 1, terminalPages - 1);
-  const events = Math.min(eventPage, Math.max(0, Math.ceil(stream.timeline.length / 100) - 1));
   const keyframe = keyframeHref(stream);
   const actor = stream.actor;
   const affordance = actor?.affordanceUse;
@@ -162,37 +156,7 @@ export function ParticipantStub({
         </div>
       ) : null}
       <ParticipantFeedback data={data} stream={stream} />
-      {stream.terminalPlain !== "" ? (
-        <div className="blk">
-          <span className="o-label">
-            Recorded terminal output · lines {page * 50 + 1}–
-            {Math.min((page + 1) * 50, terminal.length)} of {terminal.length}
-          </span>
-          {terminalPages > 1 ? (
-            <nav className="stub-pages" aria-label="Terminal output pages">
-              <button
-                className="review-tool"
-                type="button"
-                disabled={page === 0}
-                onClick={() => setTerminalPage(page - 1)}
-              >
-                Earlier output
-              </button>
-              <button
-                className="review-tool"
-                type="button"
-                disabled={page >= terminalPages - 1}
-                onClick={() => setTerminalPage(page + 1)}
-              >
-                Later output
-              </button>
-            </nav>
-          ) : null}
-          <div className="stub-term">
-            <TerminalCast lines={terminal.slice(page * 50, (page + 1) * 50)} />
-          </div>
-        </div>
-      ) : null}
+      <StubTerminal plain={stream.terminalPlain} />
       {stream.ui ? (
         <div className="blk">
           <span className="o-label">Declared UI route</span>
@@ -201,42 +165,94 @@ export function ParticipantStub({
           </p>
         </div>
       ) : null}
-      <div className="blk">
-        <span className="o-label">Timeline</span>
-        {stream.timeline.length > 100 ? (
-          <nav className="stub-pages" aria-label="Event pages">
-            <button
-              className="review-tool"
-              type="button"
-              disabled={events === 0}
-              onClick={() => setEventPage(events - 1)}
-            >
-              Earlier events
-            </button>
+      <StubTimeline timeline={stream.timeline} />
+    </div>
+  );
+}
+
+/**
+ * The recorded terminal output in pages of 50 lines. It opens on the last page and follows new
+ * output until a page is chosen, then keeps that page. Always mounted, so the chosen page also
+ * survives output that is empty for a while.
+ */
+function StubTerminal({ plain }: { plain: string }) {
+  const terminal = evidenceLines(plain);
+  const [terminalPage, setTerminalPage] = useState<number | null>(null);
+  const terminalPages = Math.max(1, Math.ceil(terminal.length / 50));
+  const page = Math.min(terminalPage ?? terminalPages - 1, terminalPages - 1);
+  if (plain === "") return null;
+  return (
+    <div className="blk">
+      <span className="o-label">
+        Recorded terminal output · lines {page * 50 + 1}–
+        {Math.min((page + 1) * 50, terminal.length)} of {terminal.length}
+      </span>
+      {terminalPages > 1 ? (
+        <nav className="stub-pages" aria-label="Terminal output pages">
+          <button
+            className="review-tool"
+            type="button"
+            disabled={page === 0}
+            onClick={() => setTerminalPage(page - 1)}
+          >
+            Earlier output
+          </button>
+          <button
+            className="review-tool"
+            type="button"
+            disabled={page >= terminalPages - 1}
+            onClick={() => setTerminalPage(page + 1)}
+          >
+            Later output
+          </button>
+        </nav>
+      ) : null}
+      <div className="stub-term">
+        <TerminalCast lines={terminal.slice(page * 50, (page + 1) * 50)} />
+      </div>
+    </div>
+  );
+}
+
+/** The recorded events in pages of 100, on the chosen page while the timeline changes. */
+function StubTimeline({ timeline }: { timeline: ObserverStream["timeline"] }) {
+  const [eventPage, setEventPage] = useState(0);
+  const events = Math.min(eventPage, Math.max(0, Math.ceil(timeline.length / 100) - 1));
+  return (
+    <div className="blk">
+      <span className="o-label">Timeline</span>
+      {timeline.length > 100 ? (
+        <nav className="stub-pages" aria-label="Event pages">
+          <button
+            className="review-tool"
+            type="button"
+            disabled={events === 0}
+            onClick={() => setEventPage(events - 1)}
+          >
+            Earlier events
+          </button>
+          <span>
+            {events * 100 + 1}–{Math.min((events + 1) * 100, timeline.length)} of {timeline.length}
+          </span>
+          <button
+            className="review-tool"
+            type="button"
+            disabled={(events + 1) * 100 >= timeline.length}
+            onClick={() => setEventPage(events + 1)}
+          >
+            Later events
+          </button>
+        </nav>
+      ) : null}
+      <div className="acts">
+        {timeline.slice(events * 100, (events + 1) * 100).map((event) => (
+          <div key={event.id} className={event.level === "warn" ? "arow ev warn" : "arow ev"}>
+            <span className="tc">{event.level}</span>
             <span>
-              {events * 100 + 1}–{Math.min((events + 1) * 100, stream.timeline.length)} of{" "}
-              {stream.timeline.length}
+              {event.type}: {event.message}
             </span>
-            <button
-              className="review-tool"
-              type="button"
-              disabled={(events + 1) * 100 >= stream.timeline.length}
-              onClick={() => setEventPage(events + 1)}
-            >
-              Later events
-            </button>
-          </nav>
-        ) : null}
-        <div className="acts">
-          {stream.timeline.slice(events * 100, (events + 1) * 100).map((event) => (
-            <div key={event.id} className={event.level === "warn" ? "arow ev warn" : "arow ev"}>
-              <span className="tc">{event.level}</span>
-              <span>
-                {event.type}: {event.message}
-              </span>
-            </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

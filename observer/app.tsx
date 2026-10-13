@@ -1,42 +1,33 @@
-import { Tooltip } from "@base-ui/react/tooltip";
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Comparison } from "./components/comparison";
+import { useEffect, useMemo, useState } from "react";
+// Import order sets the order of the component stylesheets in the built page.
+import { ParticipantsView } from "./components/participants-view";
 import { EmptyState } from "./components/empty-state";
-import { ParticipantStub } from "./components/participant-stub";
-import { Player } from "./components/player";
-import { RecordingReturn } from "./components/recording-return";
 import { RunStatus } from "./components/run-status";
-import { ServerStoppedNotice } from "./components/server-stopped";
 import { SavedMoments } from "./components/saved-moments";
-import { Sidebar, type StudyLibrary } from "./components/sidebar";
-import { Drawer } from "./components/ui/drawer";
-import { StudyReport } from "./components/study-report";
-import { ReviewerNotes } from "./components/reviewer-notes";
+import { ObserverShell } from "./components/observer-shell";
+import type { StudyLibrary } from "./components/sidebar";
+import { FindingsView } from "./components/findings-view";
 import type { StudyReport as ReportData } from "./lib/study-report";
 import "./styles/study-report.css";
-import { StudyGrid } from "./components/study-grid";
 import { StudyPlayback } from "./components/study-playback";
 import "./styles/study-playback.css";
-import { ParticipantPager, Topbar } from "./components/topbar";
-import { GridOptions, GridStatusSummary } from "./components/grid-options";
-import { ShareStatus } from "./components/study-details";
-import {
-  filterParticipants,
-  isGridFilters,
-  NO_FILTERS,
-  type GridFilters,
-} from "./lib/grid-filters";
+import { StudyNotices } from "./components/study-notices";
+import { StudyViewbar } from "./components/study-viewbar";
 import { isActiveStream, isServedOrigin } from "./lib/live";
-import type { ObserverData } from "./lib/observer-data";
+import type { ObserverData, ObserverStream } from "./lib/observer-data";
 import { participantLabels } from "./lib/participant-label";
-import { isDensity, isStringList, usePreference } from "./lib/preferences";
 import { projectStudyAnalysis, type LoadedAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
-import { useStudyPlayback } from "./lib/use-study-playback";
-import type { RunNote, RunNotesState } from "./lib/run-notes";
+import {
+  useStudyPlayback,
+  type StudyPlayback as StudyPlaybackState,
+} from "./lib/use-study-playback";
+import type { RunNotesState } from "./lib/run-notes";
 import { useRunNotes } from "./lib/use-run-notes";
-import { sidebarClosedByUrl, useAutoplay } from "./lib/autoplay";
+import { useAutoplay } from "./lib/autoplay";
+import { useGridPreferences } from "./lib/use-grid-preferences";
+import { useLibraryLayout } from "./lib/use-library-layout";
 import { useObserverNavigation } from "./lib/use-observer-navigation";
 import { useParticipantPlayer } from "./lib/use-participant-player";
 import { useSavedMoments } from "./lib/use-saved-moments";
@@ -69,50 +60,18 @@ export function App({
   );
   const hasFindingsView =
     !!report || !!analysis.automatic || runNotes.notes.length > 0 || runNotes.unreadable;
-  const [density, setDensity] = usePreference("density", "comfortable", isDensity);
-  const [filters, setFilters] = usePreference("filters", NO_FILTERS, isGridFilters);
-  const [pinnedByRun, setPinnedByRun] = usePreference(
-    `pins-${initialData?.run.runId ?? "empty"}`,
-    [] as string[],
-    isStringList,
-  );
-  const [gridPage, setGridPage] = useState({ runId: data?.run.runId ?? "", page: 0 });
+  const runId = data?.run.runId ?? "";
+  const grid = useGridPreferences(initialData?.run.runId, runId);
   const [now, setNow] = useState(Date.now);
   const automaticNotice = analysis.automatic
     ? automaticAnalysisNotice(analysis.automatic, snapshot, now)
     : undefined;
-  const [sideOpen, setSideOpen] = useState(() => {
-    if (sidebarClosedByUrl(window.location.search)) return false;
-    try {
-      const saved = window.localStorage.getItem("humanish-sidebar");
-      return (
-        saved === "open" ||
-        (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1))
-      );
-    } catch {
-      return true;
-    }
-  });
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [phone, setPhone] = useState(
-    () =>
-      typeof window.matchMedia === "function" && window.matchMedia("(max-width: 880px)").matches,
-  );
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
-    const media = window.matchMedia?.("(max-width: 880px)");
-    const resize = () => {
-      setPhone(media?.matches ?? false);
-      if (!media?.matches) setDrawerOpen(false);
-    };
-    media?.addEventListener("change", resize);
-    resize(); // Reconcile a resize between the initial render and subscription.
-    return () => {
-      clearInterval(timer);
-      media?.removeEventListener("change", resize);
-    };
+    return () => clearInterval(timer);
   }, []);
-  const runId = data?.run.runId ?? "";
+  // The viewport and explicit preference own the shell, never the selected view.
+  const layout = useLibraryLayout(snapshot, library?.entries.length ?? 0);
   const streams = data?.streams ?? [];
   const updating = connection.state !== "offline";
   const studyPlayback = useStudyPlayback(runId, streams);
@@ -123,7 +82,7 @@ export function App({
     findingsAvailable: hasFindingsView,
     reviewing: studyPlayback.reviewing,
   });
-  const { selected, route, source, comparison, compareIds, monitoring } = navigation;
+  const { selected, comparison, monitoring } = navigation;
   const player = useParticipantPlayer(runId, navigation, studyPlayback, updating);
   const { model } = player;
   const savedMoments = useSavedMoments({
@@ -134,367 +93,131 @@ export function App({
     open: (streamId, frame, eventId) => navigation.openParticipant(streamId, { frame, eventId }),
     revision: navigation.revision,
   });
-  // The viewport and explicit preference own the shell, never the selected view.
-  const libraryAsDrawer = phone;
   const reportActive = navigation.findingId !== null;
-  const findingsView =
-    reportActive ||
-    (!!selected &&
-      !!report &&
-      (source.kind === "finding" || source.kind === "concerns" || source.kind === "design"));
-  /** Seeks the study timeline to a note and shows its participant, or every participant. */
-  const openNote = (note: RunNote) => {
-    const start = studyPlayback.recording.startMs;
-    if (start !== null) studyPlayback.seek(start + note.atMs);
-    if (note.participant !== null && streams.some((stream) => stream.id === note.participant))
-      navigation.openParticipant(note.participant, { replay: true, keepClock: true });
-    else navigation.toGrid();
-  };
-  const followLink = (event: MouseEvent<HTMLAnchorElement>, navigate: () => void) => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-      return;
-    event.preventDefault();
-    navigate();
-  };
-  const toggleLibrary = () => {
-    if (libraryAsDrawer) {
-      setDrawerOpen((v) => !v);
-      return;
-    }
-    setSideOpen((v) => {
-      try {
-        window.localStorage.setItem("humanish-sidebar", v ? "closed" : "open");
-      } catch {
-        /* session preference still works */
-      }
-      return !v;
-    });
-  };
   if (!data) return <EmptyState />;
-  const selectedReview = report?.outcomes.find((outcome) => outcome.streamId === selected?.id);
-  const selectedAnalysis = report?.participants?.find(
-    (participant) => participant.streamId === selected?.id,
-  );
   const labels = participantLabels(streams);
-  const visible = filterParticipants(streams, filters, labels);
-  // A changed filter shows its first page; the page the old filter was on may not exist.
-  const changeFilters = (next: GridFilters) => {
-    setFilters(next);
-    setGridPage({ runId: data.run.runId, page: 0 });
-  };
-  const togglePin = (id: string) =>
-    setPinnedByRun(
-      pinnedByRun.includes(id)
-        ? pinnedByRun.filter((v) => v !== id)
-        : [...pinnedByRun.slice(-49), id],
-    );
-  const recordingNavigation = selected ? (
-    <>
-      <RecordingReturn
-        source={source}
-        findings={report?.findings}
-        onReturn={navigation.returnToSource}
+  return (
+    <ObserverShell
+      layout={layout}
+      data={data}
+      history={history}
+      library={library}
+      updating={updating}
+      monitoring={monitoring}
+      onRuns={navigation.toGrid}
+      onSkip={() => navigation.content.ref.current?.focus()}
+      reviewControl={<SavedMoments labels={labels} {...savedMoments.control} />}
+      status={<RunStatus data={data} connection={connection} now={now} onRetry={retry} compact />}
+    >
+      <StudyViewbar
+        data={data}
+        navigation={navigation}
+        report={report}
+        hasFindings={hasFindingsView}
+        automaticNotice={automaticNotice}
+        noteCount={runNotes.notes.length}
       />
-      <ParticipantPager data={data} selected={selected} onStep={navigation.step} />
-    </>
-  ) : null;
-  const outcomeContext = selectedReview ? (
-    <span className="report-outcome-context">
-      Analyzed outcome: <strong>{selectedReview.label}</strong>
-    </span>
-  ) : null;
-  const participantContent = (
-    <>
-      {selected || comparison ? (
-        <h2 className="sr-only">
-          {selected ? `${labels.get(selected.id)} recording` : "Compare participants"}
-        </h2>
-      ) : null}
-      {/* The player shows this navigation in its heading line, above the frame. */}
-      {(selected && !model) || (!selected && !comparison && compareIds.length > 0) ? (
-        <div className="study-context-actions">
-          {recordingNavigation}
-          {selected ? outcomeContext : null}
-          {!selected && !comparison && compareIds.length ? (
-            <span className="compare-selection">
-              <button type="button" className="review-tool" onClick={navigation.openComparison}>
-                Compare selected ({compareIds.length}/3)
-              </button>
-              {compareIds.length === 3 ? (
-                <span role="status">
-                  Comparison limit: 3 participants. Remove one to choose another.
-                </span>
-              ) : null}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      {comparison ? (
-        <Comparison
-          serverStopped={connection.serverStopped === true}
-          data={data}
-          streams={streams.filter((s) => compareIds.includes(s.id))}
-          history={history}
-          onBack={navigation.toGrid}
-          onOpen={(id, frame) =>
-            navigation.openParticipant(id, { frame, from: { kind: "comparison" } })
-          }
-          onLocationChange={navigation.rememberComparison}
-        />
-      ) : selected ? (
-        model ? (
-          <Player
-            key={selected.id}
-            recordedActorStatus={selectedReview ? selected.actor?.status : undefined}
-            analysisReview={selectedAnalysis}
+      <StudyNotices
+        data={data}
+        connection={connection}
+        now={now}
+        onRetry={retry}
+        monitoring={monitoring}
+        onExitMonitor={() => navigation.monitor(false)}
+      />
+      <main
+        id="observer-content"
+        tabIndex={-1}
+        className={selected && model ? "content player-host" : "content"}
+        {...navigation.content}
+      >
+        {reportActive ? (
+          <FindingsView
             data={data}
-            stream={selected}
-            model={model}
-            initialFrame={route.frame}
-            initialMode={route.mode ?? null}
-            initialEventId={route.eventId ?? null}
-            navigation={recordingNavigation}
-            outcome={outcomeContext}
-            navigationRevision={navigation.revision}
-            updating={connection.state !== "offline"}
-            onViewChange={savedMoments.onViewChange}
-            {...(player.control ? { studyPlayback: player.control } : {})}
+            report={report}
+            automatic={analysis.automatic}
+            snapshot={snapshot}
+            now={now}
+            navigation={navigation}
+            notes={runNotes}
+            labels={labels}
+            playback={studyPlayback}
           />
         ) : (
-          <ParticipantStub
-            key={selected.id}
+          <ParticipantsView
             data={data}
-            stream={selected}
-            analysisReview={selectedAnalysis}
-            selectedEventId={route.eventId}
-            updating={connection.state !== "offline"}
+            labels={labels}
+            navigation={navigation}
+            player={player}
+            playback={studyPlayback}
+            onViewChange={savedMoments.onViewChange}
+            serverStopped={connection.serverStopped === true}
+            updating={updating}
+            history={history}
+            report={report}
+            analysisSpend={analysis.spend}
+            grid={grid}
+            now={now}
           />
-        )
-      ) : (
-        <StudyGrid
-          key={data.run.runId}
-          serverStopped={connection.serverStopped === true}
-          recording={studyPlayback.recording}
-          atMs={studyPlayback.atMs}
-          reviewing={studyPlayback.reviewing}
-          page={gridPage.runId === data.run.runId ? gridPage.page : 0}
-          onPageChange={(page) => setGridPage({ runId: data.run.runId, page })}
-          statusSummary={
-            <GridStatusSummary data={data} filters={filters} onFilters={changeFilters} />
-          }
-          tools={
-            <GridOptions
-              data={data}
-              filters={filters}
-              onFilters={changeFilters}
-              density={density}
-              onDensity={setDensity}
-              onMonitor={() => navigation.monitor(true)}
-            />
-          }
-          data={data}
-          reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined}
-          analysisSpend={analysis.spend}
-          streams={visible}
-          onOpen={(id) =>
-            navigation.openParticipant(id, { replay: studyPlayback.reviewing, keepClock: true })
-          }
-          density={density}
-          pinnedIds={pinnedByRun}
-          compareIds={compareIds}
-          onPin={togglePin}
-          onCompare={navigation.toggleCompare}
-          now={now}
-          updating={connection.state !== "offline"}
+        )}
+      </main>
+      {!reportActive && !comparison && (!selected || player.shared) ? (
+        <StudyTimeline
+          playback={studyPlayback}
+          notes={runNotes}
+          selected={selected}
+          labels={labels}
+          updating={updating}
+          streams={streams}
         />
-      )}
-    </>
+      ) : null}
+    </ObserverShell>
   );
-  const needsAttention =
-    connection.state === "retrying" ||
-    data.runtime?.state === "unknown" ||
-    data.runtime?.state === "interrupted";
-  const studyLabel = library?.entries.find((entry) => entry.runId === data.run.runId)?.title;
+}
+
+/**
+ * The study playback bar under the grid or a participant who follows the study clock. It follows
+ * the latest capture only on a served page whose feed updates while a participant is active. A
+ * note added there belongs to the open participant, or to the whole study.
+ */
+function StudyTimeline({
+  playback,
+  notes,
+  selected,
+  labels,
+  updating,
+  streams,
+}: {
+  playback: StudyPlaybackState;
+  notes: ReturnType<typeof useRunNotes>;
+  selected: ObserverStream | null;
+  labels: Map<string, string>;
+  /** The feed still receives updates. */
+  updating: boolean;
+  streams: ObserverStream[];
+}) {
   return (
-    <Tooltip.Provider delay={350}>
-      <div className={`observer-shell${monitoring ? " monitoring" : ""}`}>
-        <a
-          className="skip-observer"
-          href="#observer-content"
-          onClick={(event) => {
-            event.preventDefault();
-            navigation.content.ref.current?.focus();
-          }}
-        >
-          Skip to evidence
-        </a>
-        <Topbar
-          data={data}
-          onLibrary={toggleLibrary}
-          sideOpen={libraryAsDrawer ? drawerOpen : sideOpen}
-          reviewControl={<SavedMoments labels={labels} {...savedMoments.control} />}
-          {...(studyLabel ? { studyLabel } : {})}
-          status={
-            <RunStatus data={data} connection={connection} now={now} onRetry={retry} compact />
+    <StudyPlayback
+      recording={playback.recording}
+      atMs={playback.atMs}
+      reviewing={playback.reviewing}
+      playing={playback.playing}
+      speed={playback.speed}
+      canFollow={
+        updating && isServedOrigin(window.location.protocol) && streams.some(isActiveStream)
+      }
+      onToggle={playback.toggle}
+      onSeek={playback.seek}
+      onSpeed={playback.setSpeed}
+      onLatest={playback.latest}
+      notes={notes.notes}
+      noteParticipant={selected ? (labels.get(selected.id) ?? selected.id) : null}
+      {...(notes.save
+        ? {
+            onAddNote: (atMs: number, text: string) =>
+              notes.save!({ atMs, participant: selected?.id ?? null, text }),
           }
-        />
-        <div className="frame">
-          {!phone && !monitoring ? (
-            <Sidebar
-              collapsed={!sideOpen}
-              data={data}
-              history={history}
-              onRuns={navigation.toGrid}
-              updating={connection.state !== "offline"}
-              {...(library ? { library } : {})}
-            />
-          ) : null}
-          <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Study library">
-            <Sidebar
-              data={data}
-              history={history}
-              onRuns={() => {
-                navigation.toGrid();
-                setDrawerOpen(false);
-              }}
-              updating={connection.state !== "offline"}
-              {...(library
-                ? {
-                    library: {
-                      ...library,
-                      onSelect: (id: string) => {
-                        library.onSelect(id);
-                        setDrawerOpen(false);
-                      },
-                    },
-                  }
-                : {})}
-            />
-          </Drawer>
-          <div className="main">
-            <section className="study-viewbar" aria-label="Study navigation">
-              <nav className="study-views" aria-label="Study views">
-                <a
-                  href="#"
-                  aria-label="All participants"
-                  aria-current={!findingsView ? "page" : undefined}
-                  onClick={(event) => followLink(event, navigation.toGrid)}
-                >
-                  Participants <span>{streams.length}</span>
-                </a>
-                {hasFindingsView ? (
-                  <a
-                    href="#/report"
-                    aria-current={findingsView ? "page" : undefined}
-                    onClick={(event) => followLink(event, () => navigation.openReport())}
-                  >
-                    Findings{" "}
-                    <span aria-label={!report ? automaticNotice?.message : undefined}>
-                      {report ? report.findings.length : automaticNotice?.pending ? "…" : "—"}
-                    </span>
-                    {runNotes.notes.length ? (
-                      <span className="viewbar-notes">
-                        {runNotes.notes.length} {runNotes.notes.length === 1 ? "note" : "notes"}
-                      </span>
-                    ) : null}
-                  </a>
-                ) : null}
-              </nav>
-              <ShareStatus data={data} />
-            </section>
-            {connection.serverStopped ? (
-              <ServerStoppedNotice data={data} connection={connection} now={now} onRetry={retry} />
-            ) : null}
-            {(needsAttention && !connection.serverStopped) || monitoring ? (
-              <RunStatus
-                data={data}
-                connection={connection}
-                now={now}
-                onRetry={retry}
-                actions={
-                  monitoring ? (
-                    <button
-                      type="button"
-                      className="review-tool"
-                      onClick={() => navigation.monitor(false)}
-                    >
-                      Exit monitor
-                    </button>
-                  ) : null
-                }
-              />
-            ) : null}
-            <main
-              id="observer-content"
-              tabIndex={-1}
-              className={selected && model ? "content player-host" : "content"}
-              {...navigation.content}
-            >
-              {reportActive ? (
-                <StudyReport
-                  data={data}
-                  report={report}
-                  {...(analysis.automatic ? { automatic: analysis.automatic } : {})}
-                  snapshot={snapshot}
-                  now={now}
-                  findingId={navigation.findingId ?? ""}
-                  onFinding={navigation.selectFinding}
-                  concernsOpen={navigation.concernsOpen}
-                  onConcernsOpen={navigation.setConcernsOpen}
-                  onOpen={(id, frame, eventId, findingId) =>
-                    navigation.openParticipant(id, {
-                      frame,
-                      eventId,
-                      from: findingId ? { kind: "finding", findingId } : { kind: "concerns" },
-                    })
-                  }
-                  onOpenDesign={(id, frame, eventId) =>
-                    navigation.openParticipant(id, { frame, eventId, from: { kind: "design" } })
-                  }
-                />
-              ) : (
-                participantContent
-              )}
-              {reportActive &&
-              (runNotes.notes.length > 0 || runNotes.save || runNotes.unreadable) ? (
-                <ReviewerNotes
-                  notes={runNotes.notes}
-                  labels={labels}
-                  unreadable={runNotes.unreadable}
-                  writable={!!runNotes.save}
-                  onOpen={openNote}
-                />
-              ) : null}
-            </main>
-            {!reportActive && !comparison && (!selected || player.shared) ? (
-              <StudyPlayback
-                recording={studyPlayback.recording}
-                atMs={studyPlayback.atMs}
-                reviewing={studyPlayback.reviewing}
-                playing={studyPlayback.playing}
-                speed={studyPlayback.speed}
-                canFollow={
-                  connection.state !== "offline" &&
-                  isServedOrigin(window.location.protocol) &&
-                  streams.some(isActiveStream)
-                }
-                onToggle={studyPlayback.toggle}
-                onSeek={studyPlayback.seek}
-                onSpeed={studyPlayback.setSpeed}
-                onLatest={studyPlayback.latest}
-                notes={runNotes.notes}
-                noteParticipant={selected ? (labels.get(selected.id) ?? selected.id) : null}
-                {...(runNotes.save
-                  ? {
-                      onAddNote: (atMs: number, text: string) =>
-                        runNotes.save!({ atMs, participant: selected?.id ?? null, text }),
-                    }
-                  : {})}
-              />
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </Tooltip.Provider>
+        : {})}
+    />
   );
 }
