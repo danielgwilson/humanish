@@ -54,6 +54,10 @@ export class StreamTraceRefusedError extends Error {
   }
 }
 
+/** Why the loader reads no trace or live file whose index records more than `maxBytes`. */
+const pastLimitDetail = (index: { path: string; bytes: number }, maxBytes: number): string =>
+  `run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file`;
+
 /**
  * The refusal of a trace or live file whose index records more than `maxBytes`. The loader reads
  * no file past the limit, so a copy of the file is refused too.
@@ -65,7 +69,7 @@ const tooLarge = (
 ): StreamTraceRefusedError =>
   new StreamTraceRefusedError(
     streamId,
-    `run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file`,
+    pastLimitDetail(index, maxBytes),
     "Restoring a copy does not help; open the file with another tool, such as jq, to read its items.",
   );
 
@@ -320,16 +324,14 @@ class LiveFileUnreadableError extends StreamTraceRefusedError {}
 
 /**
  * A live file the loader joined into stream `streamId`: the index it read the items by, and the
- * cursor it read past when the stream holds only the items after one. With `stopped`, the index
- * records more than the loader reads of one file, so it read nothing and joined no items past
- * `after`; `stopped` is the warning a reader that shows the run gives.
+ * cursor it read past when the stream holds only the items after one. A read with `stopped` has
+ * an index that records more than the loader reads of one file, so it read nothing and joined no
+ * items past `after`, which it always has; `stopped` is the warning a reader that shows the run
+ * gives.
  */
-export interface LiveItemsRead {
-  streamId: string;
-  index: LiveItemsIndex;
-  after?: LiveItemsCursor;
-  stopped?: string;
-}
+export type LiveItemsRead =
+  | { streamId: string; index: LiveItemsIndex; after?: LiveItemsCursor; stopped?: undefined }
+  | { streamId: string; index: LiveItemsIndex; after: LiveItemsCursor; stopped: string };
 
 /** For a live file's index, the prefix of that file the caller holds already, if any. */
 type LiveAfter = (index: LiveItemsIndex) => LiveItemsCursor | undefined;
@@ -376,7 +378,7 @@ async function readLiveItems(
         streamId: stream.id,
         index,
         after,
-        stopped: `Participant ${stream.id}'s items past ${after.items} were not read: run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file. The items read before stay shown; open the file with another tool, such as jq, to read the rest.`,
+        stopped: `Participant ${stream.id}'s items past ${after.items} were not read: ${pastLimitDetail(index, maxBytes)}. The items read before stay shown; open the file with another tool, such as jq, to read the rest.`,
       },
     };
   }
@@ -665,7 +667,7 @@ export function displayedTraces(loaded: {
     at: loaded.bundle.streams.find((stream) => stream.id === read.streamId)?.updatedAt ?? "",
     level: "warn" as const,
     type: "live-items.not-read",
-    message: read.stopped!,
+    message: read.stopped,
     streamId: read.streamId,
   }));
   return {

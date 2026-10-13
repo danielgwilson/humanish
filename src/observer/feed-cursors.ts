@@ -62,7 +62,7 @@ export function withFeedCursors(
   for (const read of live) {
     const entry = Object.hasOwn(streams, read.streamId) ? streams[read.streamId] : undefined;
     if (entry === undefined || !Array.isArray(entry.liveActor)) continue;
-    const end = read.stopped === undefined ? read.index : (read.after ?? read.index);
+    const end = read.stopped === undefined ? read.index : read.after;
     streams[read.streamId] = {
       ...entry,
       live: cursorText(read.index.path, end),
