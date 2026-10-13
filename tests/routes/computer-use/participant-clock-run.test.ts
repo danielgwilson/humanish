@@ -1,12 +1,15 @@
 // A computer-use study of three participants on fake hosted desktops ($0): one in Chicago, one in
 // Tokyo with a session cap, and one with no zone. Each browser launches with TZ set to its
 // participant's zone, so every tab runs in it from the first page load; each turn's clock hint and
-// the cap's notice give the time in that zone; and run.json records each participant's zone.
+// the cap's notice give the time in that zone; and run.json records each participant's zone. The
+// desktop's panel clock and a desktop-cli participant's terminal are set to the zone too.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import {
   runCuaActorSession,
@@ -98,20 +101,38 @@ async function runTokyoAndPlain(
   return outcome.result.warnings;
 }
 
+/**
+ * Runs a desktop-cli terminal launch script on this machine's bash, with a stand-in
+ * x-terminal-emulator first on the search path, and returns the TZ the stand-in started with
+ * ("unset" for none).
+ */
+async function terminalZoneOnBash(script: string, dir: string): Promise<string> {
+  const bin = path.join(dir, "bin");
+  const seen = path.join(dir, "tz.txt");
+  await mkdir(bin, { recursive: true });
+  const terminal = path.join(bin, "x-terminal-emulator");
+  await writeFile(terminal, `#!/bin/sh\nprintf '%s' "\${TZ-unset}" > '${seen}'\n`);
+  await chmod(terminal, 0o755);
+  const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` };
+  delete env.TZ;
+  await promisify(execFile)("bash", ["-c", script], { env, timeout: 15_000 });
+  return readFile(seen, "utf8");
+}
+
 /** The UTC hour at `atMs` moved by `hours`, as the two digits a clock hint shows. */
 function hourAt(atMs: number, hours: number): string {
   return String((new Date(atMs).getUTCHours() + hours + 24) % 24).padStart(2, "0");
 }
 
-describe("participants in different time zones", () => {
-  let cwd: string;
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-participant-clock-"));
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
+let cwd: string;
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "humanish-participant-clock-"));
+});
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true });
+});
 
+describe("participants in different time zones", () => {
   it("runs each browser and each clock hint in its participant's zone", async () => {
     const parsed = parseStudy(
       lab("cuAppUrl", {
@@ -187,6 +208,33 @@ describe("participants in different time zones", () => {
     ]);
   });
 
+  it("launches a lone participant's browser in actor.clock's zone and records it", async () => {
+    const parsed = parseStudy(
+      lab("cuAppUrl", { mode: "live", actor: { clock: { timeZone: "Europe/London" } } }),
+    );
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const handle = makeFanoutModule();
+    const seen: Seen[] = [];
+    const outcome = await runStudyWith(
+      parsed.config,
+      { cwd, env: KEYS },
+      {
+        desktopModule: async () => handle.module,
+        runSession: async (options: CuaActorSessionOptions) =>
+          runCuaActorSession({ ...options, provider: participant(1, seen) }),
+        analysis: { run: vi.fn() },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    expect(outcome.result.ok).toBe(true);
+    expect(handle.browserLaunches.map((launch) => launch.env?.TZ)).toEqual(["Europe/London"]);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.streams.map((stream) => stream.timeZone)).toEqual(["Europe/London"]);
+  });
+});
+
+describe("the hosted desktop around a participant with a time zone", () => {
   // The stock template's XFCE panel shows a clock above the browser. Live, setting the clock
   // plugin's timezone property through xfconf-query moved it from 02:12 UTC to 11:12 Asia/Tokyo
   // and then to Mon 12 Oct 21:12 America/Chicago without a restart.
@@ -212,28 +260,49 @@ describe("participants in different time zones", () => {
     );
   });
 
-  it("launches a lone participant's browser in actor.clock's zone and records it", async () => {
+  // A desktop-cli participant works in the terminal humanish opens: the product under test, `date`
+  // and any browser started from that terminal inherit its environment.
+  it("opens a desktop-cli participant's terminal in its zone", async () => {
     const parsed = parseStudy(
-      lab("cuAppUrl", { mode: "live", actor: { clock: { timeZone: "Europe/London" } } }),
+      lab("cuDesktopCli", {
+        mode: "live",
+        participants: [
+          { id: "tokyo", instruction: "Tokyo visit.", clock: { timeZone: "Asia/Tokyo" } },
+          { id: "plain", instruction: "Plain visit." },
+        ],
+      }),
     );
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const handle = makeFanoutModule();
-    const seen: Seen[] = [];
+    const handle = makeFanoutModule({
+      commandHandler: (_laneIndex, command) =>
+        command.includes("/status") ? { stdout: "0" } : undefined,
+    });
     const outcome = await runStudyWith(
       parsed.config,
       { cwd, env: KEYS },
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) =>
-          runCuaActorSession({ ...options, provider: participant(1, seen) }),
+          runCuaActorSession({ ...options, provider: participant(1, []) }),
         analysis: { run: vi.fn() },
       },
     );
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
     expect(outcome.result.ok).toBe(true);
-    expect(handle.browserLaunches.map((launch) => launch.env?.TZ)).toEqual(["Europe/London"]);
-    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
-    expect(bundle.streams.map((stream) => stream.timeZone)).toEqual(["Europe/London"]);
+    const terminalScript = (laneIndex: number): string => {
+      const at = handle.created.findIndex(
+        (created) => created.metadata?.participantIndex === String(laneIndex),
+      );
+      const written = handle.files.get(handle.createdIds[at] ?? "");
+      const script = [...(written?.entries() ?? [])].find(([file]) =>
+        file.endsWith("/desktop-cli-terminal/command.sh"),
+      )?.[1];
+      if (script === undefined) throw new Error(`participant ${laneIndex} opened no terminal`);
+      return script.toString("utf8");
+    };
+    expect([
+      await terminalZoneOnBash(terminalScript(0), path.join(cwd, "tokyo")),
+      await terminalZoneOnBash(terminalScript(1), path.join(cwd, "plain")),
+    ]).toEqual(["Asia/Tokyo", "unset"]);
   });
 });

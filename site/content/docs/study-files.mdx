@@ -315,6 +315,8 @@ participants:
 
 - Each turn tells the participant the local time in its zone, and a scheduled end (`endAfterMs`) or session cap (`maxSessionMs`) is given in that zone.
 - On a hosted desktop, humanish launches the participant's browser with `TZ` set to its zone, so every tab and window it opens runs in that zone from the first page load: JavaScript's `Date` and `Intl.DateTimeFormat().resolvedOptions().timeZone` report it.
+- On a `desktop-cli` subject, humanish opens the participant's terminal with `TZ` set to its zone, so its shells, `date`, the product under test and a browser started from the terminal run in that zone.
+- A browser or terminal the participant opens from the desktop's dock starts without `TZ` and runs in UTC.
 - The clock in the hosted desktop's panel, at the top right of every screenshot, shows the same zone. When humanish cannot set it, the run warns and the clock shows UTC.
 - The zone is a tz database name such as `Europe/London`, written with its capitals: `america/chicago` and `us/central` are refused, since the browser does not find a name in the wrong case and runs in UTC. A UTC offset such as `+05:00` is refused, since a browser's time zone cannot be set to one.
 - The local browser runtime (`execution.target: local`) and `RunStudyOptions.inProcess` do not set the browser's zone, so a study that gives a participant a time zone there is refused before anything starts.

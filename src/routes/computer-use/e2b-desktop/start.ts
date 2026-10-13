@@ -82,7 +82,7 @@ export async function openParticipantSurface(
     // A terminal window, opened the way the browser is opened on every other route: the
     // participant arrives at a desktop with the thing they were asked to use already in front
     // of them. They can still open another from the dock; that is the point of a desktop.
-    await openDesktopTerminal(desktop, deps.requestTimeoutMs, subject.product.workdir);
+    await openDesktopTerminal(desktop, deps.requestTimeoutMs, subject.product.workdir, timeZone);
     await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
     return;
   }

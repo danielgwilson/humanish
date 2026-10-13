@@ -50,10 +50,12 @@ additive to `humanish.actor-trace.v1`.
 Each participant can have its own time zone. `participants[].clock: { timeZone }` gives one
 participant its zone in place of `actor.clock`, on `computer-use` and `shared-world`. A hosted
 participant's browser now launches with `TZ` set to that zone, so every tab it opens reports the
-zone from the first page load, the clock in its desktop's panel shows the zone, and its turns'
-local time and its scheduled-end or session-cap notice use the same zone. `study check` prints a
-`time zones` row, `study show` a `time zones:` line, and each participant's stream in run.json
-records `timeZone`. A participant with no zone runs as before, in the desktop's UTC.
+zone from the first page load. A `desktop-cli` participant's terminal opens with `TZ` set, so the
+product under test and `date` run in the zone. The clock in the desktop's panel shows the zone, and
+the participant's turns' local time and its scheduled-end or session-cap notice use the same zone.
+`study check` prints a `time zones` row, `study show` a `time zones:` line, and each participant's
+stream in run.json records `timeZone`. A participant with no zone runs as before, in the desktop's
+UTC.
 
 ### Changed
 
