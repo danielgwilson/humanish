@@ -112,9 +112,9 @@ export function watchFrames(reference: Buffer): {
   next(frame: Buffer, atMs: number): FrameVerdict;
 } {
   const base = decode(reference);
-  // Only tiles that differ from the reference are kept from the previous look, so a watch holds
-  // one decoded frame and not two.
-  const differing = new Map<number, DifferingTile>();
+  // Each tile that differs from the reference, with its pixels at the look it last moved at. Only
+  // these are kept from the previous look, so a watch holds one decoded frame and not two.
+  const differing = new Map<number, Uint8Array>();
   let moves: TileMoves | undefined;
   return {
     next(frame, atMs) {
@@ -129,14 +129,6 @@ export function watchFrames(reference: Buffer): {
       return compare(base, current, atMs, differing, moves);
     },
   };
-}
-
-/** A tile that differed from the reference at the previous look. */
-interface DifferingTile {
-  /** The time of the last look it moved at. */
-  movedAt: number;
-  /** Its pixels at the look it last moved at, row by row. */
-  pixels: Uint8Array;
 }
 
 /**
@@ -170,7 +162,7 @@ function compare(
   base: Decoded,
   current: Decoded,
   atMs: number,
-  differing: Map<number, DifferingTile>,
+  differing: Map<number, Uint8Array>,
   moves: TileMoves,
 ): FrameVerdict {
   const { columns, rows } = moves;
@@ -190,12 +182,12 @@ function compare(
         if (before === undefined) continue;
         differing.delete(tile);
         // A move back to the reference is a move: a ticking digit can tick back to its old shape.
-        if (tileDiffers(before.pixels, current, column, row)) move(tile);
+        if (tileDiffers(before, current, column, row)) move(tile);
         continue;
       }
       // A tile that starts differing has moved, whatever the previous look's pixels were.
-      if (before === undefined || tileDiffers(before.pixels, current, column, row)) {
-        differing.set(tile, { movedAt: atMs, pixels: tilePixels(current, column, row) });
+      if (before === undefined || tileDiffers(before, current, column, row)) {
+        differing.set(tile, tilePixels(current, column, row));
         move(tile);
         moved += 1;
       } else still.add(tile);
@@ -208,7 +200,7 @@ function compare(
   const large = largest(regions.filter((region) => region.length > LARGE_REGION_TILES));
   if (large !== undefined) return { verdict: "settled", area: area(large), small: false };
   const heldSmall = regions.filter((region) =>
-    region.every((tile) => atMs - (differing.get(tile)?.movedAt ?? atMs) > SMALL_REGION_HOLD_MS),
+    region.every((tile) => atMs - moves.moved[tile]! > SMALL_REGION_HOLD_MS),
   );
   const settled = largest(heldSmall.filter((region) => !heldBack(region, moves, atMs)));
   if (settled !== undefined) return { verdict: "settled", area: area(settled), small: true };
