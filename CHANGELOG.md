@@ -8,85 +8,21 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-The Observer's live feed sends each running participant's new items only. A served page sends back,
-with each poll of `observer-feed.json`, the cursor its last body gave for each participant's live
-file (`?after=<position>.<generation>.<items>.<bytes>,...`), and the server reads and sends only
-the items past it, marking the entry with `liveAfter`. A new generation, a cursor the server cannot
-use, a finished run, a v1 or v2 run.json and a `--safe` server get full lists, as before. On a
-synthetic run of 24 participants working 8 hours, a poll sent about 90 KB in about 25 ms at 10%,
-50% and 100% of the run, where 0.125.0 sent 7.0, 34.7 and 69.5 MB in 0.14, 0.63 and 1.2 s. A
-page's first poll is still full. A page from 0.125.0 sends no cursors and gets full lists; a newer
-page polling 0.125.0 gets full lists and sends none.
+## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 
-A hosted computer-use participant can now upload a file. `participants[].files: [{ from, as }]`
-copies each file onto that participant's desktop before it starts, so a browser's file chooser finds
-it: `from` is relative to the folder that holds the study file, and `as` is relative to the desktop
-user's home folder, such as `Downloads/insurance-card.png`. humanish reads the files before any
-sandbox exists, on dry runs too, and refuses a missing file, a folder, a symbolic or hard link, a
-path out of that folder, a `.env`, key or credential file, a file above 10 MiB, more than 25 MiB for
-one participant or 100 MiB of distinct files for one study, an absolute `as` or one with `..`, one
-in humanish's own `subject/` folder, and two files at one path. After each write it checks the
-file's size on the desktop. The participant's stream records `desktopFiles: [{ as, size, sha256 }]`;
-the contents are not recorded. A local browser, local VM or shared-world study with `files` is
-refused at parse with what to change.
+humanish 0.126.0 adds per-participant settings for long, mixed studies and a lighter live Observer.
+Each participant can have its own time zone (`participants[].clock`), which now also sets its
+hosted browser, its desktop's panel clock and a `desktop-cli` terminal; an existing
+`actor.clock.timeZone` sets them too. `participants[].maxSessionMs` lets a participant end its
+session sooner and stops one still working at the cap with a closing report.
+`participants[].files` puts files on a participant's desktop for upload dialogs, and each
+computer-use turn records the page it was on (origin and path only). A closing report that opens
+"REACHED THE GOAL." no longer fails its run over the page copy it paraphrases. The served Observer's
+live feed sends only new items each poll: about 90 KB per poll through a synthetic 8-hour,
+24-participant run, where 0.125.0 sent up to 69.5 MB. Offsets and miscased zone names are now
+refused, and so is a zone on the local browser runtime.
 
-`participants[].maxSessionMs` caps a `computer-use` participant's session, counted from its own
-start: the participant may end its session sooner and passes as usual, and one still working at
-the cap gets the wind-down notice and a closing report and ends as passed with
-`stopCause: session_cap`. Its session and sandbox are sized from the cap. It is refused beside
-`endAfterMs` and on `shared-world`.
-
-A computer-use trace now records where the participant's browser was. Each screenshot item
-carries `page: { origin, path }` for that observation, and the trace carries `finalPage`, the page
-of the session's last observation, which run.json keeps in `streams[].actor`. The query string,
-fragment and user info are never kept. A path segment or host label that looks like an email
-address, a token or id, a key or one of the study's secrets becomes `[REDACTED_URL_PART]`. Pages
-come from the Chrome or Chromium browser-state probe, so a Firefox participant has none, and the
-shared-world and local browser routes record none. A library caller of `runComputerUseLoop` whose
-executor returns `url` gets pages too, through the redaction hooks it passes. verify reports a page
-that holds a query string, fragment or user info as a public-safety finding. Both fields are
-additive to `humanish.actor-trace.v1`.
-
-Each participant can have its own time zone. `participants[].clock: { timeZone }` gives one
-participant its zone in place of `actor.clock`, on `computer-use` and `shared-world`. A hosted
-participant's browser now launches with `TZ` set to that zone, so every tab it opens reports the
-zone from the first page load. A `desktop-cli` participant's terminal opens with `TZ` set, so the
-product under test and `date` run in the zone. The clock in the desktop's panel shows the zone, and
-the participant's turns' local time and its scheduled-end or session-cap notice use the same zone.
-`study check` prints a `time zones` row, `study show` a `time zones:` line, and each participant's
-stream in run.json records `timeZone`. A participant with no zone runs as before, in the desktop's
-UTC.
-
-### Changed
-
-- An existing `actor.clock.timeZone` now also sets the zone of each hosted participant's browser
-  and of the clock in its desktop's panel, which ran in UTC before. Pages that show dates and times
-  now show them in that zone.
-- `actor.clock.timeZone` refuses a UTC offset such as `+05:00` and a name in the wrong case such as
-  `europe/london` or `europe/belfast`, which it accepted before: Chrome runs in UTC or `Etc/Unknown`
-  for those. Write a tz database name with its capitals, such as `Europe/London`.
-- A study that gives a participant a time zone on the local browser runtime
-  (`execution.target: local`) or through `RunStudyOptions.inProcess` is refused before anything
-  starts, with `HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED`, since humanish cannot set that
-  browser's zone. Remove the clock, or run on `execution.target: e2b-desktop`.
-- The Observer's filmstrip scrolls back to the selected capture only when the selected capture
-  changes. It no longer jumps back when you switch inspector tabs or page the activity list.
-  Reopening the inspector shows the selected entry in the activity list, where it opened at the
-  top before.
-
-### Fixed
-
-- A computer-use participant's closing report at a scheduled end or a session cap now sets the
-  trace's `declaredOutcome`: the first line of its summary (`REACHED THE GOAL.`,
-  `DID NOT REACH THE GOAL.` or `BLOCKED.`), or Codex's `outcome` field. The blocker rule reads a
-  declared `REACHED THE GOAL.` or `BLOCKED.` before the summary's wording, so a report that opened
-  `REACHED THE GOAL.` and later paraphrased a page ("cannot be registered") passes, where it
-  counted the participant blocked and failed the run. `BLOCKED.` still counts the participant
-  blocked. A report that declares `DID NOT REACH THE GOAL.` or nothing is judged as before: it
-  counts the participant blocked when its summary describes a blocker, and otherwise passes. That
-  passing participant is still counted in the review summary as reporting that it reached the
-  goal, next to `declaredOutcome: not_reached` on its trace. After a matched stop condition or
-  dwell window the report sets no declared outcome.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.126.0)
 
 ## 0.125.0: Run bundle v3 with live items in append-only files, loadRunBundle, faster repeated verify (2026-10-12)
 
