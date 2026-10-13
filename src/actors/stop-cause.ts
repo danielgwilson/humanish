@@ -28,7 +28,9 @@ export function actorStopCauseLabel(cause: ActorEnding["cause"]): string {
 }
 
 /** Project recorded control evidence, never participant prose. Leave the actor untouched. */
-export function actorEnding(actor: ActorTrace | undefined): ActorEnding | undefined {
+export function actorEnding(
+  actor: Pick<ActorTrace, "stopCause" | "items" | "completionReason"> | undefined,
+): ActorEnding | undefined {
   if (!actor) return undefined;
   const explicit = actor.stopCause;
   if (typeof explicit === "string" && Object.hasOwn(labels, explicit))

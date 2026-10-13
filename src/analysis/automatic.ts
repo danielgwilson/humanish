@@ -1,6 +1,6 @@
 import path from "node:path";
 import { resolveRunPath } from "../run/locate.js";
-import { type RunBundle } from "../run/bundle.js";
+import type { RunBundle, StoredRunBundle } from "../run/bundle.js";
 import {
   refreshObserver,
   analyzeRun,
@@ -142,7 +142,10 @@ async function readAutomaticSource(
   let config = configInput;
   try {
     const bytes = await readCompletedAnalysisSource(cwd, prepared);
-    const bundle = await loadRunTraces(prepared, JSON.parse(bytes.toString("utf8")) as RunBundle);
+    const bundle = await loadRunTraces(
+      prepared,
+      JSON.parse(bytes.toString("utf8")) as StoredRunBundle,
+    );
     if (bundle.streams.some((stream) => stream.actor?.stopCause === "harness_aborted"))
       return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
     const participantEvidence = hasParticipantEvidence(bundle);

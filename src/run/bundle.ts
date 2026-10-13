@@ -5,7 +5,7 @@ import type { ExecutionOutcome } from "./judge.js";
 import type { SharedWorldEvidence } from "./shared-world-evidence.js";
 import { studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import type { RunInterruptSignal } from "./status.js";
-import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js";
+import type { RunSimulationStatus, RunStream, RunStreamKind, StoredRunStream } from "./streams.js";
 
 /**
  * The run bundle version this release writes: each stream's trace, and each running participant's
@@ -427,6 +427,12 @@ export interface RunBundle {
    */
   cost?: RunCostSummary;
 }
+
+/**
+ * run.json as a reader parses it, in any version: each stream a StoredRunStream, without the
+ * per-request lists that from v4 only its trace file holds. loadStreamTraces gives the RunBundle.
+ */
+export type StoredRunBundle = Omit<RunBundle, "streams"> & { streams: StoredRunStream[] };
 
 /**
  * How a run ended. `finished`: Run.finish published the final bundle with the route result's `ok`

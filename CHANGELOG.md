@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The types for run.json as a reader parses it, and for the Observer's data, leave out each
+  participant's per-request lists (`tokenUsage.turns`, `conversation.requests` and
+  `providerRequests`), which a v4 run.json holds only in the trace file. `isRunBundle`, the trace
+  loader's input and the readers that cast run.json use `StoredRunBundle`, whose streams'
+  `actor` and `liveActor` are `WithoutRequestLists<...>`, and `ObserverStream` extends
+  `StoredRunStream`. `pnpm typecheck` now refuses a read of a list there; the full actor trace
+  type, with `conversation.requests` required, let one compile and throw on a v4 file.
+  `RunBundle`, which `loadRunBundle` returns with the lists joined, is unchanged. (#1835)
+
 ### Fixed
 
 - The bundle estimate counts the study's mission in run.json. run.json holds it once for the run,
