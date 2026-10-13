@@ -148,6 +148,28 @@ describe("the wait_for_change tool", () => {
     ]);
   });
 
+  it("lasts the minutes it names on each quiet turn in a row, with no word of a longer wait", async () => {
+    const { result, bodies, sentAt } = await runOpenAi([
+      waitForChangeReply(1, '{"minutes":3}'),
+      waitForChangeReply(2, '{"minutes":3}'),
+      doneReply(3),
+      doneReply(4),
+    ]);
+    expect(watchesOf(result).map((watch) => watch.limitMs)).toEqual([180_000, 180_000]);
+    expect(sentAt.slice(0, 3)).toEqual([0, 180_000, 360_000]);
+    expect(bodies[2]?.input).toMatchObject([
+      {
+        call_id: "call_2",
+        output: [
+          {
+            text: "Your wait lasted 3 minutes; no change on the screen held still long enough to end it.",
+          },
+          { type: "input_image" },
+        ],
+      },
+    ]);
+  });
+
   it("is answered with the screen when the session ends during it, and the closing ask stays a message", async () => {
     const { bodies, sentAt } = await runOpenAi(
       [waitForChangeReply(1, '{"minutes":3}'), doneReply(2)],

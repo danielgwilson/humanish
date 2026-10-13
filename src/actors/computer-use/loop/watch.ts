@@ -106,9 +106,11 @@ export class IdleWatcher {
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
     if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
+    // A turn whose waits all name a length lasts that length: the participant chose it.
+    const named = actions.every((action) => action.kind !== "wait" || action.ms !== undefined);
     // Never shorter than the turn's own planned length, so a long named wait is not cut short.
     const limitMs =
-      this.grownFromMs === undefined
+      named || this.grownFromMs === undefined
         ? plannedMs
         : Math.min(capMs, Math.max(plannedMs, 2 * this.grownFromMs));
     const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
@@ -122,7 +124,7 @@ export class IdleWatcher {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending, grows && limitMs < capMs ? capMs : undefined),
+      hint: hintFor(ending, !named && grows && limitMs < capMs ? capMs : undefined),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,
