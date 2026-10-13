@@ -1,4 +1,3 @@
-import { closingReportSchema, impressionsReplySchema } from "../closing-report.js";
 import type { ActorCapabilities, ActorConversation } from "../contract.js";
 import {
   ComputerUseAdmissionLimitError,
@@ -12,7 +11,7 @@ import {
   type ConversationRequest,
   type ZdrRejection,
 } from "./openai-conversation.js";
-import { asRecord, optionalString, type OpenAiReasoningSummary } from "./openai-wire.js";
+import { optionalString, type OpenAiReasoningSummary } from "./openai-wire.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { isMaxOutputTokens } from "../output-token-limit.js";
@@ -595,37 +594,21 @@ export function createOpenAiResponsesProvider(
   const requestTurn = async (
     req: CuaTurnRequest,
     signal: AbortSignal,
-    closing?: ClosingRequest,
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     await capture.prepareNext();
-    const request = conversation.request(req, closing);
-    // A closing request makes exactly one request: no HTTP or policy-latch retries.
-    const raw =
-      closing === undefined
-        ? await postTurn(request, signal, spend)
-        : await post(request.body(), signal, 0, false);
-    const turn = request.accept(raw);
-    if (closing !== undefined) {
-      // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
-      // Never promote raw JSON or a fallback paragraph into a structured finding.
-      try {
-        const reply: unknown = JSON.parse(turn.message ?? "");
-        if (asRecord(raw).status === "completed") {
-          if (closing === "report") {
-            const report = closingReportSchema.safeParse(reply);
-            if (report.success) return { ...turn, closingReport: report.data };
-          } else {
-            const impressions = impressionsReplySchema.safeParse(reply);
-            if (impressions.success) return { ...turn, impressions: impressions.data.impressions };
-          }
-        }
-      } catch {
-        /* A failed optional closing account keeps its usage and no report. */
-      }
-    }
-    return turn;
+    const request = conversation.request(req);
+    return request.accept(await postTurn(request, signal, spend));
   };
+
+  // Each closing request is posted once: no HTTP or policy-latch retries. A reply with no valid
+  // account keeps its usage and gives no report: refusals, incomplete output, malformed JSON and
+  // invalid shapes are never promoted into a structured finding.
+  const requestClosing = (
+    req: CuaTurnRequest,
+    signal: AbortSignal,
+    closing: ClosingRequest,
+  ): Promise<CuaTurn> => conversation.close(req, closing, (body) => post(body, signal, 0, false));
 
   return {
     id: "openai-responses-cu",
@@ -645,7 +628,7 @@ export function createOpenAiResponsesProvider(
     get interactionUsageIncomplete() {
       return interactionUsageIncomplete;
     },
-    nextTurn: (req, signal, spend) => requestTurn(req, signal, undefined, spend),
+    nextTurn: (req, signal, spend) => requestTurn(req, signal, spend),
     get conversation(): ActorConversation {
       return conversation.record();
     },
@@ -653,7 +636,7 @@ export function createOpenAiResponsesProvider(
     // explicit_context one carries its newest screens whole and its oldest turns summarized past
     // the budget, which the trace's conversation record counts. A participant that worked a long
     // session writes its closing account from what it carries, as a person writes one from memory.
-    debrief: (req, signal) => requestTurn(req, signal, "report"),
-    requestImpressions: (req, signal) => requestTurn(req, signal, "impressions"),
+    debrief: (req, signal) => requestClosing(req, signal, "report"),
+    requestImpressions: (req, signal) => requestClosing(req, signal, "impressions"),
   };
 }

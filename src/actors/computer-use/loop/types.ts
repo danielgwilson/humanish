@@ -199,6 +199,12 @@ export interface CuaTurn {
   closingReport?: ParticipantClosingReport;
   /** Present only for an accepted impressions-only closing reply. */
   impressions?: ParticipantImpression[];
+  /**
+   * Set on a closing reply that was not the JSON its request asked for, when the provider's next
+   * closing request would ask for it more strictly. The loop may then call the same closing method
+   * once more, after the checks the first request passed and with a time bound of its own.
+   */
+  closingRetry?: true;
 }
 
 /** The model side of the loop. Self-describes its identity and capabilities. */
@@ -243,7 +249,10 @@ export interface CuaProvider {
   /** Latest known usage of the continuing request. Used only for runtime spend guards. */
   readonly pendingRequestUsage?: CuaTurn["usage"];
   nextTurn(req: CuaTurnRequest, signal: AbortSignal, spend?: CuaSpendGate): Promise<CuaTurn>;
-  /** Optional read-only closing report. Implementations must disable tools and make no retries. */
+  /**
+   * Optional read-only closing report. Implementations must disable tools and send one request per
+   * call, with no retries of their own; a second request is the loop's call (`closingRetry`).
+   */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
   /**
    * Optional read-only request for impressions only, after the participant ended the session

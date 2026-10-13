@@ -387,9 +387,14 @@ request), without provider support, or without remaining time and known budget. 
 unreported usage remains an unknown cost line. `counts.debriefCalls` is separate
 from interaction turns, and reported usage contributes to aggregate cost.
 
-The OpenAI implementation makes one request with tools disabled and structured
-output; no HTTP or policy retries. Its output limit is 3072 tokens, or the declared
-`maxOutputTokens` when lower. Stateless/ZDR mode does not offer retrospective
+The OpenAI implementation sends each closing request with tools disabled and no HTTP or
+policy retries. The request sends no `text.format`, so it reads the session from the prompt
+cache, and states the JSON Schema in its input. The reply's JSON object is read from its text,
+also from inside a code fence or after a message of its own. A completed reply with no JSON that
+schema accepts, apart from a refusal, comes back with `closingRetry` set. The loop may then call
+the same method once more, after the checks the first request passed and with a time bound of
+its own, and that request sets the strict schema. `counts.debriefCalls` counts each request. Its
+output limit is 3072 tokens, or the declared `maxOutputTokens` when lower. Stateless/ZDR mode does not offer retrospective
 reporting: its client-carried conversation summarizes its oldest turns past a token
 budget, so it may not hold the whole session a retrospective report needs. It does offer
 the impressions-only request, which reads the carried conversation: its newest

@@ -1478,13 +1478,15 @@ it("routes actor output limits and per-participant reasoning to concurrent provi
       prepareDesktop,
       deps,
     });
-    // Each participant ends on its first reply, and one impressions-only request follows. The
-    // declared 512 is below the closing request's own 3072, so it bounds that request too.
+    // Each participant ends on its first reply, and an impressions-only request follows. Its
+    // reply is a closing report rather than impressions, so it is asked once more with the
+    // schema. The declared 512 is below the closing request's own 3072, so it bounds both.
     const turns = bodies.filter((body) => body.tool_choice !== "none");
     const closing = bodies.filter((body) => body.tool_choice === "none");
     expect(turns).toHaveLength(3);
-    expect(closing).toHaveLength(3);
-    expect(bodies.map((body) => body.max_output_tokens)).toEqual(Array(6).fill(512));
+    expect(closing).toHaveLength(6);
+    expect(closing.filter((body) => "text" in body)).toHaveLength(3);
+    expect(bodies.map((body) => body.max_output_tokens)).toEqual(Array(9).fill(512));
     expect(turns.map((body) => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
     expect(result.roles).toHaveLength(3);
   } finally {

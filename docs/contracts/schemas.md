@@ -1199,7 +1199,14 @@ Core-owned fields:
   `estimatedInputTokens`. The impressions-only request has `kind: impressions`;
   the optional `kind` field is absent on participant turns and in older bundles.
   Impressions carry the context the next turn would carry, with the same budget
-  and summarization of older turns. Billed input per request is in `tokenUsage.turns`. A
+  and summarization of older turns. The closing report and impressions requests
+  send no `text.format`, so they can read the session from the prompt cache; the
+  request states the JSON Schema in its input instead. A completed reply with no
+  JSON the schema accepts, apart from a refusal, can be sent once more with the
+  strict schema, only after the budget and time checks the first passed and with
+  a time bound of its own. An impressions request sent twice has two entries. The
+  closing report has no entry here. Each closing request that reported usage has
+  its own row in `tokenUsage.turns` after the participant's requests. Billed input per request is in `tokenUsage.turns`. A
   participant that ran in `explicit_context` gets a run warning. Absent on other
   providers and on earlier bundles
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which kind of route this

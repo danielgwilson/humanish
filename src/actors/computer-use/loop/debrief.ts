@@ -12,8 +12,8 @@ import { isCompleteTurnUsage } from "./usage.js";
 
 // The debrief: a structured completion stops interaction immediately, but the participant may not
 // yet have spoken. Request one read-only closing report using the already captured final
-// observation. No callbacks that coordinate live participants and no executor calls occur after
-// this point.
+// observation, and once more when the provider marks the reply closingRetry. No callbacks that
+// coordinate live participants and no executor calls occur after this point.
 
 type Debrief = NonNullable<ActorTrace["debrief"]>;
 
@@ -111,7 +111,7 @@ export async function requestDebrief(
   return debrief;
 }
 
-/** The debrief's one request, bound to its provider, and that request's time bound. */
+/** A closing request, bound to its provider, and that request's time bound. */
 interface PlannedRequest {
   readonly send: ClosingCall;
   readonly boundMs: number;
@@ -166,29 +166,88 @@ async function debriefExchange(
   context: DebriefContext,
   trigger: DebriefTrigger,
   ask: ClosingAsk,
-  { send, boundMs }: PlannedRequest,
+  plan: PlannedRequest,
   record: RecordDebrief,
 ): Promise<Debrief> {
+  const { provider } = session;
+  const request: CuaTurnRequest = {
+    instructions: session.settings.instructions,
+    observation: trigger.observation,
+    ...(provider.requestPolicy !== "fail_closed" || context.previousExecution === undefined
+      ? {}
+      : { previousExecution: context.previousExecution }),
+    ...(context.previousResponseId === undefined
+      ? {}
+      : { previousResponseId: context.previousResponseId }),
+    ...(context.acknowledgedSafetyChecks === undefined
+      ? {}
+      : { acknowledgedSafetyChecks: context.acknowledgedSafetyChecks }),
+    contextHint: ask.contextHint,
+  };
+  const first = await sendClosing(session, ask, request, plan);
+  if (!("turn" in first)) {
+    return first.status === "skipped"
+      ? record("skipped", `${first.detail}; no closing request was sent`)
+      : record("failed", first.detail, first.usageReported);
+  }
+  if (first.turn.closingRetry !== true)
+    return acceptDebriefTurn(session, first.turn, trigger, ask, record, first.usageReported);
+  // The first reply's usage is already recorded, so the checks see it. Under a cap, a reply
+  // without complete usage stops another paid request, as it does after a participant turn.
+  const again: DebriefPlan =
+    session.capDeclared && !first.usageReported
+      ? {
+          skip: "the closing request did not report complete usage, so the remaining model budget is unknown",
+        }
+      : planDebrief(session, ask, trigger);
+  const second: ClosingReply =
+    "skip" in again
+      ? { status: "skipped", detail: again.skip }
+      : await sendClosing(session, ask, request, again);
+  if ("turn" in second) {
+    const usageReported = first.usageReported && second.usageReported;
+    return acceptDebriefTurn(
+      session,
+      second.turn,
+      trigger,
+      ask,
+      record,
+      usageReported,
+      "; asked twice: the first reply was not the JSON the request asked for",
+    );
+  }
+  // The first reply stands, with why no second one replaced it.
+  const skipped = second.status === "skipped";
+  return acceptDebriefTurn(
+    session,
+    first.turn,
+    trigger,
+    ask,
+    record,
+    first.usageReported && (skipped || second.usageReported),
+    `; ${skipped ? "not asked again" : "asked once more"}: ${second.detail}`,
+  );
+}
+
+/** One closing request's reply and whether it reported complete usage, or why it gave none. */
+type ClosingReply =
+  | { readonly turn: CuaTurn; readonly usageReported: boolean }
+  | { readonly status: "skipped"; readonly detail: string }
+  | { readonly status: "failed"; readonly detail: string; readonly usageReported: boolean };
+
+/** Send one closing request within its time bound, and record the usage its reply reports. */
+async function sendClosing(
+  session: LoopSession,
+  ask: ClosingAsk,
+  request: CuaTurnRequest,
+  { send, boundMs }: PlannedRequest,
+): Promise<ClosingReply> {
   const { signal, provider } = session;
   const scope = requestScope(signal);
   const timer = setTimeout(() => scope.end(), boundMs);
   timer.unref?.();
   session.trace.bump("debriefCalls");
   try {
-    const request: CuaTurnRequest = {
-      instructions: session.settings.instructions,
-      observation: trigger.observation,
-      ...(provider.requestPolicy !== "fail_closed" || context.previousExecution === undefined
-        ? {}
-        : { previousExecution: context.previousExecution }),
-      ...(context.previousResponseId === undefined
-        ? {}
-        : { previousResponseId: context.previousResponseId }),
-      ...(context.acknowledgedSafetyChecks === undefined
-        ? {}
-        : { acknowledgedSafetyChecks: context.acknowledgedSafetyChecks }),
-      contextHint: ask.contextHint,
-    };
     const turn =
       provider.requestPolicy === "fail_closed"
         ? await singleDispatch(
@@ -198,14 +257,14 @@ async function debriefExchange(
             boundMs,
           )
         : await raceSessionDeadline(send(request, scope.signal), boundMs, signal);
-    return acceptDebriefTurn(session, turn, trigger, ask, record);
+    return { turn, usageReported: recordClosingUsage(session, turn) };
   } catch (error) {
     // A failed optional report cannot rewrite the already observed structured completion.
     if (isComputerUseAdmissionLimitError(error)) {
-      return record(
-        "skipped",
-        "the adapter reported a local admission limit before provider dispatch; no closing request was sent",
-      );
+      return {
+        status: "skipped",
+        detail: "the adapter reported a local admission limit before provider dispatch",
+      };
     }
     const detail = signal?.aborted
       ? "cancelled"
@@ -218,24 +277,19 @@ async function debriefExchange(
       provider.requestPolicy === "fail_closed" ? session.usage.requests.at(-1) : undefined;
     const usageReported =
       debriefReceipt?.usageComplete === true && isCompleteTurnUsage(debriefReceipt.usage);
-    return record(
-      "failed",
-      `${detail}; closing request usage is ${usageReported ? "reported" : "unreported"}`,
+    return {
+      status: "failed",
+      detail: `${detail}; closing request usage is ${usageReported ? "reported" : "unreported"}`,
       usageReported,
-    );
+    };
   } finally {
     clearTimeout(timer);
     scope.end();
   }
 }
 
-function acceptDebriefTurn(
-  session: LoopSession,
-  turn: CuaTurn,
-  trigger: DebriefTrigger,
-  ask: ClosingAsk,
-  record: RecordDebrief,
-): Debrief {
+/** Record a closing reply's usage, and say whether it was complete. */
+function recordClosingUsage(session: LoopSession, turn: CuaTurn): boolean {
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   session.usage.record(turn, "debrief");
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
@@ -255,18 +309,29 @@ function acceptDebriefTurn(
       ),
     );
   }
-  const usageReported =
-    isCompleteTurnUsage(turn.usage) && turn.providerRequest?.usageComplete !== false;
+  return isCompleteTurnUsage(turn.usage) && turn.providerRequest?.usageComplete !== false;
+}
+
+/** Accept a closing reply as the debrief's result; `note` adds why no later reply replaced it. */
+function acceptDebriefTurn(
+  session: LoopSession,
+  turn: CuaTurn,
+  trigger: DebriefTrigger,
+  ask: ClosingAsk,
+  record: RecordDebrief,
+  usageReported: boolean,
+  note = "",
+): Debrief {
   if (turn.actions.length > 0 || turn.pendingSafetyChecks.length > 0) {
     return record(
       "failed",
-      "the closing response requested actions or safety checks; none were executed and its report was not accepted",
+      `the closing response requested actions or safety checks; none were executed and its report was not accepted${note}`,
       usageReported,
     );
   }
   // First-party providers parse their replies already; these parses cover third-party ports.
   const { status, detail, ...added } = ask.read(session, turn, trigger);
-  return { ...record(status, detail, usageReported), ...added };
+  return { ...record(status, `${detail}${note}`, usageReported), ...added };
 }
 
 /**
@@ -330,6 +395,6 @@ function readImpressions(session: LoopSession, turn: CuaTurn): ReplyOutcome {
   return {
     status: "completed",
     detail:
-      "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+      "a read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
   };
 }
