@@ -18,8 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   MiB traces, capture raised peak memory by 987 to 990 MiB on 0.129.0 and by 240 to 282 MiB now,
   and both gave the same analysis input. With 29.6 MiB traces, which 0.129.0 refused, capture
   alone raised it by 327 to 375 MiB for 25 participants and by 284 to 321 MiB for 5. run.json is
-  still read only up to 16 MiB, and verify, which analysis runs first, still holds every trace at
-  once. The bundle estimate warns about a trace past 32 MiB, where it warned past 16 MiB. (#1840)
+  still read only up to 16 MiB. verify, which analysis runs first, still holds every trace at once
+  and scans the run as one string, so on a run whose traces together pass about 512 MiB, such as 25
+  participants at 30 MiB, verify stops with `RangeError: Invalid string length` and analysis with
+  `ANALYSIS_UNAVAILABLE`. The bundle estimate warns about a trace past 32 MiB, where it warned past
+  16 MiB. (#1840)
 - `humanish analyze` now says which file of a run it refused and why. A run.json or participant
   trace without the fields analysis reads (`ANALYSIS_SOURCE_INVALID`) printed "Analysis could not
   be completed safely. Source evidence was not changed."; the message now names the file and the
