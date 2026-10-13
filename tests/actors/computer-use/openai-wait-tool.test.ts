@@ -61,6 +61,26 @@ const doneReply = (n: number) => ({
   ],
 });
 
+/** A reply to a closing request: its JSON, as text, with `fields`. */
+const closingReply = (n: number, fields: Record<string, unknown>) => ({
+  id: `resp_${n}`,
+  status: "completed",
+  output: [
+    {
+      type: "message",
+      role: "assistant",
+      content: [{ type: "output_text", text: JSON.stringify(fields) }],
+    },
+  ],
+});
+const REPORT = {
+  outcome: "not_reached",
+  summary: "I watched the queue; nothing new came in.",
+  frictionReports: [],
+  impressions: [],
+};
+const IMPRESSIONS = { impressions: [] };
+
 /** Run one participant through the OpenAI provider; `replies[n]` answers request n + 1. */
 async function runOpenAi(
   replies: unknown[],
@@ -107,7 +127,11 @@ async function runOpenAi(
 
 describe("the wait_for_change tool", () => {
   it("is offered next to the computer tool on every request, the closing one included", async () => {
-    const { bodies } = await runOpenAi([computerWaitReply(1), doneReply(2), doneReply(3)]);
+    const { bodies } = await runOpenAi([
+      computerWaitReply(1),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
     expect(bodies).toHaveLength(3);
     expect(bodies[0]?.tools).toMatchObject([
       { type: "computer" },
@@ -172,13 +196,14 @@ describe("the wait_for_change tool", () => {
 
   it("is answered with the screen when the session ends during it, and the closing ask stays a message", async () => {
     const { bodies, sentAt } = await runOpenAi(
-      [waitForChangeReply(1, '{"minutes":3}'), doneReply(2)],
+      [waitForChangeReply(1, '{"minutes":3}'), closingReply(2, REPORT)],
       { clock: { end: { atMs: 2 * MINUTE, windDownMs: 2 * MINUTE, kind: "session_cap" } } },
     );
     expect(sentAt).toEqual([0, 120_000]);
     const closing = bodies[1]!;
     expect(closing.tool_choice).toBe("none");
-    expect(closing.input).toEqual([
+    expect(closing.input).toHaveLength(3);
+    expect(closing.input.slice(0, 2)).toEqual([
       {
         type: "function_call_output",
         call_id: "call_1",
