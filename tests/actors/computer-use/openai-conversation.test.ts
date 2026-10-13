@@ -259,3 +259,30 @@ describe("an impressions request", () => {
     },
   );
 });
+
+describe("a closing request before any reply was accepted", () => {
+  it.each([true, false])(
+    "still says what the session's end asks for and in what form, explicit context %s",
+    async (explicit) => {
+      const conversation = start(explicit);
+      const req = turnRequest();
+      // The first reply ran out of output, so the conversation has accepted none.
+      conversation.request(req).accept({
+        id: "resp_cut",
+        status: "incomplete",
+        incomplete_details: { reason: "max_output_tokens" },
+        output: [],
+      });
+      const sent: Record<string, unknown>[] = [];
+      const ask = "The interactive session has ended. Return a closing account.";
+      await conversation.close({ ...req, contextHint: ask }, "report", async (body) => {
+        sent.push(body);
+        return { id: "resp_report", status: "completed", output: [] };
+      });
+      const input = JSON.stringify((sent[0] as unknown as Body).input);
+      expect(input).toContain(ask);
+      expect(input).toContain("JSON Schema");
+      expect(input).toContain("data:image/png");
+    },
+  );
+});
