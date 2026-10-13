@@ -413,8 +413,8 @@ describe("each brain at a session cap", () => {
     },
   );
 
-  // The captured OpenAI report declares it in the first line of its summary. The Codex final
-  // account declares it in its outcome field, and its summary has no such line.
+  // The OpenAI closing report and the Codex final account both declare it in their outcome field.
+  // Neither summary opens with a declared line, so the field is the only source.
   it.each(CAPPED.filter((brain) => brain.collects))(
     "$name records the outcome its closing report declares at the cap",
     async ({ run }) => {

@@ -792,6 +792,39 @@ describe("runComputerUseLoop", () => {
     expect(resultBoth.trace.declaredOutcome).toBe("reached");
   });
 
+  it("reads the outcome a self-ending turn's closing report declares, as at a scheduled end", async () => {
+    const provider: CuaProvider = {
+      id: "port",
+      version: "p",
+      capabilities: FAKE_CAPS,
+      nextTurn: async () => ({
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        message: "I gave up on the export.",
+        closingReport: {
+          outcome: "not_reached",
+          summary: "I gave up on the export.",
+          frictionReports: [],
+        },
+      }),
+    };
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor: {
+        observe: async () => ({ screenshot: frame(), stateSignature: "s0" }),
+        execute: async () => {},
+      },
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+    });
+    expect(result.trace.declaredOutcome).toBe("not_reached");
+    expect(result.completionReason).toBe("gave_up");
+  });
+
   it("records the participant's declared outcome on the trace, and reads not_reached as gave_up", async () => {
     const run = async (outcome: "reached" | "not_reached" | "blocked" | undefined) => {
       const provider: CuaProvider = {

@@ -1,6 +1,7 @@
 import type {
   ActorCompletionReason,
   ActorStopCause,
+  ParticipantClosingReport,
   ParticipantDeclaredOutcome,
 } from "../../contract.js";
 import type { StopConditionMatch } from "../../stop-conditions.js";
@@ -61,14 +62,16 @@ export function declaredOutcomeFromClosingLine(
 }
 
 /**
- * The participant's own word for how it ended: the turn's schema field first, then the closing
- * line of `text`, its last message or its closing report's summary.
+ * The participant's own word for how it ended: its closing report's `outcome`, then the turn's
+ * (Codex and provider ports that set it there), then the closing line of `text`, its last message
+ * or its closing report's summary. A self-ending turn and a closing request read it in this order.
  */
 export function declaredOutcomeOf(
   turn: CuaTurn,
+  report: ParticipantClosingReport | undefined,
   text: string | undefined,
 ): ParticipantDeclaredOutcome | undefined {
-  return turn.outcome ?? declaredOutcomeFromClosingLine(text);
+  return report?.outcome ?? turn.outcome ?? declaredOutcomeFromClosingLine(text);
 }
 
 /**

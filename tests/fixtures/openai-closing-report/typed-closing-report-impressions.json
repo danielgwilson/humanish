@@ -11,7 +11,7 @@
           "type": "output_text",
           "annotations": [],
           "logprobs": [],
-          "text": "{\"summary\":\"REACHED THE GOAL.\\nAdded “Draft proposal,” renamed it to “Send proposal,” and observed the saved task displayed with an Edit button.\",\"frictionReports\":[\"Clicking Save twice did not visibly exit edit mode, so I hesitated because it was unclear whether the rename had been saved. Pressing Enter in the task field exited edit mode and displayed the renamed task normally.\"],\"impressions\":[{\"kind\":\"unclear\",\"text\":\"The Save button looked the same as the task text, so I could not tell it was a button at first.\"},{\"kind\":\"unlike_my_work\",\"text\":\"On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared, so I could not check what I had changed.\"}]}"
+          "text": "{\"outcome\":\"reached\",\"summary\":\"Added “Draft proposal,” renamed it to “Send proposal,” and observed the saved task displayed with an Edit button.\",\"frictionReports\":[\"Clicking Save twice did not visibly exit edit mode, so I hesitated because it was unclear whether the rename had been saved. Pressing Enter in the task field exited edit mode and displayed the renamed task normally.\"],\"impressions\":[{\"kind\":\"unclear\",\"text\":\"The Save button looked the same as the task text, so I could not tell it was a button at first.\"},{\"kind\":\"unlike_my_work\",\"text\":\"On my paper list I cross out the old name and write the new one beside it. Here the old name just disappeared, so I could not check what I had changed.\"}]}"
         }
       ],
       "phase": "final_answer",

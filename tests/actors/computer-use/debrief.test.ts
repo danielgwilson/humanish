@@ -199,6 +199,28 @@ describe("read-only participant debrief", () => {
     expect(resolveSelfReportedFriction(result)).toContain("Save button");
   });
 
+  it("keeps structured success when a closing report's outcome field says blocked", async () => {
+    const s = setup();
+    s.debrief.mockResolvedValue(
+      closing({
+        closingReport: {
+          outcome: "blocked",
+          summary: "I renamed the item.",
+          frictionReports: [report],
+        },
+      }),
+    );
+    const result = await s.run();
+    expect(result.trace.debrief).toMatchObject({
+      trigger: "stop_when",
+      status: "completed",
+      report: { summary: "I renamed the item.", frictionReports: [report] },
+    });
+    expect(result.status).toBe("passed");
+    expect(result.trace.declaredOutcome).toBeUndefined();
+    expect(resolveSelfReportedBlocker(result)).toBeUndefined();
+  });
+
   it.each([
     closing({ actions: [{ kind: "click", x: 0, y: 0 }] }),
     closing({ pendingSafetyChecks: [{ id: "safety", code: "check", message: "check" }] }),

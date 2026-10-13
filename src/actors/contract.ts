@@ -49,10 +49,11 @@ export type ActorStatus = (typeof ACTOR_STATUSES)[number];
 
 /**
  * What the participant said happened, in a field rather than a paragraph. Providers whose
- * reply is schema-constrained (the local-agent routes) fill it on their final turn; a free-text
- * provider leaves it absent and the route falls back to reading the closing message. `reached`:
- * the task is finished. `blocked`: something in the app stopped the participant. `not_reached`:
- * the participant stopped for another reason (gave up, ran out of ideas).
+ * reply is schema-constrained (the local-agent routes) fill it on their final turn, and a closing
+ * report carries it as `outcome`; a free-text turn leaves it absent and the route falls back to
+ * reading the closing message. `reached`: the task is finished. `blocked`: something in the app
+ * stopped the participant. `not_reached`: the participant stopped for another reason (gave up,
+ * ran out of ideas).
  */
 export type ParticipantDeclaredOutcome = "reached" | "not_reached" | "blocked";
 
@@ -562,8 +563,11 @@ export interface ActorTrace {
     reason: string;
     /** Absent if no request was made; false means token accounting is incomplete. */
     usageReported?: boolean;
-    /** The report's impressions are kept in `impressions`, with the messages that quote them. */
-    report?: Omit<ParticipantClosingReport, "impressions">;
+    /**
+     * The report's impressions are kept in `impressions`, with the messages that quote them, and
+     * the outcome it declared at a clock end in `declaredOutcome`.
+     */
+    report?: Omit<ParticipantClosingReport, "impressions" | "outcome">;
     /** Links the readable projection so it is not heuristically classified a second time. */
     messageId?: string;
   };

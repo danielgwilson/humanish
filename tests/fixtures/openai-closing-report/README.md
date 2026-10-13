@@ -8,6 +8,9 @@ Only response id, status, output computer/message items, and usage retained. Opa
 `typed-closing-report-impressions.json` is `typed-closing-report.json` with an `impressions` list
 added to the report text. The response shape and usage are unchanged from the capture; only the
 synthetic JSON inside `output_text` was extended when the closing schema gained `impressions`.
+When the closing schema gained a required `outcome`, that JSON gained `"outcome": "reached"` as
+its first key, and its summary lost the `REACHED THE GOAL.` first line. A test that reads the
+declared outcome from this reply can then get it only from the field.
 
 `impressions-only.json` is `typed-closing-report.json` with the response and item ids renamed and
 the `output_text` JSON replaced by the impressions-only reply `{"impressions": [...]}` that the

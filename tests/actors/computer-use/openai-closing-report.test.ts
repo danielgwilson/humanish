@@ -112,8 +112,9 @@ describe("captured OpenAI closing-report contract", () => {
           strict: true,
           schema: {
             additionalProperties: false,
-            required: ["summary", "frictionReports", "impressions"],
+            required: ["outcome", "summary", "frictionReports", "impressions"],
             properties: {
+              outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
               impressions: {
                 type: "array",
                 items: {
@@ -237,8 +238,9 @@ describe("limits the OpenAI participant is told", () => {
     expect(schemaOf(h.bodies[1])).toEqual({
       type: "object",
       additionalProperties: false,
-      required: ["summary", "frictionReports", "impressions"],
+      required: ["outcome", "summary", "frictionReports", "impressions"],
       properties: {
+        outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
         summary: said(4000),
         frictionReports: { type: "array", maxItems: 8, items: said(2000) },
         impressions: impressionsWire,
