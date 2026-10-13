@@ -207,6 +207,18 @@ describe("watchFrames on drawn frames", () => {
     expect(settledTimes(verdicts)).toEqual([100_000]);
   });
 
+  it("never settles a tile that differs from the reference by 2 pixels, an antialiased edge", () => {
+    // Live run 3c (wave 7): one tile held only a spinner's top edge, 2 pixels over the tolerance
+    // (largest channel difference 30), and woke a 900 s watch. Here 2 pixels of one tile darken
+    // by 30 from 10 s on.
+    const edge = PNG.sync.read(drawn(320, 160, []));
+    for (const x of [163, 164]) edge.data.fill(210, (103 * 320 + x) * 4, (103 * 320 + x) * 4 + 3);
+    const verdicts = watch(drawn(320, 160, []), everyFiveSeconds(5, 600), (atMs) =>
+      atMs < 10_000 ? drawn(320, 160, []) : PNG.sync.write(edge),
+    );
+    expect(settledTimes(verdicts)).toEqual([]);
+  });
+
   it("reads a frame of another size as one settled change over the whole frame", () => {
     const frames = watchFrames(drawn(320, 240, []));
     expect(frames.next(drawn(160, 120, []), 5_000)).toEqual({

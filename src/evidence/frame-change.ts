@@ -15,6 +15,13 @@ const TILE_PX = 16;
 /** A pixel changed when one of its channels differs by more than this (0 to 255). */
 const PIXEL_TOLERANCE = 24;
 /**
+ * A tile changed when at least this many of its pixels changed. One or two pixels are an
+ * antialiased edge: a spinner edge 2 pixels over the tolerance woke a 900 s watch in wave 7 live
+ * run 3c. On the wave 9 corpus every tile of its status and export labels changed 10 to 69 pixels,
+ * and its new rows kept all but 7 or 8 of their 502 to 545 tiles at 3.
+ */
+const TILE_MIN_PIXELS = 3;
+/**
  * A still region of more than this many tiles wakes the participant at once: it is above every
  * self-changing region measured except 11 of 110 tagline swaps, and below every page change.
  */
@@ -144,18 +151,20 @@ function compare(
   return UNCHANGED;
 }
 
-/** Whether any pixel of one tile differs between two frames of the same size. */
+/** Whether at least TILE_MIN_PIXELS pixels of one tile differ between two frames of one size. */
 function framesDiffer(a: Decoded, b: Decoded, column: number, row: number): boolean {
   const { width, height } = a;
   const xEnd = Math.min(width, (column + 1) * TILE_PX);
   const yEnd = Math.min(height, (row + 1) * TILE_PX);
+  let changed = 0;
   for (let y = row * TILE_PX; y < yEnd; y += 1)
     for (let x = column * TILE_PX; x < xEnd; x += 1) {
       const at = (y * width + x) * 4;
       if (
-        Math.abs(a.data[at]! - b.data[at]!) > PIXEL_TOLERANCE ||
-        Math.abs(a.data[at + 1]! - b.data[at + 1]!) > PIXEL_TOLERANCE ||
-        Math.abs(a.data[at + 2]! - b.data[at + 2]!) > PIXEL_TOLERANCE
+        (Math.abs(a.data[at]! - b.data[at]!) > PIXEL_TOLERANCE ||
+          Math.abs(a.data[at + 1]! - b.data[at + 1]!) > PIXEL_TOLERANCE ||
+          Math.abs(a.data[at + 2]! - b.data[at + 2]!) > PIXEL_TOLERANCE) &&
+        ++changed >= TILE_MIN_PIXELS
       )
         return true;
     }
@@ -177,20 +186,25 @@ function tilePixels(image: Decoded, column: number, row: number): Uint8Array {
   return pixels;
 }
 
-/** Whether any pixel of one tile of `image` differs from `pixels`, that tile's earlier pixels. */
+/**
+ * Whether at least TILE_MIN_PIXELS pixels of one tile of `image` differ from `pixels`, that tile's
+ * earlier pixels.
+ */
 function tileDiffers(pixels: Uint8Array, image: Decoded, column: number, row: number): boolean {
   const xStart = column * TILE_PX;
   const xEnd = Math.min(image.width, xStart + TILE_PX);
   const yEnd = Math.min(image.height, (row + 1) * TILE_PX);
   const { data } = image;
   let at = 0;
+  let changed = 0;
   for (let y = row * TILE_PX; y < yEnd; y += 1)
     for (let x = xStart; x < xEnd; x += 1, at += 4) {
       const from = (y * image.width + x) * 4;
       if (
-        Math.abs(pixels[at]! - data[from]!) > PIXEL_TOLERANCE ||
-        Math.abs(pixels[at + 1]! - data[from + 1]!) > PIXEL_TOLERANCE ||
-        Math.abs(pixels[at + 2]! - data[from + 2]!) > PIXEL_TOLERANCE
+        (Math.abs(pixels[at]! - data[from]!) > PIXEL_TOLERANCE ||
+          Math.abs(pixels[at + 1]! - data[from + 1]!) > PIXEL_TOLERANCE ||
+          Math.abs(pixels[at + 2]! - data[from + 2]!) > PIXEL_TOLERANCE) &&
+        ++changed >= TILE_MIN_PIXELS
       )
         return true;
     }
