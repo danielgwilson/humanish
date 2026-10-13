@@ -133,4 +133,51 @@ describe("a provisioned shared world with a declared schedule", () => {
       "1 participant used one shared app. 1 of 1 reached the goal. 1 participant was skipped before its session started; the gaps say why. The app's shared state changed 1 time during the run.",
     );
   });
+
+  it("does not count a participant skipped mid-session as overlap between two who ran in turn", async () => {
+    const state = { worldVersion: 0 };
+    const { env, deps } = baseSeams(state, async () => {});
+    const session = makeRunSession(state, async () => {});
+    let sessions = 0;
+    // Each read of this clock is 1 ms after the last, so the skipped participant's window is at
+    // least 1 ms wide.
+    let reads = 0;
+    const result = await runSharedWorld({
+      cwd,
+      // The first participant ends well before the second starts at 1 s. The second spends the
+      // study budget as it starts and holds its session past 1.3 s, when the third is due.
+      config: scheduled([undefined, 1_000, 1_300], { maxTotalUsd: 0.01 }),
+      dryRun: false,
+      env,
+      deps: {
+        ...deps,
+        now: () => Date.now() + reads++,
+        runSession: async (options: CuaActorSessionOptions) => {
+          sessions += 1;
+          if (sessions === 2) {
+            options.overRunBudget?.({ input: 1_000_000, output: 0 });
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+          return session(options);
+        },
+        analysis: { run: automaticAnalysisBoundary() },
+      },
+    });
+
+    expect(result.roles.map((role) => role.status)).toEqual(["passed", "passed", "blocked"]);
+    expect(result.overlapProven).toBe(false);
+    expect(result.maxSimultaneousLanes).toBe(1);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.review.summary).toContain(
+      "2 participants used one shared app, but never at the same time. 2 of 2 reached the goal. 1 participant was skipped before its session started; the gaps say why.",
+    );
+    const concurrency = bundle.events.find(
+      (event) => event.type === "concurrent-shared-world.concurrency",
+    );
+    expect(concurrency?.message).toContain(
+      "3 participants, up to 1 live at once (cap 3), overlap not observed",
+    );
+  });
 });

@@ -27,6 +27,7 @@ import {
   buildConcurrentSharedWorldBundle,
   judgeSharedWorldRun,
   maxSimultaneousWindows,
+  usedAppWindows,
 } from "./bundle.js";
 import { planeStateOf } from "./plan.js";
 import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
@@ -407,7 +408,9 @@ export async function finishConcurrentRun(
       ? {}
       : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
     ...(dryRun ? {} : { overlapProven }),
-    ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
+    ...(dryRun
+      ? {}
+      : { maxSimultaneousLanes: maxSimultaneousWindows(usedAppWindows(actorResults)) }),
     subject,
     roles: participantResults,
     observer,

@@ -1209,6 +1209,39 @@ describe("handoff timeout fail-closed", () => {
   });
 });
 
+describe("overlap when followers are skipped at the handoff", () => {
+  it("does not count a follower skipped at the handoff as live at the same time as the host", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    // Each follower is skipped while the host's session is still open.
+    expect(result.overlapProven).toBe(false);
+    const output = formatConcurrentSharedWorldStudyHuman(result);
+    const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    expect(lines).toContain("Participants were not observed using the app at the same time.");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    const concurrency = bundle.events.find(
+      (event) => event.type === "concurrent-shared-world.concurrency",
+    );
+    expect(concurrency?.message).toContain(
+      "3 participants, up to 1 live at once (cap 3), overlap not observed",
+    );
+    // run.json keeps a window for every declared participant; verify requires one each.
+    expect(bundle.sharedWorld?.laneWindows).toHaveLength(3);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 8. Verify evidence class (external-public) fail-closed inversions.
 // ---------------------------------------------------------------------------

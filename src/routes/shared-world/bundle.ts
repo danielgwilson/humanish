@@ -75,6 +75,17 @@ export function maxSimultaneousWindows(
 }
 
 /**
+ * The windows of the participants that used the app, for overlap and the live-at-once count. A
+ * participant the run skipped before its session started never used it, though its window sits
+ * inside another participant's session. run.json's laneWindows keep that window: verify expects
+ * one per declared participant, and reads overlap from them only on a pass, which a run with a
+ * skipped participant cannot reach.
+ */
+export function usedAppWindows(results: readonly ActorRunResult[]): ActorRunResult[] {
+  return results.filter((result) => result.outcome.skippedReason === undefined);
+}
+
+/**
  * The judgment for a shared-world bundle's inputs: how each participant ended, plus what the run
  * observed about its world: overlap, a state change under overlap on the provisioned plane, and
  * lobby convergence on the external-public plane. The bundle's verdict and the study result's ok
@@ -90,12 +101,8 @@ export function judgeSharedWorldRun(
     expected: args.actorSpecs.length,
     participants: args.actorResults.map((result) => participantFactsOf(result.outcome)),
     world: {
-      // The same windows and state series the bundle writes, read by verify's pass gate too.
       ...concurrencyFacts(
-        args.actorSpecs.map((_spec, index) => ({
-          startedAt: args.actorResults[index]?.startedAt ?? 0,
-          endedAt: args.actorResults[index]?.endedAt ?? 0,
-        })),
+        usedAppWindows(args.actorResults),
         external ? undefined : args.stateSnapshots,
       ),
       ...(external ? { lobbyConvergence: args.lobbyConvergenceDigest !== undefined } : {}),
@@ -378,7 +385,7 @@ function concurrencyReview(
   // The count that matters is how many participants were live at once, which can be fewer than exist:
   // a 6-participant run capped at 3 must never read as 6-wide concurrency.
   const capForReport = plan.concurrency;
-  const maxLive = maxSimultaneousWindows(windows);
+  const maxLive = maxSimultaneousWindows(usedAppWindows(args.actorResults));
   events.push({
     id: nextEventId("concurrency"),
     at: createdAt,
