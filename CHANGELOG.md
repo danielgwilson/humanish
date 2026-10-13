@@ -28,7 +28,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   as unavailable with the file's size. The Observer server reads run.json and a saved
   observer-data.json only up to 32 MiB, for its feed and page and for run.json asked for by name,
   and answers 404 with a reason naming the limit past it; it read both whole. Other run files asked
-  for by path, a trace or live file among them, are still sent whole.
+  for by path, a trace or live file among them, are still sent whole. (#1825)
 
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
