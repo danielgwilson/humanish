@@ -51,7 +51,7 @@ data: it checks the schema in the data slot and the feed before it validates
 (`observer/lib/data.ts`). A saved observer-data.json is read as v3
 (`observerDataFromSaved`): a v1 file, which holds the items, without its lists, and
 a v2 or v3 file only when no participant has items to join; the server answers one
-that leaves items out as unavailable. `humanish export` rebuilds a page saved as v2
+that leaves items out, or one of another schema, as unavailable. `humanish export` rebuilds a page saved as v2
 from the run and its traces, as it rebuilds a current one.
 
 ## Stream Model

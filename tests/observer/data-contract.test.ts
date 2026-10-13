@@ -170,5 +170,9 @@ describe("the Observer's data leaves the per-request lists out", () => {
     // One that names an actor left its items out, and the run's traces hold them.
     const named = { ...shell, streams: [{ ...shell.streams[0]!, actor: { reason: "x" } }] };
     expect(observerDataFromSaved(named)).toBeNull();
+    // A schema this version does not know stays unread, with or without participants' items.
+    const unknown = { ...shell, schema: "humanish.observer-data.v9", schemaVersion: 9 };
+    expect(observerDataFromSaved(unknown)).toBeNull();
+    expect(observerDataFromSaved({ ...unknown, streams: [] })).toBeNull();
   });
 });

@@ -310,16 +310,19 @@ function withoutStreamLists<T extends Partial<RunStream>>(stream: T): T {
  * observer-data.json written before v2 holds every participant's items, and its per-request lists,
  * which are left out. A v2 or v3 one holds no items, so it is read only when no participant has
  * any: showing participants with no steps would say they did nothing, and the items are in the
- * run's traces. Null for a projection that leaves items out.
+ * run's traces. Null for a projection that leaves items out, and for a schema other than v1, v2
+ * and v3.
  */
 export function observerDataFromSaved(value: unknown): ObserverData | null {
   const saved = value as ObserverData | ObserverShell;
-  if ((saved as { schema?: unknown }).schema === "humanish.observer-data.v1") {
+  const schema = (saved as { schema?: unknown }).schema;
+  if (schema === "humanish.observer-data.v1") {
     const streams = Array.isArray(saved.streams)
       ? (saved as ObserverData).streams.map(withoutStreamLists)
       : saved.streams;
     return { ...(saved as ObserverData), streams, schema: OBSERVER_DATA_SCHEMA, schemaVersion: 3 };
   }
+  if (schema !== "humanish.observer-data.v2" && schema !== OBSERVER_DATA_SCHEMA) return null;
   return shellNeedsItems(saved as ObserverShell)
     ? null
     : {
