@@ -195,6 +195,41 @@ describe("a closing reply that is not the schema's JSON", () => {
   });
 });
 
+describe("a closing reply that gives the schema's JSON with other text", () => {
+  const report = withImpressions.output[0].content[0].text as string;
+  const debrief = async (reply: unknown) => {
+    const h = scripted([pending, reply]);
+    await h.provider.nextTurn(request, signal);
+    return h.provider.debrief!(request, signal);
+  };
+
+  it("is accepted from a code fence without a retry", async () => {
+    const result = await debrief(closingSaying(`\`\`\`json\n${report}\n\`\`\``));
+    expect(result.closingRetry).toBeUndefined();
+    expect(result.closingReport).toEqual(JSON.parse(report));
+  });
+
+  it("is accepted after a message of its own without a retry", async () => {
+    const reply = closingSaying(report);
+    reply.output.unshift({
+      type: "message",
+      role: "assistant",
+      content: [{ type: "output_text", text: "Here is my closing account." }],
+    });
+    const result = await debrief(reply);
+    expect(result.closingRetry).toBeUndefined();
+    expect(result.closingReport).toEqual(JSON.parse(report));
+  });
+
+  it("is not asked for again after a refusal", async () => {
+    const reply = closingSaying(report);
+    reply.output[0].content = [{ type: "refusal", refusal: "I can't help with that." }];
+    const result = await debrief(reply);
+    expect(result.closingRetry).toBeUndefined();
+    expect(result.closingReport).toBeUndefined();
+  });
+});
+
 /** A session that stops when the screen shows "saved", then asks for the closing report. */
 async function stoppedSession(
   closingReplies: unknown[],

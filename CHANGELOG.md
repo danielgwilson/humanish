@@ -16,10 +16,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   In a live 4-minute run it now read 14,989 of its 17,210 input tokens from the cache, and cost
   about $0.02 of the run's $0.14. The request states the schema in its input and checks the
   reply's JSON locally against it, so a report without `outcome` or `impressions` does not pass.
-  A completed reply that does not match is sent once more with the strict schema, after the same
-  budget and time checks as the first and with a time bound of its own. Each closing request
-  that reports usage has its own `tokenUsage.turns` row, and the report's fields and outcomes are
-  unchanged (#1862).
+  The JSON may sit in a code fence or follow a message of its own. A completed reply that does not
+  match, apart from a refusal, is sent once more with the strict schema, after the same budget and
+  time checks as the first and with a time bound of its own. Each closing request that reports
+  usage has its own `tokenUsage.turns` row, and the report's fields and outcomes are unchanged
+  (#1862).
 
 ## 0.131.1: Hosted desktops keep their screens on while participants wait (2026-10-13)
 

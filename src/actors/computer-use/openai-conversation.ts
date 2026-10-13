@@ -8,6 +8,7 @@ import {
 import type { ActorConversation } from "../contract.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
+  asArray,
   asRecord,
   buildCallOutput,
   buildContinuationRequest,
@@ -138,7 +139,8 @@ export class OpenAiConversation {
     const completed = asRecord(reply).status === "completed";
     const parsed = parseOpenAiResponse(reply);
     const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
-    if (completed && account === undefined && !strict) {
+    // A refusal would most likely stand under the strict schema too, so it is not asked again.
+    if (completed && account === undefined && !strict && !refused(reply)) {
       this.openClosing = sent;
       return { ...parsed.turn, closingRetry: true };
     }
@@ -284,9 +286,11 @@ function closingAccount(
   closing: ClosingRequest,
   strict: boolean,
 ): Pick<CuaTurn, "closingReport"> | Pick<CuaTurn, "impressions"> | undefined {
+  // Without text.format a model may set the object in a code fence or after a message of its own.
+  const text = message ?? "";
   let reply: unknown;
   try {
-    reply = JSON.parse(message ?? "");
+    reply = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
   } catch {
     return undefined;
   }
@@ -296,6 +300,13 @@ function closingAccount(
   }
   const impressions = impressionsReplySchema.safeParse(reply);
   return impressions.success ? { impressions: impressions.data.impressions } : undefined;
+}
+
+/** Whether a reply's messages include a refusal, which carries no output_text. */
+function refused(reply: unknown): boolean {
+  return asArray(asRecord(reply).output).some((item) =>
+    asArray(asRecord(item).content).some((part) => asRecord(part).type === "refusal"),
+  );
 }
 
 /** The trace's account of how a session carried its conversation (ActorConversation). */

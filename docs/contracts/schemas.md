@@ -1201,8 +1201,9 @@ Core-owned fields:
   Impressions carry the context the next turn would carry, with the same budget
   and summarization of older turns. The closing report and impressions requests
   send no `text.format`, so they can read the session from the prompt cache; the
-  request states the JSON Schema in its input instead. A completed reply that is
-  not JSON the schema accepts can be sent once more with the strict schema. That
+  request states the JSON Schema in its input instead. A completed reply with no
+  JSON the schema accepts, apart from a refusal, can be sent once more with the
+  strict schema. That
   request goes out only after the budget and time checks the first passed, with
   a time bound of its own. An impressions request sent twice has two entries. The
   closing report has no entry here. Each closing request that reported usage has
