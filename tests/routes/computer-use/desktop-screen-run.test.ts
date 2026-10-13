@@ -61,8 +61,9 @@ async function runTwo(fakes: FanoutModuleOptions) {
 }
 
 /**
- * Runs a desktop command on this machine's bash with one folder under `dir` as the whole search
- * path, holding a stand-in xset when `withXset`, and returns each xset call's arguments.
+ * Runs a desktop command on this machine's bash, with no display variable set and one folder under
+ * `dir` as the whole search path, holding a stand-in xset when `withXset`. Returns each xset call's
+ * display and arguments.
  */
 async function xsetCallsOnBash(script: string, dir: string, withXset: boolean): Promise<string[]> {
   const bin = path.join(dir, "bin");
@@ -71,7 +72,10 @@ async function xsetCallsOnBash(script: string, dir: string, withXset: boolean): 
   await writeFile(calls, "");
   if (withXset) {
     const xset = path.join(bin, "xset");
-    await writeFile(xset, `#!/bin/bash\nprintf '%s\\n' "$*" >> '${calls}'\n`);
+    await writeFile(
+      xset,
+      `#!/bin/bash\nprintf 'DISPLAY=%s %s\\n' "\${DISPLAY-unset}" "$*" >> '${calls}'\n`,
+    );
     await chmod(xset, 0o755);
   }
   await promisify(execFile)("/bin/bash", ["-c", script], {
@@ -104,7 +108,9 @@ describe("the hosted desktop's screen saver", () => {
     expect(stepsOf(1)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
     const script = screenCommands[0]!;
-    expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual(["s off"]);
+    expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual([
+      "DISPLAY=:0 s off",
+    ]);
     // A desktop without xset is left as it is.
     expect(await xsetCallsOnBash(script, path.join(dir, "without"), false)).toEqual([]);
     expect(warnings.filter((warning) => warning.includes("screen saver"))).toEqual([]);
