@@ -544,8 +544,10 @@ export interface ActorTrace {
    * in the fixed first line its prompt asks for. It comes from its last message when it ended the
    * session itself, and from its accepted closing report at a scheduled end or a session cap.
    * Absent when it declared none, after a stop condition or a dwell window, and on every older
-   * bundle. The route reads this before it reads the closing paragraph; three regex patches in
-   * one month each fixed a false refusal and each left the next shape unhandled.
+   * bundle. The route reads a declared `reached` or `blocked` before it reads the closing
+   * paragraph; three regex patches in one month each fixed a false refusal and each left the next
+   * shape unhandled. A declared `not_reached` leaves the paragraph to say whether a blocker
+   * stopped the participant.
    */
   declaredOutcome?: ParticipantDeclaredOutcome;
   /**

@@ -273,9 +273,9 @@ function acceptDebriefTurn(
  * A closing report: its summary and friction as one participant message, then its impressions.
  * At a scheduled end or a session cap an accepted report is the participant's account of the
  * session: its summary becomes the session's reason (loopResult), so the outcome it declares
- * becomes the session's declared outcome, which the blocker rule reads before the summary's
- * wording. After a matched stop condition or dwell window, the condition stays the completion
- * evidence.
+ * becomes the session's declared outcome. The blocker rule reads a declared `reached` or
+ * `blocked` before the summary's wording. After a matched stop condition or dwell window, the
+ * condition stays the completion evidence.
  */
 function readClosingReport(
   session: LoopSession,

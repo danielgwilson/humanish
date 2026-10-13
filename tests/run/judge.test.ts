@@ -95,6 +95,17 @@ describe("selfReportedBlocker", () => {
     ).toBe(true);
   });
 
+  it("reads the closing report when the participant declared it did not reach the goal", () => {
+    // Only a session ended at its scheduled end or session cap claims the goal with this
+    // declaration; the declaration does not say whether something stopped the participant.
+    expect(
+      selfReportedBlocker(
+        ending({ declaredOutcome: "not_reached", closingReportReadsBlocked: true }),
+      ),
+    ).toBe(true);
+    expect(selfReportedBlocker(ending({ declaredOutcome: "not_reached" }))).toBe(false);
+  });
+
   it("only applies to a session that claimed the goal", () => {
     expect(
       selfReportedBlocker(

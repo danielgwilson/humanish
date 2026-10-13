@@ -58,11 +58,15 @@ additive to `humanish.actor-trace.v1`.
 
 - A computer-use participant's closing report at a scheduled end or a session cap now sets the
   trace's `declaredOutcome`: the first line of its summary (`REACHED THE GOAL.`,
-  `DID NOT REACH THE GOAL.` or `BLOCKED.`), or Codex's `outcome` field. The blocker rule reads it
-  before the summary's wording, so a report that opened `REACHED THE GOAL.` and later paraphrased
-  a page ("cannot be registered") passes, where it counted the participant blocked and failed the
-  run. `BLOCKED.` still counts the participant blocked, and a report that declares nothing is read
-  as before. After a matched stop condition or dwell window the report sets no declared outcome.
+  `DID NOT REACH THE GOAL.` or `BLOCKED.`), or Codex's `outcome` field. The blocker rule reads a
+  declared `REACHED THE GOAL.` or `BLOCKED.` before the summary's wording, so a report that opened
+  `REACHED THE GOAL.` and later paraphrased a page ("cannot be registered") passes, where it
+  counted the participant blocked and failed the run. `BLOCKED.` still counts the participant
+  blocked. A report that declares `DID NOT REACH THE GOAL.` or nothing is judged as before: it
+  counts the participant blocked when its summary describes a blocker, and otherwise passes. That
+  passing participant is still counted in the review summary as reporting that it reached the
+  goal, next to `declaredOutcome: not_reached` on its trace. After a matched stop condition or
+  dwell window the report sets no declared outcome.
 
 ## 0.125.0: Run bundle v3 with live items in append-only files, loadRunBundle, faster repeated verify (2026-10-12)
 

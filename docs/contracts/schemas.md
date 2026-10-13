@@ -255,7 +255,8 @@ The rest of this section names keys by their v3 spelling:
   route's headroom to that. At the end the loop requests the closing report (`debrief.trigger:
   scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. The
   outcome an accepted report declares, its `outcome` field or the first line of its summary, is
-  the trace's `declaredOutcome`, and the blocker rule reads it before the summary. Before
+  the trace's `declaredOutcome`. The blocker rule reads a declared `reached` or `blocked` before
+  the summary, and after a declared `not_reached` it reads the summary. Before
   the end, a turn that requests no action does not end the session: the trace records a
   `participant ended before its scheduled end` notice, the next request says the time left, and
   the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
