@@ -3066,13 +3066,13 @@ $2
 YAML
 }
 
-# 20ce. Participants arriving over time (#1745): two nurses from the start and six patients from
-# the second minute, five minutes apart. `study check` prints the schedule row, a dry run's plan
-# prints the schedule line, and run.json records each participant's arrival offset. 0.118.0 refuses
-# startAfterMs and startEveryMs as unknown fields.
-arrive_study arrive "  - id: nurse
+# 20ce. Participants arriving over time (#1745): two support agents from the start and six
+# customers from the second minute, five minutes apart. `study check` prints the schedule row, a
+# dry run's plan prints the schedule line, and run.json records each participant's arrival offset.
+# 0.118.0 refuses startAfterMs and startEveryMs as unknown fields.
+arrive_study arrive "  - id: support-agent
     count: 2
-  - id: patient
+  - id: customer
     count: 6
     startAfterMs: 120000
     startEveryMs: 300000"

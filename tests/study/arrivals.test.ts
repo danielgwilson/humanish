@@ -54,34 +54,34 @@ function participantStarts(result: StudyPlan): [string, number | undefined][] {
 
 describe("declaring when participants start", () => {
   it("gives each roster entry the offset it declares", () => {
-    const clinic = study("cuAppUrl", {
+    const desk = study("cuAppUrl", {
       participants: [
-        { id: "nurse" },
-        { id: "patient-a", startAfterMs: 30 * S },
-        { id: "patient-b", startAfterMs: 90 * S },
+        { id: "support-agent" },
+        { id: "customer-a", startAfterMs: 30 * S },
+        { id: "customer-b", startAfterMs: 90 * S },
       ],
     });
-    expect(participantStarts(planned(plan(clinic)))).toEqual([
-      ["nurse", undefined],
-      ["patient-a", 30_000],
-      ["patient-b", 90_000],
+    expect(participantStarts(planned(plan(desk)))).toEqual([
+      ["support-agent", undefined],
+      ["customer-a", 30_000],
+      ["customer-b", 90_000],
     ]);
   });
 
   it("spreads a group's members at its interval from the group's own start", () => {
-    const clinic = study("cuAppUrl", {
+    const desk = study("cuAppUrl", {
       participants: [
-        { id: "staff", count: 2 },
-        { id: "patient", count: 4, startAfterMs: 60 * S, startEveryMs: 30 * S },
+        { id: "support-agent", count: 2 },
+        { id: "customer", count: 4, startAfterMs: 60 * S, startEveryMs: 30 * S },
       ],
     });
-    expect(participantStarts(planned(plan(clinic)))).toEqual([
-      ["staff-01", undefined],
-      ["staff-02", undefined],
-      ["patient-01", 60_000],
-      ["patient-02", 90_000],
-      ["patient-03", 120_000],
-      ["patient-04", 150_000],
+    expect(participantStarts(planned(plan(desk)))).toEqual([
+      ["support-agent-01", undefined],
+      ["support-agent-02", undefined],
+      ["customer-01", 60_000],
+      ["customer-02", 90_000],
+      ["customer-03", 120_000],
+      ["customer-04", 150_000],
     ]);
   });
 
@@ -116,16 +116,16 @@ describe("declaring when participants start", () => {
 
   it("refuses an interval of 0", () => {
     const message = parseRefusal("cuAppUrl", {
-      participants: [{ id: "patient", count: 3, startEveryMs: 0 }],
+      participants: [{ id: "customer", count: 3, startEveryMs: 0 }],
     });
     expect(message).toContain("participants[0].startEveryMs");
   });
 
   it("refuses a group whose last member would start past 24 hours", () => {
     const message = parseRefusal("cuAppUrl", {
-      participants: [{ id: "patient", count: 3, startEveryMs: 12 * HOURS + 1 }],
+      participants: [{ id: "customer", count: 3, startEveryMs: 12 * HOURS + 1 }],
     });
-    expect(message).toContain("patient-03");
+    expect(message).toContain("customer-03");
     expect(message).toContain("86400000");
   });
 
@@ -152,7 +152,7 @@ describe("declaring when participants start", () => {
 describe("the plan's schedule", () => {
   it("says when the first and last participant start and how many run at once", () => {
     const day = study("cuAppUrl", {
-      participants: [{ id: "patient", count: 8, startEveryMs: 30 * S }],
+      participants: [{ id: "customer", count: 8, startEveryMs: 30 * S }],
       execution: { target: "e2b-desktop", timeoutMs: 120 * S },
     });
     const result = planned(plan(day));
@@ -171,12 +171,12 @@ describe("the plan's schedule", () => {
   it("holds participants past the E2B plan's limit until a slot frees and names the setting", () => {
     // 24 participants a second apart with 1-minute sessions would have all 24 live at 23 s.
     const rush = study("cuAppUrl", {
-      participants: [{ id: "patient", count: 24, startEveryMs: 1 * S }],
+      participants: [{ id: "customer", count: 24, startEveryMs: 1 * S }],
     });
     const atDefault = planned(plan(rush));
     if (atDefault.route !== "computer-use") throw new Error(atDefault.route);
     expect(atDefault.concurrency).toBe(20);
-    // patient-21 is due at 20 s and starts when patient-01 ends at 60 s; the last starts at 63 s.
+    // customer-21 is due at 20 s and starts when customer-01 ends at 60 s; the last starts at 63 s.
     expect(atDefault.arrivals).toMatchObject({
       peak: 20,
       waiting: 4,
@@ -194,7 +194,7 @@ describe("the plan's schedule", () => {
 
   it("does not warn about waves when the schedule never needs more slots than the plan runs", () => {
     const spread = study("cuAppUrl", {
-      participants: [{ id: "patient", count: 24, startEveryMs: 30 * S }],
+      participants: [{ id: "customer", count: 24, startEveryMs: 30 * S }],
     });
     const result = planned(plan(spread));
     expect(result.route === "computer-use" && result.arrivals?.peak).toBe(2);
@@ -207,18 +207,18 @@ describe("study check", () => {
     const cwd = await makeTestTempDir("humanish-arrivals-check-");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
-      path.join(cwd, "humanish", "studies", "clinic.yaml"),
+      path.join(cwd, "humanish", "studies", "support-desk.yaml"),
       stringify(
         lab("cuAppUrl", {
-          id: "clinic",
-          participants: [{ id: "patient", count: 8, startEveryMs: 30 * S }],
+          id: "support-desk",
+          participants: [{ id: "customer", count: 8, startEveryMs: 30 * S }],
           execution: { target: "e2b-desktop", timeoutMs: 120 * S, concurrency: 3 },
         }),
       ),
     );
-    const check = await runStudyPreflight({ cwd, study: "clinic", env: {} });
+    const check = await runStudyPreflight({ cwd, study: "support-desk", env: {} });
     expect(check.ok).toBe(true);
-    // With 3 slots the fourth patient, due at 90 s, waits for the first to end at 120 s; each
+    // With 3 slots the fourth customer, due at 90 s, waits for the first to end at 120 s; each
     // later one waits too, and the seventh and eighth by a minute (due 180 s, start 240 s).
     expect(check.checks.find((row) => row.name === "schedule")?.message).toBe(
       "the first participant starts at +0s and the last at +3m 30s; at most 3 run at once when every session uses its 2m budget; 5 participants then start late, waiting for a free slot, the latest by 1m.",

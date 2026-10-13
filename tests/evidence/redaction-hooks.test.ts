@@ -36,7 +36,7 @@ describe("digestText", () => {
 
 describe("promptForLog", () => {
   it("references a prompt without leaking its text", () => {
-    const raw = "Act as Dana, a cautious cash-pay patient. Email dana@example.test, code 111111.";
+    const raw = "Act as Dana, a cautious first-time buyer. Email dana@example.test, code 111111.";
     const ref = promptForLog(raw);
 
     expect(ref.length).toBe(raw.length);

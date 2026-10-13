@@ -33,10 +33,10 @@ const MINUTE = 60_000;
 const NINE_UTC = Date.UTC(2026, 9, 12, 9, 0);
 
 /**
- * A staff participant whose every turn takes a minute of the clock and clicks somewhere new. It
+ * A support agent whose every turn takes a minute of the clock and clicks somewhere new. It
  * never ends on its own. Its closing report is the one the debrief returns.
  */
-function shift(
+function agentSession(
   clock: ParticipantClock,
   options: {
     endsItself?: (turn: number) => boolean;
@@ -53,7 +53,7 @@ function shift(
   const seen: CuaTurnRequest[] = [];
   const debriefs: CuaTurnRequest[] = [];
   const provider: CuaProvider = {
-    id: "staff",
+    id: "support-agent",
     capabilities: CAPS,
     async nextTurn(request) {
       seen.push(request);
@@ -69,7 +69,7 @@ function shift(
         actions: [{ kind: "click", x: seen.length, y: 1 }],
         pendingSafetyChecks: [],
         done: false,
-        message: `Seeing patient ${seen.length}.`,
+        message: `Answering customer ${seen.length}.`,
       };
     },
     async debrief(request) {
@@ -78,12 +78,12 @@ function shift(
         actions: [],
         pendingSafetyChecks: [],
         done: true,
-        message: "Shift over.",
+        message: "Session over.",
         ...(options.report === false
           ? {}
           : {
               closingReport: {
-                summary: options.summary ?? "I saw ten patients.",
+                summary: options.summary ?? "I answered ten customers.",
                 frictionReports: [],
               },
             }),
@@ -92,7 +92,7 @@ function shift(
   };
   let observed = 0;
   const done = runComputerUseLoop({
-    instructions: "Work the front desk until your shift ends.",
+    instructions: "Answer customers at the support desk until your session ends.",
     provider,
     executor: {
       observe: async () => ({ screenshot: FRAME, stateSignature: `s${(observed += 1)}` }),
@@ -113,7 +113,7 @@ const CLOSE =
 
 describe("a participant with a scheduled end", () => {
   it("is told the end time and the minutes left from the start of its wind-down", async () => {
-    const run = shift({ end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } });
+    const run = agentSession({ end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } });
     await run.done;
     // Turn n is requested at 09:0(n-1); the wind-down starts at 09:07, turn 8.
     expect(run.seen.map((request) => request.contextHint)).toEqual([
@@ -131,25 +131,25 @@ describe("a participant with a scheduled end", () => {
   });
 
   it("ends at its time with its closing report as its reason, as a planned end that passes", async () => {
-    const run = shift({ end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } });
+    const run = agentSession({ end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } });
     const result = await run.done;
     expect(run.seen).toHaveLength(10);
     expect(run.debriefs).toHaveLength(1);
     expect(result.status).toBe("passed");
     expect(result.completionReason).toBe("goal_satisfied");
     expect(result.trace.stopCause).toBe("scheduled_end");
-    expect(result.reason).toBe("I saw ten patients.");
-    expect(result.trace.reason).toBe("I saw ten patients.");
+    expect(result.reason).toBe("I answered ten customers.");
+    expect(result.trace.reason).toBe("I answered ten customers.");
     expect(result.trace.debrief).toMatchObject({
       trigger: "scheduled_end",
       status: "completed",
-      report: { summary: "I saw ten patients.", frictionReports: [] },
+      report: { summary: "I answered ten customers.", frictionReports: [] },
     });
   });
 
   it.each([
     {
-      summary: "REACHED THE GOAL.\nThe front desk guide says walk-ins cannot be booked online.",
+      summary: "REACHED THE GOAL.\nThe help page says gift cards cannot be bought online.",
       declared: "reached",
       blocker: undefined,
     },
@@ -159,7 +159,7 @@ describe("a participant with a scheduled end", () => {
       blocker: "BLOCKED.\nThe check-in form never opened.",
     },
   ])("records the outcome its closing report declares: $declared", async (report) => {
-    const run = shift(
+    const run = agentSession(
       { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
       { summary: report.summary },
     );
@@ -170,7 +170,7 @@ describe("a participant with a scheduled end", () => {
   });
 
   it("keeps the scheduled end as its reason when no closing report came back", async () => {
-    const run = shift(
+    const run = agentSession(
       { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
       {
         report: false,
@@ -182,7 +182,7 @@ describe("a participant with a scheduled end", () => {
   });
 
   it("adds the local time to every turn when the actor declares a time zone", async () => {
-    const run = shift({
+    const run = agentSession({
       timeZone: "America/Los_Angeles",
       end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE },
     });
@@ -195,7 +195,7 @@ describe("a participant with a scheduled end", () => {
 
   it("keeps a participant that ends itself before its end working, told the time left", async () => {
     // It ends itself on turn 3, at 09:02, and then goes back to work.
-    const run = shift(
+    const run = agentSession(
       { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
       { endsItself: (turn) => turn === 3 },
     );
@@ -208,7 +208,7 @@ describe("a participant with a scheduled end", () => {
   });
 
   it("ends a participant that keeps ending itself before its end when its idle streak trips", async () => {
-    const run = shift(
+    const run = agentSession(
       { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
       { endsItself: (turn) => turn >= 3, idleSteps: 3 },
     );
@@ -220,17 +220,17 @@ describe("a participant with a scheduled end", () => {
 });
 
 /**
- * A staff participant on a quiet shift: every turn only waits, 10 s of the clock apart, on a
+ * A support agent in a quiet session: every turn only waits, 10 s of the clock apart, on a
  * screen that never changes.
  */
-async function quietShift(clock: ParticipantClock | undefined): Promise<{
+async function quietSession(clock: ParticipantClock | undefined): Promise<{
   result: CuaLoopResult;
   turns: number;
 }> {
   let t = NINE_UTC;
   let turns = 0;
   const provider: CuaProvider = {
-    id: "staff",
+    id: "support-agent",
     capabilities: CAPS,
     async nextTurn() {
       turns += 1;
@@ -242,15 +242,15 @@ async function quietShift(clock: ParticipantClock | undefined): Promise<{
         actions: [],
         pendingSafetyChecks: [],
         done: true,
-        closingReport: { summary: "No patient came.", frictionReports: [] },
+        closingReport: { summary: "No customer came.", frictionReports: [] },
       };
     },
   };
   const result = await runComputerUseLoop({
-    instructions: "Wait at the front desk for patients until your shift ends.",
+    instructions: "Wait at the support desk for customers until your session ends.",
     provider,
     executor: {
-      observe: async () => ({ screenshot: FRAME, stateSignature: "empty waiting room" }),
+      observe: async () => ({ screenshot: FRAME, stateSignature: "empty queue" }),
       execute: async () => undefined,
     },
     persona,
@@ -263,10 +263,10 @@ async function quietShift(clock: ParticipantClock | undefined): Promise<{
   return { result, turns };
 }
 
-describe("waiting on a quiet shift", () => {
+describe("waiting through a quiet session", () => {
   it("does not end a participant with a scheduled end for waiting before its end", async () => {
     // 60 waiting turns, past both the 24-turn idle and the 20-turn no-progress streaks.
-    const { result, turns } = await quietShift({
+    const { result, turns } = await quietSession({
       end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE },
     });
     expect(turns).toBe(60);
@@ -277,7 +277,7 @@ describe("waiting on a quiet shift", () => {
 
   it("still ends a participant without a scheduled end that only waits", async () => {
     // Turn 1 sets the repetition baseline; turns 2 to 21 repeat the wait on an unchanged screen.
-    const { result, turns } = await quietShift(undefined);
+    const { result, turns } = await quietSession(undefined);
     expect(result.completionReason).toBe("gave_up");
     expect(turns).toBe(21);
   });

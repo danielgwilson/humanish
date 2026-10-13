@@ -1,7 +1,7 @@
 // A participant may wait longer or shorter than the others when its turn only waits:
 // `participants[].idleWaitMs` over `actor.idleWaitMs`, in the range the actor field takes and no
-// longer than an explicit `actor.maxWaitMs`. A staff member waiting out a shift waits a minute
-// at a time while patients keep the 5-second default.
+// longer than an explicit `actor.maxWaitMs`. A support agent waiting through a long session waits
+// a minute at a time while customers keep the 5-second default.
 
 import { describe, expect, it } from "vitest";
 
@@ -38,20 +38,20 @@ const plan = (config: StudyConfig) =>
 
 describe("a participant's own idle wait", () => {
   it("overrides actor.idleWaitMs for that participant and for each member of a group", () => {
-    const clinic = study({
+    const desk = study({
       actor: { type: "openai-computer-use", idleWaitMs: 5_000 },
       participants: [
-        { id: "staff", idleWaitMs: 60_000 },
-        { id: "patient", count: 2, startAfterMs: 30_000 },
-        { id: "nurse", count: 2, idleWaitMs: 20_000 },
+        { id: "support-agent", idleWaitMs: 60_000 },
+        { id: "customer", count: 2, startAfterMs: 30_000 },
+        { id: "support-lead", count: 2, idleWaitMs: 20_000 },
       ],
     });
-    expect(plannedIdleWaits(plan(clinic))).toEqual([
-      ["staff", 60_000],
-      ["patient-01", 5_000],
-      ["patient-02", 5_000],
-      ["nurse-01", 20_000],
-      ["nurse-02", 20_000],
+    expect(plannedIdleWaits(plan(desk))).toEqual([
+      ["support-agent", 60_000],
+      ["customer-01", 5_000],
+      ["customer-02", 5_000],
+      ["support-lead-01", 20_000],
+      ["support-lead-02", 20_000],
     ]);
   });
 

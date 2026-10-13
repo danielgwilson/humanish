@@ -45,7 +45,7 @@ export function parseParticipantFiles(
     if (from === undefined || as === undefined) return invalid(listReason);
     if (!isPlainRelativePath(from))
       return invalid(
-        `\`${at}.from\` must be a path inside the folder that holds the study file, written relative to it, such as fixtures/insurance-card.png, with / between folders and no empty, . or .. part.`,
+        `\`${at}.from\` must be a path inside the folder that holds the study file, written relative to it, such as fixtures/photo.png, with / between folders and no empty, . or .. part.`,
       );
     if (isLocalTreeDenylisted(from))
       return invalid(
@@ -53,18 +53,18 @@ export function parseParticipantFiles(
       );
     if (!isPlainRelativePath(as) || as.startsWith("~"))
       return invalid(
-        `\`${at}.as\` must be a path relative to the desktop user's home folder, such as Downloads/insurance-card.png, with / between folders, no empty, . or .. part, and no leading ~.`,
+        `\`${at}.as\` must be a path relative to the desktop user's home folder, such as Downloads/photo.png, with / between folders, no empty, . or .. part, and no leading ~.`,
       );
     if (isHumanishDesktopPath(as))
       return invalid(
-        `\`${at}.as\` is a path humanish uses on the desktop: ${SUBJECT_FOLDER}/ holds the cloned or unpacked app, and names that start with .humanish are humanish's own files. Pick another path, such as Downloads/insurance-card.png.`,
+        `\`${at}.as\` is a path humanish uses on the desktop: ${SUBJECT_FOLDER}/ holds the cloned or unpacked app, and names that start with .humanish are humanish's own files. Pick another path, such as Downloads/photo.png.`,
       );
     // The run records `as`, and redacting it would record a different path. Encoded text the
     // public-safety scan cannot read would leave run.json unscanned.
     const scanned = scanEncodedText(as);
     if (scanned.sensitive || scanned.opaque)
       return invalid(
-        `\`${at}.as\` looks like a secret, a local path or encoded text, and the run records it. Name the file plainly, such as Downloads/insurance-card.png.`,
+        `\`${at}.as\` looks like a secret, a local path or encoded text, and the run records it. Name the file plainly, such as Downloads/photo.png.`,
       );
     const clash = files.find(
       (earlier) =>

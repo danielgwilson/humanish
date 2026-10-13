@@ -652,7 +652,7 @@ export function createOpenAiResponsesProvider(
     // Both are offered in both modes. A threaded request reads the session the server holds; an
     // explicit_context one carries its newest screens whole and its oldest turns summarized past
     // the budget, which the trace's conversation record counts. A participant that worked a long
-    // shift writes its closing account from what it carries, as a person writes one from memory.
+    // session writes its closing account from what it carries, as a person writes one from memory.
     debrief: (req, signal) => requestTurn(req, signal, "report"),
     requestImpressions: (req, signal) => requestTurn(req, signal, "impressions"),
   };

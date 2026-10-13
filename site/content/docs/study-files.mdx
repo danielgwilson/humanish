@@ -205,14 +205,14 @@ On `computer-use`, a participant whose desktop fails to start is recorded as fai
 
 ### Give a participant files to upload
 
-A participant on a hosted desktop starts with an empty home folder, so a flow that asks for a photo of an insurance card or a signed form needs the file put there first. `participants[].files` copies each file onto that participant's desktop before its browser opens, and the browser's file chooser finds it:
+A participant on a hosted desktop starts with an empty home folder, so a flow that asks for a profile photo or a signed form needs the file put there first. `participants[].files` copies each file onto that participant's desktop before its browser opens, and the browser's file chooser finds it:
 
 ```yaml
 participants:
-  - id: patient
+  - id: applicant
     files:
-      - from: fixtures/insurance-card.png # next to the study file
-        as: Downloads/insurance-card.png # in the desktop user's home folder
+      - from: fixtures/photo.png # next to the study file
+        as: Downloads/photo.png # in the desktop user's home folder
 ```
 
 - `from` is relative to the folder that holds the study file; for a committed study that is `humanish/studies/`. A library `runStudy` call has no study file, so its `from` is relative to `cwd`.
@@ -227,16 +227,16 @@ participants:
 
 ### Start participants over time
 
-A participant starts with the run unless its entry sets `startAfterMs`. A group spreads its members with `startEveryMs`: member k starts at `startAfterMs + (k - 1) × startEveryMs`. In this study two nurses work from the start, and six patients arrive five minutes apart from the second minute:
+A participant starts with the run unless its entry sets `startAfterMs`. A group spreads its members with `startEveryMs`: member k starts at `startAfterMs + (k - 1) × startEveryMs`. In this study two support agents work from the start, and six customers arrive five minutes apart from the second minute:
 
 ```yaml
 participants:
-  - id: nurse
+  - id: support-agent
     count: 2
-  - id: patient
+  - id: customer
     count: 6
-    startAfterMs: 120000 # patient-01 at 2 minutes
-    startEveryMs: 300000 # then one every 5 minutes, patient-06 at 27 minutes
+    startAfterMs: 120000 # customer-01 at 2 minutes
+    startEveryMs: 300000 # then one every 5 minutes, customer-06 at 27 minutes
 ```
 
 - The latest start is 24 hours. A study of one participant takes no `startAfterMs`, and on `shared-world` with `app-url` the `host` starts with the run.
@@ -247,18 +247,18 @@ participants:
 
 ### End a participant at a set time
 
-A `computer-use` participant whose entry sets `endAfterMs` works until that time, on the same clock as `startAfterMs`, and does not run out at `execution.timeoutMs`. In this study a receptionist works a 4-hour shift while patients arrive:
+A `computer-use` participant whose entry sets `endAfterMs` works until that time, on the same clock as `startAfterMs`, and does not run out at `execution.timeoutMs`. In this study a support agent stays on for 4 hours while customers arrive:
 
 ```yaml
 actor:
   clock:
     timeZone: Europe/London # optional: each turn says the local time
 participants:
-  - id: receptionist
-    endAfterMs: 14400000 # the shift ends at 4 hours
+  - id: support-agent
+    endAfterMs: 14400000 # the session ends at 4 hours
     windDownMs: 900000 # told the time left from 3 hours 45 minutes
-    idleWaitMs: 60000 # waits a minute at a time between patients
-  - id: patient
+    idleWaitMs: 60000 # waits a minute at a time between customers
+  - id: customer
     count: 12
     startAfterMs: 600000
     startEveryMs: 1200000

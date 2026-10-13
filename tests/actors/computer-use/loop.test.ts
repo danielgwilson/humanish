@@ -241,7 +241,7 @@ describe("runComputerUseLoop", () => {
         actions: [],
         pendingSafetyChecks: [],
         done: true,
-        message: "Booked the appointment.",
+        message: "Placed the order.",
         responseId: "r3",
       },
     ]);
@@ -249,7 +249,7 @@ describe("runComputerUseLoop", () => {
     const sink = recorder();
 
     const result = await runComputerUseLoop({
-      instructions: "Act as Dana and book a visit.",
+      instructions: "Act as Dana and place an order.",
       provider,
       executor,
       persona,
@@ -261,7 +261,7 @@ describe("runComputerUseLoop", () => {
 
     expect(result.status).toBe("passed");
     expect(result.completionReason).toBe("goal_satisfied");
-    expect(result.reason).toBe("Booked the appointment.");
+    expect(result.reason).toBe("Placed the order.");
     expect(result.trace.schema).toBe("humanish.actor-trace.v1");
     expect(result.trace.lane).toBe("computer-use");
     expect(result.trace.protocol).toBe("cua-loop");

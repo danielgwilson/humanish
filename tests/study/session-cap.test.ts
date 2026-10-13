@@ -56,7 +56,7 @@ describe("declaring a session cap", () => {
           participants: [
             { id: "quick", maxSessionMs: 10 * MIN },
             { id: "slow", maxSessionMs: 20 * MIN, windDownMs: 2 * MIN },
-            { id: "staff" },
+            { id: "support-agent" },
           ],
         }),
       ),
@@ -71,7 +71,7 @@ describe("declaring a session cap", () => {
     ).toEqual([
       { id: "quick", maxSessionMs: 600_000, windDownMs: 150_000 },
       { id: "slow", maxSessionMs: 1_200_000, windDownMs: 120_000 },
-      { id: "staff", maxSessionMs: undefined, windDownMs: undefined },
+      { id: "support-agent", maxSessionMs: undefined, windDownMs: undefined },
     ]);
   });
 
@@ -145,7 +145,7 @@ describe("a session cap and the plan", () => {
     const visit = planned(
       plan(
         study("cuAppUrl", {
-          participants: [{ id: "quick", maxSessionMs: 10 * MIN }, { id: "staff" }],
+          participants: [{ id: "quick", maxSessionMs: 10 * MIN }, { id: "support-agent" }],
         }),
       ),
     );
@@ -159,7 +159,7 @@ describe("a session cap and the plan", () => {
     expect(participantPlan.worstCaseSandboxMinutes).toBe(36);
     expect(participantPlan.lanes.map(({ id, maxSessionMs }) => [id, maxSessionMs])).toEqual([
       ["quick", 600_000],
-      ["staff", undefined],
+      ["support-agent", undefined],
     ]);
   });
 
@@ -207,7 +207,7 @@ describe("study check and the estimates", () => {
     participants: [
       { id: "quick", maxSessionMs: 10 * MIN },
       { id: "slow", maxSessionMs: 20 * MIN, windDownMs: 2 * MIN },
-      { id: "staff" },
+      { id: "support-agent" },
     ],
   };
 
@@ -221,7 +221,7 @@ describe("study check and the estimates", () => {
     const check = await runStudyPreflight({ cwd, study: "visit", env: {} });
     expect(check.ok).toBe(true);
     expect(check.checks.find((row) => row.name === "windows")?.message).toBe(
-      "quick from +0s until it ends itself or for up to 10m, told the time left from 7m 30s into its session; slow from +0s until it ends itself or for up to 20m, told the time left from 18m into its session; staff from +0s for up to 1m.",
+      "quick from +0s until it ends itself or for up to 10m, told the time left from 7m 30s into its session; slow from +0s until it ends itself or for up to 20m, told the time left from 18m into its session; support-agent from +0s for up to 1m.",
     );
   });
 
@@ -231,7 +231,7 @@ describe("study check and the estimates", () => {
         participants: [
           { id: "brief", maxSessionMs: 2 * MIN },
           { id: "long", maxSessionMs: 10 * MIN },
-          { id: "staff" },
+          { id: "support-agent" },
         ],
       }),
     );
