@@ -81,6 +81,16 @@ describe("verify on recorded pages", () => {
     );
     expect(withPath.status).toBe("blocked");
   });
+
+  it("reads only a redaction marker as a whole withheld origin, not any bracketed text", async () => {
+    expect((await grade(pagedActor({ origin: "[REDACTED_SECRET]", path: "/" }))).status).toBe(
+      "share_ready",
+    );
+    const bracketed = await grade(
+      pagedActor({ origin: "[https://app.example.test?invite=a1b2]", path: "/" }),
+    );
+    expect(bracketed.status).toBe("blocked");
+  });
 });
 
 describe("a finished run's pages", () => {

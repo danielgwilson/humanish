@@ -11,10 +11,11 @@ const WEB_SCHEMES = new Set(["http:", "https:"]);
 const MAX_PATH = 1024;
 const TRUNCATED = "[TRUNCATED]";
 
-// A percent-encoded unreserved character: a letter, digit, `-`, `.`, `_` or `~`. RFC 3986 section
-// 2.3 says producers should not encode these, so an encoding of one only hides text from a
-// literal match: the run's sandbox-id scrub, verify's raw-id check, a study secret's scrub.
-const ENCODED_UNRESERVED = /%(?:3[0-9]|4[1-9A-F]|5[0-9AF]|6[1-9A-F]|7[0-9AE]|2[DE])/i;
+// A percent-encoded unreserved character (a letter, digit, `-`, `.`, `_` or `~`) or `%` itself.
+// RFC 3986 section 2.3 says producers should not encode the first, and an encoded `%` is an
+// encoding nested in another, so either only hides text from a literal match: the run's
+// sandbox-id scrub, verify's raw-id check, a study secret's scrub.
+const ENCODED_TO_HIDE = /%(?:3[0-9]|4[1-9A-F]|5[0-9AF]|6[1-9A-F]|7[0-9AE]|2[5DE])/i;
 
 const EMAIL = /[^\s@/]@[^\s@/.]+\.[^\s@/]/;
 // 16 characters is the floor redactText uses for a credential parameter's value. Each open-ended
@@ -37,7 +38,7 @@ function tokenShaped(text: string): boolean {
 
 /** A segment is withheld when any reading of it holds an address, a token or redactable text. */
 function withheld(segment: string, redact: (text: string) => string): boolean {
-  if (ENCODED_UNRESERVED.test(segment)) return true;
+  if (ENCODED_TO_HIDE.test(segment)) return true;
   return readingsOf(segment).some(
     (reading) => EMAIL.test(reading) || tokenShaped(reading) || redact(reading) !== reading,
   );
@@ -63,18 +64,17 @@ function redactPath(pathname: string, redact: (text: string) => string): string 
 }
 
 /**
- * The origin through the trace redaction, which withholds a sandbox host whole; an origin it leaves
- * as it was then has each token-shaped host label withheld, since a tunnel or preview host can be
- * as unguessable as a shared link.
+ * The origin with each token-shaped host label withheld, since a tunnel or preview host can be as
+ * unguessable as a shared link, then through the trace redaction, which withholds a sandbox host
+ * whole.
  */
 function redactOrigin(url: URL, redact: (text: string) => string): string {
-  const redacted = redact(url.origin);
-  if (redacted !== url.origin || url.hostname.startsWith("[")) return redacted;
+  if (url.hostname.startsWith("[")) return redact(url.origin);
   const host = url.hostname
     .split(".")
     .map((label) => (tokenShaped(label) ? REDACTION_MARKERS.urlPart : label))
     .join(".");
-  return `${url.protocol}//${host}${url.port === "" ? "" : `:${url.port}`}`;
+  return redact(`${url.protocol}//${host}${url.port === "" ? "" : `:${url.port}`}`);
 }
 
 /**
@@ -90,8 +90,11 @@ export function tracePage(
   if (parsed === null) return undefined;
   // A non-web URL keeps its scheme only: a file: path or a data: payload never lands.
   if (!WEB_SCHEMES.has(parsed.protocol)) return { origin: parsed.protocol, path: "" };
-  return {
-    origin: redactOrigin(parsed, redact),
-    path: redactPath(parsed.pathname, redact),
-  };
+  const origin = redactOrigin(parsed, redact);
+  const path = redactPath(parsed.pathname, redact);
+  // A study secret can span both parts, such as a whole invite link, which neither part holds.
+  const joined = `${origin}${path}`;
+  if (redact(joined) !== joined)
+    return { origin: REDACTION_MARKERS.urlPart, path: REDACTION_MARKERS.urlPart };
+  return { origin, path };
 }

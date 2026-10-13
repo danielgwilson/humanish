@@ -1054,19 +1054,21 @@ Core-owned fields:
   string, fragment and user info are never kept, and a non-web URL keeps its scheme only
   (`{ origin: "about:", path: "" }`). Redaction (`tracePage` in `src/evidence/trace-page.ts`):
   a path segment becomes `[REDACTED_URL_PART]` when it percent-encodes a letter, digit, `-`, `.`,
-  `_` or `~`, or when any decoded reading of it is email-shaped, holds a run of 16 or more letters,
+  `_`, `~` or `%`, or when any decoded reading of it is email-shaped, holds a run of 16 or more letters,
   digits, `-` and `_` with a piece of 8 or more characters mixing letters and digits, or changes
   under the trace text redaction (the study's secrets, then `redactText`). The whole path then
   goes through that redaction, is cut to 1024 characters ending `[TRUNCATED]`, and is withheld
-  whole when verify's trace scan would still read it as sensitive or opaque. The origin goes
-  through the same redaction (an E2B sandbox host becomes `[REDACTED_SECRET]`), and a host label
-  shaped like that token run becomes `[REDACTED_URL_PART]`. A token shorter than 16 characters, an
+  whole when verify's trace scan would still read it as sensitive or opaque. A host label
+  shaped like that token run becomes `[REDACTED_URL_PART]`, then the origin goes through the same
+  redaction (an E2B sandbox host becomes `[REDACTED_SECRET]`). When origin and path together
+  still change under that redaction (a study secret that is a whole link), both become
+  `[REDACTED_URL_PART]`. A token shorter than 16 characters, an
   all-digit id and personal data in readable words stay, so the sharing rules for synthetic data
   still apply. Pages come from the browser-state probe, which hosted runs have on Chrome and
   Chromium only; a Firefox participant, or one whose probe is unavailable, has screenshots without
   pages. The local browser route and the shared-world route record none. verify reports a page
-  whose path holds `?` or `#`, or whose origin holds user info or anything after the host, as a
-  public-safety finding. Both fields are additive; absence means "page not recorded"
+  whose path holds `?` or `#`, or whose origin is neither a redaction marker nor a scheme with an
+  optional host and port, as a public-safety finding. Both fields are additive; absence means "page not recorded"
 - optional `modelSettings` (`humanish.model-settings.v1`): how the model was
   asked to run, alongside `ids.model` which says which model it was.
   `reasoningEffort` records the value the request actually carried,

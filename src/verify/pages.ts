@@ -1,3 +1,4 @@
+import { REDACTION_MARKERS } from "../evidence/redaction.js";
 import type { RunBundle } from "../run/bundle.js";
 import { isRecord } from "../run/type-guards.js";
 
@@ -5,8 +6,8 @@ import { isRecord } from "../run/type-guards.js";
 // finds secret shapes in it as in any trace text, but a query string, a fragment or user info can
 // carry a short token no pattern matches, so a page holding one is a public-safety finding.
 
-// A redaction marker standing for a whole origin, such as a withheld sandbox host.
-const MARKER = /^\[[^\]]*\]$/;
+// The markers that can stand for a whole origin, such as a withheld sandbox host.
+const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
 // `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host.
 const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/?#@]*)?$/i;
 
@@ -15,7 +16,7 @@ function pageProblem(page: unknown): string | undefined {
   if (!isRecord(page) || typeof page.origin !== "string" || typeof page.path !== "string")
     return "is not an origin and a path";
   if (/[?#]/.test(page.path)) return "has a query string or fragment in its path";
-  if (!MARKER.test(page.origin) && !ORIGIN.test(page.origin))
+  if (!MARKERS.has(page.origin) && !ORIGIN.test(page.origin))
     return "has an origin with user info, a path, a query string or a fragment";
   return undefined;
 }

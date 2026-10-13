@@ -170,3 +170,24 @@ it("records no page anywhere when the caller turns pages off", async () => {
   expect(pages(trace).every((page) => page === null)).toBe(true);
   expect(trace.finalPage).toBeUndefined();
 });
+
+it("withholds what the trace redaction misses when origin and path are read apart or encoded twice", async () => {
+  const invite = "https://app.example.test/invite/bluebird";
+  const secrets = ["private", invite];
+  const trace = await session(
+    [
+      `https://private.${HEX_ID}.example.test/board`,
+      invite,
+      `https://app.example.test/u/${encodeURIComponent(encodeURIComponent(EMAIL))}`,
+    ],
+    {
+      scrubText: (text) =>
+        secrets.reduce((current, secret) => current.split(secret).join("[REDACTED_SECRET]"), text),
+    },
+  );
+  expect(pages(trace)).toEqual([
+    { origin: "https://[REDACTED_SECRET].[REDACTED_URL_PART].example.test", path: "/board" },
+    { origin: "[REDACTED_URL_PART]", path: "[REDACTED_URL_PART]" },
+    { origin: "https://app.example.test", path: "/u/[REDACTED_URL_PART]" },
+  ]);
+});

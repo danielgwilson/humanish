@@ -267,7 +267,8 @@ jq '.streams[].actor.finalPage' .humanish/runs/<run-id>/run.json
 The query string, fragment and user info are never kept. A path segment that looks like an
 email address, a token or id (16 or more letters, digits, `-` and `_` with a piece mixing letters
 and digits), a key or one of the study's secrets becomes `[REDACTED_URL_PART]`, and so does a
-token-shaped host label. A short code, an all-digit id or a name in a readable path stays, so
+token-shaped host label. A study secret that spans origin and path, such as an invite link,
+withholds both. A short code, an all-digit id or a name in a readable path stays, so
 review the bundle before sharing it, as for narration. Pages need the same Chrome or Chromium
 browser-state probe as URL stop conditions: a Firefox participant, or one whose probe is
 unavailable, has screenshots without pages. Shared-world studies and the local browser route
