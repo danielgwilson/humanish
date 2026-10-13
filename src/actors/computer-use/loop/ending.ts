@@ -61,14 +61,14 @@ export function declaredOutcomeFromClosingLine(
 }
 
 /**
- * The participant's own word for how it ended: the turn's schema field first, then the closing
- * line of `text`, its last message or its closing report's summary.
+ * The participant's own word for how it ended: a schema field first (the turn's, or its closing
+ * report's), then the closing line of `text`, its last message or its closing report's summary.
  */
 export function declaredOutcomeOf(
-  turn: CuaTurn,
+  field: ParticipantDeclaredOutcome | undefined,
   text: string | undefined,
 ): ParticipantDeclaredOutcome | undefined {
-  return turn.outcome ?? declaredOutcomeFromClosingLine(text);
+  return field ?? declaredOutcomeFromClosingLine(text);
 }
 
 /**

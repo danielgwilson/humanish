@@ -188,7 +188,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     }
     if (turn.done || turn.actions.length === 0) {
       // The declared outcome is kept even if redacting the participant's summary fails.
-      session.declaredOutcome = declaredOutcomeOf(turn, turn.message);
+      session.declaredOutcome = declaredOutcomeOf(turn.outcome, turn.message);
       const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );

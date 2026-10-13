@@ -46,11 +46,8 @@ export function participantToolSchema(speechEnabled = false): Record<string, unk
   return z.toJSONSchema(toolInput(speechEnabled), { io: "input" }) as Record<string, unknown>;
 }
 export const PARTICIPANT_TOOL_SCHEMA = participantToolSchema();
-/** The participant's final account: how the task went, then its closing report. */
-const participantFinal = z.strictObject({
-  outcome: z.enum(["reached", "not_reached", "blocked"]),
-  ...closingReportSchema.shape,
-});
+/** The participant's final account: its closing report, with how the task went required. */
+const participantFinal = closingReportSchema.required({ outcome: true });
 export const PARTICIPANT_FINAL_SCHEMA = strictOutputSchema(participantFinal);
 /** humanish tool arguments, validated before the shared executor sees a batch. */
 export function parseParticipantTool(value: unknown, speechEnabled = false): CuaTurn {

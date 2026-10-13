@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- An OpenAI computer-use participant asked for its closing report at a scheduled end or session
+  cap now says how the task went in the report's `outcome` field (`reached`, `not_reached` or
+  `blocked`). The closing request asks for it, and its strict JSON schema requires it. The trace's
+  `declaredOutcome` reads the field before the summary's first line. Before, the request did not
+  ask for the declared line, so a participant that reached its goal before its end counted in
+  `participants.ranUntilEnd`. A provider port or stored trace without the field stays valid, and
+  a report after a stop condition or dwell window still sets no `declaredOutcome`.
+
 ## 0.127.0: Clock-end passes counted by what participants declared, a scaled wind-down, the concurrency cap in the plan (2026-10-13)
 
 humanish 0.127.0 makes long scheduled studies report what happened. A participant that passes at

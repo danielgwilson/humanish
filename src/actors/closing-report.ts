@@ -39,10 +39,13 @@ const impressionSchema = z.strictObject({
 export const participantImpressionsSchema = z.array(impressionSchema).max(LIMITS.impressions);
 
 /**
- * A closing report. A report without impressions is still valid: third-party provider ports and
+ * A closing report. `outcome` is how the participant says the task went: `reached` when it is
+ * finished, `blocked` when something in the app stopped it, `not_reached` for any other reason.
+ * A report without an outcome or impressions is still valid: third-party provider ports and
  * stored traces do not have them.
  */
 export const closingReportSchema = z.strictObject({
+  outcome: z.enum(["reached", "not_reached", "blocked"]).optional(),
   summary: said(LIMITS.summaryChars),
   frictionReports: z.array(said(LIMITS.frictionReportChars)).max(LIMITS.frictionReports),
   impressions: participantImpressionsSchema.optional(),

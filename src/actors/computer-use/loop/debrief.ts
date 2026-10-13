@@ -25,7 +25,7 @@ export interface DebriefContext {
 }
 
 const DEBRIEF_REQUEST_CAP_MS = 30_000;
-const DEBRIEF_HINT = `The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.`;
+const DEBRIEF_HINT = `The interactive session has ended. Return a closing account with outcome, summary, frictionReports and impressions. In outcome, say how the task went: reached if you finished it, blocked if something in the app stopped you, not_reached if you did not finish it for any other reason, such as running out of time. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. ${IMPRESSIONS_ASK} Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task.`;
 
 /** The provider's read-only closing request. */
 type ClosingCall = NonNullable<CuaProvider["debrief"]>;
@@ -273,9 +273,10 @@ function acceptDebriefTurn(
  * A closing report: its summary and friction as one participant message, then its impressions.
  * At a scheduled end or a session cap an accepted report is the participant's account of the
  * session: its summary becomes the session's reason (loopResult), so the outcome it declares
- * becomes the session's declared outcome. The blocker rule reads a declared `reached` or
- * `blocked` before the summary's wording. After a matched stop condition or dwell window, the
- * condition stays the completion evidence.
+ * becomes the session's declared outcome. That is its `outcome` field, then the turn's (a
+ * provider port that sets it there), then the first line of its summary. The blocker rule reads a
+ * declared `reached` or `blocked` before the summary's wording. After a matched stop condition or
+ * dwell window, the condition stays the completion evidence.
  */
 function readClosingReport(
   session: LoopSession,
@@ -303,7 +304,10 @@ function readClosingReport(
   session.trace.bump("messages");
   session.impressions = recordImpressions(session, closing.data.impressions);
   if (trigger.kind === "scheduled_end" || trigger.kind === "session_cap")
-    session.declaredOutcome = declaredOutcomeOf(turn, closing.data.summary);
+    session.declaredOutcome = declaredOutcomeOf(
+      closing.data.outcome ?? turn.outcome,
+      closing.data.summary,
+    );
   return {
     status: "completed",
     detail:
