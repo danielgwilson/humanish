@@ -23,11 +23,11 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // A watch lasts the turn's planned length: its waits' named lengths, together up to watchMaxMs,
 // and idleWaitMs for each wait that names none. A turn whose waits all name a length lasts that
 // length on every idle turn: the participant chose it. A turn with a wait that names none, after
-// an idle turn whose watch ended at its limit or was woken by a small change (at most 24 tiles)
-// that held still, watches twice as long as that watch, up to the longer of its planned length and
-// watchMaxMs. Any other ending, or a turn with another action, starts again from the planned
-// length. A participant sending waits with no length on a static screen settles at one request
-// per watchMaxMs.
+// another such turn whose watch ended at its limit or was woken by a small change (at most 24
+// tiles) that held still, watches twice as long as that watch, up to the longer of its planned
+// length and watchMaxMs. Any other ending, a turn whose waits all name a length, or a turn with another
+// action starts again from the planned length. A participant sending waits with no length on a
+// static screen settles at one request per watchMaxMs.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -63,8 +63,9 @@ interface Ending {
 
 /**
  * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
- * doubling counts: a watch that ended at its limit or on a small change makes the next one in the
- * run longer when that one has a wait with no length, and a turn with another action ends the run.
+ * doubling counts: the watch of a turn with a wait that names no length, ended at its limit or on
+ * a small change, makes the next such turn's longer. A turn whose waits all name a length, or a
+ * turn with another action, ends the run.
  */
 export class IdleWatcher {
   /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
@@ -118,15 +119,17 @@ export class IdleWatcher {
     const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
     // A small change that held still (a status label, or a counter the rule did not hold back)
     // wakes the participant and keeps the doubling, so a repeating small change cannot keep every
-    // watch short.
+    // watch short. A turn whose waits all name a length starts the run again: the wait after it
+    // that names none lasts idleWaitMs, as its note tells of no longer wait.
     const grows =
-      ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small);
+      !named &&
+      (ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small));
     this.grownFromMs = grows ? limitMs : undefined;
     return {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending, !named && grows && limitMs < capMs ? capMs : undefined),
+      hint: hintFor(ending, grows && limitMs < capMs ? capMs : undefined),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,

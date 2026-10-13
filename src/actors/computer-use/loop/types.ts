@@ -319,9 +319,9 @@ export interface CuaLoopOptions {
    * participant is told on its next request; a wait longer than one desktop call carries is sent in
    * steps. A turn that only waits or takes screenshots is watched instead (loop/watch.ts): it lasts
    * its waits' lengths, the named ones together up to this or, when it is not set, 600000. A turn
-   * whose waits all name a length lasts that length every time. A turn with a wait that names none,
-   * after such a turn whose watch ended with no change, lasts twice as long as that watch, up to the
-   * larger of that cap and the turn's own length. A whole number from 1000 to 3600000; any other
+   * whose waits all name a length lasts that length every time and starts the doubling again. A
+   * turn with a wait that names none, after another such turn whose watch ended with no change,
+   * lasts twice as long as that watch, up to the larger of that cap and the turn's own length. A whole number from 1000 to 3600000; any other
    * value throws a RangeError before the session starts. Default 120000, or 30000 when the executor
    * is speechEnabled, for one wait sent to the desktop, and 600000 for a watch.
    */

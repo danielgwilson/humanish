@@ -24,9 +24,10 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   /**
    * The longest a watch over an unchanged screen grows to, and the longest the named waits of a
    * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. A
-   * turn with a wait that names no length, after a watch in a row that ended with no change, lasts
-   * twice as long as that watch, so on a static screen such a participant settles at one model
-   * request per 10 minutes. A turn whose waits all name a length lasts that length every time.
+   * turn with a wait that names no length, after the watch of another such turn that ended with no
+   * change, lasts twice as long as that watch, so on a static screen such a participant settles at
+   * one model request per 10 minutes. A turn whose waits all name a length lasts that length every
+   * time and starts the doubling again.
    */
   defaultWatchMaxMs: 600_000,
   /**

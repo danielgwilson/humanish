@@ -1086,9 +1086,10 @@ Core-owned fields:
   named waits' lengths, together up to `actor.maxWaitMs` (else 600000), and
   `idleWaitMs` for each wait that names none. A turn whose waits all name a
   length lasts that length on every idle turn. A turn with a wait that names
-  none, after a watch in a row that ended at its limit or that a change of 24
-  tiles or fewer woke, lasts twice as long as that watch, up to the larger of its
-  planned length and that cap. An OpenAI participant names a length with the
+  none, after the watch of such a turn that ended at its limit or that a change
+  of 24 tiles or fewer woke, lasts twice as long as that watch, up to the larger
+  of its planned length and that cap. A turn whose waits all name a length
+  starts the doubling again. An OpenAI participant names a length with the
   `wait_for_change` function tool; its computer tool's `wait` names none.
   `limitMs` is how long it
   could last; `askedMs` is what the turn's waits asked for, the same sum with no
