@@ -252,7 +252,9 @@ describe("the wait_for_change tool", () => {
       },
     ]);
   });
+});
 
+describe("the wait_for_change tool beside other calls", () => {
   it("answers each of several calls in one reply once, with the screen and the note in the first", async () => {
     const { result, bodies } = await runOpenAi([
       replyOf(1, fnCall("call_a", '{"minutes":2}'), fnCall("call_b", '{"minutes":1}')),
