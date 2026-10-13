@@ -148,22 +148,29 @@ async function watchScreen(
     );
     // An injected clock need not move with the injected sleep; the watch's schedule still does.
     const at = Math.max(session.now(), target);
-    // Lateness past the limit comes from the host's timer, so the wait's length leaves it out.
-    const ms = Math.min(at, limitAt) - startedAt;
+    // The wait lasts until the watch returns, so it includes the look that ended it, and a stalled
+    // look's observe and retry.
+    const lasted = (): number => Math.max(session.now(), at) - startedAt;
     // No observe after the end or the deadline: one started with no time left would fail, and at
     // the end the session would end as timed out.
     if (endAt !== undefined && at >= endAt)
-      return { wake: "clock", ms, looks, ...stopAt(clockEndStop(session, lastLook ?? reference)) };
-    if (at >= deadlineAt) return { wake: "stopped", ms, looks, stop: timeLimit(session) };
+      return {
+        wake: "clock",
+        ms: lasted(),
+        looks,
+        ...stopAt(clockEndStop(session, lastLook ?? reference)),
+      };
+    if (at >= deadlineAt) return { wake: "stopped", ms: lasted(), looks, stop: timeLimit(session) };
     let look: Look;
     try {
       look = await observer.look(turnNumber);
     } catch (error) {
-      if (error instanceof CuaStallError) return { wake: "stalled", ms, looks };
+      if (error instanceof CuaStallError) return { wake: "stalled", ms: lasted(), looks };
       throw error;
     }
     looks += 1;
     lastLook = look.observation;
+    const ms = lasted();
     const ended = (wake: ActorWatch["wake"], area?: FrameRegion): Ending => ({
       wake,
       ms,

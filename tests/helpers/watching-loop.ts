@@ -73,13 +73,16 @@ export interface WatchRun {
 
 /**
  * Run the loop. `turn` answers request n (from 1). `observe` adds fields to the observation at a
- * time, or returns "hang" for an observe that never answers.
+ * time, or returns "hang" for an observe that never answers. The screen is read when an observe
+ * starts.
  */
 export async function runWatching(options: {
   screen: (atMs: number) => Buffer;
   turn: (request: CuaTurnRequest, n: number) => CuaTurn;
   observe?: (atMs: number) => Partial<CuaObservation> | "hang";
   executor?: Pick<CuaExecutor, "speechEnabled" | "stallRecovery">;
+  /** How far each observe moves the clock; 0 by default. */
+  observeMs?: number;
   loop?: Partial<LoopRunOptions>;
 }): Promise<WatchRun> {
   let t = 0;
@@ -106,6 +109,7 @@ export async function runWatching(options: {
         const extra = options.observe?.(t);
         if (extra === "hang") return new Promise<CuaObservation>(() => {});
         const screenshot = options.screen(t);
+        t += options.observeMs ?? 0;
         return { screenshot, stateSignature: perceptualSignature(screenshot), ...extra };
       },
       async execute(action) {

@@ -163,6 +163,22 @@ describe("the turn a watch ends", () => {
     );
   });
 
+  it("counts the time its last look took in the wait's length", async () => {
+    // Each observe takes 1 s. Request 1 goes at 1 s, after the opening observe, and the watch
+    // starts there. It looks at 6 s and at 11 s, which sees the row move; the quick look due at
+    // 11.5 s starts at 12 s, when that look returns, sees the row still and returns at 13 s.
+    const run = await runWatching({
+      screen: (atMs) => (atMs >= 7_000 ? NEW_ROW : QUIET),
+      observeMs: 1_000,
+      turn: (_request, n) => (n === 1 ? turnOf([{ kind: "wait", ms: 60_000 }]) : DONE),
+    });
+    expect(run.requests.map((request) => request.at)).toEqual([1_000, 13_000]);
+    expect(waitItems(run.result).map((item) => item.title)).toEqual(["wait 12000ms"]);
+    expect(run.requests[1]?.hint).toBe(
+      "Your wait lasted 12 seconds and ended when the screen changed.",
+    );
+  });
+
   it("titles a turn's waits with the part of the watch each covered, in order", async () => {
     // Three waits with no duration plan 5 s each. The row appears at 3 s: the look at 5 s sees it
     // move and the quick look at 5.5 s sees it still, half a second into the second wait.
