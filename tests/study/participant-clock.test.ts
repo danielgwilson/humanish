@@ -78,8 +78,11 @@ describe("parsing a participant's clock", () => {
     );
   });
 
-  // Intl accepts both values below, and Chrome launched with them as TZ ran in UTC and in
-  // Etc/Unknown (a local google-chrome 149 read Intl.DateTimeFormat().resolvedOptions().timeZone).
+  // Intl accepts every value below. Chrome launched with +05:00 as TZ ran in UTC and with
+  // america/chicago in Etc/Unknown (a local google-chrome 149 read
+  // Intl.DateTimeFormat().resolvedOptions().timeZone). Intl spells us/central and etc/utc as a
+  // different zone name, and ICU, which reads TZ in the browser, finds a name only with its
+  // capitals: with TZ=us/central it reported a UTC offset of 0.
   it.each([
     [
       "+05:00",
@@ -87,7 +90,15 @@ describe("parsing a participant's clock", () => {
     ],
     [
       "america/chicago",
-      'participants[0].clock.timeZone "america/chicago" must be written "America/Chicago": the browser reads a time zone name only with its capitals.',
+      'participants[0].clock.timeZone "america/chicago" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
+    ],
+    [
+      "us/central",
+      'participants[0].clock.timeZone "us/central" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
+    ],
+    [
+      "etc/utc",
+      'participants[0].clock.timeZone "etc/utc" must be written with the capitals of a time zone name, such as "UTC" for this zone: the browser reads a time zone name only with its capitals.',
     ],
   ])("refuses %s, which a browser would not run in", (timeZone, message) => {
     expect(parseRefusal("cuAppUrl", { participants: [{ clock: { timeZone } }] })).toBe(message);
@@ -95,17 +106,23 @@ describe("parsing a participant's clock", () => {
 
   it("holds actor.clock to the same rule", () => {
     expect(parseRefusal("cuAppUrl", { actor: { clock: { timeZone: "america/chicago" } } })).toBe(
-      'actor.clock.timeZone "america/chicago" must be written "America/Chicago": the browser reads a time zone name only with its capitals.',
+      'actor.clock.timeZone "america/chicago" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
     );
   });
 
-  it("takes an alias and an Etc zone as written", () => {
+  it("takes an alias, an Etc zone and lowercase words inside a part as written", () => {
     const config = study("cuAppUrl", {
       actor: { clock: { timeZone: "US/Central" } },
-      participants: [{ clock: { timeZone: "Etc/GMT+5" } }],
+      participants: [
+        { clock: { timeZone: "Etc/GMT+5" } },
+        { clock: { timeZone: "Africa/Dar_es_Salaam" } },
+      ],
     });
     expect(config.actor.clock).toEqual({ timeZone: "US/Central" });
-    expect(config.participants).toEqual([{ clock: { timeZone: "Etc/GMT+5" } }]);
+    expect(config.participants).toEqual([
+      { clock: { timeZone: "Etc/GMT+5" } },
+      { clock: { timeZone: "Africa/Dar_es_Salaam" } },
+    ]);
   });
 });
 

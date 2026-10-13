@@ -7,8 +7,11 @@ import { invalid } from "./values.js";
  * participant the time in the zone, and a hosted desktop launches its browser with TZ set to it.
  * Chrome reads TZ through ICU, which takes only a tz database name spelled with its capitals: on
  * TZ=+05:00 it runs in UTC, and on TZ=america/chicago it reports Etc/Unknown, though Intl here
- * accepts both. So the zone must be a name Intl knows that is not a UTC offset and not a case variant
- * of Intl's own spelling.
+ * accepts both. So the zone must be a name Intl knows that is not a UTC offset and is spelled with
+ * capitals. Intl gives no case-sensitive check: it spells us/central as America/Chicago, and its
+ * supportedValuesOf omits aliases such as US/Central. So the rule is the one every tz database name
+ * keeps: each part between slashes starts with a capital, and a case variant of Intl's spelling is
+ * refused. A miscased letter after the first in a part of an alias (US/CENTRAL) still passes.
  */
 export function parseClock(
   raw: unknown,
@@ -25,9 +28,12 @@ export function parseClock(
     return invalid(
       `${path}.timeZone "${timeZone}" is a UTC offset, and a browser's time zone takes only a time zone name. Write the name of a place in that zone, such as "Asia/Karachi" for +05:00.`,
     );
-  if (resolved !== timeZone && resolved.toLowerCase() === timeZone.toLowerCase())
+  if (
+    /(^|\/)[^A-Z]/.test(timeZone) ||
+    (resolved !== timeZone && resolved.toLowerCase() === timeZone.toLowerCase())
+  )
     return invalid(
-      `${path}.timeZone "${timeZone}" must be written "${resolved}": the browser reads a time zone name only with its capitals.`,
+      `${path}.timeZone "${timeZone}" must be written with the capitals of a time zone name, such as "${resolved}" for this zone: the browser reads a time zone name only with its capitals.`,
     );
   return { ok: true, value: { timeZone } };
 }
