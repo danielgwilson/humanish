@@ -94,7 +94,7 @@ export class OpenAiConversation {
   private pendingCallIds: readonly string[] = [];
   /** The function calls the next request owes an output for. */
   private pendingFunctionCalls: readonly FunctionCall[] = [];
-  /** Whether the latest reply acted, so its waits went to the desktop with its other actions. */
+  /** Whether the latest reply acted, so its waits were not watched. */
   private pendingActed = false;
   /** Accepted replies so far; the next request is number `replies + 1`. */
   private replies = 0;
@@ -189,7 +189,7 @@ export class OpenAiConversation {
    * computer_call the first carries the screenshot, and every other one carries text only, so the
    * screenshot is sent once. A turn's hint goes into the first function call output, so it reads
    * as how the wait ended; a closing request's hint asks for the closing account and stays a user
-   * message. A wait sent with other actions ran on the desktop for its length, and its output says
+   * message. A wait sent with other actions goes to the desktop for its length, and its output says
    * so (callNote).
    */
   private newItems(req: CuaTurnRequest, closing?: ClosingRequest): readonly unknown[] {
@@ -298,14 +298,15 @@ export class OpenAiConversation {
 }
 
 /**
- * What a function call's output says about the call itself: that no such tool exists, or that a
- * wait sent with other actions ran on the desktop for its length. Undefined otherwise.
+ * What a function call's output says about the call itself: that no such tool exists, or, when
+ * the reply also acted, that such a wait does not end early. It states the rule because an action
+ * before the wait can be rejected, and then the wait is never sent. Undefined otherwise.
  */
 function callNote(call: FunctionCall, acted: boolean): string | undefined {
   if (call.name !== "wait_for_change")
     return `There is no tool named ${JSON.stringify(call.name)}.`;
   return acted
-    ? "This wait was sent with other actions, so it did not end early when the screen changed."
+    ? "A wait sent with other actions does not end early when the screen changes."
     : undefined;
 }
 

@@ -17,12 +17,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. Minutes that are
   not a finite number above zero make a wait with no length, which lasts `idleWaitMs`. A call sent
   with other actions goes to the desktop for at most `actor.maxWaitMs`, as any such wait does, and
-  its output says it did not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol`
-  called the tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
-  pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the A/B
-  experiment's model spend per participant-hour and requests per hour against 0.131.1 go here. Each
-  wait's `ui_action` in the trace now carries `namedMs` when the wait named its length, before any
-  cap, so a bundle shows which waits used the tool and the lengths they named (#1862).
+  its output says such a wait does not end early. In a prototype probe of three 15-minute runs,
+  `gpt-5.6-sol` called the tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time
+  left on two pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the
+  A/B experiment's model spend per participant-hour and requests per hour against 0.131.1 go here.
+  Each wait's `ui_action` in the trace now carries `namedMs` when the wait named its length, before
+  any cap, so a bundle shows which waits used the tool and the lengths they named (#1862).
 
 ### Changed
 

@@ -5,6 +5,7 @@ import {
   type CuaAction,
   type CuaLoopResult,
 } from "../../../src/actors/computer-use/loop.js";
+import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
 import type { LoopRunOptions } from "../../../src/actors/computer-use/loop/types.js";
 import {
   createOpenAiResponsesProvider,
@@ -326,9 +327,39 @@ describe("the wait_for_change tool beside other calls", () => {
         type: "function_call_output",
         call_id: "call_w",
         output:
-          "This wait was sent with other actions, so it did not end early when the screen changed. Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
+          "A wait sent with other actions does not end early when the screen changes. Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
       },
     ]);
+  });
+
+  it("does not say a wait ran with other actions when the batch was rejected before it", async () => {
+    const attempted: CuaAction[] = [];
+    const { bodies, sentAt } = await runOpenAi(
+      [
+        replyOf(
+          1,
+          computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+          fnCall("call_w", '{"minutes":3}'),
+        ),
+        doneReply(2),
+        closingReply(3, IMPRESSIONS),
+      ],
+      {
+        executor: {
+          observe: async () => ({ screenshot: QUIET, stateSignature: perceptualSignature(QUIET) }),
+          execute: async (action) => {
+            attempted.push(action);
+            throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
+          },
+        },
+      },
+    );
+    expect(attempted.map((action) => action.kind)).toEqual(["click"]);
+    expect(sentAt.slice(0, 2)).toEqual([0, 0]);
+    const output = (bodies[1]?.input[1] as { output: string }).output;
+    expect(output).toMatch(
+      /^A wait sent with other actions does not end early when the screen changes\. Your action \(click \(10, 10\)\) was rejected before dispatch\./,
+    );
   });
 
   it("answers a call to a tool it does not have, on the impressions request too", async () => {
