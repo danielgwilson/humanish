@@ -26,10 +26,10 @@ import { makeTestTempDir } from "../../helpers/temp-dir.js";
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
 /**
- * Runs a two-participant app-url study on fake hosted desktops whose commands `onCommand` sees
- * first, and returns the run's warnings.
+ * Runs a two-participant app-url study on fake hosted desktops built with `fakes`, and returns the
+ * run's warnings.
  */
-async function runTwo(onCommand: NonNullable<FanoutModuleOptions["commandHandler"]>) {
+async function runTwo(fakes: FanoutModuleOptions) {
   const parsed = parseStudy(
     lab("cuAppUrl", {
       mode: "live",
@@ -41,7 +41,7 @@ async function runTwo(onCommand: NonNullable<FanoutModuleOptions["commandHandler
     }),
   );
   if (!parsed.ok) throw new Error(parsed.error.message);
-  const handle = makeFanoutModule({ commandHandler: onCommand });
+  const handle = makeFanoutModule(fakes);
   const outcome = await runStudyWith(
     parsed.config,
     { cwd: await makeTestTempDir("humanish-desktop-screen-"), env: ENV, open: false },
@@ -82,21 +82,26 @@ async function xsetCallsOnBash(script: string, dir: string, withXset: boolean): 
 }
 
 describe("the hosted desktop's screen saver", () => {
-  it("is turned off on each participant's desktop after its browser opens", async () => {
+  it("is turned off on each participant's desktop after its browser opens and settles", async () => {
     const steps: Array<[number, string]> = [];
     const screenCommands: string[] = [];
-    const warnings = await runTwo((laneIndex, command) => {
-      if (/^target_url=/m.test(command)) steps.push([laneIndex, "browser"]);
-      else if (command.includes("xset")) {
-        steps.push([laneIndex, "screen saver"]);
-        screenCommands.push(command);
-      }
-      return undefined;
+    const warnings = await runTwo({
+      commandHandler: (laneIndex, command) => {
+        if (/^target_url=/m.test(command)) steps.push([laneIndex, "browser"]);
+        else if (command.includes("xset")) {
+          steps.push([laneIndex, "screen saver"]);
+          screenCommands.push(command);
+        }
+        return undefined;
+      },
+      onWait: (laneIndex, ms) => steps.push([laneIndex, `wait ${ms} ms`]),
     });
     const stepsOf = (index: number) =>
       steps.filter(([laneIndex]) => laneIndex === index).map(([, step]) => step);
-    expect(stepsOf(0)).toEqual(["browser", "screen saver"]);
-    expect(stepsOf(1)).toEqual(["browser", "screen saver"]);
+    // The XFCE session's writers act in its first seconds. The live checks that kept the screen
+    // on turned the screen saver off after this 8 s settle.
+    expect(stepsOf(0)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
+    expect(stepsOf(1)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
     const script = screenCommands[0]!;
     expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual(["s off"]);
@@ -106,11 +111,12 @@ describe("the hosted desktop's screen saver", () => {
   });
 
   it("warns, and runs the participant, when the screen saver cannot be turned off", async () => {
-    const warnings = await runTwo((_laneIndex, command) =>
-      command.includes("xset")
-        ? { stdout: "", exitCode: 1, stderr: 'xset:  unable to open display ":0"' }
-        : undefined,
-    );
+    const warnings = await runTwo({
+      commandHandler: (_laneIndex, command) =>
+        command.includes("xset")
+          ? { stdout: "", exitCode: 1, stderr: 'xset:  unable to open display ":0"' }
+          : undefined,
+    });
     expect(warnings).toContain(
       'The desktop\'s screen saver for participant first could not be turned off, so its screen may go black after 5 minutes without input: xset:  unable to open display ":0"',
     );

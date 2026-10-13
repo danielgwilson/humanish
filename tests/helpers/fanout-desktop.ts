@@ -69,6 +69,8 @@ export interface FanoutModuleOptions {
   reportedFileSize?: (path: string, written: number) => number;
   /** Called on each files.write, in order with the rest of the run. */
   onFileWrite?: (sandboxId: string, path: string) => void;
+  /** Called on each desktop.wait with the participant's index and the time asked, in order. */
+  onWait?: (laneIndex: number, ms: number) => void;
 }
 
 export interface FanoutModuleHandle {
@@ -158,8 +160,9 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
         frame += 1;
         return makePng(frame);
       },
-      async wait() {
-        /* settle is instant in the fake */
+      async wait(ms: number) {
+        // Settle is instant in the fake.
+        options.onWait?.(laneIndex, ms);
       },
       stream: {
         getAuthKey: () => "fake-auth-key",
