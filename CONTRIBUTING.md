@@ -41,6 +41,9 @@ Open these when a step needs them:
   idiomatic implementations and reuse established components. Validate the changed
   behavior and material risks; keep required CI and release gates.
 - Keep examples synthetic and public-safe.
+- Do not name your own, your employer's or anyone else's private projects, products or customers
+  in code, docs, commit messages, issues or PRs. Describe the need in general terms and use
+  fictional examples.
 - Do not commit `.env*`, `.npmrc`, `.humanish/`, generated run bundles, provider
   credentials, private screenshots, raw transcripts, or customer data.
 - Prefer small PRs with explicit proof commands.
