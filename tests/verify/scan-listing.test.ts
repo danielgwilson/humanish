@@ -7,6 +7,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
+import { mapWithConcurrency } from "../../src/run/concurrency.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
@@ -30,11 +31,11 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
-/** `humanish verify --run <runId>`'s exit code and its share-safety lines. */
+/** `humanish verify --run <runId>`'s exit code, its first line and its share-safety lines. */
 async function verifyCli(
   cwd: string,
   runId: string,
-): Promise<{ exitCode: number; shareSafety: string[] }> {
+): Promise<{ exitCode: number; summary: string; shareSafety: string[] }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const program = createProgram({
@@ -58,7 +59,11 @@ async function verifyCli(
     exitCode = error.exitCode;
   }
   const lines = stdout.join("").split("\n");
-  return { exitCode, shareSafety: lines.filter((line) => line.startsWith("share-safety: ")) };
+  return {
+    exitCode,
+    summary: lines[0] ?? "",
+    shareSafety: lines.filter((line) => line.startsWith("share-safety: ")),
+  };
 }
 
 describe("the public-safety scan's directory listing", () => {
@@ -87,19 +92,23 @@ describe("the public-safety scan's directory listing", () => {
     // these come to the limit for one participant: 10,000 for any run and 5,000 for each participant.
     const many = path.join(runDir, "many");
     await mkdir(many);
-    for (let index = 0; index < 15_000 - runEntries - 1; index += 1)
-      await mkdir(path.join(many, String(index).padStart(5, "0")));
+    // Made 64 at a time: one at a time, 15,000 of them took 8 s on a loaded box.
+    const makeAll = (names: string[]) =>
+      mapWithConcurrency(names, 64, (name) => mkdir(path.join(many, name)));
+    await makeAll(
+      Array.from({ length: 15_000 - runEntries - 1 }, (_, index) => String(index).padStart(5, "0")),
+    );
     expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
 
     // Enough more that many/ alone passes the limit, whatever order the run folder lists in.
-    for (let index = 0; index <= runEntries; index += 1)
-      await mkdir(path.join(many, `more-${index}`));
+    await makeAll(Array.from({ length: runEntries + 1 }, (_, index) => `more-${index}`));
     const verified = await verifyCli(cwd, runId);
 
     expect(verified.exitCode).toBe(0);
+    expect(verified.summary).toMatch(/ · local_only · \d+ checks passed$/);
     expect(verified.shareSafety).toEqual([
       "share-safety: UNSCANNED_ARTIFACT: The public-safety scan stopped at its limit of 15000 files and folders while listing many/, so it read nothing listed after that point. Review the run folder before sharing.",
     ]);
-    expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("local_only");
-  }, 60_000);
+    // Two scans of 15,000 entries: about 19 s alone, and past 60 s at a load average of 30.
+  }, 120_000);
 });
