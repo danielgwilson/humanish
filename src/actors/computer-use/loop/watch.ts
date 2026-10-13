@@ -243,10 +243,12 @@ function hintFor(ending: Ending, growsToMs: number | undefined): string | undefi
       return `${lasted} and ended when you heard speech.`;
     case "condition":
       return `${lasted} and ended when the page changed.`;
+    // A small change seen less than 65 s before the limit has not held still yet, so the hint
+    // never says the screen stayed the same.
     case "limit":
       return growsToMs === undefined
-        ? `${lasted}; the screen did not change.`
-        : `${lasted}; the screen did not change. A wait right after it lasts twice as long while the screen stays the same, up to ${duration(growsToMs)}.`;
+        ? `${lasted}; no change on the screen held still long enough to end it.`
+        : `${lasted}; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most ${duration(growsToMs)}.`;
     case "stalled":
       return `${lasted}; the screen could not be checked during it.`;
     case "clock":

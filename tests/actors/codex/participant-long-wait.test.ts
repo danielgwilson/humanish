@@ -164,13 +164,13 @@ describe("a Codex participant that asks for a long wait", () => {
     );
   });
 
-  it("is told its wait ended with no change, and that the next one in a row lasts longer", async () => {
+  it("is told its wait ended at its limit, and that the next one in a row can last longer", async () => {
     const { result, firstReply } = await waitInCall(60_000);
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(waitTitles(result)).toEqual([["wait 60000ms", "limit"]]);
     expect(firstReply.contextHint).toBe(
-      "Your wait lasted 60 seconds; the screen did not change. A wait right after it lasts twice as long while the screen stays the same, up to 10 minutes.",
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
     );
   });
 

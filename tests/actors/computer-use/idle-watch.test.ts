@@ -144,6 +144,25 @@ describe("the turn a watch ends", () => {
     ).toEqual(["turn-00-start", "turn-01"]);
   });
 
+  it("does not tell the participant the screen stayed the same when a small change had not yet held", async () => {
+    // A 3-tile label appears at 12 s. Watch 2 runs from 5 s to 15 s; its last look sees the label,
+    // which has to hold still for more than 65 s to end a wait, so the watch ends at its limit and
+    // request 3 carries the label's frame.
+    const label = frame([{ x: 16, y: 16, width: 48, height: 16 }]);
+    const run = await runWatching({
+      screen: (atMs) => (atMs >= 12_000 ? label : QUIET),
+      turn: (_request, n) => (n <= 2 ? turnOf([WAIT]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [5_000, "limit"],
+      [10_000, "limit"],
+    ]);
+    expect(run.requests[2]?.observation.screenshot).toBe(label);
+    expect(run.requests[2]?.hint).toBe(
+      "Your wait lasted 10 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+    );
+  });
+
   it("titles a turn's waits with the part of the watch each covered, in order", async () => {
     // Three waits with no duration plan 5 s each. The row appears at 3 s: the look at 5 s sees it
     // move and the quick look at 5.5 s sees it still, half a second into the second wait.
