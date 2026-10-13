@@ -83,7 +83,7 @@ export function participantResourceIds(
 }
 
 /** The record id a saved stream belongs to. */
-export function recordIdOf(stream: RunStream): string {
+export function recordIdOf(stream: Pick<RunStream, "simId">): string {
   return stream.simId;
 }
 

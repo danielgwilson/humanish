@@ -320,6 +320,23 @@ describe("saved moments", () => {
     expect(find(".saved-moments [role=status]").textContent).toBe("");
   });
 
+  it("keeps every saved moment across a reload when one is at frame 100,000", async () => {
+    const { data } = study();
+    const moment = { runId: RUN, streamId: "lane-1", savedAt: "2026-10-13T00:00:00.000Z" };
+    localStorage.setItem(
+      "humanish-observer-moments",
+      JSON.stringify([
+        { ...moment, itemId: "lane-1-frame-2", frame: 1 },
+        { ...moment, itemId: "lane-1-frame-100001", frame: 100_000 },
+      ]),
+    );
+    await mount(data);
+    const panel = await openSavedMoments();
+    expect(
+      [...panel.querySelectorAll("li button:first-child")].map((entry) => entry.textContent),
+    ).toEqual([expect.stringMatching(/ · frame 2$/), expect.stringMatching(/ · frame 100001$/)]);
+  });
+
   it("refuses a moment whose frame or entry the recording no longer holds", async () => {
     const { data } = study();
     const moment = { runId: RUN, streamId: "lane-1", savedAt: "2026-10-08T00:00:00.000Z" };

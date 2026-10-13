@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { type PreparedRunArtifactPaths } from "../run/paths.js";
-import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
-import type { RunStream } from "../run/streams.js";
+import { RUN_BUNDLE_FILE, type StoredRunBundle } from "../run/bundle.js";
+import type { StoredRunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
@@ -173,7 +173,8 @@ export async function captureEvidence(
   return result;
 }
 
-const byStreamId = (a: RunStream, b: RunStream): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const byStreamId = (a: StoredRunStream, b: StoredRunStream): number =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 /**
  * Each stream's part of its cohort's limits.evidence, by fairShares over the entries run.json
@@ -181,7 +182,7 @@ const byStreamId = (a: RunStream, b: RunStream): number => (a.id < b.id ? -1 : a
  * gets none.
  */
 function evidenceShares(
-  bundle: RunBundle,
+  bundle: StoredRunBundle,
   limits: Required<EvidenceLimits>,
   captureVersion: CaptureVersion,
 ): number[] {

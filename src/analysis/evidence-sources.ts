@@ -2,8 +2,8 @@ import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import { eventRecordIdOf, recordIdOf, streamParticipantIdOf } from "../run/participant-records.js";
 import { cuaEndpointSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
-import type { RunBundle } from "../run/bundle.js";
-import type { RunStream } from "../run/streams.js";
+import type { StoredRunBundle } from "../run/bundle.js";
+import type { RunStream, StoredRunStream } from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import {
   ACTION_CAPTURE_VERSION,
@@ -84,7 +84,7 @@ function isObserverCapturePath(value: string): boolean {
 }
 
 export function participantAssignment(
-  stream: RunStream,
+  stream: StoredRunStream,
   captureVersion?: CaptureVersion,
 ): string | null {
   if (stream.assignment === undefined)
@@ -137,7 +137,7 @@ export function participantSource(
   };
 }
 
-const runEventsOf = (bundle: RunBundle, stream: RunStream): RunBundle["events"] =>
+const runEventsOf = (bundle: StoredRunBundle, stream: StoredRunStream): StoredRunBundle["events"] =>
   bundle.events.filter(
     (entry) =>
       entry.streamId === stream.id ||
@@ -150,8 +150,8 @@ const runEventsOf = (bundle: RunBundle, stream: RunStream): RunBundle["events"] 
  * index records.
  */
 export function sourceEntryCount(
-  bundle: RunBundle,
-  stream: RunStream,
+  bundle: StoredRunBundle,
+  stream: StoredRunStream,
   captureVersion: CaptureVersion,
 ): number {
   const comms = captureVersion === ACTION_CAPTURE_VERSION && bundle.commsReceiving ? 1 : 0;
@@ -172,7 +172,7 @@ export interface SourceEntry {
   failed: boolean;
 }
 export function sourceEntries(
-  bundle: RunBundle,
+  bundle: StoredRunBundle,
   stream: RunStream,
   captureVersion?: CaptureVersion,
 ): SourceEntry[] {
@@ -347,7 +347,7 @@ function sourceOrder(
  */
 export interface ParticipantSources {
   /** run.json's stream, which holds no trace items from run bundle v2. */
-  readonly stream: RunStream;
+  readonly stream: StoredRunStream;
   readonly participant: AnalysisParticipantInput;
   /** hasUnmappedCaptures of the loaded stream. */
   readonly unmappedCaptures: boolean;
@@ -371,8 +371,8 @@ export interface ParticipantSources {
  * `reach.evidenceShare` entries in admission order and the first `reach.captures` captures.
  */
 export function participantSources(
-  bundle: RunBundle,
-  stored: RunStream,
+  bundle: StoredRunBundle,
+  stored: StoredRunStream,
   loaded: RunStream,
   captureVersion: CaptureVersion,
   reach: { readonly evidenceShare: number; readonly captures: number },

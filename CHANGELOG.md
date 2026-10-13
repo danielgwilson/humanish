@@ -8,8 +8,34 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The types for run.json as a reader parses it, and for the Observer's data, leave out each
+  participant's per-request lists (`tokenUsage.turns`, `conversation.requests` and
+  `providerRequests`), which a v4 run.json holds only in the trace file. `isRunBundle`, the trace
+  loader's input and the readers that cast run.json use `StoredRunBundle`, whose streams'
+  `actor` and `liveActor` are `WithoutRequestLists<...>`, and `ObserverStream` extends
+  `StoredRunStream`. `pnpm typecheck` now refuses a read of a list there; the full actor trace
+  type, with `conversation.requests` required, let one compile and throw on a v4 file.
+  `RunBundle`, which `loadRunBundle` returns with the lists joined, is unchanged. (#1835)
+
 ### Fixed
 
+- The bundle estimate counts the study's mission in run.json. run.json holds it once for the run,
+  once in each participant's stream and once more in the feedback candidate of each participant that
+  reports friction or stops, and the estimate counts that last copy for every participant. It
+  counted run.json at 4,400 bytes plus 16,500 a participant whatever the mission, so its warning
+  that run.json passes the 16 MiB analysis reads could not fire within the 100-participant cap. 100
+  participants with a mission of about 75 KB now get that warning from `study check`, `humanish run`
+  and `doctor --study`, with advice to shorten `actor.mission` or split the participants across
+  studies. On dry runs, 20,000 more bytes of mission added 40,000 bytes to run.json with 1
+  participant and 100,000 with 4. The Observer page estimate counts the mission once for the run and
+  once for each participant, since the page holds no feedback candidate. (#1836)
+- The Observer keeps a viewer's saved moments on reload when one is at frame 100,000 or later. It
+  refused such a moment, and with it every saved moment in the browser, up to 50, so the list came
+  back empty. A saved frame may now be any whole number from 0 to `Number.MAX_SAFE_INTEGER`, the
+  range analysis accepts. A participant reaches frame 100,000 after about 278 hours at a model turn
+  every 10 seconds. (#1842)
 - Analysis reads each participant's trace up to 32 MiB, as the trace loader, verify and the
   Observer read it. It refused a run with a trace past 16 MiB (`ANALYSIS_SOURCE_TOO_LARGE`), which a
   participant reaches after about 3,570 model turns at the 4,700 bytes a turn the bundle estimate
@@ -31,10 +57,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   limit."; it is now `ANALYSIS_SOURCE_TOO_LARGE`, and the message gives the file's size and the
   16,777,216-byte limit and says to split the participants across studies. Both messages end "No
   request was sent." `ANALYSIS_SOURCE_UNAVAILABLE` now reads "The source recording is missing or
-  unsafe." A trace that run.json records at more than 32 MiB gets `ANALYSIS_SOURCE_TOO_LARGE`, and a
-  trace that does not match its index gets `ANALYSIS_SOURCE_INVALID`, each with the trace loader's
-  message, which names the participant and the file; verify refuses both runs before analysis reads
-  them. (#1841)
+  unsafe." A trace past 32 MiB, or one that does not match its index, still fails verify, which
+  analyze runs first, and analyze reports `ANALYSIS_VERIFY_FAILED`. (#1841)
 
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 

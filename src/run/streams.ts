@@ -378,3 +378,21 @@ export interface RunStream {
       | "recording";
   }>;
 }
+
+/**
+ * `T` without a participant's per-request lists (REQUEST_LISTS in src/run/stream-trace.ts):
+ * `tokenUsage.turns`, `conversation.requests` and `providerRequests`. From run bundle v4 only the
+ * trace file holds them, so a reader of run.json or of the Observer's data has none to read.
+ */
+export type WithoutRequestLists<T> = Omit<T, "providerRequests" | "tokenUsage" | "conversation"> & {
+  [K in "tokenUsage" & keyof T]?: Omit<NonNullable<T[K]>, "turns"> | undefined;
+} & { [K in "conversation" & keyof T]?: Omit<NonNullable<T[K]>, "requests"> | undefined };
+
+/**
+ * A stream as run.json holds it, in any version: its actor and live actor WithoutRequestLists.
+ * loadStreamTraces joins the lists from the trace file.
+ */
+export type StoredRunStream = Omit<RunStream, "actor" | "liveActor"> & {
+  actor?: WithoutRequestLists<ActorTrace>;
+  liveActor?: WithoutRequestLists<NonNullable<RunStream["liveActor"]>>;
+};

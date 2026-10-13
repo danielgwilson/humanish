@@ -8,6 +8,7 @@ import {
   type RunAdapterArtifact,
   type RunAdapterScore,
   type RunBundle,
+  type StoredRunBundle,
   type RunEvent,
   type RunOutcome,
   type RunProviderResource,
@@ -24,7 +25,7 @@ import {
   type StoredCleanupResult,
   type RunPointer,
 } from "./results.js";
-import type { RunStream } from "./streams.js";
+import type { StoredRunStream } from "./streams.js";
 import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./stream-shape.js";
 import { isLocalEvidenceArtifactPath } from "./paths.js";
 import { isRunFeedbackCandidate } from "./feedback-shape.js";
@@ -32,7 +33,7 @@ import { EXECUTION_FAILURE_KINDS } from "./judge.js";
 import { isSharedWorldEvidence } from "./shared-world-shape.js";
 import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./type-guards.js";
 
-export function isRunBundle(value: unknown): value is RunBundle {
+export function isRunBundle(value: unknown): value is StoredRunBundle {
   return (
     isRecord(value) &&
     isReadRunBundleSchema(value.schema) &&
@@ -472,7 +473,7 @@ function isRunArtifactIndex(value: unknown): value is RunBundle["artifacts"] {
 function hasConsistentSimulationStreams(simulations: unknown[], streams: unknown[]): boolean {
   const simIds = new Set<string>();
   const expectedStreamSimIds = new Map<string, string>();
-  const streamById = new Map<string, RunStream>();
+  const streamById = new Map<string, StoredRunStream>();
 
   for (const simulation of simulations) {
     if (!isRunSimulation(simulation)) {

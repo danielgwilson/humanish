@@ -2,7 +2,7 @@
 // and the refusals it gives for either.
 
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
-import { isReadRunBundleSchema, type RunBundle } from "../run/bundle.js";
+import { isReadRunBundleSchema, type StoredRunBundle } from "../run/bundle.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
   reduceRunTraces,
@@ -56,7 +56,10 @@ export function runFileTooLarge(size: number | bigint, max: number): AnalysisSou
  * EVIDENCE_LIMITS.sourceBytes, at most EVIDENCE_LIMITS.participants participants, and each
  * participant and event with the fields analysis reads.
  */
-export function parseAnalysisSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
+export function parseAnalysisSource(
+  prepared: PreparedRunArtifactPaths,
+  bytes: Buffer,
+): StoredRunBundle {
   if (bytes.length > EVIDENCE_LIMITS.sourceBytes)
     throw runFileTooLarge(bytes.length, EVIDENCE_LIMITS.sourceBytes);
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -104,7 +107,7 @@ export function parseAnalysisSource(prepared: PreparedRunArtifactPaths, bytes: B
     )
       throw runFileInvalid(`event ${index + 1} needs an id, a type and a message.`);
   }
-  return value as unknown as RunBundle;
+  return value as unknown as StoredRunBundle;
 }
 
 /**
@@ -117,7 +120,7 @@ export function parseAnalysisSource(prepared: PreparedRunArtifactPaths, bytes: B
  */
 export async function readParticipantTraces<T>(
   prepared: PreparedRunArtifactPaths,
-  bundle: RunBundle,
+  bundle: StoredRunBundle,
   keep: (stream: RunStream, index: number) => T,
 ): Promise<T[]> {
   try {

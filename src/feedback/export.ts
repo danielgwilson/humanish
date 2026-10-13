@@ -24,7 +24,7 @@ import {
 import { resolveRunPath } from "../run/locate.js";
 import { loadRunTraces, StreamTraceRefusedError } from "../run/stream-trace.js";
 import { verifyRun, type VerifyResult } from "../verify/verify.js";
-import { type RunBundle } from "../run/bundle.js";
+import type { RunBundle, StoredRunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { readNotesForSharing, type RunNotes } from "../run/note-files.js";
@@ -401,7 +401,7 @@ async function sourceTraces(
   const stored: unknown = JSON.parse(bytes.toString("utf8"));
   if (!isRecord(stored) || !Array.isArray(stored.streams)) return undefined;
   // A trace that no longer matches run.json's index is a source that no longer matches.
-  return loadRunTraces(runPaths, stored as unknown as RunBundle).catch((error: unknown) => {
+  return loadRunTraces(runPaths, stored as unknown as StoredRunBundle).catch((error: unknown) => {
     if (error instanceof StreamTraceRefusedError) return undefined;
     throw error;
   });

@@ -94,9 +94,12 @@ const RECEIPT = {
   profileVerified: true,
 };
 
-/** The per-request lists the data holds across its participants. */
-function heldLists(data: { streams: readonly Partial<RunStream>[] }): number {
-  return data.streams
+/**
+ * The per-request lists the data holds across its participants. ObserverData's types leave the
+ * lists out, so this reads each stream as a RunStream to count what the bytes hold.
+ */
+function heldLists(data: { streams: readonly object[] }): number {
+  return (data.streams as readonly Partial<RunStream>[])
     .flatMap((stream) => [stream.actor, stream.liveActor])
     .reduce(
       (count, trace) =>
