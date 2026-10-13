@@ -1,5 +1,6 @@
 // The operator's E2B plan limits humanish plans against: how long a sandbox may live and how many
-// run at once. Also the budgets the desktop routes add to a participant's own deadline when they set
+// run at once, with the operator's own bound on participants at once (HUMANISH_CUA_MAX_CONCURRENCY).
+// Also the budgets the desktop routes add to a participant's own deadline when they set
 // a sandbox's server-side timeout. A dead host process can never orphan a sandbox past that
 // timeout, so every route derives it from these values.
 
@@ -121,18 +122,35 @@ export function concurrentSandboxes(
 export function describeConcurrentSandboxes(limit: ConcurrentSandboxes): string {
   if (!limit.ok) return limit.message;
   return limit.source === "setting"
-    ? `${limit.count} at once, from ${CONCURRENCY_SETTING}. A study that runs more desktops at once runs them in waves, and an execution.concurrency above it is refused before any sandbox is created.`
+    ? `${limit.count} at once, from ${CONCURRENCY_SETTING}. A study that runs more desktops at once runs them in waves, and an execution.concurrency above it is refused before any sandbox is created, unless ${CUA_MAX_CONCURRENCY_ENV} lowers it to the limit or below.`
     : `${limit.count} at once, E2B's Hobby limit. On a plan that runs more (Pro runs ${PRO_CONCURRENT_SANDBOXES}), set ${CONCURRENCY_SETTING} to that plan's limit.`;
 }
 
+/** The setting that lowers how many participants a study runs at once, on any desktop. */
+export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
+
 /**
- * How many participants a hosted study runs at once: its `concurrency` (the declared
- * execution.concurrency clamped to the roster, else every participant), lowered to what the plan
- * runs. `declared` says whether the study set it. `alongside` counts the sandboxes the study keeps
- * for the whole run besides its participants' desktops, such as a shared world's app, and
- * `minimum` is the fewest at once the route can run. A declared value that does not fit is a
- * refusal naming the setting value that admits it. `lowered` is the warning a plan records when
- * the limit holds an undeclared default to waves.
+ * HUMANISH_CUA_MAX_CONCURRENCY when it is a whole number of 1 or more, else undefined: the
+ * operator's own bound on participants at once on this machine, which may only lower a study's.
+ * Any other value is ignored.
+ */
+export function concurrencyCap(
+  env: Readonly<Record<string, string | undefined>>,
+): number | undefined {
+  const cap = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
+  return cap > 0 ? cap : undefined;
+}
+
+/**
+ * How many participants a study runs at once: its `concurrency` (the declared
+ * execution.concurrency clamped to the roster, else every participant), lowered to `cap`
+ * (concurrencyCap) and then to what the E2B plan runs (`sandboxes`, on a hosted desktop).
+ * `declared` says whether the study set it. `alongside` counts the sandboxes the study keeps for
+ * the whole run besides its participants' desktops, such as a shared world's app, and `minimum` is
+ * the fewest at once the route can run. A declared value the E2B plan cannot run, or a cap under
+ * `minimum`, is a refusal naming the setting. `lowered` is the warning a plan records when the cap
+ * or the E2B limit lowers the count; when both do, it is the E2B limit's, since that sets the
+ * count. `loweredFrom` is the count the cap lowered, when the cap sets the count.
  */
 export function participantsAtOnce(
   study: {
@@ -142,6 +160,50 @@ export function participantsAtOnce(
     readonly alongside?: number;
     readonly minimum?: number;
   },
+  limits: { readonly sandboxes?: ConcurrentSandboxes; readonly cap?: number | undefined },
+):
+  | {
+      readonly ok: true;
+      readonly count: number;
+      readonly lowered?: string;
+      readonly loweredFrom?: number;
+    }
+  | { readonly ok: false; readonly message: string } {
+  const capped = cappedAtOnce(study, limits.cap);
+  if (!capped.ok || limits.sandboxes === undefined) return capped;
+  // A count the cap lowered is the operator's bound and no longer the study's declared value, so
+  // the E2B limit runs it in waves as it would an undeclared default.
+  const left =
+    capped.loweredFrom === undefined
+      ? study
+      : { ...study, concurrency: capped.count, declared: false };
+  const planned = sandboxesAtOnce(left, limits.sandboxes);
+  return !planned.ok || planned.count < capped.count ? planned : capped;
+}
+
+/** participantsAtOnce under the cap alone. */
+function cappedAtOnce(
+  study: Parameters<typeof participantsAtOnce>[0],
+  cap: number | undefined,
+): ReturnType<typeof participantsAtOnce> {
+  if (cap === undefined || cap >= study.concurrency) return { ok: true, count: study.concurrency };
+  const minimum = study.minimum ?? 1;
+  if (cap < minimum)
+    return {
+      ok: false,
+      message: `This study runs at least ${minimum} participants at once, and ${CUA_MAX_CONCURRENCY_ENV} allows ${cap}. Set it to ${minimum} or more, or unset it.`,
+    };
+  return {
+    ok: true,
+    count: cap,
+    loweredFrom: study.concurrency,
+    lowered: `This study's ${study.participants} participants run ${cap} at a time, because ${CUA_MAX_CONCURRENCY_ENV} is ${cap}.`,
+  };
+}
+
+/** participantsAtOnce under the E2B plan's limit alone. */
+function sandboxesAtOnce(
+  study: Parameters<typeof participantsAtOnce>[0],
   limit: ConcurrentSandboxes,
 ):
   | { readonly ok: true; readonly count: number; readonly lowered?: string }

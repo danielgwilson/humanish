@@ -19,6 +19,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The `participants[].files` refusal messages suggest `fixtures/photo.png` and
   `Downloads/photo.png`, and the study-file docs examples use neutral roles (support agents,
   customers, applicants).
+- `HUMANISH_CUA_MAX_CONCURRENCY` now lowers the plan itself. `study check`'s `schedule` row, the
+  plan's late-start warnings and the run's `schedule:` line use the lowered count; before, only
+  the run's participant table did, so `study check` could describe slots the run did not have.
+  The plan applies it before the E2B plan's limit, so an `execution.concurrency` above that limit
+  is no longer refused when the setting lowers it. A lowering adds a plan warning, as the E2B
+  plan's limit does; when that limit lowers the count further, the plan carries its warning
+  instead. The setting now applies to `shared-world` studies too, and a value under 2 refuses one,
+  since a shared world runs at least two participants at once.
 
 ### Fixed
 
@@ -28,6 +36,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   the page. A page opened after that count showed no run at all. The page no longer refuses a body
   for the length of a list. The server still reads a participant's trace or live file only up to
   32 MiB; past that the page shows the participant's trace as unavailable, with a warning.
+- A computer-use participant with `endAfterMs` that waits for a free slot until its end has passed
+  is skipped before its desktop is created, and its record is `blocked` with the reason. Before, it
+  created a desktop when a slot freed, was asked for its closing report at its first turn and
+  passed. The plan gives such a participant no slot when it works out the schedule, so the
+  participants after it start sooner in the plan, and it warns, naming each one it would skip.
 - The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
   for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
   bytes a model turn against the 16 MiB analysis reads, and each participant's trace against the

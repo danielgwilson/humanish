@@ -8,11 +8,15 @@ import type {
   CuaParticipantPlan,
   DesktopParticipantRun,
 } from "../../src/routes/computer-use/types.js";
-import { concurrentSandboxes, sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
+import {
+  concurrencyCap,
+  concurrentSandboxes,
+  sandboxCeiling,
+} from "../../src/substrates/e2b/lifetime.js";
 
 /**
  * The participant table a computer-use config plans to, the one the route prints before a run.
- * A live plan unless `dryRun` is set; `env` may lower the planned concurrency.
+ * A live plan unless `dryRun` is set; `env` holds the operator's limits, as planStudy reads them.
  */
 export function participantPlanOf(
   config: StudyConfig,
@@ -23,10 +27,10 @@ export function participantPlanOf(
     ...(opts.countOverride === undefined ? {} : { countOverride: opts.countOverride }),
     sandboxCeiling: sandboxCeiling(opts.env ?? {}),
     concurrentSandboxes: concurrentSandboxes(opts.env ?? {}),
+    concurrencyCap: concurrencyCap(opts.env ?? {}),
   });
   if (!planned.ok) throw new Error(planned.refusal.message);
-  return participantRunsAndPlan(planned.plan, opts.env === undefined ? {} : { env: opts.env })
-    .participantPlan;
+  return participantRunsAndPlan(planned.plan).participantPlan;
 }
 
 /**
@@ -59,6 +63,7 @@ export function participantRun(fields: {
         resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
       },
       limits: fields.limits ?? {},
+      schedule: {},
       ...(fields.targetUrl === undefined ? {} : { targetUrl: fields.targetUrl }),
     },
     recordId: fields.recordId ?? `sim-${ordinal}`,

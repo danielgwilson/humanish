@@ -8,10 +8,15 @@ import { planArrivals, runOnSchedule } from "../../src/study/arrivals.js";
 
 const S = 1_000;
 
+/** Schedules that declare only these starts; `undefined` starts with the run. */
+function starts(offsets: readonly (number | undefined)[]) {
+  return offsets.map((startAfterMs) => (startAfterMs === undefined ? {} : { startAfterMs }));
+}
+
 describe("planArrivals", () => {
   it("spreads eight participants 30 s apart with 2-minute sessions to at most 4 at once", () => {
     const offsets = [0, 30, 60, 90, 120, 150, 180, 210].map((s) => s * S);
-    expect(planArrivals(offsets, { slots: 8, sessionMs: 120 * S })).toEqual({
+    expect(planArrivals(starts(offsets), { slots: 8, sessionMs: 120 * S })).toEqual({
       declared: true,
       firstStartMs: 0,
       lastStartMs: 210 * S,
@@ -24,7 +29,10 @@ describe("planArrivals", () => {
   });
 
   it("holds participants whose time comes while every slot is busy until one frees", () => {
-    const plan = planArrivals([0, 10 * S, 20 * S, 30 * S], { slots: 2, sessionMs: 100 * S });
+    const plan = planArrivals(starts([0, 10 * S, 20 * S, 30 * S]), {
+      slots: 2,
+      sessionMs: 100 * S,
+    });
     expect(plan.peak).toBe(2);
     expect(plan.waiting).toBe(2);
     // The third starts when the first ends at 100 s, 80 s after its time; the fourth at 110 s.
@@ -33,7 +41,10 @@ describe("planArrivals", () => {
   });
 
   it("reads a roster without offsets as every participant at once, in waves past the slots", () => {
-    const plan = planArrivals([undefined, undefined, undefined], { slots: 2, sessionMs: 60 * S });
+    const plan = planArrivals(starts([undefined, undefined, undefined]), {
+      slots: 2,
+      sessionMs: 60 * S,
+    });
     expect(plan).toEqual({
       declared: false,
       firstStartMs: 0,
@@ -48,7 +59,7 @@ describe("planArrivals", () => {
 
   it("keeps a host on a slot of its own and queues the others on the rest", () => {
     // Host first, then three followers due at once on the two remaining slots.
-    const plan = planArrivals([0, 0, 0, 0], { slots: 3, sessionMs: 100 * S, ownSlot: 0 });
+    const plan = planArrivals(starts([0, 0, 0, 0]), { slots: 3, sessionMs: 100 * S, ownSlot: 0 });
     expect(plan.peak).toBe(3);
     expect(plan.waiting).toBe(1);
     expect(plan.lastEndMs).toBe(200 * S);

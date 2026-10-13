@@ -184,7 +184,6 @@ describe("computerUseParticipants", () => {
         plan: planned.plan,
         cwd,
         projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),
-        env: {},
       });
       if (!lanes.ok) throw new Error(`${name}: ${lanes.message}`);
       const participants = computerUseParticipants(config, countOverride);

@@ -8,6 +8,7 @@ import { injectedBrowser, planScriptedStudy } from "../routes/scripted/plan.js";
 import { planSharedWorldStudy } from "../routes/shared-world/plan.js";
 import { planTerminalStudy } from "../routes/terminal/plan.js";
 import {
+  concurrencyCap,
   concurrentSandboxes,
   sandboxCeiling,
   type ConcurrentSandboxes,
@@ -93,7 +94,8 @@ type RoutePlanResult =
 /**
  * The plan a study runs under, built without reading files or the network. From the environment
  * (options.env, else process.env, as the routes read it) it reads the operator's E2B plan limits,
- * the sandbox ceiling and the concurrent sandboxes, which no study file can know. Each route's
+ * the sandbox ceiling and the concurrent sandboxes, and HUMANISH_CUA_MAX_CONCURRENCY, which no
+ * study file can know. Each route's
  * planner makes every refusal that route makes, in the route's order and with its codes and
  * messages; the route's exported runner calls the same planner.
  */
@@ -108,6 +110,7 @@ export function planStudy(
   const e2b = {
     sandboxCeiling: sandboxCeiling(env),
     concurrentSandboxes: concurrentSandboxes(env),
+    concurrencyCap: concurrencyCap(env),
   };
   const result = planRoute(routeOf(config), study, options, input, deps, e2b);
   if (!result.ok) return result;
@@ -155,8 +158,8 @@ function closingReportWarnings(plan: StudyPlan): string[] {
   const { brain } = plan.runner;
   if (brain.kind !== "local-agent" || brain.agent !== "claude") return [];
   const { participants } = plan.runner;
-  const scheduled = participants.filter((participant) => participant.endAfterMs !== undefined);
-  const capped = participants.filter((participant) => participant.maxSessionMs !== undefined);
+  const scheduled = participants.filter(({ schedule }) => schedule.end?.kind === "scheduled_end");
+  const capped = participants.filter(({ schedule }) => schedule.end?.kind === "session_cap");
   const claude = "Claude as a local-agent participant model cannot be asked for a closing report";
   const writers =
     "A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.";
@@ -183,6 +186,7 @@ function planRoute(
   e2b: {
     readonly sandboxCeiling: SandboxCeiling;
     readonly concurrentSandboxes: ConcurrentSandboxes;
+    readonly concurrencyCap: number | undefined;
   },
 ): RoutePlanResult {
   const { sandboxCeiling } = e2b;

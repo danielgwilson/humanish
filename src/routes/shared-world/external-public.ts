@@ -135,7 +135,7 @@ export async function runExternalPublicPlane(
     const followerResultsPromise = runOnSchedule(
       followerEntries,
       {
-        startAfterMs: ({ spec }) => spec.planned.startAfterMs,
+        startAfterMs: ({ spec }) => spec.planned.schedule.startAfterMs,
         slots: Math.max(1, concurrency - 1),
         now: ctx.now,
       },

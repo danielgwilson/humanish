@@ -212,7 +212,7 @@ export async function admitCuaRun(
       : undefined;
   const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
-  const participants = await loadCuaParticipants({ plan, cwd, projectRoot, env });
+  const participants = await loadCuaParticipants({ plan, cwd, projectRoot });
   if (!participants.ok) {
     return refuse(participants.code, participants.message, descriptor.id);
   }

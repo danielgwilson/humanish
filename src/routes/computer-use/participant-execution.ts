@@ -5,7 +5,7 @@ import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaParticipantDiagnostics } from "./diagnostics.js";
-import { runOnSchedule, type ParticipantArrival } from "../../study/arrivals.js";
+import { pastEndReason, runOnSchedule, type ParticipantArrival } from "../../study/arrivals.js";
 import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import {
@@ -96,6 +96,9 @@ export async function runCuaParticipant(
       `skipped: study budget reached before this participant started: ${crossed}; no desktop was created`,
     );
   }
+  // One that waited for a slot until its scheduled end would only be asked for its closing report.
+  const pastEnd = pastEndReason(deps.end, deps.now());
+  if (pastEnd !== undefined) return skippedOutcome(spec, pastEnd);
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
@@ -260,7 +263,7 @@ export async function runCuaParticipants(
   return runOnSchedule(
     runs,
     {
-      startAfterMs: (spec) => spec.planned.startAfterMs,
+      startAfterMs: (spec) => spec.planned.schedule.startAfterMs,
       slots: concurrency,
       now: deps.now,
       signal: stopping.signal,

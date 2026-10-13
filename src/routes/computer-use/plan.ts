@@ -26,7 +26,7 @@ import {
   computerUseParticipants,
   declaredTargets,
 } from "../../study/plan-participants.js";
-import { planStarts, windowDeadlineRefusal, type ArrivalPlan } from "../../study/arrivals.js";
+import { planStarts, windowDeadlineRefusal } from "../../study/arrivals.js";
 import type {
   AppUrlSubject,
   ComputerUsePlan,
@@ -335,39 +335,64 @@ function rosterShapeReason(config: StudyConfig, ceilingMs: number): Rejection {
  * How many of the runner's participants run at once, and when each one starts, with the session
  * budget the `ceilingMs` sandbox ceiling leaves. Hosted desktops share the E2B plan's concurrent
  * sandboxes; the local VM has its own capacity rules and the in-process route runs one
- * participant.
+ * participant. HUMANISH_CUA_MAX_CONCURRENCY (`concurrencyCap`) lowers the count on every desktop.
+ * `starts` holds the plan's fields for them.
  */
 function startsOf(
   config: StudyConfig,
   runner: ComputerUseRunner,
-  limit: ConcurrentSandboxes,
+  limits: {
+    readonly concurrentSandboxes: ConcurrentSandboxes;
+    readonly concurrencyCap?: number | undefined;
+  },
   ceilingMs: number,
 ):
-  | { ok: true; count: number; arrivals: ArrivalPlan; warnings: string[] }
+  | {
+      ok: true;
+      starts: Pick<
+        ComputerUsePlan,
+        "concurrency" | "envLoweredConcurrencyFrom" | "arrivals" | "sessionBudgetMs"
+      >;
+      warnings: string[];
+    }
   | { ok: false; message: string } {
   const declared = config.execution?.concurrency;
   const n = runner.participants.length;
-  const concurrency = boundedConcurrency(declared, n);
-  const atOnce =
-    runner.desktop === "e2b-desktop"
-      ? participantsAtOnce(
-          { concurrency, declared: declared !== undefined, participants: n },
-          limit,
-        )
-      : ({ ok: true, count: concurrency } as const);
+  const hosted = runner.desktop === "e2b-desktop";
+  const atOnce = participantsAtOnce(
+    {
+      concurrency: boundedConcurrency(declared, n),
+      declared: declared !== undefined,
+      participants: n,
+    },
+    {
+      ...(hosted ? { sandboxes: limits.concurrentSandboxes } : {}),
+      cap: limits.concurrencyCap,
+    },
+  );
   if (!atOnce.ok) return atOnce;
   const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
   // A participant with a declared end gets a sandbox sized from its own window.
-  if (runner.desktop === "e2b-desktop") {
-    const headroomMs = resolveParticipantSandboxMs(config, ceilingMs) - sessionMs;
-    const window = windowDeadlineRefusal(runner.participants, { sessionMs, headroomMs }, ceilingMs);
+  if (hosted) {
+    const sandboxMs = resolveParticipantSandboxMs(config, ceilingMs);
+    const window = windowDeadlineRefusal(runner.participants, { sessionMs, sandboxMs }, ceilingMs);
     if (window !== undefined) return { ok: false, message: window };
   }
-  const slots = { slots: atOnce.count, sessionMs };
+  const { arrivals, warnings } = planStarts(
+    runner.participants,
+    { slots: atOnce.count, sessionMs },
+    atOnce.lowered,
+  );
+  const lowered = atOnce.loweredFrom;
   return {
     ok: true,
-    count: atOnce.count,
-    ...planStarts(runner.participants, slots, atOnce.lowered),
+    starts: {
+      concurrency: atOnce.count,
+      ...(lowered === undefined ? {} : { envLoweredConcurrencyFrom: lowered }),
+      arrivals,
+      sessionBudgetMs: sessionMs,
+    },
+    warnings,
   };
 }
 
@@ -443,6 +468,8 @@ export function planComputerUseStudy(
     readonly sandboxCeiling: SandboxCeiling;
     /** How many sandboxes the operator's E2B plan runs at once (concurrentSandboxes). */
     readonly concurrentSandboxes: ConcurrentSandboxes;
+    /** HUMANISH_CUA_MAX_CONCURRENCY (concurrencyCap), which may only lower the participants at once. */
+    readonly concurrencyCap?: number | undefined;
   },
 ): ComputerUsePlanResult {
   const hasRunSession = input.hasRunSession === true;
@@ -562,7 +589,7 @@ export function planComputerUseStudy(
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
   const unsupported = runnerRefusal(runner.desktop, participants);
   if (unsupported) return refuse("in-scope", unsupported.code, unsupported.message, actor);
-  const starts = startsOf(config, runner, input.concurrentSandboxes, ceiling.ms);
+  const starts = startsOf(config, runner, input, ceiling.ms);
   if (!starts.ok)
     return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", starts.message, actor);
   const provisioned = source === "clone" || source === "local-tree";
@@ -575,9 +602,7 @@ export function planComputerUseStudy(
       route: "computer-use",
       actor,
       runner,
-      concurrency: starts.count,
-      arrivals: starts.arrivals,
-      sessionBudgetMs: starts.arrivals.sessionMs,
+      ...starts.starts,
       sandboxMs: resolveParticipantSandboxMs(config, ceiling.ms),
       caps: planCaps(config),
       ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),

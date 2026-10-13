@@ -76,7 +76,8 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "signup-b",
@@ -100,7 +101,8 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           }
         ],
         "subject": {
@@ -203,7 +205,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {
@@ -306,7 +309,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {
@@ -416,7 +420,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {
@@ -544,6 +549,7 @@
               },
               "maxOutputTokens": 8192
             },
+            "schedule": {},
             "tasks": [
               {
                 "id": "first-task",
@@ -680,7 +686,8 @@
             "limits": {
               "reasoningEffort": "medium",
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           },
           {
             "id": "harder-effort",
@@ -707,7 +714,8 @@
             "limits": {
               "reasoningEffort": "high",
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {
@@ -806,7 +814,8 @@
                 896
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "small-mobile-skimmer",
@@ -830,7 +839,8 @@
                 740
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "desktop-power",
@@ -854,7 +864,8 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "wide-researcher",
@@ -878,7 +889,8 @@
                 1080
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           }
         ],
         "subject": {
@@ -1232,6 +1244,7 @@
             "limits": {
               "maxOutputTokens": 8192
             },
+            "schedule": {},
             "tasks": [
               {
                 "id": "reach-guide",
@@ -1347,6 +1360,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "host": true
           },
           {
@@ -1372,6 +1386,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "host": false
           },
           {
@@ -1397,6 +1412,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "host": false
           }
         ]
@@ -1506,6 +1522,7 @@
             "limits": {
               "maxOutputTokens": 8192
             },
+            "schedule": {},
             "tasks": [
               {
                 "id": "camera-on",
@@ -1628,7 +1645,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           },
           {
             "id": "patient-newcomer",
@@ -1654,7 +1672,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {
@@ -1849,6 +1868,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "entry": "/compose"
           },
           {
@@ -1874,6 +1894,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "entry": "/inbox"
           },
           {
@@ -1899,6 +1920,7 @@
               ]
             },
             "limits": {},
+            "schedule": {},
             "entry": "/feed"
           }
         ]
@@ -2026,7 +2048,8 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "persona-coordinator",
@@ -2054,7 +2077,8 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           },
           {
             "id": "persona-mobile",
@@ -2082,7 +2106,8 @@
                 896
               ]
             },
-            "limits": {}
+            "limits": {},
+            "schedule": {}
           }
         ]
       },
@@ -2222,6 +2247,7 @@
             "limits": {
               "maxOutputTokens": 8192
             },
+            "schedule": {},
             "tasks": [
               {
                 "id": "reach-signup",
@@ -2286,6 +2312,7 @@
             "limits": {
               "maxOutputTokens": 8192
             },
+            "schedule": {},
             "tasks": [
               {
                 "id": "reach-signup",
@@ -2506,7 +2533,8 @@
             },
             "limits": {
               "maxOutputTokens": 8192
-            }
+            },
+            "schedule": {}
           }
         ],
         "subject": {

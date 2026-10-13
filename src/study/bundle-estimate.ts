@@ -12,6 +12,7 @@
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
+import type { ParticipantSchedule } from "./arrivals.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { formatDuration } from "../run/projection.js";
 import { plural } from "../run/text.js";
@@ -90,11 +91,9 @@ const RATES = Object.freeze({
 
 const MIB = 1024 * 1024;
 
-/** One participant as the plan has it: when it starts and ends, its cap, and its dwell window. */
+/** One participant as the plan has it: its schedule and its dwell window. */
 export interface EstimatedParticipant {
-  readonly startAfterMs?: number;
-  readonly endAfterMs?: number;
-  readonly maxSessionMs?: number;
+  readonly schedule: ParticipantSchedule;
   readonly limits: { readonly dwell?: DwellWindow };
 }
 
@@ -143,17 +142,21 @@ export function estimateBundle(
   let longestWindowMs = 0;
   // The longest any participant without an end is counted, for the messages.
   let openMs = Math.min(sessionMs, RATES.openSessionMs);
-  for (const participant of participants) {
-    const windowMs =
-      participant.endAfterMs === undefined
-        ? undefined
-        : participant.endAfterMs - (participant.startAfterMs ?? 0);
-    const budgetMs = windowMs ?? participant.maxSessionMs ?? sessionMs;
-    const countedMs = windowMs ?? Math.min(budgetMs, RATES.openSessionMs);
-    if (windowMs !== undefined) longestWindowMs = Math.max(longestWindowMs, windowMs);
-    else openMs = Math.max(openMs, countedMs);
+  let scheduled = 0;
+  for (const { schedule, limits } of participants) {
+    const { end } = schedule;
+    const budgetMs = end?.windowMs ?? sessionMs;
+    let countedMs: number;
+    if (end?.kind === "scheduled_end") {
+      scheduled += 1;
+      countedMs = end.windowMs;
+      longestWindowMs = Math.max(longestWindowMs, countedMs);
+    } else {
+      countedMs = Math.min(budgetMs, RATES.openSessionMs);
+      openMs = Math.max(openMs, countedMs);
+    }
     const own = Math.ceil(countedMs / (RATES.secondsPerTurn * 1000));
-    const dwell = participant.limits.dwell;
+    const dwell = limits.dwell;
     const ownFrames =
       dwell === undefined ? 0 : Math.floor(Math.min(dwell.ms, budgetMs) / dwell.everyMs) + 1;
     const trace =
@@ -171,7 +174,6 @@ export function estimateBundle(
       RATES.observerPageDataShare * runFileBytes +
       RATES.observerPageItemsShare * traces,
   );
-  const scheduled = participants.filter((participant) => participant.endAfterMs !== undefined);
   return {
     runFileBytes,
     largestTraceBytes: largestTrace,
@@ -182,9 +184,9 @@ export function estimateBundle(
     entryLimit: runEntryLimit(count),
     basis: {
       participants: count,
-      scheduled: scheduled.length,
+      scheduled,
       longestWindowMs,
-      open: count - scheduled.length,
+      open: count - scheduled,
       openMs,
       dwell: frames > 0,
     },

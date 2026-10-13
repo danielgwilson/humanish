@@ -115,7 +115,7 @@ function fanoutParticipantRecord(
     updatedAt: args.run.createdAt,
     ...(args.participantPlan.schedule === undefined
       ? {}
-      : { arrival: arrivalRecord(spec.planned.startAfterMs, outcome?.arrival) }),
+      : { arrival: arrivalRecord(spec.planned.schedule.startAfterMs, outcome?.arrival) }),
   });
 }
 

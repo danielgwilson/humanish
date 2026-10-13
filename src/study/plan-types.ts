@@ -170,8 +170,13 @@ export interface ComputerUsePlan extends PlanBase {
   /** The registered computer-use actor id. */
   readonly actor: string;
   readonly runner: ComputerUseRunner;
-  /** Declared cap clamped to [1, participants]; the route may only lower it from env. */
+  /**
+   * How many participants run at once: the declared cap clamped to [1, participants], else all of
+   * them, lowered to what the E2B plan and HUMANISH_CUA_MAX_CONCURRENCY allow (participantsAtOnce).
+   */
   readonly concurrency: number;
+  /** The count before HUMANISH_CUA_MAX_CONCURRENCY lowered it, when it did. */
+  readonly envLoweredConcurrencyFrom?: number;
   /** When the participants start and how many run at once, with every session at its budget. */
   readonly arrivals: ArrivalPlan;
   readonly sessionBudgetMs: number;

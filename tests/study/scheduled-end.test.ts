@@ -72,19 +72,41 @@ describe("declaring when a participant ends", () => {
       ),
     );
     if (day.route !== "computer-use") throw new Error(day.route);
-    expect(
-      day.runner.participants.map(({ id, startAfterMs, endAfterMs, windDownMs }) => ({
-        id,
-        startAfterMs,
-        endAfterMs,
-        windDownMs,
-      })),
-    ).toEqual([
-      { id: "support-agent", startAfterMs: undefined, endAfterMs: 14_400_000, windDownMs: 600_000 },
-      { id: "lead", startAfterMs: undefined, endAfterMs: 7_200_000, windDownMs: 300_000 },
-      { id: "customer", startAfterMs: 30_000, endAfterMs: undefined, windDownMs: undefined },
+    // Each session is its window plus 5 minutes for the closing report.
+    expect(day.runner.participants.map(({ id, schedule }) => ({ id, ...schedule }))).toEqual([
+      {
+        id: "support-agent",
+        end: {
+          kind: "scheduled_end",
+          endAfterMs: 14_400_000,
+          windowMs: 14_400_000,
+          windDownMs: 600_000,
+          sessionMs: 14_700_000,
+        },
+      },
+      {
+        id: "lead",
+        end: {
+          kind: "scheduled_end",
+          endAfterMs: 7_200_000,
+          windowMs: 7_200_000,
+          windDownMs: 300_000,
+          sessionMs: 7_500_000,
+        },
+      },
+      { id: "customer", startAfterMs: 30_000 },
       // An 8-minute window is told the time left for its last 2 minutes.
-      { id: "brief", startAfterMs: 120_000, endAfterMs: 600_000, windDownMs: 120_000 },
+      {
+        id: "brief",
+        startAfterMs: 120_000,
+        end: {
+          kind: "scheduled_end",
+          endAfterMs: 600_000,
+          windowMs: 480_000,
+          windDownMs: 120_000,
+          sessionMs: 780_000,
+        },
+      },
     ]);
   });
 
@@ -100,9 +122,15 @@ describe("declaring when a participant ends", () => {
       ),
     );
     if (agents.route !== "computer-use") throw new Error(agents.route);
-    expect(agents.runner.participants.map(({ id, endAfterMs }) => [id, endAfterMs])).toEqual([
-      ["support-agent-01", 1_800_000],
-      ["support-agent-02", 1_800_000],
+    // Each member's window runs from its own start to the group's end.
+    expect(
+      agents.runner.participants.map(({ id, schedule: { end } }) => [
+        id,
+        end?.kind === "scheduled_end" ? [end.endAfterMs, end.windowMs] : undefined,
+      ]),
+    ).toEqual([
+      ["support-agent-01", [1_800_000, 1_800_000]],
+      ["support-agent-02", [1_800_000, 1_200_000]],
       ["customer", undefined],
     ]);
   });

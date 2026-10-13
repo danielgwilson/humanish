@@ -62,16 +62,22 @@ describe("declaring a session cap", () => {
       ),
     );
     if (visit.route !== "computer-use") throw new Error(visit.route);
-    expect(
-      visit.runner.participants.map(({ id, maxSessionMs, windDownMs }) => ({
-        id,
-        maxSessionMs,
-        windDownMs,
-      })),
-    ).toEqual([
-      { id: "quick", maxSessionMs: 600_000, windDownMs: 150_000 },
-      { id: "slow", maxSessionMs: 1_200_000, windDownMs: 120_000 },
-      { id: "support-agent", maxSessionMs: undefined, windDownMs: undefined },
+    // Each capped session is its cap plus 5 minutes for the closing report.
+    expect(visit.runner.participants.map(({ id, schedule }) => ({ id, ...schedule }))).toEqual([
+      {
+        id: "quick",
+        end: { kind: "session_cap", windowMs: 600_000, windDownMs: 150_000, sessionMs: 900_000 },
+      },
+      {
+        id: "slow",
+        end: {
+          kind: "session_cap",
+          windowMs: 1_200_000,
+          windDownMs: 120_000,
+          sessionMs: 1_500_000,
+        },
+      },
+      { id: "support-agent" },
     ]);
   });
 
@@ -87,10 +93,10 @@ describe("declaring a session cap", () => {
     );
     if (visitors.route !== "computer-use") throw new Error(visitors.route);
     expect(
-      visitors.runner.participants.map(({ id, startAfterMs, maxSessionMs }) => [
+      visitors.runner.participants.map(({ id, schedule }) => [
         id,
-        startAfterMs,
-        maxSessionMs,
+        schedule.startAfterMs,
+        schedule.end?.windowMs,
       ]),
     ).toEqual([
       ["visitor-01", 0, 1_200_000],
