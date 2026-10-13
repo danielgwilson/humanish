@@ -253,7 +253,9 @@ The rest of this section names keys by their v3 spelling:
   participant's session budget is its window plus 5 minutes (`participantSessionMs` in
   `src/study/arrivals.ts`) in place of `execution.timeoutMs`, and its sandbox deadline adds the
   route's headroom to that. At the end the loop requests the closing report (`debrief.trigger:
-  scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. Before
+  scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. The
+  outcome an accepted report declares, its `outcome` field or the first line of its summary, is
+  the trace's `declaredOutcome`, and the blocker rule reads it before the summary. Before
   the end, a turn that requests no action does not end the session: the trace records a
   `participant ended before its scheduled end` notice, the next request says the time left, and
   the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
@@ -271,7 +273,8 @@ The rest of this section names keys by their v3 spelling:
   `clock.end` with `kind: session_cap`. The participant may end its session before the cap, and
   its waiting turns count toward the backstops. At the cap the loop requests the closing report
   (`debrief.trigger: session_cap`) and the session ends `goal_satisfied` with
-  `stopCause: session_cap`. The plan entry carries `maxSessionMs`, and the plan line shows
+  `stopCause: session_cap`, its report's declared outcome read as at a scheduled end. The plan
+  entry carries `maxSessionMs`, and the plan line shows
   `cap=<duration>`;
 - `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
   participant's `actor.idleWaitMs`, in the same range and refused above an explicit

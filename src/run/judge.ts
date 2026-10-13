@@ -30,7 +30,7 @@ export interface BlockerFacts {
   completionReason: ActorCompletionReason;
   /** A harness-owned stop condition ended the session: a matched stopWhen or a completed dwell window. */
   stopConditionMatched: boolean;
-  /** What the participant declared in a field, when its provider has one. */
+  /** What the participant declared, when it declared an outcome (ActorTrace.declaredOutcome). */
   declaredOutcome?: ParticipantDeclaredOutcome;
   /** The route's reading of the closing report: it describes a blocker or asks for instructions. */
   closingReportReadsBlocked: boolean;

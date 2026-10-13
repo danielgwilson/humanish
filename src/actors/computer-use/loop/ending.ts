@@ -39,8 +39,8 @@ export interface Stop {
 
 /**
  * Read the fixed closing line the prompt asks for: the first non-empty line of the
- * participant's last message, exactly one of three phrases, punctuation and case forgiven. Anything
- * else is absence, never a guess. Exported for tests.
+ * participant's last message or closing report summary, exactly one of three phrases,
+ * punctuation and case forgiven. Anything else is absence, never a guess. Exported for tests.
  */
 export function declaredOutcomeFromClosingLine(
   message: string | undefined,
@@ -58,9 +58,15 @@ export function declaredOutcomeFromClosingLine(
   return undefined;
 }
 
-/** The participant's own word for how it ended: a schema field first, then the closing line. */
-export function declaredOutcomeOf(turn: CuaTurn): ParticipantDeclaredOutcome | undefined {
-  return turn.outcome ?? declaredOutcomeFromClosingLine(turn.message);
+/**
+ * The participant's own word for how it ended: the turn's schema field first, then the closing
+ * line of `text`, its last message or its closing report's summary.
+ */
+export function declaredOutcomeOf(
+  turn: CuaTurn,
+  text: string | undefined,
+): ParticipantDeclaredOutcome | undefined {
+  return turn.outcome ?? declaredOutcomeFromClosingLine(text);
 }
 
 /**

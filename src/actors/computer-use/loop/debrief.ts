@@ -2,7 +2,7 @@ import { closingReportSchema, participantImpressionsSchema } from "../../closing
 import type { ActorTrace } from "../../contract.js";
 import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
 import { IMPRESSIONS_ASK, IMPRESSIONS_HINT, recordImpressions } from "./impressions.js";
-import type { DebriefTrigger } from "./ending.js";
+import { declaredOutcomeOf, type DebriefTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
 import { CuaDeadlineError, raceSessionDeadline, requestScope } from "./race.js";
 import type { LoopSession } from "./session.js";
@@ -50,7 +50,7 @@ interface ClosingAsk {
   /** Names the request when its time bound passes. */
   readonly deadlineLabel: string;
   /** Read the reply into the session, or say why it was not accepted. */
-  readonly read: (session: LoopSession, turn: CuaTurn) => ReplyOutcome;
+  readonly read: (session: LoopSession, turn: CuaTurn, trigger: DebriefTrigger) => ReplyOutcome;
 }
 
 const CLOSING_REPORT: ClosingAsk = {
@@ -198,7 +198,7 @@ async function debriefExchange(
             boundMs,
           )
         : await raceSessionDeadline(send(request, scope.signal), boundMs, signal);
-    return acceptDebriefTurn(session, turn, ask, record);
+    return acceptDebriefTurn(session, turn, trigger, ask, record);
   } catch (error) {
     // A failed optional report cannot rewrite the already observed structured completion.
     if (isComputerUseAdmissionLimitError(error)) {
@@ -232,6 +232,7 @@ async function debriefExchange(
 function acceptDebriefTurn(
   session: LoopSession,
   turn: CuaTurn,
+  trigger: DebriefTrigger,
   ask: ClosingAsk,
   record: RecordDebrief,
 ): Debrief {
@@ -264,12 +265,23 @@ function acceptDebriefTurn(
     );
   }
   // First-party providers parse their replies already; these parses cover third-party ports.
-  const { status, detail, ...added } = ask.read(session, turn);
+  const { status, detail, ...added } = ask.read(session, turn, trigger);
   return { ...record(status, detail, usageReported), ...added };
 }
 
-/** A closing report: its summary and friction as one participant message, then its impressions. */
-function readClosingReport(session: LoopSession, turn: CuaTurn): ReplyOutcome {
+/**
+ * A closing report: its summary and friction as one participant message, then its impressions.
+ * At a scheduled end or a session cap an accepted report is the participant's account of the
+ * session: its summary becomes the session's reason (loopResult), so the outcome it declares
+ * becomes the session's declared outcome, which the blocker rule reads before the summary's
+ * wording. After a matched stop condition or dwell window, the condition stays the completion
+ * evidence.
+ */
+function readClosingReport(
+  session: LoopSession,
+  turn: CuaTurn,
+  trigger: DebriefTrigger,
+): ReplyOutcome {
   const closing = closingReportSchema.safeParse(turn.closingReport);
   if (!closing.success) {
     return {
@@ -290,6 +302,8 @@ function readClosingReport(session: LoopSession, turn: CuaTurn): ReplyOutcome {
   }));
   session.trace.bump("messages");
   session.impressions = recordImpressions(session, closing.data.impressions);
+  if (trigger.kind === "scheduled_end" || trigger.kind === "session_cap")
+    session.declaredOutcome = declaredOutcomeOf(turn, closing.data.summary);
   return {
     status: "completed",
     detail:

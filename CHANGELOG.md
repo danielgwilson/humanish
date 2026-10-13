@@ -54,6 +54,16 @@ additive to `humanish.actor-trace.v1`.
   Reopening the inspector shows the selected entry in the activity list, where it opened at the
   top before.
 
+### Fixed
+
+- A computer-use participant's closing report at a scheduled end or a session cap now sets the
+  trace's `declaredOutcome`: the first line of its summary (`REACHED THE GOAL.`,
+  `DID NOT REACH THE GOAL.` or `BLOCKED.`), or Codex's `outcome` field. The blocker rule reads it
+  before the summary's wording, so a report that opened `REACHED THE GOAL.` and later paraphrased
+  a page ("cannot be registered") passes, where it counted the participant blocked and failed the
+  run. `BLOCKED.` still counts the participant blocked, and a report that declares nothing is read
+  as before. After a matched stop condition or dwell window the report sets no declared outcome.
+
 ## 0.125.0: Run bundle v3 with live items in append-only files, loadRunBundle, faster repeated verify (2026-10-12)
 
 humanish 0.125.0 keeps each live flush of a long study small, exports the run bundle loader, and

@@ -14,6 +14,7 @@ import {
   type ParticipantClock,
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+import { resolveSelfReportedBlocker } from "../../../src/routes/computer-use/self-report.js";
 
 const CAPS: ActorCapabilities = {
   headless: true,
@@ -37,7 +38,12 @@ const NINE_UTC = Date.UTC(2026, 9, 12, 9, 0);
  */
 function shift(
   clock: ParticipantClock,
-  options: { endsItself?: (turn: number) => boolean; idleSteps?: number; report?: false } = {},
+  options: {
+    endsItself?: (turn: number) => boolean;
+    idleSteps?: number;
+    report?: false;
+    summary?: string;
+  } = {},
 ): {
   done: Promise<CuaLoopResult>;
   seen: CuaTurnRequest[];
@@ -75,7 +81,12 @@ function shift(
         message: "Shift over.",
         ...(options.report === false
           ? {}
-          : { closingReport: { summary: "I saw ten patients.", frictionReports: [] } }),
+          : {
+              closingReport: {
+                summary: options.summary ?? "I saw ten patients.",
+                frictionReports: [],
+              },
+            }),
       };
     },
   };
@@ -134,6 +145,28 @@ describe("a participant with a scheduled end", () => {
       status: "completed",
       report: { summary: "I saw ten patients.", frictionReports: [] },
     });
+  });
+
+  it.each([
+    {
+      summary: "REACHED THE GOAL.\nThe front desk guide says walk-ins cannot be booked online.",
+      declared: "reached",
+      blocker: undefined,
+    },
+    {
+      summary: "BLOCKED.\nThe check-in form never opened.",
+      declared: "blocked",
+      blocker: "BLOCKED.\nThe check-in form never opened.",
+    },
+  ])("records the outcome its closing report declares: $declared", async (report) => {
+    const run = shift(
+      { end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE } },
+      { summary: report.summary },
+    );
+    const result = await run.done;
+    expect(result.trace.stopCause).toBe("scheduled_end");
+    expect(result.trace.declaredOutcome).toBe(report.declared);
+    expect(resolveSelfReportedBlocker(result)).toBe(report.blocker);
   });
 
   it("keeps the scheduled end as its reason when no closing report came back", async () => {
