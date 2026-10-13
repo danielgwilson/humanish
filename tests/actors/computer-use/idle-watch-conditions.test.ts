@@ -59,6 +59,27 @@ describe("a watch and the participant's clock", () => {
   );
 });
 
+describe("a watch and the backstops", () => {
+  it("ends a capped participant on an unchanged screen at its 21st identical wait", async () => {
+    // A session cap holds no one, so watched waits count toward the backstops. The first wait is
+    // new; waits 2 to 21 repeat it on an unchanged screen, the 20 no-progress turns that trip
+    // noProgressSteps (20) before idleSteps (24). Watches grow 5 s to 320 s and then last 600 s:
+    // the 21st request goes at 635 s + 13 x 600 s = 8,435 s, before the cap's wind-down.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: () => turnOf([WAIT]),
+      loop: {
+        timeoutMs: 4 * 60 * MINUTE,
+        clock: { end: { atMs: 3 * 60 * MINUTE, windDownMs: MINUTE, kind: "session_cap" } },
+      },
+    });
+    expect(run.requests).toHaveLength(21);
+    expect(run.requests.at(-1)?.at).toBe(8_435_000);
+    expect(run.result.completionReason).toBe("gave_up");
+    expect(run.result.trace.counts.noProgressTurns).toBe(20);
+  });
+});
+
 describe("a watch and a host timer that fires early", () => {
   it("ends at the participant's end when its sleep returns 1 ms before it", async () => {
     // Every sleep returns 1 ms early, so the looks run at 4,999, 9,999 and 14,999 ms and the
