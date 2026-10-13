@@ -116,15 +116,20 @@ describe("the hosted desktop's screen saver", () => {
     expect(warnings.filter((warning) => warning.includes("screen saver"))).toEqual([]);
   });
 
-  it("warns, and runs the participant, when the screen saver cannot be turned off", async () => {
+  it("warns without the run's keys, and runs the participant, when the screen saver cannot be turned off", async () => {
     const warnings = await runTwo({
-      commandHandler: (_laneIndex, command) =>
-        command.includes("xset")
-          ? { stdout: "", exitCode: 1, stderr: 'xset:  unable to open display ":0"' }
-          : undefined,
+      commandHandler: (laneIndex, command) => {
+        if (!command.includes("xset")) return undefined;
+        if (laneIndex === 0)
+          return { stdout: "", exitCode: 1, stderr: 'xset:  unable to open display ":0"' };
+        throw new Error(`401: Invalid API key ${ENV.E2B_API_KEY}`);
+      },
     });
     expect(warnings).toContain(
       'The desktop\'s screen saver for participant first could not be turned off, so its screen may go black after 5 minutes without input: xset:  unable to open display ":0"',
+    );
+    expect(warnings).toContain(
+      "The desktop's screen saver for participant second could not be turned off, so its screen may go black after 5 minutes without input: 401: Invalid API key [REDACTED_SECRET]",
     );
   });
 });
