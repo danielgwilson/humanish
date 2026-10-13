@@ -3,16 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { CuaExecutor, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
-import { parseStudy } from "../../../src/study/config.js";
-import { STUDY_SCHEMA } from "../../../src/study/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
-import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
-import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
-import { participantRun } from "../../helpers/participant-run.js";
+import { participantRun, participantRunDeps } from "../../helpers/participant-run.js";
 
 const temporary: string[] = [];
 afterEach(async () => {
@@ -22,16 +17,6 @@ afterEach(async () => {
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-in-process-desktop-"));
   temporary.push(cwd);
-  const parsed = parseStudy({
-    schema: STUDY_SCHEMA,
-    id: "in-process-desktop",
-    route: "computer-use",
-    mode: "live",
-    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
-    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-  });
-  if (!parsed.ok) throw new Error(parsed.error.message);
   const spec = participantRun({
     id: "participant-a",
     index: 0,
@@ -52,31 +37,10 @@ async function fixture() {
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("An in-process participant must never load an E2B desktop");
   });
-  const deps: CuaParticipantDeps = {
-    residual: parsed.config,
-    studyId: parsed.config.id,
-    caps: {},
-    brain: { kind: "caller" },
-    appUrl: "http://127.0.0.1:3000/",
-    subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },
-    env: {},
-    openaiApiKey: "",
-    e2bApiKey: "",
-    requestTimeoutMs: 60_000,
-    sandboxMs: 60_000,
-    timeoutMs: 60_000,
-    participantCount: 1,
-    artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
-    studyCwd: cwd,
-    redactScreenshots: false,
-    scrubKnownValues: (value) => value,
-    runSession: runCuaActorSession,
-    now: Date.now,
+  const deps = await participantRunDeps(cwd, {
     desktopModule: loadDesktopModule,
     inProcessExecutor,
-    onStream: async () => undefined,
-    reportSubjectPhase: () => undefined,
-  };
+  });
   return { spec, deps, executor, inProcessExecutor, loadDesktopModule };
 }
 

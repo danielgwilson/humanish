@@ -235,7 +235,7 @@ it("reads its options once, at entry", async () => {
       },
     },
     maxUsd: 1,
-    estimateTurnCostUsd: () => 2,
+    estimateTurnCostUsd: (usage) => (usage.input ?? 0) * 2,
   });
   const result = await runComputerUseLoopWithTaps(options);
   expect(result.completionReason).toBe("budget_reached");
@@ -295,12 +295,15 @@ it("keeps the closing request when stamping the stopWhen notice fails", async ()
 
 it("keeps a stop cause committed before its notice failed to record", async () => {
   const clock = armedClock();
+  let budgetChecks = 0;
   const result = await runComputerUseLoopWithTaps(
     base({
       provider: provider([turn({ actions: [click(1, 1)], interruption: "token_limit" })]),
       now: clock.now,
+      // The first call is the check before the request; the second reads the interrupted reply.
       overRunBudget: () => {
-        clock.arm();
+        budgetChecks += 1;
+        if (budgetChecks === 2) clock.arm();
         return null;
       },
     }),

@@ -77,7 +77,8 @@ describe("captured OpenAI incomplete responses", () => {
         actions: 0,
         debrief: 0,
         narration: 0,
-        sharedBudget: 1,
+        // Once before the request and once with the interrupted reply's usage.
+        sharedBudget: 2,
       });
       expect(result.trace.items.some((item) => item.title === "provider token limit reached")).toBe(
         true,
@@ -179,7 +180,8 @@ describe("captured OpenAI incomplete responses", () => {
       actions: 0,
       debrief: 0,
       narration: 0,
-      sharedBudget: 1,
+      // Once before the request and once with the interrupted reply's usage.
+      sharedBudget: 2,
     });
   });
 });

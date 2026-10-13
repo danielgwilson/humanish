@@ -168,7 +168,8 @@ it("closing request variants", async () => {
     const probe = new Probe();
     if (name === "studyBudgetCrossedByReport") {
       variant.options = {
-        overRunBudget: loggedBudget(probe, (call) => (call >= 3 ? "spent" : null)),
+        // The closing report's usage crosses the study budget.
+        overRunBudget: loggedBudget(probe, (usage) => ((usage.input ?? 0) >= 30 ? "spent" : null)),
         maxUsd: 1,
         estimateTurnCostUsd: loggedEstimator(probe, (usage) => (usage.input ?? 0) / 20),
       };

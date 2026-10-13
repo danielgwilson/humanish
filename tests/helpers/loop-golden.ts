@@ -162,12 +162,10 @@ export function loggedEstimator(
 
 export function loggedBudget(
   probe: Probe,
-  decide: (call: number) => string | null,
+  decide: (usage: ActorTokenUsage) => string | null,
 ): (usage: ActorTokenUsage) => string | null {
-  let call = 0;
   return (usage) => {
-    call += 1;
-    const value = decide(call);
+    const value = decide(usage);
     probe.push("overRunBudget", structuredClone(usage), value);
     return value;
   };

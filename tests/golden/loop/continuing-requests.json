@@ -164,6 +164,7 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-00-start.png",15],
       ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["estimateTurnCostUsd",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},0],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"0"}}],
       ["estimateTurnCostUsd",{"input":10,"output":2,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":2}]},0.12],
       ["executor.execute",{"kind":"click","x":12,"y":18}],
@@ -172,6 +173,7 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-01.png",15],
       ["onTrace",3,{"input":10,"output":2,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":2}]},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["estimateTurnCostUsd",{"input":10,"output":2,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":2}]},0.12],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["estimateTurnCostUsd",{"input":18,"output":3,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":18,"output":3}]},0.21],
       ["executor.execute",{"kind":"keypress","keys":["ENTER"]}],
@@ -180,6 +182,7 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-02.png",15],
       ["onTrace",5,{"input":18,"output":3,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":18,"output":3}]},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["estimateTurnCostUsd",{"input":18,"output":3,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":18,"output":3}]},0.21],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"2"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["onMessage","Finished."],
       ["estimateTurnCostUsd",{"input":20,"output":4,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":20,"output":4}]},0.24]
@@ -270,6 +273,7 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-00-start.png",15],
       ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["estimateTurnCostUsd",{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},0],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"ready"}}],
       ["estimateTurnCostUsd",{"input":20,"output":1,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":20,"output":1,"cachedInput":0}]},0.21]
     ]

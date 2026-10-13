@@ -110,8 +110,11 @@ it("study budget: overRunBudget stops the participant as budget_reached", async 
   const provider = scriptedProvider(probe, [paid, paid, paid, paid, paid]);
   const executor = sequenceExecutor(probe, framed("s0", "s1", "s2", "s3", "s4", "s5"));
   const options = baseOptions(probe, provider, executor, {
-    overRunBudget: loggedBudget(probe, (call) =>
-      call >= 3 ? "study budget reached: $12.10 crossed caps.maxTotalUsd=$12" : null,
+    // The third reply's usage crosses the study budget.
+    overRunBudget: loggedBudget(probe, (usage) =>
+      (usage.input ?? 0) >= 3000
+        ? "study budget reached: $12.10 crossed caps.maxTotalUsd=$12"
+        : null,
     ),
   });
   await expectGolden("study-budget", await outcome(probe, options));

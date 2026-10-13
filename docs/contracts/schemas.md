@@ -1585,11 +1585,14 @@ across the study's participants. Either, both, or neither may be declared. Witho
 shared threshold, N participants each have their own `maxUsd`; N × `maxUsd` is the sum
 of those thresholds, not a guaranteed total spending ceiling.
 
-The loop checks reported usage after a model response, before dispatching that
-response's actions or requesting another turn. It does not reserve the next
-request's worst-case cost. In-flight requests and concurrent participants can exceed
-these estimates. These thresholds are not hard provider billing caps and
-exclude desktop and target-app charges.
+The loop checks both thresholds after a model response reports usage, before
+dispatching that response's actions, and again before each provider request,
+the first included. The check before a request stops a participant whose
+sibling crossed `maxTotalUsd` while it was acting or while its desktop was
+starting. Neither check reserves the next request's worst-case cost. A request
+already in flight, at most one per running participant, can exceed these
+estimates. These thresholds are not hard provider billing caps and exclude
+desktop and target-app charges.
 
 A capped session sends a further request only while every earlier request's
 usage is known or bounded:
@@ -1617,8 +1620,9 @@ only; `tokenUsage` and the cost summary keep the reported usage.
 Crossing `maxUsd` ends `budget_reached` / `incomplete`, including when no
 material action has executed. The recorded reason distinguishes prior progress
 from no material progress; a harness budget stop is not participant abandonment.
-Crossing the shared study threshold ends `budget_reached` / `incomplete`, with
-sibling participants stopping when their next post-response check sees it. Reaching a
+Crossing the shared study threshold ends `budget_reached` / `incomplete`. Each
+sibling participant stops before it sends its next request; one with a request
+in flight stops when that reply arrives, before its actions run. Reaching a
 threshold is not proof of task completion.
 
 An absent threshold is uncapped. A zero threshold can still permit a paid model
@@ -1628,7 +1632,7 @@ mode. Use the keyless `humanish run first-run` preview or an explicit
 threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_COMPUTER_USE_UNPRICED_CAP`, or `HUMANISH_SHARED_WORLD_UNPRICED_CAP` on a
 shared-world study) before sandbox allocation. This rate-availability
-check is separate from the post-response spend check.
+check is separate from the spend checks during the session.
 
 Library callers can make a capped session stricter by composing it from the loop and the default
 provider:

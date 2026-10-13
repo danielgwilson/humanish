@@ -279,7 +279,10 @@ it("provider interruptions", async () => {
       ]),
       executor: sequenceExecutor(probe, framed("s0")),
       options: {
-        overRunBudget: loggedBudget(probe, () => "study budget reached: $12.10 crossed $12"),
+        // The interrupted reply's usage crosses the study budget.
+        overRunBudget: loggedBudget(probe, (usage) =>
+          (usage.input ?? 0) > 0 ? "study budget reached: $12.10 crossed $12" : null,
+        ),
       },
     }),
   });
@@ -377,12 +380,19 @@ it("frame guard, abort, admission limit, account billing and spend guards", asyn
     nonFiniteEstimate: (probe) => ({
       provider: scriptedProvider(probe, [paid]),
       executor: sequenceExecutor(probe, framed("s0", "s1")),
-      options: { maxUsd: 0.35, estimateTurnCostUsd: loggedEstimator(probe, () => Number.NaN) },
+      options: {
+        maxUsd: 0.35,
+        // Finite before any usage, so the reply's usage is what the estimator fails on.
+        estimateTurnCostUsd: loggedEstimator(probe, (usage) => (usage.input ? Number.NaN : 0)),
+      },
     }),
     zeroActionSpendCap: (probe) => ({
       provider: scriptedProvider(probe, [paid]),
       executor: sequenceExecutor(probe, framed("s0", "s1")),
-      options: { maxUsd: 0, estimateTurnCostUsd: loggedEstimator(probe, () => 0.15) },
+      options: {
+        maxUsd: 0,
+        estimateTurnCostUsd: loggedEstimator(probe, (usage) => (usage.input ? 0.15 : 0)),
+      },
     }),
     nullEstimate: (probe) => ({
       provider: scriptedProvider(probe, [paid, done("Finished.")]),

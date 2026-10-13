@@ -94,7 +94,11 @@ describe("continuing provider requests in the CUA loop", () => {
     expect(result.reason).toContain("account-billed providers");
     expect(result.trace.executionProfile?.billing).toBe("account-unknown");
     expect(execute).not.toHaveBeenCalled();
-    expect(estimate).not.toHaveBeenCalled();
+    // Priced once, before the first request, while the billing was still unknown and nothing was
+    // used; the account-billed reply is never priced.
+    expect(estimate.mock.calls).toEqual([
+      [{ input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 }],
+    ]);
   });
   it("records two yielded action cycles but settles and charges the model request once", async () => {
     const turns = [
@@ -252,8 +256,9 @@ describe("continuing provider requests in the CUA loop", () => {
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(execute).toHaveBeenCalledTimes(2);
+    // Checked before each request and after each reply.
     expect(estimate.mock.calls.map(([usage]) => (usage.input ?? 0) + (usage.output ?? 0))).toEqual([
-      12, 21, 24,
+      0, 12, 12, 21, 21, 24,
     ]);
     expect(result.trace.providerRequests).toHaveLength(1);
     expect(result.trace.providerRequests?.[0]?.usage).toEqual({ input: 20, output: 4 });
@@ -347,8 +352,9 @@ describe("continuing provider requests in the CUA loop", () => {
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(execute).toHaveBeenCalledTimes(2);
+    // Checked before each request and after each reply.
     expect(estimate.mock.results.map((result) => result.value)).toEqual([
-      150_000, 300_000, 300_000,
+      0, 150_000, 150_000, 300_000, 300_000, 300_000,
     ]);
     expect(result.trace.providerRequests).toEqual([
       expect.objectContaining({

@@ -385,19 +385,25 @@ export interface CuaLoopOptions {
    */
   maxUsd?: number;
   /**
-   * Injected pure per-turn cost estimator (keeps the loop free of the operator rate table and
-   * makes the cap deterministic in tests). Given running (input, output) token totals, returns the
-   * estimated USD, or null when unpriceable. Only consulted when `maxUsd` is set. A null estimate
-   * mid-run cannot trip the cap; preflight already guaranteed a rate exists, so a null here is a
-   * vanished-rate harness condition, not a silent uncapped pass.
+   * Injected pure cost estimator (keeps the loop free of the operator rate table and makes the
+   * cap deterministic in tests). Given running (input, output) token totals, returns the
+   * estimated USD, or null when unpriceable. Only consulted when `maxUsd` is set. The loop calls it
+   * after each reply and again before each provider request, the first included, when every total
+   * is 0 and the usage has no `turns`. An estimate of zero usage above `maxUsd` therefore stops the
+   * session before its first request. A null estimate mid-run cannot trip the cap; preflight
+   * already guaranteed a rate exists, so a null here is a vanished-rate harness condition, not a
+   * silent uncapped pass.
    */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
-   * Run-level spend guard: called with this participant's running usage each turn, at the same
-   * point the per-participant cap is checked. Returns a human-readable reason when the study's shared
-   * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
-   * regardless of material progress: a study-level stop is a recruiting decision hitting its
-   * limit, not this participant's runaway, so it never reads as `gave_up`.
+   * Run-level spend guard: called with this participant's running usage at each point the
+   * per-participant cap is checked, after each reply and before each provider request. The first
+   * call comes before the first request, with every total at 0 and no `turns`. How many calls a
+   * turn makes depends on the loop's checks, so a guard should decide from the usage it is given
+   * and the ledger it reads. Returns a human-readable reason when the study's shared budget is
+   * exhausted, else null. On a non-null return the loop stops with `budget_reached` regardless of
+   * material progress: a study-level stop is a recruiting decision hitting its limit, not this
+   * participant's runaway, so it never reads as `gave_up`.
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /**

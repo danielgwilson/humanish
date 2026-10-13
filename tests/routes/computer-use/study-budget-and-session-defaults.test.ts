@@ -5,7 +5,10 @@
 // actions, so the loop never observed the participant's final state: both participants reached
 // the dashboard and the funnel said 0/2.
 
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
 import type { ActorCapabilities, ActorPersonaRef } from "../../../src/actors/contract.js";
@@ -18,10 +21,21 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
+import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
 import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
+import type {
+  CuaParticipantDeps,
+  CuaRunBudget,
+  ParticipantRunOutcome,
+} from "../../../src/routes/computer-use/types.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { participantPlanOf } from "../../helpers/participant-run.js";
+import {
+  participantPlanOf,
+  participantRun,
+  participantRunDeps,
+} from "../../helpers/participant-run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -82,6 +96,97 @@ class ObservationSequenceExecutor implements CuaExecutor {
 function monotonicClock(step = 1000): () => number {
   let t = 0;
   return () => (t += step);
+}
+
+const temporary: string[] = [];
+afterEach(async () => {
+  await Promise.all(temporary.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+/** A model priced at gpt-5.5's rates that clicks on every turn and reports `input` tokens a turn. */
+function clickingProvider(input: number, requests: CuaTurnRequest[]): CuaProvider {
+  return {
+    id: "fake-cua",
+    version: "gpt-5.5",
+    capabilities: FAKE_CAPS,
+    async nextTurn(request) {
+      requests.push(request);
+      return {
+        actions: [{ kind: "click", x: 10, y: 20 }],
+        pendingSafetyChecks: [],
+        done: false,
+        usage: { input, output: 0 },
+      };
+    },
+  };
+}
+
+/** Participant runner inputs for an in-process study whose participants share one budget ledger. */
+async function inProcessParticipantDeps(
+  runBudget: CuaRunBudget,
+): Promise<(provider: CuaProvider, executor: CuaExecutor) => Promise<CuaParticipantDeps>> {
+  const cwd = await mkdtemp(path.join(tmpdir(), "humanish-study-budget-"));
+  temporary.push(cwd);
+  return async (provider, executor) => {
+    const deps = await participantRunDeps(cwd, {
+      caps: { maxTotalUsd: runBudget.maxTotalUsd },
+      participantCount: 2,
+      runBudget,
+      createProvider: async () => provider,
+      inProcessExecutor: async () => executor,
+    });
+    deps.createDesktop = () => createInProcessDesktop(deps);
+    return deps;
+  };
+}
+
+/** A desktop whose every look shows a new screen; `during` runs inside each look or each action. */
+function changingDesktop(
+  during: { look?: () => Promise<void>; action?: () => Promise<void> } = {},
+): CuaExecutor {
+  let looks = 0;
+  const screenshot = frame();
+  return {
+    observe: async () => {
+      await during.look?.();
+      return { screenshot, stateSignature: `s${(looks += 1)}` };
+    },
+    execute: async () => {
+      await during.action?.();
+    },
+  };
+}
+
+/**
+ * Two participants share a $1 study budget. During the first participant's opening look or its
+ * first click, the second runs: its one reply crosses the budget and it stops. At gpt-5.5's $5 per
+ * million input tokens, the first participant's 10,000-token turn is $0.05 and the second's
+ * 400,000-token turn is $2.
+ */
+async function siblingCrossesBudget(during: "look" | "action") {
+  const runBudget = makeCuaRunBudget(1);
+  const participantDeps = await inProcessParticipantDeps(runBudget);
+  const persona = { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic" };
+  const run = (id: string, index: number) =>
+    participantRun({ id, index, persona, instructions: "Save a note." });
+  const siblingRequests: CuaTurnRequest[] = [];
+  const siblingDeps = await participantDeps(
+    clickingProvider(400_000, siblingRequests),
+    changingDesktop(),
+  );
+  let sibling: ParticipantRunOutcome | undefined;
+  const runSibling = async () => {
+    sibling ??= await runCuaParticipant(run("second", 1), siblingDeps);
+  };
+  const requests: CuaTurnRequest[] = [];
+  const outcome = await runCuaParticipant(
+    run("first", 0),
+    await participantDeps(
+      clickingProvider(10_000, requests),
+      changingDesktop({ [during]: runSibling }),
+    ),
+  );
+  return { outcome, requests, sibling, siblingRequests };
 }
 
 describe("the closing observation feeds the funnel (first live study's miss)", () => {
@@ -167,6 +272,28 @@ describe("the study budget stops a participant with budget_reached", () => {
     expect(result.completionReason).toBe("budget_reached");
     expect(result.status).toBe("incomplete");
     expect(result.reason).toContain("maxTotalUsd");
+  });
+
+  it("sends no further request once a sibling's spend crosses the study budget", async () => {
+    const { outcome, requests, sibling, siblingRequests } = await siblingCrossesBudget("action");
+    expect(siblingRequests).toHaveLength(1);
+    expect(sibling?.session?.trace.stopCause).toBe("study_spend_limit");
+    expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.trace.stopCause).toBe("study_spend_limit");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("sends no first request when a sibling crossed the study budget before it", async () => {
+    const { outcome, requests, sibling, siblingRequests } = await siblingCrossesBudget("look");
+    expect(siblingRequests).toHaveLength(1);
+    expect(sibling?.session?.trace.stopCause).toBe("study_spend_limit");
+    expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.trace.stopCause).toBe("study_spend_limit");
+    expect(requests).toHaveLength(0);
+    // The ledger holds only the sibling's $2; this participant's reason must not claim the crossing.
+    expect(outcome.session?.reason).toBe(
+      "study budget reached: the run's estimated model spend $2 crossed caps.maxTotalUsd=$1; the study's participants stop before their next model request",
+    );
   });
 
   it("sums participant estimates on the shared ledger and ignores unpriceable readings", () => {
