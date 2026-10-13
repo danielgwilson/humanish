@@ -367,8 +367,8 @@ describe("participant impressions in each brain's closing account", () => {
 
 /**
  * The brains the loop drives, each run to a session cap. A brain with a closing request writes its
- * closing report there; one without records why it was skipped. A new local agent fails typecheck
- * here until it gets a case.
+ * closing report there, and the outcome that report declares is the session's; one without records
+ * why it was skipped. A new local agent fails typecheck here until it gets a case.
  */
 const CAPPED_LOCAL_AGENTS = {
   codex: { collects: true, run: () => codexParticipant(false, true) },
@@ -409,6 +409,16 @@ describe("each brain at a session cap", () => {
       const trace = await run();
       expect(trace.debrief).toMatchObject({ trigger: "session_cap", status: "skipped" });
       expect(trace.impressions).toMatchObject({ status: "not_collected" });
+      expect(trace.declaredOutcome).toBeUndefined();
+    },
+  );
+
+  // The captured OpenAI report declares it in the first line of its summary. The Codex final
+  // account declares it in its outcome field, and its summary has no such line.
+  it.each(CAPPED.filter((brain) => brain.collects))(
+    "$name records the outcome its closing report declares at the cap",
+    async ({ run }) => {
+      expect((await run()).declaredOutcome).toBe("reached");
     },
   );
 });

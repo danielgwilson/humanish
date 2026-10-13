@@ -30,7 +30,7 @@ export interface BlockerFacts {
   completionReason: ActorCompletionReason;
   /** A harness-owned stop condition ended the session: a matched stopWhen or a completed dwell window. */
   stopConditionMatched: boolean;
-  /** What the participant declared in a field, when its provider has one. */
+  /** What the participant declared, when it declared an outcome (ActorTrace.declaredOutcome). */
   declaredOutcome?: ParticipantDeclaredOutcome;
   /** The route's reading of the closing report: it describes a blocker or asks for instructions. */
   closingReportReadsBlocked: boolean;
@@ -56,18 +56,18 @@ export function hollowCompletion(ending: SessionEnding): boolean {
 }
 
 /**
- * The participant said it reached the goal but reported a blocker. A declared outcome is its own
- * word and wins. Without one, the closing report is read, unless a stop condition ended the
- * session: a matched stopWhen is structured completion evidence and overrides the text.
+ * The session ended goal_satisfied but the participant reported a blocker. A declared `reached`
+ * or `blocked` is its own word and wins. Otherwise the closing report is read, unless a stop
+ * condition ended the session: a matched stopWhen is structured completion evidence and overrides
+ * the text. A declared `not_reached` is read the same way: it ends the session as gave_up when
+ * the participant ends it, so here it comes from a closing report at a scheduled end or a session
+ * cap, and it does not say whether something stopped the participant.
  */
 export function selfReportedBlocker(ending: BlockerFacts): boolean {
-  if (ending.declaredOutcome !== undefined)
-    return ending.declaredOutcome === "blocked" && ending.completionReason === "goal_satisfied";
-  return (
-    ending.completionReason === "goal_satisfied" &&
-    ending.closingReportReadsBlocked &&
-    !ending.stopConditionMatched
-  );
+  if (ending.completionReason !== "goal_satisfied") return false;
+  if (ending.declaredOutcome === "blocked") return true;
+  if (ending.declaredOutcome === "reached") return false;
+  return ending.closingReportReadsBlocked && !ending.stopConditionMatched;
 }
 
 /** What a participant's pass reads: its session's end, or why it has none, and the two judgments above. */
