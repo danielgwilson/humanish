@@ -10,16 +10,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- An OpenAI computer-use participant's closing report and impressions requests now send no
-  `text.format`, so they read the session from the prompt cache. The closing request read 0
-  cached input tokens in all 8 measured 0.131.0 runs and was 25% to 42% of each run's model spend.
-  In a live 4-minute run it now read 14,989 of its 17,210 input tokens from the cache, and cost
-  about $0.02 of the run's $0.14. The request states the schema in its input and checks the
-  reply's JSON locally against it, so a report without `outcome` or `impressions` does not pass.
-  The JSON may sit in a code fence or follow a message of its own. A completed reply that does not
-  match, apart from a refusal, is sent once more with the strict schema, after the same budget and
-  time checks as the first and with a time bound of its own. Each closing request that reports
-  usage has its own `tokenUsage.turns` row, and the report's fields and outcomes are unchanged
+- An OpenAI computer-use participant's closing report and impressions requests now read the
+  session from the prompt cache. They set `text.format`, which is part of the cached prefix, so
+  the closing request read 0 cached input tokens in all 8 measured 0.131.0 runs and was 25% to 42%
+  of each run's model spend. They now send no `text.format` and state the JSON Schema in their
+  input. In two live 12-minute runs the closing request read 25,114 of 27,338 and 24,810 of
+  27,019 input tokens from the cache and cost $0.026 and $0.025, about 11% of each run; billed as
+  a full cache write, as 0.131.0 billed it, it would have cost $0.14. The reply's JSON is checked
+  locally against the stated schema, so a report without `outcome` or `impressions` does not
+  pass, and it may sit in a code fence or follow a message of its own. A completed reply that does
+  not match, apart from a refusal, is asked once more with the strict schema, after the same
+  budget and time checks as the first and with a time bound of its own. Each closing request that
+  reports usage has its own `tokenUsage.turns` row, and `counts.debriefCalls` counts each request
   (#1862).
 
 ## 0.131.1: Hosted desktops keep their screens on while participants wait (2026-10-13)
