@@ -137,6 +137,28 @@ export function participantSource(
   };
 }
 
+const runEventsOf = (bundle: RunBundle, stream: RunStream): RunBundle["events"] =>
+  bundle.events.filter(
+    (entry) =>
+      entry.streamId === stream.id ||
+      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
+  );
+
+/**
+ * How many entries sourceEntries gives of run.json's `stream` once its trace is loaded, counted
+ * before the trace is read: the trace loader refuses a trace that does not hold the item count its
+ * index records.
+ */
+export function sourceEntryCount(
+  bundle: RunBundle,
+  stream: RunStream,
+  captureVersion: CaptureVersion,
+): number {
+  const comms = captureVersion === ACTION_CAPTURE_VERSION && bundle.commsReceiving ? 1 : 0;
+  const items = stream.trace?.items ?? stream.actor?.items?.length ?? 0;
+  return comms + items + runEventsOf(bundle, stream).length;
+}
+
 export interface SourceEntry {
   eventId: string;
   kind: string;
@@ -213,11 +235,7 @@ export function sourceEntries(
     });
   }
   const runEventIds = new Set<string>();
-  for (const event of bundle.events.filter(
-    (entry) =>
-      entry.streamId === stream.id ||
-      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
-  )) {
+  for (const event of runEventsOf(bundle, stream)) {
     if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
     runEventIds.add(event.id);
     entries.push({
@@ -324,8 +342,8 @@ function sourceOrder(
 /**
  * What selection reads of one participant, taken while its trace is loaded so the trace can be
  * dropped: the counts of its source entries and captures, and only the entries selection can
- * reach. Selection admits entries in `textOrder` and reads captures in `captureOrder`, and neither
- * goes past the reach captureEvidence gives.
+ * reach. Selection admits at most `evidenceShare` entries, in `textOrder`, and reads captures in
+ * `captureOrder`.
  */
 export interface ParticipantSources {
   /** run.json's stream, which holds no trace items from run bundle v2. */
@@ -338,7 +356,9 @@ export interface ParticipantSources {
   readonly entryCount: number;
   /** The entries with a local capture path. */
   readonly captureCount: number;
-  /** The first entries in admission order, the participant's impressions among the first. */
+  /** The participant's part of its cohort's evidence limit. */
+  readonly evidenceShare: number;
+  /** The first evidenceShare entries in admission order, the participant's impressions first. */
   readonly textOrder: readonly SourceEntry[];
   /** The first captures in the order selection reads them. */
   readonly captureOrder: readonly SourceEntry[];
@@ -348,17 +368,20 @@ export interface ParticipantSources {
 
 /**
  * ParticipantSources of `loaded`, the stream `stored` with its trace loaded, keeping the first
- * `reach.entries` entries in admission order and the first `reach.captures` captures.
+ * `reach.evidenceShare` entries in admission order and the first `reach.captures` captures.
  */
 export function participantSources(
   bundle: RunBundle,
   stored: RunStream,
   loaded: RunStream,
   captureVersion: CaptureVersion,
-  reach: { readonly entries: number; readonly captures: number },
+  reach: { readonly evidenceShare: number; readonly captures: number },
 ): ParticipantSources {
   const all = sourceEntries(bundle, loaded, captureVersion);
-  const textOrder = sourceOrder(all, false, impressionEventIds(loaded)).slice(0, reach.entries);
+  const textOrder = sourceOrder(all, false, impressionEventIds(loaded)).slice(
+    0,
+    reach.evidenceShare,
+  );
   const captureOrder = sourceOrder(all, true).slice(0, reach.captures);
   const reachable = new Set([...textOrder, ...captureOrder]);
   return {
@@ -368,6 +391,7 @@ export function participantSources(
     unresolvedCaptures: all.some((entry) => entry.captureDeclared && entry.capturePath === null),
     entryCount: all.length,
     captureCount: all.filter((entry) => entry.capturePath !== null).length,
+    evidenceShare: reach.evidenceShare,
     textOrder,
     captureOrder,
     entries: all.filter((entry) => reachable.has(entry)),

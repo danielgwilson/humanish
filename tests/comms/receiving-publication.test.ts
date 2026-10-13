@@ -20,7 +20,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { writeRunBundle } from "../helpers/run-traces.js";
+import { syntheticActor, writeRunBundle } from "../helpers/run-traces.js";
 
 const RUN = "synthetic-receiving-study";
 const execFileAsync = promisify(execFile);
@@ -235,6 +235,35 @@ describe("receiving restrictions in retained evidence", () => {
       "2026-01-01T00:00:00.000Z",
     ])
       expect(context!.text).not.toContain(absent);
+  });
+
+  it("gives analysis every entry of a participant whose receiving context, trace file and run events fit the limits", async () => {
+    bundle.commsReceiving = evidence();
+    const stream = bundle.streams[0]!;
+    stream.laneId = "lane-a";
+    stream.actor = syntheticActor("I opened the inbox.", { id: "inbox" });
+    stream.actor.items.push(
+      { ...stream.actor.items[0]!, id: "read", text: "I read the message." },
+      { ...stream.actor.items[0]!, id: "reply", text: "I replied." },
+    );
+    const event = { at: "2026-01-01T00:00:00.000Z", level: "info" as const, type: "note" };
+    bundle.events = [
+      { ...event, id: "joined", message: "Joined.", streamId: stream.id },
+      { ...event, id: "elsewhere", message: "Another participant.", streamId: "another" },
+      { ...event, id: "left", message: "Left.", streamId: stream.id },
+    ];
+    const input = await captureEvidence((await resolveRunPath(cwd, RUN))!, await save());
+    expect(input.evidence.map((entry) => entry.eventId)).toEqual([
+      `comms-receiving-${stream.id}`,
+      "inbox",
+      "read",
+      "reply",
+      "joined",
+      "left",
+    ]);
+    expect(input.coverage.omissions).not.toContain(
+      "Some evidence was omitted by the packet size limit.",
+    );
   });
 
   it.each(["providerMessageId", "address", "text", "apiKey"])(

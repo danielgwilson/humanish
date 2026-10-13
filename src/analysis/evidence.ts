@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { type PreparedRunArtifactPaths } from "../run/paths.js";
-import { RUN_BUNDLE_FILE } from "../run/bundle.js";
+import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
+import type { RunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
   type AnalysisArtifact,
   type AnalysisInput,
   type AnalysisParticipantInput,
+  type CaptureVersion,
 } from "./types.js";
 import {
   digestAnalysisInput,
@@ -22,6 +24,7 @@ import {
   participantSource,
   participantSources,
   sourceEntries,
+  sourceEntryCount,
   type ParticipantSources,
   type SourceEntry,
 } from "./evidence-sources.js";
@@ -80,11 +83,14 @@ export async function captureEvidence(
   ) {
     throw new Error("ANALYSIS_RUN_UNFINISHED");
   }
-  // A participant's evidence share is at most limits.evidence, and admission stops at its share,
-  // so selection never admits past the first limits.evidence entries in admission order.
-  const reach = { entries: limits.evidence, captures: maxCaptureReads(limits) };
+  // Admission stops at a participant's evidence share. The shares come from run.json's counts, so
+  // only the first share of each participant's entries in admission order is kept of its trace.
+  const shares = evidenceShares(bundle, limits, captureVersion);
   const sources = await readParticipantTraces(prepared, bundle, (stream, index) =>
-    participantSources(bundle, bundle.streams[index]!, stream, captureVersion, reach),
+    participantSources(bundle, bundle.streams[index]!, stream, captureVersion, {
+      evidenceShare: shares[index]!,
+      captures: maxCaptureReads(limits),
+    }),
   );
   const selected = sources.slice(0, limits.participants);
   const evidence: AnalysisEvidence[] = [];
@@ -124,10 +130,7 @@ export async function captureEvidence(
         imageBytes: 0,
         reservationBlocked: false,
       }))
-      .sort((a, b) => {
-        const [left, right] = [a.sources.stream.id, b.sources.stream.id];
-        return left < right ? -1 : left > right ? 1 : 0;
-      });
+      .sort((a, b) => byStreamId(a.sources.stream, b.sources.stream));
     const sel = planCaptureSelection(cohortPackings, limits);
     await selectCaptures(prepared, cohortPackings, sel, omissions);
     recordCaptureOmissions(cohortPackings, sel, omissions);
@@ -164,6 +167,34 @@ export async function captureEvidence(
   const after = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   return result;
+}
+
+const byStreamId = (a: RunStream, b: RunStream): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/**
+ * Each stream's part of its cohort's limits.evidence, by fairShares over the entries run.json
+ * gives it, in the stream id order selection breaks ties in. A stream past limits.participants
+ * gets none.
+ */
+function evidenceShares(
+  bundle: RunBundle,
+  limits: Required<EvidenceLimits>,
+  captureVersion: CaptureVersion,
+): number[] {
+  const shares = bundle.streams.map(() => 0);
+  const included = bundle.streams.slice(0, limits.participants).map((stream, index) => ({
+    stream,
+    index,
+  }));
+  for (const cohort of analysisCohorts(included)) {
+    cohort.sort((a, b) => byStreamId(a.stream, b.stream));
+    const cohortShares = fairShares(
+      limits.evidence,
+      cohort.map(({ stream }) => sourceEntryCount(bundle, stream, captureVersion)),
+    );
+    for (const [position, { index }] of cohort.entries()) shares[index] = cohortShares[position]!;
+  }
+  return shares;
 }
 
 /** A participant's part of the evidence packet: its sources, and what selection has admitted,
@@ -211,10 +242,7 @@ function planCaptureSelection(
 ): CaptureSelection {
   const maxAttempts = maxCaptureReads(limits);
   const readBudget = 2 * limits.totalImageBytes;
-  const evidenceShares = fairShares(
-    limits.evidence,
-    packings.map((packing) => packing.sources.entryCount),
-  );
+  const evidenceShares = packings.map((packing) => packing.sources.evidenceShare);
   const captureShares = fairShares(
     limits.captures,
     packings.map((packing, index) =>
