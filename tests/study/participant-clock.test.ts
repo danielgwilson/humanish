@@ -56,13 +56,13 @@ describe("parsing a participant's clock", () => {
   it("reads a time zone on a participant entry", () => {
     const config = study("cuAppUrl", {
       participants: [
-        { id: "chicago", clock: { timeZone: "America/Chicago" } },
+        { id: "london", clock: { timeZone: "Europe/London" } },
         { id: "tokyo", clock: { timeZone: "Asia/Tokyo" } },
         { id: "staff" },
       ],
     });
     expect(config.participants).toEqual([
-      { id: "chicago", clock: { timeZone: "America/Chicago" } },
+      { id: "london", clock: { timeZone: "Europe/London" } },
       { id: "tokyo", clock: { timeZone: "Asia/Tokyo" } },
       { id: "staff" },
     ]);
@@ -79,22 +79,22 @@ describe("parsing a participant's clock", () => {
   });
 
   // Intl accepts every value below. Chrome launched with +05:00 as TZ ran in UTC and with
-  // america/chicago in Etc/Unknown (a local google-chrome 149 read
-  // Intl.DateTimeFormat().resolvedOptions().timeZone). Intl spells us/central and etc/utc as a
+  // europe/london in Etc/Unknown (a local google-chrome 149 read
+  // Intl.DateTimeFormat().resolvedOptions().timeZone). Intl spells europe/belfast and etc/utc as a
   // different zone name, and ICU, which reads TZ in the browser, finds a name only with its
-  // capitals: with TZ=us/central it reported a UTC offset of 0.
+  // capitals: with TZ=europe/belfast it reported a UTC offset of 0.
   it.each([
     [
       "+05:00",
       'participants[0].clock.timeZone "+05:00" is a UTC offset, and a browser\'s time zone takes only a time zone name. Write the name of a place in that zone, such as "Asia/Karachi" for +05:00.',
     ],
     [
-      "america/chicago",
-      'participants[0].clock.timeZone "america/chicago" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
+      "europe/london",
+      'participants[0].clock.timeZone "europe/london" must be written with the capitals of a time zone name, such as "Europe/London" for this zone: the browser reads a time zone name only with its capitals.',
     ],
     [
-      "us/central",
-      'participants[0].clock.timeZone "us/central" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
+      "europe/belfast",
+      'participants[0].clock.timeZone "europe/belfast" must be written with the capitals of a time zone name, such as "Europe/London" for this zone: the browser reads a time zone name only with its capitals.',
     ],
     [
       "etc/utc",
@@ -105,20 +105,20 @@ describe("parsing a participant's clock", () => {
   });
 
   it("holds actor.clock to the same rule", () => {
-    expect(parseRefusal("cuAppUrl", { actor: { clock: { timeZone: "america/chicago" } } })).toBe(
-      'actor.clock.timeZone "america/chicago" must be written with the capitals of a time zone name, such as "America/Chicago" for this zone: the browser reads a time zone name only with its capitals.',
+    expect(parseRefusal("cuAppUrl", { actor: { clock: { timeZone: "europe/london" } } })).toBe(
+      'actor.clock.timeZone "europe/london" must be written with the capitals of a time zone name, such as "Europe/London" for this zone: the browser reads a time zone name only with its capitals.',
     );
   });
 
   it("takes an alias, an Etc zone and lowercase words inside a part as written", () => {
     const config = study("cuAppUrl", {
-      actor: { clock: { timeZone: "US/Central" } },
+      actor: { clock: { timeZone: "Europe/Belfast" } },
       participants: [
         { clock: { timeZone: "Etc/GMT+5" } },
         { clock: { timeZone: "Africa/Dar_es_Salaam" } },
       ],
     });
-    expect(config.actor.clock).toEqual({ timeZone: "US/Central" });
+    expect(config.actor.clock).toEqual({ timeZone: "Europe/Belfast" });
     expect(config.participants).toEqual([
       { clock: { timeZone: "Etc/GMT+5" } },
       { clock: { timeZone: "Africa/Dar_es_Salaam" } },
@@ -134,14 +134,14 @@ describe("planning each participant's time zone", () => {
           study("cuAppUrl", {
             actor: { clock: { timeZone: "Europe/London" } },
             participants: [
-              { id: "chicago", clock: { timeZone: "America/Chicago" } },
+              { id: "lisbon", clock: { timeZone: "Europe/Lisbon" } },
               { id: "london" },
             ],
           }),
         ),
       ),
     ).toEqual([
-      ["chicago", "America/Chicago"],
+      ["lisbon", "Europe/Lisbon"],
       ["london", "Europe/London"],
     ]);
     expect(zones(plan(study("cuAppUrl", { participants: [{ id: "plain" }] })))).toEqual([
@@ -170,14 +170,14 @@ describe("planning each participant's time zone", () => {
         plan(
           study("sharedExternal", {
             participants: [
-              { id: "host", host: true, clock: { timeZone: "America/Chicago" } },
+              { id: "host", host: true, clock: { timeZone: "Europe/London" } },
               { id: "guest", clock: { timeZone: "Asia/Tokyo" } },
             ],
           }),
         ),
       ),
     ).toEqual([
-      ["host", "America/Chicago"],
+      ["host", "Europe/London"],
       ["guest", "Asia/Tokyo"],
     ]);
   });
@@ -240,7 +240,7 @@ describe("refusing a time zone where humanish cannot set the browser's zone", ()
 describe("study check and study show", () => {
   const visit = {
     participants: [
-      { id: "chicago", clock: { timeZone: "America/Chicago" } },
+      { id: "london", clock: { timeZone: "Europe/London" } },
       { id: "tokyo", clock: { timeZone: "Asia/Tokyo" } },
       { id: "plain" },
     ],
@@ -286,10 +286,10 @@ describe("study check and study show", () => {
     expect(check.checks.find((row) => row.name === "time zones")).toEqual({
       name: "time zones",
       ok: true,
-      message: "chicago America/Chicago, tokyo Asia/Tokyo, plain none.",
+      message: "london Europe/London, tokyo Asia/Tokyo, plain none.",
     });
     expect((await showOutput(cwd)).split("\n")).toContain(
-      "time zones: chicago America/Chicago, tokyo Asia/Tokyo, plain none.",
+      "time zones: london Europe/London, tokyo Asia/Tokyo, plain none.",
     );
   });
 

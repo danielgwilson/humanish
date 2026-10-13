@@ -5,7 +5,7 @@ import type { CuaObservation, ParticipantClock } from "./types.js";
 
 // What the participant knows about the time. A hosted desktop's panel clock shows the time in the
 // participant's zone, or in UTC without one, and a local browser shows no clock. Neither shows
-// when the session ends, so a participant told "your shift ends at 11:00" relates it to now
+// when the session ends, so a participant told "your session ends at 11:00" relates it to now
 // through each turn's text. The text rides the request's context hint, which every provider sends
 // with the turn (OpenAI as a user message, Codex and the local agents as the harness note).
 

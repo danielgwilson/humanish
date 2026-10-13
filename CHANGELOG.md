@@ -63,8 +63,8 @@ UTC.
   and of the clock in its desktop's panel, which ran in UTC before. Pages that show dates and times
   now show them in that zone.
 - `actor.clock.timeZone` refuses a UTC offset such as `+05:00` and a name in the wrong case such as
-  `america/chicago` or `us/central`, which it accepted before: Chrome runs in UTC or `Etc/Unknown`
-  for those. Write a tz database name with its capitals, such as `America/Chicago`.
+  `europe/london` or `europe/belfast`, which it accepted before: Chrome runs in UTC or `Etc/Unknown`
+  for those. Write a tz database name with its capitals, such as `Europe/London`.
 - A study that gives a participant a time zone on the local browser runtime
   (`execution.target: local`) or through `RunStudyOptions.inProcess` is refused before anything
   starts, with `HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED`, since humanish cannot set that

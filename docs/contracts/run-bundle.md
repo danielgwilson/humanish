@@ -478,7 +478,7 @@ copy failed before the first file was confirmed. A copy that failed records a `w
 ## Participant Time Zone
 
 A computer-use or shared-world participant's stream carries `timeZone`, a tz database name such as
-`America/Chicago`, when its study gave it one: `participants[].clock.timeZone`, else
+`Europe/London`, when its study gave it one: `participants[].clock.timeZone`, else
 `actor.clock.timeZone`. Its turns gave the local time in that zone, and on a hosted desktop its
 browser launched with `TZ` set to it. The field records the declared zone, also on a dry run; it is
 not read back from the browser. No `timeZone` means the participant had none, and its hosted

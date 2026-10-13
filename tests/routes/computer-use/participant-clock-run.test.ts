@@ -1,4 +1,4 @@
-// A computer-use study of three participants on fake hosted desktops ($0): one in Chicago, one in
+// A computer-use study of three participants on fake hosted desktops ($0): one in London, one in
 // Tokyo with a session cap, and one with no zone. Each browser launches with TZ set to its
 // participant's zone, so every tab runs in it from the first page load; each turn's clock hint and
 // the cap's notice give the time in that zone; and run.json records each participant's zone. The
@@ -138,7 +138,7 @@ describe("participants in different time zones", () => {
       lab("cuAppUrl", {
         mode: "live",
         participants: [
-          { id: "chicago", instruction: "Chicago visit.", clock: { timeZone: "America/Chicago" } },
+          { id: "london", instruction: "London visit.", clock: { timeZone: "Europe/London" } },
           {
             id: "tokyo",
             instruction: "Tokyo visit.",
@@ -152,15 +152,15 @@ describe("participants in different time zones", () => {
     );
     if (!parsed.ok) throw new Error(parsed.error.message);
     const handle = makeFanoutModule();
-    const seen = { chicago: [] as Seen[], tokyo: [] as Seen[], plain: [] as Seen[] };
+    const seen = { london: [] as Seen[], tokyo: [] as Seen[], plain: [] as Seen[] };
     const outcome = await runStudyWith(
       parsed.config,
       { cwd, env: KEYS },
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
-          const id = options.instructions.includes("Chicago")
-            ? "chicago"
+          const id = options.instructions.includes("London")
+            ? "london"
             : options.instructions.includes("Tokyo")
               ? "tokyo"
               : "plain";
@@ -179,14 +179,14 @@ describe("participants in different time zones", () => {
     const launchTz = (laneIndex: number) =>
       handle.browserLaunches.find((launch) => launch.laneIndex === laneIndex)?.env?.TZ;
     expect([launchTz(0), launchTz(1), launchTz(2)]).toEqual([
-      "America/Chicago",
+      "Europe/London",
       "Asia/Tokyo",
       undefined,
     ]);
 
-    // The clock hint. Tokyo is UTC+9 all year; Chicago changes with daylight saving time, so only
+    // The clock hint. Tokyo is UTC+9 all year; London changes with daylight saving time, so only
     // its zone name is checked.
-    expect(seen.chicago[0]?.hint).toMatch(/^The local time is \d\d:\d\d \(America\/Chicago\)\.$/);
+    expect(seen.london[0]?.hint).toMatch(/^The local time is \d\d:\d\d \(Europe\/London\)\.$/);
     const tokyoFirst = seen.tokyo[0]!;
     expect(tokyoFirst.hint).toMatch(
       new RegExp(`^The local time is ${hourAt(tokyoFirst.atMs, 9)}:\\d\\d \\(Asia/Tokyo\\)\\.$`),
@@ -202,7 +202,7 @@ describe("participants in different time zones", () => {
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     expect(bundle.streams.map((stream) => [stream.laneId, stream.timeZone])).toEqual([
-      ["chicago", "America/Chicago"],
+      ["london", "Europe/London"],
       ["tokyo", "Asia/Tokyo"],
       ["plain", undefined],
     ]);
@@ -237,7 +237,7 @@ describe("participants in different time zones", () => {
 describe("the hosted desktop around a participant with a time zone", () => {
   // The stock template's XFCE panel shows a clock above the browser. Live, setting the clock
   // plugin's timezone property through xfconf-query moved it from 02:12 UTC to 11:12 Asia/Tokyo
-  // and then to Mon 12 Oct 21:12 America/Chicago without a restart.
+  // and then to another zone without a restart.
   it("sets the desktop's panel clock to the participant's zone", async () => {
     const panelCommands: Array<[number, string]> = [];
     const warnings = await runTokyoAndPlain(cwd, (laneIndex, command) => {

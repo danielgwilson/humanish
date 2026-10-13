@@ -300,14 +300,14 @@ participants:
 
 ### Give each participant a time zone
 
-A hosted desktop's browser runs in UTC, so a participant told "your appointment is at 10:30" in Chicago would see times in UTC on every page. `actor.clock` gives every participant a time zone, and `participants[].clock` gives one participant its own:
+A hosted desktop's browser runs in UTC, so a participant in London told "the call starts at 10:30" would see times in UTC on every page. `actor.clock` gives every participant a time zone, and `participants[].clock` gives one participant its own:
 
 ```yaml
 actor:
   clock:
-    timeZone: America/Chicago # the clinic
+    timeZone: Europe/London # the office
 participants:
-  - id: receptionist # America/Chicago, from actor.clock
+  - id: agent # Europe/London, from actor.clock
   - id: traveller
     clock:
       timeZone: Asia/Tokyo
@@ -318,7 +318,7 @@ participants:
 - On a `desktop-cli` subject, humanish opens the participant's terminal with `TZ` set to its zone, so its shells, `date`, the product under test and a browser started from the terminal run in that zone.
 - A browser or terminal the participant opens from the desktop's dock starts without `TZ` and runs in UTC.
 - The clock in the hosted desktop's panel, at the top right of every screenshot, shows the same zone. When humanish cannot set it, the run warns and the clock shows UTC.
-- The zone is a tz database name such as `Europe/London`, written with its capitals: `america/chicago` and `us/central` are refused, since the browser does not find a name in the wrong case and runs in UTC. A UTC offset such as `+05:00` is refused, since a browser's time zone cannot be set to one.
+- The zone is a tz database name such as `Europe/London`, written with its capitals: `europe/london` and `europe/belfast` are refused, since the browser does not find a name in the wrong case and runs in UTC. A UTC offset such as `+05:00` is refused, since a browser's time zone cannot be set to one.
 - The local browser runtime (`execution.target: local`) and `RunStudyOptions.inProcess` do not set the browser's zone, so a study that gives a participant a time zone there is refused before anything starts.
 - `study check` prints each participant's zone in a `time zones` row, `study show` prints a `time zones:` line, and `run.json` records each participant's `timeZone` on its stream.
 - A participant without a zone runs in UTC, its desktop's panel clock shows UTC, and its turns carry no local time.

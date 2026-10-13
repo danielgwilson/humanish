@@ -6,12 +6,12 @@ import { invalid } from "./values.js";
  * A participant's clock, `actor.clock` or `participants[].clock`: `{ timeZone }`. Each turn gives the
  * participant the time in the zone, and a hosted desktop launches its browser with TZ set to it.
  * Chrome reads TZ through ICU, which takes only a tz database name spelled with its capitals: on
- * TZ=+05:00 it runs in UTC, and on TZ=america/chicago it reports Etc/Unknown, though Intl here
+ * TZ=+05:00 it runs in UTC, and on TZ=europe/london it reports Etc/Unknown, though Intl here
  * accepts both. So the zone must be a name Intl knows that is not a UTC offset and is spelled with
- * capitals. Intl gives no case-sensitive check: it spells us/central as America/Chicago, and its
- * supportedValuesOf omits aliases such as US/Central. So the rule is the one every tz database name
+ * capitals. Intl gives no case-sensitive check: it spells europe/belfast as Europe/London, and its
+ * supportedValuesOf omits aliases such as Europe/Belfast. So the rule is the one every tz database name
  * keeps: each part between slashes starts with a capital, and a case variant of Intl's spelling is
- * refused. A miscased letter after the first in a part of an alias (US/CENTRAL) still passes.
+ * refused. A miscased letter after the first in a part of an alias (Europe/BELFAST) still passes.
  */
 export function parseClock(
   raw: unknown,

@@ -845,7 +845,7 @@ describe("time zones on the external-public plane", () => {
       handoffDeadlineMs: 5_000,
     });
     const config = parseExternal();
-    const zones = ["America/Chicago", "Asia/Tokyo", undefined];
+    const zones = ["Europe/London", "Asia/Tokyo", undefined];
     const zoned: StudyConfig = {
       ...config,
       participants: participantList(config)!.map((entry, index) => {
@@ -862,14 +862,14 @@ describe("time zones on the external-public plane", () => {
     ).toEqual([
       ["casual-friend", undefined],
       ["competitive-friend", "Asia/Tokyo"],
-      ["party-host", "America/Chicago"],
+      ["party-host", "Europe/London"],
     ]);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     // Streams are in roster order: host, player-2, player-3.
     expect(bundle.streams.map((stream) => stream.timeZone)).toEqual([
-      "America/Chicago",
+      "Europe/London",
       "Asia/Tokyo",
       undefined,
     ]);
