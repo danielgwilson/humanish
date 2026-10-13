@@ -220,8 +220,8 @@ describe("a participant with a scheduled end", () => {
 });
 
 /**
- * A support agent in a quiet session: every turn only waits, 10 s of the clock apart, on a
- * screen that never changes.
+ * A support agent in a quiet session: every turn only waits, on a screen that never changes. A
+ * reply takes 9 s of the clock and its wait is watched for 1 s, so turns start 10 s apart.
  */
 async function quietSession(clock: ParticipantClock | undefined): Promise<{
   result: CuaLoopResult;
@@ -234,7 +234,7 @@ async function quietSession(clock: ParticipantClock | undefined): Promise<{
     capabilities: CAPS,
     async nextTurn() {
       turns += 1;
-      t += 10_000;
+      t += 9_000;
       return { actions: [{ kind: "wait" }], pendingSafetyChecks: [], done: false };
     },
     async debrief() {
@@ -257,7 +257,11 @@ async function quietSession(clock: ParticipantClock | undefined): Promise<{
     redaction: defaultRedactionHooks,
     timeoutMs: 60 * MINUTE,
     now: () => t,
-    sleep: async () => undefined,
+    sleep: async (ms) => {
+      t += ms;
+    },
+    idleWaitMs: 1_000,
+    maxWaitMs: 1_000,
     ...(clock === undefined ? {} : { clock }),
   });
   return { result, turns };
@@ -297,7 +301,8 @@ describe("a turn that reaches the scheduled end", () => {
 
 describe("waiting through a quiet session", () => {
   it("does not end a participant with a scheduled end for waiting before its end", async () => {
-    // 60 waiting turns, past both the 24-turn idle and the 20-turn no-progress streaks.
+    // Turn n's watch ends at 09:00 + 10n s, so the 60th reaches the end at 09:10: 60 waiting
+    // turns, past both the 24-turn idle and the 20-turn no-progress streaks.
     const { result, turns } = await quietSession({
       end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE },
     });

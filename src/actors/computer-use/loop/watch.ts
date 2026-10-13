@@ -115,7 +115,12 @@ async function watchScreen(
   // A reply that came back past the end or the deadline starts no watch.
   if (session.signal?.aborted) throw new CuaAbortError();
   if (endAt !== undefined && startedAt >= endAt)
-    return { wake: "clock", ms: 0, looks: 0, ...stopAt(clockEndStop(session, reference)) };
+    return {
+      wake: "clock",
+      ms: 0,
+      looks: 0,
+      ...stopAt(clockEndStop(session, reference, startedAt)),
+    };
   if (startedAt >= deadlineAt)
     return { wake: "stopped", ms: 0, looks: 0, stop: timeLimit(session) };
   session.trace.record("notice", () => ({
@@ -152,13 +157,14 @@ async function watchScreen(
     // look's observe and retry.
     const lasted = (): number => Math.max(session.now(), at) - startedAt;
     // No observe after the end or the deadline: one started with no time left would fail, and at
-    // the end the session would end as timed out.
+    // the end the session would end as timed out. The stop is read at `at`: a host timer can fire
+    // a millisecond before the clock reaches the end.
     if (endAt !== undefined && at >= endAt)
       return {
         wake: "clock",
         ms: lasted(),
         looks,
-        ...stopAt(clockEndStop(session, lastLook ?? reference)),
+        ...stopAt(clockEndStop(session, lastLook ?? reference, at)),
       };
     if (at >= deadlineAt) return { wake: "stopped", ms: lasted(), looks, stop: timeLimit(session) };
     let look: Look;

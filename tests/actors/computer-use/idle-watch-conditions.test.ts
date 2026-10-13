@@ -58,6 +58,22 @@ describe("a watch and the participant's clock", () => {
   );
 });
 
+describe("a watch and a host timer that fires early", () => {
+  it("ends at the participant's end when its sleep returns 1 ms before it", async () => {
+    // Every sleep returns 1 ms early, so the looks run at 4,999, 9,999 and 14,999 ms and the
+    // watch's schedule reaches the cap at 20 s while the clock reads 19,999 ms.
+    const run = await runWatching({
+      screen: () => QUIET,
+      sleepEarlyMs: 1,
+      turn: (_request, n) => (n === 1 ? LONG_WAIT : DONE),
+      loop: { clock: { end: { atMs: 20_000, windDownMs: 30_000, kind: "session_cap" } } },
+    });
+    expect(run.observes).toEqual([0, 4_999, 9_999, 14_999]);
+    expect(run.requests).toHaveLength(1);
+    expect(run.result.trace.stopCause).toBe("session_cap");
+  });
+});
+
 describe("a watch and what the participant hears and the study watches for", () => {
   it("wakes on speech that arrives only with one look, and the next request carries it", async () => {
     const utterance = {

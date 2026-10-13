@@ -83,6 +83,8 @@ export async function runWatching(options: {
   executor?: Pick<CuaExecutor, "speechEnabled" | "stallRecovery">;
   /** How far each observe moves the clock; 0 by default. */
   observeMs?: number;
+  /** How much sooner than asked each sleep returns, as a host timer can; 0 by default. */
+  sleepEarlyMs?: number;
   loop?: Partial<LoopRunOptions>;
 }): Promise<WatchRun> {
   let t = 0;
@@ -121,7 +123,7 @@ export async function runWatching(options: {
     timeoutMs: 2 * 60 * MINUTE,
     now: () => t,
     sleep: async (ms) => {
-      t += ms;
+      t += Math.max(0, ms - (options.sleepEarlyMs ?? 0));
     },
     ...options.loop,
   });

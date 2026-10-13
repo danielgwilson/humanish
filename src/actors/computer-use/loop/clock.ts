@@ -50,13 +50,17 @@ export function heldToScheduledEnd(session: LoopSession): boolean {
 }
 
 /**
- * The stop at the participant's end, or undefined before it: its scheduled end or its session cap,
- * which is the stop cause. The session passes as a planned end and the participant is asked for
- * its closing report on the last observation.
+ * The stop at the participant's end, or undefined before `nowMs`, by default the session's clock,
+ * reaches it: its scheduled end or its session cap, which is the stop cause. The session passes as
+ * a planned end and the participant is asked for its closing report on the last observation.
  */
-export function clockEndStop(session: LoopSession, observation: CuaObservation): Stop | undefined {
+export function clockEndStop(
+  session: LoopSession,
+  observation: CuaObservation,
+  nowMs?: number,
+): Stop | undefined {
   const end = session.settings.clock?.end;
-  if (end === undefined || session.now() < end.atMs) return undefined;
+  if (end === undefined || (nowMs ?? session.now()) < end.atMs) return undefined;
   const at = endTime(session.settings.clock!, end.atMs);
   const kind = end.kind ?? "scheduled_end";
   return {
