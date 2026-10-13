@@ -6613,8 +6613,10 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
           id: "idle-brain",
           capabilities: STATE_CAPS,
           async nextTurn(): Promise<CuaTurn> {
+            // A 0 ms wait runs no watch, so the idle turns take no real time; a watch lasts at
+            // least idleWaitMs (5 s).
             return {
-              actions: [{ kind: "wait", ms: 1 }],
+              actions: [{ kind: "wait", ms: 0 }],
               pendingSafetyChecks: [],
               done: false,
               message: "Still waiting.",
