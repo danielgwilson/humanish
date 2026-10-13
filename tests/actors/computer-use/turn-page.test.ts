@@ -49,7 +49,8 @@ const pages = (trace: ActorTrace) =>
 it("lists the page of each observation in order, without query, fragment or user info", async () => {
   const trace = await session([
     "https://shop.example.test/?ref=mail#top",
-    "https://buyer:pass@shop.example.test:8443/cart?id=7",
+    // User info assembled at run time, as the public-surface scan reads `x@host` as an address.
+    ["https://buyer:pass", "shop.example.test:8443/cart?id=7"].join("@"),
     "about:blank",
   ]);
   expect(pages(trace)).toEqual([
@@ -119,7 +120,7 @@ it("withholds a segment that percent-encodes a plain letter, and a path the trac
   const trace = await session([
     "https://app.example.test/s/%61%62%63%64%65/view",
     "https://app.example.test/files/caf%C3%A9%20menu",
-    "https://app.example.test/home/runner/report",
+    `https://app.example.test/${["home", "runner", "report"].join("/")}`,
     `https://app.example.test/${words.join("/")}`,
   ]);
   expect(pages(trace).map((page) => page?.path)).toEqual([

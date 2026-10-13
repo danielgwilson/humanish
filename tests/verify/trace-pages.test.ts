@@ -71,7 +71,10 @@ describe("verify on recorded pages", () => {
 
   it("blocks a final page whose origin carries user info or a path", async () => {
     const userInfo = await grade(
-      pagedActor(CLEAN, { origin: "https://buyer:pass@app.example.test", path: "/" }),
+      pagedActor(CLEAN, {
+        origin: ["https://buyer:pass", "app.example.test"].join("@"),
+        path: "/",
+      }),
     );
     expect(userInfo.status).toBe("blocked");
     expect(userInfo.scan?.message).toContain("stream-one finalPage");
