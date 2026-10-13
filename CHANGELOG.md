@@ -8,26 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.127.1: Clock-end closing reports declare their outcome; skipped participants named as skipped (2026-10-13)
 
-- An OpenAI computer-use participant asked for its closing report at a scheduled end or session
-  cap now says how the task went in the report's `outcome` field (`reached`, `not_reached` or
-  `blocked`). The closing request asks for it, and its strict JSON schema requires it. The trace's
-  `declaredOutcome` reads the field before the summary's first line. Before, the request did not
-  ask for the declared line, so a participant that reached its goal before its end counted in
-  `participants.ranUntilEnd`. A provider port or stored trace without the field stays valid, and
-  a report after a stop condition or dwell window still sets no `declaredOutcome`. A provider
-  port's self-ending turn whose `closingReport` carries `outcome` sets `declaredOutcome` from it
-  too.
-- A computer-use participant the run skips before its session starts, because the study budget
-  was reached, its scheduled end passed while it waited for a slot, or an earlier participant
-  failed to provision its world, now ends its `humanish run` line on the skip reason. The line
-  read `blocked · unknown ending`. The review summary in run.json and review.md counts skipped
-  participants in a sentence of their own: a run of 3 with one skipped reads "2 participants took
-  part, each in their own copy of the app: ... 1 participant was skipped before its session
-  started; the gaps say why." It used to count all 3 as taking part. While a fan-out run is live,
-  its summary says the participants "are planned, each in their own copy of the app". It said each
-  was using its copy, which was untrue for one still waiting or already skipped.
+humanish 0.127.1 fixes two things the 0.127.0 release smoke found in scheduled studies. An OpenAI
+participant asked for its closing report at a scheduled end or session cap now says how the task
+went in a structured `outcome` field, so one that reached its goal counts in `reachedGoal` where
+0.127.0 counted it in `ranUntilEnd`. A participant the run skips before its session starts now
+shows its skip reason on its run line, and the summary counts it apart from those that took
+part.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.127.1)
 
 ## 0.127.0: Clock-end passes counted by what participants declared, a scaled wind-down, the concurrency cap in the plan (2026-10-13)
 
