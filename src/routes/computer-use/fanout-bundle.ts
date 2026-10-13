@@ -85,13 +85,16 @@ function fanoutSummary(
   const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
   const tookPart = count - facts.skipped;
   const outcomes = facts.outcomes ?? `0/${tookPart} finished a session`;
-  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gapsListClause(tookPart - facts.passed, tookPart)}.`;
+  const gaps = gapsListClause(tookPart - facts.passed, tookPart);
+  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gaps}.`;
+  // The gaps are pointed at once: here only when the sentence before did not.
+  const why = gaps === "" ? "; the gaps say why" : "";
   const skipped =
     facts.skipped === 0
       ? ""
       : facts.skipped === 1
-        ? " 1 participant was skipped before its session started; the gaps say why."
-        : ` ${facts.skipped} participants were skipped before their sessions started; the gaps say why.`;
+        ? ` 1 participant was skipped before its session started${why}.`
+        : ` ${facts.skipped} participants were skipped before their sessions started${why}.`;
   return `${host}${rerun}${ran}${skipped}${tasks}`;
 }
 

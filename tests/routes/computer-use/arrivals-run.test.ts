@@ -233,7 +233,7 @@ describe("a computer-use study with a declared schedule", () => {
 
     const bundle = await runJson(cwd, result.runId);
     expect(bundle.review.summary).toBe(
-      "1 participant took part, in its own copy of the app: 0/1 recorded completions, 1 interrupted (study spend limit); the gaps say why. 1 participant was skipped before its session started; the gaps say why.",
+      "1 participant took part, in its own copy of the app: 0/1 recorded completions, 1 interrupted (study spend limit); the gaps say why. 1 participant was skipped before its session started.",
     );
     expect(bundle.review.gaps).toContain(`customer: ${reason}`);
   });

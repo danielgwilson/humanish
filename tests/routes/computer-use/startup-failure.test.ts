@@ -211,7 +211,7 @@ describe("a hosted fan-out whose first participant fails to start", () => {
     const events = await runEvents(cwd, result.runId);
     // The first participant is the only one that started; the three skipped ones are counted apart.
     expect(bundle.review.summary).toBe(
-      "1 participant took part, in its own copy of the app: 0/1 finished a session; the gaps say why. 3 participants were skipped before their sessions started; the gaps say why.",
+      "1 participant took part, in its own copy of the app: 0/1 finished a session; the gaps say why. 3 participants were skipped before their sessions started.",
     );
     for (const lane of result.lanes?.slice(1) ?? []) {
       expect(lane.status).toBe("blocked");
