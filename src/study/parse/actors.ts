@@ -155,7 +155,7 @@ export interface ParticipantPaths {
  * Parse a participant list into a fan-out roster (computer-use E2B route): `participants` in a
  * study, `actors[0].lanes` in the v2 file migrate reads, each named in messages by `paths`.
  * Structural only: each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
- * instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, reasoningEffort?, stopWhen?, dwell? }`.
+ * instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
  * route-scoped cross-validation (device XOR raw resolution, targets, the participant bound) runs in parseStudy
@@ -170,7 +170,7 @@ export function parseParticipantEntries(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
+      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }) when set.`,
     );
   }
   const entries: StudyParticipantEntry[] = [];
@@ -178,7 +178,7 @@ export function parseParticipantEntries(
   for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, reasoningEffort?, stopWhen?, dwell? }).`,
+        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }).`,
       );
     }
     const parsedEntry: StudyParticipantEntry = {};
