@@ -7,7 +7,8 @@ import { watchFrames, type FrameVerdict } from "../../src/evidence/frame-change.
 // Later looks at one screen compared with the frame the participant last saw. The four retained
 // frames are public pages from live runs (tests/fixtures/frame-change/README.md); the rest are
 // drawn here at the geometry the design note measured. Looks come every 5 s unless a case says
-// otherwise, and a small region settles once all its tiles have held still for more than 65 s.
+// otherwise. A small region settles once all its tiles have held still for more than 65 s and no
+// tile within 4 tiles of it ticked or moved with a large region in that time.
 
 const fixture = (name: string): Buffer =>
   readFileSync(new URL(`../fixtures/frame-change/${name}`, import.meta.url));

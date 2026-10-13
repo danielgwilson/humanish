@@ -1078,10 +1078,18 @@ Core-owned fields:
   and requests the next turn when a change holds still, speech arrives, a
   `stopWhen` rule, `dwell.when` or task `success` rule matches a look, the
   participant's wind-down or end arrives, or the watch's time passes
-  (`src/actors/computer-use/loop/watch.ts`). The first watch lasts the turn's
-  planned length; each further one in a row that ended at its limit lasts twice
-  as long, up to the larger of its planned length and `actor.maxWaitMs` (else
-  600000). `limitMs` is how long it could last; `wake` is `changed`, `speech`,
+  (`src/actors/computer-use/loop/watch.ts`). A change of more than 24 tiles of
+  16 pixels counts once it holds still at a look; one of 24 tiles or fewer once
+  it has held still for more than 65 s with no tile within 4 tiles of it ticking
+  or moving with a region of more than 24 tiles
+  (`src/evidence/frame-change.ts`). The first watch lasts the turn's planned
+  length: each named wait's length up to `actor.maxWaitMs` (else 600000), and
+  `idleWaitMs` for a wait that names none. Each further one in a row that ended
+  at its limit, or that a change of 24 tiles or fewer woke, lasts twice as long,
+  up to the larger of its planned length and that cap. `limitMs` is how long it
+  could last; `askedMs` is what the turn's waits asked for, the same sum with no
+  cap, so it is above `limitMs` when a named wait passed the cap and below it
+  when the watch grew; `wake` is `changed`, `speech`,
   `condition`, `limit`, `clock` (wind-down or end), `stalled` (a look got no
   frame; the next observation is a fresh one), or `stopped` (the study budget or
   the session's time ran out); `looks` counts its looks; `area` (`x`, `y`,
@@ -1155,7 +1163,8 @@ Core-owned fields:
   how long a wait that names no duration lasts after an action in the same turn,
   and the time to a watch's quick look after a large change. A watch's length
   grows to `actor.maxWaitMs`, else 600000, which `waitSettings` does not record;
-  each watch's `watch.limitMs` does. A wait sent to the desktop has a
+  each watch's `watch.limitMs` does. A named wait in a turn that only waits is
+  watched for its length up to that cap, past `maxWaitMs`. A wait sent to the desktop has a
   `ui_action` titled with its planned length, which a stalled wait keeps. A
   watched wait's `ui_action` is titled with the part of the watch it covered.
   Absent on other routes and on earlier bundles
