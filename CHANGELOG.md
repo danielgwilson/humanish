@@ -18,6 +18,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `study check`, `humanish run` and `doctor --study`, with advice to shorten `actor.mission` or
   split the participants across studies. On dry runs, 20,000 more bytes of mission added 40,000
   bytes to run.json with 1 participant and 100,000 with 4. (#1836)
+- The Observer keeps a viewer's saved moments on reload when one is at frame 100,000 or later. It
+  refused such a moment, and with it every saved moment in the browser, up to 50, so the list came
+  back empty. A saved frame may now be any whole number from 0 to `Number.MAX_SAFE_INTEGER`, the
+  range analysis accepts. A participant reaches frame 100,000 after about 278 hours at a model turn
+  every 10 seconds. (#1842)
 
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
