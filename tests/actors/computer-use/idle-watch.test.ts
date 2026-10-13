@@ -139,6 +139,27 @@ describe("the watch length over idle turns in a row", () => {
     );
   });
 
+  it("watches a named wait past one wait's cap for the length asked, up to the growth cap", async () => {
+    // Defaults: one wait sent to the desktop lasts at most 2 minutes, and watches grow to 10. A
+    // named 10-minute wait is watched for 10 minutes, a named 15-minute one for 10, and three
+    // waits with no length ask for 3 x 5 s. Each watch record keeps the length asked.
+    const script: CuaAction[][] = [
+      [{ kind: "wait", ms: 600_000 }],
+      [{ kind: "wait", ms: 900_000 }],
+      [WAIT, WAIT, WAIT],
+    ];
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= script.length ? turnOf(script[n - 1]!) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [600_000, 600_000],
+      [900_000, 600_000],
+      [15_000, 600_000],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([0, 600_000, 1_200_000, 1_800_000]);
+  });
+
   it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
     // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
     const run = await runWatching({

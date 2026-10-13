@@ -171,6 +171,7 @@ export interface ActorTraceItem {
   // computer-use: the wait ui_action during which a watch of a turn that only waited ended
   watch?: {
     limitMs: number;
+    askedMs: number; // what the turn's waits asked for; above limitMs past the watch's growth cap
     wake: "changed" | "speech" | "condition" | "limit" | "clock" | "stalled" | "stopped";
     looks: number;
     area?: { x: number; y: number; width: number; height: number }; // pixels, coordinates only

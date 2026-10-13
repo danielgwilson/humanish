@@ -426,8 +426,9 @@ export interface StudyActor {
    * Computer-use and shared-world: the longest one `wait` action lasts, in whole milliseconds from
    * 1000 to 3600000. Default 120000, or 30000 on a desktop with speech. In a turn with another
    * action a longer wait is shortened to it, the trace records a `wait shortened` notice, and the
-   * participant is told on its next turn. A turn that only waits is watched, and on a screen that
-   * stays the same its watches in a row grow to this, or to 600000 when it is not set.
+   * participant is told on its next turn. A turn that only waits is watched: a named wait lasts its
+   * length up to this, or to 600000 when it is not set, and on a screen that stays the same its
+   * watches in a row grow to the same cap.
    */
   maxWaitMs?: number;
   /**

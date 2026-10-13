@@ -151,13 +151,16 @@ const waitTitles = (result: CuaLoopResult) =>
 
 describe("a Codex participant that asks for a long wait", () => {
   it("gets its tool call back when the screen changes, with no wait sent to the desktop", async () => {
-    // A 5-minute wait is first watched for 2 minutes, the longest one wait lasts by default. Looks
-    // every 5 s; the one at 40 s sees the new row, and the quick look at 40.5 s sees it still.
+    // A 5-minute wait is watched for 5 minutes, past the 2 minutes one wait sent to the desktop
+    // lasts by default. Looks every 5 s; the one at 40 s sees the new row, and the quick look at
+    // 40.5 s sees it still.
     const { result, executed, firstReply } = await waitInCall(300_000, { changesAtMs: 40_000 });
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(executed).toEqual([{ kind: "click", x: 1, y: 1 }]);
     expect(waitTitles(result)).toEqual([["wait 40500ms", "changed"]]);
+    const watch = result.trace.items.find((item) => item.watch !== undefined)?.watch;
+    expect([watch?.askedMs, watch?.limitMs]).toEqual([300_000, 300_000]);
     expect(firstReply.acknowledgments).toEqual([{ index: 0, status: "completed" }]);
     expect(firstReply.contextHint).toBe(
       "Your wait lasted 41 seconds and ended when the screen changed.",
@@ -175,16 +178,17 @@ describe("a Codex participant that asks for a long wait", () => {
   });
 
   it.each([
-    { options: {}, perWait: 120_000, grows: 600_000 },
-    { options: { maxWaitMs: 90_000 }, perWait: 90_000, grows: 90_000 },
-    { options: { speechEnabled: true }, perWait: 30_000, grows: 600_000 },
+    { options: {}, perWait: 120_000, watched: 600_000 },
+    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000 },
+    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000 },
   ])(
-    "is told the longest one wait lasts and the longest a watch grows to: $perWait and $grows ms",
-    async ({ options, perWait, grows }) => {
+    "is told the longest a call of only waits and a wait among other actions last: $watched and $perWait ms",
+    async ({ options, perWait, watched }) => {
       await waitInCall(1_000, options);
 
-      expect(native.descriptions[0]).toContain(`each at most ${perWait} ms`);
-      expect(native.descriptions[0]).toContain(`up to ${grows} ms`);
+      expect(native.descriptions[0]).toContain(`after its waits' ms, each at most ${watched} ms`);
+      expect(native.descriptions[0]).toContain(`up to ${watched} ms`);
+      expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },
   );
 });

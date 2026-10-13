@@ -173,6 +173,12 @@ export interface ActorWatch {
   /** How long the watch could last, in milliseconds. */
   limitMs: number;
   /**
+   * How long the turn's waits asked for, in milliseconds: the lengths they named, and the idle
+   * wait for each that named none. Above limitMs when a named wait passed the longest a watch
+   * grows to (actor.maxWaitMs, else 10 minutes).
+   */
+  askedMs: number;
+  /**
    * Why it ended: `changed` (a change held still), `speech` (the participant heard speech),
    * `condition` (a study stop condition, dwell trigger or task matched a look), `limit` (its time
    * passed with no change holding still), `clock` (the participant's wind-down or end arrived),

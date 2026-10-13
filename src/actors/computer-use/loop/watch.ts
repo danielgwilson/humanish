@@ -5,7 +5,6 @@ import {
   type FrameVerdict,
 } from "../../../evidence/frame-change.js";
 import { plural } from "../../../run/text.js";
-import { planWait } from "../wait.js";
 import { isIdleTurn, type WatchedWaits } from "./actions.js";
 import { progressKeyOf } from "./backstop.js";
 import { clockEndStop } from "./clock.js";
@@ -21,8 +20,8 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // when a change holds still (evidence/frame-change.ts), speech arrives, a study condition matches,
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
-// A watch first lasts the turn's planned length, what planWait gave its waits before watches, so
-// it never lasts longer than that wait did. Each further idle turn in a row whose watch ended at
+// A watch first lasts the turn's planned length: each wait's named length up to watchMaxMs, and
+// idleWaitMs for a wait that names none. Each further idle turn in a row whose watch ended at
 // its limit, or was woken by a small change (at most 24 tiles) that held still, watches twice as
 // long, up to the longer of its planned length and watchMaxMs. Any other ending, or a turn with
 // another action, starts again from the planned length. A participant waiting on a static screen
@@ -89,9 +88,12 @@ export class IdleWatcher {
       this.grownFromMs = undefined;
       return undefined;
     }
-    const lengths = actions.flatMap((action) =>
-      action.kind === "wait" ? [planWait(session.waits, action.ms, true).ms] : [],
+    // A named wait past maxWaitMs, the longest one wait sent to the desktop lasts, is watched for
+    // its length up to watchMaxMs: a participant told to wait 10 minutes waits 10 minutes.
+    const asked = actions.flatMap((action) =>
+      action.kind === "wait" ? [Math.max(0, action.ms ?? session.waits.idleWaitMs)] : [],
     );
+    const lengths = asked.map((ms) => Math.min(ms, session.waits.watchMaxMs));
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
     if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
@@ -117,6 +119,7 @@ export class IdleWatcher {
         sessionEnded: ending.stop !== undefined,
         watch: {
           limitMs,
+          askedMs: asked.reduce((sum, ms) => sum + ms, 0),
           wake: ending.wake,
           looks: ending.looks,
           ...(ending.area === undefined ? {} : { area: { ...ending.area } }),

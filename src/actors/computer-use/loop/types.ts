@@ -309,10 +309,11 @@ export interface CuaLoopOptions {
    * action a longer wait is shortened to it, the trace records a `wait shortened` notice, and the
    * participant is told on its next request; a wait longer than one desktop call carries is sent in
    * steps. A turn that only waits or takes screenshots is watched instead (loop/watch.ts): it first
-   * lasts its waits' lengths, each capped here, and each further such turn in a row that ends with
-   * no change lasts twice as long, up to this or the turn's own length. A whole number from 1000 to
-   * 3600000; any other value throws a RangeError before the session starts. Default 120000, or 30000
-   * when the executor is speechEnabled, for one wait, and 600000 for a watch to grow to.
+   * lasts its waits' lengths, each up to this or, when it is not set, 600000, and each further such
+   * turn in a row that ends with no change lasts twice as long, up to that or the turn's own length.
+   * A whole number from 1000 to 3600000; any other value throws a RangeError before the session
+   * starts. Default 120000, or 30000 when the executor is speechEnabled, for one wait sent to the
+   * desktop, and 600000 for a watch.
    */
   maxWaitMs?: number;
   /**

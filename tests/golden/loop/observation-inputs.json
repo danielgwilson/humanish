@@ -82,6 +82,7 @@
             "title": "wait 6000ms",
             "watch": {
               "limitMs": 1,
+              "askedMs": 1,
               "wake": "speech",
               "looks": 1
             },
