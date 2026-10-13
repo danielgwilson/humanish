@@ -43,12 +43,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   29.2 and 15.6 requests in 40 minutes on the queue, chart and static pages (means over 84
   timelines).
 - `actor.maxWaitMs` accepts up to 3,600,000 milliseconds. It caps how long the watches of repeated
-  idle turns grow and how long a named wait in a turn that only waits lasts. A wait in a turn with
-  another action keeps the cap it had: 120,000, or 30,000 on a desktop with speech, when the study
-  does not set it.
-- A named wait in a turn that only waits lasts the length it names, up to `actor.maxWaitMs` or 10
-  minutes, and ends early when the screen changes and holds still. Several waits in one such turn
-  are one watch over their summed length.
+  idle turns grow and how long the named waits in a turn that only waits last together. A wait in
+  a turn with another action keeps the cap it had: 120,000, or 30,000 on a desktop with speech,
+  when the study does not set it.
+- A named wait in a turn that only waits lasts the length it names and ends early when the screen
+  changes and holds still. Several waits in one such turn are one watch over their summed length,
+  and the lengths they name together last at most `actor.maxWaitMs` or 10 minutes: a Codex call of
+  4 waits of 10 minutes each is watched for 10 minutes.
 - The next request after a watch tells the participant how long it waited and why the wait ended:
   "Your wait lasted 7 minutes and ended when the screen changed." A small change is named by its
   place: "Your wait lasted 75 seconds and ended when a small part of the screen changed and then
@@ -60,7 +61,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   description gives the longest such wait.
 - Run bundles stay `humanish.run-bundle.v4`, with additive fields. The wait's `ui_action` during
   which a watch ended carries `watch`: `limitMs`, `askedMs` (what the turn's waits asked for, above
-  `limitMs` when a named wait passed the cap), `wake` (`changed`, `speech`, `condition`, `limit`,
+  `limitMs` when the named waits passed the cap), `wake` (`changed`, `speech`, `condition`, `limit`,
   `clock`, `stalled` or `stopped`), `looks` and an optional `area` in pixels. A `watching the
   screen` notice with `lifecycle: started` opens each watch. A watched wait is titled with the part
   of the watch it covered, and later waits in its turn `wait 0ms`. The look that ended the watch is
@@ -79,7 +80,7 @@ hour, the per-brain runs, the Codex long wait and the real-page run.
 | With `actor.maxWaitMs` unset, a turn that only waits lasted at most 120,000 ms, or 30,000 on a desktop with speech, and a longer named wait was shortened to that | A named wait in such a turn lasts up to 600,000 ms, and idle turns in a row grow to 600,000 ms; a wait in a turn with another action keeps the old cap                                                                                                   | Set `actor.maxWaitMs: 120000`, or `30000` on a desktop with speech, to keep every idle turn that short                                                                                                                                                                                          |
 | `actor.maxWaitMs` accepted 1,000 to 600,000                                                                                                                       | It accepts 1,000 to 3,600,000                                                                                                                                                                                                                            | None                                                                                                                                                                                                                                                                                            |
 | A named wait in a turn that only waits lasted its full length, up to `actor.maxWaitMs`                                                                            | It ends when the screen changes and holds still                                                                                                                                                                                                          | No setting keeps the full length on a changing screen; the participant is told why its wait ended and may wait again                                                                                                                                                                            |
-| Several waits in one turn that only waits led to one request after their sum                                                                                      | One watch over their sum, ending at the first change that holds still                                                                                                                                                                                    | On a screen that does not change, the first such turn keeps the sum, and every turn of waits with no duration does when `actor.maxWaitMs` equals `actor.idleWaitMs`; on a changing screen no setting keeps it                                                                                   |
+| Several waits in one turn that only waits led to one request after their sum                                                                                      | One watch over their sum, with named lengths together at most `actor.maxWaitMs` or 600,000 ms, ending at the first change that holds still                                                                                                               | On a screen that does not change, the first such turn keeps the sum while its named waits together stay within that cap, and every turn of waits with no duration does when `actor.maxWaitMs` equals `actor.idleWaitMs`; on a changing screen no setting keeps it                               |
 | On a desktop with speech, heard speech reached the participant after its wait, at most 30 seconds later by default                                                | The wait ends when the participant hears speech, and humanish looks at least every 30 seconds                                                                                                                                                            | None                                                                                                                                                                                                                                                                                            |
 | A library caller's executor received a turn's waits as `wait` actions, and `sleep` paced only dwell windows                                                       | A turn that only waits sends no `wait` action; the loop calls `sleep` between looks and `observe` at each look                                                                                                                                           | Inject `sleep` with a `now` that it advances to run such turns without real pauses, and count waits from the trace's `ui_action` items                                                                                                                                                          |
 

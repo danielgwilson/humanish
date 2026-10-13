@@ -160,6 +160,37 @@ describe("the watch length over idle turns in a row", () => {
     expect(run.requests.map((request) => request.at)).toEqual([0, 600_000, 1_200_000, 1_800_000]);
   });
 
+  it("watches a turn's named waits for their sum, together at most the growth cap", async () => {
+    // Defaults: watches grow to 10 minutes. Two named 4-minute waits are watched for 8 minutes.
+    // A Codex call carries at most 4 actions: four named 10-minute waits ask for 40 minutes and
+    // are watched for 10, the first wait taking all of it, so the call stays open no longer than
+    // one such wait.
+    const script: CuaAction[][] = [
+      [
+        { kind: "wait", ms: 240_000 },
+        { kind: "wait", ms: 240_000 },
+      ],
+      Array.from({ length: 4 }, (): CuaAction => ({ kind: "wait", ms: 600_000 })),
+    ];
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= script.length ? turnOf(script[n - 1]!) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [480_000, 480_000],
+      [2_400_000, 600_000],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([0, 480_000, 1_080_000]);
+    expect(waitItems(run.result).map((item) => item.title)).toEqual([
+      "wait 240000ms",
+      "wait 240000ms",
+      "wait 600000ms",
+      "wait 0ms",
+      "wait 0ms",
+      "wait 0ms",
+    ]);
+  });
+
   it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
     // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
     const run = await runWatching({

@@ -20,12 +20,12 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // when a change holds still (evidence/frame-change.ts), speech arrives, a study condition matches,
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
-// A watch first lasts the turn's planned length: each wait's named length up to watchMaxMs, and
-// idleWaitMs for a wait that names none. Each further idle turn in a row whose watch ended at
-// its limit, or was woken by a small change (at most 24 tiles) that held still, watches twice as
-// long, up to the longer of its planned length and watchMaxMs. Any other ending, or a turn with
-// another action, starts again from the planned length. A participant waiting on a static screen
-// settles at one request per watchMaxMs.
+// A watch first lasts the turn's planned length: its waits' named lengths, together up to
+// watchMaxMs, and idleWaitMs for each wait that names none. Each further idle turn in a row whose
+// watch ended at its limit, or was woken by a small change (at most 24 tiles) that held still,
+// watches twice as long, up to the longer of its planned length and watchMaxMs. Any other ending,
+// or a turn with another action, starts again from the planned length. A participant waiting on a
+// static screen settles at one request per watchMaxMs.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -89,11 +89,20 @@ export class IdleWatcher {
       return undefined;
     }
     // A named wait past maxWaitMs, the longest one wait sent to the desktop lasts, is watched for
-    // its length up to watchMaxMs: a participant told to wait 10 minutes waits 10 minutes.
+    // its length: a participant told to wait 10 minutes waits 10 minutes. A turn's named waits
+    // together last at most watchMaxMs, in order, so a Codex call of 4 long waits stays open no
+    // longer than one. A wait that names no length lasts idleWaitMs.
     const asked = actions.flatMap((action) =>
       action.kind === "wait" ? [Math.max(0, action.ms ?? session.waits.idleWaitMs)] : [],
     );
-    const lengths = asked.map((ms) => Math.min(ms, session.waits.watchMaxMs));
+    let namedMs = 0;
+    const lengths = actions.flatMap((action) => {
+      if (action.kind !== "wait") return [];
+      if (action.ms === undefined) return [session.waits.idleWaitMs];
+      const ms = Math.min(Math.max(0, action.ms), session.waits.watchMaxMs - namedMs);
+      namedMs += ms;
+      return [ms];
+    });
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
     if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);

@@ -174,8 +174,8 @@ export interface ActorWatch {
   limitMs: number;
   /**
    * How long the turn's waits asked for, in milliseconds: the lengths they named, and the idle
-   * wait for each that named none. Above limitMs when a named wait passed the longest a watch
-   * grows to (actor.maxWaitMs, else 10 minutes).
+   * wait for each that named none. Above limitMs when the named waits together passed the longest
+   * a watch grows to (actor.maxWaitMs, else 10 minutes).
    */
   askedMs: number;
   /**

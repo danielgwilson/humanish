@@ -186,7 +186,9 @@ describe("a Codex participant that asks for a long wait", () => {
     async ({ options, perWait, watched }) => {
       await waitInCall(1_000, options);
 
-      expect(native.descriptions[0]).toContain(`after its waits' ms, each at most ${watched} ms`);
+      expect(native.descriptions[0]).toContain(
+        `after its waits' ms, together at most ${watched} ms`,
+      );
       expect(native.descriptions[0]).toContain(`up to ${watched} ms`);
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },
