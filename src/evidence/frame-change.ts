@@ -41,10 +41,9 @@ const LARGE_REGION_TILES = 24;
 /**
  * A still region of at most LARGE_REGION_TILES tiles wakes the participant once every tile in it
  * has held still for more than this, and no tile within NEAR_TILES of it ticked or moved with a
- * region of more than LARGE_REGION_TILES tiles (a chart, a video) in this time. Minute updates (a
- * clock's minutes digit, "2 min ago") move again within it. On the wave 9 corpus a one-time
- * 8-tile text change was seen 72.4 s after it landed (median, 5 s looks). Without the moves in a
- * large region, a chart's tiles woke 3 watches falsely in its page's 40 minutes.
+ * region of more than MOVING_REGION_TILES tiles in this time. Minute updates (a clock's minutes
+ * digit, "2 min ago") move again within it. On the wave 9 corpus a one-time 8-tile text change was
+ * seen 72.4 s after it landed (median, 5 s looks).
  */
 const SMALL_REGION_HOLD_MS = 65_000;
 /**
@@ -60,6 +59,14 @@ const NEAR_TILES = 4;
  * label beside a spinner still wakes the participant, at 90 s on the wave 9 synthetic screens.
  */
 const TICK_GAP_MS = 30_000;
+/**
+ * A tile that moves with a connected moving region of more than this many tiles (a chart, a video)
+ * holds a small region within NEAR_TILES back. A chart's tiles move every few looks, so they never
+ * tick. On the wave 9 corpus, without this condition a chart's tiles woke 3 watches falsely in its
+ * page's 40 minutes, and 259 in its 84 replayed timelines; with it, none. It was not tuned apart
+ * from LARGE_REGION_TILES and has the same value. A spinner of 1 to 4 tiles stays under it.
+ */
+const MOVING_REGION_TILES = 24;
 
 /** A rectangle of the frame, in pixels from its top-left corner. */
 export interface FrameRegion {
@@ -133,7 +140,7 @@ export function watchFrames(reference: Buffer): {
 
 /**
  * Per tile, the times of its last two moves (a move back to the reference counts), and of its
- * last move together with a connected moving region of more than LARGE_REGION_TILES tiles.
+ * last move together with a connected moving region of more than MOVING_REGION_TILES tiles.
  */
 interface TileMoves {
   readonly columns: number;
@@ -193,7 +200,7 @@ function compare(
       } else still.add(tile);
     }
   for (const region of connectedRegions(movedNow, columns))
-    if (region.length > LARGE_REGION_TILES)
+    if (region.length > MOVING_REGION_TILES)
       for (const tile of region) moves.movedLarge[tile] = atMs;
   const regions = connectedRegions(still, columns);
   const area = (region: readonly number[]) => areaOf(region, columns, base.width, base.height);
