@@ -205,7 +205,7 @@ export function participantSessionOptions(
             const crossed = deps.runBudget!.crossed();
             return crossed === undefined
               ? null
-              : `study budget reached: ${crossed}; this lane stops here and sibling lanes stop at their next turn`;
+              : `study budget reached: ${crossed}; the study's participants stop before their next model request`;
           },
         }),
     ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),

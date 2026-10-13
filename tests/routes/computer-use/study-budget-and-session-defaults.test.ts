@@ -319,6 +319,10 @@ describe("the study budget stops a participant with budget_reached", () => {
     expect(outcome.session?.completionReason).toBe("budget_reached");
     expect(outcome.session?.trace.stopCause).toBe("study_spend_limit");
     expect(requests).toHaveLength(0);
+    // The ledger holds only the sibling's $2; this participant's reason must not claim the crossing.
+    expect(outcome.session?.reason).toBe(
+      "study budget reached: the run's estimated model spend $2 crossed caps.maxTotalUsd=$1; the study's participants stop before their next model request",
+    );
   });
 
   it("sums participant estimates on the shared ledger and ignores unpriceable readings", () => {
