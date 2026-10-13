@@ -212,6 +212,41 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
     ]);
   });
 
+  it("settles a label 5 tiles from a ticking digit, outside the 4 tiles that hold it back", () => {
+    // The digit (column 4) changes at 30 s and every 60 s after; the label in columns 9 to 11
+    // appears at 10 s and is still for 70 s at 80 s.
+    const scene = (atMs: number) =>
+      glyphs([
+        [4, 5, 100 + ticksBy(atMs, 60_000, 30_000)],
+        ...(atMs < 10_000 ? [] : [9, 10, 11].map((column): Glyph => [column, 5, 700 + column])),
+      ]);
+    expect(firstSettled(scene)).toEqual([
+      80_000,
+      { verdict: "settled", area: { x: 144, y: 80, width: 48, height: 16 }, small: true },
+    ]);
+  });
+
+  // A tile 2 tiles from a label (column 4) changes every `everyMs` from `everyMs`; the label in
+  // columns 6 to 8 appears at 10 s.
+  const besideMover = (everyMs: number) => (atMs: number) =>
+    glyphs([
+      [4, 5, 300 + ticksBy(atMs, everyMs, everyMs)],
+      ...(atMs < 10_000 ? [] : [6, 7, 8].map((column): Glyph => [column, 5, 700 + column])),
+    ]);
+
+  it("settles a label beside a tile that changes every 20 s, which does not tick, at 80 s", () => {
+    // Its moves are 20 s apart, under the 30 s a tick needs, so only its first move holds the
+    // label back.
+    expect(firstSettled(besideMover(20_000))).toEqual([
+      80_000,
+      { verdict: "settled", area: { x: 96, y: 80, width: 48, height: 16 }, small: true },
+    ]);
+  });
+
+  it("never settles a label beside a tile that changes every 30 s, which ticks", () => {
+    expect(firstSettled(besideMover(30_000))).toBeUndefined();
+  });
+
   it("counts a ticker's move back to its first frame as a tick that holds a label back", () => {
     // The ticker (column 0, row 5) changes at 30 s and returns to the reference frame at 90 s; the
     // label in columns 2 to 4 appears at 10 s. The move back holds the label until 65 s after it:
@@ -354,6 +389,22 @@ describe("watchFrames on drawn frames", () => {
       atMs < 10_000 ? drawn(320, 160, []) : PNG.sync.write(edge),
     );
     expect(settledTimes(verdicts)).toEqual([]);
+  });
+
+  it("counts a tile changed when 3 of its pixels differ, and settles it after the hold", () => {
+    // 3 pixels of the tile at x 160, y 96 darken by 30 from 10 s on: still for 70 s at 80 s.
+    const edge = PNG.sync.read(drawn(320, 160, []));
+    for (const x of [163, 164, 165])
+      edge.data.fill(210, (103 * 320 + x) * 4, (103 * 320 + x) * 4 + 3);
+    const verdicts = watch(drawn(320, 160, []), everyFiveSeconds(5, 80), (atMs) =>
+      atMs < 10_000 ? drawn(320, 160, []) : PNG.sync.write(edge),
+    );
+    expect(settledTimes(verdicts)).toEqual([80_000]);
+    expect(verdicts.at(-1)?.[1]).toEqual({
+      verdict: "settled",
+      area: { x: 160, y: 96, width: 16, height: 16 },
+      small: true,
+    });
   });
 
   it("reads a frame of another size as one settled change over the whole frame", () => {
