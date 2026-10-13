@@ -299,18 +299,20 @@ The rest of this section names keys by their v3 spelling:
   `HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES` sandboxes at once (20 when unset; a provisioned
   shared world's app sandbox counts against it), so a larger roster runs in waves and the plan
   records a warning naming the setting. A declared value above that limit is refused at plan
-  time. Total sessions and spend are identical either way; only wall-clock
-  and simultaneity differ. Declaring a value below the participant count runs participants in
+  time, unless `HUMANISH_CUA_MAX_CONCURRENCY` lowers it first; the limit then lowers what is
+  left as it does an undeclared default. Total sessions and spend are identical either way; only
+  wall-clock and simultaneity differ. Declaring a value below the participant count runs participants in
   waves and emits a warning saying so, because a green waved run is otherwise
   indistinguishable from the all-live run the author meant. Shared-world studies
   need at least 2 (the host and a follower are live together); `concurrency: 1`
   there is refused at parse, since the sequential turn-taking route was removed
   in 0.106.0. The env override
   `HUMANISH_CUA_MAX_CONCURRENCY` may only lower the effective bound, never
-  raise concurrent paid desktops. The plan applies it on every computer-use desktop
-  and on shared-world, so the schedule, `study check` and the late-start warnings
-  use the lowered count; the plan records a warning and, on computer-use,
-  `envLoweredConcurrencyFrom`. A shared world refuses a value under 2. Inert
+  raise concurrent paid desktops. The plan applies it before the E2B limit, on every
+  computer-use desktop and on shared-world, so the schedule, `study check` and the late-start
+  warnings use the lowered count; the plan records a warning and, on computer-use,
+  `envLoweredConcurrencyFrom`. When the E2B limit lowers the count further, the plan records
+  the E2B limit's warning instead. A shared world refuses a value under 2. Inert
   (warned) on other routes.
   `execution.timeoutMs` is the per-participant session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level

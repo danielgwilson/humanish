@@ -22,9 +22,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `HUMANISH_CUA_MAX_CONCURRENCY` now lowers the plan itself. `study check`'s `schedule` row, the
   plan's late-start warnings and the run's `schedule:` line use the lowered count; before, only
   the run's participant table did, so `study check` could describe slots the run did not have.
-  A lowering adds a plan warning, as the E2B plan's limit does. The setting now applies to
-  `shared-world` studies too, and a value under 2 refuses one, since a shared world runs at least
-  two participants at once.
+  The plan applies it before the E2B plan's limit, so an `execution.concurrency` above that limit
+  is no longer refused when the setting lowers it. A lowering adds a plan warning, as the E2B
+  plan's limit does; when that limit lowers the count further, the plan carries its warning
+  instead. The setting now applies to `shared-world` studies too, and a value under 2 refuses one,
+  since a shared world runs at least two participants at once.
 
 ### Fixed
 

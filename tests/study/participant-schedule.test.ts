@@ -269,6 +269,50 @@ describe("HUMANISH_CUA_MAX_CONCURRENCY", () => {
     );
   });
 
+  it("runs a declared concurrency over the E2B plan's limit when it lowers it under the limit", () => {
+    const crowd = study("cuAppUrl", {
+      participants: 25,
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 25 },
+    });
+    // E2B's Hobby limit is 20 when its setting is unset; the run holds at most 5 desktops.
+    const planned = computerUse(plan(crowd, { HUMANISH_CUA_MAX_CONCURRENCY: "5" }));
+    expect(planned).toMatchObject({ concurrency: 5, envLoweredConcurrencyFrom: 25 });
+    expect(planned.warnings).toEqual([
+      "This study's 25 participants run 5 at a time, because HUMANISH_CUA_MAX_CONCURRENCY is 5.",
+    ]);
+  });
+
+  it("names the E2B setting value that runs as many as it leaves, when both lower the count", () => {
+    const planned = computerUse(
+      plan(study("cuAppUrl", { participants: 30 }), { HUMANISH_CUA_MAX_CONCURRENCY: "25" }),
+    );
+    // The setting lowers 30 to 25, and E2B Hobby's 20 lowers that to 20; 25 sandboxes run 25.
+    expect(planned.concurrency).toBe(20);
+    expect(planned.envLoweredConcurrencyFrom).toBeUndefined();
+    expect(planned.warnings).toEqual([
+      "This study's 30 participants run 20 at a time, because humanish runs at most 20 sandboxes at once, E2B Hobby's limit, when HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES is unset. If your E2B plan runs more (Pro runs 100), set HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES to 25 or more.",
+    ]);
+  });
+
+  it("runs what it leaves of a declared concurrency in waves when the E2B plan runs fewer", () => {
+    const crowd = study("cuAppUrl", {
+      participants: 25,
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 25 },
+    });
+    const planned = computerUse(
+      plan(crowd, {
+        HUMANISH_CUA_MAX_CONCURRENCY: "5",
+        HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "3",
+      }),
+    );
+    // The setting lowers 25 to 5, and the E2B plan runs 3 of those; raising it to 5 runs 5.
+    expect(planned.concurrency).toBe(3);
+    expect(planned.envLoweredConcurrencyFrom).toBeUndefined();
+    expect(planned.warnings).toEqual([
+      "This study's 25 participants run 3 at a time, because HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES allows 3 sandboxes at once. If your E2B plan runs more (Pro runs 100), set HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES to 5 or more.",
+    ]);
+  });
+
   it("refuses a shared world when it allows fewer than the two participants it needs at once", () => {
     const result = plan(study("sharedProvisioned"), { HUMANISH_CUA_MAX_CONCURRENCY: "1" });
     if (result.ok) throw new Error("expected a refusal");
