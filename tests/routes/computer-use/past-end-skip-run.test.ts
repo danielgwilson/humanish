@@ -6,7 +6,7 @@
 // only the participants that started as having taken part.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -33,20 +33,21 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
   });
 
   /** Runs the three participants above and returns the result and the fake desktops. */
-  function runWithLateParticipant() {
+  function runWithLateParticipant(duringSession?: () => Promise<void>) {
     return runParticipants(
       [
         { id: "first" },
         { id: "late", startAfterMs: 100, endAfterMs: 300 },
         { id: "after", startAfterMs: 200 },
       ],
-      { concurrency: 1 },
+      { concurrency: 1, ...(duringSession === undefined ? {} : { duringSession }) },
     );
   }
 
+  /** Runs `participants` on fake desktops; `duringSession` runs as each session starts. */
   async function runParticipants(
     participants: Record<string, unknown>[],
-    options: { concurrency?: number; now?: () => number },
+    seams: { concurrency?: number; now?: () => number; duringSession?: () => Promise<void> },
   ) {
     const parsed = parseStudy(
       lab("cuAppUrl", {
@@ -55,7 +56,7 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
         execution: {
           target: "e2b-desktop",
           timeoutMs: 60_000,
-          ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
+          ...(seams.concurrency === undefined ? {} : { concurrency: seams.concurrency }),
         },
       }),
     );
@@ -65,9 +66,10 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
       parsed.config,
       { cwd, env: KEYS },
       {
-        ...(options.now === undefined ? {} : { now: options.now }),
+        ...(seams.now === undefined ? {} : { now: seams.now }),
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
+          await seams.duringSession?.();
           await new Promise((resolve) => setTimeout(resolve, 500));
           return runCuaActorSession({
             ...options,
@@ -135,6 +137,21 @@ describe("a participant still waiting for a slot at its scheduled end", () => {
     );
     expect((await runFile(result.runId, "review.md")).split("\n")).toContain(
       `- summary: ${summary}`,
+    );
+  });
+
+  it("does not say a skipped participant is using the app while the run is live", async () => {
+    const runs = path.join(cwd, ".humanish", "runs");
+    const live: string[] = [];
+    await runWithLateParticipant(async () => {
+      const [runId] = await readdir(runs);
+      const bundle = JSON.parse(await readFile(path.join(runs, runId!, "run.json"), "utf8"));
+      live.push((bundle as RunBundle).review.summary);
+    });
+    // The second session is the participant after the one the run skipped.
+    expect(live).toHaveLength(2);
+    expect(live[1]).toBe(
+      "3 participants are planned, each in their own copy of the app. The run is still going, so nothing here is final.",
     );
   });
 

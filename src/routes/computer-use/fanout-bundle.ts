@@ -74,8 +74,10 @@ function fanoutSummary(
   const count = args.specs.length;
   const people = plural(count, "participant");
   const rerun = args.rerun === undefined ? "" : `Rerun from ${args.rerun.sourceRunId}: `;
+  // The live summary is written once, before any participant starts, so it names the plan: by
+  // the time it is read a participant may still be waiting, or skipped.
   if (args.inProgress === true) {
-    return `${people} ${count === 1 ? "is" : "are"} each using their own copy of the app. The run is still going, so nothing here is final.`;
+    return `${people} ${count === 1 ? "is planned, in its own copy" : "are planned, each in their own copy"} of the app. The run is still going, so nothing here is final.`;
   }
   if (args.dryRun) {
     return `${rerun}Dry run: ${people} would each use their own copy of ${subjectName(publicSafeAppUrlLabel(args.appUrl), args.aggregateSubject)}. No desktops were launched and $0 was spent.`;
