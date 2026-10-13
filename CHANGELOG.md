@@ -69,8 +69,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `runComputerUseLoop` calls the injected `sleep` between a watched turn's looks and sends its
   executor no `wait` action for such a turn.
 
-LIVE_AT_MERGE: live model requests an hour, early wakes and closing-account friction from the queue
-hour, the per-brain runs, the Codex long wait and the real-page run.
+- Live on hosted desktops on 2026-10-13, in an hour on a support queue page that gained a row every
+  10 minutes, with one OpenAI `gpt-5.6-sol` participant at `idleWaitMs` 5000: two runs made 48 and
+  50 requests, and a paired 0.129.0 run made 43, with the watch costing 13% more ($2.30 against
+  $2.03). 0.129.0's OpenAI participant already sent 12 to 60 waits a turn, so on this page the
+  watch saves no requests. Rows reached the participant a median of 7 seconds after they appeared
+  (4 to 12 over 10 rows), against 30 seconds on 0.129.0, and no wait ended on the panel clock, the
+  spinner or the "Opened N minutes ago" label. Codex and Claude Code participants that asked for a
+  10-minute wait were watched for 10 minutes, where 0.129.0 cut the wait to 2, and each handled the
+  row 7 seconds after it appeared. In 30 minutes on a public GitHub issue list no wait ended early.
+  On a local browser, a tab strip that settled after the first look ended a Codex participant's
+  15-minute wait after 70 seconds (#1856). 2 of 8 hosted desktops went black after 5 to 6 minutes
+  without input, on 0.129.0 and on this version (#1855), and the watch wakes the participant when
+  the screen goes black.
 
 ### Migration
 
