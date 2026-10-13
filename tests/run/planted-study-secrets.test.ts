@@ -159,6 +159,12 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "subject.product.publicSurfaces",
     "subject.serve.url",
   ],
+  // The parser refuses an `as` that looks like a secret (tests/study/secret-shaped-ids.test.ts),
+  // and a dry run refuses a `from` that names no file in the study's folder.
+  "a file path inside the study's folder or the desktop's home folder": [
+    "participants.files.as",
+    "participants.files.from",
+  ],
   "nothing: every route refuses a reserved field": [
     "review.milestones",
     "review.scoring",

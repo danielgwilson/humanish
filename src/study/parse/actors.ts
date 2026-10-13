@@ -21,6 +21,7 @@ import type { StudyActor, StudyParticipantEntry, StudyParseFailure } from "../ty
 import { isRecord } from "../../run/type-guards.js";
 import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { isStartAfterMs, startAfterMessage, windowReason } from "../arrivals.js";
+import { parseParticipantFiles } from "../desktop-files.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a study id.
@@ -240,6 +241,9 @@ export function parseParticipantEntries(
       if (credential) return invalid(credential);
       parsedEntry.target = target;
     }
+    const files = parseParticipantFiles(entry.files, `${paths.entry(entryIndex)}.files`);
+    if (!files.ok) return files;
+    if (files.value !== undefined) parsedEntry.files = files.value;
     // `entry` is shape-captured here; the same-origin-with-serve.url check needs serve context, so
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
     const entryPath = str(entry.entry);

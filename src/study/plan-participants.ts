@@ -11,7 +11,7 @@ import {
   participantIdAt,
 } from "./routing.js";
 import type { StudyTask } from "./tasks.js";
-import type { StudyParticipantEntry, StudyConfig } from "./types.js";
+import type { StudyParticipantEntry, StudyConfig, StudyParticipantFile } from "./types.js";
 import {
   participantList,
   declaredParticipantCount,
@@ -72,6 +72,8 @@ export interface ComputerUseParticipant extends DesktopParticipant {
   readonly tasks?: readonly StudyTask[];
   /** app-url fan-out only: this participant's own entry URL; absent means the subject URL. */
   readonly targetUrl?: string;
+  /** Hosted desktop only: the files copied onto it before the participant starts. */
+  readonly files?: readonly StudyParticipantFile[];
 }
 
 /** A participant on a provisioned plane: an optional same-origin path under `serve.url`. */
@@ -170,6 +172,7 @@ export function computerUseParticipants(
       ...desktopParticipant(config, entry, index, "lane", focus),
       ...(actor?.tasks === undefined ? {} : { tasks: actor.tasks }),
       ...(entry?.target === undefined ? {} : { targetUrl: entry.target }),
+      ...(entry?.files === undefined ? {} : { files: entry.files }),
     };
   });
 }

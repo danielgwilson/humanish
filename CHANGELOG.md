@@ -18,6 +18,18 @@ synthetic run of 24 participants working 8 hours, a poll sent about 90 KB in abo
 page's first poll is still full. A page from 0.125.0 sends no cursors and gets full lists; a newer
 page polling 0.125.0 gets full lists and sends none.
 
+A hosted computer-use participant can now upload a file. `participants[].files: [{ from, as }]`
+copies each file onto that participant's desktop before it starts, so a browser's file chooser finds
+it: `from` is relative to the folder that holds the study file, and `as` is relative to the desktop
+user's home folder, such as `Downloads/insurance-card.png`. humanish reads the files before any
+sandbox exists, on dry runs too, and refuses a missing file, a folder, a symbolic or hard link, a
+path out of that folder, a `.env`, key or credential file, a file above 10 MiB, more than 25 MiB for
+one participant or 100 MiB of distinct files for one study, an absolute `as` or one with `..`, one
+in humanish's own `subject/` folder, and two files at one path. After each write it checks the
+file's size on the desktop. The participant's stream records `desktopFiles: [{ as, size, sha256 }]`;
+the contents are not recorded. A local browser, local VM or shared-world study with `files` is
+refused at parse with what to change.
+
 ### Changed
 
 - The Observer's filmstrip scrolls back to the selected capture only when the selected capture

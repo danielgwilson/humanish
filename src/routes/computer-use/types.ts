@@ -43,6 +43,7 @@ import type {
   ResidualConfig,
 } from "../../study/plan-types.js";
 import { type StudyCommsEmail } from "../../study/types.js";
+import type { DesktopFile } from "../../study/desktop-files.js";
 import { type ObserverResult } from "../../observer/render.js";
 import {
   type BundleRun,
@@ -52,7 +53,7 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
-import { type RunDesktopGeometry } from "../../run/streams.js";
+import { type RunDesktopFile, type RunDesktopGeometry } from "../../run/streams.js";
 import { type PreparedOutputRoot } from "../../run/contained-output.js";
 import type {
   ComputerUseParticipant,
@@ -276,6 +277,9 @@ export type CuaActorStudyErrorCode =
   | "HUMANISH_COMPUTER_USE_LOCAL_CAPACITY_EXCEEDED"
   // Docker killed a local participant's desktop container for memory mid-session.
   | "HUMANISH_COMPUTER_USE_DESKTOP_OUT_OF_MEMORY"
+  // participants[].files cannot be copied: a file is missing, outside the study's folder, too
+  // large, or the route has no hosted desktop. Refused before any sandbox.
+  | "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID"
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
@@ -442,6 +446,9 @@ export interface E2BDesktopDeps {
   /** Local-tree route only: the once-per-run packed archive bytes, shared byte-identically
    *  across every fan-out participant's upload step. Absent on dry-run and every other route. */
   localTreeArchiveBuffer?: ArrayBuffer;
+  /** Computer use on a hosted desktop: each participant's files (participants[].files) by id,
+   *  read on this machine before any sandbox. A participant without an entry receives none. */
+  desktopFiles?: ReadonlyMap<string, readonly DesktopFile[]>;
   env: Record<string, string | undefined>;
   e2bApiKey: string;
   requestTimeoutMs: number;
@@ -583,6 +590,8 @@ export interface ParticipantRunOutcome {
   /** Requested + measured desktop/browser geometry. Viewport is absent when measurement failed. */
   desktopGeometry?: RunDesktopGeometry;
   recording?: RunDesktopRecording;
+  /** participants[].files confirmed on the participant's desktop. */
+  desktopFiles?: RunDesktopFile[];
   stateStepRecords: RunSubjectStateStepRecord[];
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups),
    *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */

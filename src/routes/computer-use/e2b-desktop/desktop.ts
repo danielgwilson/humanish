@@ -8,6 +8,7 @@ import { participantInbox, planParticipantComms } from "./comms.js";
 import { participantBrowserStateObserver } from "./fidelity.js";
 import {
   acquireParticipantDesktop,
+  placeParticipantFiles,
   provisionParticipantSubject,
   verifyParticipantScreen,
 } from "./prepare.js";
@@ -59,6 +60,7 @@ export function createE2BParticipantDesktop(
     const desktop = await acquireParticipantDesktop(ctx, state);
     // The device claim is verified in the sandbox, and fails closed.
     await verifyParticipantScreen(ctx, state, desktop);
+    await placeParticipantFiles(ctx, state, desktop);
     await provisionParticipantSubject(ctx, state, desktop);
     await startParticipantMedia(ctx, state, desktop);
     await openParticipantSurface(ctx, state, desktop);

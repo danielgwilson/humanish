@@ -170,6 +170,8 @@ export interface E2BDesktopSandbox {
         useOctetStream?: boolean;
       },
     ): Promise<unknown>;
+    /** A file's size as the sandbox sees it. A relative path is under the sandbox user's home. */
+    getInfo?(path: string, options?: { requestTimeoutMs?: number }): Promise<{ size: number }>;
   };
   launch(application: string, uri?: string): Promise<void>;
   /** Open a file or URL with the desktop's default application (present on @e2b/desktop >= 1.x). */

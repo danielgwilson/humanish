@@ -375,6 +375,25 @@ function isDenylistedBasename(basename: string): boolean {
   );
 }
 
+/**
+ * Whether a relative path an author wrote names a file the always-on denylist keeps on this
+ * machine: a secret-shaped name, or one under .git, node_modules or .humanish. It compares without
+ * case, since on a case-insensitive filesystem `.ENV` opens `.env`. participants[].files refuses
+ * the same paths.
+ */
+export function isLocalTreeDenylisted(relPath: string): boolean {
+  const segments = relPath.toLowerCase().split("/");
+  const basename = segments.at(-1) ?? "";
+  return (
+    segments.some((segment) =>
+      LOCAL_TREE_DENYLIST_PATH_SEGMENTS.some((denied) => denied.toLowerCase() === segment),
+    ) ||
+    LOCAL_TREE_DENYLIST_BASENAME_PATTERNS.some((pattern) =>
+      matchesBasenamePattern(basename, pattern.toLowerCase()),
+    )
+  );
+}
+
 function isDenylistedSegment(relPath: string): boolean {
   const segments = relPath.split("/");
   return segments.some((segment) =>

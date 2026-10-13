@@ -170,6 +170,7 @@ function fanoutParticipantStream(
             },
           }),
       desktopGeometry,
+      ...(outcome?.desktopFiles === undefined ? {} : { desktopFiles: outcome.desktopFiles }),
       ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
       ui: {
         route: publicTargetUrl,

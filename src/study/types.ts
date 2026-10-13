@@ -276,6 +276,14 @@ export interface StudySubject {
   localTree?: StudySubjectLocalTree;
 }
 
+/** One file a participant's desktop receives (`participants[].files`). */
+export interface StudyParticipantFile {
+  /** Path of the file, relative to the folder that holds the study file. */
+  from: string;
+  /** Where it lands, relative to the desktop user's home folder. */
+  as: string;
+}
+
 /**
  * One participant in a differentiated fan-out on the computer-use E2B route (`per-lane-worlds`).
  * Each entry becomes an independent E2B desktop sandbox with its own persona/device/starting-steer. All
@@ -323,6 +331,11 @@ export interface StudyParticipantEntry {
    * shared-world, scripted-browser, and terminal routes.
    */
   target?: string;
+  /**
+   * Hosted computer use only: files copied onto this participant's desktop before it starts, so a
+   * browser upload dialog can find them. src/study/desktop-files.ts holds the rules.
+   */
+  files?: StudyParticipantFile[];
   /**
    * Shared-world only: this participant's loopback entry route, resolved against
    * `subject.serve.url`. It must be same-origin (loopback) with it, and the participant opens

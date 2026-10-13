@@ -46,6 +46,7 @@ import {
 } from "./types.js";
 import { capacityShortfall } from "../../substrates/local/capacity.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
+import { readDesktopFiles } from "../../study/desktop-files.js";
 import { refusedResult } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
@@ -239,6 +240,13 @@ export async function admitCuaRun(
     ...subjectEnvNames.map((name) => env[name] ?? ""),
   ]);
   sanitizeParticipantRuns(participantRuns, secrets.scrub);
+  const desktopFiles = await readStudyDesktopFiles(input.cwd, plan, participantRuns, secrets.scrub);
+  if (!desktopFiles.ok)
+    return refuse(
+      "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID",
+      desktopFiles.message,
+      descriptor.id,
+    );
 
   const redactRepoLabel =
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
@@ -313,8 +321,42 @@ export async function admitCuaRun(
       publicRepo,
       localTreeArchive,
       localTreeArchiveBuffer,
+      desktopFiles: desktopFiles.files,
     },
   };
+}
+
+/**
+ * Each participant's files, read on dry runs too so a bad file is named before a live run. Paths
+ * are relative to the folder that holds the study file; a library caller's config comes from no
+ * file, so its paths are relative to the project. An `as` that holds a value `scrub` removes, such
+ * as a key from the environment, is refused: the run records `as`, and redacting it would record a
+ * different path.
+ */
+async function readStudyDesktopFiles(
+  cwd: string,
+  plan: ComputerUsePlan,
+  participantRuns: readonly DesktopParticipantRun[],
+  scrub: (text: string) => string,
+): ReturnType<typeof readDesktopFiles> {
+  const folder =
+    plan.study?.path === undefined
+      ? path.resolve(cwd)
+      : path.dirname(path.resolve(cwd, plan.study.path));
+  const read = await readDesktopFiles(
+    folder,
+    participantRuns.map((run) => run.planned),
+  );
+  if (!read.ok) return read;
+  const named = [...read.files].find(([, files]) =>
+    files.some((file) => scrub(file.as) !== file.as),
+  );
+  return named === undefined
+    ? read
+    : {
+        ok: false,
+        message: `Participant ${named[0]}'s files name an as path that holds a key or another value from this run's environment, which the run would record. Rename the file.`,
+      };
 }
 
 /**
@@ -462,6 +504,7 @@ function cuaParticipantDeps(
       createDesktop: input.localVm?.desktop,
       ...callerDriving(input, config),
       localTreeArchiveBuffer: admitted.localTreeArchiveBuffer,
+      desktopFiles: admitted.desktopFiles.size === 0 ? undefined : admitted.desktopFiles,
       externalComms:
         externalCommsConfig === undefined || externalCommsEmail === undefined
           ? undefined

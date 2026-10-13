@@ -216,6 +216,16 @@ export interface RunParticipantAssignment {
   tasks?: Array<{ id: string; goal: string }>;
 }
 
+/** One file humanish copied onto a participant's desktop before it started (participants[].files). */
+export interface RunDesktopFile {
+  /** Where it landed, relative to the desktop user's home folder. */
+  as: string;
+  /** Its size in bytes, confirmed on the desktop. */
+  size: number;
+  /** The sha256 of the bytes humanish copied, 64 hex characters. */
+  sha256: string;
+}
+
 export interface RunStream {
   id: string;
   simId: string;
@@ -273,6 +283,8 @@ export interface RunStream {
   };
   /** Truthful screen/window/viewport evidence for hosted desktop browser participants. */
   desktopGeometry?: RunDesktopGeometry;
+  /** The files copied onto this participant's desktop before it started. Never their contents. */
+  desktopFiles?: RunDesktopFile[];
   terminal?: {
     title: string;
     format: "ansi" | "plain";

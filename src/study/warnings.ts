@@ -7,6 +7,7 @@ import {
   isTerminalProductComposition,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
+import { DESKTOP_FILES_ROUTE_REASON } from "./desktop-files.js";
 import {
   computerUseParticipants,
   declaredParticipantIds,
@@ -71,6 +72,13 @@ const ACTOR_ROWS: readonly InertRow[] = [
     applies: (config, routes) =>
       Boolean(participantList(config)?.some((entry) => entry.host === true)) &&
       !routes.externalPublic,
+  },
+  {
+    field: "participants[].files",
+    reason: DESKTOP_FILES_ROUTE_REASON,
+    applies: (config, routes) =>
+      Boolean(participantList(config)?.some((entry) => entry.files !== undefined)) &&
+      !(routes.hostedCuaBrowser && !routes.shared),
   },
   {
     field: "actor.mission",

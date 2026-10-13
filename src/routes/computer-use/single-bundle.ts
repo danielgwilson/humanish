@@ -19,7 +19,7 @@ import {
   type RunSubjectProvenance,
   type RunTaskFunnel,
 } from "../../run/bundle.js";
-import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
+import { type RunDesktopFile, type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
 import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
@@ -206,6 +206,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
             },
           }),
       ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
+      ...(args.desktopFiles === undefined ? {} : { desktopFiles: args.desktopFiles }),
       ...(args.recording === undefined ? {} : { recording: args.recording }),
       ui: {
         route: publicAppUrl,
@@ -462,6 +463,8 @@ export function buildSingleParticipantBundle(args: {
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
   recording?: RunDesktopRecording;
+  /** participants[].files confirmed on the participant's desktop. */
+  desktopFiles?: RunDesktopFile[];
   /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
    *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
   isMobile?: boolean;
