@@ -8,6 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
+  for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
+  bytes a model turn against the 16 MiB analysis reads, and each participant's trace against the
+  same limit at 4.7 KB a turn, the busiest participant measured; the average was about 2 KB. It
+  checks the Observer page against the 32 MiB verify reads, as the app, half of run.json and 0.12
+  of all the traces' bytes, and the file count against the public-safety scan. It no longer checks
+  observer-data.json, which stays within 7 % of run.json. Five participants working 8 hours beside
+  25 short ones were estimated at a 30.2 MiB run.json and warned about; they are now estimated at
+  3.7 MiB. The warning starts at 17 participants working 8 hours for the Observer page, 30 for
+  run.json, and a 10-hour window for one participant's trace. The `bundle size` row names the
+  largest trace and the Observer page in place of the largest file.
+
 ## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 
 humanish 0.126.0 adds per-participant settings for long, mixed studies and a lighter live Observer.
