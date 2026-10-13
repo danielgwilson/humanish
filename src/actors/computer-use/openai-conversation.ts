@@ -138,7 +138,9 @@ export class OpenAiConversation {
     send: (body: Record<string, unknown>) => Promise<unknown>,
   ): Promise<CuaTurn> {
     const strict = this.openClosing !== undefined;
-    const sent = this.openClosing ?? [...this.newItems(req, closing), replyForm(closing)];
+    // Before any accepted reply the request is the opening one, which carries no hint of its own.
+    const ask = this.replies === 0 ? hintItems(req.contextHint) : [];
+    const sent = this.openClosing ?? [...this.newItems(req, closing), ...ask, replyForm(closing)];
     this.openClosing = undefined;
     const reply = await send(this.closingBody(req, sent, closing, strict));
     // Recorded before the reply is accepted, as a participant turn is.
@@ -241,7 +243,9 @@ export class OpenAiConversation {
    */
   private turnBody(req: CuaTurnRequest, sent: readonly unknown[]): Record<string, unknown> {
     const ctx = this.context(req.instructions);
-    if (this.replies === 0) return buildInitialRequest(ctx, req.observation.screenshot);
+    // `sent` is the opening message, and on a closing request also the ask and the reply's form.
+    if (this.replies === 0)
+      return { ...buildInitialRequest(ctx, req.observation.screenshot), input: [...sent] };
     return buildContinuationRequest({
       ctx,
       previousResponseId: this.lastResponseId,

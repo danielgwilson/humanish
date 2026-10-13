@@ -70,14 +70,14 @@
             "lifecycle": "completed",
             "status": "ok",
             "title": "participant impressions request completed",
-            "text": "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+            "text": "a read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
             "at": "1970-01-01T00:00:00.009Z"
           }
         ],
         "debrief": {
           "trigger": "participant_end",
           "status": "completed",
-          "reason": "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+          "reason": "a read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
           "usageReported": true
         },
         "impressions": {

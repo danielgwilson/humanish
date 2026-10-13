@@ -22,7 +22,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   says such a wait does not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol`
   called the tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
   pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the A/B
-  experiment's model spend per participant-hour and requests per hour against 0.131.1 go here. Each
+  experiment's model spend per participant-hour and requests per hour against 0.132.0 go here. Each
   wait's `ui_action` in the trace now carries `namedMs` when the wait named its length, before any
   cap, so a bundle shows which waits used the tool and the lengths they named (#1862).
 
@@ -37,21 +37,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   turn like it, and starts again from `idleWaitMs` after a named wait. The Codex tool description
   and the Claude Code prompt state the new rule (#1862).
 
-### Fixed
+## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 
-- An OpenAI computer-use participant's closing report and impressions requests now read the
-  session from the prompt cache. They set `text.format`, which is part of the cached prefix, so
-  the closing request read 0 cached input tokens in all 8 measured 0.131.0 runs and was 25% to 42%
-  of each run's model spend. They now send no `text.format` and state the JSON Schema in their
-  input. In two live 12-minute runs the closing request read 25,114 of 27,338 and 24,810 of
-  27,019 input tokens from the cache and cost $0.026 and $0.025, about 11% of each run; billed as
-  a full cache write, as 0.131.0 billed it, it would have cost $0.14. The reply's JSON is checked
-  locally against the stated schema, so a report without `outcome` or `impressions` does not
-  pass, and it may sit in a code fence or follow a message of its own. A completed reply that does
-  not match, apart from a refusal, is asked once more with the strict schema, after the same
-  budget and time checks as the first and with a time bound of its own. Each closing request that
-  reports usage has its own `tokenUsage.turns` row, and `counts.debriefCalls` counts each request
-  (#1862).
+humanish 0.132.0 cuts the cost of an OpenAI computer-use participant's closing report. The closing
+report and impressions requests set `text.format`, which is part of the prompt cache's prefix, so
+each one was billed as a fresh write of the whole session: 25% to 42% of a run's model spend in the
+8 runs measured on 0.131.0. They now send the schema in their input instead and read the session
+from the cache. In two live 12-minute runs the closing request cost $0.026 and $0.025 where it
+would have cost $0.14. A reply that does not match the schema is asked once more with the strict
+schema, after the same budget and time checks.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.132.0)
 
 ## 0.131.1: Hosted desktops keep their screens on while participants wait (2026-10-13)
 

@@ -206,7 +206,15 @@ async function debriefExchange(
       : await sendClosing(session, ask, request, again);
   if ("turn" in second) {
     const usageReported = first.usageReported && second.usageReported;
-    return acceptDebriefTurn(session, second.turn, trigger, ask, record, usageReported);
+    return acceptDebriefTurn(
+      session,
+      second.turn,
+      trigger,
+      ask,
+      record,
+      usageReported,
+      "; asked twice: the first reply was not the JSON the request asked for",
+    );
   }
   // The first reply stands, with why no second one replaced it.
   const skipped = second.status === "skipped";
@@ -387,6 +395,6 @@ function readImpressions(session: LoopSession, turn: CuaTurn): ReplyOutcome {
   return {
     status: "completed",
     detail:
-      "one read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
+      "a read-only impressions request; no additional desktop actions; the participant's own ending is unchanged",
   };
 }
