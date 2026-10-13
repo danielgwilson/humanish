@@ -377,6 +377,8 @@ describe("the trace of a wait", () => {
       ["wait 180000ms", 180_000],
       ["wait 30000ms", 30_000],
     ]);
+    // The affordance record classes a wait_for_change call as a wait: observation.
+    expect(result.trace.affordanceUse?.counts).toEqual({ observation: 3, pointer: 1 });
   });
 });
 

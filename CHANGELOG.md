@@ -8,6 +8,32 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- An OpenAI computer-use participant can name how long it waits, as Codex and Claude Code
+  participants do. Every request, from the first, offers a `wait_for_change` function tool with
+  one field, `minutes`, next to the computer tool, so the cached prompt prefix does not change. A
+  call in a turn of only waits is watched for its minutes: it ends early when the screen changes,
+  and lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. Minutes that
+  are not a number above zero make a wait with no length, which lasts `idleWaitMs`; more than 60
+  minutes count as 60. A call sent with other actions goes to the desktop for at most
+  `actor.maxWaitMs`, as any such wait does, and its output says it did not end early. In a
+  prototype probe of three 15-minute runs, `gpt-5.6-sol` called the tool on 22 of 25 idle turns
+  and named 1 to 15 minutes: the session time left on two pages, and 1 minute on each of 14 turns
+  on a page it had to reload. LIVE_AT_MERGE: the A/B experiment's model spend per
+  participant-hour and requests per hour against 0.131.1 go here. Each wait's `ui_action` in the
+  trace now carries `namedMs` when the wait named its length, so a bundle shows which waits used
+  the tool (#1862).
+
+### Changed
+
+- A turn of only waits whose waits all name a length now lasts that length on every idle turn,
+  for OpenAI, Codex and Claude Code participants, up to `actor.maxWaitMs`, or 10 minutes when the
+  study does not set it. Before, a second named 3-minute wait in a row on a quiet screen lasted 6
+  minutes, and the note said the next wait could last twice as long. A turn with a wait that names
+  no length, such as the OpenAI computer tool's `wait`, still doubles after a quiet watch. The
+  Codex tool description and the Claude Code prompt state the new rule (#1862).
+
 ### Fixed
 
 - An OpenAI computer-use participant's closing report and impressions requests now read the
