@@ -462,7 +462,7 @@ started, in the order they landed.
 
 ```yaml
 desktopFiles:
-  - as: Downloads/insurance-card.png
+  - as: Downloads/photo.png
     size: 251
     sha256: <64 hex characters>
 ```

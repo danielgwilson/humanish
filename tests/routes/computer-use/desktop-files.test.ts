@@ -24,7 +24,7 @@ import {
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
-const CARD = "synthetic insurance card";
+const PHOTO = "synthetic portrait photo";
 const FORM = "synthetic signed form, longer";
 
 /** A live hosted study whose participants run one at a time, so the order of events is fixed. */
@@ -46,7 +46,7 @@ async function project(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-desktop-files-route-");
   await mkdir(path.join(cwd, "studies", "fixtures"), { recursive: true });
   await writeFile(path.join(cwd, "studies", "desktop-files.yaml"), "# the study file\n");
-  await writeFile(path.join(cwd, "studies", "fixtures", "insurance-card.png"), CARD);
+  await writeFile(path.join(cwd, "studies", "fixtures", "photo.png"), PHOTO);
   await writeFile(path.join(cwd, "studies", "fixtures", "signed-form.pdf"), FORM);
   return cwd;
 }
@@ -110,10 +110,13 @@ describe("participants[].files on a hosted computer-use desktop", () => {
       cwd,
       study([
         {
-          id: "patient-a",
-          files: [{ from: "fixtures/insurance-card.png", as: "Downloads/insurance-card.png" }],
+          id: "applicant-a",
+          files: [{ from: "fixtures/photo.png", as: "Downloads/photo.png" }],
         },
-        { id: "patient-b", files: [{ from: "fixtures/signed-form.pdf", as: "Desktop/form.pdf" }] },
+        {
+          id: "applicant-b",
+          files: [{ from: "fixtures/signed-form.pdf", as: "Desktop/form.pdf" }],
+        },
       ]),
     );
 
@@ -122,13 +125,10 @@ describe("participants[].files on a hosted computer-use desktop", () => {
       Object.fromEntries([...files].map(([file, bytes]) => [file, bytes.toString("utf8")])),
     );
     expect(placed).toEqual(
-      expect.arrayContaining([
-        { "Downloads/insurance-card.png": CARD },
-        { "Desktop/form.pdf": FORM },
-      ]),
+      expect.arrayContaining([{ "Downloads/photo.png": PHOTO }, { "Desktop/form.pdf": FORM }]),
     );
     expect(order).toEqual([
-      "write fake-sandbox-01 Downloads/insurance-card.png",
+      "write fake-sandbox-01 Downloads/photo.png",
       "session",
       "write fake-sandbox-02 Desktop/form.pdf",
       "session",
@@ -136,7 +136,7 @@ describe("participants[].files on a hosted computer-use desktop", () => {
 
     const recorded = (await streams(cwd, result.runId)).map((stream) => stream.desktopFiles);
     expect(recorded).toEqual([
-      [{ as: "Downloads/insurance-card.png", size: 24, sha256: sha256(CARD) }],
+      [{ as: "Downloads/photo.png", size: 24, sha256: sha256(PHOTO) }],
       [{ as: "Desktop/form.pdf", size: 29, sha256: sha256(FORM) }],
     ]);
   });
@@ -145,23 +145,23 @@ describe("participants[].files on a hosted computer-use desktop", () => {
     const cwd = await project();
     const { result } = await run(
       cwd,
-      study([{ id: "patient", files: [{ from: "fixtures/insurance-card.png", as: "card.png" }] }]),
+      study([{ id: "applicant", files: [{ from: "fixtures/photo.png", as: "photo.png" }] }]),
     );
     expect(result.ok).toBe(true);
     const [stream] = await streams(cwd, result.runId);
-    expect(stream?.desktopFiles).toEqual([{ as: "card.png", size: 24, sha256: sha256(CARD) }]);
+    expect(stream?.desktopFiles).toEqual([{ as: "photo.png", size: 24, sha256: sha256(PHOTO) }]);
   });
 
   it("fails a participant whose file measures a different size on its desktop, before its session", async () => {
     const cwd = await project();
     const { order, result } = await run(
       cwd,
-      study([{ id: "patient", files: [{ from: "fixtures/insurance-card.png", as: "card.png" }] }]),
+      study([{ id: "applicant", files: [{ from: "fixtures/photo.png", as: "photo.png" }] }]),
       { reportedFileSize: (_file, written) => written - 1 },
     );
     expect(result.ok).toBe(false);
-    expect(order).toEqual(["write fake-sandbox-01 card.png"]);
-    expect(JSON.stringify(result)).toMatch(/card\.png measured 23 bytes/);
+    expect(order).toEqual(["write fake-sandbox-01 photo.png"]);
+    expect(JSON.stringify(result)).toMatch(/photo\.png measured 23 bytes/);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", String(result.runId), "run.json"), "utf8"),
     ) as { events: { type: string; level: string }[] };
@@ -176,8 +176,8 @@ describe("participants[].files on a hosted computer-use desktop", () => {
       cwd,
       study([
         {
-          id: "patient",
-          files: [{ from: "fixtures/insurance-card.png", as: "Downloads/test-openai-key.png" }],
+          id: "applicant",
+          files: [{ from: "fixtures/photo.png", as: "Downloads/test-openai-key.png" }],
         },
       ]),
     );
@@ -189,10 +189,10 @@ describe("participants[].files on a hosted computer-use desktop", () => {
   it("refuses a file missing from the study's folder before any sandbox exists, though the project root has one", async () => {
     const cwd = await project();
     await mkdir(path.join(cwd, "fixtures"));
-    await writeFile(path.join(cwd, "fixtures", "id-card.png"), CARD);
+    await writeFile(path.join(cwd, "fixtures", "portrait.png"), PHOTO);
     const { handle, result } = await run(
       cwd,
-      study([{ id: "patient", files: [{ from: "fixtures/id-card.png", as: "card.png" }] }]),
+      study([{ id: "applicant", files: [{ from: "fixtures/portrait.png", as: "photo.png" }] }]),
     );
     expect(result.error).toMatchObject({ code: "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID" });
     expect(result.runId).toBe("not-created");
@@ -202,15 +202,15 @@ describe("participants[].files on a hosted computer-use desktop", () => {
   it("reads a library caller's files from the project folder, since its config has no study file", async () => {
     const cwd = await project();
     await mkdir(path.join(cwd, "fixtures"));
-    await writeFile(path.join(cwd, "fixtures", "id-card.png"), CARD);
+    await writeFile(path.join(cwd, "fixtures", "portrait.png"), PHOTO);
     const { handle, result } = await run(
       cwd,
-      study([{ id: "patient", files: [{ from: "fixtures/id-card.png", as: "card.png" }] }]),
+      study([{ id: "applicant", files: [{ from: "fixtures/portrait.png", as: "photo.png" }] }]),
       {},
       false,
     );
     expect(result.ok).toBe(true);
-    expect(handle.files.get("fake-sandbox-01")?.get("card.png")?.toString("utf8")).toBe(CARD);
+    expect(handle.files.get("fake-sandbox-01")?.get("photo.png")?.toString("utf8")).toBe(PHOTO);
   });
 
   it("refuses a library config that gives files to a local browser participant, before anything starts", async () => {
@@ -220,7 +220,7 @@ describe("participants[].files on a hosted computer-use desktop", () => {
         mode: "live",
         execution: { target: "local", timeoutMs: 60_000 },
         participants: [
-          { id: "patient", files: [{ from: "fixtures/insurance-card.png", as: "card.png" }] },
+          { id: "applicant", files: [{ from: "fixtures/photo.png", as: "photo.png" }] },
         ],
       }),
     );
@@ -234,7 +234,7 @@ describe("participants[].files on a hosted computer-use desktop", () => {
     const parsed = parseStudy(
       lab("cuAppUrl", {
         participants: [
-          { id: "patient", files: [{ from: "fixtures/missing.png", as: "card.png" }] },
+          { id: "applicant", files: [{ from: "fixtures/missing.png", as: "photo.png" }] },
         ],
       }),
     );

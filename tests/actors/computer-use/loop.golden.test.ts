@@ -42,7 +42,7 @@ it("goal satisfied: acts, narrates, and ends on a natural endpoint", async () =>
       responseId: "r2",
       usage: { input: 120, output: 30 },
     }),
-    done("Booked the appointment.", { responseId: "r3", usage: { input: 130, output: 10 } }),
+    done("Placed the order.", { responseId: "r3", usage: { input: 130, output: 10 } }),
   ]);
   const executor = sequenceExecutor(probe, framed("s0", "s1", "s2", "s3"));
   await expectGolden(

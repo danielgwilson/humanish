@@ -108,7 +108,7 @@ describe("run-directory golden projections", () => {
 
 describe("loop golden layout", () => {
   const outcome = {
-    result: { status: "passed", reason: "Booked the appointment." },
+    result: { status: "passed", reason: "Placed the order." },
     log: [
       ["executor.observe", 0],
       ["onTrace", 1, { input: 0, output: 0 }, {}],

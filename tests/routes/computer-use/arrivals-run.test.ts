@@ -24,7 +24,7 @@ import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
-function clinic(patch: Patch): StudyConfig {
+function supportDesk(patch: Patch): StudyConfig {
   const parsed = parseStudy(lab("cuAppUrl", { mode: "live", ...patch }));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -100,10 +100,10 @@ describe("a computer-use study with a declared schedule", () => {
   it("creates each desktop at its participant's start and records scheduled and actual starts", async () => {
     const timed = timedModule();
     const outcome = await runStudyWith(
-      clinic({
+      supportDesk({
         participants: [
-          { id: "nurse" },
-          { id: "patient", count: 3, startAfterMs: 300, startEveryMs: 300 },
+          { id: "support-agent" },
+          { id: "customer", count: 3, startAfterMs: 300, startEveryMs: 300 },
         ],
       }),
       { cwd, env: KEYS },
@@ -128,8 +128,8 @@ describe("a computer-use study with a declared schedule", () => {
   it("holds a participant whose start comes while every slot is busy and records the wait", async () => {
     const timed = timedModule();
     const outcome = await runStudyWith(
-      clinic({
-        participants: [{ id: "nurse" }, { id: "patient", startAfterMs: 10 }],
+      supportDesk({
+        participants: [{ id: "support-agent" }, { id: "customer", startAfterMs: 10 }],
         execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
       }),
       { cwd, env: KEYS },
@@ -138,16 +138,16 @@ describe("a computer-use study with a declared schedule", () => {
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
     expect(outcome.result.ok).toBe(true);
 
-    const [nurse, patient] = arrivals(await runJson(cwd, outcome.result.runId));
-    expect(patient!.scheduledAt - nurse!.scheduledAt).toBe(10);
-    // The patient's desktop is created only after the nurse's is gone, so it starts late.
+    const [agent, customer] = arrivals(await runJson(cwd, outcome.result.runId));
+    expect(customer!.scheduledAt - agent!.scheduledAt).toBe(10);
+    // The customer's desktop is created only after the support agent's is gone, so it starts late.
     expect(timed.createdAt[1]).toBeGreaterThanOrEqual(timed.killedAt[0]!);
-    expect(patient!.startedAt - patient!.scheduledAt).toBeGreaterThanOrEqual(150);
+    expect(customer!.startedAt - customer!.scheduledAt).toBeGreaterThanOrEqual(150);
   });
 
   it("reruns a scheduled participant at once, with no schedule", async () => {
-    const config = clinic({
-      participants: [{ id: "nurse" }, { id: "patient", count: 2, startEveryMs: 3_000 }],
+    const config = supportDesk({
+      participants: [{ id: "support-agent" }, { id: "customer", count: 2, startEveryMs: 3_000 }],
     });
     const first = await runStudyWith(config, { cwd, env: KEYS }, seams(timedModule().module));
     if (first.route !== "computer-use") throw new Error(`ran on ${first.route}`);
@@ -158,13 +158,13 @@ describe("a computer-use study with a declared schedule", () => {
     const startedAt = Date.now();
     const rerun = await runStudyWith(
       config,
-      { cwd, env: KEYS, rerun: { sourceRunId, participantIds: ["patient-02"] } },
+      { cwd, env: KEYS, rerun: { sourceRunId, participantIds: ["customer-02"] } },
       seams(timed.module),
     );
     if (rerun.route !== "computer-use") throw new Error(`ran on ${rerun.route}`);
     expect(rerun.result.ok).toBe(true);
     expect(rerun.result.plan?.schedule).toBeUndefined();
-    // patient-02 was due 3 s into the first run; the rerun creates its desktop right away.
+    // customer-02 was due 3 s into the first run; the rerun creates its desktop right away.
     expect(timed.createdAt[0]! - startedAt).toBeLessThan(3_000);
     const bundle = await runJson(cwd, rerun.result.runId);
     expect(bundle.simulations.map((record) => record.arrival)).toEqual([undefined]);
@@ -188,8 +188,8 @@ describe("a computer-use study with a declared schedule", () => {
     ];
     const timed = timedModule();
     const outcome = await runStudyWith(
-      clinic({
-        participants: [{ id: "nurse" }, { id: "patient", startAfterMs: 1_000 }],
+      supportDesk({
+        participants: [{ id: "support-agent" }, { id: "customer", startAfterMs: 1_000 }],
         caps: { maxTotalUsd: 0.01 },
       }),
       { cwd, env: KEYS },
@@ -198,26 +198,26 @@ describe("a computer-use study with a declared schedule", () => {
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
     const { result } = outcome;
 
-    // Only the nurse's desktop was created.
+    // Only the support agent's desktop was created.
     expect(timed.createdAt).toHaveLength(1);
-    const patient = result.lanes?.find((lane) => lane.id === "patient");
-    expect(patient?.status).toBe("blocked");
-    expect(patient?.skippedReason).toContain("caps.maxTotalUsd");
+    const customer = result.lanes?.find((lane) => lane.id === "customer");
+    expect(customer?.status).toBe("blocked");
+    expect(customer?.skippedReason).toContain("caps.maxTotalUsd");
     expect(result.laneSummary?.skipped).toBe(1);
     expect(result.ok).toBe(false);
 
-    const [, patientArrival] = (await runJson(cwd, result.runId)).simulations.map(
+    const [, customerArrival] = (await runJson(cwd, result.runId)).simulations.map(
       (record) => record.arrival,
     );
-    expect(patientArrival?.startAfterMs).toBe(1_000);
-    expect(patientArrival?.scheduledAt).toBeDefined();
-    expect(patientArrival?.startedAt).toBeUndefined();
+    expect(customerArrival?.startAfterMs).toBe(1_000);
+    expect(customerArrival?.scheduledAt).toBeDefined();
+    expect(customerArrival?.startedAt).toBeUndefined();
   });
 
   it("records the offsets in a dry run, with no start times", async () => {
     const outcome = await runStudyWith(
-      clinic({
-        participants: [{ id: "patient", count: 3, startEveryMs: 30_000 }],
+      supportDesk({
+        participants: [{ id: "customer", count: 3, startEveryMs: 30_000 }],
       }),
       { cwd, dryRun: true },
     );
@@ -244,18 +244,18 @@ describe("a computer-use study whose participant fails partway through the sched
   });
 
   it("starts every later arrival on time when one participant's desktop stalls 10 minutes in", async () => {
-    // One minute of the schedule is 20 ms here: patients arrive at +5, +15, +25 and +35 minutes,
-    // and the nurse's desktop stops answering 10 minutes into its session.
+    // One minute of the schedule is 20 ms here: customers arrive at +5, +15, +25 and +35 minutes,
+    // and the support agent's desktop stops answering 10 minutes into its session.
     const minute = 20;
     const stall = "desktop executor error: deadline_exceeded; disposition: outcome_uncertain";
     let stalledAt: number | undefined;
     const timed = timedModule();
     const passing = seams(timed.module);
     const outcome = await runStudyWith(
-      clinic({
+      supportDesk({
         participants: [
-          { id: "nurse", persona: "power-user" },
-          { id: "patient", count: 4, startAfterMs: 5 * minute, startEveryMs: 10 * minute },
+          { id: "support-agent", persona: "power-user" },
+          { id: "customer", count: 4, startAfterMs: 5 * minute, startEveryMs: 10 * minute },
         ],
         execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 5 },
       }),
@@ -284,11 +284,11 @@ describe("a computer-use study whose participant fails partway through the sched
 
     expect(result.laneSummary).toMatchObject({ passed: 4, skipped: 0, harnessErrors: 1 });
     expect(result.lanes?.map((lane) => [lane.id, lane.status])).toEqual([
-      ["nurse", "failed"],
-      ["patient-01", "passed"],
-      ["patient-02", "passed"],
-      ["patient-03", "passed"],
-      ["patient-04", "passed"],
+      ["support-agent", "failed"],
+      ["customer-01", "passed"],
+      ["customer-02", "passed"],
+      ["customer-03", "passed"],
+      ["customer-04", "passed"],
     ]);
     expect(result.lanes?.[0]?.error?.message).toBe(
       `Computer-use session ended with a harness error: ${stall}`,
@@ -297,21 +297,21 @@ describe("a computer-use study whose participant fails partway through the sched
 
     const bundle = await runJson(cwd, result.runId);
     const starts = arrivals(bundle);
-    // The schedule ran past the stall: at least two patients were due after it.
+    // The schedule ran past the stall: at least two customers were due after it.
     expect(starts.filter((start) => start.scheduledAt > stalledAt!).length).toBeGreaterThan(1);
     for (const start of starts) expect(start.startedAt).toBeGreaterThanOrEqual(start.scheduledAt);
     // One gap line per participant that did not pass, then the review's fixed provenance line.
-    expect(bundle.review.gaps.filter((gap) => /^(nurse|patient)/.test(gap))).toEqual([
-      `nurse: ${stall}`,
+    expect(bundle.review.gaps.filter((gap) => /^(support-agent|customer)/.test(gap))).toEqual([
+      `support-agent: ${stall}`,
     ]);
 
     const events = await runEvents(cwd, result.runId);
-    const nurse = bundle.simulations[0]!.id;
+    const agent = bundle.simulations[0]!.id;
     expect(
       events
-        .filter((event) => event.simId === nurse && event.type.startsWith("cua-lab.session."))
+        .filter((event) => event.simId === agent && event.type.startsWith("cua-lab.session."))
         .map((event) => [event.type, event.message]),
-    ).toEqual([["cua-lab.session.harness_error", `Participant nurse failed: ${stall}`]]);
+    ).toEqual([["cua-lab.session.harness_error", `Participant support-agent failed: ${stall}`]]);
     expect(events.filter((event) => event.type === "cua-lab.session.blocked")).toEqual([]);
   });
 });

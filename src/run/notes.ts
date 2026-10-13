@@ -48,7 +48,7 @@ const refuse = (code: RunNoteErrorCode, message: string): AddRunNoteResult => ({
 
 /**
  * The stream id a note's participant names: a stream id, or the participant's own id from the study
- * (`charge-nurse`). Both kinds of id are matched, so a name that is one stream's id and another
+ * (`support-lead`). Both kinds of id are matched, so a name that is one stream's id and another
  * stream's study id is refused, naming both, as is a study id that two streams record. Otherwise
  * the refusal names the run's participants by caption, with the id to type for each.
  */

@@ -16,6 +16,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   is now told from 7 minutes 30 seconds in, and a window of 40 minutes or more keeps 10 minutes. An
   explicit `windDownMs` is used as written. `study check`'s `windows` row and the plan entry's
   `windDownMs` show the new default.
+- The `participants[].files` refusal messages suggest `fixtures/photo.png` and
+  `Downloads/photo.png`, and the study-file docs examples use neutral roles (support agents,
+  customers, applicants).
 
 ### Fixed
 

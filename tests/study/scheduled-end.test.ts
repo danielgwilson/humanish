@@ -48,11 +48,11 @@ function refusal(result: PlanResult): string {
   return result.refusal.message;
 }
 
-// A clinic day: one staff member works four hours while two patients arrive.
-const clinicDay = {
+// A support desk's day: one support agent works four hours while two customers arrive.
+const supportDay = {
   participants: [
-    { id: "staff", endAfterMs: 4 * HOURS },
-    { id: "patient", count: 2, startAfterMs: 30 * S, startEveryMs: 30 * S },
+    { id: "support-agent", endAfterMs: 4 * HOURS },
+    { id: "customer", count: 2, startAfterMs: 30 * S, startEveryMs: 30 * S },
   ],
 };
 
@@ -62,9 +62,9 @@ describe("declaring when a participant ends", () => {
       plan(
         study("cuAppUrl", {
           participants: [
-            { id: "staff", endAfterMs: 4 * HOURS },
+            { id: "support-agent", endAfterMs: 4 * HOURS },
             { id: "lead", endAfterMs: 2 * HOURS, windDownMs: 5 * MIN },
-            { id: "patient", startAfterMs: 30 * S },
+            { id: "customer", startAfterMs: 30 * S },
             { id: "brief", startAfterMs: 2 * MIN, endAfterMs: 10 * MIN },
           ],
         }),
@@ -80,30 +80,30 @@ describe("declaring when a participant ends", () => {
         windDownMs,
       })),
     ).toEqual([
-      { id: "staff", startAfterMs: undefined, endAfterMs: 14_400_000, windDownMs: 600_000 },
+      { id: "support-agent", startAfterMs: undefined, endAfterMs: 14_400_000, windDownMs: 600_000 },
       { id: "lead", startAfterMs: undefined, endAfterMs: 7_200_000, windDownMs: 300_000 },
-      { id: "patient", startAfterMs: 30_000, endAfterMs: undefined, windDownMs: undefined },
+      { id: "customer", startAfterMs: 30_000, endAfterMs: undefined, windDownMs: undefined },
       // An 8-minute window is told the time left for its last 2 minutes.
       { id: "brief", startAfterMs: 120_000, endAfterMs: 600_000, windDownMs: 120_000 },
     ]);
   });
 
   it("gives each member of a group the group's end", () => {
-    const shift = planned(
+    const agents = planned(
       plan(
         study("cuAppUrl", {
           participants: [
-            { id: "nurse", count: 2, startEveryMs: 10 * MIN, endAfterMs: 30 * MIN },
-            { id: "patient", startAfterMs: 30 * S },
+            { id: "support-agent", count: 2, startEveryMs: 10 * MIN, endAfterMs: 30 * MIN },
+            { id: "customer", startAfterMs: 30 * S },
           ],
         }),
       ),
     );
-    if (shift.route !== "computer-use") throw new Error(shift.route);
-    expect(shift.runner.participants.map(({ id, endAfterMs }) => [id, endAfterMs])).toEqual([
-      ["nurse-01", 1_800_000],
-      ["nurse-02", 1_800_000],
-      ["patient", undefined],
+    if (agents.route !== "computer-use") throw new Error(agents.route);
+    expect(agents.runner.participants.map(({ id, endAfterMs }) => [id, endAfterMs])).toEqual([
+      ["support-agent-01", 1_800_000],
+      ["support-agent-02", 1_800_000],
+      ["customer", undefined],
     ]);
   });
 
@@ -139,9 +139,11 @@ describe("declaring when a participant ends", () => {
 
   it("refuses a group whose spread puts a member's start at or past the group's end", () => {
     const message = parseRefusal("cuAppUrl", {
-      participants: [{ id: "nurse", count: 3, startEveryMs: 15 * MIN, endAfterMs: 30 * MIN }],
+      participants: [
+        { id: "support-agent", count: 3, startEveryMs: 15 * MIN, endAfterMs: 30 * MIN },
+      ],
     });
-    expect(message).toContain("nurse-03");
+    expect(message).toContain("support-agent-03");
     expect(message).toContain("endAfterMs");
   });
 
@@ -164,23 +166,23 @@ describe("declaring when a participant ends", () => {
 });
 
 describe("a window and the sandbox ceiling", () => {
-  it("refuses a staff window whose sandbox would outlive the ceiling, naming the setting", () => {
-    // The staff session is its 4-hour window plus 5 minutes for the closing report, and its
-    // sandbox adds the 10-minute teardown buffer: 255 minutes.
-    const message = refusal(plan(study("cuAppUrl", clinicDay)));
-    expect(message).toContain('"staff"');
+  it("refuses an agent's window whose sandbox would outlive the ceiling, naming the setting", () => {
+    // The support agent's session is its 4-hour window plus 5 minutes for the closing report, and
+    // its sandbox adds the 10-minute teardown buffer: 255 minutes.
+    const message = refusal(plan(study("cuAppUrl", supportDay)));
+    expect(message).toContain('"support-agent"');
     expect(message).toContain("255m");
     expect(message).toContain("may not live longer than 60m");
     expect(message).toContain(`set ${CEILING} to 255 or more`);
   });
 
   it("sizes each participant's sandbox from its own window on a plan that allows it", () => {
-    const day = planned(plan(study("cuAppUrl", clinicDay), { [CEILING]: "1440" }));
+    const day = planned(plan(study("cuAppUrl", supportDay), { [CEILING]: "1440" }));
     if (day.route !== "computer-use") throw new Error(day.route);
-    // The staff member holds its slot to 4 h 5 m; the patients' 1-minute sessions end long before.
+    // The agent holds its slot to 4 h 5 m; the customers' 1-minute sessions end long before.
     expect(day.arrivals).toMatchObject({ peak: 3, waiting: 0, lastEndMs: 4 * HOURS + 5 * MIN });
     const { participantPlan } = participantRunsAndPlan(day);
-    // 255 sandbox-minutes for the staff member and 11 for each patient.
+    // 255 sandbox-minutes for the support agent and 11 for each customer.
     expect(participantPlan.worstCaseSandboxMinutes).toBe(277);
     expect(
       participantPlan.lanes.map(({ id, startAfterMs, endAfterMs }) => [
@@ -189,9 +191,9 @@ describe("a window and the sandbox ceiling", () => {
         endAfterMs,
       ]),
     ).toEqual([
-      ["staff", undefined, 14_400_000],
-      ["patient-01", 30_000, undefined],
-      ["patient-02", 60_000, undefined],
+      ["support-agent", undefined, 14_400_000],
+      ["customer-01", 30_000, undefined],
+      ["customer-02", 60_000, undefined],
     ]);
   });
 });
@@ -201,13 +203,17 @@ describe("study check", () => {
     const cwd = await makeTestTempDir("humanish-scheduled-end-check-");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
-      path.join(cwd, "humanish", "studies", "clinic.yaml"),
-      stringify(lab("cuAppUrl", { id: "clinic", ...clinicDay })),
+      path.join(cwd, "humanish", "studies", "support-desk.yaml"),
+      stringify(lab("cuAppUrl", { id: "support-desk", ...supportDay })),
     );
-    const check = await runStudyPreflight({ cwd, study: "clinic", env: { [CEILING]: "1440" } });
+    const check = await runStudyPreflight({
+      cwd,
+      study: "support-desk",
+      env: { [CEILING]: "1440" },
+    });
     expect(check.ok).toBe(true);
     expect(check.checks.find((row) => row.name === "windows")?.message).toBe(
-      "staff from +0s to +4h, told the time left from +3h 50m; patient-01 from +30s for up to 1m; patient-02 from +1m for up to 1m.",
+      "support-agent from +0s to +4h, told the time left from +3h 50m; customer-01 from +30s for up to 1m; customer-02 from +1m for up to 1m.",
     );
   });
 });
@@ -217,7 +223,7 @@ describe("a scheduled end on a participant model with no closing request", () =>
     (planned(result).warnings ?? []).filter((warning) => warning.includes("closing"));
 
   it("warns that Claude as a local agent leaves its participants with no closing account", () => {
-    const local = study("cuAppUrl", clinicDay);
+    const local = study("cuAppUrl", supportDay);
     const result = plan(
       { ...local, actor: { ...local.actor, type: "local-agent", localAgent: "claude" } },
       {
@@ -230,7 +236,7 @@ describe("a scheduled end on a participant model with no closing request", () =>
   });
 
   it("says nothing for a computer-use model or Codex, which write the closing report", () => {
-    const hosted = study("cuAppUrl", clinicDay);
+    const hosted = study("cuAppUrl", supportDay);
     const codex = {
       ...hosted,
       actor: { ...hosted.actor, type: "local-agent", localAgent: "codex" },

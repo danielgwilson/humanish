@@ -394,7 +394,7 @@ describe("the run writer's superseded generations", () => {
 });
 
 describe("readers of a run in progress", () => {
-  const thought = item(2, "The second patient is waiting.");
+  const thought = item(2, "The second customer is waiting.");
 
   beforeEach(async () => {
     await withRun(async (run) => {
@@ -412,13 +412,13 @@ describe("readers of a run in progress", () => {
     const loaded = await loadRunBundle(cwd, RUN);
     expect(loaded?.bundle.streams[0]!.liveActor?.items.map((entry) => entry.text)).toEqual([
       "Step 1 on the list.",
-      "The second patient is waiting.",
+      "The second customer is waiting.",
     ]);
   });
 
   it("run detail quotes the participant's latest thought from the live file", async () => {
     const detail = await readRunDetail(cwd, RUN);
-    expect(detail?.participants[0]?.thought?.text).toBe("The second patient is waiting.");
+    expect(detail?.participants[0]?.thought?.text).toBe("The second customer is waiting.");
   });
 
   it("the Observer server's feed carries the participant's items", async () => {

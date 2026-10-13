@@ -58,13 +58,13 @@ describe("parsing a participant's clock", () => {
       participants: [
         { id: "london", clock: { timeZone: "Europe/London" } },
         { id: "tokyo", clock: { timeZone: "Asia/Tokyo" } },
-        { id: "staff" },
+        { id: "support-agent" },
       ],
     });
     expect(config.participants).toEqual([
       { id: "london", clock: { timeZone: "Europe/London" } },
       { id: "tokyo", clock: { timeZone: "Asia/Tokyo" } },
-      { id: "staff" },
+      { id: "support-agent" },
     ]);
   });
 
