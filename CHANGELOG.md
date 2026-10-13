@@ -19,15 +19,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   seconds a turn, and after about 8,540 turns at the live fit of 1,965 bytes a turn. verify and the
   Observer read each file up to 32 MiB, so they still accept a run between 16 and 32 MiB that
   analysis refuses. (#1824)
-- A trace or live file that run.json records past 32 MiB, the most humanish reads of one run file,
-  is refused with a message that says so and that restoring a copy does not help; it said to
+- A trace or live file that run.json records past 32 MiB, the most the trace loader reads of one
+  file, is refused with a message that says so and that restoring a copy does not help; it said to
   restore the run folder from a copy. In the served Observer, a running participant whose live file
   passes 32 MiB keeps the items the page already holds, with a `live-items.not-read` warning that
   later items are not read; the page dropped every item and showed the trace as unavailable. A page
   opened after the file passed the limit, and every page once the run finishes, shows that trace
   as unavailable with the file's size. The Observer server reads run.json and a saved
-  observer-data.json only up to 32 MiB and answers 404 with a reason naming the limit past it; it
-  read both whole.
+  observer-data.json only up to 32 MiB, for its feed and page and for run.json asked for by name,
+  and answers 404 with a reason naming the limit past it; it read both whole. Other run files asked
+  for by path, a trace or live file among them, are still sent whole.
 
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 

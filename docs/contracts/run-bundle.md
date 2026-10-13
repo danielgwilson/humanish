@@ -56,8 +56,10 @@ An indexed stream's file is read under the 32 MiB per-file limit (analysis uses 
 source limit for each trace) and refused unless its size, sha256, item count and screenshot count
 match the index. A trace or live file whose index records more than the limit is refused before it
 is read, and the refusal says the file is larger than humanish reads of one file and that
-restoring a copy does not help. A file whose index is under the limit and whose bytes are over it
-changed after the run wrote it, and its refusal says to restore the run folder from a copy. A trace file belongs to one participant: every stream whose index names a file
+restoring a copy does not help. A trace file whose index is under the limit and whose bytes are
+over it changed after the run wrote it, and its refusal says to restore the run folder from a copy.
+A live file may hold bytes past its index while the writer appends; the loader reads only the
+indexed bytes. A trace file belongs to one participant: every stream whose index names a file
 another stream's index names, compared without case as a case-insensitive file system compares
 names, is refused before any file is read. The writer claims names the same way. In a v2 run.json every `actor`
 must have an index: an actor with no index, with
