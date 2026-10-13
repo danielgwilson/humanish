@@ -2729,8 +2729,9 @@ fi
 # of an OpenAI wait with no duration and a serve.build bash cannot parse need a live run; this
 # check does not make one.
 
-# 20bt. actor.maxWaitMs (#1724): a computer-use dry run with 90000 plans; 999 and 600001 are refused
-# before a run is created with the range. 0.116.0 refuses all three as an unknown actor field.
+# 20bt. actor.maxWaitMs (#1724): a computer-use dry run with 90000 plans; 999 and 3600001 are refused
+# before a run is created with the range. 0.116.0 refuses all three as an unknown actor field. From
+# 0.131.0 the range reaches 3600000, the longest the watch of repeated idle turns grows.
 wait_cu_study() { # id, extra actor lines
   cat >"$project/humanish/studies/$1.yaml" <<YAML
 schema: humanish.study.v3
@@ -2753,19 +2754,19 @@ execution:
 YAML
 }
 mw_view=""
-for v in 90000 999 600001; do
+for v in 90000 999 3600001; do
   wait_cu_study "wait-max-$v" "  maxWaitMs: $v"
   hx run "wait-max-$v" --no-open >"$work/logs/wait-max-$v.out" 2>"$work/logs/wait-max-$v.err"
   mw_view="$mw_view $v:$?"
   rm -f "$project/humanish/studies/wait-max-$v.yaml"
 done
-mw_range="actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from 1000 to 600000."
-if [ "$mw_view" = " 90000:0 999:2 600001:2" ] && grep -qxF "humanish run wait-max-90000: dry run finished" "$work/logs/wait-max-90000.out" &&
+mw_range="actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from 1000 to 3600000."
+if [ "$mw_view" = " 90000:0 999:2 3600001:2" ] && grep -qxF "humanish run wait-max-90000: dry run finished" "$work/logs/wait-max-90000.out" &&
   grep -qF "$mw_range" "$work/logs/wait-max-999.out" "$work/logs/wait-max-999.err" &&
-  grep -qF "$mw_range" "$work/logs/wait-max-600001.out" "$work/logs/wait-max-600001.err"; then
-  record "run: actor.maxWaitMs 90000 plans; 999 and 600001 refused with the range" PASS "exits 0, 2, 2; the refusal names 1000 to 600000" "#1724"
+  grep -qF "$mw_range" "$work/logs/wait-max-3600001.out" "$work/logs/wait-max-3600001.err"; then
+  record "run: actor.maxWaitMs 90000 plans; 999 and 3600001 refused with the range" PASS "exits 0, 2, 2; the refusal names 1000 to 3600000" "#1724"
 else
-  record "run: actor.maxWaitMs 90000 plans; 999 and 600001 refused with the range" FAIL "exits '${mw_view}', '$(grep -ho 'Unknown study field[^.]*\|actor.maxWaitMs[^.]*' "$work/logs/wait-max-999.out" "$work/logs/wait-max-999.err" | head -n 1)'; see logs/wait-max-*" "#1724"
+  record "run: actor.maxWaitMs 90000 plans; 999 and 3600001 refused with the range" FAIL "exits '${mw_view}', '$(grep -ho 'Unknown study field[^.]*\|actor.maxWaitMs[^.]*' "$work/logs/wait-max-999.out" "$work/logs/wait-max-999.err" | head -n 1)'; see logs/wait-max-*" "#1724"
 fi
 
 # 20bu. A terminal study, whose participants take no wait actions, that sets actor.maxWaitMs or
