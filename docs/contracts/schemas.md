@@ -215,9 +215,11 @@ The rest of this section names keys by their v3 spelling:
   before its browser opens. `from` is relative to the folder that holds the study file
   (`cwd` for a library config); `as` is relative to the desktop user's home folder.
   The parser refuses an absolute path, a `.`, `..` or empty part, a backslash, an `as`
-  that starts with `~`, looks like a secret or local path, repeats another `as` or is
-  its folder, and a `from` the local-tree denylist names (`isLocalTreeDenylisted` in
-  `src/subject/local-tree-archive.ts`). The route reads each distinct `from` once, before
+  that starts with `~`, lands in `subject/` or on a name starting with `.humanish`, looks
+  like a secret, a local path or encoded text, repeats another `as` or is its folder,
+  and a `from` the local-tree denylist names in any case (`isLocalTreeDenylisted` in
+  `src/subject/local-tree-archive.ts`). The route also refuses an `as` that holds a
+  value from the run's environment, such as a key. The route reads each distinct `from` once, before
   any sandbox and on dry runs too, with `readContainedRegularFile`: a missing file, a
   folder, a symbolic or hard link, a path out of the folder, a file above 10 MiB, more
   than 25 MiB for one participant or 100 MiB of distinct files for the study is

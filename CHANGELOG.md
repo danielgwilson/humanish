@@ -24,10 +24,11 @@ it: `from` is relative to the folder that holds the study file, and `as` is rela
 user's home folder, such as `Downloads/insurance-card.png`. humanish reads the files before any
 sandbox exists, on dry runs too, and refuses a missing file, a folder, a symbolic or hard link, a
 path out of that folder, a `.env`, key or credential file, a file above 10 MiB, more than 25 MiB for
-one participant or 100 MiB of distinct files for one study, an absolute `as` or one with `..`, and
-two files at one path. After each write it checks the file's size on the desktop. The participant's
-stream records `desktopFiles: [{ as, size, sha256 }]`; the contents are not recorded. A local
-browser, local VM or shared-world study with `files` is refused at parse with what to change.
+one participant or 100 MiB of distinct files for one study, an absolute `as` or one with `..`, one
+in humanish's own `subject/` folder, and two files at one path. After each write it checks the
+file's size on the desktop. The participant's stream records `desktopFiles: [{ as, size, sha256 }]`;
+the contents are not recorded. A local browser, local VM or shared-world study with `files` is
+refused at parse with what to change.
 
 ### Changed
 

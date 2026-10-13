@@ -470,8 +470,10 @@ desktopFiles:
 `as` is relative to the desktop user's home folder. `size` is the byte count humanish copied,
 which `files.getInfo` on the desktop matched. `sha256` is the digest of those bytes, read on the
 host before any sandbox existed. The contents and the `from` path are not recorded. A participant
-whose copy failed records the files that landed before the failure. No `desktopFiles` means the
-study gave the participant no files.
+whose copy failed records the files confirmed before the failure. No `desktopFiles` means no file
+was confirmed on that desktop: the study gave the participant none, the run was a dry run, or the
+copy failed before the first file was confirmed. A copy that failed records a `warn` event of type
+`cua-lab.desktop.files.completed`.
 
 ## Subject Provenance
 

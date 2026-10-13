@@ -162,6 +162,28 @@ describe("participants[].files on a hosted computer-use desktop", () => {
     expect(result.ok).toBe(false);
     expect(order).toEqual(["write fake-sandbox-01 card.png"]);
     expect(JSON.stringify(result)).toMatch(/card\.png measured 23 bytes/);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", String(result.runId), "run.json"), "utf8"),
+    ) as { events: { type: string; level: string }[] };
+    expect(bundle.events.filter((event) => event.type.startsWith("cua-lab.desktop.files"))).toEqual(
+      [expect.objectContaining({ type: "cua-lab.desktop.files.completed", level: "warn" })],
+    );
+  });
+
+  it("refuses an as that holds a key from this run's environment, before any sandbox exists", async () => {
+    const cwd = await project();
+    const { handle, result } = await run(
+      cwd,
+      study([
+        {
+          id: "patient",
+          files: [{ from: "fixtures/insurance-card.png", as: "Downloads/test-openai-key.png" }],
+        },
+      ]),
+    );
+    expect(result.error).toMatchObject({ code: "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID" });
+    expect(JSON.stringify(result.error)).not.toMatch(/test-openai-key/);
+    expect(handle.created).toHaveLength(0);
   });
 
   it("refuses a file missing from the study's folder before any sandbox exists, though the project root has one", async () => {

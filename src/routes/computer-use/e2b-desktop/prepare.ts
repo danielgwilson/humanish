@@ -206,29 +206,34 @@ export async function placeParticipantFiles(
     type: "cua-lab.desktop.files.started",
     message: `copying ${plural(files.length, "file")} onto the desktop`,
   });
-  for (const file of files) {
-    const bytes = file.bytes.buffer.slice(
-      file.bytes.byteOffset,
-      file.bytes.byteOffset + file.bytes.byteLength,
-    ) as ArrayBuffer;
-    // A relative path lands under the sandbox user's home folder, and missing folders are made.
-    await withOneRetryOnTransientE2BError(() =>
-      desktop.files.write(file.as, bytes, { requestTimeoutMs, useOctetStream: true }),
-    );
-    const landed = await getInfo(file.as, { requestTimeoutMs });
-    if (landed.size !== file.size)
-      throw new Error(
-        `participants[].files: ${file.as} measured ${landed.size} bytes on the desktop of participant ${spec.planned.id} after humanish copied ${file.size}, so the participant did not start.`,
+  const filesCompleted = (ok: boolean): void =>
+    ctx.onSubjectPhase({
+      at: new Date(deps.now()).toISOString(),
+      type: "cua-lab.desktop.files.completed",
+      ok,
+      durationMs: Math.max(0, deps.now() - startedAt),
+      message: ok
+        ? `${plural(files.length, "file")} on the desktop`
+        : `copying files onto the desktop failed after ${plural(state.desktopFiles.length, "file")}`,
+    });
+  try {
+    for (const file of files) {
+      // A relative path lands under the sandbox user's home folder, and missing folders are made.
+      await withOneRetryOnTransientE2BError(() =>
+        desktop.files.write(file.as, file.data, { requestTimeoutMs, useOctetStream: true }),
       );
-    state.desktopFiles.push({ as: file.as, size: file.size, sha256: file.sha256 });
+      const landed = await getInfo(file.as, { requestTimeoutMs });
+      if (landed.size !== file.size)
+        throw new Error(
+          `participants[].files: ${file.as} measured ${landed.size} bytes on the desktop of participant ${spec.planned.id} after humanish copied ${file.size}, so the participant did not start.`,
+        );
+      state.desktopFiles.push({ as: file.as, size: file.size, sha256: file.sha256 });
+    }
+  } catch (error) {
+    filesCompleted(false);
+    throw error;
   }
-  ctx.onSubjectPhase({
-    at: new Date(deps.now()).toISOString(),
-    type: "cua-lab.desktop.files.completed",
-    ok: true,
-    durationMs: Math.max(0, deps.now() - startedAt),
-    message: `${plural(files.length, "file")} on the desktop`,
-  });
+  filesCompleted(true);
 }
 
 /** Install a desktop CLI, or clone or unpack the subject and serve it, in the sandbox. */

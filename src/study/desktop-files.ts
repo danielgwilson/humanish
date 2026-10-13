@@ -4,6 +4,7 @@
 
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
+import path from "node:path";
 
 import { scanEncodedText } from "../evidence/encoded-text.js";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../run/contained-output.js";
 import { isRecord } from "../run/type-guards.js";
 import { isLocalTreeDenylisted } from "../subject/local-tree-archive.js";
+import { SUBJECT_DIR } from "../subject/steps.js";
 import { invalid, str } from "./parse/values.js";
 import type { StudyParseFailure, StudyParticipantFile } from "./types.js";
 
@@ -53,10 +55,16 @@ export function parseParticipantFiles(
       return invalid(
         `\`${at}.as\` must be a path relative to the desktop user's home folder, such as Downloads/insurance-card.png, with / between folders, no empty, . or .. part, and no leading ~.`,
       );
-    // The run records `as`, and redacting it would record a different path.
-    if (scanEncodedText(as).sensitive)
+    if (isHumanishDesktopPath(as))
       return invalid(
-        `\`${at}.as\` looks like a secret or a local path, and the run records it. Name the file plainly, such as Downloads/insurance-card.png.`,
+        `\`${at}.as\` is a path humanish uses on the desktop: ${SUBJECT_FOLDER}/ holds the cloned or unpacked app, and names that start with .humanish are humanish's own files. Pick another path, such as Downloads/insurance-card.png.`,
+      );
+    // The run records `as`, and redacting it would record a different path. Encoded text the
+    // public-safety scan cannot read would leave run.json unscanned.
+    const scanned = scanEncodedText(as);
+    if (scanned.sensitive || scanned.opaque)
+      return invalid(
+        `\`${at}.as\` looks like a secret, a local path or encoded text, and the run records it. Name the file plainly, such as Downloads/insurance-card.png.`,
       );
     const clash = files.find(
       (earlier) =>
@@ -73,6 +81,18 @@ export function parseParticipantFiles(
   return { ok: true, value: files };
 }
 
+/** The subject's folder under the sandbox user's home, where a clone or local tree is put. */
+const SUBJECT_FOLDER = path.posix.relative("/home/user", SUBJECT_DIR);
+
+/**
+ * Whether `as` lands where humanish puts its own files: the subject's folder, which provisioning
+ * replaces, or a name starting with .humanish, such as the local-tree archive.
+ */
+function isHumanishDesktopPath(as: string): boolean {
+  const first = as.split("/")[0] ?? "";
+  return first === SUBJECT_FOLDER || first.startsWith(".humanish");
+}
+
 /**
  * A relative path of plain names joined by `/`. A backslash is refused because the desktop is
  * Linux, where it is part of a name, and on Windows it would be a separator.
@@ -86,9 +106,10 @@ function isPlainRelativePath(value: string): boolean {
 export interface DesktopFile {
   /** Where it lands, relative to the desktop user's home folder. */
   readonly as: string;
-  readonly bytes: Buffer;
+  /** The file's bytes, shared by every participant that receives it and uploaded as they are. */
+  readonly data: ArrayBuffer;
   readonly size: number;
-  /** The sha256 of `bytes`, 64 hex characters. */
+  /** The sha256 of `data`, 64 hex characters. */
   readonly sha256: string;
 }
 
@@ -145,21 +166,27 @@ export async function readDesktopFiles(
     for (const [index, file] of (participant.files ?? []).entries()) {
       let source = sources.get(file.from);
       if (source === undefined) {
-        const read = await readContainedRegularFile(root, file.from, FILE_MAX_BYTES);
+        // A file past what the study has left is refused unread, so memory stays under the total.
+        const left = STUDY_MAX_BYTES - studyBytes;
+        const read = await readContainedRegularFile(
+          root,
+          file.from,
+          Math.min(FILE_MAX_BYTES, left),
+        );
+        if (read.status === "refused" && read.reason === "too-large" && left < FILE_MAX_BYTES)
+          return {
+            ok: false,
+            message: `The files this study's participants receive total more than ${STUDY_MAX_BYTES / MIB} MiB, the most humanish holds in memory for one run. Use smaller files, or give more participants the same file.`,
+          };
         if (read.status !== "read")
           return {
             ok: false,
             message: `Participant ${participant.id}'s files[${index}].from, ${file.from}, ${unreadReason(read)}. Paths in from are relative to the folder that holds the study file.`,
           };
         const sha256 = createHash("sha256").update(read.bytes).digest("hex");
-        source = { bytes: read.bytes, size: read.bytes.length, sha256 };
+        source = { data: new Uint8Array(read.bytes).buffer, size: read.bytes.length, sha256 };
         sources.set(file.from, source);
         studyBytes += source.size;
-        if (studyBytes > STUDY_MAX_BYTES)
-          return {
-            ok: false,
-            message: `The files this study's participants receive total more than ${STUDY_MAX_BYTES / MIB} MiB, the most humanish holds in memory for one run. Use smaller files, or give more participants the same file.`,
-          };
       }
       participantBytes += source.size;
       if (participantBytes > PARTICIPANT_MAX_BYTES)

@@ -68,9 +68,28 @@ describe("participants[].files in a study file", () => {
     "keys/deploy.pem",
     ".humanish/runs/latest.json",
     "id_ed25519",
+    ".ENV",
+    "Keys/Deploy.PEM",
+    ".Git/config",
   ])("refuses a from of %s, a file the local-tree archive also leaves out", (from) => {
     const message = refusedWith(withFiles([{ from, as: "Downloads/file" }]));
     expect(message).toMatch(/participants\[0\]\.files\[0\]\.from/);
+  });
+
+  it.each(["subject/card.png", "subject", ".humanish-source.tar.gz", ".humanish/card.png"])(
+    "refuses an as of %s, a path humanish uses on the desktop",
+    (as) => {
+      const message = refusedWith(withFiles([{ from: card.from, as }]));
+      expect(message).toMatch(/participants\[0\]\.files\[0\]\.as/);
+    },
+  );
+
+  it("refuses an as that is encoded text the run's checks cannot read", () => {
+    const encoded = Buffer.from(Array.from({ length: 96 }, (_, n) => 128 + n)).toString(
+      "base64url",
+    );
+    const message = refusedWith(withFiles([{ from: card.from, as: `Downloads/${encoded}.png` }]));
+    expect(message).toMatch(/participants\[0\]\.files\[0\]\.as/);
   });
 
   it("refuses two files that land at the same path", () => {
@@ -141,7 +160,7 @@ describe("readDesktopFiles", () => {
     expect(file?.as).toBe("Downloads/insurance-card.png");
     expect(file?.size).toBe(20);
     expect(file?.sha256).toBe(createHash("sha256").update(contents).digest("hex"));
-    expect(file?.bytes.toString("utf8")).toBe(contents);
+    expect(Buffer.from(file?.data ?? new ArrayBuffer(0)).toString("utf8")).toBe(contents);
   });
 
   it.each<[string, (folder: string) => Promise<void>]>([

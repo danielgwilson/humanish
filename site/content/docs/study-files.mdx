@@ -215,9 +215,9 @@ participants:
 
 - `from` is relative to the folder that holds the study file; for a committed study that is `humanish/studies/`. A library `runStudy` call has no study file, so its `from` is relative to `cwd`.
 - `as` is relative to the desktop user's home folder. Missing folders are created.
-- humanish reads every file before any sandbox exists, on a dry run too, and refuses the study when a file is missing, is a folder, a symbolic link or a hard link, or leaves the study's folder. It also refuses a `.env` file, a key or credential file, and anything under `.git`, `node_modules` or `.humanish`, the files the local-tree archive leaves out.
+- humanish reads every file before any sandbox exists, on a dry run too, and refuses the study when a file is missing, is a folder, a symbolic link or a hard link, or leaves the study's folder. It also refuses a `.env` file, a key or credential file, and anything under `.git`, `node_modules` or `.humanish`, in any letter case: the files the local-tree archive leaves out.
 - Each file is at most 10 MiB, one participant's files total at most 25 MiB, and the distinct files a study names total at most 100 MiB.
-- An `as` that is absolute, has a `..` or `.` part, starts with `~`, names a path twice or is the folder of another `as` is refused at parse.
+- An `as` that is absolute, has a `..` or `.` part, starts with `~`, names a path twice or is the folder of another `as` is refused at parse. So is one in `subject/`, where humanish puts a cloned or unpacked app, or on a name starting with `.humanish`, and one that looks like a secret, a local path or encoded text, since the run records it.
 - After each copy humanish checks the file's size on the desktop; a file that did not land whole fails that participant before its first turn.
 - The participant's stream records `desktopFiles`, each file's `as`, size and sha256. The contents and the `from` path are not recorded.
 - Use synthetic files. A file you copy is on a desktop a model drives, and the participant can upload it to the site under study.
