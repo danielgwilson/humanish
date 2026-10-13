@@ -157,6 +157,18 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     expect(seen[0]!.overRunBudget?.(usage)).toContain("study budget reached");
   });
 
+  it("runs every participant with pages off on the provisioned plane", async () => {
+    const { env, deps } = baseSeams({ worldVersion: 0 }, makeRendezvous(3));
+    const session = deps.runSession!;
+    const seen: CuaActorSessionOptions[] = [];
+    deps.runSession = (options) => {
+      seen.push(options);
+      return session(options);
+    };
+    await runSharedWorld({ cwd, config: concurrentConfig(), dryRun: false, env, deps });
+    expect(seen.map((options) => options.recordPages)).toEqual([false, false, false]);
+  });
+
   it("refuses an unpriceable cap before provisioning the shared plane", async () => {
     const config = concurrentConfig(3, 3, undefined, { maxTotalUsd: 1 });
     config.actor.model = "unknown-priced-model";

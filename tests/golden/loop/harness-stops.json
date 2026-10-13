@@ -411,6 +411,10 @@
               "path": "screenshots/turn-00-start.png",
               "redaction": "none"
             },
+            "page": {
+              "origin": "https://app.test",
+              "path": "/start"
+            },
             "at": "1970-01-01T00:00:03.000Z"
           },
           {
@@ -433,6 +437,10 @@
               "path": "screenshots/turn-01.png",
               "redaction": "none"
             },
+            "page": {
+              "origin": "https://app.test",
+              "path": "/done"
+            },
             "at": "1970-01-01T00:00:09.000Z"
           },
           {
@@ -454,6 +462,10 @@
             "at": "1970-01-01T00:00:11.000Z"
           }
         ],
+        "finalPage": {
+          "origin": "https://app.test",
+          "path": "/done"
+        },
         "affordanceUse": {
           "schema": "humanish.affordance-use.v1",
           "counts": {

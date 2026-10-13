@@ -128,6 +128,16 @@ export type ActorTraceItemKind =
   | "plan"
   | "notice";
 
+/**
+ * Where a participant's browser was at one observation: the URL's origin and its path, redacted
+ * (src/evidence/trace-page.ts). No query string, fragment or user info. A non-web URL keeps only
+ * its scheme, as `{ origin: "about:", path: "" }`.
+ */
+export interface TracePage {
+  origin: string;
+  path: string;
+}
+
 export interface ActorTraceItem {
   id: string;
   kind: ActorTraceItemKind;
@@ -145,6 +155,9 @@ export interface ActorTraceItem {
   /** Structured pointer coordinates for click-like `ui_action` items: the
    *  recorded fact the Observer's pins previously re-parsed out of the title text. */
   coord?: { x: number; y: number };
+  /** On a computer-use `screenshot` item: the page that observation was on. Additive: absent when
+   *  the observation read no URL, on other producers and in older bundles. */
+  page?: TracePage;
 }
 
 export interface ActorCapabilities {
@@ -556,6 +569,12 @@ export interface ActorTrace {
    */
   impressions?: ParticipantImpressions;
   items: ActorTraceItem[];
+  /**
+   * Additive + optional: the page of the computer-use session's last observation, the closing
+   * task observation included. Absent when that observation read no URL, so a failed read never
+   * repeats an earlier page, and on other producers and older bundles.
+   */
+  finalPage?: TracePage;
   tokenUsage?: ActorTokenUsage;
   /** A stalled or adapter-reported ambiguous interaction may have additional unreported usage.
    *  Known tokenUsage remains usable as a partial total. Absence is not proof of completeness. */

@@ -167,6 +167,7 @@ export interface ActorTraceItem {
   command?: { text?: string; cwd?: string; exitCode?: number; outputTail?: string };
   screenshotRef?: { path: string; redaction: "blurred" | "ocr_scrubbed" | "none" };
   text?: string; // redacted
+  page?: { origin: string; path: string }; // computer-use screenshot items; redacted, no query
 }
 
 export interface ActorCapabilities {
@@ -204,6 +205,7 @@ export interface ActorTrace {
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   counts: Record<string, number>;
   items: ActorTraceItem[];
+  finalPage?: { origin: string; path: string }; // computer-use: the last observation's page
   tokenUsage?: { input?: number; output?: number; total?: number; costUsd?: number };
   estimatedCost?: ActorEstimatedCost; // humanish.actor-estimated-cost.v1 (additive)
   capabilities: ActorCapabilities;

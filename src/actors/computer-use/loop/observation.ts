@@ -1,6 +1,7 @@
 import { evaluateStopWhen, type StopConditionObservation } from "../../stop-conditions.js";
 import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../speech.js";
+import { tracePage } from "../../../evidence/trace-page.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
 import { CuaAbortError, CuaStallError, raceCallBound } from "./race.js";
 import type { LoopSession } from "./session.js";
@@ -140,10 +141,25 @@ export class DesktopObserver {
     }
   }
 
+  /**
+   * Observe the desktop and note the observation's page as the session's final page. Every
+   * observation passes through here, so the page recordScreenshot puts on an item is the page of
+   * the observation it records.
+   */
+  private async observeBounded(label: string): Promise<CuaObservation> {
+    const observation = await this.observeOrRetry(label);
+    const { session } = this;
+    session.finalPage =
+      session.settings.recordPages === false
+        ? undefined
+        : tracePage(observation.url, (text) => session.redactNarration(text));
+    return observation;
+  }
+
   // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe.
   // One that cannot safely replay a pending request opts out, so even a shorter outer bound stops
   // without retrying.
-  private async observeBounded(label: string): Promise<CuaObservation> {
+  private async observeOrRetry(label: string): Promise<CuaObservation> {
     const { session } = this;
     const { executor } = session;
     try {
@@ -218,10 +234,13 @@ export class DesktopObserver {
     const path = await session.writeScreenshot(`${label}.png`, bytes);
     const screenshotRef = { path, redaction: method };
     session.lastScreenshotRef = screenshotRef;
+    const page = session.finalPage;
     session.trace.record("screenshot", () => ({
       lifecycle: "completed",
       title: label,
       screenshotRef,
+      // A copy: the live flush freezes a recorded item, and finalPage stays the session's own.
+      ...(page === undefined ? {} : { page: { ...page } }),
     }));
     session.trace.bump("screenshots");
   }

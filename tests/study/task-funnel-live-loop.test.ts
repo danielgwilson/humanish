@@ -175,8 +175,9 @@ describe("the live loop corroborates the protocol", () => {
       "task completed: see-verify-notice",
       "task completed: reach-dashboard",
     ]);
+    // The URL path lands only as each screenshot item's page, never in a notice; page text never.
+    expect(JSON.stringify(notices)).not.toContain("/register");
     const persisted = JSON.stringify(result.trace);
-    expect(persisted).not.toContain("/register");
     expect(persisted).not.toContain("check your email");
     expect(persisted).not.toContain("Your documents");
   });

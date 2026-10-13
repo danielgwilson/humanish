@@ -3,6 +3,7 @@ import type {
   ActorTraceItem,
   ParticipantDeclaredOutcome,
   ParticipantImpressions,
+  TracePage,
 } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../study/tasks.js";
@@ -48,6 +49,7 @@ export type LoopSettings = {
       | "onMessage"
       | "onScreenshot"
       | "onTrace"
+      | "recordPages"
   ]: LoopRunOptions[K];
 };
 
@@ -112,6 +114,8 @@ export class LoopSession {
   // Whether any observation carried appState. trace.ts states it in redaction.notes; the appState
   // itself is never persisted.
   observedAppState = false;
+  /** The page of the session's last observation; undefined when that observation read no URL. */
+  finalPage: TracePage | undefined;
   declaredOutcome: ParticipantDeclaredOutcome | undefined;
   /** Set by a structured stop; the debrief follows it even if the session then failed. */
   debriefTrigger: DebriefTrigger | undefined;
@@ -152,6 +156,7 @@ export class LoopSession {
       onMessage,
       onScreenshot,
       onTrace,
+      recordPages,
     } = options;
     this.settings = {
       instructions,
@@ -168,6 +173,7 @@ export class LoopSession {
       onMessage,
       onScreenshot,
       onTrace,
+      recordPages,
     };
     this.provider = provider;
     this.executor = executor;

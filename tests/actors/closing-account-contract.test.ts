@@ -115,6 +115,10 @@ async function session(provider: CuaProvider, capped = false): Promise<ActorTrac
           screenshot: frame(actions),
           stateSignature: `screen-${actions}`,
           text: actions > 0 ? "saved" : "editing",
+          url:
+            actions > 0
+              ? "https://tasks.example.test/tasks?saved=1"
+              : "https://tasks.example.test/tasks/edit",
         };
       },
       execute: async () => {
@@ -405,6 +409,30 @@ describe("each brain at a session cap", () => {
       const trace = await run();
       expect(trace.debrief).toMatchObject({ trigger: "session_cap", status: "skipped" });
       expect(trace.impressions).toMatchObject({ status: "not_collected" });
+    },
+  );
+});
+
+describe("the pages in each brain's trace", () => {
+  it.each([...cases("collects"), ...cases("notCollected")])(
+    "$name lists the page of each observation and the final page",
+    async ({ run }) => {
+      const trace = await run();
+      const origin = "https://tasks.example.test";
+      const pages = trace.items
+        .filter((item) => item.kind === "screenshot")
+        .map((item) => item.page);
+      // A brain that ends the session itself takes no action, so it stays on the first page.
+      const acted = (trace.counts.actions ?? 0) > 0;
+      expect(pages).toEqual(
+        acted
+          ? [
+              { origin, path: "/tasks/edit" },
+              { origin, path: "/tasks" },
+            ]
+          : [{ origin, path: "/tasks/edit" }],
+      );
+      expect(trace.finalPage).toEqual(pages.at(-1));
     },
   );
 });

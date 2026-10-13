@@ -120,7 +120,10 @@ The runtime `location.href` (and the 6-char code inside it) is never persisted r
 runtime-only; the threaded code flows only into the follower's composed prompt (never a raw bundle
 field) and is scrubbed from all narration once latched; the shared origin and lobby path persist only
 as sha256-16 digests (`publicOriginDigest`, `lobbyConvergenceDigest`). This matches the existing
-e2b-URL / host-digest redaction discipline.
+e2b-URL / host-digest redaction discipline. The computer-use loop records each observation's page
+origin and path by default; the shared-world runner (`participantRunDeps` in
+`src/routes/shared-world/participant-specs.ts`) runs every session with `recordPages: false`, on
+both planes, so no page and no `finalPage` reaches a shared-world trace.
 
 ## Mobile fidelity caveat
 

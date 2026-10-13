@@ -491,6 +491,8 @@ describe("the handoff crux: CDP current-URL read + onObservedUrl", () => {
       timeoutMs: 10_000,
       now: () => (now += 1),
       onObservedUrl: (url) => observedUrls.push(url),
+      // As the shared-world route runs every session.
+      recordPages: false,
     });
     // Fired on the initial observe and at least one post-action observe.
     expect(observedUrls.length).toBeGreaterThanOrEqual(2);
@@ -821,6 +823,18 @@ describe("host-first scheduling: host runs on a dedicated slot, never starved", 
     expect(bundle.sharedWorld?.lobbyConvergenceDigest).toMatch(/^[0-9a-f]{16}$/); // all participants on one lobby
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
+  });
+});
+
+describe("observed pages on the external-public plane", () => {
+  it("runs every participant with pages off, so no observed URL lands as a page", async () => {
+    const seen: CuaActorSessionOptions[] = [];
+    const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }), {
+      handoffDeadlineMs: 5_000,
+    });
+    const result = await runSharedWorld({ cwd, config: parseExternal(), dryRun: false, env, deps });
+    expect(result.ok).toBe(true);
+    expect(seen.map((options) => options.recordPages)).toEqual([false, false, false]);
   });
 });
 

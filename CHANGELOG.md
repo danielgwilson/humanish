@@ -36,6 +36,17 @@ the cap gets the wind-down notice and a closing report and ends as passed with
 `stopCause: session_cap`. Its session and sandbox are sized from the cap. It is refused beside
 `endAfterMs` and on `shared-world`.
 
+A computer-use trace now records where the participant's browser was. Each screenshot item
+carries `page: { origin, path }` for that observation, and the trace carries `finalPage`, the page
+of the session's last observation, which run.json keeps in `streams[].actor`. The query string,
+fragment and user info are never kept. A path segment or host label that looks like an email
+address, a token or id, a key or one of the study's secrets becomes `[REDACTED_URL_PART]`. Pages
+come from the Chrome or Chromium browser-state probe, so a Firefox participant has none, and the
+shared-world and local browser routes record none. A library caller of `runComputerUseLoop` whose
+executor returns `url` gets pages too, through the redaction hooks it passes. verify reports a page
+that holds a query string, fragment or user info as a public-safety finding. Both fields are
+additive to `humanish.actor-trace.v1`.
+
 ### Changed
 
 - The Observer's filmstrip scrolls back to the selected capture only when the selected capture

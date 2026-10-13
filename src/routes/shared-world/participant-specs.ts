@@ -174,10 +174,11 @@ export function participantRunDeps(
       studyCwd: ctx.cwd,
       redactScreenshots: ctx.redactScreenshots,
       scrubKnownValues,
-      // A session that throws returns no trace; the run still records that it started.
+      // A session that throws returns no trace; the run still records that it started. Observed
+      // URLs land in a shared-world bundle only as digests, so no session records its pages.
       runSession: (options) => {
         ctx.run.participantStarted();
-        return ctx.runSession(options);
+        return ctx.runSession({ ...options, recordPages: false });
       },
       liveFlush: () => live.flush?.flush,
       onStream: participantStreams(ctx.input.onStream, live),

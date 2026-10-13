@@ -207,6 +207,10 @@
           "path": "screenshots/turn-00-start.png",
           "redaction": "none"
         },
+        "page": {
+          "origin": "http://127.0.0.1:3000",
+          "path": "/"
+        },
         "at": "[ts]"
       },
       {
@@ -229,6 +233,10 @@
           "path": "screenshots/turn-01.png",
           "redaction": "none"
         },
+        "page": {
+          "origin": "http://127.0.0.1:3000",
+          "path": "/"
+        },
         "at": "[ts]"
       },
       {
@@ -249,6 +257,10 @@
         "at": "[ts]"
       }
     ],
+    "finalPage": {
+      "origin": "http://127.0.0.1:3000",
+      "path": "/"
+    },
     "affordanceUse": {
       "schema": "humanish.affordance-use.v1",
       "counts": {
@@ -663,6 +675,10 @@
             "idleTurns": 0,
             "noProgressTurns": 0,
             "debriefCalls": 1
+          },
+          "finalPage": {
+            "origin": "http://127.0.0.1:3000",
+            "path": "/"
           },
           "affordanceUse": {
             "schema": "humanish.affordance-use.v1",
