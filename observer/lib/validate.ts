@@ -6,8 +6,10 @@ const object = (value: unknown): value is Record<string, unknown> =>
 const strings = (value: Record<string, unknown>, keys: string[]) =>
   keys.every((key) => typeof value[key] === "string");
 const optionalString = (value: unknown) => value === undefined || typeof value === "string";
-const list = (value: unknown, check: (item: unknown) => boolean, max = 100_000): boolean =>
-  Array.isArray(value) && value.length <= max && value.every(check);
+// No list is refused for its length. This check runs on a body the page has already parsed, so a
+// cap here saves no memory and only stops the page updating.
+const list = (value: unknown, check: (item: unknown) => boolean): boolean =>
+  Array.isArray(value) && value.every(check);
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 const optionalStrings = (value: Record<string, unknown>, keys: string[]) =>
@@ -58,7 +60,8 @@ export function runDisplay(value: unknown): boolean {
 }
 
 /** Admit the fields used by the UI, including nested optional evidence. A bad poll
- * must not replace a usable snapshot. Unknown additive fields remain compatible. */
+ * must not replace a usable snapshot. Unknown additive fields remain compatible, and no list is
+ * refused for its length. */
 export function isObserverData(value: unknown): value is ObserverData {
   if (
     !object(value) ||
@@ -84,7 +87,7 @@ export function isObserverData(value: unknown): value is ObserverData {
     !list(value.artifactLinks, link) ||
     !list(value.events, event) ||
     !Array.isArray(value.laneGroups) ||
-    !list(value.streams, validStream, 10_000)
+    !list(value.streams, validStream)
   )
     return false;
   const share = value.publicSafety.share;

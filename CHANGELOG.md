@@ -22,6 +22,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A served Observer page keeps updating once a participant passes 100,000 items. Past that count
+  it refused every feed body and kept the last one it accepted, through the end of the run, so a
+  later generation of a live file that scrubbed a sandbox id the run learned late never reached
+  the page. A page opened after that count showed no run at all. The page no longer refuses a body
+  for the length of a list. The server still reads a participant's trace or live file only up to
+  32 MiB; past that the page shows the participant's trace as unavailable, with a warning.
 - The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
   for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
   bytes a model turn against the 16 MiB analysis reads, and each participant's trace against the

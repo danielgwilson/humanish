@@ -229,6 +229,28 @@ describe("loading a running participant's live items", () => {
   });
 });
 
+describe("loading a live file past the read limit", () => {
+  it("refuses the stream without reading the file", async () => {
+    const seen: string[] = [];
+    const reader: TraceFileReader = async (relativePath, _maxBytes, length, start) => {
+      seen.push(relativePath);
+      const bytes = await readFile(path.join(runRoot, relativePath));
+      return { bytes: length === undefined ? bytes : bytes.subarray(start ?? 0, length) };
+    };
+    await writeFile(path.join(runRoot, "live/1.1.ndjson"), TWO_LINES);
+    const loaded = await loadStreamTraces(
+      reader,
+      inProgress(liveStream("live/1.1.ndjson", TWO_LINES)),
+      { maxBytes: Buffer.byteLength(TWO_LINES) - 1 },
+    );
+    expect(loaded.refused.map((error) => error.message)).toEqual([
+      expect.stringMatching(/live\/1\.1\.ndjson is indexed at \d+ bytes, more than the \d+ read/),
+    ]);
+    expect(loaded.bundle.streams[0]!.liveActor!).not.toHaveProperty("items");
+    expect(seen.filter((entry) => entry.startsWith("live/"))).toEqual([]);
+  });
+});
+
 describe("loading the live items past a caller's cursor", () => {
   it("re-reads run.json once when the generation a cursor names is gone, and reads the next whole", async () => {
     // The caller holds the first item of generation 1; the writer moved to generation 2 and
