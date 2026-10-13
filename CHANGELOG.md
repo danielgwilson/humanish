@@ -29,6 +29,29 @@ The Unreleased section holds the full notes for the next version until it is tag
   observer-data.json only up to 32 MiB, for its feed and page and for run.json asked for by name,
   and answers 404 with a reason naming the limit past it; it read both whole. Other run files asked
   for by path, a trace or live file among them, are still sent whole. (#1825)
+- A shared-world participant the run skips before its session starts, such as a follower stopped
+  at the handoff because the host never reached a lobby, is now counted apart in the review
+  summary in run.json and review.md. A run of 3 whose 2 followers timed out at the handoff reads
+  "1 participant used one public app. 1 of 1 reached the goal. 2 participants were skipped before
+  their sessions started; the gaps say why." It used to count all 3 as using the app. The skipped
+  participant's `humanish run` line reads `blocked` and ends on its skip reason, and its
+  `roles[].status` in `--json` is `blocked` with a `skippedReason`. Both said `failed`. The skip
+  reason is a sentence, such as "skipped: the host did not reach a lobby within the handoff
+  deadline; no desktop was created", in the form the computer-use skips use. The gap line in
+  run.json carries the same sentence where it read `player-2: handoff-timeout`. The skipped
+  participant's own summary in run.json `simulations[]` ends on that sentence too, such as
+  "Persona 02 was skipped: study budget reached before this participant started: ...; no desktop
+  was created." A budget skip read "Persona 02 would use the shared app; no session ran.", as on a
+  dry run. (#1831)
+- A skipped shared-world participant no longer counts as using the app at the same time as
+  another. Its window sat inside a session that was still open, so a run whose 2 followers timed
+  out at the handoff printed "Participants used the app at the same time" while only the host
+  used the app, and `overlapProven` in `--json` was `true`. The run line, `overlapProven`,
+  `maxSimultaneousLanes`, the review summary and the concurrency event in run.json now count only
+  the participants that used the app. run.json's `laneWindows` still hold a window for every
+  declared participant. The in-progress summary, written before any participant starts, reads "3
+  participants are planned, all in one public app." where it read "3 participants are using one
+  public app at the same time.", as the computer-use one does since 0.127.1. (#1831)
 
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
