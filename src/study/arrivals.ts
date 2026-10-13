@@ -317,33 +317,45 @@ export interface StartQueue {
  * The schedule a roster's participants give under the queue. Participants start in schedule order,
  * by offset and then roster position, each at its time or when a slot frees, whichever is later;
  * this is the rule runOnSchedule follows. A participant with an end or a cap holds its slot for its
- * own session budget, and the others for `queue.sessionMs`.
+ * own session budget, and the others for `queue.sessionMs`. A participant whose slot would free
+ * only at or after its scheduled end takes none: the run skips it (pastEndReason).
  */
 export function planArrivals(
   schedules: readonly ParticipantSchedule[],
   queue: StartQueue,
 ): ArrivalPlan {
+  return simulateQueue(schedules, queue).arrivals;
+}
+
+/** planArrivals, and the roster indexes of the participants the run would skip. */
+function simulateQueue(
+  schedules: readonly ParticipantSchedule[],
+  queue: StartQueue,
+): { arrivals: ArrivalPlan; skipped: number[] } {
   const due = schedules.map((schedule) => schedule.startAfterMs ?? 0);
   const sessionsMs = schedules.map((schedule) => schedule.end?.sessionMs ?? queue.sessionMs);
   const session = (index: number) => sessionsMs[index]!;
-  const starts = queueStarts(due, queue, session);
+  const { starts, skipped } = queueStarts(schedules, due, queue, session);
+  const skips = new Set(skipped);
+  const started = starts.flatMap((_, index) => (skips.has(index) ? [] : [index]));
   let waiting = 0;
   let longestWaitMs = 0;
-  for (const [index, start] of starts.entries()) {
-    const waitMs = start - due[index]!;
+  for (const index of started) {
+    const waitMs = starts[index]! - due[index]!;
     if (waitMs > 0) waiting += 1;
     longestWaitMs = Math.max(longestWaitMs, waitMs);
   }
-  return {
+  const arrivals = {
     declared: schedules.some((schedule) => schedule.startAfterMs !== undefined),
     firstStartMs: Math.min(...due),
     lastStartMs: Math.max(...due),
-    peak: mostAtOnce(starts, session),
+    peak: mostAtOnce(started.map((index) => [starts[index]!, session(index)] as const)),
     waiting,
     longestWaitMs,
-    lastEndMs: Math.max(...starts.map((start, index) => start + session(index))),
+    lastEndMs: Math.max(...started.map((index) => starts[index]! + session(index))),
     sessionMs: queue.sessionMs,
   };
+  return { arrivals, skipped };
 }
 
 /**
@@ -362,33 +374,56 @@ export function describeArrivals(arrivals: ArrivalPlan): string {
  * A planner's arrival plan for its participants under the start queue, and the warnings the plan
  * records about it. A participant's desktop is created when it starts, so on computer use a late
  * start adds nothing to any sandbox's deadline; the provisioned shared world checks its app's
- * sandbox with servedScheduleRefusal. `lowered` is the warning that the E2B plan's limit runs the
- * roster in waves.
+ * sandbox with servedScheduleRefusal. `lowered` is participantsAtOnce's warning that the E2B plan's
+ * limit or HUMANISH_CUA_MAX_CONCURRENCY runs the roster in waves.
  */
 export function planStarts(
   participants: readonly ScheduledParticipant[],
   queue: StartQueue,
   lowered: string | undefined,
 ): { arrivals: ArrivalPlan; warnings: string[] } {
-  const arrivals = planArrivals(
+  const { arrivals, skipped } = simulateQueue(
     participants.map((participant) => participant.schedule),
     queue,
   );
-  return { arrivals, warnings: startQueueWarnings(arrivals, queue, lowered) };
+  const ids = skipped.map((index) => participants[index]!.id);
+  return { arrivals, warnings: startQueueWarnings(arrivals, ids, queue, lowered) };
 }
 
 // A roster that starts together keeps `lowered`. A declared schedule spreads its participants
-// itself, so it is warned only when it holds someone past their time, with `lowered` beside that
-// when the limit is the reason.
+// itself, so it is warned only when it holds someone past their time or skips someone, with
+// `lowered` beside that when the limit is the reason.
 function startQueueWarnings(
   arrivals: ArrivalPlan,
+  skipped: readonly string[],
   queue: StartQueue,
   lowered: string | undefined,
 ): string[] {
-  if (!arrivals.declared || arrivals.waiting === 0)
-    return !arrivals.declared && lowered ? [lowered] : [];
-  const late = `${plural(arrivals.waiting, "participant")} would start after their time when every session uses its ${formatDuration(arrivals.sessionMs)} budget, the latest by ${formatDuration(arrivals.longestWaitMs)}: the run starts at most ${queue.slots} at once and holds the next one until a slot frees.`;
-  return lowered === undefined ? [late] : [late, lowered];
+  const budget = `when every session uses its ${formatDuration(arrivals.sessionMs)} budget`;
+  const atMost = `the run starts at most ${queue.slots} at once`;
+  const late = `${plural(arrivals.waiting, "participant")} would start after their time ${budget}, the latest by ${formatDuration(arrivals.longestWaitMs)}: ${atMost} and holds the next one until a slot frees.`;
+  const one = skipped.length === 1;
+  const names = skipped.map((id) => `"${id}"`);
+  const who = one
+    ? `Participant ${names[0]}`
+    : `${skipped.length} participants (${names.join(", ")})`;
+  const skip = `${who} would still be waiting for a free slot at ${one ? "its" : "their"} end (participants[].endAfterMs) ${budget}, so the run would skip ${one ? "it without creating its desktop" : "them without creating their desktops"}: ${atMost}. Let more participants run at once, or give ${one ? "it" : "them"} a later end.`;
+  const held = arrivals.waiting > 0 || skipped.length > 0;
+  return [
+    ...(arrivals.declared && arrivals.waiting > 0 ? [late] : []),
+    ...(skipped.length > 0 ? [skip] : []),
+    ...(lowered !== undefined && (!arrivals.declared || held) ? [lowered] : []),
+  ];
+}
+
+/**
+ * Why a participant whose start comes at `nowMs` is skipped, or undefined: its scheduled end came
+ * while it waited, so its session would end before it began. The plan's simulation applies the
+ * same rule (planArrivals).
+ */
+export function pastEndReason(end: ParticipantEnd | undefined, nowMs: number): string | undefined {
+  if (end?.kind !== "scheduled_end" || nowMs < end.atMs) return undefined;
+  return "skipped: its scheduled end (participants[].endAfterMs) came while it waited to start, so its session would have ended before it began; no desktop was created";
 }
 
 /**
@@ -431,11 +466,13 @@ function scheduleOrder(due: readonly number[]): number[] {
 
 /** Each participant's start in roster order, when each session holds its slot for `session(index)`. */
 function queueStarts(
+  schedules: readonly ParticipantSchedule[],
   due: readonly number[],
   queue: StartQueue,
   session: (index: number) => number,
-): number[] {
+): { starts: number[]; skipped: number[] } {
   const starts = [...due];
+  const skipped: number[] = [];
   const queued = scheduleOrder(due).filter((index) => index !== queue.ownSlot);
   const pooled = queue.ownSlot === undefined ? queue.slots : queue.slots - 1;
   // When each slot is next free; a participant takes the one that frees first.
@@ -444,17 +481,20 @@ function queueStarts(
     const slot = free.indexOf(Math.min(...free));
     const start = Math.max(due[index]!, free[slot]!);
     starts[index] = start;
-    free[slot] = start + session(index);
+    const end = schedules[index]?.end;
+    if (end?.kind === "scheduled_end" && start >= end.endAfterMs) skipped.push(index);
+    else free[slot] = start + session(index);
   }
-  return starts;
+  return { starts, skipped };
 }
 
-function mostAtOnce(starts: readonly number[], session: (index: number) => number): number {
+/** The most sessions running at once, each given as its start and how long it holds its slot. */
+function mostAtOnce(sessions: readonly (readonly [number, number])[]): number {
   // An end sorts before a start at the same instant: that slot is free again.
-  const changes = starts
-    .flatMap((start, index) => [
+  const changes = sessions
+    .flatMap(([start, ms]) => [
       { at: start, by: 1 },
-      { at: start + session(index), by: -1 },
+      { at: start + ms, by: -1 },
     ])
     .sort((a, b) => a.at - b.at || a.by - b.by);
   let live = 0;

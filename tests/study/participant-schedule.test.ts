@@ -277,3 +277,50 @@ describe("HUMANISH_CUA_MAX_CONCURRENCY", () => {
     );
   });
 });
+
+describe("a participant still waiting for a slot at its scheduled end", () => {
+  it("takes no slot in the plan, and the plan warns that the run skips it", () => {
+    const planned = computerUse(
+      plan(
+        study("cuAppUrl", {
+          participants: [
+            { id: "first" },
+            { id: "late", startAfterMs: 30 * S, endAfterMs: 50 * S },
+            { id: "after", startAfterMs: 40 * S },
+          ],
+          execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
+        }),
+      ),
+    );
+    // first holds the one slot from 0 to 60 s. late is due at 30 s and would end at 50 s, before
+    // the slot frees, so it takes none; after, due at 40 s, takes it at 60 s and ends at 120 s.
+    expect(planned.arrivals).toMatchObject({
+      peak: 1,
+      waiting: 1,
+      longestWaitMs: 20 * S,
+      lastEndMs: 120 * S,
+    });
+    expect(planned.warnings).toEqual([
+      "1 participant would start after their time when every session uses its 1m budget, the latest by 20s: the run starts at most 1 at once and holds the next one until a slot frees.",
+      'Participant "late" would still be waiting for a free slot at its end (participants[].endAfterMs) when every session uses its 1m budget, so the run would skip it without creating its desktop: the run starts at most 1 at once. Let more participants run at once, or give it a later end.',
+    ]);
+  });
+
+  it("names every participant the run would skip", () => {
+    const planned = computerUse(
+      plan(
+        study("cuAppUrl", {
+          participants: [
+            { id: "first" },
+            { id: "a", endAfterMs: 30 * S },
+            { id: "b", endAfterMs: 30 * S },
+          ],
+          execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
+        }),
+      ),
+    );
+    expect(planned.warnings).toContain(
+      '2 participants ("a", "b") would still be waiting for a free slot at their end (participants[].endAfterMs) when every session uses its 1m budget, so the run would skip them without creating their desktops: the run starts at most 1 at once. Let more participants run at once, or give them a later end.',
+    );
+  });
+});
