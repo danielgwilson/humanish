@@ -10,8 +10,10 @@
 // participant and 4,400 for the run, 5,400 for each trace, 500 for each dwell frame, 110,000 for
 // each screenshot, and 3 minutes for a participant with no declared end. The Observer page is
 // 1,200,000 bytes of app, 0.85 of run.json and 0.12 of all the traces. run.json also holds the
-// mission once for the run and twice for each participant. The fixture's mission, "Try it.", adds
-// 7 bytes and 14 a participant, which moves no printed figure, so the examples leave it out.
+// mission once for the run and once in each participant's stream, and the estimate counts one more
+// copy for each participant, in case it reports friction or stops. The fixture's mission, "Try
+// it.", adds 7 bytes and 14 a participant, which moves no printed figure, so the examples leave it
+// out.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -199,8 +201,9 @@ describe("study check's bundle estimate", () => {
   });
 
   it("warns that 100 participants with an 80,000-byte mission pass the analysis limit on run.json", async () => {
-    // run.json holds the mission once for the run and twice for each participant: in its stream and
-    // in the feedback candidate of a participant that reports friction or stops. run.json: 4,400
+    // run.json holds the mission once for the run, once in each participant's stream and once more
+    // in the feedback candidate of a participant that reports friction or stops, which the estimate
+    // counts for every participant. run.json: 4,400
     // + 80,000 + 100 x (16,500 + 2 x 80,000) = 17,734,400 bytes, over 16,777,216. Each is counted
     // for 3 minutes, 18 turns. Trace: 5,400 + 18 x 4,700 = 90,000. Page: 1,200,000 + 0.85
     // x 17,734,400 + 0.12 x 100 x 90,000 = 17,354,240. Entries: 20 + 100 x (3 + 18) = 2,120.
@@ -216,7 +219,7 @@ describe("study check's bundle estimate", () => {
       ok: true,
       row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.09 MiB of the 16 MiB analysis reads of each; Observer page about 16.6 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 258 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [
-        `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. It holds the mission once for the run and twice for each participant. The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
+        `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant. The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
       ],
     });
   });

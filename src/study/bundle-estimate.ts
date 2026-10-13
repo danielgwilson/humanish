@@ -9,8 +9,9 @@
 // participants working 8 hours. From run bundle v4 run.json grows by participant, not by model
 // request: each participant's per-request lists are only in its trace. run.json holds the mission
 // once for the run, once in each participant's stream and once more in the feedback candidate of
-// each participant that reports friction or stops. The mission is not capped, so 100 participants
-// with a mission of 75,238 bytes take run.json past 16 MiB. On 2026-10-13 the longest mission on
+// each participant that reports friction or stops. The mission is not capped, and the estimate
+// counts that last copy for every participant, so it warns at 100 participants with a mission of
+// 75,238 bytes. On 2026-10-13 the longest mission on
 // the 139 live runs kept on the maintainer's machine was 807 characters.
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
@@ -172,8 +173,9 @@ export function estimateBundle(
     traces += trace;
     largestTrace = Math.max(largestTrace, trace);
     // The mission's bytes as run.json stores them, a JSON string without its quotes, for the
-    // participant's stream and its feedback candidate. The run's scenario goal holds one more copy.
-    // The rates were fit on runs with short missions, so a short mission is counted twice.
+    // participant's stream and for its feedback candidate, which only a participant that reports
+    // friction or stops has. The run's scenario goal holds one more copy. The rates were fit on runs
+    // with short missions, so a short mission is counted twice.
     const mission =
       assignment.mission === undefined
         ? 0
@@ -220,7 +222,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   const passed = [
     ...(runFile
       ? [
-          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission once for the run and twice for each participant.`,
+          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant.`,
         ]
       : []),
     ...(estimate.largestTraceBytes > EVIDENCE_LIMITS.sourceBytes
