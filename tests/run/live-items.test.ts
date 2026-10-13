@@ -12,6 +12,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import {
+  displayedTraces,
   loadStreamTraces,
   splitStreamTraces,
   type TraceFileReader,
@@ -238,16 +239,78 @@ describe("loading a live file past the read limit", () => {
       return { bytes: length === undefined ? bytes : bytes.subarray(start ?? 0, length) };
     };
     await writeFile(path.join(runRoot, "live/1.1.ndjson"), TWO_LINES);
+    // A participant still running: its live items and no finished trace.
+    const { trace: _trace, actor: _actor, ...running } = liveStream("live/1.1.ndjson", TWO_LINES);
+    const { outcome: _outcome, ...rest } = stored;
+    const limit = Buffer.byteLength(TWO_LINES) - 1;
     const loaded = await loadStreamTraces(
       reader,
-      inProgress(liveStream("live/1.1.ndjson", TWO_LINES)),
-      { maxBytes: Buffer.byteLength(TWO_LINES) - 1 },
+      { ...rest, streams: [running] },
+      { maxBytes: limit },
     );
     expect(loaded.refused.map((error) => error.message)).toEqual([
-      expect.stringMatching(/live\/1\.1\.ndjson is indexed at \d+ bytes, more than the \d+ read/),
+      `Participant stream-001's trace was not read: run.json records live/1.1.ndjson at ${limit + 1} bytes, more than the ${limit} bytes humanish reads of one file. Restoring a copy does not help; open the file with another tool, such as jq, to read its items.`,
     ]);
     expect(loaded.bundle.streams[0]!.liveActor!).not.toHaveProperty("items");
-    expect(seen.filter((entry) => entry.startsWith("live/"))).toEqual([]);
+    expect(seen).toEqual([]);
+  });
+});
+
+describe("loading a live file past the read limit for a caller that holds a prefix", () => {
+  it("joins no items past the prefix, reads no file, and says later items are not read", async () => {
+    const seen: string[] = [];
+    const reader: TraceFileReader = async (relativePath) => {
+      seen.push(relativePath);
+      return { refused: `${relativePath} could not be read` };
+    };
+    const { trace: _trace, actor: _actor, ...running } = liveStream("live/1.1.ndjson", TWO_LINES);
+    const { outcome: _outcome, ...rest } = stored;
+    const limit = Buffer.byteLength(TWO_LINES) - 1;
+    const held = { items: 1, bytes: Buffer.byteLength(`${JSON.stringify(FIRST)}\n`) };
+    const loaded = await loadStreamTraces(
+      reader,
+      { ...rest, streams: [running] },
+      { maxBytes: limit, liveAfter: () => held },
+    );
+    const stopped = `Participant stream-001's items past 1 were not read: run.json records live/1.1.ndjson at ${limit + 1} bytes, more than the ${limit} bytes humanish reads of one file. The items read before stay shown; open the file with another tool, such as jq, to read the rest.`;
+    expect(seen).toEqual([]);
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams[0]!.liveActor!.items).toEqual([]);
+    expect(loaded.live).toEqual([
+      { streamId: "stream-001", index: running.liveActor!.itemsFile, after: held, stopped },
+    ]);
+    const shown = displayedTraces(loaded);
+    expect(shown.streams[0]!.traceUnavailable).toBeUndefined();
+    expect(shown.streams[0]!.liveActor!.items).toEqual([]);
+    expect(
+      shown.events
+        .filter((event) => event.type === "live-items.not-read")
+        .map((event) => ({ level: event.level, streamId: event.streamId, message: event.message })),
+    ).toEqual([{ level: "warn", streamId: "stream-001", message: stopped }]);
+  });
+
+  it("refuses the stream for a cursor that does not fit the index", async () => {
+    const { trace: _trace, actor: _actor, ...running } = liveStream("live/1.1.ndjson", TWO_LINES);
+    const { outcome: _outcome, ...rest } = stored;
+    const limit = Buffer.byteLength(TWO_LINES) - 1;
+    const lines = Buffer.byteLength(TWO_LINES);
+    for (const after of [
+      { items: 3, bytes: lines },
+      { items: 1, bytes: lines + 1 },
+      { items: 2, bytes: lines - 1 },
+      { items: 0, bytes: 0 },
+    ]) {
+      const loaded = await loadStreamTraces(
+        async (relativePath) => ({ refused: `${relativePath} could not be read` }),
+        { ...rest, streams: [running] },
+        { maxBytes: limit, liveAfter: () => after },
+      );
+      expect(
+        loaded.refused.map((error) => error.message),
+        JSON.stringify(after),
+      ).toEqual([expect.stringContaining("live/1.1.ndjson at")]);
+      expect(loaded.live, JSON.stringify(after)).toEqual([]);
+    }
   });
 });
 

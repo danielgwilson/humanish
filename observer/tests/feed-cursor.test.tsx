@@ -170,3 +170,47 @@ describe("the page's live feed", () => {
     ]);
   });
 });
+
+// The bodies the real server answered when a participant's live file passed the read limit
+// (tests/observer/feed-cursor.test.ts writes tests/golden/observer-feed/past-limit.json): a full
+// body, then one that carries no items past the page's cursor and a live-items.not-read warning.
+const pastLimit = JSON.parse(
+  readFileSync(
+    path.resolve(import.meta.dirname, "../../tests/golden/observer-feed/past-limit.json"),
+    "utf8",
+  ),
+) as { after: string | null; body: FeedBody }[];
+
+function WarningProbe({ initial }: { initial: ObserverData }) {
+  const { data } = useObserverFeed(initial);
+  const stream = data?.streams[0];
+  return (
+    <pre>
+      {JSON.stringify({
+        items: stream?.liveActor?.items.map((item) => item.id) ?? null,
+        warnings: stream?.timeline
+          .filter((event) => event.type === "live-items.not-read")
+          .map((event) => event.level),
+      })}
+    </pre>
+  );
+}
+
+describe("the page's live feed past the read limit", () => {
+  it("keeps the items it holds, shows the warning, and sends the same cursor again", async () => {
+    answers = pastLimit.map((entry) => structuredClone(entry.body));
+    const initial = observerDataFromFeed(structuredClone(pastLimit[0]!.body))!;
+    await act(async () => {
+      root.render(<WarningProbe initial={initial} />);
+    });
+    await advance(0);
+    expect(shown()).toEqual({ items: ["reasoning-001", "reasoning-002"], warnings: [] });
+    await advance(5000);
+    expect(shown()).toEqual({ items: ["reasoning-001", "reasoning-002"], warnings: ["warn"] });
+    await advance(5000);
+    expect(shown()).toEqual({ items: ["reasoning-001", "reasoning-002"], warnings: ["warn"] });
+    expect(sent).toEqual([null, "1.1.2.308", "1.1.2.308"]);
+    // The server answered exactly these requests when the bodies were captured.
+    expect(sent.slice(0, 2)).toEqual(pastLimit.map((entry) => entry.after));
+  });
+});
