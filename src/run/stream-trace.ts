@@ -446,6 +446,14 @@ const WRITER_RULES = new Map<string, { liveFiles: boolean; listsOut: boolean }>(
 ]);
 
 /**
+ * Whether a run.json of `schema` holds the per-request lists (REQUEST_LISTS) the writer kept in
+ * it: v1 to v3, and a schema WRITER_RULES does not name, which is read as v1. From v4 they are
+ * only in the trace file, so a running participant's `liveActor` holds none.
+ */
+export const keepsRequestListsInRunJson = (schema: string): boolean =>
+  WRITER_RULES.get(schema)?.listsOut !== true;
+
+/**
  * Why a stream of this bundle cannot be read, before any file is. A trace file belongs to one
  * participant, so every stream indexing a path another stream indexes, compared as a
  * case-insensitive file system compares them, is refused in every version. The other rules are

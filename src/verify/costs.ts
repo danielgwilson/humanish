@@ -2,13 +2,9 @@
 // totals match their known lines, and account-billed participants never acquire a price.
 
 import { validActorExecutionProfile, validActorProviderRequests } from "../actors/contract.js";
-import {
-  RUN_BUNDLE_V1_SCHEMA,
-  RUN_BUNDLE_V2_SCHEMA,
-  RUN_BUNDLE_V3_SCHEMA,
-  type RunBundle,
-} from "../run/bundle.js";
+import type { RunBundle } from "../run/bundle.js";
 import { round6 } from "../run/pricing.js";
+import { keepsRequestListsInRunJson } from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 
 /** Account-billed participants must never acquire a price through an aggregate or ambiguous model line. */
@@ -58,7 +54,7 @@ export function costAndReceiptFindings(bundle: RunBundle, refused: ReadonlySet<s
   if (contradictsAccountBilling(bundle.streams, bundle.cost))
     findings.push("Run cost lines contradict account billing identity");
   findings.push(...costSummaryFindings(bundle.cost));
-  const liveReceipts = LIVE_RECEIPT_SCHEMAS.has(bundle.schema);
+  const liveReceipts = keepsRequestListsInRunJson(bundle.schema);
   for (const stream of bundle.streams) {
     const loaded = !refused.has(stream.id);
     findings.push(...executionReceiptFindings(stream.actor, loaded));
@@ -67,13 +63,6 @@ export function costAndReceiptFindings(bundle: RunBundle, refused: ReadonlySet<s
   }
   return findings;
 }
-
-/** The run bundle versions whose live actor carries an account participant's receipts so far. */
-const LIVE_RECEIPT_SCHEMAS: ReadonlySet<string> = new Set([
-  RUN_BUNDLE_V3_SCHEMA,
-  RUN_BUNDLE_V2_SCHEMA,
-  RUN_BUNDLE_V1_SCHEMA,
-]);
 
 function costSummaryFindings(cost: RunBundle["cost"]): string[] {
   const findings: string[] = [];
