@@ -253,14 +253,26 @@ export async function serveRunPath(
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
   }
+  // run.json is read under the limit every other reader of it uses, by name as through the feed.
+  const runJson = cleanedRelativePath === "run.json";
   try {
     const body = await readContainedFile(
       runRoot,
       filePath,
-      notePath ? { maxBytes: MAX_NOTE_FILE_BYTES } : {},
+      notePath
+        ? { maxBytes: MAX_NOTE_FILE_BYTES }
+        : runJson
+          ? { maxBytes: RUN_ARTIFACT_MAX_BYTES }
+          : {},
     );
     if (!body) {
-      writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+      const tooLarge = runJson ? await pastReadLimit(runRoot, "run.json") : undefined;
+      writeResponse(
+        response,
+        404,
+        tooLarge === undefined ? "Not found" : `Not found: ${tooLarge}`,
+        "text/plain; charset=utf-8",
+      );
       return;
     }
     response.writeHead(200, {

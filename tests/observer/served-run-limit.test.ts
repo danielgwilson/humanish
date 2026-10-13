@@ -58,6 +58,17 @@ describe("the Observer server's read of run.json", () => {
     expect(await get("observer/observer-feed.json")).toEqual({ status: 404, text: reason });
     expect(await get("observer/index.html")).toEqual({ status: 404, text: reason });
   });
+
+  it("answers 404 naming the read limit when run.json past it is asked for by name", async () => {
+    expect((await get("run.json")).status).toBe(200);
+    await padPastLimit(runFile("run.json"));
+    const answer = await get("run.json");
+    // The status first: a failing read would otherwise diff the whole 32 MiB body.
+    expect(answer.status).toBe(404);
+    expect(answer.text).toBe(
+      `Not found: run.json is larger than ${RUN_ARTIFACT_MAX_BYTES} bytes, the most humanish reads of it.`,
+    );
+  });
 });
 
 describe("the Observer server's read of a saved observer-data.json", () => {
