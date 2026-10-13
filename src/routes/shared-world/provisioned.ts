@@ -496,7 +496,7 @@ function runParticipants(
   const { commsEmail } = setup;
   const baseActorDeps = participantRunDeps(ctx, live, ctx.scrubKnownValues);
   const schedule = {
-    startAfterMs: (spec: DesktopParticipantRun) => spec.planned.startAfterMs,
+    startAfterMs: (spec: DesktopParticipantRun) => spec.planned.schedule.startAfterMs,
     slots: Math.max(1, ctx.concurrency),
     now,
   };

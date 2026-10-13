@@ -59,6 +59,7 @@ export function participantRun(fields: {
         resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
       },
       limits: fields.limits ?? {},
+      schedule: {},
       ...(fields.targetUrl === undefined ? {} : { targetUrl: fields.targetUrl }),
     },
     recordId: fields.recordId ?? `sim-${ordinal}`,

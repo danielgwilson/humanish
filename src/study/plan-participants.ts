@@ -1,7 +1,7 @@
 // Who takes part in a study: one record per participant, built from the declared roster or a count.
 // Computer-use and shared-world participants share the desktop fields; each kind adds its own.
 
-import { windDownMsOf } from "./arrivals.js";
+import { participantSchedule, type ParticipantSchedule } from "./arrivals.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
@@ -62,17 +62,11 @@ export interface DesktopParticipant extends Participant {
      */
     readonly timeZone?: string;
   };
-  /** When it starts, in ms after the run starts its participants; absent, with the run. */
-  readonly startAfterMs?: number;
-  /** Computer use: when it ends, on the same clock; absent, it runs for the study's session budget. */
-  readonly endAfterMs?: number;
-  /** Computer use: the longest its session lasts, from its start; it may end the session sooner. */
-  readonly maxSessionMs?: number;
   /**
-   * With endAfterMs or maxSessionMs: how long before the end each turn tells it the time left
-   * (default applied).
+   * When it starts and, on computer use, how its session ends: its startAfterMs, and its endAfterMs
+   * or maxSessionMs with its wind-down.
    */
-  readonly windDownMs?: number;
+  readonly schedule: ParticipantSchedule;
 }
 
 /** Only independent computer-use participants consume a task protocol and their own target. */
@@ -153,19 +147,7 @@ function desktopParticipant(
       ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
       ...(timeZone === undefined ? {} : { timeZone }),
     },
-    ...(entry?.startAfterMs === undefined ? {} : { startAfterMs: entry.startAfterMs }),
-    ...(entry?.endAfterMs === undefined
-      ? {}
-      : {
-          endAfterMs: entry.endAfterMs,
-          windDownMs: windDownMsOf(entry)!,
-        }),
-    ...(entry?.maxSessionMs === undefined
-      ? {}
-      : {
-          maxSessionMs: entry.maxSessionMs,
-          windDownMs: windDownMsOf(entry)!,
-        }),
+    schedule: participantSchedule(entry ?? {}),
   };
 }
 

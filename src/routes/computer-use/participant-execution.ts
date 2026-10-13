@@ -260,7 +260,7 @@ export async function runCuaParticipants(
   return runOnSchedule(
     runs,
     {
-      startAfterMs: (spec) => spec.planned.startAfterMs,
+      startAfterMs: (spec) => spec.planned.schedule.startAfterMs,
       slots: concurrency,
       now: deps.now,
       signal: stopping.signal,

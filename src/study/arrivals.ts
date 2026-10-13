@@ -1,9 +1,11 @@
 // When each participant of a computer-use or shared-world run starts, and on computer use when it
 // ends. A study may give each participant an offset from the moment the run starts its participants
 // (`participants[].startAfterMs`) and, on computer use, an end on the same clock
-// (`participants[].endAfterMs`), with a wind-down before it in which each turn tells the
-// participant the time left (`windDownMs`). The plan simulates the start queue to report the schedule and
-// when the last session ends at the latest; the routes start their participants through
+// (`participants[].endAfterMs`) or a cap on its own session (`maxSessionMs`), with a wind-down
+// before either in which each turn tells the participant the time left (`windDownMs`). Each
+// participant's ParticipantSchedule resolves those fields once; everything that reads a
+// participant's time reads the schedule. The plan simulates the start queue to report the schedule
+// and when the last session ends at the latest; the routes start their participants through
 // runOnSchedule, which waits for each one's time and then for a free slot. A participant's desktop
 // is created when it starts, so a late start holds no sandbox before then.
 
@@ -41,15 +43,40 @@ const MAX_DEFAULT_WIND_DOWN_MS = 10 * 60_000;
 const SCHEDULED_END_ROOM_MS = 5 * 60_000;
 
 /**
- * A participant's declared window: when it starts, and when it ends on the run's clock
- * (`endAfterMs`) or at the latest after its own session started (`maxSessionMs`).
+ * When a participant starts and how its session ends, resolved once from its participants entry
+ * when the plan builds the participant (participantSchedule). The plan, `study check`, the bundle
+ * estimate and the route read a participant's time from here.
  */
-export interface ParticipantWindow {
-  readonly id?: string;
+export interface ParticipantSchedule {
+  /** Its declared start, in ms after the run starts its participants; absent, with the run. */
   readonly startAfterMs?: number;
-  readonly endAfterMs?: number;
-  readonly maxSessionMs?: number;
-  readonly windDownMs?: number;
+  /**
+   * How its session ends, when it declares `endAfterMs` or `maxSessionMs`. Without either it works
+   * up to the study's session budget.
+   */
+  readonly end?: ScheduleEnd;
+}
+
+/**
+ * A declared end. A `scheduled_end` is `endAfterMs` on the run's clock and holds the participant
+ * until then; a `session_cap` is `maxSessionMs` from the start of the participant's own session,
+ * which it may end sooner. `windowMs` is how long it may work: from its start to its end, or its
+ * cap. `windDownMs` is how long before the end each turn tells it the time left. `sessionMs` is its
+ * session budget and how long it holds a slot: the window plus SCHEDULED_END_ROOM_MS.
+ */
+type ScheduleEnd = {
+  readonly windowMs: number;
+  readonly windDownMs: number;
+  readonly sessionMs: number;
+} & (
+  | { readonly kind: "scheduled_end"; readonly endAfterMs: number }
+  | { readonly kind: "session_cap" }
+);
+
+/** A participant as the schedule's readers name it. */
+export interface ScheduledParticipant {
+  readonly id: string;
+  readonly schedule: ParticipantSchedule;
 }
 
 /**
@@ -89,33 +116,70 @@ export function windowReason(
 }
 
 /**
- * A participant's session budget: with a declared end, its window plus SCHEDULED_END_ROOM_MS, and
- * with a cap, the cap plus the same room, in place of the study's `sessionMs` (execution.timeoutMs
- * or its default); else `sessionMs`.
+ * The schedule of a participants entry that windowReason accepts. A cap wins over an end, which
+ * windowReason refuses beside it anyway.
  */
-export function participantSessionMs(participant: ParticipantWindow, sessionMs: number): number {
-  const windowMs = declaredWindowMs(participant);
-  return windowMs === undefined ? sessionMs : windowMs + SCHEDULED_END_ROOM_MS;
-}
-
-/** How long a participant with a declared end or cap may work, or undefined without either. */
-function declaredWindowMs(participant: ParticipantWindow): number | undefined {
-  if (participant.maxSessionMs !== undefined) return participant.maxSessionMs;
-  if (participant.endAfterMs === undefined) return undefined;
-  return participant.endAfterMs - (participant.startAfterMs ?? 0);
+export function participantSchedule(entry: {
+  readonly startAfterMs?: number;
+  readonly endAfterMs?: number;
+  readonly maxSessionMs?: number;
+  readonly windDownMs?: number;
+}): ParticipantSchedule {
+  const start = entry.startAfterMs === undefined ? {} : { startAfterMs: entry.startAfterMs };
+  if (entry.maxSessionMs !== undefined)
+    return {
+      ...start,
+      end: { kind: "session_cap", ...endTiming(entry.maxSessionMs, entry.windDownMs) },
+    };
+  if (entry.endAfterMs === undefined) return start;
+  const windowMs = entry.endAfterMs - (entry.startAfterMs ?? 0);
+  return {
+    ...start,
+    end: {
+      kind: "scheduled_end",
+      endAfterMs: entry.endAfterMs,
+      ...endTiming(windowMs, entry.windDownMs),
+    },
+  };
 }
 
 /**
- * How long before its end or cap each turn tells a participant the time left: its `windDownMs` as
- * written, else a quarter of its window, at most 10 minutes. A fixed 10 minutes covered the whole
- * of a window of 10 minutes or less, so a short session was told its end from the first turn.
- * A quarter leaves most of a short session without a countdown, and a window of 40 minutes or
- * more keeps the 10 minutes. Undefined without an end or a cap.
+ * A window's wind-down and session budget. Without a declared `windDownMs` the wind-down is a
+ * quarter of the window, at most 10 minutes. A fixed 10 minutes covered the whole of a window of
+ * 10 minutes or less, so a short session was told its end from the first turn. A quarter leaves
+ * most of a short session without a countdown, and a window of 40 minutes or more keeps the 10
+ * minutes.
  */
-export function windDownMsOf(participant: ParticipantWindow): number | undefined {
-  const windowMs = declaredWindowMs(participant);
-  if (windowMs === undefined) return undefined;
-  return participant.windDownMs ?? Math.min(MAX_DEFAULT_WIND_DOWN_MS, Math.floor(windowMs / 4));
+function endTiming(windowMs: number, windDownMs: number | undefined) {
+  return {
+    windowMs,
+    windDownMs: windDownMs ?? Math.min(MAX_DEFAULT_WIND_DOWN_MS, Math.floor(windowMs / 4)),
+    sessionMs: windowMs + SCHEDULED_END_ROOM_MS,
+  };
+}
+
+/**
+ * The schedule a rerun gives a participant: it starts with the rerun, and a scheduled end keeps its
+ * time on the rerun's clock and its wind-down, so its window runs from the rerun's start.
+ */
+export function startingWithTheRun(schedule: ParticipantSchedule): ParticipantSchedule {
+  const { end } = schedule;
+  if (end === undefined) return {};
+  if (end.kind === "session_cap") return { end };
+  return participantSchedule({ endAfterMs: end.endAfterMs, windDownMs: end.windDownMs });
+}
+
+/**
+ * A participant's own session budget and sandbox deadline. With an end or a cap it is the end's
+ * `sessionMs`, and the sandbox keeps the study sandbox's headroom over the study session on top;
+ * without one, the study's own.
+ */
+export function participantSession(
+  schedule: ParticipantSchedule,
+  study: { readonly sessionMs: number; readonly sandboxMs: number },
+): { sessionMs: number; sandboxMs: number } {
+  const sessionMs = schedule.end?.sessionMs ?? study.sessionMs;
+  return { sessionMs, sandboxMs: study.sandboxMs - study.sessionMs + sessionMs };
 }
 
 /**
@@ -128,47 +192,43 @@ export type ParticipantEnd =
 
 /**
  * How a participant that was due at `scheduledAt` (runOnSchedule's ScheduledStart) ends, or
- * undefined when it declares neither an end nor a cap. A participant that waited for a slot still
- * ends at its declared time, and still gets its whole cap.
+ * undefined without an end or a cap. A scheduled end comes its window after the participant's
+ * time, which is its `endAfterMs` on the run's clock, even when it waited for a slot; a cap is
+ * whole from wherever its session starts.
  */
 export function participantEnd(
-  participant: ParticipantWindow,
+  schedule: ParticipantSchedule,
   scheduledAt: number,
 ): ParticipantEnd | undefined {
-  const windDownMs = windDownMsOf(participant);
-  if (windDownMs === undefined) return undefined;
-  if (participant.maxSessionMs !== undefined)
-    return { kind: "session_cap", afterMs: participant.maxSessionMs, windDownMs };
-  if (participant.endAfterMs === undefined) return undefined;
-  return {
-    kind: "scheduled_end",
-    atMs: scheduledAt - (participant.startAfterMs ?? 0) + participant.endAfterMs,
-    windDownMs,
-  };
+  const { end } = schedule;
+  if (end === undefined) return undefined;
+  if (end.kind === "session_cap")
+    return { kind: "session_cap", afterMs: end.windowMs, windDownMs: end.windDownMs };
+  return { kind: "scheduled_end", atMs: scheduledAt + end.windowMs, windDownMs: end.windDownMs };
 }
 
 /**
  * Why the sandbox of the first participant whose window or cap passes `ceilingMs` cannot live that
- * long, or undefined. Its deadline is its session (participantSessionMs) plus `headroomMs`, what the
- * route adds to a session for setup and teardown (sandboxHeadroomMs).
+ * long, or undefined. Its deadline is its participantSession's, from the study's session budget and
+ * sandbox deadline.
  */
 export function windowDeadlineRefusal(
-  participants: readonly ParticipantWindow[],
-  sandbox: { readonly sessionMs: number; readonly headroomMs: number },
+  participants: readonly ScheduledParticipant[],
+  study: { readonly sessionMs: number; readonly sandboxMs: number },
   ceilingMs: number,
 ): string | undefined {
   const inMinutes = (ms: number) => Math.round(ms / 60_000);
-  for (const participant of participants) {
-    if (declaredWindowMs(participant) === undefined) continue;
-    const deadlineMs = participantSessionMs(participant, sandbox.sessionMs) + sandbox.headroomMs;
+  for (const { id, schedule } of participants) {
+    const { end } = schedule;
+    if (end === undefined) continue;
+    const deadlineMs = participantSession(schedule, study).sandboxMs;
     if (deadlineMs <= ceilingMs) continue;
-    const name = participant.id === undefined ? "A participant" : `Participant "${participant.id}"`;
     const works =
-      participant.maxSessionMs === undefined
-        ? `works from +${formatDuration(participant.startAfterMs ?? 0)} to +${formatDuration(participant.endAfterMs ?? 0)}`
-        : `may work for up to ${formatDuration(participant.maxSessionMs)}`;
-    const window = participant.maxSessionMs === undefined ? "window" : "cap";
-    return `${name} ${works}, so its sandbox needs a ${inMinutes(deadlineMs)}m deadline: the ${window}, ${inMinutes(SCHEDULED_END_ROOM_MS)}m for its closing report and ${inMinutes(sandbox.headroomMs)}m to set up and tear down. A sandbox may not live longer than ${ceilingMs / 60_000}m. Shorten its ${window}.${ceilingAdvice(deadlineMs)}`;
+      end.kind === "scheduled_end"
+        ? `works from +${formatDuration(schedule.startAfterMs ?? 0)} to +${formatDuration(end.endAfterMs)}`
+        : `may work for up to ${formatDuration(end.windowMs)}`;
+    const window = end.kind === "scheduled_end" ? "window" : "cap";
+    return `Participant "${id}" ${works}, so its sandbox needs a ${inMinutes(deadlineMs)}m deadline: the ${window}, ${inMinutes(SCHEDULED_END_ROOM_MS)}m for its closing report and ${inMinutes(study.sandboxMs - study.sessionMs)}m to set up and tear down. A sandbox may not live longer than ${ceilingMs / 60_000}m. Shorten its ${window}.${ceilingAdvice(deadlineMs)}`;
   }
   return undefined;
 }
@@ -176,27 +236,25 @@ export function windowDeadlineRefusal(
 /**
  * Each participant's window for `study check`, when any participant declares an end or a cap: when
  * it starts and ends and when it is first told the time left, when it starts and its cap and how
- * far into its session it is first told the time left, or when it starts and its session budget.
+ * far into its session it is first told the time left, or when it starts and the study's
+ * `sessionMs`.
  */
 export function describeWindows(
-  participants: readonly ParticipantWindow[],
+  participants: readonly ScheduledParticipant[],
   sessionMs: number,
 ): string | undefined {
-  if (!participants.some((participant) => declaredWindowMs(participant) !== undefined))
-    return undefined;
-  const windows = participants.map((participant) => {
-    const start = `${participant.id ?? "participant"} from +${formatDuration(participant.startAfterMs ?? 0)}`;
-    if (participant.maxSessionMs !== undefined) {
-      const told = Math.max(0, participant.maxSessionMs - windDownMsOf(participant)!);
-      return `${start} until it ends itself or for up to ${formatDuration(participant.maxSessionMs)}, told the time left from ${formatDuration(told)} into its session`;
+  if (participants.every((participant) => participant.schedule.end === undefined)) return undefined;
+  const windows = participants.map(({ id, schedule }) => {
+    const startAfterMs = schedule.startAfterMs ?? 0;
+    const start = `${id} from +${formatDuration(startAfterMs)}`;
+    const { end } = schedule;
+    if (end === undefined) return `${start} for up to ${formatDuration(sessionMs)}`;
+    if (end.kind === "session_cap") {
+      const told = Math.max(0, end.windowMs - end.windDownMs);
+      return `${start} until it ends itself or for up to ${formatDuration(end.windowMs)}, told the time left from ${formatDuration(told)} into its session`;
     }
-    if (participant.endAfterMs === undefined)
-      return `${start} for up to ${formatDuration(sessionMs)}`;
-    const told = Math.max(
-      participant.startAfterMs ?? 0,
-      participant.endAfterMs - windDownMsOf(participant)!,
-    );
-    return `${start} to +${formatDuration(participant.endAfterMs)}, told the time left from +${formatDuration(told)}`;
+    const told = Math.max(startAfterMs, end.endAfterMs - end.windDownMs);
+    return `${start} to +${formatDuration(end.endAfterMs)}, told the time left from +${formatDuration(told)}`;
   });
   return `${windows.join("; ")}.`;
 }
@@ -256,19 +314,18 @@ export interface StartQueue {
 }
 
 /**
- * The schedule a roster's declared offsets give under the queue (`undefined` is 0: the participant
- * starts with the run). Participants start in schedule order, by offset and then roster position,
- * each at its time or when a slot frees, whichever is later; this is the rule runOnSchedule
- * follows. `sessionsMs` gives a participant with a declared end its own session budget
- * (participantSessionMs); the others hold their slot for `queue.sessionMs`.
+ * The schedule a roster's participants give under the queue. Participants start in schedule order,
+ * by offset and then roster position, each at its time or when a slot frees, whichever is later;
+ * this is the rule runOnSchedule follows. A participant with an end or a cap holds its slot for its
+ * own session budget, and the others for `queue.sessionMs`.
  */
 export function planArrivals(
-  offsets: readonly (number | undefined)[],
+  schedules: readonly ParticipantSchedule[],
   queue: StartQueue,
-  sessionsMs: readonly number[] = [],
 ): ArrivalPlan {
-  const due = offsets.map((offset) => offset ?? 0);
-  const session = (index: number) => sessionsMs[index] ?? queue.sessionMs;
+  const due = schedules.map((schedule) => schedule.startAfterMs ?? 0);
+  const sessionsMs = schedules.map((schedule) => schedule.end?.sessionMs ?? queue.sessionMs);
+  const session = (index: number) => sessionsMs[index]!;
   const starts = queueStarts(due, queue, session);
   let waiting = 0;
   let longestWaitMs = 0;
@@ -278,7 +335,7 @@ export function planArrivals(
     longestWaitMs = Math.max(longestWaitMs, waitMs);
   }
   return {
-    declared: offsets.some((offset) => offset !== undefined),
+    declared: schedules.some((schedule) => schedule.startAfterMs !== undefined),
     firstStartMs: Math.min(...due),
     lastStartMs: Math.max(...due),
     peak: mostAtOnce(starts, session),
@@ -309,14 +366,13 @@ export function describeArrivals(arrivals: ArrivalPlan): string {
  * roster in waves.
  */
 export function planStarts(
-  participants: readonly ParticipantWindow[],
+  participants: readonly ScheduledParticipant[],
   queue: StartQueue,
   lowered: string | undefined,
 ): { arrivals: ArrivalPlan; warnings: string[] } {
   const arrivals = planArrivals(
-    participants.map((participant) => participant.startAfterMs),
+    participants.map((participant) => participant.schedule),
     queue,
-    participants.map((participant) => participantSessionMs(participant, queue.sessionMs)),
   );
   return { arrivals, warnings: startQueueWarnings(arrivals, queue, lowered) };
 }

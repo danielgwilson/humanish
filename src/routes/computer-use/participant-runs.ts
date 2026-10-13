@@ -38,9 +38,9 @@ import { formatDuration } from "../../run/projection.js";
 import {
   describeArrivals,
   participantEnd,
-  participantSessionMs,
+  participantSession,
   planArrivals,
-  type ParticipantWindow,
+  type ParticipantSchedule,
 } from "../../study/arrivals.js";
 
 /**
@@ -77,34 +77,23 @@ export function resolveParticipantSandboxMs(config: StudyConfig, ceilingMs: numb
 }
 
 /**
- * A participant's own session budget and sandbox deadline: the study's, or with a declared end or
- * cap its window or cap plus room for the closing report (participantSessionMs), with the same
- * setup and teardown headroom the study's sandbox has over its session.
- */
-function participantWindow(
-  participant: ParticipantWindow,
-  study: { readonly sessionBudgetMs: number; readonly sandboxMs: number },
-): { timeoutMs: number; sandboxMs: number } {
-  const timeoutMs = participantSessionMs(participant, study.sessionBudgetMs);
-  return { timeoutMs, sandboxMs: study.sandboxMs - study.sessionBudgetMs + timeoutMs };
-}
-
-/**
  * The deps one participant runs with once its start comes: its own session budget and sandbox
- * deadline, and with a declared end or cap, how its session ends (`scheduledAt` is when it was
- * due, from runOnSchedule).
+ * deadline (participantSession), and with a declared end or cap, how its session ends
+ * (`scheduledAt` is when it was due, from runOnSchedule).
  */
 export function scheduledParticipantDeps(
-  participant: ParticipantWindow,
+  participant: { readonly schedule: ParticipantSchedule },
   deps: { readonly timeoutMs: number; readonly sandboxMs: number },
   scheduledAt: number,
 ): Pick<CuaParticipantDeps, "timeoutMs" | "sandboxMs" | "end"> {
-  const end = participantEnd(participant, scheduledAt);
+  const own = participantSession(participant.schedule, {
+    sessionMs: deps.timeoutMs,
+    sandboxMs: deps.sandboxMs,
+  });
+  const end = participantEnd(participant.schedule, scheduledAt);
   return {
-    ...participantWindow(participant, {
-      sessionBudgetMs: deps.timeoutMs,
-      sandboxMs: deps.sandboxMs,
-    }),
+    timeoutMs: own.sessionMs,
+    sandboxMs: own.sandboxMs,
     ...(end === undefined ? {} : { end }),
   };
 }
@@ -200,12 +189,12 @@ export function participantRunsAndPlan(
     resolved.envLoweredFrom === undefined
       ? plan.arrivals
       : planArrivals(
-          participants.map((participant) => participant.startAfterMs),
+          participants.map((participant) => participant.schedule),
           { slots: concurrency, sessionMs: sessionBudgetMs },
-          participants.map((participant) => participantSessionMs(participant, sessionBudgetMs)),
         );
+  const study = { sessionMs: sessionBudgetMs, sandboxMs: plan.sandboxMs };
   const sandboxesMs = participants.reduce(
-    (sum, participant) => sum + participantWindow(participant, plan).sandboxMs,
+    (sum, participant) => sum + participantSession(participant.schedule, study).sandboxMs,
     0,
   );
   const participantPlan: CuaParticipantPlan = {
@@ -220,41 +209,41 @@ export function participantRunsAndPlan(
     worstCaseSandboxMinutes: Math.round(sandboxesMs / 60_000),
     ...(schedule.declared ? { schedule } : {}),
     dryRun: plan.dryRun,
-    lanes: runs.map((spec) => ({
-      id: spec.planned.id,
-      ...(spec.planned.labels.actorType === undefined
-        ? {}
-        : { actorType: spec.planned.labels.actorType }),
-      ...(spec.planned.labels.surface === undefined
-        ? {}
-        : { surface: spec.planned.labels.surface }),
-      ...(spec.planned.labels.caseGroup === undefined
-        ? {}
-        : { caseGroup: spec.planned.labels.caseGroup }),
-      index: spec.planned.index + 1,
-      persona: spec.persona.id,
-      device: spec.planned.device.name,
-      resolution: spec.planned.device.resolution,
-      instructionDigest: spec.persona.promptDigest,
-      ...(spec.planned.limits.reasoningEffort === undefined
-        ? {}
-        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
-      ...(spec.planned.limits.maxOutputTokens === undefined
-        ? {}
-        : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
-      ...(spec.planned.targetUrl === undefined
-        ? {}
-        : { targetDigest: digestUrl(spec.planned.targetUrl) }),
-      ...(spec.planned.startAfterMs === undefined
-        ? {}
-        : { startAfterMs: spec.planned.startAfterMs }),
-      ...(spec.planned.endAfterMs === undefined ? {} : { endAfterMs: spec.planned.endAfterMs }),
-      ...(spec.planned.maxSessionMs === undefined
-        ? {}
-        : { maxSessionMs: spec.planned.maxSessionMs }),
-    })),
+    lanes: runs.map((spec) => planEntry(spec)),
   };
   return { runs, participantPlan };
+}
+
+/** One participant's row in the plan: ids, labels, device, digests and its declared times. */
+function planEntry(spec: DesktopParticipantRun): CuaParticipantPlanEntry {
+  const { startAfterMs, end } = spec.planned.schedule;
+  return {
+    id: spec.planned.id,
+    ...(spec.planned.labels.actorType === undefined
+      ? {}
+      : { actorType: spec.planned.labels.actorType }),
+    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
+    ...(spec.planned.labels.caseGroup === undefined
+      ? {}
+      : { caseGroup: spec.planned.labels.caseGroup }),
+    index: spec.planned.index + 1,
+    persona: spec.persona.id,
+    device: spec.planned.device.name,
+    resolution: spec.planned.device.resolution,
+    instructionDigest: spec.persona.promptDigest,
+    ...(spec.planned.limits.reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort: spec.planned.limits.reasoningEffort }),
+    ...(spec.planned.limits.maxOutputTokens === undefined
+      ? {}
+      : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
+    ...(spec.planned.targetUrl === undefined
+      ? {}
+      : { targetDigest: digestUrl(spec.planned.targetUrl) }),
+    ...(startAfterMs === undefined ? {} : { startAfterMs }),
+    ...(end?.kind === "scheduled_end" ? { endAfterMs: end.endAfterMs } : {}),
+    ...(end?.kind === "session_cap" ? { maxSessionMs: end.windowMs } : {}),
+  };
 }
 
 /** Print the participant plan to stderr before any sandbox/provider call (public-safe: ids, devices,

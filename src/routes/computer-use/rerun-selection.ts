@@ -9,6 +9,7 @@ import type { CuaParticipantPlan, DesktopParticipantRun } from "./types.js";
 import { plural } from "../../run/text.js";
 import { access } from "node:fs/promises";
 import { cli } from "../../cli/invocation.js";
+import { startingWithTheRun } from "../../study/arrivals.js";
 
 export async function resolveCuaRerunSelection(args: {
   cwd: string;
@@ -94,7 +95,7 @@ export async function resolveCuaRerunSelection(args: {
 
   // A rerun runs the selected participants again now, all together: the study's start offsets
   // placed them in the first run's day, and that day is over.
-  const selectedSpecs = selectedIds.map((id) => startingWithTheRun(specsById.get(id)!));
+  const selectedSpecs = selectedIds.map((id) => startingNow(specsById.get(id)!));
   const selectedPlanIds = new Set(selectedIds);
   const selectedPlanEntries = args.participantPlan.lanes
     .filter((entry) => selectedPlanIds.has(entry.id))
@@ -123,10 +124,12 @@ export async function resolveCuaRerunSelection(args: {
   };
 }
 
-function startingWithTheRun(spec: DesktopParticipantRun): DesktopParticipantRun {
-  if (spec.planned.startAfterMs === undefined) return spec;
-  const { startAfterMs: _offset, ...planned } = spec.planned;
-  return { ...spec, planned };
+function startingNow(spec: DesktopParticipantRun): DesktopParticipantRun {
+  if (spec.planned.schedule.startAfterMs === undefined) return spec;
+  return {
+    ...spec,
+    planned: { ...spec.planned, schedule: startingWithTheRun(spec.planned.schedule) },
+  };
 }
 
 function uniqueIds(values: string[]): string[] {

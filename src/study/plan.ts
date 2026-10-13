@@ -155,8 +155,8 @@ function closingReportWarnings(plan: StudyPlan): string[] {
   const { brain } = plan.runner;
   if (brain.kind !== "local-agent" || brain.agent !== "claude") return [];
   const { participants } = plan.runner;
-  const scheduled = participants.filter((participant) => participant.endAfterMs !== undefined);
-  const capped = participants.filter((participant) => participant.maxSessionMs !== undefined);
+  const scheduled = participants.filter(({ schedule }) => schedule.end?.kind === "scheduled_end");
+  const capped = participants.filter(({ schedule }) => schedule.end?.kind === "session_cap");
   const claude = "Claude as a local-agent participant model cannot be asked for a closing report";
   const writers =
     "A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.";

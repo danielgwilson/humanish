@@ -127,7 +127,10 @@ function sharedWorldSimulation(
     updatedAt: args.run.createdAt,
     ...(args.plan.arrivals.declared
       ? {
-          arrival: arrivalRecord(spec.planned.startAfterMs, actorArrival(args.actorResults[index])),
+          arrival: arrivalRecord(
+            spec.planned.schedule.startAfterMs,
+            actorArrival(args.actorResults[index]),
+          ),
         }
       : {}),
   });

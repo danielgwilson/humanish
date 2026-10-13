@@ -49,7 +49,7 @@ function participantStarts(result: StudyPlan): [string, number | undefined][] {
       : result.route === "shared-world"
         ? result.plane.participants
         : [];
-  return participants.map((participant) => [participant.id, participant.startAfterMs]);
+  return participants.map((participant) => [participant.id, participant.schedule.startAfterMs]);
 }
 
 describe("declaring when participants start", () => {

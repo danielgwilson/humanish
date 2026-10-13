@@ -86,7 +86,7 @@ describe("runs saved by 0.107", () => {
       studyId: "fanout-proof",
       sandboxMs: 60_000,
       sourceRunId: "fanout-source",
-      participantRuns: lanes.map((id) => ({ planned: { id } })) as never,
+      participantRuns: lanes.map((id) => ({ planned: { id, schedule: {} } })) as never,
       participantPlan: { concurrency: 4, lanes: lanes.map((id) => ({ id })) } as never,
     });
     expect(selection.ok && selection.rerun).toEqual({

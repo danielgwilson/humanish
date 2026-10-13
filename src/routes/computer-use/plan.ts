@@ -359,8 +359,8 @@ function startsOf(
   const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config, ceilingMs);
   // A participant with a declared end gets a sandbox sized from its own window.
   if (runner.desktop === "e2b-desktop") {
-    const headroomMs = resolveParticipantSandboxMs(config, ceilingMs) - sessionMs;
-    const window = windowDeadlineRefusal(runner.participants, { sessionMs, headroomMs }, ceilingMs);
+    const sandboxMs = resolveParticipantSandboxMs(config, ceilingMs);
+    const window = windowDeadlineRefusal(runner.participants, { sessionMs, sandboxMs }, ceilingMs);
     if (window !== undefined) return { ok: false, message: window };
   }
   const slots = { slots: atOnce.count, sessionMs };
