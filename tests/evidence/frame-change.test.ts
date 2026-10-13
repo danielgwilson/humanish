@@ -212,6 +212,21 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
     ]);
   });
 
+  it("counts a ticker's move back to its first frame as a tick that holds a label back", () => {
+    // The ticker (column 0, row 5) changes at 30 s and returns to the reference frame at 90 s; the
+    // label in columns 2 to 4 appears at 10 s. The move back holds the label until 65 s after it:
+    // 155 s is 65 s after, not more, so the label first settles at 160 s.
+    const scene = (atMs: number) =>
+      glyphs([
+        ...(atMs >= 30_000 && atMs < 90_000 ? [[0, 5, 77] as const] : []),
+        ...(atMs < 10_000 ? [] : [2, 3, 4].map((column): Glyph => [column, 5, 600 + column])),
+      ]);
+    expect(firstSettled(scene)).toEqual([
+      160_000,
+      { verdict: "settled", area: { x: 32, y: 80, width: 48, height: 16 }, small: true },
+    ]);
+  });
+
   it("settles a one-time 3-tile label 70 s after it appears", () => {
     // The label appears at 100 s in columns 12 to 14 of row 7, with nothing else moving.
     const scene = (atMs: number) =>
