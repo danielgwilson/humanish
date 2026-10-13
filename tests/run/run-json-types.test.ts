@@ -2,7 +2,10 @@
 // (tokenUsage.turns, conversation.requests, providerRequests). From run bundle v4 only the trace
 // file holds them, so the types refuse each read before the loader joins them. Each
 // `@ts-expect-error` fails typecheck if the line below it compiles, so `pnpm typecheck` is the
-// assertion; the runtime test checks that each refused read finds nothing in the bytes.
+// assertion. The runtime test only checks these types against the bytes: each refused read finds
+// nothing there and each read of the loader's bundle finds a list. It passes without the types, so
+// it was never red. The writer and loader are tested in tests/run/stream-trace.test.ts ("run bundle
+// v4's per-request lists") and the Observer's data in tests/observer/data-contract.test.ts.
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
