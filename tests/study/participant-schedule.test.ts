@@ -14,6 +14,7 @@ import {
   participantRunsAndPlan,
   scheduledParticipantDeps,
 } from "../../src/routes/computer-use/participant-runs.js";
+import { startingWithTheRun } from "../../src/study/arrivals.js";
 import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { ComputerUsePlan, PlanResult } from "../../src/study/plan-types.js";
@@ -189,6 +190,67 @@ describe("a roster of starts, ends and caps", () => {
         dwell: false,
       },
     });
+  });
+});
+
+describe("a rerun of a participant with a start and an end", () => {
+  it("starts it with the rerun and keeps its end on the rerun's clock, so its window grows", () => {
+    const planned = computerUse(plan(study("cuAppUrl", day), allowed));
+    const rerun = planned.runner.participants
+      .filter(({ id }) => id === "lead" || id === "brief")
+      .map((participant) => ({
+        ...participant,
+        schedule: startingWithTheRun(participant.schedule),
+      }));
+    // Worked from origin/main 156358c5d. Its rerun dropped startAfterMs and kept endAfterMs and
+    // windDownMs, which the plan had resolved from the first run's window. Its window was then
+    // endAfterMs - 0, its session the window plus 5m, and its sandbox the study's 11m minus the
+    // study's 1m session plus its own session. Its end came endAfterMs after the rerun started it.
+    // lead: 10m to 40m becomes 0 to 40m, wind-down 5m as written; session 45m, sandbox 55m.
+    // brief: 2m to 10m becomes 0 to 10m. Its wind-down stays 2m, a quarter of the first run's 8m
+    // window, where a quarter of 10m would be 2m 30s; session 15m, sandbox 25m.
+    expect(rerun.map(({ id, schedule }) => ({ id, schedule }))).toEqual([
+      {
+        id: "lead",
+        schedule: {
+          end: {
+            kind: "scheduled_end",
+            endAfterMs: 40 * MIN,
+            windowMs: 40 * MIN,
+            windDownMs: 5 * MIN,
+            sessionMs: 45 * MIN,
+          },
+        },
+      },
+      {
+        id: "brief",
+        schedule: {
+          end: {
+            kind: "scheduled_end",
+            endAfterMs: 10 * MIN,
+            windowMs: 10 * MIN,
+            windDownMs: 2 * MIN,
+            sessionMs: 15 * MIN,
+          },
+        },
+      },
+    ]);
+    const rerunStart = 1_000_000;
+    const deps = { timeoutMs: planned.sessionBudgetMs, sandboxMs: planned.sandboxMs };
+    expect(
+      rerun.map((participant) => scheduledParticipantDeps(participant, deps, rerunStart)),
+    ).toEqual([
+      {
+        timeoutMs: 45 * MIN,
+        sandboxMs: 55 * MIN,
+        end: { kind: "scheduled_end", atMs: rerunStart + 40 * MIN, windDownMs: 5 * MIN },
+      },
+      {
+        timeoutMs: 15 * MIN,
+        sandboxMs: 25 * MIN,
+        end: { kind: "scheduled_end", atMs: rerunStart + 10 * MIN, windDownMs: 2 * MIN },
+      },
+    ]);
   });
 });
 
