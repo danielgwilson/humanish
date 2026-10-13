@@ -15,9 +15,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   and run.json keeps the totals. On a synthetic run of 30 participants making 2,880 requests each,
   written through the run writer, run.json was 93 KB with threaded conversations, 93 KB with
   explicit_context and 106 KB with account receipts; with the lists it was 16.1 MB, 27.2 MB and
-  41.8 MB. A mid-run flush of that run wrote run.json at 72 to 79 KB and observer-data.json at 121
-  to 136 KB, where each was 10.7 MB with the lists. The trace loader and `loadRunBundle` join the
-  lists back from the trace file, for v1, v2, v3 and v4 bundles.
+  41.8 MB. A mid-run flush of that run wrote run.json at 72 to 79 KB and observer-data.json at 137
+  to 143 KB; 0.127.1 wrote each at 10.7 MB, or 41.8 MB with account receipts. The trace loader and
+  `loadRunBundle` join the lists back from the trace file, for v1, v2, v3 and v4 bundles.
 - A running participant's `liveActor` carries its token totals and an `estimatedCost` that the run
   writer prices from its usage rows before leaving them out, so run detail and the TUI keep the
   long-context price. The rows, and an account participant's receipts, are written only in the
