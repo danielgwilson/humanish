@@ -129,5 +129,8 @@ describe("a provisioned shared world with a declared schedule", () => {
     ) as RunBundle;
     expect(bundle.simulations[1]?.status).toBe("blocked");
     expect(bundle.simulations[1]?.arrival?.startedAt).toBeUndefined();
+    expect(bundle.review.summary).toBe(
+      "1 participant used one shared app. 1 of 1 reached the goal. 1 participant was skipped before its session started; the gaps say why. The app's shared state changed 1 time during the run.",
+    );
   });
 });
