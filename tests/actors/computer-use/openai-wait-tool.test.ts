@@ -433,6 +433,20 @@ describe("the trace of a wait", () => {
     // The affordance record classes a wait_for_change call as a wait: observation.
     expect(result.trace.affordanceUse?.counts).toEqual({ observation: 3, pointer: 1 });
   });
+
+  it("records the length a wait named past 60 minutes, which the watch caps at 10", async () => {
+    const { result } = await runOpenAi([
+      waitForChangeReply(1, '{"minutes":90}'),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    expect(waitItems(result).map((item) => [item.title, item.namedMs])).toEqual([
+      ["wait 600000ms", 5_400_000],
+    ]);
+    expect(watchesOf(result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [5_400_000, 600_000],
+    ]);
+  });
 });
 
 describe("the minutes a wait_for_change call names", () => {
@@ -443,13 +457,13 @@ describe("the minutes a wait_for_change call names", () => {
     { args: '{"minutes":0}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
     { args: '{"minutes":-2}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
     { args: '{"minutes":1e-9}', becomes: "a 1 ms wait", askedMs: 1, limitMs: 5_000 },
-    { args: '{"minutes":1e9}', becomes: "a 60-minute wait", askedMs: 3_600_000, limitMs: 600_000 },
     {
-      args: '{"minutes":1e400}',
-      becomes: "a 60-minute wait",
-      askedMs: 3_600_000,
+      args: '{"minutes":1e9}',
+      becomes: "a wait of a billion minutes",
+      askedMs: 60_000_000_000_000,
       limitMs: 600_000,
     },
+    { args: '{"minutes":1e400}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
   ])(
     "$args becomes $becomes, watched from idleWaitMs up to the cap",
     async ({ args, askedMs, limitMs }) => {

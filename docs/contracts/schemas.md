@@ -1110,8 +1110,8 @@ Core-owned fields:
   before `actor.maxWaitMs` or the watch's cap applied. An OpenAI participant
   names a length only through `wait_for_change`, so its waits with `namedMs` are
   that tool's calls, and its waits without it are the computer tool's `wait`.
-  A `wait_for_change` call whose minutes were not a number above zero names no
-  length. Additive: absent on waits that named none, other items and producers,
+  A `wait_for_change` call whose minutes were not a finite number above zero
+  names no length. Additive: absent on waits that named none, other items and producers,
   and older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
