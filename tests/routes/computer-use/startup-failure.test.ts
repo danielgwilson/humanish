@@ -209,7 +209,7 @@ describe("a hosted fan-out whose first participant fails to start", () => {
     const reason = `skipped: participant ${first} failed to provision its world (pipeline gate)`;
     const bundle = await runJson(cwd, result.runId);
     const events = await runEvents(cwd, result.runId);
-    // Only the first participant had a copy of the app; the three skipped ones are counted apart.
+    // The first participant is the only one that started; the three skipped ones are counted apart.
     expect(bundle.review.summary).toBe(
       "1 participant took part, in its own copy of the app: 0/1 finished a session; the gaps say why. 3 participants were skipped before their sessions started; the gaps say why.",
     );
