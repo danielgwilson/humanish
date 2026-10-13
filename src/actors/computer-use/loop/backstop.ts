@@ -99,7 +99,7 @@ export function stableProgressKey(appState: Record<string, unknown>): string {
  * A state executor with a constant signature still registers progress when its appState changes,
  * and a vision executor behaves exactly as before.
  */
-function progressKeyOf(observation: CuaObservation): string {
+export function progressKeyOf(observation: CuaObservation): string {
   const base =
     observation.appState !== undefined
       ? stableProgressKey(observation.appState)
@@ -152,7 +152,8 @@ export interface BackstopStep {
 /**
  * Fold one acted turn and the observation after it into the backstop. `waitingIsTheTask` says the
  * participant has a scheduled end still to come: waiting for it is its job, so an idle turn counts
- * toward neither streak and earns no nudge. A turn that acts is folded as usual.
+ * toward neither streak and earns no nudge. A turn that acts is folded as usual. `screenChanged`
+ * says the turn's watch woke on a change it saw, which the progress key can miss.
  */
 export function advanceBackstop(
   previous: Backstop,
@@ -161,6 +162,7 @@ export function advanceBackstop(
     observation: CuaObservation;
     heardNewSpeech: boolean;
     waitingIsTheTask?: boolean;
+    screenChanged?: boolean;
   },
   limits: BackstopLimits,
 ): BackstopStep {
@@ -197,7 +199,7 @@ export function advanceBackstop(
   // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
   // reading the frame on its own: a repeated screenshot is exactly what an idle streak is, and
   // feeding repetition into it would grant an extra forgiveness step for being idle.
-  const observedProgress = frameChanged || turn.heardNewSpeech;
+  const observedProgress = frameChanged || turn.heardNewSpeech || turn.screenChanged === true;
   const progressed = observedProgress || !repeatingRecentAction;
 
   // A screenshot/wait turn while the UI visibly changes may be patience through loading or a

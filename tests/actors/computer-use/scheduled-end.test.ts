@@ -220,8 +220,8 @@ describe("a participant with a scheduled end", () => {
 });
 
 /**
- * A support agent in a quiet session: every turn only waits, 10 s of the clock apart, on a
- * screen that never changes.
+ * A support agent in a quiet session: every turn only waits, on a screen that never changes. A
+ * reply takes 9 s of the clock and its wait is watched for 1 s, so turns start 10 s apart.
  */
 async function quietSession(clock: ParticipantClock | undefined): Promise<{
   result: CuaLoopResult;
@@ -234,7 +234,7 @@ async function quietSession(clock: ParticipantClock | undefined): Promise<{
     capabilities: CAPS,
     async nextTurn() {
       turns += 1;
-      t += 10_000;
+      t += 9_000;
       return { actions: [{ kind: "wait" }], pendingSafetyChecks: [], done: false };
     },
     async debrief() {
@@ -257,15 +257,52 @@ async function quietSession(clock: ParticipantClock | undefined): Promise<{
     redaction: defaultRedactionHooks,
     timeoutMs: 60 * MINUTE,
     now: () => t,
-    sleep: async () => undefined,
+    sleep: async (ms) => {
+      t += ms;
+    },
+    idleWaitMs: 1_000,
+    maxWaitMs: 1_000,
     ...(clock === undefined ? {} : { clock }),
   });
   return { result, turns };
 }
 
+describe("a turn that reaches the scheduled end", () => {
+  it("ends the session at its end when the turn trips the idle backstop", async () => {
+    // Each turn takes a minute and only takes a screenshot. Turn 2 reaches the end at 09:02,
+    // where the participant is no longer held, so its idle turn trips idleSteps: 1.
+    let t = NINE_UTC;
+    const provider: CuaProvider = {
+      id: "support-agent",
+      capabilities: CAPS,
+      async nextTurn() {
+        t += MINUTE;
+        return { actions: [{ kind: "screenshot" }], pendingSafetyChecks: [], done: false };
+      },
+    };
+    const result = await runComputerUseLoop({
+      instructions: "Watch the support queue until your session ends.",
+      provider,
+      executor: {
+        observe: async () => ({ screenshot: FRAME, stateSignature: "empty queue" }),
+        execute: async () => undefined,
+      },
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 60 * MINUTE,
+      now: () => t,
+      idleSteps: 1,
+      clock: { end: { atMs: NINE_UTC + 2 * MINUTE, windDownMs: MINUTE } },
+    });
+    expect(result.trace.stopCause).toBe("scheduled_end");
+    expect(result.completionReason).toBe("goal_satisfied");
+  });
+});
+
 describe("waiting through a quiet session", () => {
   it("does not end a participant with a scheduled end for waiting before its end", async () => {
-    // 60 waiting turns, past both the 24-turn idle and the 20-turn no-progress streaks.
+    // Turn n's watch ends at 09:00 + 10n s, so the 60th reaches the end at 09:10: 60 waiting
+    // turns, past both the 24-turn idle and the 20-turn no-progress streaks.
     const { result, turns } = await quietSession({
       end: { atMs: NINE_UTC + 10 * MINUTE, windDownMs: 3 * MINUTE },
     });

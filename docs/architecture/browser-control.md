@@ -104,15 +104,17 @@ title, text, fractional scroll position and heard speech; those remain
 runtime-only under the existing loop contract. Arbitrary `appState` is refused
 because v1 has no closed schema for it. The protocol does not truncate strings,
 round coordinates, or silently drop unsupported state. A participant may ask for a
-longer wait than one request carries. The computer-use loop shortens it to the study's
-`actor.maxWaitMs` (by default two minutes, or 30 seconds on a desktop with speech, whose heard
-speech reaches the participant only with a screenshot), records a `wait shortened` notice with both
-durations when it does, and sends the rest as consecutive waits of at most 30 seconds. The Codex
-participant's `humanish_ui` schema leaves a wait's length open for that reason; the wire still
-refuses a single wait over 30 seconds. A wait that names no duration, as every OpenAI computer-use
-wait does, reaches the desktop with a length too: the study's `actor.idleWaitMs` (5 seconds by
-default) when the participant's turn only waits or takes screenshots, and 500 ms after an action in
-the same turn.
+longer wait than one request carries. In a turn with another action, the computer-use loop
+shortens it to the study's `actor.maxWaitMs` (by default two minutes, or 30 seconds on a desktop
+with speech, whose heard speech reaches the participant only with a screenshot), records a `wait
+shortened` notice with both durations when it does, and sends the rest as consecutive waits of at
+most 30 seconds. The Codex participant's `humanish_ui` schema leaves a wait's length open for that
+reason; the wire still refuses a single wait over 30 seconds. A wait that names no duration, as
+every OpenAI computer-use wait does, reaches the desktop with a length too: 500 ms after an action
+in the same turn. A turn that only waits or takes screenshots sends no wait to the desktop: the
+loop observes the screen every `actor.idleWaitMs` until it changes or the wait's time passes
+(`src/actors/computer-use/loop/watch.ts`), so a waiting participant costs one observe request per
+look.
 
 Click, double-click, move, scroll and drag may carry `heldKeys`, which the
 OpenAI provider maps from its computer tool's `keys`. The Codex participant's

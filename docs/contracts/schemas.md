@@ -263,8 +263,10 @@ The rest of this section names keys by their v3 spelling:
   the end, a turn that requests no action does not end the session: the trace records a
   `participant ended before its scheduled end` notice, the next request says the time left, and
   the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
-  screenshots counts toward neither backstop streak (`advanceBackstop`'s `waitingIsTheTask`). The
-  plan entry carries `endAfterMs`, and `study check` prints a `windows` row;
+  screenshots counts toward neither backstop streak (`advanceBackstop`'s `waitingIsTheTask`). A
+  watch that reaches the end stops there with no further look, and a backstop streak that trips on
+  a turn reaching the end gives way to the end. The plan entry carries `endAfterMs`, and `study
+  check` prints a `windows` row;
 - `participants[].maxSessionMs` (computer-use only, also on `count:` groups): the longest the
   participant's session lasts, in whole milliseconds from 1 to 86,400,000, counted from the start
   of its own session. `windDownMs` applies to it as to `endAfterMs`. Refused: a value outside that
@@ -282,7 +284,9 @@ The rest of this section names keys by their v3 spelling:
   `cap=<duration>`;
 - `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
   participant's `actor.idleWaitMs`, in the same range and refused above an explicit
-  `actor.maxWaitMs` (`waitLimitValidationReason`). Its trace records it in `waitSettings`;
+  `actor.maxWaitMs` (`waitLimitValidationReason`): how long its wait with no duration lasts in a
+  turn that only waits, and how often the loop looks at its screen while it watches such a turn.
+  Its trace records it in `waitSettings`;
 - `actor.clock.timeZone` (computer-use and shared-world): a tz database time zone name, such as `Europe/London`. Each turn's context hint carries
   the local time in it, and a scheduled end or session cap is given in it (UTC without it). On a hosted desktop the
   participant's browser launches with `TZ` set to it (`openParticipantSurface` in
@@ -1067,6 +1071,35 @@ Core-owned fields:
   click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive:
   absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
+- optional `items[].watch` (`ActorWatch` in `src/actors/contract.ts`), on the
+  computer-use `ui_action` of the wait during which a watch ended. A turn whose
+  actions are only waits and screenshots, and that asks for wait time, sends no
+  wait to the desktop: the loop looks at the screen every `waitSettings.idleWaitMs`
+  and requests the next turn when a change holds still, speech arrives, a
+  `stopWhen` rule, `dwell.when` or task `success` rule matches a look, the
+  participant's wind-down or end arrives, or the watch's time passes
+  (`src/actors/computer-use/loop/watch.ts`). A change of more than 24 tiles of
+  16 pixels counts once it holds still at a look; one of 24 tiles or fewer once
+  it has held still for more than 65 s with no tile within 4 tiles of it ticking
+  or moving with a region of more than 24 tiles
+  (`src/evidence/frame-change.ts`). The first watch lasts the turn's planned
+  length: the named waits' lengths, together up to `actor.maxWaitMs` (else
+  600000), and `idleWaitMs` for each wait that names none. Each further one in a row that ended
+  at its limit, or that a change of 24 tiles or fewer woke, lasts twice as long,
+  up to the larger of its planned length and that cap. `limitMs` is how long it
+  could last; `askedMs` is what the turn's waits asked for, the same sum with no
+  cap, so it is above `limitMs` when the named waits passed the cap and below it
+  when the watch grew; `wake` is `changed`, `speech`,
+  `condition`, `limit`, `clock` (wind-down or end), `stalled` (a look got no
+  frame; the next observation is a fresh one), or `stopped` (the study budget or
+  the session's time ran out); `looks` counts its looks; `area` (`x`, `y`,
+  `width`, `height` in pixels) bounds the change that woke it and is absent for
+  other wakes and for a change still moving at the last look. A `notice` titled
+  `watching the screen`, `lifecycle: started`, opens each watch. The turn's
+  waits share the watch in order, in proportion to their planned lengths, and
+  waits after the one carrying `watch` are titled `wait 0ms`. The look that
+  ended a watch is the turn's `turn-NN` screenshot; other looks are not kept.
+  Additive: absent on plain waits, other producers and older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before
@@ -1121,13 +1154,20 @@ Core-owned fields:
   `stopCause: provider_output_limit`.
 - optional `waitSettings`: the wait lengths a computer-use participant's session
   applied, in milliseconds, defaults included. `maxWaitMs` is the longest one
-  wait action lasts (`actor.maxWaitMs`); a longer wait is shortened to it.
+  wait action lasts (`actor.maxWaitMs`, else 120000, or 30000 on a desktop with
+  speech); in a turn with another action a longer wait is shortened to it.
   `idleWaitMs` is how long a wait that names no duration lasts in a turn that
   only waits or takes screenshots (`participants[].idleWaitMs`, else
-  `actor.idleWaitMs`), and `settleWaitMs` how
-  long such a wait lasts after an action in the same turn. Each `ui_action` for
-  a wait is titled with the length it lasted. Absent on other routes and on
-  earlier bundles
+  `actor.idleWaitMs`), and the time between looks at the screen while the loop
+  watches such a turn, at most 30000 on a desktop with speech. `settleWaitMs` is
+  how long a wait that names no duration lasts after an action in the same turn,
+  and the time to a watch's quick look after a large change. A watch's length
+  grows to `actor.maxWaitMs`, else 600000, which `waitSettings` does not record;
+  each watch's `watch.limitMs` does. The named waits of a turn that only waits
+  are watched for their lengths, together up to that cap, past `maxWaitMs`. A wait sent to the desktop has a
+  `ui_action` titled with its planned length, which a stalled wait keeps. A
+  watched wait's `ui_action` is titled with the part of the watch it covered.
+  Absent on other routes and on earlier bundles
 - optional `conversation`: how the first-party OpenAI computer-use provider
   carried the conversation between requests. `mode` is `threaded` (the server
   kept it through `previous_response_id`) or `explicit_context` (the server kept

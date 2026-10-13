@@ -19,6 +19,7 @@ import { LoopSession } from "./loop/session.js";
 import { spendStop, unknownSpendStop } from "./loop/spend.js";
 import { accountBillingConflicts } from "./loop/usage.js";
 import { loopResult, notice } from "./loop/trace.js";
+import { IdleWatcher } from "./loop/watch.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
@@ -143,6 +144,7 @@ export async function runComputerUseLoopWithTaps(options: LoopRunOptions): Promi
  */
 async function runTurns(session: LoopSession, conversation: Conversation): Promise<Stop> {
   const observer = new DesktopObserver(session);
+  const watcher = new IdleWatcher(session, observer);
   const opening = await observer.checkpoint(0);
   if ("stop" in opening) return opening.stop;
   let { observation } = opening;
@@ -206,9 +208,12 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         : ended;
     }
 
-    const batch = await runActionBatch(session, turn.actions);
+    const watched = await watcher.watch(turnNumber, observation, turn.actions);
+    const batch = await runActionBatch(session, turn.actions, watched?.waits);
     conversation.previousExecution = batch.execution;
-    const checkpoint = await observer.checkpoint(turnNumber);
+    // An earlier reply's unknown usage still stops the session before its closing request.
+    if (watched?.stop !== undefined) return unknownSpendStop(session) ?? watched.stop;
+    const checkpoint = await observer.checkpoint(turnNumber, watched?.observation);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
 
@@ -219,12 +224,21 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         observation,
         heardNewSpeech: observer.heardNewSpeech,
         waitingIsTheTask: heldToScheduledEnd(session),
+        screenChanged:
+          watched?.wake === "changed" ||
+          watched?.wake === "speech" ||
+          watched?.wake === "condition",
       },
       { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
     );
     backstop = step.backstop;
-    const stalled = applyBackstop(session, conversation, step, [checkpoint.hint, batch.hint]);
-    if (stalled !== undefined) return stalled;
+    const stalled = applyBackstop(session, conversation, step, [
+      watched?.hint,
+      checkpoint.hint,
+      batch.hint,
+    ]);
+    // A turn that reached the participant's end is that end, never the backstop's.
+    if (stalled !== undefined) return clockEndStop(session, observation) ?? stalled;
     const unknownSpend = unknownSpendStop(session);
     if (unknownSpend !== undefined) return unknownSpend;
   }

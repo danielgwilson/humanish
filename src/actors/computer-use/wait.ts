@@ -2,8 +2,10 @@ import type { ActorWaitSettings } from "../contract.js";
 
 // How long one participant wait action lasts, for every provider and desktop. A study sets the
 // longest (actor.maxWaitMs) and how long a wait that names no duration lasts while the participant
-// only waits (actor.idleWaitMs). The loop asks planWait for each wait and sends it to the desktop
-// in steps one desktop call carries.
+// only waits (actor.idleWaitMs). The loop asks planWait for each wait. A turn with another action
+// sends its waits to the desktop in steps one desktop call carries; a turn that only waits watches
+// the screen instead (loop/watch.ts), for its waits' lengths, the named ones together up to
+// watchMaxMs, or longer as the watches of idle turns in a row grow.
 
 export const CUA_WAIT_LIMITS = Object.freeze({
   /**
@@ -13,32 +15,55 @@ export const CUA_WAIT_LIMITS = Object.freeze({
    */
   stepMs: 30_000,
   /**
-   * The longest one wait action lasts when a study does not set actor.maxWaitMs and the desktop
-   * has no speech (defaultMaxWaitMs). Two minutes covers waiting in a lobby or for an email to
+   * The longest one wait action sent to the desktop lasts when a study does not set
+   * actor.maxWaitMs and the desktop has no speech (defaultMaxWaitMs). Two minutes covers waiting in a lobby or for an email to
    * arrive, and the participant still sees a fresh screenshot at least that often.
    */
   defaultMaxMs: 120_000,
   /**
+   * The longest a watch over an unchanged screen grows to, and the longest the named waits of a
+   * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. Each further watch
+   * in a row that ends with no change lasts twice as long as the one before, so on a static screen
+   * a participant settles at one model request per 10 minutes.
+   */
+  defaultWatchMaxMs: 600_000,
+  /**
    * How long a wait that names no duration lasts in a turn that only waits or takes screenshots,
    * when a study does not set actor.idleWaitMs. OpenAI's computer-use `wait` names no duration. A
    * participant told to wait about a minute sent ten in one turn, which lasts 50 s at this length;
-   * one wait a turn makes a one-minute wait about six turns.
+   * one wait a turn makes a one-minute wait about six turns. It is also how often a watch looks.
    */
   defaultIdleMs: 5_000,
   /**
    * How long a wait that names no duration lasts after the participant acts in the same turn, so
    * the screen can settle before the next screenshot. Nearly every OpenAI computer-use wait follows
-   * a click or keypress this way, so a longer one would slow every run.
+   * a click or keypress this way, so a longer one would slow every run. A watch looks again this
+   * soon after a large part of the screen moved.
    */
   settleMs: 500,
+  /**
+   * The longest gap between two looks of a watch on a desktop with speech. Heard speech reaches the
+   * participant with a look, and the desktop session ends when more utterances arrive between two
+   * observations than it holds; 30 s is the spacing the speech default kept before watches.
+   */
+  speechLookMs: 30_000,
   /** The smallest actor.maxWaitMs or actor.idleWaitMs a study may set. */
   leastMs: 1_000,
-  /** The largest actor.maxWaitMs or actor.idleWaitMs a study may set. */
-  mostMs: 600_000,
+  /** The largest actor.idleWaitMs a study may set. */
+  mostIdleMs: 600_000,
+  /** The largest actor.maxWaitMs a study may set: a watch may grow to an hour. */
+  mostMaxMs: 3_600_000,
 });
 
-/** The wait lengths one session applies; the trace records them as `waitSettings`. */
-export type WaitSettings = Readonly<ActorWaitSettings>;
+/**
+ * The wait lengths one session applies. The trace records the first three as `waitSettings`.
+ * `watchMaxMs` is the longest a watch grows to over an unchanged screen and the longest a watched
+ * turn's named waits last together, and `lookEveryMs` how often a watch looks.
+ */
+export type WaitSettings = Readonly<ActorWaitSettings> & {
+  readonly watchMaxMs: number;
+  readonly lookEveryMs: number;
+};
 
 /** One wait as the desktop runs it. */
 export interface PlannedWait {
@@ -50,13 +75,13 @@ export interface PlannedWait {
   readonly shortenedFromMs?: number;
 }
 
-/** A whole number of milliseconds within the range actor.maxWaitMs and actor.idleWaitMs accept. */
-function isWaitMs(value: unknown): value is number {
+/** A whole number of milliseconds from CUA_WAIT_LIMITS.leastMs to `mostMs`. */
+function isWaitMs(value: unknown, mostMs: number): value is number {
   return (
     typeof value === "number" &&
     Number.isSafeInteger(value) &&
     value >= CUA_WAIT_LIMITS.leastMs &&
-    value <= CUA_WAIT_LIMITS.mostMs
+    value <= mostMs
   );
 }
 
@@ -66,13 +91,17 @@ function isWaitMs(value: unknown): value is number {
  * when more utterances arrive between two screenshots than it holds. A wait takes no screenshot, so
  * there the default keeps one wait to one desktop call.
  */
-export function defaultMaxWaitMs(speechEnabled: boolean): number {
+function defaultMaxWaitMs(speechEnabled: boolean): number {
   return speechEnabled ? CUA_WAIT_LIMITS.stepMs : CUA_WAIT_LIMITS.defaultMaxMs;
 }
 
 const FIELDS = [
-  ["maxWaitMs", "the longest one wait action lasts"],
-  ["idleWaitMs", "how long a wait with no duration lasts while the participant only waits"],
+  ["maxWaitMs", "the longest one wait action lasts", CUA_WAIT_LIMITS.mostMaxMs],
+  [
+    "idleWaitMs",
+    "how long a wait with no duration lasts while the participant only waits",
+    CUA_WAIT_LIMITS.mostIdleMs,
+  ],
 ] as const;
 
 /**
@@ -85,9 +114,9 @@ export function waitFieldsReason(
   prefix: string,
   maxPrefix: string = prefix,
 ): string | null {
-  for (const [name, meaning] of FIELDS) {
-    if (fields[name] !== undefined && !isWaitMs(fields[name]))
-      return `${name === "maxWaitMs" ? maxPrefix : prefix}${name}, ${meaning}, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMs} to ${CUA_WAIT_LIMITS.mostMs}.`;
+  for (const [name, meaning, mostMs] of FIELDS) {
+    if (fields[name] !== undefined && !isWaitMs(fields[name], mostMs))
+      return `${name === "maxWaitMs" ? maxPrefix : prefix}${name}, ${meaning}, must be a whole number of milliseconds from ${CUA_WAIT_LIMITS.leastMs} to ${mostMs}.`;
   }
   const { maxWaitMs, idleWaitMs } = fields;
   if (typeof maxWaitMs === "number" && typeof idleWaitMs === "number" && idleWaitMs > maxWaitMs)
@@ -97,8 +126,9 @@ export function waitFieldsReason(
 
 /**
  * The wait lengths a session applies: the study's values, or their defaults. The idle wait never
- * outlasts the longest wait, which on a desktop with speech defaults to 30 s. Throws a RangeError
- * for fields waitFieldsReason refuses.
+ * outlasts the longest wait, which on a desktop with speech defaults to 30 s. A watch grows to
+ * actor.maxWaitMs, else 10 minutes, and looks every idle wait, at most every 30 s on a desktop with
+ * speech. Throws a RangeError for fields waitFieldsReason refuses.
  */
 export function resolveWaitSettings(options: {
   readonly maxWaitMs?: number | undefined;
@@ -108,24 +138,33 @@ export function resolveWaitSettings(options: {
   const reason = waitFieldsReason(options, "");
   if (reason !== null) throw new RangeError(reason);
   const maxWaitMs = options.maxWaitMs ?? defaultMaxWaitMs(options.speechEnabled);
+  const idleWaitMs = Math.min(options.idleWaitMs ?? CUA_WAIT_LIMITS.defaultIdleMs, maxWaitMs);
   return {
     maxWaitMs,
-    idleWaitMs: Math.min(options.idleWaitMs ?? CUA_WAIT_LIMITS.defaultIdleMs, maxWaitMs),
+    idleWaitMs,
     settleWaitMs: CUA_WAIT_LIMITS.settleMs,
+    watchMaxMs: options.maxWaitMs ?? CUA_WAIT_LIMITS.defaultWatchMaxMs,
+    lookEveryMs: options.speechEnabled
+      ? Math.min(idleWaitMs, CUA_WAIT_LIMITS.speechLookMs)
+      : idleWaitMs,
   };
 }
 
 /**
  * How long one wait lasts and the desktop calls it takes. A wait that names no duration lasts
  * idleWaitMs when its turn only waits or takes screenshots (`idleTurn`), and settleWaitMs after an
- * action. A longer wait than maxWaitMs is shortened to it. 70 s is sent as 30 s, 30 s and 10 s.
+ * action. A longer wait than maxWaitMs is shortened to it, and a negative one lasts 0 ms. 70 s is
+ * sent as 30 s, 30 s and 10 s.
  */
 export function planWait(
   settings: WaitSettings,
   requestedMs: number | undefined,
   idleTurn: boolean,
 ): PlannedWait {
-  const askedMs = requestedMs ?? (idleTurn ? settings.idleWaitMs : settings.settleWaitMs);
+  const askedMs = Math.max(
+    0,
+    requestedMs ?? (idleTurn ? settings.idleWaitMs : settings.settleWaitMs),
+  );
   const ms = Math.min(askedMs, settings.maxWaitMs);
   const { stepMs } = CUA_WAIT_LIMITS;
   const steps: number[] = [];

@@ -44,9 +44,13 @@ arrive as `heardSpeech` observations with an utterance ID, `speaker_audio` sourc
 and duration. A participant can use the existing `wait` action while listening.
 Hearing something counts as progress even when the screen stays unchanged.
 Heard speech reaches the participant with its next screenshot. The desktop keeps
-at most 8 utterances until then, and one more ends the desktop session. A wait
-takes no screenshot, so on a desktop with speech one wait action lasts at most 30
-seconds unless the study sets
+at most 8 utterances until then, and one more ends the desktop session. While a
+participant's turn only waits, humanish
+[looks at the screen](/docs/study-files#let-a-participant-wait-for-the-screen-to-change)
+at least every 30 seconds on a desktop with speech, and the wait ends when the
+participant hears speech. A wait in a turn with another action takes no
+screenshot, so on a desktop with speech it lasts at most 30 seconds unless the
+study sets
 [`actor.maxWaitMs`](/docs/study-files#choose-the-actor-and-its-task-in-actor).
 Raise it only when other callers say little while a participant waits.
 

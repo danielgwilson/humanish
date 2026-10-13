@@ -29,7 +29,11 @@ function frame(): Buffer {
   return PNG.sync.write(new PNG({ width: 2, height: 2 }));
 }
 
-/** A participant that asks for one wait, then finishes. */
+// A turn that only waits is watched by the loop and sends no wait to the desktop
+// (idle-watch.test.ts). These participants click, then wait, so the wait goes to the desktop.
+const CLICK: CuaAction = { kind: "click", x: 1, y: 1 };
+
+/** A participant that clicks and asks for one wait, then finishes. */
 function waitingProvider(ms: number): CuaProvider & { readonly seen: CuaTurnRequest[] } {
   const seen: CuaTurnRequest[] = [];
   return {
@@ -40,7 +44,7 @@ function waitingProvider(ms: number): CuaProvider & { readonly seen: CuaTurnRequ
     async nextTurn(req) {
       seen.push(req);
       return seen.length === 1
-        ? { actions: [{ kind: "wait", ms }], pendingSafetyChecks: [], done: false }
+        ? { actions: [CLICK, { kind: "wait", ms }], pendingSafetyChecks: [], done: false }
         : { actions: [], pendingSafetyChecks: [], done: true, message: "done" };
     },
   };
@@ -59,6 +63,7 @@ function startWait(
   } = {},
 ): { done: Promise<CuaLoopResult>; calls: CuaAction[]; seen: CuaTurnRequest[] } {
   const provider = waitingProvider(ms);
+  // The desktop calls after the click, which is not counted.
   const calls: CuaAction[] = [];
   let t = 0;
   const done = runComputerUseLoop({
@@ -68,6 +73,7 @@ function startWait(
       ...(options.speechEnabled === true ? { speechEnabled: true } : {}),
       observe: async () => ({ screenshot: frame(), stateSignature: `s${calls.length}` }),
       execute: async (action) => {
+        if (action.kind === "click") return;
         calls.push(action);
         await options.execute?.(action, calls.length);
       },
@@ -95,7 +101,7 @@ const shortenedNotices = (result: CuaLoopResult) =>
 
 afterEach(() => vi.useRealTimers());
 
-describe("a participant's long wait", () => {
+describe("a participant's long wait after an action", () => {
   it("sends steps no longer than one desktop call accepts", () => {
     expect(CUA_WAIT_LIMITS.stepMs).toBe(BROWSER_CONTROL_LIMITS.waitMs);
   });
@@ -114,7 +120,7 @@ describe("a participant's long wait", () => {
     expect(seen[1]?.contextHint ?? "").not.toContain("shortened");
     expect(
       result.trace.items.filter((item) => item.kind === "ui_action").map((item) => item.title),
-    ).toEqual(["wait 70000ms"]);
+    ).toEqual(["click (1, 1)", "wait 70000ms"]);
     expect(shortenedNotices(result)).toEqual([]);
   });
 
@@ -195,7 +201,7 @@ describe("a participant's long wait", () => {
     expect(shortenedNotices(result)).toEqual([]);
   });
 
-  it.each([Number.NaN, -1, 0, 999, 1.5, 600_001, Infinity])(
+  it.each([Number.NaN, -1, 0, 999, 1.5, 3_600_001, Infinity])(
     "refuses a longest wait of %s before the session starts",
     async (maxWaitMs) => {
       const { done, calls, seen } = startWait(1_000, { maxWaitMs });

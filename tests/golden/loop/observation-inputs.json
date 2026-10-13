@@ -23,8 +23,8 @@
           "notes": "3 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
-        "completedAt": "1970-01-01T00:00:20.000Z",
-        "durationMs": 19000,
+        "completedAt": "1970-01-01T00:00:25.000Z",
+        "durationMs": 24000,
         "status": "passed",
         "completionReason": "goal_satisfied",
         "reason": "Done after replying.",
@@ -59,10 +59,11 @@
             "at": "1970-01-01T00:00:03.000Z"
           },
           {
-            "id": "ui_action-002",
-            "kind": "ui_action",
-            "lifecycle": "completed",
-            "title": "wait 1ms",
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "watching the screen",
+            "text": "until the screen changes or 1ms pass, looking every 5000ms and at the end; no model request until then",
             "at": "1970-01-01T00:00:07.000Z"
           },
           {
@@ -72,10 +73,23 @@
             "status": "ok",
             "title": "speech heard",
             "text": "My code is [scrubbed]",
-            "at": "1970-01-01T00:00:09.000Z"
+            "at": "1970-01-01T00:00:11.000Z"
           },
           {
-            "id": "screenshot-004",
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "wait 6000ms",
+            "watch": {
+              "limitMs": 1,
+              "askedMs": 1,
+              "wake": "speech",
+              "looks": 1
+            },
+            "at": "1970-01-01T00:00:13.000Z"
+          },
+          {
+            "id": "screenshot-005",
             "kind": "screenshot",
             "lifecycle": "completed",
             "title": "turn-01",
@@ -83,18 +97,26 @@
               "path": "screenshots/turn-01.png",
               "redaction": "none"
             },
-            "at": "1970-01-01T00:00:10.000Z"
+            "at": "1970-01-01T00:00:14.000Z"
           },
           {
-            "id": "ui_action-005",
+            "id": "notice-006",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "Your wait lasted 6 seconds and ended when you heard speech.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:17.000Z"
+          },
+          {
+            "id": "ui_action-007",
             "kind": "ui_action",
             "lifecycle": "completed",
             "title": "speak [13 chars]",
             "text": "Hello [scrubbed]",
-            "at": "1970-01-01T00:00:14.000Z"
+            "at": "1970-01-01T00:00:19.000Z"
           },
           {
-            "id": "screenshot-006",
+            "id": "screenshot-008",
             "kind": "screenshot",
             "lifecycle": "completed",
             "title": "turn-02",
@@ -102,15 +124,15 @@
               "path": "screenshots/turn-02.png",
               "redaction": "none"
             },
-            "at": "1970-01-01T00:00:16.000Z"
+            "at": "1970-01-01T00:00:21.000Z"
           },
           {
-            "id": "message-007",
+            "id": "message-009",
             "kind": "message",
             "lifecycle": "completed",
             "title": "message turn 3",
             "text": "Done after replying.",
-            "at": "1970-01-01T00:00:19.000Z"
+            "at": "1970-01-01T00:00:24.000Z"
           }
         ],
         "affordanceUse": {
@@ -147,19 +169,19 @@
       ["writeScreenshot","turn-00-start.png",15],
       ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"}}],
-      ["executor.execute",{"kind":"wait","ms":1}],
+      ["onTrace",2,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onScreenshot",15],
       ["writeScreenshot","turn-01.png",15],
-      ["onTrace",4,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same","heardSpeech":[{"id":"u1","source":"speaker_audio","text":"My code is PRIVATE","durationMs":700}]}}],
+      ["onTrace",5,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same","heardSpeech":[{"id":"u1","source":"speaker_audio","text":"My code is PRIVATE","durationMs":700}]},"contextHint":"Your wait lasted 6 seconds and ended when you heard speech."}],
       ["executor.execute",{"kind":"speak","text":"Hello PRIVATE"}],
       ["executor.observe",2],
       ["onObservedUrl",null],
       ["onScreenshot",15],
       ["writeScreenshot","turn-02.png",15],
-      ["onTrace",6,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["onTrace",8,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
       ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"}}],
       ["onMessage","Done after replying."]
     ]

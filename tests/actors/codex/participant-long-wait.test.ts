@@ -81,19 +81,27 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
   ),
 }));
 
-function frame(shade: number): Buffer {
-  const image = new PNG({ width: 2, height: 2 });
-  image.data[0] = shade;
-  image.data[3] = 255;
+/** A 160 x 160 light frame (100 tiles of 16 px), or the same with a row of 30 tiles added. */
+function frame(withRow: boolean): Buffer {
+  const image = new PNG({ width: 160, height: 160 });
+  image.data.fill(240);
+  if (withRow)
+    for (let at = 64 * 160 * 4; at < 112 * 160 * 4; at += 4) image.data.fill(20, at, at + 3);
   return PNG.sync.write(image);
 }
 
-/** One Codex participant that waits, then waves; the desktop records each call it receives. */
+const QUIET = frame(false);
+const NEW_ROW = frame(true);
+
+/**
+ * One Codex participant that asks for one wait, then waves. The loop's clock moves only when it
+ * sleeps, and the screen shows a new row from `changesAtMs`. The desktop records each call.
+ */
 async function waitInCall(
   waitMs: number,
-  maxWaitMs?: number,
-  speechEnabled = false,
+  options: { maxWaitMs?: number; speechEnabled?: boolean; changesAtMs?: number } = {},
 ): Promise<{ result: CuaLoopResult; executed: CuaAction[]; firstReply: Record<string, unknown> }> {
+  const { maxWaitMs, speechEnabled = false, changesAtMs = Infinity } = options;
   native.waitMs = waitMs;
   native.replies.length = 0;
   native.descriptions.length = 0;
@@ -103,23 +111,28 @@ async function waitInCall(
     ...(speechEnabled ? { speechEnabled: true } : {}),
   });
   const executed: CuaAction[] = [];
-  let shade = 0;
+  let t = 0;
   const result = await runComputerUseLoop({
     instructions: "Join the call and wait for the other person.",
     provider: participant.provider,
     executor: {
       ...(speechEnabled ? { speechEnabled: true } : {}),
-      observe: async () => ({ screenshot: frame(shade), stateSignature: String(shade) }),
+      observe: async () => {
+        const screenshot = t >= changesAtMs ? NEW_ROW : QUIET;
+        return { screenshot, stateSignature: screenshot === NEW_ROW ? "row" : "quiet" };
+      },
       execute: async (action) => {
         executed.push(action);
-        shade += 1;
       },
     },
     persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },
     redaction: defaultRedactionHooks,
-    timeoutMs: 20_000,
+    timeoutMs: 20 * 60_000,
     turnTimeoutMs: 5_000,
-    now: () => Date.now(),
+    now: () => t,
+    sleep: async (ms) => {
+      t += ms;
+    },
     writeScreenshot: async (name: string) => `screenshots/${name}`,
     ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
   });
@@ -131,55 +144,53 @@ async function waitInCall(
   };
 }
 
-const shortenedNotices = (result: CuaLoopResult) =>
-  result.trace.items.filter((item) => item.kind === "notice" && item.title === "wait shortened");
+const waitTitles = (result: CuaLoopResult) =>
+  result.trace.items
+    .filter((item) => item.kind === "ui_action" && item.title.startsWith("wait"))
+    .map((item) => [item.title, item.watch?.wake]);
 
 describe("a Codex participant that asks for a long wait", () => {
-  it("waits the whole minute in two desktop calls and keeps its session", async () => {
-    const { result, executed, firstReply } = await waitInCall(60_000);
+  it("gets its tool call back when the screen changes, with no wait sent to the desktop", async () => {
+    // A 5-minute wait is watched for 5 minutes, past the 2 minutes one wait sent to the desktop
+    // lasts by default. Looks every 5 s; the one at 40 s sees the new row, and the quick look at
+    // 40.5 s sees it still.
+    const { result, executed, firstReply } = await waitInCall(300_000, { changesAtMs: 40_000 });
 
     expect(result.completionReason).toBe("goal_satisfied");
-    expect(executed).toEqual([
-      { kind: "wait", ms: 30_000 },
-      { kind: "wait", ms: 30_000 },
-      { kind: "click", x: 1, y: 1 },
-    ]);
-    expect(shortenedNotices(result)).toEqual([]);
-    // The reply to that tool call acknowledges one completed action and needs no explanation.
+    expect(executed).toEqual([{ kind: "click", x: 1, y: 1 }]);
+    expect(waitTitles(result)).toEqual([["wait 40500ms", "changed"]]);
+    const watch = result.trace.items.find((item) => item.watch !== undefined)?.watch;
+    expect([watch?.askedMs, watch?.limitMs]).toEqual([300_000, 300_000]);
     expect(firstReply.acknowledgments).toEqual([{ index: 0, status: "completed" }]);
-    expect(firstReply.contextHint).toBeNull();
-    expect(native.descriptions[0]).toContain("at most 120000 ms");
+    expect(firstReply.contextHint).toBe(
+      "Your wait lasted 41 seconds and ended when the screen changed.",
+    );
   });
 
-  it("shortens a wait past the study's longest, says so in its reply and keeps its session", async () => {
-    const { result, executed, firstReply } = await waitInCall(300_000, 90_000);
+  it("is told its wait ended at its limit, and that the next one in a row can last longer", async () => {
+    const { result, firstReply } = await waitInCall(60_000);
 
     expect(result.completionReason).toBe("goal_satisfied");
-    expect(executed).toEqual([
-      { kind: "wait", ms: 30_000 },
-      { kind: "wait", ms: 30_000 },
-      { kind: "wait", ms: 30_000 },
-      { kind: "click", x: 1, y: 1 },
-    ]);
-    const shortened = shortenedNotices(result);
-    expect(shortened).toHaveLength(1);
-    expect(shortened[0]?.text).toContain("requested: 300000ms");
-    expect(shortened[0]?.text).toContain("waited: 90000ms");
-    expect(firstReply.acknowledgments).toEqual([{ index: 0, status: "completed" }]);
-    expect(firstReply.contextHint).toContain("shortened to 90000ms");
-    expect(native.descriptions[0]).toContain("at most 90000 ms");
+    expect(waitTitles(result)).toEqual([["wait 60000ms", "limit"]]);
+    expect(firstReply.contextHint).toBe(
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+    );
   });
 
-  it("is told and given 30 s on a desktop with speech when the study sets no longest wait", async () => {
-    const { result, executed, firstReply } = await waitInCall(60_000, undefined, true);
+  it.each([
+    { options: {}, perWait: 120_000, watched: 600_000 },
+    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000 },
+    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000 },
+  ])(
+    "is told the longest a call of only waits and a wait among other actions last: $watched and $perWait ms",
+    async ({ options, perWait, watched }) => {
+      await waitInCall(1_000, options);
 
-    expect(result.completionReason).toBe("goal_satisfied");
-    expect(executed).toEqual([
-      { kind: "wait", ms: 30_000 },
-      { kind: "click", x: 1, y: 1 },
-    ]);
-    expect(shortenedNotices(result)).toHaveLength(1);
-    expect(firstReply.contextHint).toContain("shortened to 30000ms");
-    expect(native.descriptions[0]).toContain("at most 30000 ms");
-  });
+      expect(native.descriptions[0]).toContain(
+        `after its waits' ms, together at most ${watched} ms`,
+      );
+      expect(native.descriptions[0]).toContain(`up to ${watched} ms`);
+      expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
+    },
+  );
 });

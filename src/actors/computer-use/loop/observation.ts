@@ -13,6 +13,15 @@ import { plural } from "../../../run/text.js";
 // the task funnel, the declared dwell window, and the checkpoint that runs before the first turn
 // and after every acted turn.
 
+/** What one look during a watch found (watch.ts). */
+export interface Look {
+  readonly observation: CuaObservation;
+  /** The look brought speech the participant had not heard. */
+  readonly speech: boolean;
+  /** A stopWhen rule, a pending dwell trigger or a newly completed task matched the look. */
+  readonly condition: boolean;
+}
+
 /** What a checkpoint found: a stop, or the observation the next turn reacts to. */
 export type Checkpoint =
   | { readonly stop: Stop }
@@ -47,9 +56,11 @@ export class DesktopObserver {
 
   /**
    * Observe, persist the frame, advance the task funnel, run a due dwell window, and check the
-   * harness stop conditions. Turn 0 is the initial observation, before any model turn.
+   * harness stop conditions. Turn 0 is the initial observation, before any model turn. `looked` is
+   * the look that ended a watch: it stands in for the observation, so the frame that woke the
+   * participant is the one it sees, and its URL and app state were already handed on at the look.
    */
-  async checkpoint(turnNumber: number): Promise<Checkpoint> {
+  async checkpoint(turnNumber: number, looked?: CuaObservation): Promise<Checkpoint> {
     const { session } = this;
     const { stopWhen } = session.settings;
     const opening = turnNumber === 0;
@@ -58,11 +69,14 @@ export class DesktopObserver {
       if (session.signal?.aborted) throw new CuaAbortError();
       session.phase = `observing UI state after turn ${turnNumber}`;
     }
-    let observation = this.handToHooks(
-      this.withHeardSpeech(
-        await this.observeBounded(opening ? "initial" : `after turn ${turnNumber}`),
-      ),
-    );
+    let observation =
+      looked === undefined
+        ? this.handToHooks(
+            this.withHeardSpeech(
+              await this.observeBounded(opening ? "initial" : `after turn ${turnNumber}`),
+            ),
+          )
+        : this.handFrameToHook(looked);
     // Fail closed before a vision provider is asked to reason over a missing frame.
     const frameless = missingFrame(session.provider, observation);
     if (frameless !== undefined) return { stop: frameless };
@@ -100,11 +114,51 @@ export class DesktopObserver {
    * orchestrator and is never persisted.
    */
   private handToHooks(observation: CuaObservation): CuaObservation {
-    const { onObservedUrl, onScreenshot } = this.session.settings;
+    this.handUrlOn(observation);
+    return this.handFrameToHook(observation);
+  }
+
+  private handUrlOn(observation: CuaObservation): void {
+    const { onObservedUrl } = this.session.settings;
     onObservedUrl?.(observation.url);
-    if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
     this.noteAppState(observation);
+  }
+
+  // The frame tap reads the lobby code with a model call outside the study budget, so it gets only
+  // frames a turn receives, never every look of a watch.
+  private handFrameToHook(observation: CuaObservation): CuaObservation {
+    const { onScreenshot } = this.session.settings;
+    if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
     return observation;
+  }
+
+  /**
+   * One look at the screen while the participant waits. Speech it brings is kept for the next
+   * request, its URL goes to the URL tap (the shared-world lobby latch) and a task it completes is
+   * recorded. Detects, without acting on, the conditions the checkpoint acts on; the watch that
+   * asked hands a look that ends it to the checkpoint. Nothing is persisted.
+   */
+  async look(turnNumber: number): Promise<Look> {
+    const { session } = this;
+    if (session.signal?.aborted) throw new CuaAbortError();
+    session.phase = `looking at the screen during turn ${turnNumber}`;
+    const heardBefore = this.pendingHeardSpeech.length;
+    const observation = this.withHeardSpeech(
+      await this.observeBounded(`look during turn ${turnNumber}`),
+    );
+    this.handUrlOn(observation);
+    const evidence = stopObservationOf(observation);
+    const { stopWhen, dwell } = session.settings;
+    const completedTask = this.observeTasks(observation, turnNumber);
+    const dwellDue =
+      dwell?.when !== undefined &&
+      !this.dwellDone &&
+      evaluateStopWhen(dwell.when, evidence) !== undefined;
+    return {
+      observation,
+      speech: this.pendingHeardSpeech.length > heardBefore,
+      condition: completedTask || dwellDue || evaluateStopWhen(stopWhen, evidence) !== undefined,
+    };
   }
 
   /**
@@ -246,11 +300,13 @@ export class DesktopObserver {
   }
 
   // Evaluated before the stopWhen check each turn so a final task whose criterion coincides with
-  // the stop condition still lands in the funnel of the very turn that ends the session.
-  private observeTasks(observation: CuaObservation, turnNumber: number): void {
+  // the stop condition still lands in the funnel of the very turn that ends the session. Returns
+  // whether a task completed.
+  private observeTasks(observation: CuaObservation, turnNumber: number): boolean {
     const { taskTracker } = this.session;
-    if (taskTracker === undefined) return;
-    for (const completion of taskTracker.observe(stopObservationOf(observation), turnNumber)) {
+    if (taskTracker === undefined) return false;
+    const completions = taskTracker.observe(stopObservationOf(observation), turnNumber);
+    for (const completion of completions) {
       // The id is researcher-authored config and the kinds are rule-type names; the matched values
       // (a URL, page text) never appear here: the same discipline as the stopWhen notice.
       this.session.trace.record("notice", () =>
@@ -263,6 +319,7 @@ export class DesktopObserver {
         ),
       );
     }
+    return completions.length > 0;
   }
 
   // The declared observation window. The harness holds, looks, and takes nothing back to

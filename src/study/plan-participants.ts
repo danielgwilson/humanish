@@ -53,7 +53,7 @@ export interface DesktopParticipant extends Participant {
     readonly maxWaitMs?: number;
     /**
      * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts
-     * while the participant only waits.
+     * while the participant only waits, and how often the loop looks at its screen then.
      */
     readonly idleWaitMs?: number;
     /**

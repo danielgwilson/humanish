@@ -116,7 +116,7 @@ const ACTOR_ROWS: readonly InertRow[] = [
   {
     field: "actor.idleWaitMs",
     reason:
-      "how long a computer-use participant's wait with no duration lasts; needs route: computer-use or shared-world",
+      "how long a computer-use participant's wait with no duration lasts and how often it looks while it waits; needs route: computer-use or shared-world",
     applies: (config, routes) =>
       config.actor?.idleWaitMs !== undefined && !routes.cua && !routes.shared,
   },

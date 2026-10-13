@@ -235,13 +235,15 @@ it("stalled provider turns, observations and idle actions", async () => {
       }),
       options: bounds,
     }),
-    idleWaitSkipped: (probe) => ({
+    // A turn that only takes a screenshot asks for no wait time, so the loop sends it to the
+    // desktop; a turn with a wait would be watched and send nothing.
+    idleActionSkipped: (probe) => ({
       provider: scriptedProvider(probe, [
-        turn({ actions: [{ kind: "wait", ms: 1 }] }),
+        turn({ actions: [{ kind: "screenshot" }] }),
         done("Finished."),
       ]),
       executor: sequenceExecutor(probe, framed("s0", "s1"), (action) =>
-        action.kind === "wait" ? hang() : undefined,
+        action.kind === "screenshot" ? hang() : undefined,
       ),
       options: bounds,
     }),

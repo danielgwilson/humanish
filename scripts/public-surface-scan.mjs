@@ -186,6 +186,25 @@ const approvedBinaryAssets = new Map([
     "site/public/study/excalidraw-lane4.jpg",
     "8a41a212132569a0cc5d7ed5b143180cf3468733fee01687baf45aa62e4bcd10",
   ],
+  // Hosted-desktop frames of public pages (example.com, the humanish TUI) that the screen-change
+  // tests read, copied unchanged from kept live runs that tests/fixtures/frame-change/README.md
+  // names, and checked for private content before their bytes were approved.
+  [
+    "tests/fixtures/frame-change/example-clock-2229.png",
+    "f783f2b1018602bb08d0a54a2fc76dfeee02445ab0700877d4012354c451bb88",
+  ],
+  [
+    "tests/fixtures/frame-change/example-clock-2230.png",
+    "25938836eac7585435cf8a67173ea4cf4467d2b3a7c8d7bfd4b30fa5c37e03b3",
+  ],
+  [
+    "tests/fixtures/frame-change/tui-dry-run-selected.png",
+    "f718d65a0b0dd8e6a3c71113dad8eafc64e41b2662c8416543fbf183110c726e",
+  ],
+  [
+    "tests/fixtures/frame-change/tui-live-run-selected.png",
+    "68c10bfba2e475453a9a76c51eb9d739bc779cf8b28e567de08892eb45da9c01",
+  ],
 ]);
 // Captures the site publishes from kept run bundles are pinned in a generated manifest
 // (scripts/site-run-assets-manifest.mjs); each entry is a reviewed frame from a named run.

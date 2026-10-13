@@ -296,8 +296,8 @@ export interface CuaLoopOptions {
   /** Injected clock (ms). Lets tests drive deadlines deterministically. */
   now: () => number;
   /**
-   * Cancellation. Checked before each turn, each action and each dwell frame, and raced against
-   * every provider and desktop call.
+   * Cancellation. Checked before each turn, each action, each dwell frame and each look of a
+   * watched turn, and raced against every provider and desktop call and each pause of a watch.
    */
   signal?: AbortSignal;
   /** Idle streak (no material action) that trips the backstop. Default 24. */
@@ -305,19 +305,25 @@ export interface CuaLoopOptions {
   /** No-progress streak that trips the backstop. Default 20. */
   noProgressSteps?: number;
   /**
-   * The longest one `wait` action lasts, in ms: the study's actor.maxWaitMs. A longer wait is
-   * shortened to it, the trace records a `wait shortened` notice, and the participant is told on its
-   * next request. A wait longer than one desktop call carries is sent in steps. A whole number from
-   * 1000 to 600000; any other value throws a RangeError before the session starts. Default
-   * defaultMaxWaitMs: 120000, or 30000 when the executor is speechEnabled.
+   * The longest one `wait` action lasts, in ms: the study's actor.maxWaitMs. In a turn with another
+   * action a longer wait is shortened to it, the trace records a `wait shortened` notice, and the
+   * participant is told on its next request; a wait longer than one desktop call carries is sent in
+   * steps. A turn that only waits or takes screenshots is watched instead (loop/watch.ts): it first
+   * lasts its waits' lengths, the named ones together up to this or, when it is not set, 600000,
+   * and each further such turn in a row that ends with no change lasts twice as long, up to that
+   * or the turn's own length. A whole number from 1000 to 3600000; any other value throws a
+   * RangeError before the session starts. Default 120000, or 30000 when the executor is speechEnabled, for one wait sent to the
+   * desktop, and 600000 for a watch.
    */
   maxWaitMs?: number;
   /**
    * How long a `wait` that names no duration lasts, in ms, when its turn only waits or takes
-   * screenshots: the study's actor.idleWaitMs. After an action in the same turn such a wait lasts
-   * 500 ms. A whole number from 1000 to 600000 and no longer than an explicit maxWaitMs; any other
-   * value throws a RangeError before the session starts. Default 5000. The session never applies
-   * more than its maxWaitMs, and the trace records the applied lengths as `waitSettings`.
+   * screenshots: the study's actor.idleWaitMs. It is also how often the loop looks at the screen
+   * while such a turn is watched, at most every 30000 ms when the executor is speechEnabled. After
+   * an action in the same turn such a wait lasts 500 ms. A whole number from 1000 to 600000 and no
+   * longer than an explicit maxWaitMs; any other value throws a RangeError before the session
+   * starts. Default 5000. The session never applies more than its maxWaitMs, and the trace records
+   * the applied lengths as `waitSettings`.
    */
   idleWaitMs?: number;
   /**
@@ -346,9 +352,10 @@ export interface CuaLoopOptions {
   /** Persist a screenshot (raw or redacted per redactScreenshots), returning the trace ref path. */
   writeScreenshot?: (name: string, bytes: Buffer) => Promise<string>;
   /**
-   * Deterministic harness-owned success guards. Evaluated after the initial observation and after
-   * every post-action observation, before another model turn is requested. This keeps a participant from
-   * wandering after the product already reached an app-visible endpoint.
+   * Deterministic harness-owned success guards. Evaluated after the initial observation, after
+   * every post-action observation and at each look while a turn is watched, before another model
+   * turn is requested. This keeps a participant from wandering after the product already reached an
+   * app-visible endpoint.
    */
   stopWhen?: StopWhen;
   /**
@@ -358,7 +365,10 @@ export interface CuaLoopOptions {
    * most once per session and never past the session budget.
    */
   dwell?: DwellWindow;
-  /** Injected pause for the dwell window's cadence; tests advance their clock through it. */
+  /**
+   * Injected pause for the dwell window's cadence and the looks of a watched turn; tests advance
+   * their clock through it.
+   */
   sleep?: (ms: number) => Promise<void>;
   /**
    * What each turn tells the participant about the time (loop/clock.ts). With `timeZone`, a time zone
@@ -418,7 +428,7 @@ export interface CuaLoopOptions {
    * Trace snapshot for a watcher: the redacted items recorded so far, with the running
    * usage so a run can be priced in flight. Called after each checkpoint's screenshot (the initial
    * observation and every acted turn, so a flush never shows an action without the frame before
-   * it), after each dwell frame, and after a closing request. The array is a fresh copy; its items
+   * it), after each dwell frame, when a watched turn starts watching, and after a closing request. The array is a fresh copy; its items
    * are the objects the final trace persists. Not awaited, so a slow flush cannot stall a turn.
    * Default: no-op.
    */
@@ -437,8 +447,8 @@ export interface CuaLoopOptions {
 export interface LoopTaps {
   /**
    * Runtime-only URL tap: called with `observation.url` for each observation a turn may receive
-   * (the initial one, each post-action one and the one after a dwell window). The loop never
-   * persists the raw URL. Default: no-op.
+   * (the initial one, each post-action one and the one after a dwell window) and each look while a
+   * turn is watched. The loop never persists the raw URL. Default: no-op.
    *
    * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
    * latches the host participant's lobby URL and checks that each follower reached the same lobby.
@@ -456,7 +466,8 @@ export interface LoopTaps {
   onMessage?: (text: string) => void;
   /**
    * Runtime-only frame tap: called with each raw frame a turn may receive and each dwell-window
-   * frame, before any redaction. The buffer stays in memory; screenshot persistence is separate and
+   * frame, before any redaction. Of a watched turn's looks, only the one that ended the watch is a
+   * frame a turn receives. The buffer stays in memory; screenshot persistence is separate and
    * follows redactScreenshots. Not awaited. Default: no-op.
    *
    * Built-in caller: the external-public handoff reads the lobby code off each participant's own

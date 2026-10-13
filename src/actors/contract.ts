@@ -159,6 +159,36 @@ export interface ActorTraceItem {
   /** On a computer-use `screenshot` item: the page that observation was on. Additive: absent when
    *  the observation read no URL, on other producers and in older bundles. */
   page?: TracePage;
+  /** On the computer-use `ui_action` of the wait during which a watch ended: the watch the loop
+   *  ran in place of a turn that only waited. Additive: absent on plain waits, on other items and
+   *  producers, and in older bundles. */
+  watch?: ActorWatch;
+}
+
+/**
+ * A watch over the screen while a computer-use participant only waited: the loop looked every
+ * idle wait and asked the model again when the screen changed and held still, or at the limit.
+ */
+export interface ActorWatch {
+  /** How long the watch could last, in milliseconds. */
+  limitMs: number;
+  /**
+   * How long the turn's waits asked for, in milliseconds: the lengths they named, and the idle
+   * wait for each that named none. Above limitMs when the named waits together passed the longest
+   * a watch grows to (actor.maxWaitMs, else 10 minutes).
+   */
+  askedMs: number;
+  /**
+   * Why it ended: `changed` (a change held still), `speech` (the participant heard speech),
+   * `condition` (a study stop condition, dwell trigger or task matched a look), `limit` (its time
+   * passed with no change holding still), `clock` (the participant's wind-down or end arrived),
+   * `stalled` (a look got no frame), `stopped` (the study budget or the session's time ran out).
+   */
+  wake: "changed" | "speech" | "condition" | "limit" | "clock" | "stalled" | "stopped";
+  /** How many times it looked at the screen. */
+  looks: number;
+  /** The region of change that woke it, in pixels from the frame's top-left; coordinates only. */
+  area?: { x: number; y: number; width: number; height: number };
 }
 
 export interface ActorCapabilities {
