@@ -25,12 +25,17 @@ Observer commands may add derived artifacts:
 ```
 
 `run.json` remains the source bundle. `observer/observer-data.json`
-(`humanish.observer-data.v2`) is the normalized view model consumed by the Observer,
-with every participant except their trace items and the screenshot entries of their
-artifact list. A participant working for hours records thousands of items and a
-screenshot each turn, so these are most of a long run's bytes; apart, the saved file
-stays small enough for `verify` to read. The items stay in the run's traces
-(`actors/<stream>.json`). `events.ndjson` is the appendable event stream
+(`humanish.observer-data.v3`) is the normalized view model consumed by the Observer,
+with every participant except their trace items, the screenshot entries of their
+artifact list, and their per-request lists (`tokenUsage.turns`, `conversation.requests`
+and `providerRequests`, `REQUEST_LISTS` in `src/run/stream-trace.ts`), which no view
+shows. A participant working for hours records thousands of items and a screenshot each
+turn and makes a model request every few seconds, so these are most of a long run's
+bytes; apart, the saved file stays small enough for `verify` to read, and a flush does
+not rewrite them. The items and lists stay in the run's traces (`actors/<stream>.json`).
+`buildObserverData` leaves the lists out of every projection: observer-data.json, the
+page's data slot, the served feed and the HTML export. The page's validator admits an
+account participant's `executionProfile` without its receipts. `events.ndjson` is the appendable event stream
 contract that live adapters update while a run is active.
 
 `observer/index.html` carries both parts: the data slot holds observer-data.json's
@@ -41,9 +46,13 @@ trace items compress about eight times. The page joins the two before it renders
 (`joinObserverData` in `src/observer/participant-items.ts`), so every view reads the
 same data as before. A stream whose screenshot entries moved records how many in
 `screenshotArtifacts`, and the page renders nothing from items that are another
-run's or miss a participant's items or screenshot entries. The server answers a
-saved v2 observer-data.json that leaves items out as unavailable, since it has no
-items to join.
+run's or miss a participant's items or screenshot entries. The page reads only v3
+data: it checks the schema in the data slot and the feed before it validates
+(`observer/lib/data.ts`). A saved observer-data.json is read as v3
+(`observerDataFromSaved`): a v1 file, which holds the items, without its lists, and
+a v2 or v3 file only when no participant has items to join; the server answers one
+that leaves items out as unavailable. `humanish export` rebuilds a page saved as v2
+from the run and its traces, as it rebuilds a current one.
 
 ## Stream Model
 
@@ -281,7 +290,7 @@ These remain adapter work:
 ## The rendering layer
 
 The renderer is the `observer/` workspace: a Vite single-file build on the
-`@humanish` registry tokens, frozen against `humanish.observer-data.v2`
+`@humanish` registry tokens, frozen against `humanish.observer-data.v3`
 (`tests/observer/data-contract.test.ts`). The root build copies the workspace
 artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
 artifact auto-builds, and an unconditional preflight at CLI startup makes a

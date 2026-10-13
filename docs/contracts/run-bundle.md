@@ -1,6 +1,6 @@
 # Run Bundle Contract
 
-`humanish.run-bundle.v3` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
+`humanish.run-bundle.v4` is the evidence contract. The TypeScript shape in `src/run/bundle.ts`
 (with `streams[]` in `src/run/streams.ts` and `sharedWorld` as `SharedWorldEvidence` in
 `src/run/shared-world-evidence.ts`) and the fail-closed checks in `src/verify/verify.ts` are the
 source of truth. This page explains the stable public fields and the extension rules; it does not
@@ -39,7 +39,8 @@ trace:
 
 run.json keeps every field readers list runs by: each stream's status, judged status,
 assignment and geometry, and the actor's status, completion reason, counts, persona, debrief,
-impressions, token usage and estimated cost. Each trace is written once.
+impressions, token usage totals and estimated cost. Each trace is written once. From v4 the
+per-request lists are only in the trace file ([Per-request lists](#per-request-lists)).
 
 `trace.path` must be one of those trace file names (`actor.json`, `actors/<name>.json`,
 `actor-<name>.json`, with `<name>` a plain file name); `isStreamTracePath` in
@@ -48,7 +49,7 @@ it. Any other path, such as `observer/index.html`, fails the shape check.
 
 A reader outside humanish loads a run through the package's `loadRunBundle(cwd, run)`, with `run`
 a run id or `latest`: it returns run.json with every trace file and live file joined and checked
-as below, for v1, v2 and v3 bundles, and throws an Error named `StreamTraceRefusedError` for a
+as below, for v1, v2, v3 and v4 bundles, with each participant's per-request lists, and throws an Error named `StreamTraceRefusedError` for a
 file that does not match its index. Inside humanish, readers load a stream through
 `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
 An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
@@ -82,8 +83,8 @@ stream with a `liveActor`:
   `streams[]` (from 1). Each line is one trace item as JSON, scrubbed of the run's raw sandbox ids
   as it is appended. A live file is never truncated or rewritten;
 - in run.json, `liveActor` as `humanish.live-actor.v2`: its summary fields (`updatedAt`,
-  `persona`, `tokenUsage`, `ids`, `executionProfile`, `providerRequests`, `historyTurnsOmitted`,
-  `estimatedCost`) and, in place of `items`, the index of the prefix written so far:
+  `persona`, `tokenUsage`, `ids`, `executionProfile`, `historyTurnsOmitted`, `estimatedCost`, and
+  in v3 `providerRequests`) and, in place of `items`, the index of the prefix written so far:
 
 ```yaml
 liveActor:
@@ -122,7 +123,7 @@ Readers load live items through the same loader as traces: `loadStreamTraces` re
 indexed bytes of the live file (bytes appended after run.json was written are not read), refuses
 them unless their size, sha256 and line count match the index and each line is a JSON object,
 and returns the stream with `liveActor.items` and without `itemsFile`. It refuses a `liveActor`
-schema it does not know, and inline live items (`humanish.live-actor.v1`) in a v3 run.json. A
+schema it does not know, and inline live items (`humanish.live-actor.v1`) in a v3 or v4 run.json. A
 reader that cannot read a live file reads run.json again once and loads that bundle instead, since
 the writer may have removed a superseded generation, or every live file at finish, after the
 reader read run.json. v1 and v2 run.json keep `liveActor.items` inline (`humanish.live-actor.v1`)
@@ -138,15 +139,88 @@ used as a bundle answers 404 with the reason, never the saved projection. In saf
 (`observe --all --safe`) every read is checked against the files admitted with the run's
 share_ready verification, so a run.json changed after admission is refused and the admitted
 projection is served.
-observer-data.json is built from the loaded bundle. From 0.124.0 it is
-`humanish.observer-data.v2`: the same data without each participant's trace items, which stay in
-the traces (docs/architecture/observer.md).
+observer-data.json is built from the loaded bundle. From 0.124.0 it leaves out each participant's
+trace items, which stay in the traces, and from this release it is `humanish.observer-data.v3`,
+which also leaves out each participant's per-request lists (docs/architecture/observer.md).
 
-Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a v2 or v3 run.json by its
-schema (`run schema` fails in verify, analysis refuses the source); 0.123.0 and 0.124.0 read v1
-and v2 and refuse v3 the same way. This release reads v1 and v2 bundles as they are, with no
-migration. An exported copy (`humanish export --format bundle`) is written as v3 whatever the
-source version.
+## Per-request lists
+
+From v4, three lists that gain one entry per model request are only in each participant's trace
+file: `tokenUsage.turns` (each request's usage), `conversation.requests` (each request's mode and,
+in explicit_context, what it carried) and `providerRequests` (an account participant's receipt for
+each dispatch). Before v4 run.json held a copy of each beside the trace file's, and a flush wrote
+every running participant's usage rows into run.json and observer-data.json. A synthetic run of
+30 participants making 2,880 requests each, written through the run writer, leaves a run.json of
+about 0.1 MB, where the same run with the lists was 16 MB with threaded conversations and 42 MB
+with account receipts. `REQUEST_LISTS` in `src/run/stream-trace.ts` names the three paths, and the
+writer, the loader and the Observer projection read it.
+
+The writer (`splitStreamTraces`) writes a finished participant's trace file as before, lists
+included, and run.json's `streams[].actor` without `items` and without the three lists:
+`tokenUsage` keeps its totals and `conversation` its `mode` and `summarizedTurns`.
+
+For a running participant, run.json's `liveActor` holds no `tokenUsage.turns` and no
+`providerRequests`. When it has `tokenUsage` and a model id in `ids.model`, the writer prices its
+rows before leaving them out and records the figure as `liveActor.estimatedCost`
+(`humanish.actor-estimated-cost.v1`, from `estimateActorCostForExecution` in
+`src/run/pricing.ts`), in place of any estimate the producer passed. The long-context tier prices
+a request by its own input size, so the totals alone can price a long session at under half its
+cost. An account participant's estimate is a null figure with the reason
+`account_billing_unknown`.
+
+```yaml
+liveActor:
+  schema: humanish.live-actor.v2
+  updatedAt: "<ISO timestamp>"
+  tokenUsage: { input: 412000, output: 9100, cachedInput: 380000, cacheWriteInput: 21000 }
+  ids: { model: gpt-5.6-sol }
+  estimatedCost:
+    schema: humanish.actor-estimated-cost.v1
+    estimatedCostUsd: 0.4123
+    ratesAsOf: "2026-09-03"
+    source: "<rate source>"
+  itemsFile: { path: live/1.1.ndjson, generation: 1, items: 4210, bytes: 1048211, sha256: "<hex>" }
+```
+
+The rows and receipts are written once, in the trace file, when the participant finishes. A run
+interrupted before then keeps each running participant's totals, estimate and live file. No file
+holds that participant's rows or receipts, including a receipt with `usageComplete: false` or
+`cleanup: "unconfirmed"`, so neither the trace path nor `loadRunBundle` recovers them.
+
+The loader joins the lists back for every indexed stream, whatever its version: each list the
+trace file holds goes into run.json's `tokenUsage` or `conversation` when run.json has that
+object, and `providerRequests` at the actor's top level. A v2 or v3 writer wrote run.json's copy
+and the file's from one actor, so their result does not change. A trace file whose `conversation`
+has no `requests` list, or that holds one of the three as something other than a list, is
+refused.
+
+Which writer rules the loader applies depends on the version run.json declares. A run.json that
+breaks one did not come from that version's writer, and the stream is refused before any file is
+read:
+
+| Rule                                                        | v1      | v2      | v3      | v4      |
+| ----------------------------------------------------------- | ------- | ------- | ------- | ------- |
+| Two streams index one trace file                            | refused | refused | refused | refused |
+| An actor without a trace index                              | read    | refused | refused | refused |
+| `liveActor` in a run whose `outcome.state` is `finished`    | read    | refused | refused | refused |
+| Inline live items (`humanish.live-actor.v1`)                | read    | read    | refused | refused |
+| One of the three lists in run.json's `actor` or `liveActor` | read    | read    | read    | refused |
+
+A reader that shows a run (`displayedTraces`) shows a refused stream without the lists run.json
+held for it, so run detail never prices rows the loader refused. verify checks a running
+participant's `liveActor.estimatedCost` as it checks a finished one's: its schema, a `ratesAsOf`
+date and `source` beside a figure, and a reason beside a null figure. In a v4 run.json it no
+longer asks a running account participant for receipts; the check that account dollars stay
+unknown still applies, and the run still grades `local_only` with `RUN_NOT_FINISHED`.
+
+Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a later run.json by its schema
+(`run schema` fails in verify, analysis refuses the source); 0.123.0 and 0.124.0 read v1 and v2
+and refuse v3 and v4 the same way. 0.125.0 and 0.126.0 read v1, v2 and v3: their verify fails
+`run schema` on a v4 run.json, their analysis refuses it, and their `loadRunBundle` returns null.
+Their Observer server and run detail parse run.json without checking its schema and show a v4
+run without the lists; the 0.126.0 page refuses an account participant's data without receipts.
+This release reads v1, v2 and v3 bundles as they are, with no migration. An exported copy
+(`humanish export --format bundle`) is written as v4 whatever the source version.
 
 ## Purpose
 
@@ -157,7 +231,7 @@ feedback drafts and future public issues.
 ## Minimum Bundle Shape
 
 ```yaml
-schema: humanish.run-bundle.v3 # v2 and v1 bundles are still read
+schema: humanish.run-bundle.v4 # v3, v2 and v1 bundles are still read
 runId: "<core run id>"
 mode: "dry-run|live"
 simCount: 1
