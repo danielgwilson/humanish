@@ -125,12 +125,14 @@ type LiveActor = NonNullable<RunStream["liveActor"]>;
 /**
  * run.json's live actor: without the per-request lists, and with the estimate priced from the
  * rows it leaves out. Long-context pricing needs each request's input size, so a figure priced
- * from the totals alone could be under half the real one.
+ * from the totals alone could be under half the real one. A live actor read back from run.json
+ * has no rows and keeps the estimate they gave.
  */
 function liveSummary(live: LiveActor): LiveActor {
   const summary = withoutRequestLists(live);
   const model = live.ids?.model;
   if (live.tokenUsage === undefined || typeof model !== "string") return summary;
+  if (live.tokenUsage.turns === undefined && live.estimatedCost !== undefined) return summary;
   return {
     ...summary,
     estimatedCost: estimateActorCostForExecution(live.tokenUsage, model, live.executionProfile),

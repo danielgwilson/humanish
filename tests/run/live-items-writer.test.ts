@@ -319,6 +319,22 @@ describe("the run writer's per-request lists", () => {
     const trace = JSON.parse(await readText(finished!.trace!.path));
     expect(trace.tokenUsage.turns).toEqual(rows);
   });
+
+  it("keeps the estimate the rows gave when a later write carries the live actor as run.json holds it", async () => {
+    const snapshot = inProgress([item(1)]);
+    const [stream] = snapshot.streams;
+    const live = { ...stream!.liveActor!, tokenUsage: usage, ids: { model: "gpt-5.6-sol" } };
+    await withRun(async (run) => {
+      await run.writeSnapshot({ ...snapshot, streams: [{ ...stream!, liveActor: live }] });
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      await run.writeSnapshot({ ...snapshot, streams: stored.streams });
+    });
+    expect((await storedLive())?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+    const observer = JSON.parse(await readText("observer/observer-data.json")) as {
+      streams: RunStream[];
+    };
+    expect(observer.streams[0]!.liveActor?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+  });
 });
 
 describe("the run writer's scrub of sandbox ids in live files", () => {
