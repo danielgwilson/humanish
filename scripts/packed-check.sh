@@ -730,7 +730,9 @@ except ProcessLookupError:
     pass
 os.waitpid(pid, 0)
 open(out, "wb").write(buf)
-stopped = [l.decode(errors="replace").replace("^C", "").replace("\x03", "").strip()
+# The terminal echoes the Ctrl-C as "^C", which can land before the prompt's own line break, so a
+# stopped line is the text after the line's last echo.
+stopped = [l.decode(errors="replace").split("^C")[-1].replace("\x03", "").strip()
            for l in buf.splitlines() if l.strip().endswith(b"stopped")]
 print(f"sent={sent is not None} stopped={','.join(stopped) or 'none'}")
 PTY
