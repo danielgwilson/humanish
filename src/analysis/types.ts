@@ -4,7 +4,7 @@ import type {
   ActorStopCause,
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
-import type { CuaGoalSource } from "../actors/goal-source.js";
+import type { CuaEndpointSource } from "../actors/goal-source.js";
 import type { AutomaticAnalysisView } from "./job.js";
 import type { RunAnalysisCost } from "../run/run-cost.js";
 
@@ -62,7 +62,7 @@ export interface AnalysisParticipantInput {
     actorStatus: ActorStatus | null;
     completionReason: ActorCompletionReason | null;
     stopCause: ActorStopCause | null;
-    goalSource: CuaGoalSource | null;
+    goalSource: CuaEndpointSource | null;
     declaredOutcome: ParticipantDeclaredOutcome | null;
     taskOutcomes: Array<{
       taskId: string;

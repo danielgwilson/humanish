@@ -65,6 +65,96 @@ describe("computer-use completion provenance", () => {
     },
   );
 
+  describe("a session that passed at its scheduled end or session cap", () => {
+    function clockEnd(
+      stopCause: "scheduled_end" | "session_cap",
+      declaredOutcome: "reached" | "not_reached" | undefined,
+    ): RunBundle {
+      const run = bundle();
+      const trace = run.streams[0]!.actor!;
+      trace.stopCause = stopCause;
+      if (declaredOutcome !== undefined) trace.declaredOutcome = declaredOutcome;
+      return run;
+    }
+
+    it("labels one that declared it did not reach the goal by its clock end, apart from completions", () => {
+      const run = clockEnd("session_cap", "not_reached");
+      run.review.participants = tallyParticipantOutcomes(["passed"], [], [true]);
+      expect(run.review.participants).toMatchObject({ reachedGoal: 0, ranUntilEnd: 1 });
+      const observer = buildObserverData(run);
+      expect(observer.streams[0]!.statusLabel).toBe("Ran until session cap");
+      expect(observer.run.participantsLine).toBe(
+        "0/1 recorded completions, 1 ran until its session cap",
+      );
+      expect(withCuaReviewProvenance(run.review, run.streams).summary).not.toContain(
+        "reported reaching",
+      );
+    });
+
+    it("labels one that declared nothing at its scheduled end the same way", () => {
+      const run = clockEnd("scheduled_end", undefined);
+      expect(cuaGoalSource(run.streams[0]!.actor)).toBe("scheduled_end");
+      expect(
+        formatParticipantOutcomes(
+          tallyParticipantOutcomes(["passed"], [], [true]),
+          participantOutcomeDetails(run.streams),
+        ),
+      ).toBe("0/1 recorded completions, 1 ran until its scheduled end");
+    });
+
+    it("keeps one that declared it reached the goal among those that reported reaching it", () => {
+      const run = clockEnd("session_cap", "reached");
+      expect(cuaGoalSource(run.streams[0]!.actor)).toBe("participant_report");
+      const observer = buildObserverData(run);
+      expect(observer.streams[0]!.statusLabel).toBe("Reported complete");
+      expect(observer.run.participantsLine).toBe("1/1 reported reaching the goal");
+    });
+
+    it("groups clock ends of both kinds next to the completions", () => {
+      const streams = [
+        bundle().streams[0]!,
+        clockEnd("scheduled_end", "not_reached").streams[0]!,
+        clockEnd("session_cap", undefined).streams[0]!,
+        clockEnd("session_cap", "not_reached").streams[0]!,
+      ];
+      const outcomes = tallyParticipantOutcomes(
+        ["passed", "passed", "passed", "passed", "abandoned"],
+        [],
+        [false, true, true, true, false],
+      );
+      expect(formatParticipantOutcomes(outcomes, participantOutcomeDetails(streams))).toBe(
+        "1/5 reported reaching the goal, 2 ran until their session cap, 1 ran until its scheduled end, 1 gave up",
+      );
+      // Without the traces the count stays, and the line names both clock ends.
+      expect(formatParticipantOutcomes(outcomes)).toBe(
+        "1/5 reached the goal, 3 ran until their scheduled end or session cap, 1 gave up",
+      );
+    });
+
+    it("keeps an older bundle's count, which tallied the clock end as reaching the goal", () => {
+      const run = clockEnd("session_cap", "not_reached");
+      expect(run.review.participants).toMatchObject({ reachedGoal: 1 });
+      const original = structuredClone(run);
+      expect(buildObserverData(run).run.participantsLine).toBe(
+        "1/1 recorded completions (1 ran until its session cap)",
+      );
+      expect(withCuaReviewProvenance(run.review, run.streams).participants).toEqual(
+        original.review.participants,
+      );
+      expect(run).toEqual(original);
+    });
+
+    it("qualifies the completion line an older bundle wrote for a clock end in place, under one header", () => {
+      const run = clockEnd("session_cap", "not_reached");
+      // The summary 0.125.0 wrote for this run.
+      run.review.summary =
+        "1 participant took part: 1/1 reported reaching the goal. Reader: DID NOT REACH THE GOAL.";
+      expect(withCuaReviewProvenance(run.review, run.streams).summary).toBe(
+        "1 participant took part: 1/1 recorded completions (1 ran until its session cap). Reader: DID NOT REACH THE GOAL.",
+      );
+    });
+  });
+
   it("does not promote a quoted condition or an unfinished dwell to condition evidence", () => {
     const trace = bundle().streams[0]!.actor!;
     trace.items.push({

@@ -2,6 +2,7 @@ import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
+import { CUA_ENDPOINT_SOURCES } from "../actors/goal-source.js";
 import {
   ANALYSIS_LIMITS,
   EVIDENCE_LIMITS,
@@ -220,7 +221,7 @@ const analysisParticipantProvenanceSchema = z
       ])
       .nullable(),
     stopCause: z.enum(ACTOR_STOP_CAUSES).nullable(),
-    goalSource: z.enum(["participant_report", "condition_matched", "unavailable"]).nullable(),
+    goalSource: z.enum(CUA_ENDPOINT_SOURCES).nullable(),
     declaredOutcome: z.enum(["reached", "not_reached", "blocked"]).nullable(),
     taskOutcomes: z
       .array(

@@ -375,7 +375,8 @@ export interface StudyParticipantEntry {
   maxSessionMs?: number;
   /**
    * With endAfterMs or maxSessionMs: how long before the end each turn tells the participant the
-   * end time and the minutes left. Default 600000 (10 minutes).
+   * end time and the minutes left. Default: a quarter of the participant's window or cap, at most
+   * 600000 (10 minutes).
    */
   windDownMs?: number;
   /**

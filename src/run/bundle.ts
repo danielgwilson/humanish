@@ -544,8 +544,18 @@ export interface RunRerunLineage {
 export interface ParticipantOutcomes {
   /** Participants whose sessions reached a terminal state: the denominator for every count below. */
   total: number;
-  /** Recorded successful sessions; completion provenance depends on the actor and its evidence. */
+  /**
+   * Recorded successful sessions; completion provenance depends on the actor and its evidence. A
+   * computer-use session that passed at its scheduled end or session cap counts here only when
+   * its participant declared that it reached the goal; otherwise it counts in `ranUntilEnd`.
+   */
   reachedGoal: number;
+  /**
+   * Passed at a scheduled end or a session cap without declaring that they reached the goal: the
+   * closing report said `DID NOT REACH THE GOAL.` or declared nothing. Present when above 0.
+   * Bundles written before this count existed tallied them under `reachedGoal`.
+   */
+  ranUntilEnd?: number;
   /** Stopped trying. A finding about the product. */
   abandoned: number;
   /** Interrupted before reaching the goal, including session, spend and provider limits. */

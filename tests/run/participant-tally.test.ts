@@ -60,6 +60,26 @@ describe("tallyParticipantOutcomes", () => {
     });
   });
 
+  it("counts a pass at a clock end without a declared reach apart from reaching the goal", () => {
+    // The third participant ran until its cap too, but its report named a blocker, so it stays
+    // blocked.
+    const tally = tallyParticipantOutcomes(
+      ["passed", "passed", "blocked"],
+      [],
+      [true, false, true],
+    );
+    expect(tally).toEqual({
+      total: 3,
+      reachedGoal: 1,
+      ranUntilEnd: 1,
+      abandoned: 0,
+      ranOut: 0,
+      blocked: 1,
+      harnessFailed: 0,
+      reportedFriction: 0,
+    });
+  });
+
   it("counts friction across outcomes, because reaching the goal and finding it broken both happened", () => {
     // From a live two-persona run: both participants signed in, and the keyboard-first one also
     // reported that the signature step could not be completed without a mouse. "2/2 reached the

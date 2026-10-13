@@ -110,6 +110,9 @@ describe("a closing report at a session cap", () => {
     expect(run.trace.declaredOutcome).toBe("reached");
     // The paraphrase still counts as reported friction: that scan stays inclusive.
     expect(run.bundle.review?.participants).toMatchObject({ reachedGoal: 1, reportedFriction: 1 });
+    expect(run.bundle.review?.summary).toContain(
+      "1 participant took part: 1/1 reported reaching the goal, 1 reported friction.",
+    );
   });
 
   it("fails the run as a self-reported blocker when the report declares it was blocked", async () => {
@@ -138,6 +141,27 @@ describe("a closing report at a session cap", () => {
     });
     expect(run.judgedStatus).toBe("passed");
     expect(run.ok).toBe(true);
+    // It passes, and it is not counted or described as reaching the goal.
+    expect(run.bundle.review?.participants).toMatchObject({ reachedGoal: 0, ranUntilEnd: 1 });
+    expect(run.bundle.review?.summary).toContain(
+      "1 participant took part: 0/1 recorded completions, 1 ran until its session cap.",
+    );
+    expect(run.bundle.simulations[0]!.summary).toBe(
+      "Reader used the app in a hosted desktop browser, and ran until its session cap.",
+    );
+  });
+
+  it("counts a passing report that declares nothing as running until the cap", async () => {
+    const run = await runToCap(
+      "I read the opening hours page, and the session ended before I found the parking map.",
+    );
+    expect(run.trace.declaredOutcome).toBeUndefined();
+    expect(run.judgedStatus).toBe("passed");
+    expect(run.ok).toBe(true);
+    expect(run.bundle.review?.participants).toMatchObject({ reachedGoal: 0, ranUntilEnd: 1 });
+    expect(run.bundle.review?.summary).toContain(
+      "1 participant took part: 0/1 recorded completions, 1 ran until its session cap.",
+    );
   });
 
   // The declaration says the goal was not reached and leaves open whether something stopped the

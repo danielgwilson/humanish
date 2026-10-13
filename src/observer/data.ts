@@ -6,7 +6,7 @@ import {
   participantOutcomeDetails,
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
-import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actors/goal-source.js";
+import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "../actors/goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
 import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
 import type { RunStream, RunStreamKind } from "../run/streams.js";
@@ -303,6 +303,14 @@ export function observerDataFromSaved(value: unknown): ObserverData | null {
     : joinObserverData(saved as ObserverShell, null);
 }
 
+const GOAL_SOURCE_LABELS: Record<CuaGoalSource, string> = {
+  participant_report: "Reported complete",
+  condition_matched: "Condition matched",
+  scheduled_end: "Ran until scheduled end",
+  session_cap: "Ran until session cap",
+  unavailable: "Completion source unavailable",
+};
+
 /** Refresh presentation from recorded actor evidence, including older exported snapshots. */
 export function withObserverEndings(data: ObserverData): ObserverData {
   const streams = (data.streams ?? []).map(({ ending: _previousEnding, ...stream }) => {
@@ -313,12 +321,7 @@ export function withObserverEndings(data: ObserverData): ObserverData {
       ...(ending === undefined ? {} : { ending }),
       ...((stream.status === "passed" || stream.status === "complete") && source !== undefined
         ? {
-            statusLabel:
-              source === "participant_report"
-                ? "Reported complete"
-                : source === "condition_matched"
-                  ? "Condition matched"
-                  : "Completion source unavailable",
+            statusLabel: GOAL_SOURCE_LABELS[source],
           }
         : {}),
       ...(stream.status === "incomplete" || (ending !== undefined && stream.status === "abandoned")

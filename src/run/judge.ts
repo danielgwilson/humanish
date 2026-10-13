@@ -18,6 +18,7 @@ import type {
   ActorStatus,
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
+import type { ClockEnd } from "../actors/goal-source.js";
 import type { ReviewSummary } from "./bundle.js";
 import { tallyParticipantOutcomes } from "./outcomes.js";
 import type { RunSimulationStatus } from "./streams.js";
@@ -83,6 +84,12 @@ export interface ParticipantFacts {
   noEngagement: boolean;
   /** selfReportedBlocker held for its session. */
   selfReportedBlocker: boolean;
+  /**
+   * Its session ran until its scheduled end or session cap without the participant declaring it
+   * reached the goal (ranUntilClockEnd). A pass counts under `ranUntilEnd` in place of
+   * `reachedGoal`.
+   */
+  ranUntil?: ClockEnd;
 }
 
 /** The participant facts its bundle and result can name. */
@@ -130,16 +137,16 @@ export function judgeParticipantRecords(
           : `${participant.id ?? "Participant"}: ${participant.skippedReason ?? participant.sessionError ?? participant.reason ?? "did not pass"}`,
     };
   });
-  const terminal = records.filter(
-    (_, index) => participants[index]!.status !== undefined && !participants[index]!.inProgress,
-  );
+  const ended = (participant: ParticipantRecordFacts) =>
+    participant.status !== undefined && !participant.inProgress;
+  const terminal = records.filter((_, index) => ended(participants[index]!));
+  const terminalFacts = participants.filter(ended);
   return {
     participants: records,
     tally: tallyParticipantOutcomes(
       terminal.map((participant) => participant.judgedStatus!),
-      participants
-        .filter((participant) => participant.status !== undefined && !participant.inProgress)
-        .map((participant) => participant.reportedFriction === true),
+      terminalFacts.map((participant) => participant.reportedFriction === true),
+      terminalFacts.map((participant) => participant.ranUntil !== undefined),
     ),
   };
 }

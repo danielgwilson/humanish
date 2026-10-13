@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A computer-use participant with `endAfterMs` or `maxSessionMs` and no `windDownMs` is told the
+  time left for the last quarter of its window, at most 10 minutes. The default was a fixed 10
+  minutes, so a window of 10 minutes or less was told its end from its first turn. A 10-minute cap
+  is now told from 7 minutes 30 seconds in, and a window of 40 minutes or more keeps 10 minutes. An
+  explicit `windDownMs` is used as written. `study check`'s `windows` row and the plan entry's
+  `windDownMs` show the new default.
+
 ### Fixed
 
 - The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
@@ -21,6 +30,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   3.7 MiB. The warning starts at 17 participants working 8 hours for the Observer page, 30 for
   run.json, and a 10-hour window for one participant's trace. The `bundle size` row names the
   largest trace and the Observer page in place of the largest file.
+- A computer-use participant that passes at a scheduled end or a session cap without declaring
+  `REACHED THE GOAL.` is no longer counted or described as reaching the goal. Its closing report
+  said `DID NOT REACH THE GOAL.` or declared nothing. The review counts it in a new
+  `participants.ranUntilEnd`, present when above 0, and its summary says
+  `1 ran until its session cap` or `1 ran until its scheduled end`. The participant's own summary
+  says the same, and the Observer labels it `Ran until session cap` or `Ran until scheduled end`.
+  It still passes. A participant that declared `REACHED THE GOAL.` still counts in `reachedGoal`.
+  An older bundle keeps its `reachedGoal` count when re-read, and its completion line names the
+  clock end. Analysis input still records `goalSource: participant_report` for such a participant,
+  as 0.125.0 did, so an analysis saved then stays valid; its `stopCause` and `declaredOutcome`
+  name the clock end.
+- The declared outcome skips a `>` blockquote line. A closing report or last message whose first
+  line quotes a page's `REACHED THE GOAL.` no longer declares it; the blocker scan already dropped
+  blockquote lines.
 
 ## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 

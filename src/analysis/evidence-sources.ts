@@ -1,6 +1,6 @@
 import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import { eventRecordIdOf, recordIdOf, streamParticipantIdOf } from "../run/participant-records.js";
-import { cuaGoalSource } from "../actors/goal-source.js";
+import { cuaEndpointSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
@@ -120,7 +120,7 @@ export function participantSource(
       actorStatus: actor?.status ?? null,
       completionReason: actor?.completionReason ?? null,
       stopCause: actor?.stopCause ?? null,
-      goalSource: cuaGoalSource(actor, stream.status) ?? null,
+      goalSource: cuaEndpointSource(actor, stream.status) ?? null,
       declaredOutcome: actor?.declaredOutcome ?? null,
       taskOutcomes:
         actor?.taskFunnel === undefined
