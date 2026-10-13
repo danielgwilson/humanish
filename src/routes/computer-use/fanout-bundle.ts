@@ -57,17 +57,27 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
 
 /**
  * The run's summary in plain sentences: who took part, what happened to them with the denominator
- * attached, and that the gaps list the participants who did not pass.
+ * attached, and that the gaps list the participants who did not pass. A participant the run
+ * skipped before its session started never used the app, so it is counted in a sentence of its
+ * own.
  */
 function fanoutSummary(
   args: CuaFanoutBundleArgs,
-  facts: { passed: number; outcomes: string; tasks?: string },
+  facts: {
+    passed: number;
+    skipped: number;
+    /** The tally line; absent when no participant reached a terminal state. */
+    outcomes?: string;
+    tasks?: string;
+  },
 ): string {
   const count = args.specs.length;
   const people = plural(count, "participant");
   const rerun = args.rerun === undefined ? "" : `Rerun from ${args.rerun.sourceRunId}: `;
+  // The live summary is written once, before any participant starts, so it names the plan: by
+  // the time it is read a participant may still be waiting, or skipped.
   if (args.inProgress === true) {
-    return `${people} ${count === 1 ? "is" : "are"} each using their own copy of the app. The run is still going, so nothing here is final.`;
+    return `${people} ${count === 1 ? "is planned, in its own copy" : "are planned, each in their own copy"} of the app. The run is still going, so nothing here is final.`;
   }
   if (args.dryRun) {
     return `${rerun}Dry run: ${people} would each use their own copy of ${subjectName(publicSafeAppUrlLabel(args.appUrl), args.aggregateSubject)}. No desktops were launched and $0 was spent.`;
@@ -75,7 +85,24 @@ function fanoutSummary(
   const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
   // A host suspension comes first: it may explain everything after it.
   const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
-  return `${host}${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;
+  const tookPart = count - facts.skipped;
+  const outcomes = facts.outcomes ?? `0/${tookPart} finished a session`;
+  const gaps = gapsListClause(tookPart - facts.passed, tookPart);
+  const sentences: string[] = [];
+  // A run where every participant was skipped has no one to describe in this sentence.
+  if (tookPart > 0)
+    sentences.push(
+      `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gaps}.`,
+    );
+  // The gaps are pointed at once: here only when the sentence before did not.
+  const why = gaps === "" ? "; the gaps say why" : "";
+  if (facts.skipped === 1)
+    sentences.push(`1 participant was skipped before its session started${why}.`);
+  if (facts.skipped > 1)
+    sentences.push(
+      `${facts.skipped} participants were skipped before their sessions started${why}.`,
+    );
+  return `${host}${rerun}${sentences.join(" ")}${tasks}`;
 }
 
 /**
@@ -111,6 +138,9 @@ function fanoutReview(
   const passedParticipants = judgment.participants.filter(
     (participant) => participant.judgedStatus === "passed",
   ).length;
+  const skippedParticipants = (outcomes ?? []).filter(
+    (outcome) => outcome?.skippedReason !== undefined,
+  ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
   const terminalOutcomes = (outcomes ?? []).filter(
@@ -143,10 +173,10 @@ function fanoutReview(
       // sandbox, so the summary carries its digest, which verify accepts in a shared run.
       summary: fanoutSummary(args, {
         passed: passedParticipants,
-        outcomes:
-          participants === undefined
-            ? `0/${args.specs.length} finished a session`
-            : formatParticipantOutcomes(participants, participantEndings),
+        skipped: skippedParticipants,
+        ...(participants === undefined
+          ? {}
+          : { outcomes: formatParticipantOutcomes(participants, participantEndings) }),
         ...(runTasks === undefined ? {} : { tasks: formatRunTaskFunnel(runTasks) }),
       }),
       gaps:

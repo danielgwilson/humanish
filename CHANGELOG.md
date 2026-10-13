@@ -19,6 +19,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   a report after a stop condition or dwell window still sets no `declaredOutcome`. A provider
   port's self-ending turn whose `closingReport` carries `outcome` sets `declaredOutcome` from it
   too.
+- A computer-use participant the run skips before its session starts, because the study budget
+  was reached, its scheduled end passed while it waited for a slot, or an earlier participant
+  failed to provision its world, now ends its `humanish run` line on the skip reason. The line
+  read `blocked · unknown ending`. The review summary in run.json and review.md counts skipped
+  participants in a sentence of their own: a run of 3 with one skipped reads "2 participants took
+  part, each in their own copy of the app: ... 1 participant was skipped before its session
+  started; the gaps say why." It used to count all 3 as taking part. While a fan-out run is live,
+  its summary says the participants "are planned, each in their own copy of the app". It said each
+  was using its copy, which was untrue for one still waiting or already skipped.
 
 ## 0.127.0: Clock-end passes counted by what participants declared, a scaled wind-down, the concurrency cap in the plan (2026-10-13)
 

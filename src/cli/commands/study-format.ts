@@ -107,10 +107,22 @@ function oneLine(text: string): string {
   return line.length > REASON_CHARS ? `${line.slice(0, REASON_CHARS - 1).trimEnd()}…` : line;
 }
 
-function participantLine({ id, status, session, diagnostics }: CuaParticipantResult): string {
+/**
+ * A participant's status, how it ended and its closing message. A participant the run skipped
+ * before its session started has no ending to classify, so its line ends on the reason the run
+ * recorded. That reason is the harness's own sentence, so it prints whole.
+ */
+function participantLine(participant: CuaParticipantResult): string {
+  const { id, status, session, diagnostics, skippedReason } = participant;
+  const ending =
+    skippedReason !== undefined
+      ? [skippedReason]
+      : diagnostics
+        ? [formatCuaDiagnostics(diagnostics)]
+        : [];
   return [
     `participant ${id}: ${participantStatus(status)}${session ? ` (${session.completionReason})` : ""}`,
-    ...(diagnostics ? [formatCuaDiagnostics(diagnostics)] : []),
+    ...ending,
     ...(session ? [oneLine(session.reason)] : []),
   ].join(" · ");
 }
