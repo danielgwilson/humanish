@@ -96,7 +96,7 @@ function defaultMaxWaitMs(speechEnabled: boolean): number {
 }
 
 const FIELDS = [
-  ["maxWaitMs", "the longest one wait action lasts", CUA_WAIT_LIMITS.mostMaxMs],
+  ["maxWaitMs", "the longest one wait or one turn of only waits lasts", CUA_WAIT_LIMITS.mostMaxMs],
   [
     "idleWaitMs",
     "how long a wait with no duration lasts while the participant only waits",
@@ -120,7 +120,7 @@ export function waitFieldsReason(
   }
   const { maxWaitMs, idleWaitMs } = fields;
   if (typeof maxWaitMs === "number" && typeof idleWaitMs === "number" && idleWaitMs > maxWaitMs)
-    return `${prefix}idleWaitMs (${idleWaitMs}) is longer than ${maxPrefix}maxWaitMs (${maxWaitMs}), the longest one wait action lasts. Lower ${prefix}idleWaitMs or raise ${maxPrefix}maxWaitMs.`;
+    return `${prefix}idleWaitMs (${idleWaitMs}) is longer than ${maxPrefix}maxWaitMs (${maxWaitMs}), the longest one wait or one turn of only waits lasts. Lower ${prefix}idleWaitMs or raise ${maxPrefix}maxWaitMs.`;
   return null;
 }
 
