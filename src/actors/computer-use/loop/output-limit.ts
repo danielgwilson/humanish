@@ -30,5 +30,8 @@ export function retryAfterOutputLimit(
       `provider turn ${turnNumber} reached the output-token limit${output === undefined ? "" : ` after ${output} output tokens`} before any action; its actions were not run, and the same request is sent once more`,
     ),
   );
+  // haltBeforeTurn checks spend again before the resend. Checking here as well keeps a reply that
+  // crossed a cap out of the trace's narration, as after a complete reply, and keeps a crossed
+  // cap ahead of unknown usage.
   return spendStop(session) ?? unknownSpendStop(session) ?? "retry";
 }
