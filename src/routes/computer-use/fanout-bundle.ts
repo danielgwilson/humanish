@@ -63,7 +63,13 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
  */
 function fanoutSummary(
   args: CuaFanoutBundleArgs,
-  facts: { passed: number; skipped: number; outcomes: string; tasks?: string },
+  facts: {
+    passed: number;
+    skipped: number;
+    /** The tally line; absent when no participant reached a terminal state. */
+    outcomes?: string;
+    tasks?: string;
+  },
 ): string {
   const count = args.specs.length;
   const people = plural(count, "participant");
@@ -78,7 +84,8 @@ function fanoutSummary(
   // A host suspension comes first: it may explain everything after it.
   const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
   const tookPart = count - facts.skipped;
-  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${facts.outcomes}${gapsListClause(tookPart - facts.passed, tookPart)}.`;
+  const outcomes = facts.outcomes ?? `0/${tookPart} finished a session`;
+  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gapsListClause(tookPart - facts.passed, tookPart)}.`;
   const skipped =
     facts.skipped === 0
       ? ""
@@ -157,10 +164,9 @@ function fanoutReview(
       summary: fanoutSummary(args, {
         passed: passedParticipants,
         skipped: skippedParticipants,
-        outcomes:
-          participants === undefined
-            ? `0/${args.specs.length - skippedParticipants} finished a session`
-            : formatParticipantOutcomes(participants, participantEndings),
+        ...(participants === undefined
+          ? {}
+          : { outcomes: formatParticipantOutcomes(participants, participantEndings) }),
         ...(runTasks === undefined ? {} : { tasks: formatRunTaskFunnel(runTasks) }),
       }),
       gaps:
