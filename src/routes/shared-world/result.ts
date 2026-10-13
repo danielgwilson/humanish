@@ -27,6 +27,7 @@ import {
   buildConcurrentSharedWorldBundle,
   judgeSharedWorldRun,
   maxSimultaneousWindows,
+  usedAppWindows,
 } from "./bundle.js";
 import { planeStateOf } from "./plan.js";
 import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
@@ -82,9 +83,16 @@ function concurrentParticipantResults(
     }
     const session = result.outcome.session;
     const thisOk = participantOk(result);
+    const { skippedReason } = result.outcome;
+    // The same judged record run.json writes, so the run line and the bundle name one status.
+    const record = judgeParticipantRecords([participantFactsOf(result.outcome)], {
+      sessionLabel: "Participant",
+      missingSessionMessage: "Actor did not produce a terminal session.",
+    }).participants[0]!;
     return {
       ...base,
-      status: session ? session.status : "failed",
+      status: record.status,
+      ...(skippedReason === undefined ? {} : { skippedReason }),
       ok: thisOk,
       window: { startedAt: result.startedAt, endedAt: result.endedAt },
       ...(session
@@ -105,10 +113,7 @@ function concurrentParticipantResults(
         : {
             error: {
               code: "HUMANISH_SHARED_WORLD_FAILED" as const,
-              message: judgeParticipantRecords([participantFactsOf(result.outcome)], {
-                sessionLabel: "Participant",
-                missingSessionMessage: "Actor did not produce a terminal session.",
-              }).participants[0]!.notPassedMessage,
+              message: record.notPassedMessage,
             },
           }),
     };
@@ -403,7 +408,9 @@ export async function finishConcurrentRun(
       ? {}
       : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
     ...(dryRun ? {} : { overlapProven }),
-    ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
+    ...(dryRun
+      ? {}
+      : { maxSimultaneousLanes: maxSimultaneousWindows(usedAppWindows(actorResults)) }),
     subject,
     roles: participantResults,
     observer,

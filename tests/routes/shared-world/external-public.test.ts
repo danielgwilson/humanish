@@ -1119,6 +1119,11 @@ describe("handoff timeout fail-closed", () => {
         .filter((role) => role.id !== "host")
         .every((role) => role.error?.message.includes("physical browser containment failed")),
     ).toBe(true);
+    expect(result.roles.map((role) => role.skippedReason)).toEqual([
+      undefined,
+      "skipped: the host ended before it reached a lobby; no desktop was created",
+      "skipped: the host ended before it reached a lobby; no desktop was created",
+    ]);
   });
 
   it("host never yields a /lobby/CODE -> followers do not open, run returns HANDOFF_TIMEOUT, host window recorded", async () => {
@@ -1152,6 +1157,88 @@ describe("handoff timeout fail-closed", () => {
     // The follower outcomes are non-pass (they never opened).
     const followerOutcomes = bundle.sharedWorld?.outcomes?.filter((o) => o.roleId !== "host") ?? [];
     expect(followerOutcomes.every((o) => o.ok === false)).toBe(true);
+  });
+
+  it("counts the followers skipped at the handoff apart from the participant that used the app", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    const runRoot = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
+    const expectedSummary =
+      "1 participant used one public app. 1 of 1 reached the goal. 2 participants were skipped before their sessions started; the gaps say why. humanish did not see them all end up in the same lobby.";
+    expect(bundle.review.summary).toBe(expectedSummary);
+    const skipped =
+      "skipped: the host did not reach a lobby within the handoff deadline; no desktop was created";
+    expect(bundle.review.gaps).toEqual([`player-2: ${skipped}`, `player-3: ${skipped}`]);
+    expect(await readFile(path.join(runRoot, "review.md"), "utf8")).toContain(
+      `- summary: ${expectedSummary}`,
+    );
+  });
+
+  it("prints a follower skipped at the handoff as blocked, with its skip reason", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    const output = formatConcurrentSharedWorldStudyHuman(result);
+    const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    const skipped =
+      "skipped: the host did not reach a lobby within the handoff deadline; no desktop was created";
+    expect(lines.filter((line) => line.startsWith("Player "))).toEqual([
+      `Player 2: blocked, not ok · ${skipped}`,
+      `Player 3: blocked, not ok · ${skipped}`,
+    ]);
+  });
+});
+
+describe("overlap when followers are skipped at the handoff", () => {
+  it("does not count a follower skipped at the handoff as live at the same time as the host", async () => {
+    const { env, deps } = makeExternalSeams(
+      makeExternalRunSession({ seen: [], hostFiresLobby: false }),
+      { handoffDeadlineMs: 30 },
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+    });
+
+    // Each follower is skipped while the host's session is still open.
+    expect(result.overlapProven).toBe(false);
+    const output = formatConcurrentSharedWorldStudyHuman(result);
+    const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    expect(lines).toContain("Participants were not observed using the app at the same time.");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    const concurrency = bundle.events.find(
+      (event) => event.type === "concurrent-shared-world.concurrency",
+    );
+    expect(concurrency?.message).toContain(
+      "3 participants, up to 1 live at once (cap 3), overlap not observed",
+    );
+    // run.json keeps a window for every declared participant; verify requires one each.
+    expect(bundle.sharedWorld?.laneWindows).toHaveLength(3);
   });
 });
 
@@ -1616,6 +1703,32 @@ describe("the live Observer gate on the external-public plane", () => {
 });
 
 describe("the in-progress bundle on the external-public plane", () => {
+  it("names the plan in its summary before any participant has started", async () => {
+    const runId = "external-public-planned-summary";
+    const inner = makeExternalRunSession({ seen: [] });
+    const live: string[] = [];
+    const { env, deps } = makeExternalSeams(async (options) => {
+      // The host's session is the first to start; run.json still holds the in-progress bundle.
+      if (live.length === 0) {
+        const runJson = path.join(cwd, ".humanish", "runs", runId, "run.json");
+        live.push((JSON.parse(await readFile(runJson, "utf8")) as RunBundle).review.summary);
+      }
+      return inner(options);
+    });
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+      runId,
+    });
+    expect(result.ok).toBe(true);
+    expect(live).toEqual([
+      "3 participants are planned, all in one public app. The run is still going, so nothing here is final.",
+    ]);
+  });
+
   it("publishes each participant's live trace with no Observer attached", async () => {
     const inner = makeExternalRunSession({ seen: [] });
     let seatsTraced = 0;

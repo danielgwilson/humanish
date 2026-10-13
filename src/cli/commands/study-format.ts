@@ -169,9 +169,10 @@ export function formatConcurrentSharedWorldStudyHuman(
             ? "Participants used the app at the same time (observed in this run only)."
             : "Participants were not observed using the app at the same time.",
         ]),
+    // A skipped participant's line ends on the reason the run recorded, as on computer use.
     ...result.roles.map(
       (participant) =>
-        `${participantCaption({ id: participant.id, personaId: participant.persona })}: ${participantStatus(participant.status)}${participant.ok ? "" : ", not ok"}`,
+        `${participantCaption({ id: participant.id, personaId: participant.persona })}: ${participantStatus(participant.status)}${participant.ok ? "" : ", not ok"}${participant.skippedReason === undefined ? "" : ` · ${participant.skippedReason}`}`,
     ),
     ...(result.subjectSandbox
       ? [

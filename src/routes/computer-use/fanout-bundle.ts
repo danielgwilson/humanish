@@ -19,6 +19,7 @@ import {
   formatParticipantOutcomes,
   formatRunTaskFunnel,
   gapsListClause,
+  skippedSentence,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
@@ -94,14 +95,8 @@ function fanoutSummary(
     sentences.push(
       `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${outcomes}${gaps}.`,
     );
-  // The gaps are pointed at once: here only when the sentence before did not.
-  const why = gaps === "" ? "; the gaps say why" : "";
-  if (facts.skipped === 1)
-    sentences.push(`1 participant was skipped before its session started${why}.`);
-  if (facts.skipped > 1)
-    sentences.push(
-      `${facts.skipped} participants were skipped before their sessions started${why}.`,
-    );
+  const skipped = skippedSentence(facts.skipped, gaps === "");
+  if (skipped !== "") sentences.push(skipped);
   return `${host}${rerun}${sentences.join(" ")}${tasks}`;
 }
 

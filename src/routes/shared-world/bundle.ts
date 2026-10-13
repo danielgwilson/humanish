@@ -49,7 +49,7 @@ import {
   type ActorRunResult,
   type ConcurrentBundleArgs,
 } from "./types.js";
-import { gapsListClause } from "../../run/outcomes.js";
+import { gapsListClause, skippedSentence } from "../../run/outcomes.js";
 import { plural } from "../../run/text.js";
 import { describeArrivals } from "../../study/arrivals.js";
 
@@ -75,6 +75,17 @@ export function maxSimultaneousWindows(
 }
 
 /**
+ * The windows of the participants that used the app, for overlap and the live-at-once count. A
+ * participant the run skipped before its session started never used it, though its window sits
+ * inside another participant's session. run.json's laneWindows keep that window: verify expects
+ * one per declared participant, and reads overlap from them only on a pass, which a run with a
+ * skipped participant cannot reach.
+ */
+export function usedAppWindows(results: readonly ActorRunResult[]): ActorRunResult[] {
+  return results.filter((result) => result.outcome.skippedReason === undefined);
+}
+
+/**
  * The judgment for a shared-world bundle's inputs: how each participant ended, plus what the run
  * observed about its world: overlap, a state change under overlap on the provisioned plane, and
  * lobby convergence on the external-public plane. The bundle's verdict and the study result's ok
@@ -90,12 +101,8 @@ export function judgeSharedWorldRun(
     expected: args.actorSpecs.length,
     participants: args.actorResults.map((result) => participantFactsOf(result.outcome)),
     world: {
-      // The same windows and state series the bundle writes, read by verify's pass gate too.
       ...concurrencyFacts(
-        args.actorSpecs.map((_spec, index) => ({
-          startedAt: args.actorResults[index]?.startedAt ?? 0,
-          endedAt: args.actorResults[index]?.endedAt ?? 0,
-        })),
+        usedAppWindows(args.actorResults),
         external ? undefined : args.stateSnapshots,
       ),
       ...(external ? { lobbyConvergence: args.lobbyConvergenceDigest !== undefined } : {}),
@@ -111,8 +118,10 @@ export function actorRunPassed(result: ActorRunResult | undefined): boolean {
  * The run's summary in plain sentences: who took part, how many reached the goal, and what the
  * world showed. A participant reached the goal when its session passed the judge's checks and
  * ended at the goal, so a productive `budget_reached` session does not count even when the lobby
- * converged. Each participant's ending stays in `sharedWorld.outcomes`, and the plane, topology
- * and attribution limits stay in the bundle's events and `sharedWorld` block.
+ * converged. A participant the run skipped, such as a follower stopped at the handoff, never used
+ * the app, so it is counted in a sentence of its own. Each participant's ending stays in
+ * `sharedWorld.outcomes`, and the plane, topology and attribution limits stay in the bundle's
+ * events and `sharedWorld` block.
  */
 function sharedWorldSummary(
   args: ConcurrentBundleArgs,
@@ -131,16 +140,23 @@ function sharedWorldSummary(
     const served = facts.external ? ", as it is deployed" : ", served from a sandbox";
     return `Dry run: ${people} would use ${app} at the same time${served}. No sandboxes were launched and $0 was spent.`;
   }
+  // The live summary is written once, before any participant starts, so it names the plan.
   if (facts.inProgress) {
-    return `${people} ${count === 1 ? "is" : "are"} using ${app} at the same time. The run is still going, so nothing here is final.`;
+    return `${people} ${count === 1 ? "is planned, in" : "are planned, all in"} ${app}. The run is still going, so nothing here is final.`;
   }
   const passed = facts.outcomes.filter((outcome) => outcome.ok);
   const reached = passed.filter((outcome) => outcome.completionReason === "goal_satisfied").length;
-  const together = facts.overlaps ? " at the same time" : ", but never at the same time";
+  const skipped = args.actorResults.filter(
+    (result) => result.outcome.skippedReason !== undefined,
+  ).length;
+  const tookPart = count - skipped;
+  const together =
+    tookPart === 1 ? "" : facts.overlaps ? " at the same time" : ", but never at the same time";
   // A participant who did not pass has a gap line; one who passed but stopped short has none.
+  const gaps = gapsListClause(tookPart - passed.length, tookPart);
   const rest = [
     passed.length > reached ? `; ${passed.length - reached} ended without reaching it` : "",
-    gapsListClause(count - passed.length, count),
+    gaps,
   ].join("");
   const world = facts.external
     ? args.lobbyConvergenceDigest
@@ -149,7 +165,15 @@ function sharedWorldSummary(
     : facts.deltas === 0
       ? "The app's shared state did not change during the run."
       : `The app's shared state changed ${plural(facts.deltas, "time")} during the run.`;
-  return `${people} used ${app}${together}. ${reached} of ${count} reached the goal${rest}. ${world}`;
+  return [
+    tookPart > 0
+      ? `${plural(tookPart, "participant")} used ${app}${together}. ${reached} of ${tookPart} reached the goal${rest}.`
+      : "",
+    skippedSentence(skipped, gaps === ""),
+    world,
+  ]
+    .filter((sentence) => sentence !== "")
+    .join(" ");
 }
 
 /** The run's first two events: its creation and the shared plane's provenance. */
@@ -362,7 +386,7 @@ function concurrencyReview(
   // The count that matters is how many participants were live at once, which can be fewer than exist:
   // a 6-participant run capped at 3 must never read as 6-wide concurrency.
   const capForReport = plan.concurrency;
-  const maxLive = maxSimultaneousWindows(windows);
+  const maxLive = maxSimultaneousWindows(usedAppWindows(args.actorResults));
   events.push({
     id: nextEventId("concurrency"),
     at: createdAt,

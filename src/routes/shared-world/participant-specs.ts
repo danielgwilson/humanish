@@ -81,7 +81,8 @@ export function withLobbyCodeMission(
 }
 
 /** A follower blocked by an expired deadline or an ended host. It never opened a browser;
- * keep the actual reason rather than turning every upstream failure into a timeout. */
+ * keep the actual reason rather than turning every upstream failure into a timeout. The skip
+ * reason is a sentence in the form the computer-use skips use, since run lines and gaps print it. */
 export function makeBlockedFollowerOutcome(
   spec: DesktopParticipantRun,
   reason: string,
@@ -99,7 +100,9 @@ export function makeBlockedFollowerOutcome(
     noEngagement: true,
     selfReportedBlocker: false,
     harnessError: false,
-    skippedReason: timedOut ? "handoff-timeout" : "host-ended-before-handoff",
+    skippedReason: timedOut
+      ? "skipped: the host did not reach a lobby within the handoff deadline; no desktop was created"
+      : "skipped: the host ended before it reached a lobby; no desktop was created",
   };
 }
 
