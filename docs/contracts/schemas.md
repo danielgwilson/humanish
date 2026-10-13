@@ -280,8 +280,15 @@ The rest of this section names keys by their v3 spelling:
 - `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
   participant's `actor.idleWaitMs`, in the same range and refused above an explicit
   `actor.maxWaitMs` (`waitLimitValidationReason`). Its trace records it in `waitSettings`;
-- `actor.clock.timeZone` (computer-use): a tz database time zone name, such as `Europe/London`. Each turn's context hint carries
-  the local time in it, and a scheduled end is given in it (UTC without it);
+- `actor.clock.timeZone` (computer-use and shared-world): a tz database time zone name, such as `Europe/London`. Each turn's context hint carries
+  the local time in it, and a scheduled end or session cap is given in it (UTC without it). On a hosted desktop the
+  participant's browser launches with `TZ` set to it (`openParticipantSurface` in
+  `src/routes/computer-use/e2b-desktop/start.ts`). `parseClock` in `src/study/parse/clock.ts` refuses a name Intl does not know, a
+  UTC offset and a case variant of Intl's spelling, which Chrome's ICU reads as UTC or `Etc/Unknown`. The computer-use planner
+  refuses a zone on the local runtime and the in-process route with `HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED`;
+- `participants[].clock.timeZone` (computer-use and shared-world, also on `count:` groups): this participant's `actor.clock`,
+  with the same rule. The plan's `limits.timeZone` is the participant's zone, else the actor's. `study check` prints a
+  `time zones` row, and each participant's stream in `run.json` records `timeZone`;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
   cap on participants in flight at once. When omitted, every participant runs
   simultaneously: both routes resolve it when they plan, from the final participant count

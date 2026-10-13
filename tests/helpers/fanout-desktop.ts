@@ -2,6 +2,7 @@ import { PNG } from "pngjs";
 
 import type { FetchLike } from "../../src/actors/computer-use/openai-provider.js";
 import type {
+  E2BCommandRunOptions,
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
@@ -58,7 +59,10 @@ export interface FanoutModuleOptions {
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
   /** Answers one participant's sandbox command; undefined falls through to the default reply. */
-  commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
+  commandHandler?: (
+    laneIndex: number,
+    command: string,
+  ) => { stdout: string; exitCode?: number; stderr?: string } | undefined;
   /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
   measuredChrome?: boolean;
   /** The size files.getInfo reports for a written file; default its written size. */
@@ -74,6 +78,8 @@ export interface FanoutModuleHandle {
    *  default). */
   templates: (string | undefined)[];
   opened: string[];
+  /** Each browser launch command: the participant's index and the environment it ran with. */
+  browserLaunches: Array<{ laneIndex: number; env?: Record<string, string> }>;
   killed: string[];
   createdIds: string[];
   /** Each sandbox's files.write calls: path to the bytes written. */
@@ -86,6 +92,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
   const created: E2BDesktopCreateOptions[] = [];
   const templates: (string | undefined)[] = [];
   const opened: string[] = [];
+  const browserLaunches: FanoutModuleHandle["browserLaunches"] = [];
   const createdIds: string[] = [];
   const killed: string[] = [];
   const files = new Map<string, Map<string, Buffer>>();
@@ -109,7 +116,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
       // Captured stock shape; resource-size variation tests live in desktop-resource-pricing.
       getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
       commands: {
-        run: async (command: string) => {
+        run: async (command: string, runOptions?: E2BCommandRunOptions) => {
           const handled = options.commandHandler?.(laneIndex, command);
           if (handled) return { exitCode: 0, ...handled };
           if (command.includes("xdpyinfo")) {
@@ -121,6 +128,10 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
           const targetUrl = command.match(/^target_url='([^']+)'$/m)?.[1];
           if (targetUrl) {
             opened.push(targetUrl);
+            browserLaunches.push({
+              laneIndex,
+              ...(runOptions?.envs === undefined ? {} : { env: runOptions.envs }),
+            });
           }
           return measured?.(command) ?? { exitCode: 0, stdout: "" };
         },
@@ -201,6 +212,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
     created,
     templates,
     opened,
+    browserLaunches,
     killed,
     createdIds,
     files,

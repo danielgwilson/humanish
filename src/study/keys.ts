@@ -72,6 +72,7 @@ export const PARTICIPANT_ENTRY = {
   maxSessionMs: true,
   windDownMs: true,
   idleWaitMs: true,
+  clock: { timeZone: true },
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,

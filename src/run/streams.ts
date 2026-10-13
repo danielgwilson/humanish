@@ -285,6 +285,11 @@ export interface RunStream {
   desktopGeometry?: RunDesktopGeometry;
   /** The files copied onto this participant's desktop before it started. Never their contents. */
   desktopFiles?: RunDesktopFile[];
+  /**
+   * The participant's time zone (participants[].clock, else actor.clock): its turns gave the time
+   * in it, and its hosted browser ran in it. Absent when it had none.
+   */
+  timeZone?: string;
   terminal?: {
     title: string;
     format: "ansi" | "plain";

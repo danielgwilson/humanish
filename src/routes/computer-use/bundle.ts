@@ -152,6 +152,9 @@ function singleParticipantArgs(
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     ...(outcome?.desktopFiles === undefined ? {} : { desktopFiles: outcome.desktopFiles }),
+    ...(spec.planned.limits.timeZone === undefined
+      ? {}
+      : { timeZone: spec.planned.limits.timeZone }),
     isMobile: spec.planned.device.preset.isMobile,
     screenshots: outcome?.screenshots ?? [],
     captureRedaction: base.redactScreenshots ? "blurred" : "raw",

@@ -183,6 +183,9 @@ function sharedWorldStream(
           },
         }),
     desktopGeometry,
+    ...(spec.planned.limits.timeZone === undefined
+      ? {}
+      : { timeZone: spec.planned.limits.timeZone }),
     ui: {
       route: view.route,
       intent: `Watch ${name} use the shared app at the same time as the others.`,

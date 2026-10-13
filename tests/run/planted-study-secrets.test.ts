@@ -128,6 +128,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "id",
     "participants.actorType",
     "participants.caseGroup",
+    "participants.clock.timeZone",
     "participants.dwell.when.any.appStatePathEquals.path",
     "participants.dwell.when.any.id",
     "participants.id",

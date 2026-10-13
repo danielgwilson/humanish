@@ -12,6 +12,7 @@ import {
   computerUseParticipants,
   declaredParticipantIds,
   sharedWorldParticipants,
+  type DesktopParticipant,
   type Participant,
 } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
@@ -547,7 +548,7 @@ export function personaBackgroundWarnings(
  * and `study show`, which run no plan. Only computer-use and shared-world studies have them; a run's
  * `--count` is not applied.
  */
-export function plannedParticipants(config: StudyConfig): readonly Participant[] {
+export function plannedParticipants(config: StudyConfig): readonly DesktopParticipant[] {
   if (config.route === "computer-use") return computerUseParticipants(config);
   if (config.route === "shared-world") return sharedWorldParticipants(config).participants;
   return [];

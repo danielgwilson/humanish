@@ -11,6 +11,7 @@ import { type StudyRoute, planStudy, routeOf } from "./plan.js";
 import type { PlanRefusal, StudyPlan } from "./plan-types.js";
 import { describeArrivals, describeWindows } from "./arrivals.js";
 import { describeBundle } from "./bundle-estimate.js";
+import { describeTimeZones } from "./plan-participants.js";
 import { resolveStudyManifest, type StudyResolveFailure } from "./discover.js";
 import { participantList } from "./study-fields.js";
 import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
@@ -206,6 +207,9 @@ export async function runStudyPreflight(
   if (schedule !== undefined) ctx.checks.push(schedule);
   const windows = windowsCheck(planned.planned.plan);
   if (windows !== undefined) ctx.checks.push(windows);
+  const timeZones = describeTimeZones(participants);
+  if (timeZones !== undefined)
+    ctx.checks.push({ name: "time zones", ok: true, message: timeZones });
   const bundle = planned.planned.bundle;
   if (bundle !== undefined)
     ctx.checks.push({ name: "bundle size", ok: true, message: describeBundle(bundle) });
