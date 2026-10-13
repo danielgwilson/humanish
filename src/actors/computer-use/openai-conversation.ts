@@ -115,7 +115,7 @@ export class OpenAiConversation {
 
   /**
    * The next participant turn's request, carrying `req`'s screen: the opening request, or the
-   * outputs the latest reply's computer calls are owed.
+   * outputs the latest reply's computer and function calls are owed.
    */
   request(req: CuaTurnRequest): ConversationRequest {
     const sent = this.newItems(req);
@@ -211,7 +211,7 @@ export class OpenAiConversation {
           .join(" ");
         return withScreen
           ? buildFunctionOutput(call.callId, text, screenshot)
-          : buildFunctionOutput(call.callId, text || "The wait ended.");
+          : buildFunctionOutput(call.callId, text || "The wait ended.", null);
       }),
       ...(hintInCall ? [] : hintItems(req.contextHint)),
     ];

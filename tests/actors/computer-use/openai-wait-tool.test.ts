@@ -359,6 +359,32 @@ describe("the wait_for_change tool", () => {
   });
 });
 
+describe("a wait_for_change answer with no frame", () => {
+  it("is refused as a computer_call answer is, not sent as text alone", async () => {
+    const reply = waitForChangeReply(1, '{"minutes":1}');
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "synthetic-key",
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(reply),
+        json: async () => reply,
+      }),
+      delayFn: async () => undefined,
+      env: {},
+    });
+    const signal = new AbortController().signal;
+    const instructions = "Wait for the queue to change.";
+    await provider.nextTurn(
+      { instructions, observation: { screenshot: QUIET, stateSignature: "s" } },
+      signal,
+    );
+    await expect(
+      provider.nextTurn({ instructions, observation: { stateSignature: "s" } }, signal),
+    ).rejects.toThrow(/requires observation.screenshot/);
+  });
+});
+
 describe("the trace of a wait", () => {
   it("records the length a wait named, and nothing for the computer tool's wait", async () => {
     const { result } = await runOpenAi([

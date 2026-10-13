@@ -468,19 +468,19 @@ export function buildCallOutput(
 }
 
 /**
- * The answer to a function call: `text`, followed by the screen when `screenshot` is given. An
- * answer with no screen is the text alone.
+ * The answer to a function call: `text`, followed by the screen. `screenshot` null sends the text
+ * alone; undefined is a missing frame, refused as buildCallOutput refuses it.
  */
 export function buildFunctionOutput(
   callId: string,
   text: string,
-  screenshot?: Buffer,
+  screenshot: Buffer | undefined | null,
 ): Record<string, unknown> {
   return {
     type: "function_call_output",
     call_id: callId,
     output:
-      screenshot === undefined
+      screenshot === null
         ? text
         : [
             ...(text ? [{ type: "input_text", text }] : []),
