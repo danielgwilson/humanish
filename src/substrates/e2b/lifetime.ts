@@ -122,7 +122,7 @@ export function concurrentSandboxes(
 export function describeConcurrentSandboxes(limit: ConcurrentSandboxes): string {
   if (!limit.ok) return limit.message;
   return limit.source === "setting"
-    ? `${limit.count} at once, from ${CONCURRENCY_SETTING}. A study that runs more desktops at once runs them in waves, and an execution.concurrency above it is refused before any sandbox is created.`
+    ? `${limit.count} at once, from ${CONCURRENCY_SETTING}. A study that runs more desktops at once runs them in waves, and an execution.concurrency above it is refused before any sandbox is created, unless ${CUA_MAX_CONCURRENCY_ENV} lowers it to the limit or below.`
     : `${limit.count} at once, E2B's Hobby limit. On a plan that runs more (Pro runs ${PRO_CONCURRENT_SANDBOXES}), set ${CONCURRENCY_SETTING} to that plan's limit.`;
 }
 
