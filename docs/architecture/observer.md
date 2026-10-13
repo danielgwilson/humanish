@@ -92,20 +92,22 @@ then reads and sends only the items past each one, marking that entry with
 earlier generation, past the index or off a line end gets the participant's full list,
 and so does every participant of a finished run. A tail is checked for line ends and
 its line count; the sha256 run.json records is checked whenever a list is read whole.
-
-The server reads no live file whose index passes the 32 MiB read limit
-(`RUN_ARTIFACT_MAX_BYTES`). A page that sends a cursor for it keeps the items it holds: the server answers
-with no items past the cursor, gives the page's cursor back as `live`, and adds a
-`live-items.not-read` warning to the participant's timeline, so later polls send the
-same cursor and get the same answer. A page that holds none of the file's items (opened
-after it passed the limit, or after the writer started a new generation) shows the
-participant's trace as unavailable, with the file's size and the limit. When the run
-finishes, a trace file past the limit is refused too, and every page shows that trace
-as unavailable.
 A page that cannot join a body sends no cursors with its next poll. Static
 `file://` opening still works for immutable review, but follow mode is the
 operator path. Agents and CI should use `humanish watch --json --no-open` for
 the same fresh evidence without browser open or a long-running process.
+
+The server reads no live file whose index passes the 32 MiB read limit
+(`RUN_ARTIFACT_MAX_BYTES`). A page that sends a cursor for it keeps the items it holds: the
+server answers with no items past the cursor, gives the page's cursor back as `live`, and adds a
+`live-items.not-read` warning to the participant's timeline, so later polls send the same cursor
+and get the same answer. A poll that sends no cursor for that file gets the participant's trace
+as unavailable, with the file's size and the limit, and the page drops any items it held. Such a
+poll comes from a page opened after the file passed the limit or after the writer started a new
+generation, from the poll after a body the page could not join, and from a page whose cursors
+pass 8,000 characters (`MAX_AFTER_CHARS` in `observer/lib/live.ts`), which sends none. When the
+run finishes, a trace file past the limit is refused too, and every page shows that trace as
+unavailable.
 
 ### Reopening a run
 
