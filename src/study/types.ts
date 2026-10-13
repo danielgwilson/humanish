@@ -381,7 +381,8 @@ export interface StudyParticipantEntry {
   windDownMs?: number;
   /**
    * Computer use and shared world: this participant's actor.idleWaitMs, how long a wait that names
-   * no duration lasts while it only waits. Same range, and no longer than actor.maxWaitMs.
+   * no duration lasts while it only waits and how often the loop looks at its screen then. Same
+   * range, and no longer than actor.maxWaitMs.
    */
   idleWaitMs?: number;
   /**
@@ -423,16 +424,18 @@ export interface StudyActor {
   maxOutputTokens?: number;
   /**
    * Computer-use and shared-world: the longest one `wait` action lasts, in whole milliseconds from
-   * 1000 to 600000. Default 120000, or 30000 on a desktop with speech. A longer wait is shortened
-   * to it, the trace records a `wait shortened` notice, and the participant is told on its next
-   * turn.
+   * 1000 to 3600000. Default 120000, or 30000 on a desktop with speech. In a turn with another
+   * action a longer wait is shortened to it, the trace records a `wait shortened` notice, and the
+   * participant is told on its next turn. A turn that only waits is watched, and on a screen that
+   * stays the same its watches in a row grow to this, or to 600000 when it is not set.
    */
   maxWaitMs?: number;
   /**
    * Computer-use and shared-world: how long a `wait` that names no duration lasts when the
-   * participant's turn only waits or takes screenshots, in whole milliseconds from 1000 to 600000
-   * and no longer than maxWaitMs. Default 5000. After an action in the same turn such a wait lasts
-   * 500 ms. OpenAI's computer-use `wait` never names a duration.
+   * participant's turn only waits or takes screenshots, and how often the loop looks at the screen
+   * while it watches such a turn, in whole milliseconds from 1000 to 600000 and no longer than
+   * maxWaitMs. Default 5000. After an action in the same turn such a wait lasts 500 ms. OpenAI's
+   * computer-use `wait` never names a duration.
    */
   idleWaitMs?: number;
   /**
