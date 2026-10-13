@@ -80,6 +80,12 @@ describe("verify on recorded pages", () => {
       pagedActor(CLEAN, { origin: "https://app.example.test/items", path: "/" }),
     );
     expect(withPath.status).toBe("blocked");
+
+    // The URL parser reads a backslash after the host as a slash.
+    const backslash = await grade(
+      pagedActor(CLEAN, { origin: "https://[::1]\\items\\a1b2", path: "/" }),
+    );
+    expect(backslash.status).toBe("blocked");
   });
 
   it("reads only a redaction marker as a whole withheld origin, not any bracketed text", async () => {

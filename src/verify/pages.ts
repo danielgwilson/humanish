@@ -8,8 +8,9 @@ import { isRecord } from "../run/type-guards.js";
 
 // The markers that can stand for a whole origin, such as a withheld sandbox host.
 const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
-// `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host.
-const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/?#@]*)?$/i;
+// `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host. The URL
+// parser reads a backslash there as a slash, so a backslash counts as a path too.
+const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/\\?#@]*)?$/i;
 
 /** What is wrong with a recorded page, or undefined when it holds an origin and a path only. */
 function pageProblem(page: unknown): string | undefined {
