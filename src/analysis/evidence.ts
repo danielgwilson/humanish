@@ -199,8 +199,9 @@ interface CaptureSelection {
 /**
  * The most capture reads one cohort's selection makes. Missing/invalid files cannot turn selection
  * into an exhaustive file scan: at most 2 * captures bounded reads, each at most imageBytes;
- * successfully returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes. Each read
- * moves a participant's cursor one capture on, so no participant's reads pass this many captures.
+ * successfully returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes. A read
+ * moves its participant's cursor at most one capture on: a reserved read that meets the byte limit
+ * leaves the cursor for a later pass. So no participant's reads pass this many captures.
  */
 const maxCaptureReads = (limits: Required<EvidenceLimits>): number => 2 * limits.captures;
 
@@ -343,11 +344,13 @@ function reclaimCaptureSlots(
   sel.attemptShares.forEach((share, index) => {
     if (share === 0 && sel.evidenceShares[index]! > 0) sel.attemptShares[index] = 2;
   });
+  // A pass reads only the captures in captureOrder. A slot granted past them is one no pass uses,
+  // and selectCaptures would reclaim it again forever.
   const available = packings.map((packing, index) =>
     packing.attempts < sel.attemptShares[index]!
       ? Math.min(
           sel.evidenceShares[index]! - packing.captures.size,
-          packing.sources.captureCount - packing.captureCursor,
+          packing.sources.captureOrder.length - packing.captureCursor,
           sel.attemptShares[index]! - packing.attempts,
         )
       : 0,
