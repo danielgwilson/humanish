@@ -12,13 +12,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived
   for run bundle v3 from live and dry runs measured on 0.125.0. It checks run.json at about 225
-  bytes a model turn and each participant's trace at about 2.1 KB a turn against the 16 MiB
-  analysis reads, and the file count against the public-safety scan. It no longer checks
-  observer-data.json or the Observer page against the 32 MiB verify reads, since run.json passes
-  16 MiB first. Five participants working 8 hours beside 25 short ones were estimated at a 30.2 MiB
-  run.json and warned about; they are now estimated at 3.7 MiB. 30 participants working 8 hours
-  pass, and so does one participant's trace in a 23-hour window. The `bundle size` row names the
-  largest trace in place of the largest file.
+  bytes a model turn against the 16 MiB analysis reads, and each participant's trace against the
+  same limit at 4.7 KB a turn, the busiest participant measured; the average was about 2 KB. It
+  checks the file count against the public-safety scan. It no longer checks observer-data.json or
+  the Observer page against the 32 MiB verify reads, since run.json passes 16 MiB first. Five
+  participants working 8 hours beside 25 short ones were estimated at a 30.2 MiB run.json and
+  warned about; they are now estimated at 3.7 MiB. The warning starts at 30 participants working
+  8 hours for run.json, and at a 10-hour window for one participant's trace. The `bundle size` row
+  names the largest trace in place of the largest file.
 
 ## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 

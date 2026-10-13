@@ -21,9 +21,8 @@ import { runEntryLimit } from "../verify/scan-limit.js";
 // the 0.125.0 smoke test and the 2026-10-12 live checks, 10 participants with 1 to 28 turns and 137
 // model requests. Dry: runs of 1, 2, 24 and 100 participants, for the Observer app and the run's
 // own files. Pace, session length and screenshots: the live computer-use runs kept on the
-// maintainer's machine. A trace's rate a turn, cross-checked on the public
-// site/public/runs/lobby-0927 run (8 participants, 20 to 78 turns), was 1,579 bytes plus 91 for the
-// page, so the estimate runs about a quarter high there.
+// maintainer's machine. A trace's rate a turn on the public site/public/runs/lobby-0927 run
+// (8 participants, 20 to 78 turns) was 1,579 bytes plus 91 for the page, under the live fit.
 const RATES = Object.freeze({
   /** run.json bytes for the run itself: its header, study, review and cost. Live fit: 4,381. */
   runBytes: 4_400,
@@ -40,10 +39,13 @@ const RATES = Object.freeze({
   /** A trace file's bytes before its turns: the actor summary. Live fit: 5,378. */
   participantTraceBytes: 5_400,
   /**
-   * Trace bytes a model turn adds: its items, its screenshot entry and its request's usage. Live
-   * fit: 1,965 a turn, plus 91 for the `page` each screenshot item now carries.
+   * Trace bytes a model turn adds: its items, its screenshot entry and its request's usage, plus 91
+   * for the `page` each screenshot item now carries. Live fit: 1,965 a turn. Participants with 4
+   * or more turns ranged from 1,140 to 4,532; the busiest made 311 items in 15 turns, most of them
+   * UI actions. Analysis refuses the whole run when one trace passes its limit, so each trace is
+   * counted at the busiest participant's rate.
    */
-  turnTraceBytes: 2_100,
+  turnTraceBytes: 4_700,
   /**
    * Trace bytes a dwell frame adds: 395 for its item and entry on the kept runs with dwell frames,
    * plus 91 for the page.
@@ -221,7 +223,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : `${changes.slice(0, -1).join(", ")}, or ${changes.at(-1)}`;
   return [
     ...passed,
-    `The estimate counts ${counted.join(" and ")}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)} that adds about ${RATES.turnRunBytes} bytes to run.json and ${(RATES.turnTraceBytes / 1000).toFixed(1)} KB to the participant's trace.`,
+    `The estimate counts ${counted.join(" and ")}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)} that adds about ${RATES.turnRunBytes} bytes to run.json and up to ${(RATES.turnTraceBytes / 1000).toFixed(1)} KB to the participant's trace.`,
     "The run goes ahead.",
     `To stay under ${passed.length === 1 ? "the limit" : "the limits"}, ${advice}.`,
   ].join(" ");
