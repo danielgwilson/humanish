@@ -306,8 +306,9 @@ describe("the rules each run bundle version is read under", () => {
       },
     } as RunStream;
   };
-  // Each rule's run.json, built from the bundle the writer wrote, and the versions that refuse it.
-  const rules: [string, (stored: RunBundle) => Promise<RunBundle>, string[]][] = [
+  // Each rule's run.json, built from the bundle the writer wrote, the versions that refuse it, and
+  // the words of its refusal.
+  const rules: [string, (stored: RunBundle) => Promise<RunBundle>, string[], RegExp][] = [
     [
       "two participants indexing one trace file",
       async (stored) => {
@@ -315,17 +316,20 @@ describe("the rules each run bundle version is read under", () => {
         return { ...stored, streams: [first!, { ...second!, trace: first!.trace! }] };
       },
       ["v1", "v2", "v3", "v4"],
+      /indexes .* for participants/,
     ],
     [
       "an actor without a trace index",
       async (stored) => ({ ...stored, streams: [v1.streams[0]!] }),
       ["v2", "v3", "v4"],
+      /names no trace file/,
     ],
     [
       "in-progress items in a finished run",
       async (stored) =>
         finished({ ...stored, streams: [await runningFromFile(stored.streams[0]!)] }),
       ["v2", "v3", "v4"],
+      /finished run/,
     ],
     [
       "in-progress items inline",
@@ -342,6 +346,7 @@ describe("the rules each run bundle version is read under", () => {
         return unfinished({ ...stored, streams: [live] });
       },
       ["v3", "v4"],
+      /inline/,
     ],
     [
       "a per-request list in the actor",
@@ -354,20 +359,28 @@ describe("the rules each run bundle version is read under", () => {
         };
       },
       ["v4"],
+      /tokenUsage\.turns/,
     ],
   ];
-  const cases = rules.flatMap(([rule, build, refusing]) =>
+  const cases = rules.flatMap(([rule, build, refusing, reason]) =>
     ["v1", "v2", "v3", "v4"].map(
-      (version) => [rule, version, refusing.includes(version), build] as const,
+      (version) => [rule, version, refusing.includes(version), build, reason] as const,
     ),
   );
 
-  it.each(cases)("%s in run.json %s: refused %s", async (_rule, version, refused, build) => {
-    const stored = await writeV2({ ...v1, streams: v1.streams.map(withLists) });
-    const bundle = await build({ ...stored, schema: `humanish.run-bundle.${version}` as never });
-    const loaded = await loadStreamTraces(runPaths, bundle);
-    expect(loaded.refused.length > 0).toBe(refused);
-  });
+  it.each(cases)(
+    "%s in run.json %s: refused %s",
+    async (_rule, version, refused, build, reason) => {
+      const stored = await writeV2({ ...v1, streams: v1.streams.map(withLists) });
+      const bundle = await build({ ...stored, schema: `humanish.run-bundle.${version}` as never });
+      const messages = (await loadStreamTraces(runPaths, bundle)).refused.map(
+        (error) => error.message,
+      );
+      expect(messages.length > 0).toBe(refused);
+      // Every refusal names this cell's rule.
+      expect(messages.filter((message) => !reason.test(message))).toEqual([]);
+    },
+  );
 });
 
 describe("loading a run's participant traces", () => {
