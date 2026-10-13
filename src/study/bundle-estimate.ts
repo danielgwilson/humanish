@@ -1,8 +1,8 @@
 // How large a computer-use run's bundle grows, estimated from its plan before anything runs, and
-// whether it would pass a limit a later command holds it to: analysis reads run.json and each
-// participant's trace up to EVIDENCE_LIMITS.sourceBytes each, verify reads no file larger than
-// RUN_ARTIFACT_MAX_BYTES, and the public-safety scan visits at most runEntryLimit(participants)
-// files and folders.
+// whether it would pass a limit a later command holds it to: analysis reads run.json up to
+// EVIDENCE_LIMITS.sourceBytes, analysis, verify and the Observer read each participant's trace up to
+// RUN_ARTIFACT_MAX_BYTES, verify reads no file larger than RUN_ARTIFACT_MAX_BYTES, and the
+// public-safety scan visits at most runEntryLimit(participants) files and folders.
 //
 // observer/index.html carries every participant's items gzipped, so with busy participants it
 // passes verify's 32 MiB long before run.json passes analysis's 16 MiB: at these rates, 20
@@ -233,9 +233,9 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
           `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant.`,
         ]
       : []),
-    ...(estimate.largestTraceBytes > EVIDENCE_LIMITS.sourceBytes
+    ...(estimate.largestTraceBytes > RUN_ARTIFACT_MAX_BYTES
       ? [
-          `One participant's trace may grow to about ${mib(estimate.largestTraceBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads of each trace.`,
+          `One participant's trace may grow to about ${mib(estimate.largestTraceBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} humanish reads of each trace.`,
         ]
       : []),
     ...(page
@@ -285,7 +285,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
 
 /** The estimate beside the limits, for `study check`. */
 export function describeBundle(estimate: BundleEstimate): string {
-  return `run.json about ${mib(estimate.runFileBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads; largest trace about ${mib(estimate.largestTraceBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads of each; Observer page about ${mib(estimate.observerPageBytes)} of the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads; about ${count(estimate.entries)} files and folders of the ${count(estimate.entryLimit)} the public-safety scan reads; about ${mib(estimate.totalBytes, 0)} in all. Participants with a declared end are counted for their whole window and the others for up to ${formatDuration(estimate.basis.openMs)}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)}.`;
+  return `run.json about ${mib(estimate.runFileBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads; largest trace about ${mib(estimate.largestTraceBytes)} of the ${mib(RUN_ARTIFACT_MAX_BYTES)} humanish reads of each; Observer page about ${mib(estimate.observerPageBytes)} of the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads; about ${count(estimate.entries)} files and folders of the ${count(estimate.entryLimit)} the public-safety scan reads; about ${mib(estimate.totalBytes, 0)} in all. Participants with a declared end are counted for their whole window and the others for up to ${formatDuration(estimate.basis.openMs)}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)}.`;
 }
 
 /** Bytes in MiB to `digits` places, or two under 0.1 MiB, so a short study's trace does not read 0.0. */

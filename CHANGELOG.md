@@ -36,6 +36,29 @@ The Unreleased section holds the full notes for the next version until it is tag
   back empty. A saved frame may now be any whole number from 0 to `Number.MAX_SAFE_INTEGER`, the
   range analysis accepts. A participant reaches frame 100,000 after about 278 hours at a model turn
   every 10 seconds. (#1842)
+- Analysis reads each participant's trace up to 32 MiB, as the trace loader, verify and the
+  Observer read it. It refused a run with a trace past 16 MiB (`ANALYSIS_SOURCE_TOO_LARGE`), which a
+  participant reaches after about 3,570 model turns at the 4,700 bytes a turn the bundle estimate
+  counts. Evidence capture now reads the traces one at a time and keeps of each only the entries
+  selection can admit, where it held every trace at once. On 25 synthetic participants with 15.3
+  MiB traces, capture raised peak memory by 987 to 990 MiB on 0.129.0 and by 240 to 282 MiB now,
+  and both gave the same analysis input. With 29.6 MiB traces, which 0.129.0 refused, capture
+  alone raised it by 327 to 375 MiB for 25 participants and by 284 to 321 MiB for 5. run.json is
+  still read only up to 16 MiB. verify, which analysis runs first, still holds every trace at once
+  and scans the run as one string, so on a run whose traces together pass about 512 MiB, such as 25
+  participants at 30 MiB, verify stops with `RangeError: Invalid string length` and analysis with
+  `ANALYSIS_UNAVAILABLE`. The bundle estimate warns about a trace past 32 MiB, where it warned past
+  16 MiB. (#1840)
+- `humanish analyze` now says which file of a run it refused and why. A run.json or participant
+  trace without the fields analysis reads (`ANALYSIS_SOURCE_INVALID`) printed "Analysis could not
+  be completed safely. Source evidence was not changed."; the message now names the file and the
+  problem, such as a trace that holds two items with one id. A run.json past 16 MiB was refused as
+  `ANALYSIS_SOURCE_UNAVAILABLE`, "The source recording is missing, unsafe, or exceeds the input
+  limit."; it is now `ANALYSIS_SOURCE_TOO_LARGE`, and the message gives the file's size and the
+  16,777,216-byte limit and says to split the participants across studies. Both messages end "No
+  request was sent." `ANALYSIS_SOURCE_UNAVAILABLE` now reads "The source recording is missing or
+  unsafe." A trace past 32 MiB, or one that does not match its index, still fails verify, which
+  analyze runs first, and analyze reports `ANALYSIS_VERIFY_FAILED`. (#1841)
 
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
