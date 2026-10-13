@@ -1,18 +1,18 @@
 // How large a computer-use run's bundle grows, estimated from its plan before anything runs, and
 // whether it would pass a limit a later command holds it to: analysis reads run.json and each
-// participant's trace up to EVIDENCE_LIMITS.sourceBytes each, and the public-safety scan visits at
-// most runEntryLimit(participants) files and folders.
+// participant's trace up to EVIDENCE_LIMITS.sourceBytes each, verify reads no file larger than
+// RUN_ARTIFACT_MAX_BYTES, and the public-safety scan visits at most runEntryLimit(participants)
+// files and folders.
 //
-// verify reads no file larger than RUN_ARTIFACT_MAX_BYTES (32 MiB), and the estimate does not check
-// it. run.json and the traces pass analysis's 16 MiB first. observer-data.json carries the same
-// per-request lists as run.json and was within 7 % of its size on every live run measured.
-// observer/index.html is the app, a compact copy of observer-data.json (0.7 of its size) and the
-// items gzipped: 0.087 to 0.114 of the traces' bytes on the live runs of two participants, 0.095 on
-// 0.124.0's synthetic 8-hour run. At 0.114 the page is about 29 MiB when run.json reaches 16 MiB;
-// it would pass 32 MiB first only above 0.13.
+// observer/index.html carries every participant's items gzipped, so with busy participants it can
+// pass verify's 32 MiB before run.json passes analysis's 16 MiB: at these rates, 17 participants
+// working 8 hours. observer-data.json carries the same per-request lists as run.json and was within
+// 7 % of its size on every live run measured, so it passes 32 MiB only after run.json passes
+// 16 MiB, and the estimate does not check it.
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { formatDuration } from "../run/projection.js";
 import { plural } from "../run/text.js";
 import { runEntryLimit } from "../verify/scan-limit.js";
@@ -65,6 +65,18 @@ const RATES = Object.freeze({
   openSessionMs: 3 * 60_000,
   /** observer/index.html's app before any run data: 1,199,831 bytes on the dry runs. */
   observerAppBytes: 1_200_000,
+  /**
+   * The page's compact copy of observer-data.json, as a share of run.json: 0.64 to 0.81 whole on
+   * the live runs, 0.49 for a participant's part, and 0.42 for the per-request entries.
+   */
+  observerPageDataShare: 0.5,
+  /**
+   * The page's gzipped base64 items, as a share of all the traces' bytes: 0.087 to 0.114 on the
+   * live runs of two participants, 0.097 for the busiest participant alone (about 475 bytes a
+   * turn), 0.142 to 0.184 on runs of one participant and 4 to 11 turns, and 0.095 on 0.124.0's
+   * synthetic 8-hour run.
+   */
+  observerPageItemsShare: 0.12,
   /** A desktop screenshot: the median of 3,990 kept live PNG frames was 107,895 bytes. */
   screenshotBytes: 110_000,
   /**
@@ -92,6 +104,8 @@ export interface BundleEstimate {
   readonly runFileBytes: number;
   /** The largest participant trace file, which analysis also reads whole. */
   readonly largestTraceBytes: number;
+  /** observer/index.html, which verify reads whole. */
+  readonly observerPageBytes: number;
   /** Every file, screenshots included. */
   readonly totalBytes: number;
   /** Files and folders in the run folder, as the public-safety scan counts them. */
@@ -152,13 +166,18 @@ export function estimateBundle(
   const count = participants.length;
   const runFileBytes = RATES.runBytes + count * RATES.participantBytes + turns * RATES.turnRunBytes;
   const screenshots = count + turns + frames;
+  const observerPageBytes = Math.round(
+    RATES.observerAppBytes +
+      RATES.observerPageDataShare * runFileBytes +
+      RATES.observerPageItemsShare * traces,
+  );
   const scheduled = participants.filter((participant) => participant.endAfterMs !== undefined);
   return {
     runFileBytes,
     largestTraceBytes: largestTrace,
-    // observer-data.json is about run.json's size; the page's copies of both add under 1 %.
-    totalBytes:
-      RATES.observerAppBytes + screenshots * RATES.screenshotBytes + traces + 2 * runFileBytes,
+    observerPageBytes,
+    // observer-data.json is about run.json's size.
+    totalBytes: observerPageBytes + screenshots * RATES.screenshotBytes + traces + 2 * runFileBytes,
     entries: RATES.runEntries + count * RATES.participantEntries + turns + frames,
     entryLimit: runEntryLimit(count),
     basis: {
@@ -178,6 +197,7 @@ export function estimateBundle(
  */
 export function bundleLimitReason(estimate: BundleEstimate): string | undefined {
   const runFile = estimate.runFileBytes > EVIDENCE_LIMITS.sourceBytes;
+  const page = estimate.observerPageBytes > RUN_ARTIFACT_MAX_BYTES;
   const entries = estimate.entries > estimate.entryLimit;
   const passed = [
     ...(runFile
@@ -188,6 +208,11 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
     ...(estimate.largestTraceBytes > EVIDENCE_LIMITS.sourceBytes
       ? [
           `One participant's trace may grow to about ${mib(estimate.largestTraceBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads of each trace.`,
+        ]
+      : []),
+    ...(page
+      ? [
+          `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file.`,
         ]
       : []),
     ...(entries
@@ -214,8 +239,8 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
     ...(scheduled > 0 ? ["shorten the longest windows (participants[].endAfterMs)"] : []),
     ...(dwell ? ["shorten the dwell window (dwell.ms) or capture less often (dwell.everyMs)"] : []),
   ];
-  // A trace is one participant's, so splitting the study helps only run.json and the file count.
-  if (runFile || entries || changes.length === 0)
+  // A trace is one participant's, so splitting the study helps only the run's own files.
+  if (runFile || page || entries || changes.length === 0)
     changes.push("split the participants across studies");
   const advice =
     changes.length < 2
@@ -231,7 +256,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
 
 /** The estimate beside the limits, for `study check`. */
 export function describeBundle(estimate: BundleEstimate): string {
-  return `run.json about ${mib(estimate.runFileBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads; largest trace about ${mib(estimate.largestTraceBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads of each; about ${count(estimate.entries)} files and folders of the ${count(estimate.entryLimit)} the public-safety scan reads; about ${mib(estimate.totalBytes, 0)} in all. Participants with a declared end are counted for their whole window and the others for up to ${formatDuration(estimate.basis.openMs)}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)}.`;
+  return `run.json about ${mib(estimate.runFileBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads; largest trace about ${mib(estimate.largestTraceBytes)} of the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads of each; Observer page about ${mib(estimate.observerPageBytes)} of the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads; about ${count(estimate.entries)} files and folders of the ${count(estimate.entryLimit)} the public-safety scan reads; about ${mib(estimate.totalBytes, 0)} in all. Participants with a declared end are counted for their whole window and the others for up to ${formatDuration(estimate.basis.openMs)}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)}.`;
 }
 
 /** Bytes in MiB to `digits` places, or two under 0.1 MiB, so a short study's trace does not read 0.0. */
