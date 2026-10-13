@@ -30,6 +30,12 @@ file's size on the desktop. The participant's stream records `desktopFiles: [{ a
 the contents are not recorded. A local browser, local VM or shared-world study with `files` is
 refused at parse with what to change.
 
+`participants[].maxSessionMs` caps a `computer-use` participant's session, counted from its own
+start: the participant may end its session sooner and passes as usual, and one still working at
+the cap gets the wind-down notice and a closing report and ends as passed with
+`stopCause: session_cap`. Its session and sandbox are sized from the cap. It is refused beside
+`endAfterMs` and on `shared-world`.
+
 ### Changed
 
 - The Observer's filmstrip scrolls back to the selected capture only when the selected capture

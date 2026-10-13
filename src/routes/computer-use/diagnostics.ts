@@ -56,9 +56,10 @@ export function cuaParticipantDiagnostics(input: {
   if (input.executionError) return { category: "execution_error" };
   const session = input.session;
   if (!session) return { category: "unknown" };
-  // A scheduled end is the participant's planned ending, so a run whose other participants ended
-  // themselves reads as one kind of ending.
-  if (session.stopCause === "scheduled_end") return { category: "participant_outcome" };
+  // A scheduled end or a session cap is the participant's planned ending, so a run whose other
+  // participants ended themselves reads as one kind of ending.
+  if (session.stopCause === "scheduled_end" || session.stopCause === "session_cap")
+    return { category: "participant_outcome" };
   if (session.stopCause !== undefined) {
     return {
       category: "session_interrupted",

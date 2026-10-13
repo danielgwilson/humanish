@@ -114,12 +114,11 @@ export function planStudy(
   const bundle = plannedBundle(result.plan);
   // The manifest the CLI resolved enters the plan here and nowhere else; the routes read
   // plan.study for the run's status record and bundle, and plan.warnings for its bundle events.
-  const closing = closingReportWarning(result.plan);
   const warnings = [
     ...recordedStudyWarnings(study),
     ...(result.plan.warnings ?? []),
     ...(bundle.warning === undefined ? [] : [bundle.warning]),
-    ...(closing === undefined ? [] : [closing]),
+    ...closingReportWarnings(result.plan),
   ];
   const plan = {
     ...result.plan,
@@ -147,20 +146,32 @@ function plannedBundle(plan: StudyPlan): {
 }
 
 /**
- * The warning for participants with a scheduled end on Claude as a local-agent participant model.
- * Its session has no read-only closing request, so each such participant ends with the scheduled
- * end as its reason and no account of its session.
+ * The warnings for participants with a scheduled end or a session cap on Claude as a local-agent
+ * participant model. Its session has no read-only closing request, so each such participant ends
+ * at its end or cap with that as its reason and no account of its session.
  */
-function closingReportWarning(plan: StudyPlan): string | undefined {
-  if (plan.route !== "computer-use") return undefined;
+function closingReportWarnings(plan: StudyPlan): string[] {
+  if (plan.route !== "computer-use") return [];
   const { brain } = plan.runner;
-  if (brain.kind !== "local-agent" || brain.agent !== "claude") return undefined;
-  const scheduled = plan.runner.participants.filter(
-    (participant) => participant.endAfterMs !== undefined,
-  ).length;
-  if (scheduled === 0) return undefined;
-  const subject = scheduled === 1 ? "it ends" : "each ends";
-  return `${plural(scheduled, "participant")} ${scheduled === 1 ? "has" : "have"} a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so ${subject} with the scheduled end as its reason and no closing account. A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.`;
+  if (brain.kind !== "local-agent" || brain.agent !== "claude") return [];
+  const { participants } = plan.runner;
+  const scheduled = participants.filter((participant) => participant.endAfterMs !== undefined);
+  const capped = participants.filter((participant) => participant.maxSessionMs !== undefined);
+  const claude = "Claude as a local-agent participant model cannot be asked for a closing report";
+  const writers =
+    "A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.";
+  return [
+    ...(scheduled.length === 0
+      ? []
+      : [
+          `${plural(scheduled.length, "participant")} ${scheduled.length === 1 ? "has" : "have"} a scheduled end (participants[].endAfterMs), and ${claude}, so ${scheduled.length === 1 ? "it ends" : "each ends"} with the scheduled end as its reason and no closing account. ${writers}`,
+        ]),
+    ...(capped.length === 0
+      ? []
+      : [
+          `${plural(capped.length, "participant")} ${capped.length === 1 ? "has" : "have"} a session cap (participants[].maxSessionMs), and ${claude}, so ${capped.length === 1 ? "if it reaches its cap it ends" : "each that reaches its cap ends"} with the cap as its reason and no closing account. ${writers}`,
+        ]),
+  ];
 }
 
 function planRoute(

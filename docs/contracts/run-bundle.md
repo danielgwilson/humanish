@@ -332,7 +332,7 @@ An actor trace may include `stopCause` alongside its unchanged `status`,
 `completionReason` and verbatim `reason`. Computer-use sessions distinguish
 `provider_output_limit`, `provider_token_limit`, `time_limit`, `spend_limit`,
 `study_spend_limit`, `adapter_limit`, `provider_incomplete`, `provider_status`,
-`provider_refused_prompt`, `harness_aborted`, `usage_unreported`, and `scheduled_end`. Absence means the route or
+`provider_refused_prompt`, `harness_aborted`, `usage_unreported`, `scheduled_end`, and `session_cap`. Absence means the route or
 recording did not retain this precise field; it does not mean the participant
 finished.
 

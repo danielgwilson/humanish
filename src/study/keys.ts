@@ -69,6 +69,7 @@ export const PARTICIPANT_ENTRY = {
   host: true,
   startAfterMs: true,
   endAfterMs: true,
+  maxSessionMs: true,
   windDownMs: true,
   idleWaitMs: true,
   reasoningEffort: true,

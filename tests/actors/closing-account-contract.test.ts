@@ -2,6 +2,7 @@
 // in it, and every brain that cannot must say so on the trace. Each brain below runs the same
 // session through the loop: one action, the study's stop condition matches, and the loop asks for
 // the closing account. The Codex participant also ends one session itself, with its final account.
+// Each brain the loop drives also runs one session to a session cap in place of the stop condition.
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import type { spawn } from "node:child_process";
@@ -94,10 +95,12 @@ function frame(shade: number): Buffer {
 }
 
 /**
- * One action saves the task; the study stops when the screen says so. The items pass through the
- * production live flush, which freezes them, so a brain whose session edits a recorded item fails.
+ * One action saves the task; the study stops when the screen says so, or, `capped`, the session
+ * reaches its 2-minute cap after that action: each observation takes a minute. The items pass
+ * through the production live flush, which freezes them, so a brain whose session edits a
+ * recorded item fails.
  */
-async function session(provider: CuaProvider): Promise<ActorTrace> {
+async function session(provider: CuaProvider, capped = false): Promise<ActorTrace> {
   let actions = 0;
   let time = 0;
   const live = frozenLiveFlush();
@@ -106,11 +109,14 @@ async function session(provider: CuaProvider): Promise<ActorTrace> {
     instructions: "Rename the task.",
     provider,
     executor: {
-      observe: async () => ({
-        screenshot: frame(actions),
-        stateSignature: `screen-${actions}`,
-        text: actions > 0 ? "saved" : "editing",
-      }),
+      observe: async () => {
+        if (capped) time += 60_000;
+        return {
+          screenshot: frame(actions),
+          stateSignature: `screen-${actions}`,
+          text: actions > 0 ? "saved" : "editing",
+        };
+      },
       execute: async () => {
         actions += 1;
       },
@@ -120,9 +126,13 @@ async function session(provider: CuaProvider): Promise<ActorTrace> {
     sleep: async (ms) => {
       time += ms;
     },
-    timeoutMs: 60_000,
     redaction: defaultRedactionHooks,
-    stopWhen: { any: [{ textIncludes: "saved" }] },
+    ...(capped
+      ? {
+          timeoutMs: 7 * 60_000,
+          clock: { end: { atMs: 2 * 60_000, windDownMs: 60_000, kind: "session_cap" as const } },
+        }
+      : { timeoutMs: 60_000, stopWhen: { any: [{ textIncludes: "saved" }] } }),
   });
   await live.stop();
   return result.trace;
@@ -140,7 +150,11 @@ const fixture = (name: string): unknown =>
  * The captured Responses shapes. After a stop: a computer call, then the strict closing report.
  * When the participant ends the session itself: its final answer, then the impressions-only reply.
  */
-function openAi(zeroDataRetention: boolean, endsItself = false): Promise<ActorTrace> {
+function openAi(
+  zeroDataRetention: boolean,
+  endsItself = false,
+  capped = false,
+): Promise<ActorTrace> {
   const fetchFn: FetchLike = async (_url, init) => {
     const body = JSON.parse(init.body) as { tool_choice?: string };
     const value = fixture(
@@ -167,14 +181,15 @@ function openAi(zeroDataRetention: boolean, endsItself = false): Promise<ActorTr
       zeroDataRetention,
       env: {},
     }),
+    capped,
   );
 }
 
-async function codexParticipant(endsItself: boolean): Promise<ActorTrace> {
+async function codexParticipant(endsItself: boolean, capped = false): Promise<ActorTrace> {
   codex.endsItself = endsItself;
   const participant = createRestrictedCodexParticipant();
   try {
-    return await session(participant.provider);
+    return await session(participant.provider, capped);
   } finally {
     await participant.close();
   }
@@ -188,7 +203,7 @@ const CLICK = {
 };
 
 /** One `claude` process answering every turn with one click, as memory-contract.test.ts fakes it. */
-async function claudeSession(): Promise<ActorTrace> {
+async function claudeSession(capped = false): Promise<ActorTrace> {
   const spawnFn = (() => {
     const stdout = new PassThrough();
     const child = new EventEmitter() as EventEmitter & Record<string, unknown>;
@@ -223,14 +238,14 @@ async function claudeSession(): Promise<ActorTrace> {
   }) as unknown as typeof spawn;
   const claude = await startClaudeSession({ spawnFn });
   try {
-    return await session(claude.provider);
+    return await session(claude.provider, capped);
   } finally {
     await claude.close();
   }
 }
 
 /** `claude -p` once per turn: the restricted init, then the result (tests/actors/local-agent/cli.test.ts). */
-function claudeOneShot(): Promise<ActorTrace> {
+function claudeOneShot(capped = false): Promise<ActorTrace> {
   const stdout = [
     {
       type: "system",
@@ -248,6 +263,7 @@ function claudeOneShot(): Promise<ActorTrace> {
       agent: "claude",
       spawnFn: async () => ({ code: 0, stdout, stderr: "" }),
     }),
+    capped,
   );
 }
 
@@ -341,6 +357,54 @@ describe("participant impressions in each brain's closing account", () => {
         status: "not_collected",
         reason: expect.stringMatching(/\S/),
       });
+    },
+  );
+});
+
+/**
+ * The brains the loop drives, each run to a session cap. A brain with a closing request writes its
+ * closing report there; one without records why it was skipped. A new local agent fails typecheck
+ * here until it gets a case.
+ */
+const CAPPED_LOCAL_AGENTS = {
+  codex: { collects: true, run: () => codexParticipant(false, true) },
+  claude: { collects: false, run: () => claudeSession(true) },
+} satisfies Record<LocalAgentId, { collects: boolean; run: () => Promise<ActorTrace> }>;
+
+const CAPPED = Object.entries({
+  "openai-computer-use threaded": { collects: true, run: () => openAi(false, false, true) },
+  "openai-computer-use explicit_context": { collects: true, run: () => openAi(true, false, true) },
+  ...Object.fromEntries(
+    Object.entries(CAPPED_LOCAL_AGENTS).map(([agent, closing]) => [
+      `local-agent ${agent}`,
+      closing,
+    ]),
+  ),
+  "local-agent claude one-shot": { collects: false, run: () => claudeOneShot(true) },
+}).map(([name, closing]) => ({ name, ...closing }));
+
+describe("each brain at a session cap", () => {
+  it.each(CAPPED)("$name ends at the cap with stop cause session_cap", async ({ run }) => {
+    const trace = await run();
+    expect(trace.status).toBe("passed");
+    expect(trace.stopCause).toBe("session_cap");
+  });
+
+  it.each(CAPPED.filter((brain) => brain.collects))(
+    "$name writes its closing report at the cap",
+    async ({ run }) => {
+      const trace = await run();
+      expect(trace.debrief).toMatchObject({ trigger: "session_cap", status: "completed" });
+      expect(trace.impressions?.status).toBe("collected");
+    },
+  );
+
+  it.each(CAPPED.filter((brain) => !brain.collects))(
+    "$name records that it was not asked for a closing report",
+    async ({ run }) => {
+      const trace = await run();
+      expect(trace.debrief).toMatchObject({ trigger: "session_cap", status: "skipped" });
+      expect(trace.impressions).toMatchObject({ status: "not_collected" });
     },
   );
 });

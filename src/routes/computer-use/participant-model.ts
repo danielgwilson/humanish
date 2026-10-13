@@ -399,20 +399,31 @@ export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
 }
 
 /**
- * The participant's clock: its time zone, and its scheduled end on the run's clock. A participant
- * with an end runs its session on the run's clock, so the end and the schedule read one clock.
+ * The participant's clock: its time zone, and its end on the run's clock. A participant with an
+ * end runs its session on the run's clock, so the end and the schedule read one clock. A cap
+ * counts from here, where the session starts, so the desktop's setup does not use it.
  */
 function participantClock(
   timeZone: string | undefined,
-  deps: Pick<ParticipantModelDeps, "scheduledEnd" | "now">,
+  deps: Pick<ParticipantModelDeps, "end" | "now">,
 ): Pick<CuaActorSessionOptions, "clock" | "now"> {
-  const { scheduledEnd } = deps;
-  if (timeZone === undefined && scheduledEnd === undefined) return {};
+  const declared = deps.end;
+  if (timeZone === undefined && declared === undefined) return {};
+  const end =
+    declared === undefined
+      ? undefined
+      : declared.kind === "session_cap"
+        ? {
+            atMs: deps.now() + declared.afterMs,
+            windDownMs: declared.windDownMs,
+            kind: declared.kind,
+          }
+        : { atMs: declared.atMs, windDownMs: declared.windDownMs };
   return {
     clock: {
       ...(timeZone === undefined ? {} : { timeZone }),
-      ...(scheduledEnd === undefined ? {} : { end: scheduledEnd }),
+      ...(end === undefined ? {} : { end }),
     },
-    ...(scheduledEnd === undefined ? {} : { now: deps.now }),
+    ...(end === undefined ? {} : { now: deps.now }),
   };
 }

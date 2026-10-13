@@ -172,6 +172,7 @@ const AFTER_V2_PARTICIPANT_KEYS = [
   "windDownMs",
   "idleWaitMs",
   "files",
+  "maxSessionMs",
 ];
 
 // The keys of a humanish.lab.v2 file, in the order its parser listed them: the v3 sections with

@@ -80,6 +80,9 @@ export const ACTOR_STOP_CAUSES = [
   // The participant's scheduled end (participants[].endAfterMs) came. A planned end: the session
   // is goal_satisfied, and the closing report follows.
   "scheduled_end",
+  // The participant was still working at its session cap (participants[].maxSessionMs). A planned
+  // end, as scheduled_end is: the session is goal_satisfied, and the closing report follows.
+  "session_cap",
 ] as const;
 export type ActorStopCause = (typeof ACTOR_STOP_CAUSES)[number];
 
@@ -532,11 +535,12 @@ export interface ActorTrace {
   declaredOutcome?: ParticipantDeclaredOutcome;
   /**
    * The read-only closing request: a closing report after a harness-owned stop (`stop_when`,
-   * `dwell`, `scheduled_end`), or impressions only after the participant ended the session itself
-   * (`participant_end`, never with `report`). Does not change task outcomes or permit actions.
+   * `dwell`, `scheduled_end`, `session_cap`), or impressions only after the participant ended the
+   * session itself (`participant_end`, never with `report`). Does not change task outcomes or
+   * permit actions.
    */
   debrief?: {
-    trigger: "stop_when" | "dwell" | "scheduled_end" | "participant_end";
+    trigger: "stop_when" | "dwell" | "scheduled_end" | "session_cap" | "participant_end";
     status: "completed" | "skipped" | "failed";
     reason: string;
     /** Absent if no request was made; false means token accounting is incomplete. */

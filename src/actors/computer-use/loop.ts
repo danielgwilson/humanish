@@ -7,7 +7,7 @@ import {
   type Backstop,
   type BackstopStep,
 } from "./loop/backstop.js";
-import { beforeScheduledEnd, clockHint, scheduledEndStop } from "./loop/clock.js";
+import { clockEndStop, clockHint, heldToScheduledEnd } from "./loop/clock.js";
 import { requestDebrief } from "./loop/debrief.js";
 import * as stops from "./loop/ending.js";
 import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
@@ -180,7 +180,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     recordNarration(session, turn, turnNumber, "completed");
     const blocked = reviewSafetyChecks(session, conversation, turn);
     if (blocked !== undefined) return blocked;
-    if ((turn.done || turn.actions.length === 0) && beforeScheduledEnd(session)) {
+    if ((turn.done || turn.actions.length === 0) && heldToScheduledEnd(session)) {
       const held = keepWorking(session, conversation, backstop, observation);
       if ("stop" in held) return held.stop;
       backstop = held.backstop;
@@ -218,7 +218,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         actions: turn.actions,
         observation,
         heardNewSpeech: observer.heardNewSpeech,
-        waitingIsTheTask: beforeScheduledEnd(session),
+        waitingIsTheTask: heldToScheduledEnd(session),
       },
       { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
     );
@@ -291,7 +291,7 @@ function refuseAccountBilledCaps(options: CuaLoopOptions): void {
 function haltBeforeTurn(session: LoopSession, observation: CuaObservation): Stop | undefined {
   if (session.signal?.aborted) return stops.harnessAborted;
   return (
-    scheduledEndStop(session, observation) ??
+    clockEndStop(session, observation) ??
     (session.remaining() < 0 ? stops.timeLimit(session) : undefined)
   );
 }

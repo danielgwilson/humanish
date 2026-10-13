@@ -18,10 +18,19 @@ import type { DwellWindow, StopWhen } from "../../stop-conditions.js";
 import type { StudyTask } from "../../../study/tasks.js";
 import type { ReasoningEffort } from "../../reasoning-effort.js";
 
-/** The participant's clock: its local time zone and its scheduled end, on the loop's clock. */
+/** The participant's clock: its local time zone and its end, on the loop's clock. */
 export interface ParticipantClock {
   readonly timeZone?: string;
-  readonly end?: { readonly atMs: number; readonly windDownMs: number };
+  /**
+   * When the session ends. `kind` is `scheduled_end` when absent: the participant is held to the
+   * end and may not end its session before it. A `session_cap` is the latest the session lasts:
+   * the participant may end it sooner.
+   */
+  readonly end?: {
+    readonly atMs: number;
+    readonly windDownMs: number;
+    readonly kind?: "scheduled_end" | "session_cap";
+  };
 }
 
 // The ports of the computer-use loop: the model behind CuaProvider, the desktop behind
@@ -355,7 +364,7 @@ export interface CuaLoopOptions {
    * name, every request carries the local time. With `end`, from `end.atMs - end.windDownMs`
    * every request names the end time (in `timeZone`, else UTC) and the minutes left, and at
    * `end.atMs`, read on `now`, the loop asks for the closing report and ends the session with
-   * stop cause `scheduled_end`.
+   * stop cause `end.kind` (`scheduled_end` when absent).
    */
   clock?: ParticipantClock;
   /**

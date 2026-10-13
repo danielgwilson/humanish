@@ -51,10 +51,11 @@ const RATES = Object.freeze({
 
 const MIB = 1024 * 1024;
 
-/** One participant as the plan has it: when it starts and ends, and its dwell window. */
+/** One participant as the plan has it: when it starts and ends, its cap, and its dwell window. */
 export interface EstimatedParticipant {
   readonly startAfterMs?: number;
   readonly endAfterMs?: number;
+  readonly maxSessionMs?: number;
   readonly limits: { readonly dwell?: DwellWindow };
 }
 
@@ -85,10 +86,10 @@ export interface BundleEstimate {
 
 /**
  * The bundle a live run of `participants` leaves, each in its session of `sessionMs` unless it
- * declares an end. A participant with an end works its whole window; one without is counted for
- * the measured open session above, or its budget when that is shorter. Each takes a model turn at
- * the measured pace, and a dwell window adds a frame every `everyMs` for its length, cut to the
- * session, and the frame after it.
+ * declares an end or a cap. A participant with an end works its whole window; one without ends
+ * itself, so it is counted for the measured open session above, or its budget (its cap, else
+ * `sessionMs`) when that is shorter. Each takes a model turn at the measured pace, and a dwell
+ * window adds a frame every `everyMs` for its length, cut to the session, and the frame after it.
  */
 export function estimateBundle(
   participants: readonly EstimatedParticipant[],
@@ -97,17 +98,20 @@ export function estimateBundle(
   let turns = 0;
   let frames = 0;
   let longestWindowMs = 0;
-  const openMs = Math.min(sessionMs, RATES.openSessionMs);
+  // The longest any participant without an end is counted, for the messages.
+  let openMs = Math.min(sessionMs, RATES.openSessionMs);
   for (const participant of participants) {
     const windowMs =
       participant.endAfterMs === undefined
         ? undefined
         : participant.endAfterMs - (participant.startAfterMs ?? 0);
+    const budgetMs = windowMs ?? participant.maxSessionMs ?? sessionMs;
+    const countedMs = windowMs ?? Math.min(budgetMs, RATES.openSessionMs);
     if (windowMs !== undefined) longestWindowMs = Math.max(longestWindowMs, windowMs);
-    turns += Math.ceil((windowMs ?? openMs) / (RATES.secondsPerTurn * 1000));
+    else openMs = Math.max(openMs, countedMs);
+    turns += Math.ceil(countedMs / (RATES.secondsPerTurn * 1000));
     const dwell = participant.limits.dwell;
-    if (dwell !== undefined)
-      frames += Math.floor(Math.min(dwell.ms, windowMs ?? sessionMs) / dwell.everyMs) + 1;
+    if (dwell !== undefined) frames += Math.floor(Math.min(dwell.ms, budgetMs) / dwell.everyMs) + 1;
   }
   const count = participants.length;
   const runFileBytes =

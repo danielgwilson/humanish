@@ -268,11 +268,17 @@ export function parseParticipantEntries(
       parsedEntry.startAfterMs = entry.startAfterMs;
     }
     const window = windowReason(
-      { ...parsedEntry, endAfterMs: entry.endAfterMs, windDownMs: entry.windDownMs },
+      {
+        ...parsedEntry,
+        endAfterMs: entry.endAfterMs,
+        maxSessionMs: entry.maxSessionMs,
+        windDownMs: entry.windDownMs,
+      },
       paths.entry(entryIndex),
     );
     if (window !== undefined) return invalid(window);
     if (typeof entry.endAfterMs === "number") parsedEntry.endAfterMs = entry.endAfterMs;
+    if (typeof entry.maxSessionMs === "number") parsedEntry.maxSessionMs = entry.maxSessionMs;
     if (typeof entry.windDownMs === "number") parsedEntry.windDownMs = entry.windDownMs;
     // Checked against actor.maxWaitMs once the actor is read (waitLimitValidationReason).
     const idleWait = waitFieldsReason(

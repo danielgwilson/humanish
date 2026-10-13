@@ -11,8 +11,8 @@ import type { CuaObservation, ParticipantClock } from "./types.js";
 /**
  * The time text for the request the loop is about to send: the local time when the participant
  * has a time zone, and the end time and the minutes left from the start of its wind-down, or
- * after it tried to end its session before its end (`askedToEnd`). Undefined when there is
- * nothing to say.
+ * after it tried to end its session before its scheduled end (`askedToEnd`). Undefined when
+ * there is nothing to say.
  */
 export function clockHint(
   clock: ParticipantClock | undefined,
@@ -27,37 +27,45 @@ export function clockHint(
   const { end } = clock;
   if (end !== undefined && (askedToEnd || nowMs >= end.atMs - end.windDownMs)) {
     const minutesLeft = Math.max(1, Math.ceil((end.atMs - nowMs) / 60_000));
+    const at = `${endTime(clock, end.atMs)}${end.kind === "session_cap" ? " at the latest" : ""}`;
+    const close =
+      end.kind === "session_cap"
+        ? "You may end it sooner when you are done. If you are still working then, it ends by itself, and you will then be asked for your closing account."
+        : "Keep working until then. The session ends by itself at that time, and you will then be asked for your closing account.";
     parts.push(
-      `${askedToEnd ? "Your session is not over. " : ""}Your session ends at ${endTime(clock, end.atMs)}, in ${plural(minutesLeft, "minute")}. Keep working until then. The session ends by itself at that time, and you will then be asked for your closing account.`,
+      `${askedToEnd ? "Your session is not over. " : ""}Your session ends at ${at}, in ${plural(minutesLeft, "minute")}. ${close}`,
     );
   }
   return parts.length === 0 ? undefined : parts.join(" ");
 }
 
 /**
- * Whether the participant has a scheduled end still to come. Its own end before then does not end
- * the session: the end is what the study declared for it.
+ * Whether the participant is held to a scheduled end still to come. Its own end before then does
+ * not end the session: the end is what the study declared for it. A session cap holds no one.
  */
-export function beforeScheduledEnd(session: LoopSession): boolean {
+export function heldToScheduledEnd(session: LoopSession): boolean {
   const end = session.settings.clock?.end;
-  return end !== undefined && session.now() < end.atMs;
+  return end !== undefined && end.kind !== "session_cap" && session.now() < end.atMs;
 }
 
 /**
- * The stop at the participant's scheduled end, or undefined before it. The session passes as a
- * planned end and the participant is asked for its closing report on the last observation.
+ * The stop at the participant's end, or undefined before it: its scheduled end or its session cap,
+ * which is the stop cause. The session passes as a planned end and the participant is asked for
+ * its closing report on the last observation.
  */
-export function scheduledEndStop(
-  session: LoopSession,
-  observation: CuaObservation,
-): Stop | undefined {
+export function clockEndStop(session: LoopSession, observation: CuaObservation): Stop | undefined {
   const end = session.settings.clock?.end;
   if (end === undefined || session.now() < end.atMs) return undefined;
+  const at = endTime(session.settings.clock!, end.atMs);
+  const kind = end.kind ?? "scheduled_end";
   return {
     completionReason: "goal_satisfied",
-    reason: `the participant's scheduled end at ${endTime(session.settings.clock!, end.atMs)} was reached`,
-    stopCause: "scheduled_end",
-    debriefTrigger: { kind: "scheduled_end", observation },
+    reason:
+      kind === "session_cap"
+        ? `the participant's session reached its cap at ${at}`
+        : `the participant's scheduled end at ${at} was reached`,
+    stopCause: kind,
+    debriefTrigger: { kind, observation },
   };
 }
 

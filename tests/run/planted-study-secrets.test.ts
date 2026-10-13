@@ -63,6 +63,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "participants.endAfterMs",
     "participants.host",
     "participants.idleWaitMs",
+    "participants.maxSessionMs",
     "participants.startAfterMs",
     "participants.startEveryMs",
     "participants.windDownMs",

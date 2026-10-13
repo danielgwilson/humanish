@@ -259,6 +259,20 @@ The rest of this section names keys by their v3 spelling:
   the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
   screenshots counts toward neither backstop streak (`advanceBackstop`'s `waitingIsTheTask`). The
   plan entry carries `endAfterMs`, and `study check` prints a `windows` row;
+- `participants[].maxSessionMs` (computer-use only, also on `count:` groups): the longest the
+  participant's session lasts, in whole milliseconds from 1 to 86,400,000, counted from the start
+  of its own session. `windDownMs` applies to it as to `endAfterMs`. Refused: a value outside that
+  range, `maxSessionMs` beside `endAfterMs` on one participant, `maxSessionMs` on `shared-world`,
+  and a cap whose sandbox deadline passes the sandbox ceiling. The session budget is the cap plus
+  5 minutes (`participantSessionMs`) in place of `execution.timeoutMs`, and the schedule holds the
+  participant's slot that long. The route reads the cap's end when the session starts
+  (`participantEnd` in `src/study/arrivals.ts`, `participantClock` in
+  `src/routes/computer-use/participant-model.ts`) and passes it to the loop as
+  `clock.end` with `kind: session_cap`. The participant may end its session before the cap, and
+  its waiting turns count toward the backstops. At the cap the loop requests the closing report
+  (`debrief.trigger: session_cap`) and the session ends `goal_satisfied` with
+  `stopCause: session_cap`. The plan entry carries `maxSessionMs`, and the plan line shows
+  `cap=<duration>`;
 - `participants[].idleWaitMs` (computer-use and shared-world, also on `count:` groups): this
   participant's `actor.idleWaitMs`, in the same range and refused above an explicit
   `actor.maxWaitMs` (`waitLimitValidationReason`). Its trace records it in `waitSettings`;

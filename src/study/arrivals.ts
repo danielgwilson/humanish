@@ -40,31 +40,41 @@ export const DEFAULT_WIND_DOWN_MS = 10 * 60_000;
  */
 const SCHEDULED_END_ROOM_MS = 5 * 60_000;
 
-/** A participant's declared window: when it starts and when it ends, on the run's clock. */
+/**
+ * A participant's declared window: when it starts, and when it ends on the run's clock
+ * (`endAfterMs`) or at the latest after its own session started (`maxSessionMs`).
+ */
 export interface ParticipantWindow {
   readonly id?: string;
   readonly startAfterMs?: number;
   readonly endAfterMs?: number;
+  readonly maxSessionMs?: number;
   readonly windDownMs?: number;
 }
 
 /**
  * Why a participant's declared end cannot run, or undefined: an end that is not a whole number of
- * milliseconds up to 24 hours, one at or before its start, or a wind-down that is not a whole
- * number of milliseconds or has no end. `path` names the entry, as in "participants[1]".
+ * milliseconds up to 24 hours, one at or before its start, a cap that is not a whole number of
+ * milliseconds from 1 to 24 hours, a cap beside an end, or a wind-down that is not a whole number
+ * of milliseconds or has neither. `path` names the entry, as in "participants[1]".
  */
 export function windowReason(
   entry: {
     readonly id?: string;
     readonly startAfterMs?: number;
     readonly endAfterMs?: unknown;
+    readonly maxSessionMs?: unknown;
     readonly windDownMs?: unknown;
   },
   path: string,
 ): string | undefined {
-  const { endAfterMs, windDownMs } = entry;
-  if (windDownMs !== undefined && endAfterMs === undefined)
-    return `${path}.windDownMs is how long before its endAfterMs a participant is told the time left, so it needs ${path}.endAfterMs. Add the end, or remove windDownMs.`;
+  const { endAfterMs, maxSessionMs, windDownMs } = entry;
+  if (maxSessionMs !== undefined && endAfterMs !== undefined)
+    return `${path} sets both endAfterMs and maxSessionMs. endAfterMs holds the participant until a set time, and maxSessionMs lets it end its session sooner, up to a cap, so a participant takes one of them. Keep endAfterMs for one that stays until a set time, or maxSessionMs for one that may leave when it is done.`;
+  if (maxSessionMs !== undefined && !(isStartAfterMs(maxSessionMs) && maxSessionMs > 0))
+    return `${path}.maxSessionMs must be a whole number of milliseconds from 1 to ${LATEST_START_AFTER_MS} (24 hours): the longest the participant's session lasts, counted from its start.`;
+  if (windDownMs !== undefined && endAfterMs === undefined && maxSessionMs === undefined)
+    return `${path}.windDownMs is how long before its endAfterMs or maxSessionMs a participant is told the time left, so it needs one of them. Add an end, or remove windDownMs.`;
   if (windDownMs !== undefined && !isStartAfterMs(windDownMs))
     return `${path}.windDownMs must be a whole number of milliseconds from 0 to ${LATEST_START_AFTER_MS} (24 hours): how long before its end the participant is told the time left.`;
   if (endAfterMs === undefined) return undefined;
@@ -79,33 +89,53 @@ export function windowReason(
 }
 
 /**
- * A participant's session budget: with a declared end, its window plus SCHEDULED_END_ROOM_MS in
- * place of the study's `sessionMs` (execution.timeoutMs or its default); else `sessionMs`.
+ * A participant's session budget: with a declared end, its window plus SCHEDULED_END_ROOM_MS, and
+ * with a cap, the cap plus the same room, in place of the study's `sessionMs` (execution.timeoutMs
+ * or its default); else `sessionMs`.
  */
 export function participantSessionMs(participant: ParticipantWindow, sessionMs: number): number {
-  if (participant.endAfterMs === undefined) return sessionMs;
-  return participant.endAfterMs - (participant.startAfterMs ?? 0) + SCHEDULED_END_ROOM_MS;
+  const windowMs = declaredWindowMs(participant);
+  return windowMs === undefined ? sessionMs : windowMs + SCHEDULED_END_ROOM_MS;
+}
+
+/** How long a participant with a declared end or cap may work, or undefined without either. */
+function declaredWindowMs(participant: ParticipantWindow): number | undefined {
+  if (participant.maxSessionMs !== undefined) return participant.maxSessionMs;
+  if (participant.endAfterMs === undefined) return undefined;
+  return participant.endAfterMs - (participant.startAfterMs ?? 0);
 }
 
 /**
- * When a participant that was due at `scheduledAt` (runOnSchedule's ScheduledStart) ends, on the
- * same clock, or undefined when it declares no end. A participant that waited for a slot still ends
- * at its declared time.
+ * When a participant's session ends: at a time on the run's clock, or at the latest a time after
+ * its own session starts, which the route reads when the session starts.
  */
-export function scheduledEndAt(
+export type ParticipantEnd =
+  | { readonly kind: "scheduled_end"; readonly atMs: number; readonly windDownMs: number }
+  | { readonly kind: "session_cap"; readonly afterMs: number; readonly windDownMs: number };
+
+/**
+ * How a participant that was due at `scheduledAt` (runOnSchedule's ScheduledStart) ends, or
+ * undefined when it declares neither an end nor a cap. A participant that waited for a slot still
+ * ends at its declared time, and still gets its whole cap.
+ */
+export function participantEnd(
   participant: ParticipantWindow,
   scheduledAt: number,
-): { readonly atMs: number; readonly windDownMs: number } | undefined {
+): ParticipantEnd | undefined {
+  const windDownMs = participant.windDownMs ?? DEFAULT_WIND_DOWN_MS;
+  if (participant.maxSessionMs !== undefined)
+    return { kind: "session_cap", afterMs: participant.maxSessionMs, windDownMs };
   if (participant.endAfterMs === undefined) return undefined;
   return {
+    kind: "scheduled_end",
     atMs: scheduledAt - (participant.startAfterMs ?? 0) + participant.endAfterMs,
-    windDownMs: participant.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+    windDownMs,
   };
 }
 
 /**
- * Why the sandbox of the first participant whose window passes `ceilingMs` cannot live that long,
- * or undefined. Its deadline is its session (participantSessionMs) plus `headroomMs`, what the
+ * Why the sandbox of the first participant whose window or cap passes `ceilingMs` cannot live that
+ * long, or undefined. Its deadline is its session (participantSessionMs) plus `headroomMs`, what the
  * route adds to a session for setup and teardown (sandboxHeadroomMs).
  */
 export function windowDeadlineRefusal(
@@ -115,26 +145,40 @@ export function windowDeadlineRefusal(
 ): string | undefined {
   const inMinutes = (ms: number) => Math.round(ms / 60_000);
   for (const participant of participants) {
-    if (participant.endAfterMs === undefined) continue;
+    if (declaredWindowMs(participant) === undefined) continue;
     const deadlineMs = participantSessionMs(participant, sandbox.sessionMs) + sandbox.headroomMs;
     if (deadlineMs <= ceilingMs) continue;
     const name = participant.id === undefined ? "A participant" : `Participant "${participant.id}"`;
-    return `${name} works from +${formatDuration(participant.startAfterMs ?? 0)} to +${formatDuration(participant.endAfterMs)}, so its sandbox needs a ${inMinutes(deadlineMs)}m deadline: the window, ${inMinutes(SCHEDULED_END_ROOM_MS)}m for its closing report and ${inMinutes(sandbox.headroomMs)}m to set up and tear down. A sandbox may not live longer than ${ceilingMs / 60_000}m. Shorten its window.${ceilingAdvice(deadlineMs)}`;
+    const works =
+      participant.maxSessionMs === undefined
+        ? `works from +${formatDuration(participant.startAfterMs ?? 0)} to +${formatDuration(participant.endAfterMs ?? 0)}`
+        : `may work for up to ${formatDuration(participant.maxSessionMs)}`;
+    const window = participant.maxSessionMs === undefined ? "window" : "cap";
+    return `${name} ${works}, so its sandbox needs a ${inMinutes(deadlineMs)}m deadline: the ${window}, ${inMinutes(SCHEDULED_END_ROOM_MS)}m for its closing report and ${inMinutes(sandbox.headroomMs)}m to set up and tear down. A sandbox may not live longer than ${ceilingMs / 60_000}m. Shorten its ${window}.${ceilingAdvice(deadlineMs)}`;
   }
   return undefined;
 }
 
 /**
- * Each participant's window for `study check`, when any participant declares an end: when it starts
- * and ends and when it is first told the time left, or when it starts and its session budget.
+ * Each participant's window for `study check`, when any participant declares an end or a cap: when
+ * it starts and ends and when it is first told the time left, when it starts and its cap and how
+ * far into its session it is first told the time left, or when it starts and its session budget.
  */
 export function describeWindows(
   participants: readonly ParticipantWindow[],
   sessionMs: number,
 ): string | undefined {
-  if (!participants.some((participant) => participant.endAfterMs !== undefined)) return undefined;
+  if (!participants.some((participant) => declaredWindowMs(participant) !== undefined))
+    return undefined;
   const windows = participants.map((participant) => {
     const start = `${participant.id ?? "participant"} from +${formatDuration(participant.startAfterMs ?? 0)}`;
+    if (participant.maxSessionMs !== undefined) {
+      const told = Math.max(
+        0,
+        participant.maxSessionMs - (participant.windDownMs ?? DEFAULT_WIND_DOWN_MS),
+      );
+      return `${start} until it ends itself or for up to ${formatDuration(participant.maxSessionMs)}, told the time left from ${formatDuration(told)} into its session`;
+    }
     if (participant.endAfterMs === undefined)
       return `${start} for up to ${formatDuration(sessionMs)}`;
     const told = Math.max(
