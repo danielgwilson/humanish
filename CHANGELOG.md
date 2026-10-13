@@ -14,7 +14,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   request. When another participant crossed the budget while this one was acting, it sent one more
   request and stopped after that reply; it now stops as `budget_reached` before the request. The
   check covers the first request too, so a participant whose desktop was still starting when the
-  budget was crossed sends none.
+  budget was crossed sends none. The recorded reason now says the study's participants stop before
+  their next model request. It said `this lane stops here`, which read as if each participant that
+  stopped had crossed the budget itself. A library caller of `runComputerUseLoop` sees
+  `estimateTurnCostUsd` and `overRunBudget` called before every provider request as well as after
+  each reply, the first time before the first request with all usage at 0 and no `turns`. An
+  estimator that prices zero usage above `maxUsd`, or a budget callback that decides by how many
+  times it was called, now stops the session sooner, possibly before its first request.
 
 ## 0.127.1: Clock-end closing reports declare their outcome; skipped participants named as skipped (2026-10-13)
 
