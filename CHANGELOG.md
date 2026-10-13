@@ -8,6 +8,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Analysis reads a run.json with more than 100,000 run events, a participant trace with more than 100,000 items, and a screenshot frame past 100,000. It refused each with `ANALYSIS_SOURCE_INVALID` or `ANALYSIS_INPUT_INVALID`, so `humanish analyze` answered "Analysis could not be completed safely" for a run the Observer shows since 0.127.0. Analysis still reads run.json and each trace file only up to 16 MiB. (#1824)
+
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
 humanish 0.128.0 keeps run.json small in long studies. Run bundles are now
