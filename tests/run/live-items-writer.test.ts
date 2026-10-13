@@ -20,7 +20,7 @@ import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
 import type { RunStream } from "../../src/run/streams.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
-import { readRunWithTraces } from "../helpers/run-traces.js";
+import { readRunWithTraces, syntheticActor } from "../helpers/run-traces.js";
 
 // The next unlink of a path ending in `unlinkFails` fails as a disk error would.
 const fault = vi.hoisted(() => ({ unlinkFails: "" }));
@@ -149,7 +149,7 @@ describe("the run writer's live items", () => {
         sha256: sha256(line(a) + line(b)),
       },
     });
-    expect(JSON.parse(await readText("run.json")).schema).toBe("humanish.run-bundle.v3");
+    expect(JSON.parse(await readText("run.json")).schema).toBe("humanish.run-bundle.v4");
   });
 
   it("appends only the items recorded since the last write, to the same file", async () => {
@@ -276,6 +276,64 @@ describe("the run writer's live items", () => {
     });
     await expect(stat(path.join(runDir(), "live"))).rejects.toThrow(/ENOENT/);
     expect(JSON.parse(await readText("run.json")).streams[0].liveActor).toBeUndefined();
+  });
+});
+
+describe("the run writer's per-request lists", () => {
+  const rows = [
+    { input: 300_000, output: 1_000 },
+    { input: 10_000, output: 500 },
+    { input: 10_000, output: 500 },
+  ];
+  const usage = { input: 320_000, output: 2_000, turns: rows };
+
+  it("writes a running participant's totals and the estimate its rows give, and the rows once it finishes", async () => {
+    const snapshot = inProgress([item(1)]);
+    const [stream] = snapshot.streams;
+    const live = { ...stream!.liveActor!, tokenUsage: usage, ids: { model: "gpt-5.6-sol" } };
+    const actor = { ...syntheticActor("Done."), ids: { model: "gpt-5.6-sol" }, tokenUsage: usage };
+    await withRun(async (run) => {
+      await run.writeSnapshot({ ...snapshot, streams: [{ ...stream!, liveActor: live }] });
+      const written = await storedLive();
+      expect(written?.tokenUsage).toEqual({ input: 320_000, output: 2_000 });
+      // The long-context figure the rows give; the totals alone give $1.32.
+      expect(written?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+      // The saved Observer projection carries the figure run.json holds.
+      const observer = JSON.parse(await readText("observer/observer-data.json")) as {
+        streams: RunStream[];
+      };
+      expect(observer.streams[0]!.liveActor?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+      await run.finish(
+        {
+          ...template,
+          runId: RUN,
+          artifactRoot: path.join(".humanish", "runs", RUN),
+          streams: [{ ...template.streams[0]!, actor }],
+        },
+        PASSING_OUTCOME,
+      );
+    });
+    const stored = JSON.parse(await readText("run.json")) as RunBundle;
+    const [finished] = stored.streams;
+    expect(finished!.actor?.tokenUsage).toEqual({ input: 320_000, output: 2_000 });
+    const trace = JSON.parse(await readText(finished!.trace!.path));
+    expect(trace.tokenUsage.turns).toEqual(rows);
+  });
+
+  it("keeps the estimate the rows gave when a later write carries the live actor as run.json holds it", async () => {
+    const snapshot = inProgress([item(1)]);
+    const [stream] = snapshot.streams;
+    const live = { ...stream!.liveActor!, tokenUsage: usage, ids: { model: "gpt-5.6-sol" } };
+    await withRun(async (run) => {
+      await run.writeSnapshot({ ...snapshot, streams: [{ ...stream!, liveActor: live }] });
+      const stored = JSON.parse(await readText("run.json")) as RunBundle;
+      await run.writeSnapshot({ ...snapshot, streams: stored.streams });
+    });
+    expect((await storedLive())?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+    const observer = JSON.parse(await readText("observer/observer-data.json")) as {
+      streams: RunStream[];
+    };
+    expect(observer.streams[0]!.liveActor?.estimatedCost?.estimatedCostUsd).toBe(2.53);
   });
 });
 

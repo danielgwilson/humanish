@@ -9,18 +9,24 @@ import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js
 
 /**
  * The run bundle version this release writes: each stream's trace, and each running participant's
- * items so far, are files run.json indexes.
+ * items so far, are files run.json indexes, and each participant's per-request lists are only in
+ * its trace file (REQUEST_LISTS in src/run/stream-trace.ts).
  */
-export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v3";
+export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v4";
+/** The version 0.125.0 and 0.126.0 wrote, with the per-request lists in run.json too. It is still read. */
+export const RUN_BUNDLE_V3_SCHEMA = "humanish.run-bundle.v3";
 /** The version 0.123.0 and 0.124.0 wrote, with a running participant's items inline. It is still read. */
 export const RUN_BUNDLE_V2_SCHEMA = "humanish.run-bundle.v2";
 /** The version 0.122.0 and earlier wrote, with every trace inline. It is still read. */
 export const RUN_BUNDLE_V1_SCHEMA = "humanish.run-bundle.v1";
 
-/** Whether `value` names a run bundle version this release reads: v3, v2 or v1. */
+/** Whether `value` names a run bundle version this release reads: v4, v3, v2 or v1. */
 export function isReadRunBundleSchema(value: unknown): value is RunBundle["schema"] {
   return (
-    value === RUN_BUNDLE_SCHEMA || value === RUN_BUNDLE_V2_SCHEMA || value === RUN_BUNDLE_V1_SCHEMA
+    value === RUN_BUNDLE_SCHEMA ||
+    value === RUN_BUNDLE_V3_SCHEMA ||
+    value === RUN_BUNDLE_V2_SCHEMA ||
+    value === RUN_BUNDLE_V1_SCHEMA
   );
 }
 /** The run bundle file, relative to the run directory. */
@@ -275,7 +281,11 @@ type RunAttributionClass = "isolated" | "shared-world";
 export interface RunBundle {
   publication?: { restrictions: ["real-communications"] };
   commsReceiving?: CommsReceivingEvidence;
-  schema: typeof RUN_BUNDLE_SCHEMA | typeof RUN_BUNDLE_V2_SCHEMA | typeof RUN_BUNDLE_V1_SCHEMA;
+  schema:
+    | typeof RUN_BUNDLE_SCHEMA
+    | typeof RUN_BUNDLE_V3_SCHEMA
+    | typeof RUN_BUNDLE_V2_SCHEMA
+    | typeof RUN_BUNDLE_V1_SCHEMA;
   runId: string;
   mode: "dry-run" | "live";
   simCount: number;

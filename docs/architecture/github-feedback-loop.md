@@ -129,7 +129,7 @@ humanish_swarm:
     - .env*
     - .github/workflows/**
     - infra/**
-  artifact_schema_version: humanish.run-bundle.v3
+  artifact_schema_version: humanish.run-bundle.v4
   credential_manifest: []
   network_policy: no_network
   spend_policy: no_spend

@@ -10,6 +10,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { ActorExecutionProfile } from "../../src/actors/contract.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -20,6 +21,28 @@ const RUN = "synthetic-trace-index";
 const PAYLOAD = gzipSync("sk-" + "syntheticvalue1234567890abcdef").toString("base64");
 
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+const PROFILE: ActorExecutionProfile = {
+  schema: "humanish.actor-execution-profile.v1",
+  transport: "codex-app-server",
+  authentication: "chatgpt-account",
+  billing: "account-unknown",
+  requestedModel: "gpt-5.6-sol",
+  reasoningEffort: "low",
+  cliVersion: "0.160.0",
+  toolPolicy: "codex-ui-tools-v1",
+  participantSchema: "humanish.codex-ui-tool.v1",
+  memoryPolicy: "continuing-thread-v1",
+};
+const RECEIPT = {
+  ordinal: 1,
+  kind: "interaction" as const,
+  dispatched: true,
+  usageComplete: true,
+  cleanup: "confirmed" as const,
+  profileVerified: true,
+  usage: { input: 20, output: 5 },
+};
 
 describe("verify on an indexed trace", () => {
   let cwd: string;
@@ -78,6 +101,35 @@ describe("verify on an indexed trace", () => {
     const verified = await verifyRun(cwd, RUN);
     expect(verified.ok).toBe(false);
     expect(verified.shareSafety.status).toBe("blocked");
+  });
+
+  it("reports only the refusal for an account participant whose trace file is missing, in v4 as in v3", async () => {
+    const account = {
+      ...actor("Saved the record."),
+      executionProfile: PROFILE,
+      historyTurnsOmitted: 0,
+      providerRequests: [RECEIPT],
+    };
+    const stored = await writeTwoParticipantRun(runDir, [account, actor("Opened the list.")]);
+    const [first, second] = stored.streams;
+    await unlink(path.join(runDir, first!.trace!.path));
+    const checks = async () =>
+      new Map((await verifyRun(cwd, RUN)).checks.map((check) => [check.name, check]));
+    const v4 = await checks();
+    expect(v4.get("local evidence artifacts exist")?.message).toMatch(
+      /stream-one's trace was not read: .* is missing/,
+    );
+    expect(v4.get("cost estimate labeling")).toMatchObject({ ok: true });
+    // A v3 run.json held the receipts in the participant's summary too.
+    const summary = { ...first!.actor!, providerRequests: [RECEIPT] };
+    await writeStored({
+      ...stored,
+      schema: "humanish.run-bundle.v3",
+      streams: [{ ...first!, actor: summary }, second!],
+    });
+    const v3 = await checks();
+    expect(v3.get("local evidence artifacts exist")?.message).toMatch(/stream-one's trace/);
+    expect(v3.get("cost estimate labeling")).toMatchObject({ ok: true });
   });
 
   it("blocks an inline v1 run relabelled as v2", async () => {

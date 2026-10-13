@@ -11,6 +11,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V1_SCHEMA,
   RUN_BUNDLE_V2_SCHEMA,
+  RUN_BUNDLE_V3_SCHEMA,
   type RunBundle,
 } from "../run/bundle.js";
 import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
@@ -232,7 +233,7 @@ export async function verifyResolvedRun(
           : []),
     ]),
   );
-  checks.push(...(await evidenceChecks(runPaths, bundle, cleanupRead)));
+  checks.push(...(await evidenceChecks(runPaths, bundle, cleanupRead, traces.refusedStreams)));
 
   const recordingOk = checks.every((check) => check.ok);
   if (derivedPublicSafetyFindings.length > 0)
@@ -331,7 +332,8 @@ function evidenceArtifactsCheck(shaped: boolean, problems: string[]): VerifyChec
 
 /**
  * run.json with each stream's trace loaded, one file at a time, and the refusal of each trace that
- * does not match its index. A run.json that fails the shape guard is returned as it is.
+ * does not match its index, with the ids of those streams. A run.json that fails the shape guard
+ * is returned as it is.
  */
 async function loadTraces(
   runPaths: PreparedRunArtifactPaths,
@@ -339,12 +341,14 @@ async function loadTraces(
 ): Promise<{
   bundle: unknown;
   refusedTraces: string[];
+  refusedStreams: ReadonlySet<string>;
   sensitive: string[];
   opaque: string[];
   pages: string[];
 }> {
   const scanned = { sensitive: [] as string[], opaque: [] as string[] };
-  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [], ...scanned, pages: [] };
+  if (!isRunBundle(stored))
+    return { bundle: stored, refusedTraces: [], refusedStreams: new Set(), ...scanned, pages: [] };
   // Each trace is source evidence: scanned by the bytes it was joined from, apart from the
   // directory walk and any path exemption the walk makes.
   const { bundle, refused } = await loadStreamTraces(runPaths, stored, {
@@ -356,6 +360,7 @@ async function loadTraces(
   return {
     bundle,
     refusedTraces: refused.map((error) => error.message),
+    refusedStreams: new Set(refused.map((error) => error.streamId)),
     ...scanned,
     pages: pageFindings(bundle),
   };
@@ -433,7 +438,7 @@ function bundlePresenceChecks(
         ? `run.json declares ${String(schema)}`
         : record === undefined
           ? "no readable run.json, so no schema"
-          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}, ${RUN_BUNDLE_V2_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
+          : `run.json declares ${typeof schema === "string" ? schema : "no schema"}; verify reads ${RUN_BUNDLE_SCHEMA}, ${RUN_BUNDLE_V3_SCHEMA}, ${RUN_BUNDLE_V2_SCHEMA} and ${RUN_BUNDLE_V1_SCHEMA}`,
     },
     {
       name: "run bundle shape",
@@ -517,11 +522,16 @@ function findingsCheck(
  */
 const SHAPE_UNCHECKED = "not checked, because run.json failed the shape check";
 
-/** The bundle-content checks, in report order. A bundle that fails its shape guard has no findings. */
+/**
+ * The bundle-content checks, in report order. A bundle that fails its shape guard has no findings.
+ * `refusedStreams` names the streams whose traces the loader refused, which the evidence-artifacts
+ * check reports.
+ */
 async function evidenceChecks(
   runPaths: PreparedRunArtifactPaths,
   bundle: unknown,
   cleanupRead: RunJsonRead,
+  refusedStreams: ReadonlySet<string>,
 ): Promise<VerifyCheck[]> {
   const cleanupJson = runJsonValue(cleanupRead);
   const valid = isRunBundle(bundle) ? bundle : null;
@@ -599,7 +609,7 @@ async function evidenceChecks(
     // a correctly-labeled huge estimate still passes.
     findingsCheck(
       "cost estimate labeling",
-      valid ? costAndReceiptFindings(valid) : [],
+      valid ? costAndReceiptFindings(valid, refusedStreams) : [],
       pass(
         "every cost estimate carries its ratesAsOf date and source and the total matches its lines, or the run claims no cost",
       ),

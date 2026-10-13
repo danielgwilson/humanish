@@ -68,9 +68,12 @@ await renderObserver(process.cwd(), checked.run, { open: false });
 
 `loadRunBundle` returns run.json with each participant's trace file joined, and while the run is in
 progress each participant's live file, so `stream.actor.items` and `stream.liveActor.items` hold
-the participant's steps. It checks every file against the size and sha256 run.json records for it,
-and throws an Error named `StreamTraceRefusedError` for one that does not match. run.json read on
-its own has each participant's summary and no items.
+the participant's steps, and `stream.actor.tokenUsage.turns`, `stream.actor.conversation.requests`
+and `stream.actor.providerRequests` hold a finished participant's per-request rows. It checks
+every file against the size and sha256 run.json records for it, and throws an Error named
+`StreamTraceRefusedError` for one that does not match. run.json read on its own has each
+participant's summary, with no items and no per-request rows. A running participant's rows are
+written only when it finishes; while it runs, `stream.liveActor.estimatedCost` is its cost.
 
 `bundle.review.verdict` is what the participants experienced. A route result's `ok`, also
 written to the run's `status.json` as `outcome.ok`, says whether the run worked as an

@@ -984,8 +984,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v2",
-    "schemaVersion": 2,
+    "schema": "humanish.observer-data.v3",
+    "schemaVersion": 3,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -1137,7 +1137,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v3",
+      "bundleSchema": "humanish.run-bundle.v4",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -1166,7 +1166,7 @@
   },
   "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- outcome: passed\n- summary: 4 participants took part, each in their own copy of the app: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 5 trace items, 2 raw screenshots\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v3",
+    "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
     "mode": "live",
     "simCount": 4,
@@ -1353,19 +1353,7 @@
           "providerVersion": "gpt-5.6-sol",
           "conversation": {
             "mode": "threaded",
-            "summarizedTurns": 0,
-            "requests": [
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded",
-                "kind": "impressions"
-              }
-            ]
+            "summarizedTurns": 0
           },
           "protocol": "cua-loop",
           "lane": "computer-use",
@@ -1548,19 +1536,7 @@
           "providerVersion": "gpt-5.6-sol",
           "conversation": {
             "mode": "threaded",
-            "summarizedTurns": 0,
-            "requests": [
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded",
-                "kind": "impressions"
-              }
-            ]
+            "summarizedTurns": 0
           },
           "protocol": "cua-loop",
           "lane": "computer-use",
@@ -1738,19 +1714,7 @@
           "providerVersion": "gpt-5.6-sol",
           "conversation": {
             "mode": "threaded",
-            "summarizedTurns": 0,
-            "requests": [
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded",
-                "kind": "impressions"
-              }
-            ]
+            "summarizedTurns": 0
           },
           "protocol": "cua-loop",
           "lane": "computer-use",
@@ -1928,19 +1892,7 @@
           "providerVersion": "gpt-5.6-sol",
           "conversation": {
             "mode": "threaded",
-            "summarizedTurns": 0,
-            "requests": [
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded"
-              },
-              {
-                "mode": "threaded",
-                "kind": "impressions"
-              }
-            ]
+            "summarizedTurns": 0
           },
           "protocol": "cua-loop",
           "lane": "computer-use",

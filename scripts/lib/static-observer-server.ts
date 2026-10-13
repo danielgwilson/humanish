@@ -231,9 +231,11 @@ function recordedObserverStaticBody(filePath: string, body: Buffer): Buffer {
         !data ||
         typeof data !== "object" ||
         Array.isArray(data) ||
-        !["humanish.observer-data.v1", "humanish.observer-data.v2"].includes(
-          String((data as Record<string, unknown>).schema),
-        )
+        ![
+          "humanish.observer-data.v1",
+          "humanish.observer-data.v2",
+          "humanish.observer-data.v3",
+        ].includes(String((data as Record<string, unknown>).schema))
       )
         return null;
       const projection = data as Record<string, unknown>;

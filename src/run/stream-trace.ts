@@ -1,9 +1,10 @@
 // Where a participant's trace lives. A v1 run.json holds every stream's trace items and screenshot
 // entries inline. From v2 the run writer moves them into one file per stream and leaves an index
 // in run.json, so run.json stays a summary whatever the length of the sessions. From v3 a running
-// participant's items so far are in a live file run.json indexes too (src/run/live-items.ts).
-// Every reader that needs the items loads them here, which accepts every version and checks each
-// file against its index.
+// participant's items so far are in a live file run.json indexes too (src/run/live-items.ts). From
+// v4 the per-request lists (REQUEST_LISTS) are only in the trace file, and a running participant
+// carries its totals and the estimate priced from its rows. Every reader that needs the items or
+// the lists loads them here, which accepts every version and checks each file against its index.
 
 import { createHash } from "node:crypto";
 
@@ -12,6 +13,7 @@ import {
   RUN_BUNDLE_FILE,
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V2_SCHEMA,
+  RUN_BUNDLE_V3_SCHEMA,
   type RunBundle,
 } from "./bundle.js";
 import { isRunBundle } from "./bundle-shape.js";
@@ -30,6 +32,7 @@ import {
   type LiveItemsCursor,
   liveItemsFromBytes,
 } from "./live-items.js";
+import { estimateActorCostForExecution } from "./pricing.js";
 import { isRunStreamArtifact, isStreamTraceIndex, isStreamTracePath } from "./stream-shape.js";
 import type { LiveItemsIndex, RunStream, StreamTraceIndex } from "./streams.js";
 import { isRecord } from "./type-guards.js";
@@ -81,11 +84,68 @@ function tracePath(stream: RunStream, index: number, claimed: ReadonlySet<string
 }
 
 /**
+ * A participant's lists that gain one entry per model request, as paths into its actor trace. From
+ * run bundle v4 run.json leaves them out of `actor` and `liveActor`, and the trace file alone holds
+ * them; the Observer's data leaves them out too.
+ */
+const REQUEST_LISTS = ["tokenUsage.turns", "conversation.requests", "providerRequests"] as const;
+
+type RequestList = (typeof REQUEST_LISTS)[number];
+
+/** The value at `list`'s path in `trace`, when the object holding it is there. */
+function listIn(trace: Record<string, unknown>, list: RequestList): unknown {
+  const [first, second] = list.split(".") as [string, string | undefined];
+  if (second === undefined) return trace[first];
+  const parent = trace[first];
+  return isRecord(parent) ? parent[second] : undefined;
+}
+
+/** `trace` without the per-request lists; every other field as it is. */
+export function withoutRequestLists<T extends object>(trace: T): T {
+  const copy = { ...trace } as Record<string, unknown>;
+  for (const list of REQUEST_LISTS) {
+    const [first, second] = list.split(".") as [string, string | undefined];
+    const parent = copy[first];
+    if (second === undefined) delete copy[first];
+    else if (isRecord(parent) && second in parent) {
+      const { [second]: _list, ...rest } = parent;
+      copy[first] = rest;
+    }
+  }
+  return copy as T;
+}
+
+/** The first per-request list `trace` holds, if any. */
+function heldRequestList(trace: object): RequestList | undefined {
+  return REQUEST_LISTS.find((list) => listIn(trace as Record<string, unknown>, list) !== undefined);
+}
+
+type LiveActor = NonNullable<RunStream["liveActor"]>;
+
+/**
+ * run.json's live actor: without the per-request lists, and with the estimate priced from the
+ * rows it leaves out. Long-context pricing needs each request's input size, so a figure priced
+ * from the totals alone could be under half the real one. A live actor read back from run.json
+ * has no rows and keeps the estimate they gave.
+ */
+function liveSummary(live: LiveActor): LiveActor {
+  const summary = withoutRequestLists(live);
+  const model = live.ids?.model;
+  if (live.tokenUsage === undefined || typeof model !== "string") return summary;
+  if (live.tokenUsage.turns === undefined && live.estimatedCost !== undefined) return summary;
+  return {
+    ...summary,
+    estimatedCost: estimateActorCostForExecution(live.tokenUsage, model, live.executionProfile),
+  };
+}
+
+/**
  * The run.json the run writes, and the trace files it writes first. Each stream with a finished
- * actor keeps that actor without `items`, its artifacts other than screenshots, and an index of its
- * trace file; the file is the actor trace with the stream's screenshot entries as `artifacts`. A
- * stream already split (its actor read back from a v2 run.json without its items) keeps its index,
- * since its file is on disk.
+ * actor keeps that actor without `items` and the per-request lists, its artifacts other than
+ * screenshots, and an index of its trace file; the file is the whole actor trace with the stream's
+ * screenshot entries as `artifacts`. A stream already split (its actor read back from run.json
+ * without its items) keeps its index, since its file is on disk, and loses any lists an older
+ * run.json held beside it. A running participant's live actor is written by liveSummary.
  */
 export function splitStreamTraces(bundle: RunBundle): {
   bundle: RunBundle;
@@ -95,9 +155,14 @@ export function splitStreamTraces(bundle: RunBundle): {
   const claimed = new Set<string>();
   for (const stream of bundle.streams)
     if (stream.trace) claimed.add(traceFileKey(stream.trace.path));
-  const streams = bundle.streams.map((stream, index): RunStream => {
+  const streams = bundle.streams.map((written, index): RunStream => {
+    const stream =
+      written.liveActor === undefined
+        ? written
+        : { ...written, liveActor: liveSummary(written.liveActor) };
     const actor = stream.actor;
-    if (actor === undefined || !Array.isArray(actor.items)) return stream;
+    if (actor === undefined) return stream;
+    if (!Array.isArray(actor.items)) return { ...stream, actor: withoutRequestLists(actor) };
     const { trace: _previous, ...rest } = stream;
     const filePath = tracePath(rest, index, claimed);
     // Only a stream already split that moved position can hold this stream's position name.
@@ -110,8 +175,8 @@ export function splitStreamTraces(bundle: RunBundle): {
     const { items, ...summary } = actor;
     return {
       ...rest,
-      // run.json's actor is the summary: every field of the trace except its items.
-      actor: summary as ActorTrace,
+      // run.json's actor is the summary: every field of the trace except its items and lists.
+      actor: withoutRequestLists(summary) as ActorTrace,
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       trace: {
         path: filePath,
@@ -180,12 +245,39 @@ function joinTrace(stream: RunStream & { trace: StreamTraceIndex }, bytes: Buffe
     refuse(
       `${index.path} holds ${value.items.length} items and ${artifacts.length} screenshots and run.json records ${index.items} and ${index.screenshots}`,
     );
+  const actor = joinRequestLists(stream.actor as ActorTrace, value, index.path, refuse);
   const { trace: _index, ...rest } = stream;
   return {
     ...rest,
-    actor: { ...(stream.actor as ActorTrace), items: value.items as ActorTrace["items"] },
+    actor: { ...actor, items: value.items as ActorTrace["items"] },
     artifacts: [...stream.artifacts, ...(artifacts as StreamArtifact[])],
   };
+}
+
+/**
+ * run.json's actor with each per-request list its trace file holds, whatever the bundle's
+ * version: before v4 the writer wrote run.json's lists and the file's from one actor, so they are
+ * equal. A nested list goes into run.json's `tokenUsage` or `conversation` when run.json has it.
+ */
+function joinRequestLists(
+  summary: ActorTrace,
+  file: Record<string, unknown>,
+  filePath: string,
+  refuse: (detail: string) => never,
+): ActorTrace {
+  if (isRecord(file.conversation) && !Array.isArray(file.conversation.requests))
+    refuse(`${filePath} records a conversation without its requests list`);
+  const joined: Record<string, unknown> = { ...summary };
+  for (const list of REQUEST_LISTS) {
+    const value = listIn(file, list);
+    if (value === undefined) continue;
+    if (!Array.isArray(value)) refuse(`${filePath} holds ${list} as something other than a list`);
+    const [first, second] = list.split(".") as [string, string | undefined];
+    const parent = joined[first];
+    if (second === undefined) joined[first] = value;
+    else if (isRecord(parent)) joined[first] = { ...parent, [second]: value };
+  }
+  return joined as unknown as ActorTrace;
 }
 
 /** Refuses an index the shape check would refuse, naming a file that is not a trace file name. */
@@ -203,7 +295,7 @@ function assertIndex(stream: RunStream): asserts stream is RunStream & { trace: 
 }
 
 /** A live actor whose items run.json holds inline: humanish.live-actor.v1, or one with no schema. */
-const isInlineLiveActor = (live: NonNullable<RunStream["liveActor"]>): boolean =>
+const isInlineLiveActor = (live: LiveActor): boolean =>
   live.schema === LIVE_ACTOR_V1_SCHEMA || (live.schema as unknown) === undefined;
 
 /** A live file that could not be read, which a writer that moved on may have removed. */
@@ -343,15 +435,32 @@ export async function loadStreamTrace(
 }
 
 /**
+ * What each version's writer never puts in run.json, so a run.json of that version that holds it
+ * did not come from the writer. From v2 the writer indexes every actor on every write, mid-run
+ * flushes included, and the final write replaces `liveActor`. From v3 a running participant's
+ * items are in a live file (humanish.live-actor.v2). From v4 the per-request lists are only in
+ * the trace file. A run.json of v1, or of no version this table names, is read as v1 is.
+ */
+const WRITER_RULES = new Map<string, { liveFiles: boolean; listsOut: boolean }>([
+  [RUN_BUNDLE_V2_SCHEMA, { liveFiles: false, listsOut: false }],
+  [RUN_BUNDLE_V3_SCHEMA, { liveFiles: true, listsOut: false }],
+  [RUN_BUNDLE_SCHEMA, { liveFiles: true, listsOut: true }],
+]);
+
+/**
+ * Whether a run.json of `schema` holds the per-request lists (REQUEST_LISTS) the writer kept in
+ * it: v1 to v3, and a schema WRITER_RULES does not name, which is read as v1. From v4 they are
+ * only in the trace file, so a running participant's `liveActor` holds none.
+ */
+export const keepsRequestListsInRunJson = (schema: string): boolean =>
+  WRITER_RULES.get(schema)?.listsOut !== true;
+
+/**
  * Why a stream of this bundle cannot be read, before any file is. A trace file belongs to one
  * participant, so every stream indexing a path another stream indexes, compared as a
- * case-insensitive file system compares them, is refused. In v2 the writer
- * indexes every actor on every write, mid-run flushes included, so a v2 actor without an index lost
- * its trace file, and inline items never come from the writer. A run still writing carries its
- * participants' items so far as `liveActor`: inline in v2 (humanish.live-actor.v1), in a live file
- * from v3 (humanish.live-actor.v2), so a v3 run.json with inline live items did not come from the
- * writer. A run.json whose outcome says the run finished never carries `liveActor`, since the
- * final write replaces it.
+ * case-insensitive file system compares them, is refused in every version. The other rules are
+ * WRITER_RULES': a v2 actor without an index lost its trace file, and a run.json whose outcome says
+ * the run finished never carries `liveActor`.
  */
 function bundleRefusal(
   bundle: RunBundle,
@@ -363,18 +472,22 @@ function bundleRefusal(
     : undefined;
   if (shared !== undefined && shared.length > 1)
     return `run.json indexes ${String(stream.trace!.path)} for participants ${shared.join(", ")} (paths that differ only in case name one file on some file systems), and a trace file belongs to one participant`;
-  if (bundle.schema !== RUN_BUNDLE_SCHEMA && bundle.schema !== RUN_BUNDLE_V2_SCHEMA)
-    return undefined;
+  const rules = WRITER_RULES.get(String(bundle.schema));
+  if (rules === undefined) return undefined;
+  const version = String(bundle.schema).replace("humanish.run-bundle.", "");
   if (stream.actor !== undefined && stream.trace === undefined)
     return "run.json holds its actor and names no trace file";
   if (stream.liveActor !== undefined && bundle.outcome?.state === "finished")
     return "run.json records a finished run and still holds in-progress items";
-  if (
-    bundle.schema === RUN_BUNDLE_SCHEMA &&
-    stream.liveActor !== undefined &&
-    isInlineLiveActor(stream.liveActor)
-  )
-    return "run.json v3 holds in-progress items inline, which the writer keeps in a live file";
+  if (rules.liveFiles && stream.liveActor !== undefined && isInlineLiveActor(stream.liveActor))
+    return `run.json ${version} holds in-progress items inline, which the writer keeps in a live file`;
+  if (rules.listsOut)
+    for (const field of ["actor", "liveActor"] as const) {
+      const trace = stream[field];
+      const list = isRecord(trace) ? heldRequestList(trace) : undefined;
+      if (list !== undefined)
+        return `run.json ${version} holds ${list} in its ${field}, which the writer keeps only in the trace file`;
+    }
   return undefined;
 }
 
@@ -471,9 +584,10 @@ async function loadEveryStream(
 
 /**
  * A loaded bundle as a reader that shows a run presents it. A refused stream keeps run.json's
- * summary, shows none of the items run.json or a file supplied for it (its actor's items, its
- * in-progress items, its screenshot entries), and carries `traceUnavailable` with the reason; a
- * warn event on its timeline says the same.
+ * summary, shows none of the items or per-request lists run.json or a file supplied for it (its
+ * actor's items and lists, its in-progress items, its screenshot entries), and carries
+ * `traceUnavailable` with the reason; a warn event on its timeline says the same. A reader that
+ * shows the run then never prices or checks rows the loader refused.
  */
 export function displayedTraces(loaded: {
   bundle: RunBundle;
@@ -487,7 +601,7 @@ export function displayedTraces(loaded: {
     const { liveActor: _live, trace: _index, actor, ...rest } = stream;
     return {
       ...rest,
-      ...(actor === undefined ? {} : { actor: { ...actor, items: [] } }),
+      ...(actor === undefined ? {} : { actor: { ...withoutRequestLists(actor), items: [] } }),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       traceUnavailable: reason,
     };

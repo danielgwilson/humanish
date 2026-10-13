@@ -220,8 +220,8 @@
   "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
-    "schema": "humanish.observer-data.v2",
-    "schemaVersion": 2,
+    "schema": "humanish.observer-data.v3",
+    "schemaVersion": 3,
     "generatedAt": "[ts]",
     "run": {
       "runId": "[run]",
@@ -356,7 +356,7 @@
       }
     },
     "raw": {
-      "bundleSchema": "humanish.run-bundle.v3",
+      "bundleSchema": "humanish.run-bundle.v4",
       "artifactRoot": ".humanish/runs/[run]"
     }
   },
@@ -376,7 +376,7 @@
   },
   "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 4 participants would each use their own copy of http://127.0.0.1:3000/. No desktops were launched and $0 was spent.\n\n## Gaps\n- Live fan-out session not yet run (dry run only).\n",
   "run.json": {
-    "schema": "humanish.run-bundle.v3",
+    "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
     "mode": "dry-run",
     "simCount": 4,

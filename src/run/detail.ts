@@ -166,7 +166,7 @@ function participantFrom(
     ...(typeof trace.counts?.turns === "number" ? { turns: trace.counts.turns } : {}),
     ...(typeof trace.counts?.actions === "number" ? { actions: trace.counts.actions } : {}),
     ...(thoughts > 0 ? { thoughts } : {}),
-    ...costOf(trace),
+    ...costOf(trace, stream.traceUnavailable === undefined),
     ...(stream.traceUnavailable === undefined
       ? {}
       : { evidenceUnavailable: stream.traceUnavailable }),
@@ -180,11 +180,16 @@ function participantFrom(
  * model it prices at, so the same estimator gives a figure mid-run instead of the screen reporting
  * the cost as unknown until the moment the run ends. That is the half of a run where knowing what
  * it is costing actually changes what you do.
+ *
+ * Without `rowsLoaded` (the loader refused the participant's trace) only a recorded figure is
+ * shown: long-context pricing needs each request's input size, and the totals alone can price
+ * under half of what the rows give.
  */
-function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
+function costOf(trace: ActorTraceFacts, rowsLoaded: boolean): { estimatedCostUsd?: number | null } {
   if (trace.executionProfile?.billing === "account-unknown") return { estimatedCostUsd: null };
   const recorded = trace.estimatedCost?.estimatedCostUsd;
   if (recorded !== undefined) return { estimatedCostUsd: recorded };
+  if (!rowsLoaded) return {};
   const usage = trace.tokenUsage;
   const model = trace.ids?.model;
   if (usage === undefined || typeof model !== "string") return {};

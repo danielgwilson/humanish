@@ -208,7 +208,7 @@ the library exports. A change to any of them follows three rules:
   release carries every breaking change at once, and its notes carry a migration table: each old
   form, its new form and the change to make.
 - The study file schema (`humanish.study.v3`) and the run bundle schema
-  (`humanish.run-bundle.v3`) are versioned. A breaking change to either one bumps its version;
+  (`humanish.run-bundle.v4`) are versioned. A breaking change to either one bumps its version;
   an additive optional field does not.
 
 ## Pull Requests

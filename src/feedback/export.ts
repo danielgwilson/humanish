@@ -364,7 +364,8 @@ async function readObserverSlot(
  * even if an older saved HTML was never refreshed; old recording-only exports keep the saved slot.
  * A page saved since observer-data v2 holds no participant's items in its slot, and verify does not
  * read the page's compressed copy, so its export is the current projection of the run and its
- * traces. Undefined when run.json no longer matches the analysis, or a v2 page's run cannot be read.
+ * traces, for a page saved as v2 too. Undefined when run.json no longer matches the analysis, or
+ * such a page's run cannot be read.
  */
 async function currentObserverData(
   runPaths: RunPaths,
@@ -376,7 +377,8 @@ async function currentObserverData(
   if (analysis.state !== "ready" || !analysis.analysis) {
     const schema = (saved as { schema?: unknown } | null)?.schema;
     if (schema === "humanish.observer-data.v1") return { value: observerDataFromSaved(saved) };
-    if (schema !== OBSERVER_DATA_SCHEMA) return { value: saved };
+    if (schema !== OBSERVER_DATA_SCHEMA && schema !== "humanish.observer-data.v2")
+      return { value: saved };
     const bundle = await sourceTraces(runPaths, await source());
     return bundle === undefined ? undefined : { value: buildObserverData(bundle) };
   }

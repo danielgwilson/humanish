@@ -50,6 +50,7 @@ import {
 } from "./host-suspension.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
 import { splitStreamTraces } from "./stream-trace.js";
+import type { RunStream } from "./streams.js";
 
 interface StartRunOptions {
   /** Project directory, in the form the route resolved it. */
@@ -334,8 +335,9 @@ function observerTarget(options: StartRunOptions): ObserverTarget | undefined {
  * run.json for `bundle`, written after every live file and trace file it indexes, then the removal
  * of the live files it no longer names. Returns the bundle the review and the projections read:
  * raw sandbox ids scrubbed, each finished trace inline, each running participant's items as the
- * index of its live file, and the live files' warning among the events. Live items are scrubbed
- * as they are appended, so the scrub of the bundle no longer walks them.
+ * index of its live file with the estimate run.json records for it, and the live files' warning
+ * among the events. Live items are scrubbed as they are appended, so the scrub of the bundle no
+ * longer walks them.
  */
 async function writeRunJson(
   paths: PreparedRunArtifactPaths,
@@ -353,7 +355,14 @@ async function writeRunJson(
   for (const file of split.files) await writeContainedOutputFile(paths, file.path, file.bytes);
   await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(split.bundle), "utf8");
   await live.published();
-  return publicBundle;
+  // The split prices each running participant from the rows it leaves out of run.json.
+  const streams = publicBundle.streams.map((stream, index): RunStream => {
+    const estimate = split.bundle.streams[index]?.liveActor?.estimatedCost;
+    return stream.liveActor === undefined || estimate === undefined
+      ? stream
+      : { ...stream, liveActor: { ...stream.liveActor, estimatedCost: estimate } };
+  });
+  return { ...publicBundle, streams };
 }
 
 /** The writes of one run, queued in order: its snapshots, its final publication and its interrupt. */

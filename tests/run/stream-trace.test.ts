@@ -3,13 +3,15 @@
 // v1 bundle held it, and refuses a trace that does not match its index.
 
 import { createHash } from "node:crypto";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { ActorTrace } from "../../src/actors/contract.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import type { RunStream } from "../../src/run/streams.js";
+import { readRunDetail } from "../../src/run/detail.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { isRunStream } from "../../src/run/stream-shape.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
@@ -51,7 +53,7 @@ async function writeV2(bundle: RunBundle): Promise<RunBundle> {
 describe("writing a run's participant traces", () => {
   it("keeps each stream's summary and index in run.json and its items in the trace file", async () => {
     const stored = await writeV2(v1);
-    expect(stored.schema).toBe("humanish.run-bundle.v3");
+    expect(stored.schema).toBe("humanish.run-bundle.v4");
     const stream = stored.streams[0]!;
     expect(stream.actor).not.toHaveProperty("items");
     expect(stream.actor?.status).toBe(v1.streams[0]!.actor?.status);
@@ -120,6 +122,265 @@ describe("writing a run's participant traces", () => {
       streams.map((stream) => stream.actor.items),
     );
   });
+});
+
+// Three requests, the first past the 272K long-context tier, as a participant's usage rows.
+const USAGE_ROWS = [
+  { input: 300_000, output: 1_000 },
+  { input: 10_000, output: 500 },
+  { input: 10_000, output: 500 },
+];
+const RECEIPT = {
+  ordinal: 1,
+  kind: "interaction" as const,
+  dispatched: true,
+  usageComplete: true,
+  cleanup: "confirmed" as const,
+  profileVerified: true,
+  usage: { input: 20, output: 5 },
+};
+
+/** The fixture's first stream with three usage rows, three conversation rows and two receipts. */
+function withLists(stream: RunStream): RunStream {
+  return {
+    ...stream,
+    actor: {
+      ...stream.actor!,
+      tokenUsage: { input: 320_000, output: 2_000, total: 322_000, turns: USAGE_ROWS },
+      conversation: {
+        mode: "threaded",
+        summarizedTurns: 0,
+        requests: [{ mode: "threaded" }, { mode: "threaded" }, { mode: "threaded" }],
+      },
+      providerRequests: [RECEIPT, { ...RECEIPT, ordinal: 2 }],
+    },
+  };
+}
+
+describe("run bundle v4's per-request lists", () => {
+  it("writes each finished participant's lists only in its trace file", async () => {
+    const listed = withLists(v1.streams[0]!);
+    const stored = await writeV2({ ...v1, streams: [listed] });
+    expect(stored.schema).toBe("humanish.run-bundle.v4");
+    const actor = stored.streams[0]!.actor!;
+    expect(actor.tokenUsage).toEqual({ input: 320_000, output: 2_000, total: 322_000 });
+    expect(actor.conversation).toEqual({ mode: "threaded", summarizedTurns: 0 });
+    expect(actor).not.toHaveProperty("providerRequests");
+    const file = JSON.parse(await readFile(path.join(runRoot, "actors/stream-001.json"), "utf8"));
+    expect(file.tokenUsage.turns).toEqual(USAGE_ROWS);
+    expect(file.conversation.requests).toHaveLength(3);
+    expect(file.providerRequests).toEqual([RECEIPT, { ...RECEIPT, ordinal: 2 }]);
+  });
+
+  it("prices a running participant from its rows, then leaves them out of run.json", () => {
+    const { actor: _actor, ...base } = v1.streams[0]!;
+    const running: RunStream = {
+      ...base,
+      status: "running",
+      liveActor: {
+        schema: "humanish.live-actor.v1",
+        updatedAt: "2026-10-13T08:00:00.000Z",
+        ids: { model: "gpt-5.6-sol" },
+        tokenUsage: { input: 320_000, output: 2_000, turns: USAGE_ROWS },
+        providerRequests: [RECEIPT],
+        // A producer's own figure is replaced by the one the rows give.
+        estimatedCost: {
+          schema: "humanish.actor-estimated-cost.v1",
+          estimatedCostUsd: 9,
+          ratesAsOf: "2026-01-01",
+          source: "a producer",
+        },
+        items: [],
+      },
+    };
+    const live = splitStreamTraces({ ...v1, streams: [running] }).bundle.streams[0]!.liveActor!;
+    expect(live.tokenUsage).toEqual({ input: 320_000, output: 2_000 });
+    expect(live).not.toHaveProperty("providerRequests");
+    // 300,000 x $4/M x 2 + 1,000 x $20/M x 1.5 + 20,000 x $4/M + 1,000 x $20/M. From the totals
+    // alone it would be 320,000 x $4/M + 2,000 x $20/M = $1.32.
+    expect(live.estimatedCost).toMatchObject({
+      schema: "humanish.actor-estimated-cost.v1",
+      estimatedCostUsd: 2.53,
+      ratesAsOf: "2026-09-03",
+    });
+    expect(live.estimatedCost?.source).toMatch(/pricing/);
+  });
+
+  it("loads the lists back from the trace file, with or without the bundle", async () => {
+    const listed = v1.streams.map(withLists);
+    const stored = await writeV2({ ...v1, streams: listed });
+    const loaded = await loadStreamTraces(runPaths, stored);
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams).toEqual(listed);
+    expect(await loadStreamTrace(runPaths, stored.streams[1]!)).toEqual(listed[1]);
+  });
+
+  it("refuses a v4 run.json that holds a list, naming the participant", async () => {
+    const stored = await writeV2({ ...v1, streams: v1.streams.map(withLists) });
+    const [first, second] = stored.streams;
+    const inlineTurns = {
+      ...first!,
+      actor: { ...first!.actor!, tokenUsage: { ...first!.actor!.tokenUsage, turns: USAGE_ROWS } },
+    };
+    const { outcome: _outcome, ...running } = stored;
+    const liveReceipts = {
+      ...second!,
+      liveActor: {
+        schema: "humanish.live-actor.v2",
+        updatedAt: "2026-10-13T08:00:00.000Z",
+        providerRequests: [RECEIPT],
+        itemsFile: {
+          path: "live/2.1.ndjson",
+          generation: 1,
+          items: 0,
+          bytes: 0,
+          sha256: createHash("sha256").digest("hex"),
+        },
+      },
+    } as RunStream;
+    const loaded = await loadStreamTraces(runPaths, {
+      ...running,
+      streams: [inlineTurns, liveReceipts],
+    });
+    expect(loaded.refused.map((error) => error.message)).toEqual([
+      expect.stringMatching(/stream-001.*tokenUsage\.turns/),
+      expect.stringMatching(/stream-002.*providerRequests/),
+    ]);
+  });
+
+  it("shows a refused participant without the rows it refused", async () => {
+    const stored = await writeV2({ ...v1, streams: [withLists(v1.streams[0]!)] });
+    const [first] = stored.streams;
+    const { estimatedCost: _estimate, ...actor } = first!.actor!;
+    const inline = { ...actor, tokenUsage: { ...actor.tokenUsage, turns: USAGE_ROWS } };
+    await writeFile(
+      path.join(runRoot, "run.json"),
+      JSON.stringify({ ...stored, streams: [{ ...first!, actor: inline }] }),
+    );
+    const [participant] = (await readRunDetail(cwd, RUN))!.participants;
+    expect(participant!.evidenceUnavailable).toMatch(/tokenUsage\.turns/);
+    // The totals alone would give $1.32 (320,000 x $4/M + 2,000 x $20/M) and the refused rows
+    // $2.53, so run detail shows no figure.
+    expect(participant).not.toHaveProperty("estimatedCostUsd");
+  });
+
+  it("refuses a trace file whose conversation has no requests list", async () => {
+    const listed = withLists(v1.streams[0]!);
+    const { requests: _requests, ...conversation } = listed.actor!.conversation!;
+    const stored = await writeV2({
+      ...v1,
+      streams: [{ ...listed, actor: { ...listed.actor!, conversation } as ActorTrace }],
+    });
+    await expect(loadStreamTrace(runPaths, stored.streams[0]!)).rejects.toThrow(
+      /stream-001.*conversation.*requests/,
+    );
+  });
+});
+
+describe("the rules each run bundle version is read under", () => {
+  const unfinished = (bundle: RunBundle): RunBundle => {
+    const { outcome: _outcome, ...rest } = bundle;
+    return rest as RunBundle;
+  };
+  const finished = (bundle: RunBundle): RunBundle => ({
+    ...bundle,
+    outcome: { state: "finished", ok: true, execution: { succeeded: true, failures: [] } },
+  });
+  /** The first stream as a running participant's whose items are in an empty live file. */
+  const runningFromFile = async (stream: RunStream): Promise<RunStream> => {
+    await mkdir(path.join(runRoot, "live"), { recursive: true });
+    await writeFile(path.join(runRoot, "live/1.1.ndjson"), "");
+    const { actor: _actor, trace: _trace, ...rest } = stream;
+    return {
+      ...rest,
+      liveActor: {
+        schema: "humanish.live-actor.v2",
+        updatedAt: "2026-10-13T08:00:00.000Z",
+        itemsFile: {
+          path: "live/1.1.ndjson",
+          generation: 1,
+          items: 0,
+          bytes: 0,
+          sha256: createHash("sha256").digest("hex"),
+        },
+      },
+    } as RunStream;
+  };
+  // Each rule's run.json, built from the bundle the writer wrote, the versions that refuse it, and
+  // the words of its refusal.
+  const rules: [string, (stored: RunBundle) => Promise<RunBundle>, string[], RegExp][] = [
+    [
+      "two participants indexing one trace file",
+      async (stored) => {
+        const [first, second] = stored.streams;
+        return { ...stored, streams: [first!, { ...second!, trace: first!.trace! }] };
+      },
+      ["v1", "v2", "v3", "v4"],
+      /indexes .* for participants/,
+    ],
+    [
+      "an actor without a trace index",
+      async (stored) => ({ ...stored, streams: [v1.streams[0]!] }),
+      ["v2", "v3", "v4"],
+      /names no trace file/,
+    ],
+    [
+      "in-progress items in a finished run",
+      async (stored) =>
+        finished({ ...stored, streams: [await runningFromFile(stored.streams[0]!)] }),
+      ["v2", "v3", "v4"],
+      /finished run/,
+    ],
+    [
+      "in-progress items inline",
+      async (stored) => {
+        const { actor: _actor, trace: _trace, ...rest } = stored.streams[0]!;
+        const live: RunStream = {
+          ...rest,
+          liveActor: {
+            schema: "humanish.live-actor.v1",
+            updatedAt: "2026-10-13T08:00:00.000Z",
+            items: [],
+          },
+        };
+        return unfinished({ ...stored, streams: [live] });
+      },
+      ["v3", "v4"],
+      /inline/,
+    ],
+    [
+      "a per-request list in the actor",
+      async (stored) => {
+        const [first] = stored.streams;
+        const usage = { ...first!.actor!.tokenUsage, turns: USAGE_ROWS };
+        return {
+          ...stored,
+          streams: [{ ...first!, actor: { ...first!.actor!, tokenUsage: usage } }],
+        };
+      },
+      ["v4"],
+      /tokenUsage\.turns/,
+    ],
+  ];
+  const cases = rules.flatMap(([rule, build, refusing, reason]) =>
+    ["v1", "v2", "v3", "v4"].map(
+      (version) => [rule, version, refusing.includes(version), build, reason] as const,
+    ),
+  );
+
+  it.each(cases)(
+    "%s in run.json %s: refused %s",
+    async (_rule, version, refused, build, reason) => {
+      const stored = await writeV2({ ...v1, streams: v1.streams.map(withLists) });
+      const bundle = await build({ ...stored, schema: `humanish.run-bundle.${version}` as never });
+      const messages = (await loadStreamTraces(runPaths, bundle)).refused.map(
+        (error) => error.message,
+      );
+      expect(messages.length > 0).toBe(refused);
+      // Every refusal names this cell's rule.
+      expect(messages.filter((message) => !reason.test(message))).toEqual([]);
+    },
+  );
 });
 
 describe("loading a run's participant traces", () => {

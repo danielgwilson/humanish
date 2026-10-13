@@ -327,11 +327,11 @@ describe("live helpers", () => {
     const ok = (body: unknown) =>
       (async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch;
     expect(
-      await fetchObserverData(ok({ data: { schema: "humanish.observer-data.v2", streams: [] } })),
+      await fetchObserverData(ok({ data: { schema: "humanish.observer-data.v3", streams: [] } })),
     ).toBeNull();
     expect(await fetchObserverData(ok({ data: { schema: "something.else" } }))).toBeNull();
     expect(
-      await fetchObserverData(ok({ schema: "humanish.observer-data.v2", streams: [] })),
+      await fetchObserverData(ok({ schema: "humanish.observer-data.v3", streams: [] })),
     ).toBeNull();
     expect(
       await fetchObserverData((async () => ({ ok: false })) as unknown as typeof fetch),

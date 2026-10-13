@@ -181,8 +181,8 @@ export function fixture({
     };
   });
   return {
-    schema: "humanish.observer-data.v2",
-    schemaVersion: 2,
+    schema: "humanish.observer-data.v3",
+    schemaVersion: 3,
     generatedAt: new Date().toISOString(),
     run: {
       runId: "synthetic-observer-browser-proof",

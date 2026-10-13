@@ -1,5 +1,5 @@
 {
-  "schema": "humanish.run-bundle.v3",
+  "schema": "humanish.run-bundle.v4",
   "runId": "golden-first-run",
   "mode": "dry-run",
   "simCount": 4,

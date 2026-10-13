@@ -3,8 +3,8 @@
     "after": null,
     "body": {
       "data": {
-        "schema": "humanish.observer-data.v2",
-        "schemaVersion": 2,
+        "schema": "humanish.observer-data.v3",
+        "schemaVersion": 3,
         "generatedAt": "2026-10-12T22:58:58.125Z",
         "run": {
           "runId": "synthetic-feed-cursor",
@@ -321,7 +321,7 @@
           "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
         },
         "raw": {
-          "bundleSchema": "humanish.run-bundle.v3",
+          "bundleSchema": "humanish.run-bundle.v4",
           "artifactRoot": ".humanish/runs/synthetic-feed-cursor"
         },
         "runtime": {
@@ -376,8 +376,8 @@
     "after": "1.1.2.308,2.1.1.154",
     "body": {
       "data": {
-        "schema": "humanish.observer-data.v2",
-        "schemaVersion": 2,
+        "schema": "humanish.observer-data.v3",
+        "schemaVersion": 3,
         "generatedAt": "2026-10-12T22:58:58.166Z",
         "run": {
           "runId": "synthetic-feed-cursor",
@@ -694,7 +694,7 @@
           "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
         },
         "raw": {
-          "bundleSchema": "humanish.run-bundle.v3",
+          "bundleSchema": "humanish.run-bundle.v4",
           "artifactRoot": ".humanish/runs/synthetic-feed-cursor"
         },
         "runtime": {
@@ -734,8 +734,8 @@
     "after": "1.1.3.462,2.1.1.154",
     "body": {
       "data": {
-        "schema": "humanish.observer-data.v2",
-        "schemaVersion": 2,
+        "schema": "humanish.observer-data.v3",
+        "schemaVersion": 3,
         "generatedAt": "2026-10-12T22:58:58.221Z",
         "run": {
           "runId": "synthetic-feed-cursor",
@@ -1052,7 +1052,7 @@
           "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
         },
         "raw": {
-          "bundleSchema": "humanish.run-bundle.v3",
+          "bundleSchema": "humanish.run-bundle.v4",
           "artifactRoot": ".humanish/runs/synthetic-feed-cursor"
         },
         "runtime": {
@@ -1124,8 +1124,8 @@
     "after": "1.2.4.616,2.1.2.308",
     "body": {
       "data": {
-        "schema": "humanish.observer-data.v2",
-        "schemaVersion": 2,
+        "schema": "humanish.observer-data.v3",
+        "schemaVersion": 3,
         "generatedAt": "2026-10-12T22:58:58.284Z",
         "run": {
           "runId": "synthetic-feed-cursor",
@@ -1348,7 +1348,7 @@
           "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
         },
         "raw": {
-          "bundleSchema": "humanish.run-bundle.v3",
+          "bundleSchema": "humanish.run-bundle.v4",
           "artifactRoot": ".humanish/runs/synthetic-feed-cursor"
         },
         "runtime": {

@@ -10,7 +10,7 @@ import { isObserverData } from "./validate";
 
 // Kept as a literal (not imported as a value) so the artifact never bundles CLI code.
 // tests/contract-lock.test.ts asserts it equals src/observer/data.ts's exported const.
-export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v2";
+export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v3";
 
 // The slot the CLI fills when it writes observer/index.html for a run. Static mode
 // inlines the snapshot this way because a file:// page cannot fetch() sibling files;
