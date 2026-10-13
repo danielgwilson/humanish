@@ -332,36 +332,6 @@ describe("the wait_for_change tool beside other calls", () => {
     ]);
   });
 
-  it("does not say a wait ran with other actions when the batch was rejected before it", async () => {
-    const attempted: CuaAction[] = [];
-    const { bodies, sentAt } = await runOpenAi(
-      [
-        replyOf(
-          1,
-          computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
-          fnCall("call_w", '{"minutes":3}'),
-        ),
-        doneReply(2),
-        closingReply(3, IMPRESSIONS),
-      ],
-      {
-        executor: {
-          observe: async () => ({ screenshot: QUIET, stateSignature: perceptualSignature(QUIET) }),
-          execute: async (action) => {
-            attempted.push(action);
-            throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-          },
-        },
-      },
-    );
-    expect(attempted.map((action) => action.kind)).toEqual(["click"]);
-    expect(sentAt.slice(0, 2)).toEqual([0, 0]);
-    const output = (bodies[1]?.input[1] as { output: string }).output;
-    expect(output).toMatch(
-      /^A wait sent with other actions does not end early when the screen changes\. Your action \(click \(10, 10\)\) was rejected before dispatch\./,
-    );
-  });
-
   it("answers a call to a tool it does not have and waits as for a wait with no length", async () => {
     // A reply of only such a call has no other action; it does not end the session.
     const { result, bodies, sentAt } = await runOpenAi([
@@ -418,6 +388,38 @@ describe("the wait_for_change tool beside other calls", () => {
       },
     ]);
     expect(imagesIn(bodies[1]!)).toBe(1);
+  });
+});
+
+describe("a wait_for_change call in a batch rejected before dispatch", () => {
+  it("does not say a wait ran with other actions when the batch was rejected before it", async () => {
+    const attempted: CuaAction[] = [];
+    const { bodies, sentAt } = await runOpenAi(
+      [
+        replyOf(
+          1,
+          computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+          fnCall("call_w", '{"minutes":3}'),
+        ),
+        doneReply(2),
+        closingReply(3, IMPRESSIONS),
+      ],
+      {
+        executor: {
+          observe: async () => ({ screenshot: QUIET, stateSignature: perceptualSignature(QUIET) }),
+          execute: async (action) => {
+            attempted.push(action);
+            throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
+          },
+        },
+      },
+    );
+    expect(attempted.map((action) => action.kind)).toEqual(["click"]);
+    expect(sentAt.slice(0, 2)).toEqual([0, 0]);
+    const output = (bodies[1]!.input[1] as { output: string }).output;
+    expect(output).toMatch(
+      /^A wait sent with other actions does not end early when the screen changes\. Your action \(click \(10, 10\)\) was rejected before dispatch\./,
+    );
   });
 });
 

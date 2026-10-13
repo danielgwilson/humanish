@@ -196,6 +196,20 @@ describe("the watch length over idle turns in a row", () => {
     ]);
   });
 
+  it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
+    // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= 3 ? turnOf([WAIT, WAIT, WAIT]) : DONE),
+      loop: { idleWaitMs: 5_000, maxWaitMs: 5_000 },
+    });
+    expect(run.requests.map((request) => request.at)).toEqual([0, 15_000, 30_000, 45_000]);
+  });
+});
+
+describe("a turn whose waits all name a length", () => {
+  const limits = (run: WatchRun) => watchesOf(run.result).map((watch) => watch.limitMs);
+
   it("keeps a named wait's length on each quiet turn in a row, and tells of no longer wait", async () => {
     // Codex, Claude Code and OpenAI's wait_for_change name a length; the participant chose it.
     const run = await runWatching({
@@ -243,16 +257,6 @@ describe("the watch length over idle turns in a row", () => {
     });
     expect(limits(run)).toEqual([180_000, 5_000, 10_000]);
     expect(run.requests.map((request) => request.at)).toEqual([0, 180_000, 185_000, 195_000]);
-  });
-
-  it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
-    // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
-    const run = await runWatching({
-      screen: () => QUIET,
-      turn: (_request, n) => (n <= 3 ? turnOf([WAIT, WAIT, WAIT]) : DONE),
-      loop: { idleWaitMs: 5_000, maxWaitMs: 5_000 },
-    });
-    expect(run.requests.map((request) => request.at)).toEqual([0, 15_000, 30_000, 45_000]);
   });
 });
 
