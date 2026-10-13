@@ -1,5 +1,6 @@
 import type { CuaAction, CuaSafetyCheck, CuaTurn } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
+import { CUA_WAIT_LIMITS } from "./wait.js";
 
 // The OpenAI Responses computer-use wire shape, mapped to and from the provider-neutral CuaAction
 // and CuaTurn types. Everything here is pure: the action mapper, the response parser and the
@@ -134,18 +135,22 @@ export interface FunctionCall {
 }
 
 /**
- * A wait_for_change call as a wait of the minutes it names. Arguments that do not parse to a
- * number of minutes make a wait that names no length, as the computer tool's `wait` does.
+ * A wait_for_change call as a wait of the minutes it names, in whole milliseconds from 1 to the
+ * longest wait a study may allow (CUA_WAIT_LIMITS.mostMaxMs, 60 minutes); the session's own cap
+ * then applies as to any named wait. Arguments that do not parse, or minutes that are not a number
+ * above zero, make a wait that names no length, as the computer tool's `wait` does: on a turn of
+ * only waits it lasts idleWaitMs, so a participant cannot ask again at once.
  */
 function waitForChangeAction(args: unknown): CuaAction {
+  let minutes: unknown;
   try {
-    const minutes = asRecord(JSON.parse(asString(args))).minutes;
-    if (typeof minutes === "number" && Number.isFinite(minutes))
-      return { kind: "wait", ms: Math.round(minutes * 60_000) };
+    minutes = asRecord(JSON.parse(asString(args))).minutes;
   } catch {
-    /* Unparsable arguments wait the default length. */
+    return { kind: "wait" };
   }
-  return { kind: "wait" };
+  if (typeof minutes !== "number" || !(minutes > 0)) return { kind: "wait" };
+  const ms = Math.max(1, Math.round(minutes * 60_000));
+  return { kind: "wait", ms: Math.min(ms, CUA_WAIT_LIMITS.mostMaxMs) };
 }
 
 // Collect plain strings or { text } entries from a reasoning summary/content array.
