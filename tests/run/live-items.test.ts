@@ -254,6 +254,20 @@ describe("loading a live file past the read limit", () => {
     expect(loaded.bundle.streams[0]!.liveActor!).not.toHaveProperty("items");
     expect(seen).toEqual([]);
   });
+
+  it("reads a live file indexed at exactly the limit", async () => {
+    await writeFile(path.join(runRoot, "live/1.1.ndjson"), TWO_LINES);
+    // The running participant alone: the other streams' trace files are larger than this limit.
+    const { trace: _trace, actor: _actor, ...running } = liveStream("live/1.1.ndjson", TWO_LINES);
+    const { outcome: _outcome, ...rest } = stored;
+    const loaded = await loadStreamTraces(
+      runPaths,
+      { ...rest, streams: [running] },
+      { maxBytes: Buffer.byteLength(TWO_LINES) },
+    );
+    expect(loaded.refused).toEqual([]);
+    expect(loaded.bundle.streams[0]!.liveActor?.items).toEqual([FIRST, SECOND]);
+  });
 });
 
 describe("loading a live file past the read limit for a caller that holds a prefix", () => {
