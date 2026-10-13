@@ -1119,6 +1119,11 @@ describe("handoff timeout fail-closed", () => {
         .filter((role) => role.id !== "host")
         .every((role) => role.error?.message.includes("physical browser containment failed")),
     ).toBe(true);
+    expect(result.roles.map((role) => role.skippedReason)).toEqual([
+      undefined,
+      "skipped: the host ended before it reached a lobby; no desktop was created",
+      "skipped: the host ended before it reached a lobby; no desktop was created",
+    ]);
   });
 
   it("host never yields a /lobby/CODE -> followers do not open, run returns HANDOFF_TIMEOUT, host window recorded", async () => {
@@ -1172,7 +1177,9 @@ describe("handoff timeout fail-closed", () => {
     const expectedSummary =
       "1 participant used one public app. 1 of 1 reached the goal. 2 participants were skipped before their sessions started; the gaps say why. humanish did not see them all end up in the same lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
-    expect(bundle.review.gaps).toEqual(["player-2: handoff-timeout", "player-3: handoff-timeout"]);
+    const skipped =
+      "skipped: the host did not reach a lobby within the handoff deadline; no desktop was created";
+    expect(bundle.review.gaps).toEqual([`player-2: ${skipped}`, `player-3: ${skipped}`]);
     expect(await readFile(path.join(runRoot, "review.md"), "utf8")).toContain(
       `- summary: ${expectedSummary}`,
     );
@@ -1193,9 +1200,11 @@ describe("handoff timeout fail-closed", () => {
 
     const output = formatConcurrentSharedWorldStudyHuman(result);
     const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    const skipped =
+      "skipped: the host did not reach a lobby within the handoff deadline; no desktop was created";
     expect(lines.filter((line) => line.startsWith("Player "))).toEqual([
-      "Player 2: blocked, not ok · handoff-timeout",
-      "Player 3: blocked, not ok · handoff-timeout",
+      `Player 2: blocked, not ok · ${skipped}`,
+      `Player 3: blocked, not ok · ${skipped}`,
     ]);
   });
 });
