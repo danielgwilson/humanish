@@ -8,50 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
-- Analysis no longer refuses a run by how many run events, trace items or screenshot frames it
-  holds. It refused a run.json with more than 100,000 events or a participant trace with more than
-  100,000 items (`ANALYSIS_SOURCE_INVALID`), and an evidence entry whose screenshot frame passed
-  100,000 (`ANALYSIS_INPUT_INVALID`). Analysis still reads run.json and each trace file only up to
-  16 MiB, and refuses the whole run when one of them is larger. A trace reaches 16 MiB after about
-  3,570 model turns at the 4,700 bytes a turn the bundle estimate counts, 9.9 hours at its 10
-  seconds a turn, and after about 8,540 turns at the live fit of 1,965 bytes a turn. verify and the
-  Observer read each file up to 32 MiB, so they still accept a run between 16 and 32 MiB that
-  analysis refuses. (#1824)
-- A trace or live file that run.json records past 32 MiB, the most the trace loader reads of one
-  file, is refused with a message that says so and that restoring a copy does not help; it said to
-  restore the run folder from a copy. In the served Observer, a running participant whose live file
-  passes 32 MiB keeps the items the page already holds, with a `live-items.not-read` warning that
-  later items are not read; the page dropped every item and showed the trace as unavailable. A page
-  opened after the file passed the limit, and every page once the run finishes, shows that trace
-  as unavailable with the file's size. The Observer server reads run.json and a saved
-  observer-data.json only up to 32 MiB, for its feed and page and for run.json asked for by name,
-  and answers 404 with a reason naming the limit past it; it read both whole. Other run files asked
-  for by path, a trace or live file among them, are still sent whole. (#1825)
-- A shared-world participant the run skips before its session starts, such as a follower stopped
-  at the handoff because the host never reached a lobby, is now counted apart in the review
-  summary in run.json and review.md. A run of 3 whose 2 followers timed out at the handoff reads
-  "1 participant used one public app. 1 of 1 reached the goal. 2 participants were skipped before
-  their sessions started; the gaps say why." It used to count all 3 as using the app. The skipped
-  participant's `humanish run` line reads `blocked` and ends on its skip reason, and its
-  `roles[].status` in `--json` is `blocked` with a `skippedReason`. Both said `failed`. The skip
-  reason is a sentence, such as "skipped: the host did not reach a lobby within the handoff
-  deadline; no desktop was created", in the form the computer-use skips use. The gap line in
-  run.json carries the same sentence where it read `player-2: handoff-timeout`. The skipped
-  participant's own summary in run.json `simulations[]` ends on that sentence too, such as
-  "Persona 02 was skipped: study budget reached before this participant started: ...; no desktop
-  was created." A budget skip read "Persona 02 would use the shared app; no session ran.", as on a
-  dry run. (#1831)
-- A skipped shared-world participant no longer counts as using the app at the same time as
-  another. Its window sat inside a session that was still open, so a run whose 2 followers timed
-  out at the handoff printed "Participants used the app at the same time" while only the host
-  used the app, and `overlapProven` in `--json` was `true`. The run line, `overlapProven`,
-  `maxSimultaneousLanes`, the review summary and the concurrency event in run.json now count only
-  the participants that used the app. run.json's `laneWindows` still hold a window for every
-  declared participant. The in-progress summary, written before any participant starts, reads "3
-  participants are planned, all in one public app." where it read "3 participants are using one
-  public app at the same time.", as the computer-use one does since 0.127.1. (#1831)
+humanish 0.129.0 fixes three things long studies reach. Analysis no longer refuses a run by how
+many events, trace items or screenshot frames it holds; it still reads each file only up to 16
+MiB. A trace or live file past 32 MiB, the most the trace loader reads, is refused with advice
+that fits, a running participant whose live file passes 32 MiB keeps the items the Observer page
+already shows, and the Observer server reads run.json under that limit. Shared-world runs count a
+participant skipped before its session apart from those that used the app, and no longer count a
+skip as overlap. This is a minor release because a shared-world `skippedReason` is now a sentence
+where it was `handoff-timeout` or `host-ended-before-handoff`.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.129.0)
 
 ## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
