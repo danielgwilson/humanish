@@ -83,7 +83,8 @@ the file to read first. Keep these layout rules:
 
 ## Public Boundary
 
-Assume this repository is public.
+This repository is open source and public: anything committed or posted here can be read by
+anyone.
 
 - Never commit or publish secrets, PII/PHI, private customer data, private source, or raw
   private transcripts or screenshots. Public examples are synthetic or redacted. Do not copy
@@ -93,8 +94,13 @@ Assume this repository is public.
   [invariants](docs/principles/invariants-and-defaults.md) and the
   [public-readiness standard](docs/release/public-readiness-standard.md).
 - Do not commit `.env*`, `.npmrc`, run bundles, runtime caches or packed tarballs.
-- Naming the owner's other projects, products or domains in public material needs explicit
-  sign-off. Use fictional examples. Named public third-party OSS study subjects are fine.
+- Do not name the maintainer's, a contributor's or an adopter's own projects, products,
+  employers, customers or domains. This covers code, tests, fixtures, docs, examples, commit
+  messages, issues, PRs and release notes. Describe the need in general terms ("a study of 30
+  participants over 8 hours") and use fictional examples, drawn from more than one field so no
+  adopter's domain shows through. CI's public-surface scan checks a private denylist, which
+  catches only the names on it. Public third-party OSS study subjects may be named; naming
+  anything else needs the maintainer's sign-off.
 
 ## Run safety
 
