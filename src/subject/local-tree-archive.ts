@@ -375,6 +375,14 @@ function isDenylistedBasename(basename: string): boolean {
   );
 }
 
+/**
+ * Whether a relative path names a file the always-on denylist keeps on this machine: a secret-shaped
+ * name, or one under .git, node_modules or .humanish. participants[].files refuses the same paths.
+ */
+export function isLocalTreeDenylisted(relPath: string): boolean {
+  return isDenylistedSegment(relPath) || isDenylistedBasename(relPath.split("/").at(-1) ?? "");
+}
+
 function isDenylistedSegment(relPath: string): boolean {
   const segments = relPath.split("/");
   return segments.some((segment) =>

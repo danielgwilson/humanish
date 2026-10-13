@@ -151,6 +151,7 @@ function singleParticipantArgs(
           : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+    ...(outcome?.desktopFiles === undefined ? {} : { desktopFiles: outcome.desktopFiles }),
     isMobile: spec.planned.device.preset.isMobile,
     screenshots: outcome?.screenshots ?? [],
     captureRedaction: base.redactScreenshots ? "blurred" : "raw",

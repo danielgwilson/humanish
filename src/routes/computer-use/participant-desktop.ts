@@ -36,6 +36,7 @@ export type ParticipantDesktopEvidence = {
   | "failureCode"
   | "commsArtifactPath"
   | "recording"
+  | "desktopFiles"
 >;
 
 /**

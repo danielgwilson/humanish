@@ -19,6 +19,8 @@ import {
   planBase,
 } from "../../study/plan-base.js";
 import { sharedWorldParticipants } from "../../study/plan-participants.js";
+import { DESKTOP_FILES_ROUTE_REASON } from "../../study/desktop-files.js";
+import { participantList } from "../../study/study-fields.js";
 import type {
   RoutePlanResult,
   RouteRefusal,
@@ -105,6 +107,9 @@ export function planSharedWorldStudy(
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
+  // The parser refuses these; a library caller's config skips it.
+  if (participantList(config)?.some((entry) => entry.files !== undefined))
+    return refuse(invalid, `participants[].files: ${DESKTOP_FILES_ROUTE_REASON}. Remove them.`);
 
   const actorType = config.actor?.type ?? "";
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];

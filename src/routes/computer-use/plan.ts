@@ -3,6 +3,7 @@
 // external state: committed personas, a rerun's source run, keys, the local agent, subject env
 // values, spend-cap prices and the comms catch.
 
+import { DESKTOP_FILES_ROUTE_REASON } from "../../study/desktop-files.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import {
   actorRegistry,
@@ -512,6 +513,15 @@ export function planComputerUseStudy(
     : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
+  // The parser refuses these; a library caller's config skips it, and only the hosted desktop
+  // copies files.
+  if (runner.desktop !== "e2b-desktop" && participants.some((entry) => entry.files !== undefined))
+    return refuse(
+      "in-scope",
+      "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID",
+      `participants[].files: ${DESKTOP_FILES_ROUTE_REASON}. This study runs on a ${runner.desktop} desktop; remove the files or set execution.target: e2b-desktop.`,
+      actor,
+    );
   const starts = startsOf(config, runner, input.concurrentSandboxes, ceiling.ms);
   if (!starts.ok)
     return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", starts.message, actor);

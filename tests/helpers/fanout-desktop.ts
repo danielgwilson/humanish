@@ -61,6 +61,10 @@ export interface FanoutModuleOptions {
   commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
   /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
   measuredChrome?: boolean;
+  /** The size files.getInfo reports for a written file; default its written size. */
+  reportedFileSize?: (path: string, written: number) => number;
+  /** Called on each files.write, in order with the rest of the run. */
+  onFileWrite?: (sandboxId: string, path: string) => void;
 }
 
 export interface FanoutModuleHandle {
@@ -72,6 +76,8 @@ export interface FanoutModuleHandle {
   opened: string[];
   killed: string[];
   createdIds: string[];
+  /** Each sandbox's files.write calls: path to the bytes written. */
+  files: Map<string, Map<string, Buffer>>;
   /** Peak count of simultaneously-live (created, not yet killed) sandboxes. */
   maxLive: () => number;
 }
@@ -82,6 +88,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
   const opened: string[] = [];
   const createdIds: string[] = [];
   const killed: string[] = [];
+  const files = new Map<string, Map<string, Buffer>>();
   let serial = 0;
   let live = 0;
   let maxLive = 0;
@@ -118,7 +125,20 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
           return measured?.(command) ?? { exitCode: 0, stdout: "" };
         },
       },
-      files: { write: async () => undefined },
+      files: {
+        write: async (path: string, data: string | ArrayBuffer) => {
+          options.onFileWrite?.(id, path);
+          const written = files.get(id) ?? new Map<string, Buffer>();
+          files.set(id, written);
+          written.set(path, Buffer.from(typeof data === "string" ? data : new Uint8Array(data)));
+        },
+        // EntryInfo.size is the one getInfo field humanish reads.
+        getInfo: async (path: string) => {
+          const bytes = files.get(id)?.get(path);
+          if (bytes === undefined) throw new Error(`path '${path}' does not exist`);
+          return { size: options.reportedFileSize?.(path, bytes.length) ?? bytes.length };
+        },
+      },
       launch: record("launch") as (application: string, uri?: string) => Promise<void>,
       open: (async (fileOrUrl: string) => {
         opened.push(fileOrUrl);
@@ -176,5 +196,14 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
     },
   };
 
-  return { module, created, templates, opened, killed, createdIds, maxLive: () => maxLive };
+  return {
+    module,
+    created,
+    templates,
+    opened,
+    killed,
+    createdIds,
+    files,
+    maxLive: () => maxLive,
+  };
 }

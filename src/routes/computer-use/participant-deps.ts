@@ -54,6 +54,7 @@ type DesktopRouteOverrides = {
       | "createProvider"
       | "inProcessExecutor"
       | "localTreeArchiveBuffer"
+      | "desktopFiles"
       | "externalComms"
       | "receiving"
       | "screenMismatchPolicy"

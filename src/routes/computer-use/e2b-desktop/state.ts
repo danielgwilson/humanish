@@ -3,7 +3,7 @@
 
 import type { RunDesktopRecording } from "../../../evidence/desktop-recording-types.js";
 import type { RunSubjectStateStepRecord } from "../../../run/bundle.js";
-import type { RunDesktopGeometry } from "../../../run/streams.js";
+import type { RunDesktopFile, RunDesktopGeometry } from "../../../run/streams.js";
 import type { SubjectPhaseEvent } from "../../../subject/steps.js";
 import type { OwnedDesktopAllocation } from "../../../substrates/desktop-session.js";
 import type {
@@ -62,6 +62,8 @@ export interface E2BParticipantState {
   readonly stateStepRecords: RunSubjectStateStepRecord[];
   /** Completed phases only (durationMs and ok are set on completed events); bundle.events keeps these. */
   readonly phaseRecords: SubjectPhaseEvent[];
+  /** participants[].files confirmed on the desktop, in the order they landed. */
+  readonly desktopFiles: RunDesktopFile[];
   subjectCommit: string | undefined;
   speech: Awaited<ReturnType<typeof startE2BDesktopMedia>> | undefined;
   recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
@@ -100,6 +102,7 @@ export function newParticipantState(spec: DesktopParticipantRun): E2BParticipant
     receivingInboxUrl: undefined,
     stateStepRecords: [],
     phaseRecords: [],
+    desktopFiles: [],
     subjectCommit: undefined,
     speech: undefined,
     recording: undefined,
@@ -145,6 +148,7 @@ export function desktopEvidenceOf(state: E2BParticipantState): ParticipantDeskto
     ...(state.subjectCommit === undefined ? {} : { subjectCommit: state.subjectCommit }),
     ...(state.desktopBrowser === undefined ? {} : { desktopBrowser: state.desktopBrowser }),
     ...(state.recordingEvidence === undefined ? {} : { recording: state.recordingEvidence }),
+    ...(state.desktopFiles.length === 0 ? {} : { desktopFiles: state.desktopFiles }),
     desktopGeometry: state.desktopGeometry,
     stateStepRecords: state.stateStepRecords,
     phaseRecords: state.phaseRecords,

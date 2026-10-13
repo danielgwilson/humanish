@@ -9,12 +9,17 @@ import { provisionLocalTreeSubject } from "../../../subject/local-tree.js";
 import { SubjectBuildError } from "../../../subject/serve.js";
 import { inspectDesktopScreenGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import { observeDesktopResources } from "../../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox, e2bDesktopTemplate } from "../../../substrates/e2b/sandbox.js";
+import {
+  acquireE2BDesktopSandbox,
+  e2bDesktopTemplate,
+  withOneRetryOnTransientE2BError,
+} from "../../../substrates/e2b/sandbox.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../../substrates/e2b/shell.js";
 import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./comms.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import { participantSubjectEnv } from "../types.js";
+import { plural } from "../../../run/text.js";
 
 export const CUA_ACTOR_STUDY_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
@@ -174,6 +179,56 @@ export async function verifyParticipantScreen(
       warnings: [...(state.desktopGeometry.warnings ?? []), mismatchWarning],
     };
   }
+}
+
+/**
+ * Copy the participant's files (participants[].files) into its home folder and confirm each one's
+ * size there, before the subject and the browser start. A file that does not land whole fails the
+ * participant before its first turn. The state records each confirmed file as it lands.
+ */
+export async function placeParticipantFiles(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
+  desktop: E2BDesktopSandbox,
+): Promise<void> {
+  const { spec, deps } = ctx;
+  const files = deps.desktopFiles?.get(spec.planned.id) ?? [];
+  if (files.length === 0) return;
+  const getInfo = desktop.files.getInfo?.bind(desktop.files);
+  if (getInfo === undefined)
+    throw new Error(
+      "The installed E2B SDK has no files.getInfo, so humanish cannot confirm that participants[].files landed. Update @e2b/desktop.",
+    );
+  const requestTimeoutMs = deps.requestTimeoutMs;
+  const startedAt = deps.now();
+  ctx.onSubjectPhase({
+    at: new Date(startedAt).toISOString(),
+    type: "cua-lab.desktop.files.started",
+    message: `copying ${plural(files.length, "file")} onto the desktop`,
+  });
+  for (const file of files) {
+    const bytes = file.bytes.buffer.slice(
+      file.bytes.byteOffset,
+      file.bytes.byteOffset + file.bytes.byteLength,
+    ) as ArrayBuffer;
+    // A relative path lands under the sandbox user's home folder, and missing folders are made.
+    await withOneRetryOnTransientE2BError(() =>
+      desktop.files.write(file.as, bytes, { requestTimeoutMs, useOctetStream: true }),
+    );
+    const landed = await getInfo(file.as, { requestTimeoutMs });
+    if (landed.size !== file.size)
+      throw new Error(
+        `participants[].files: ${file.as} measured ${landed.size} bytes on the desktop of participant ${spec.planned.id} after humanish copied ${file.size}, so the participant did not start.`,
+      );
+    state.desktopFiles.push({ as: file.as, size: file.size, sha256: file.sha256 });
+  }
+  ctx.onSubjectPhase({
+    at: new Date(deps.now()).toISOString(),
+    type: "cua-lab.desktop.files.completed",
+    ok: true,
+    durationMs: Math.max(0, deps.now() - startedAt),
+    message: `${plural(files.length, "file")} on the desktop`,
+  });
 }
 
 /** Install a desktop CLI, or clone or unpack the subject and serve it, in the sandbox. */

@@ -46,6 +46,7 @@ import {
 } from "./types.js";
 import { capacityShortfall } from "../../substrates/local/capacity.js";
 import { studyPersonaIds } from "../../study/persona-resolve.js";
+import { readDesktopFiles } from "../../study/desktop-files.js";
 import { refusedResult } from "../../run/study-result.js";
 
 /** The physical project, bound before any caller hook runs. */
@@ -217,6 +218,17 @@ export async function admitCuaRun(
   }
   const { participantRuns, participantPlan, rerunLineage } = participants;
   const participantCount = participantRuns.length;
+  // Read on dry runs too, so a bad file is named before anyone pays for a live one.
+  const desktopFiles = await readDesktopFiles(
+    studyFolder(input.cwd, plan.study),
+    participantRuns.map((run) => run.planned),
+  );
+  if (!desktopFiles.ok)
+    return refuse(
+      "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID",
+      desktopFiles.message,
+      descriptor.id,
+    );
 
   // Pre-flight plan: before any sandbox or provider call (dry-run and live). onEvent gets it for
   // every N; the stderr table prints for fan-out (N>1) so single-participant runs stay as quiet as they
@@ -313,8 +325,19 @@ export async function admitCuaRun(
       publicRepo,
       localTreeArchive,
       localTreeArchiveBuffer,
+      desktopFiles: desktopFiles.files,
     },
   };
+}
+
+/**
+ * The folder that holds the study file, which participants[].files paths are relative to. A
+ * library caller's config comes from no file, so its paths are relative to the project.
+ */
+function studyFolder(cwd: string, study: ComputerUsePlan["study"]): string {
+  return study?.path === undefined
+    ? path.resolve(cwd)
+    : path.dirname(path.resolve(cwd, study.path));
 }
 
 /**
@@ -462,6 +485,7 @@ function cuaParticipantDeps(
       createDesktop: input.localVm?.desktop,
       ...callerDriving(input, config),
       localTreeArchiveBuffer: admitted.localTreeArchiveBuffer,
+      desktopFiles: admitted.desktopFiles.size === 0 ? undefined : admitted.desktopFiles,
       externalComms:
         externalCommsConfig === undefined || externalCommsEmail === undefined
           ? undefined
