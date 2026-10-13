@@ -230,6 +230,8 @@ describe("restricted participant conversation", () => {
       { ...finalOutput(), actions: [] },
       { ...finalOutput(), outcome: "maybe" },
       { outcome: "reached", summary: "", frictionReports: [] },
+      // The closing report alone: outcome is optional there and required here.
+      { summary: "I saved the note.", frictionReports: [] },
     ])
       expect(() => parseParticipantFinal(value)).toThrow();
   });
