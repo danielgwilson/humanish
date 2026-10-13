@@ -7,6 +7,7 @@ import {
   WAIT,
   runWatching,
   turnOf,
+  waitItems,
   watchesOf,
 } from "../../helpers/watching-loop.js";
 
@@ -276,6 +277,21 @@ describe("a watch that the session ends", () => {
     expect(run.requests).toHaveLength(1);
     expect(watchesOf(run.result).map((watch) => watch.wake)).toEqual(["limit"]);
     expect(run.result.completionReason).toBe("budget_reached");
+  });
+
+  it("sends none of the turn's screenshot actions to the desktop after it reaches the end", async () => {
+    // The turn takes a screenshot and waits 10 s; the session cap at 7 s ends the watch, so the
+    // wait is recorded for the 7 s it lasted and the screenshot is never sent.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: () => turnOf([{ kind: "screenshot" }, { kind: "wait", ms: 10_000 }]),
+      loop: { clock: { end: { atMs: 7_000, windDownMs: 30_000, kind: "session_cap" } } },
+    });
+    expect(run.executed).toEqual([]);
+    expect(waitItems(run.result).map((item) => [item.title, item.watch?.wake])).toEqual([
+      ["wait 7000ms", "clock"],
+    ]);
+    expect(run.result.trace.stopCause).toBe("session_cap");
   });
 
   it("ends with a stalled look, and the next observation is a fresh one", async () => {

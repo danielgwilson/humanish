@@ -150,6 +150,8 @@ export interface WatchedWaits {
   readonly ms: readonly number[];
   readonly endedOn: number;
   readonly watch: ActorWatch;
+  /** The session ended during the watch, so the turn's screenshot actions are not sent. */
+  readonly sessionEnded: boolean;
 }
 
 /** What the participant can do about a rejection whose reason the executor named. */
@@ -180,7 +182,8 @@ function recordShortenedWait(session: LoopSession, title: string, requestedMs: n
  * Dispatch one turn's actions in order. A declared pre-dispatch rejection stops the batch and
  * leaves the desktop usable; a failed desktop command skips its action; any other failure ends
  * the session. The waits of a watched turn (`watched`) already ran: each is recorded with the part
- * of the watch it covered and nothing is sent for it.
+ * of the watch it covered and nothing is sent for it. When that watch ended the session, the
+ * turn's screenshots are acknowledged as not dispatched and not recorded.
  */
 export async function runActionBatch(
   session: LoopSession,
@@ -195,6 +198,10 @@ export async function runActionBatch(
   let waits = 0;
   for (const [index, requested] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
+    if (watched?.sessionEnded === true && requested.kind !== "wait") {
+      execution.actions.push({ index, status: "not_dispatched" });
+      continue;
+    }
     const waitIndex = requested.kind === "wait" ? waits++ : undefined;
     const watchedMs = waitIndex === undefined ? undefined : watched?.ms[waitIndex];
     const wait =

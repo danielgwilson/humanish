@@ -84,6 +84,7 @@ export async function watchIdleTurn(
     hint: hintFor(ending, limitMs < capMs ? capMs : undefined),
     waits: {
       ...splitWatch(lengths, limitMs, ending.ms),
+      sessionEnded: ending.stop !== undefined,
       watch: {
         limitMs,
         wake: ending.wake,
