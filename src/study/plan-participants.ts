@@ -1,7 +1,7 @@
 // Who takes part in a study: one record per participant, built from the declared roster or a count.
 // Computer-use and shared-world participants share the desktop fields; each kind adds its own.
 
-import { DEFAULT_WIND_DOWN_MS } from "./arrivals.js";
+import { windDownMsOf } from "./arrivals.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
@@ -158,13 +158,13 @@ function desktopParticipant(
       ? {}
       : {
           endAfterMs: entry.endAfterMs,
-          windDownMs: entry.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+          windDownMs: windDownMsOf(entry)!,
         }),
     ...(entry?.maxSessionMs === undefined
       ? {}
       : {
           maxSessionMs: entry.maxSessionMs,
-          windDownMs: entry.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+          windDownMs: windDownMsOf(entry)!,
         }),
   };
 }

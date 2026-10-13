@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A computer-use participant with `endAfterMs` or `maxSessionMs` and no `windDownMs` is told the
+  time left for the last quarter of its window, at most 10 minutes. The default was a fixed 10
+  minutes, so a window of 10 minutes or less was told its end from its first turn. A 10-minute cap
+  is now told from 7 minutes 30 seconds in, and a window of 40 minutes or more keeps 10 minutes. An
+  explicit `windDownMs` is used as written. `study check`'s `windows` row and the plan entry's
+  `windDownMs` show the new default.
+
 ### Fixed
 
 - The bundle estimate that `study check`, `humanish run` and `doctor --study` print is re-derived

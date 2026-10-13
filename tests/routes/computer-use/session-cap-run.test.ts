@@ -134,6 +134,9 @@ describe("two participants with a session cap", () => {
     expect(quick.completionReason).toBe("goal_satisfied");
     expect(quick.stopCause).toBeUndefined();
     expect(quickHints).toHaveLength(2);
+    // Its 1.5 s cap declares no windDownMs, so the default is a quarter of the cap: its first turn
+    // is not told the time left.
+    expect(quickHints[0]).toBeUndefined();
 
     const steady = await trace(1);
     expect(steady.completionReason).toBe("goal_satisfied");

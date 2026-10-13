@@ -49,7 +49,7 @@ function planned(result: PlanResult): StudyPlan {
 }
 
 describe("declaring a session cap", () => {
-  it("gives each participant its cap, with a 10-minute wind-down unless it declares one", () => {
+  it("gives each participant its cap, with a wind-down of a quarter of it unless it declares one", () => {
     const visit = planned(
       plan(
         study("cuAppUrl", {
@@ -69,7 +69,7 @@ describe("declaring a session cap", () => {
         windDownMs,
       })),
     ).toEqual([
-      { id: "quick", maxSessionMs: 600_000, windDownMs: 600_000 },
+      { id: "quick", maxSessionMs: 600_000, windDownMs: 150_000 },
       { id: "slow", maxSessionMs: 1_200_000, windDownMs: 120_000 },
       { id: "staff", maxSessionMs: undefined, windDownMs: undefined },
     ]);
@@ -221,7 +221,7 @@ describe("study check and the estimates", () => {
     const check = await runStudyPreflight({ cwd, study: "visit", env: {} });
     expect(check.ok).toBe(true);
     expect(check.checks.find((row) => row.name === "windows")?.message).toBe(
-      "quick from +0s until it ends itself or for up to 10m, told the time left from 0s into its session; slow from +0s until it ends itself or for up to 20m, told the time left from 18m into its session; staff from +0s for up to 1m.",
+      "quick from +0s until it ends itself or for up to 10m, told the time left from 7m 30s into its session; slow from +0s until it ends itself or for up to 20m, told the time left from 18m into its session; staff from +0s for up to 1m.",
     );
   });
 

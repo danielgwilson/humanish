@@ -30,8 +30,8 @@ export function isStartAfterMs(value: unknown): value is number {
   );
 }
 
-/** How long before its end a participant is told the time left, unless it declares `windDownMs`. */
-export const DEFAULT_WIND_DOWN_MS = 10 * 60_000;
+/** The longest default wind-down: 10 minutes is enough to wrap up what a participant is doing. */
+const MAX_DEFAULT_WIND_DOWN_MS = 10 * 60_000;
 
 /**
  * Room a scheduled participant's session keeps past its end for the turn in flight and the closing
@@ -106,6 +106,19 @@ function declaredWindowMs(participant: ParticipantWindow): number | undefined {
 }
 
 /**
+ * How long before its end or cap each turn tells a participant the time left: its `windDownMs` as
+ * written, else a quarter of its window, at most 10 minutes. A fixed 10 minutes covered the whole
+ * of a window of 10 minutes or less, so a short session was told its end from the first turn.
+ * A quarter leaves most of a short session without a countdown, and a window of 40 minutes or
+ * more keeps the 10 minutes. Undefined without an end or a cap.
+ */
+export function windDownMsOf(participant: ParticipantWindow): number | undefined {
+  const windowMs = declaredWindowMs(participant);
+  if (windowMs === undefined) return undefined;
+  return participant.windDownMs ?? Math.min(MAX_DEFAULT_WIND_DOWN_MS, Math.floor(windowMs / 4));
+}
+
+/**
  * When a participant's session ends: at a time on the run's clock, or at the latest a time after
  * its own session starts, which the route reads when the session starts.
  */
@@ -122,7 +135,8 @@ export function participantEnd(
   participant: ParticipantWindow,
   scheduledAt: number,
 ): ParticipantEnd | undefined {
-  const windDownMs = participant.windDownMs ?? DEFAULT_WIND_DOWN_MS;
+  const windDownMs = windDownMsOf(participant);
+  if (windDownMs === undefined) return undefined;
   if (participant.maxSessionMs !== undefined)
     return { kind: "session_cap", afterMs: participant.maxSessionMs, windDownMs };
   if (participant.endAfterMs === undefined) return undefined;
@@ -173,17 +187,14 @@ export function describeWindows(
   const windows = participants.map((participant) => {
     const start = `${participant.id ?? "participant"} from +${formatDuration(participant.startAfterMs ?? 0)}`;
     if (participant.maxSessionMs !== undefined) {
-      const told = Math.max(
-        0,
-        participant.maxSessionMs - (participant.windDownMs ?? DEFAULT_WIND_DOWN_MS),
-      );
+      const told = Math.max(0, participant.maxSessionMs - windDownMsOf(participant)!);
       return `${start} until it ends itself or for up to ${formatDuration(participant.maxSessionMs)}, told the time left from ${formatDuration(told)} into its session`;
     }
     if (participant.endAfterMs === undefined)
       return `${start} for up to ${formatDuration(sessionMs)}`;
     const told = Math.max(
       participant.startAfterMs ?? 0,
-      participant.endAfterMs - (participant.windDownMs ?? DEFAULT_WIND_DOWN_MS),
+      participant.endAfterMs - windDownMsOf(participant)!,
     );
     return `${start} to +${formatDuration(participant.endAfterMs)}, told the time left from +${formatDuration(told)}`;
   });

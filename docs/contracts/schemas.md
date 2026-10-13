@@ -247,7 +247,8 @@ The rest of this section names keys by their v3 spelling:
   against the sandbox ceiling. A rerun starts its selected participants together;
 - `participants[].endAfterMs` and `windDownMs` (computer-use only): when the participant's
   session ends, in whole milliseconds on the `startAfterMs` clock and after its start, and how
-  long before that each turn tells it the end time and the minutes left (default 600,000).
+  long before that each turn tells it the end time and the minutes left (default a quarter of
+  the window, at most 600,000; `windDownMsOf` in `src/study/arrivals.ts`).
   Refused: an end at or before the start, a `windDownMs` without `endAfterMs`, an end on
   `shared-world`, and a window whose sandbox deadline passes the sandbox ceiling. The
   participant's session budget is its window plus 5 minutes (`participantSessionMs` in

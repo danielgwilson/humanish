@@ -57,7 +57,7 @@ const clinicDay = {
 };
 
 describe("declaring when a participant ends", () => {
-  it("gives each participant its window, with a 10-minute wind-down unless it declares one", () => {
+  it("gives each participant its window, with a wind-down of a quarter of it, at most 10 minutes, unless it declares one", () => {
     const day = planned(
       plan(
         study("cuAppUrl", {
@@ -65,6 +65,7 @@ describe("declaring when a participant ends", () => {
             { id: "staff", endAfterMs: 4 * HOURS },
             { id: "lead", endAfterMs: 2 * HOURS, windDownMs: 5 * MIN },
             { id: "patient", startAfterMs: 30 * S },
+            { id: "brief", startAfterMs: 2 * MIN, endAfterMs: 10 * MIN },
           ],
         }),
         { [CEILING]: "1440" },
@@ -82,6 +83,8 @@ describe("declaring when a participant ends", () => {
       { id: "staff", startAfterMs: undefined, endAfterMs: 14_400_000, windDownMs: 600_000 },
       { id: "lead", startAfterMs: undefined, endAfterMs: 7_200_000, windDownMs: 300_000 },
       { id: "patient", startAfterMs: 30_000, endAfterMs: undefined, windDownMs: undefined },
+      // An 8-minute window is told the time left for its last 2 minutes.
+      { id: "brief", startAfterMs: 120_000, endAfterMs: 600_000, windDownMs: 120_000 },
     ]);
   });
 
