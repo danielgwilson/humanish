@@ -14,6 +14,7 @@ import {
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
 import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
+import { formatCuaStudyHuman } from "../../../src/cli/commands/study-format.js";
 import type { RunBundle, RunEvent } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
@@ -87,6 +88,20 @@ function arrivals(bundle: RunBundle) {
     startedAt: Date.parse(record.arrival?.startedAt ?? ""),
   }));
 }
+
+/** The first reply reports a million input tokens, which crosses a 1-cent study budget. */
+const SPENDING = [
+  {
+    id: "resp_1",
+    output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }],
+    usage: { input_tokens: 1_000_000, output_tokens: 0 },
+  },
+  {
+    id: "resp_2",
+    output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+    usage: { input_tokens: 0, output_tokens: 0 },
+  },
+];
 
 describe("a computer-use study with a declared schedule", () => {
   let cwd: string;
@@ -170,33 +185,24 @@ describe("a computer-use study with a declared schedule", () => {
     expect(bundle.simulations.map((record) => record.arrival)).toEqual([undefined]);
   });
 
-  it("skips a participant due after the study budget is spent, before its desktop exists", async () => {
-    // The first reply reports a million input tokens, which crosses a 1-cent study budget.
-    const spending = [
-      {
-        id: "resp_1",
-        output: [
-          { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] },
-        ],
-        usage: { input_tokens: 1_000_000, output_tokens: 0 },
-      },
-      {
-        id: "resp_2",
-        output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
-        usage: { input_tokens: 0, output_tokens: 0 },
-      },
-    ];
+  /** A support agent whose spend crosses the study budget, then a customer due a second later. */
+  async function runPastBudget() {
     const timed = timedModule();
+    const config = supportDesk({
+      participants: [{ id: "support-agent" }, { id: "customer", startAfterMs: 1_000 }],
+      caps: { maxTotalUsd: 0.01 },
+    });
     const outcome = await runStudyWith(
-      supportDesk({
-        participants: [{ id: "support-agent" }, { id: "customer", startAfterMs: 1_000 }],
-        caps: { maxTotalUsd: 0.01 },
-      }),
+      config,
       { cwd, env: KEYS },
-      seams(timed.module, 50, spending),
+      seams(timed.module, 50, SPENDING),
     );
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
-    const { result } = outcome;
+    return { result: outcome.result, timed, subject: config.subject };
+  }
+
+  it("skips a participant due after the study budget is spent, before its desktop exists", async () => {
+    const { result, timed } = await runPastBudget();
 
     // Only the support agent's desktop was created.
     expect(timed.createdAt).toHaveLength(1);
@@ -212,6 +218,24 @@ describe("a computer-use study with a declared schedule", () => {
     expect(customerArrival?.startAfterMs).toBe(1_000);
     expect(customerArrival?.scheduledAt).toBeDefined();
     expect(customerArrival?.startedAt).toBeUndefined();
+  });
+
+  it("ends a budget-skipped participant's run line on its reason and counts it apart", async () => {
+    const { result, subject } = await runPastBudget();
+    // 1M input tokens in one gpt-5.6-sol request: $4 per 1M, doubled past 272K input tokens.
+    const reason =
+      "skipped: study budget reached before this participant started: the run's estimated model spend $8 crossed caps.maxTotalUsd=$0.01; no desktop was created";
+    const output = formatCuaStudyHuman(result, subject);
+    const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
+    expect(lines.filter((line) => line.startsWith("participant customer:"))).toEqual([
+      `participant customer: blocked · ${reason}`,
+    ]);
+
+    const bundle = await runJson(cwd, result.runId);
+    expect(bundle.review.summary).toBe(
+      "1 participant took part, in its own copy of the app: 0/1 recorded completions, 1 interrupted (study spend limit); the gaps say why. 1 participant was skipped before its session started; the gaps say why.",
+    );
+    expect(bundle.review.gaps).toContain(`customer: ${reason}`);
   });
 
   it("records the offsets in a dry run, with no start times", async () => {

@@ -57,11 +57,13 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
 
 /**
  * The run's summary in plain sentences: who took part, what happened to them with the denominator
- * attached, and that the gaps list the participants who did not pass.
+ * attached, and that the gaps list the participants who did not pass. A participant the run
+ * skipped before its session started never used the app, so it is counted in a sentence of its
+ * own.
  */
 function fanoutSummary(
   args: CuaFanoutBundleArgs,
-  facts: { passed: number; outcomes: string; tasks?: string },
+  facts: { passed: number; skipped: number; outcomes: string; tasks?: string },
 ): string {
   const count = args.specs.length;
   const people = plural(count, "participant");
@@ -75,7 +77,15 @@ function fanoutSummary(
   const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
   // A host suspension comes first: it may explain everything after it.
   const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
-  return `${host}${rerun}${people} took part, each in their own copy of the app: ${facts.outcomes}${gapsListClause(count - facts.passed, count)}.${tasks}`;
+  const tookPart = count - facts.skipped;
+  const ran = `${plural(tookPart, "participant")} took part, ${tookPart === 1 ? "in its own copy" : "each in their own copy"} of the app: ${facts.outcomes}${gapsListClause(tookPart - facts.passed, tookPart)}.`;
+  const skipped =
+    facts.skipped === 0
+      ? ""
+      : facts.skipped === 1
+        ? " 1 participant was skipped before its session started; the gaps say why."
+        : ` ${facts.skipped} participants were skipped before their sessions started; the gaps say why.`;
+  return `${host}${rerun}${ran}${skipped}${tasks}`;
 }
 
 /**
@@ -111,6 +121,9 @@ function fanoutReview(
   const passedParticipants = judgment.participants.filter(
     (participant) => participant.judgedStatus === "passed",
   ).length;
+  const skippedParticipants = (outcomes ?? []).filter(
+    (outcome) => outcome?.skippedReason !== undefined,
+  ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
   const terminalOutcomes = (outcomes ?? []).filter(
@@ -143,9 +156,10 @@ function fanoutReview(
       // sandbox, so the summary carries its digest, which verify accepts in a shared run.
       summary: fanoutSummary(args, {
         passed: passedParticipants,
+        skipped: skippedParticipants,
         outcomes:
           participants === undefined
-            ? `0/${args.specs.length} finished a session`
+            ? `0/${args.specs.length - skippedParticipants} finished a session`
             : formatParticipantOutcomes(participants, participantEndings),
         ...(runTasks === undefined ? {} : { tasks: formatRunTaskFunnel(runTasks) }),
       }),
