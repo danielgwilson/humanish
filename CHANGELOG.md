@@ -8,64 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Breaking
+## 0.128.0: Run bundle v4 keeps per-request lists in trace files; the study budget is checked before each request (2026-10-13)
 
-- Run bundles are now `humanish.run-bundle.v4`. Each participant's per-request lists
-  (`tokenUsage.turns`, `conversation.requests` and `providerRequests`) are only in its trace file,
-  and run.json keeps the totals. On a synthetic run of 30 participants making 2,880 requests each,
-  written through the run writer, run.json was 93 KB with threaded conversations, 93 KB with
-  explicit_context and 106 KB with account receipts; with the lists it was 16.1 MB, 27.2 MB and
-  41.8 MB. A mid-run flush of that run wrote run.json at 72 to 79 KB and observer-data.json at 137
-  to 143 KB; 0.127.1 wrote each at 10.7 MB, or 41.8 MB with account receipts. The trace loader and
-  `loadRunBundle` join the lists back from the trace file, for v1, v2, v3 and v4 bundles.
-- A running participant's `liveActor` carries its token totals and an `estimatedCost` that the run
-  writer prices from its usage rows before leaving them out, so run detail and the TUI keep the
-  long-context price. The rows, and an account participant's receipts, are written only in the
-  trace when the participant finishes. A run interrupted before then keeps no rows or receipts for
-  a participant still running. verify checks the live estimate's labeling as it checks a finished
-  participant's, and no longer asks a running account participant for receipts in a v4 run.json.
-  It does not check the receipts of a participant whose trace it refused, and reports the refusal.
-- The trace loader applies each bundle version's writer rules by name: a v4 run.json that holds one
-  of the lists is refused, and v2 and v3 keep their refusals. A participant the loader refused is
-  shown without the lists run.json held for it, and run detail shows its cost only when run.json
-  records an estimate for it.
-- `observer/observer-data.json` and the Observer page's data are `humanish.observer-data.v3`,
-  without the per-request lists. A saved v1 or v2 file is read as v3, a saved file of another
-  schema is not read, and `humanish export` rebuilds a page saved as v2 from the run and its
-  traces. The page admits an account participant without receipts.
+humanish 0.128.0 keeps run.json small in long studies. Run bundles are now
+`humanish.run-bundle.v4`: each participant's per-request lists (`tokenUsage.turns`,
+`conversation.requests` and `providerRequests`) are only in its trace file, and run.json keeps the
+totals. A synthetic run of 30 participants making 2,880 requests each wrote run.json at 93 to 106
+KB, where 0.127.1 wrote 16.1, 27.2 and 41.8 MB; analysis reads run.json only up to 16 MiB. This
+release reads v1 to v4 bundles, and `loadRunBundle` joins the lists back. 0.127.1 and earlier fail
+verify on a v4 run. A computer-use participant now checks the study budget before each model
+request, so one whose sibling crossed `caps.maxTotalUsd` no longer sends one more request.
 
-### Migration
-
-| Old form                                                                                                                                                                                                 | New form                                                                                                                                                                                                                                      | Change to make                                                                                                                                                                                                    |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `humanish.run-bundle.v3` run.json held each finished participant's per-request lists: `streams[].actor.tokenUsage.turns`, `streams[].actor.conversation.requests` and `streams[].actor.providerRequests` | `humanish.run-bundle.v4` run.json keeps each participant's token totals, `conversation` without `requests`, and `estimatedCost`; the lists are only in the trace file `streams[].trace` indexes                                               | Accept `humanish.run-bundle.v4` where you check the schema, and read the lists through `loadRunBundle(cwd, run)`, which joins them, or from the file at `streams[].trace.path` after checking its size and sha256 |
-| While a participant ran, run.json held its usage rows in `streams[].liveActor.tokenUsage.turns` and an account participant's receipts in `streams[].liveActor.providerRequests`                          | A running participant's `liveActor` carries its totals and `estimatedCost`, priced from its rows; the rows and receipts are written only in its trace when it finishes, and a run interrupted before then keeps none for that participant     | Read a running participant's cost from `liveActor.estimatedCost`; read every request's usage from finished runs                                                                                                   |
-| humanish 0.127.1 and earlier read every bundle humanish wrote                                                                                                                                            | Their verify fails `run schema` on a v4 run.json and their analysis refuses it; their `loadRunBundle` returns null; their Observer server and run detail show the run without the lists. This release reads v1, v2 and v3 bundles as they are | Read v4 bundles with this release or later                                                                                                                                                                        |
-| `humanish export --format bundle` wrote its copy as v3                                                                                                                                                   | It writes v4 whatever the source version                                                                                                                                                                                                      | As the row above, for a reader of exported copies                                                                                                                                                                 |
-| `observer/observer-data.json` (`humanish.observer-data.v2`) carried each participant's per-request lists                                                                                                 | It is `humanish.observer-data.v3` without them; a saved v1 or v2 file is read as v3 without them                                                                                                                                              | Accept `humanish.observer-data.v3` where you check the schema, and read the lists from the run's traces                                                                                                           |
-
-### Changed
-
-- The bundle estimate that `study check`, `humanish run` and `doctor --study` print counts run.json
-  at 4,400 bytes for the run and 16,500 for each participant, with nothing for each model turn,
-  and the Observer page's copy of the run's data at 0.85 of run.json, re-measured on the kept live
-  runs written as v4. 30 participants working 8 hours are estimated at a 0.5 MiB run.json. The
-  Observer page warning starts at 20 participants working 8 hours, up from 17, and the warning no
-  longer names bytes a model turn adds to run.json.
-
-### Fixed
-
-- A computer-use participant checks the study budget (`caps.maxTotalUsd`) before each model
-  request. When another participant crossed the budget while this one was acting, it sent one more
-  request and stopped after that reply; it now stops as `budget_reached` before the request. The
-  check covers the first request too, so a participant whose desktop was still starting when the
-  budget was crossed sends none. The recorded reason now says the study's participants stop before
-  their next model request. It said `this lane stops here`, which read as if each participant that
-  stopped had crossed the budget itself. A library caller of `runComputerUseLoop` sees
-  `estimateTurnCostUsd` and `overRunBudget` called before every provider request as well as after
-  each reply, the first time before the first request with all usage at 0 and no `turns`. An
-  estimator that prices zero usage above `maxUsd`, or a budget callback that decides by how many
-  times it was called, now stops the session sooner, possibly before its first request.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.128.0)
 
 ## 0.127.1: Clock-end closing reports declare their outcome; skipped participants named as skipped (2026-10-13)
 
