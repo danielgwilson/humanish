@@ -242,3 +242,45 @@ it("timeouts: after progress, with no progress, on a hung provider, and mid-acti
   }
   await expectGolden("timeouts", runs);
 });
+
+it("session cap: ends itself before the cap, or reaches it and gives its closing report", async () => {
+  const runs: Record<string, unknown> = {};
+  for (const name of ["endsItself", "reachesCap"] as const) {
+    const probe = new Probe();
+    let t = 0;
+    // Each turn takes a minute; the cap is at 3 minutes, told from 2.
+    const minute = (next: ReturnType<typeof turn>) => () => {
+      t += 60_000;
+      return next;
+    };
+    const provider = scriptedProvider(
+      probe,
+      [
+        minute(turn({ actions: [click(1, 1)], message: "Reading the page." })),
+        minute(
+          name === "endsItself"
+            ? done("Reached the goal.\nI found the opening hours.")
+            : turn({ actions: [click(2, 2)], message: "Still reading." }),
+        ),
+        minute(turn({ actions: [click(3, 3)], message: "Reading on." })),
+      ],
+      {
+        debrief: async (request) => {
+          probe.push("provider.debrief", request);
+          return done("Out of time.", {
+            closingReport: { summary: "I read three pages.", frictionReports: [] },
+          });
+        },
+      },
+    );
+    const executor = sequenceExecutor(probe, framed("s0", "s1", "s2", "s3"));
+    runs[name] = await outcome(
+      probe,
+      baseOptions(probe, provider, executor, {
+        now: () => t,
+        clock: { end: { atMs: 180_000, windDownMs: 60_000, kind: "session_cap" } },
+      }),
+    );
+  }
+  await expectGolden("session-cap", runs);
+});

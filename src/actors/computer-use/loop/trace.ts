@@ -109,9 +109,10 @@ export function loopResult(
   const { provider, settings, trace: recorder, usage } = session;
   const { completionReason, stopCause } = stop;
   // A participant whose session ended on the clock has its closing account as its reason, as one
-  // that ended the session itself has its last message; the stop cause keeps the scheduled end.
+  // that ended the session itself has its last message; the stop cause keeps the scheduled end or
+  // the session cap.
   const reason =
-    stopCause === "scheduled_end" && debrief?.report !== undefined
+    (stopCause === "scheduled_end" || stopCause === "session_cap") && debrief?.report !== undefined
       ? debrief.report.summary
       : stop.reason;
   const completedAtMs = session.now();

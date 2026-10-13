@@ -63,7 +63,12 @@ interface DesktopParticipant extends Participant {
   readonly startAfterMs?: number;
   /** Computer use: when it ends, on the same clock; absent, it runs for the study's session budget. */
   readonly endAfterMs?: number;
-  /** With endAfterMs: how long before the end each turn tells it the time left (default applied). */
+  /** Computer use: the longest its session lasts, from its start; it may end the session sooner. */
+  readonly maxSessionMs?: number;
+  /**
+   * With endAfterMs or maxSessionMs: how long before the end each turn tells it the time left
+   * (default applied).
+   */
   readonly windDownMs?: number;
 }
 
@@ -150,6 +155,12 @@ function desktopParticipant(
       ? {}
       : {
           endAfterMs: entry.endAfterMs,
+          windDownMs: entry.windDownMs ?? DEFAULT_WIND_DOWN_MS,
+        }),
+    ...(entry?.maxSessionMs === undefined
+      ? {}
+      : {
+          maxSessionMs: entry.maxSessionMs,
           windDownMs: entry.windDownMs ?? DEFAULT_WIND_DOWN_MS,
         }),
   };

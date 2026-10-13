@@ -366,8 +366,16 @@ export interface StudyParticipantEntry {
    */
   endAfterMs?: number;
   /**
-   * With endAfterMs: how long before the end each turn tells the participant the end time and the
-   * minutes left. Default 600000 (10 minutes).
+   * Computer use: the longest this participant's session lasts, in milliseconds from the start of
+   * its session (1 to 86,400,000). It may end its session before then and counts as passed when it
+   * does so normally; at the cap it is asked for its closing report and the session ends as passed,
+   * with stop cause `session_cap`. Its session lasts the cap plus 5 minutes in place of
+   * execution.timeoutMs, and its sandbox is sized from that. Not with endAfterMs.
+   */
+  maxSessionMs?: number;
+  /**
+   * With endAfterMs or maxSessionMs: how long before the end each turn tells the participant the
+   * end time and the minutes left. Default 600000 (10 minutes).
    */
   windDownMs?: number;
   /**

@@ -37,9 +37,9 @@ import { plural } from "../../run/text.js";
 import { formatDuration } from "../../run/projection.js";
 import {
   describeArrivals,
+  participantEnd,
   participantSessionMs,
   planArrivals,
-  scheduledEndAt,
   type ParticipantWindow,
 } from "../../study/arrivals.js";
 
@@ -77,9 +77,9 @@ export function resolveParticipantSandboxMs(config: StudyConfig, ceilingMs: numb
 }
 
 /**
- * A participant's own session budget and sandbox deadline: the study's, or with a declared end its
- * window plus room for the closing report (participantSessionMs), with the same setup and
- * teardown headroom the study's sandbox has over its session.
+ * A participant's own session budget and sandbox deadline: the study's, or with a declared end or
+ * cap its window or cap plus room for the closing report (participantSessionMs), with the same
+ * setup and teardown headroom the study's sandbox has over its session.
  */
 function participantWindow(
   participant: ParticipantWindow,
@@ -91,21 +91,21 @@ function participantWindow(
 
 /**
  * The deps one participant runs with once its start comes: its own session budget and sandbox
- * deadline, and with a declared end, that end on the run's clock (`scheduledAt` is when it was
+ * deadline, and with a declared end or cap, how its session ends (`scheduledAt` is when it was
  * due, from runOnSchedule).
  */
 export function scheduledParticipantDeps(
   participant: ParticipantWindow,
   deps: { readonly timeoutMs: number; readonly sandboxMs: number },
   scheduledAt: number,
-): Pick<CuaParticipantDeps, "timeoutMs" | "sandboxMs" | "scheduledEnd"> {
-  const end = scheduledEndAt(participant, scheduledAt);
+): Pick<CuaParticipantDeps, "timeoutMs" | "sandboxMs" | "end"> {
+  const end = participantEnd(participant, scheduledAt);
   return {
     ...participantWindow(participant, {
       sessionBudgetMs: deps.timeoutMs,
       sandboxMs: deps.sandboxMs,
     }),
-    ...(end === undefined ? {} : { scheduledEnd: end }),
+    ...(end === undefined ? {} : { end }),
   };
 }
 
@@ -249,6 +249,9 @@ export function participantRunsAndPlan(
         ? {}
         : { startAfterMs: spec.planned.startAfterMs }),
       ...(spec.planned.endAfterMs === undefined ? {} : { endAfterMs: spec.planned.endAfterMs }),
+      ...(spec.planned.maxSessionMs === undefined
+        ? {}
+        : { maxSessionMs: spec.planned.maxSessionMs }),
     })),
   };
   return { runs, participantPlan };
@@ -280,6 +283,7 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
     entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
     entry.startAfterMs === undefined ? undefined : `start=+${formatDuration(entry.startAfterMs)}`,
     entry.endAfterMs === undefined ? undefined : `end=+${formatDuration(entry.endAfterMs)}`,
+    entry.maxSessionMs === undefined ? undefined : `cap=${formatDuration(entry.maxSessionMs)}`,
   ].filter((part): part is string => part !== undefined);
   return `${entry.id}: persona=${entry.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${entry.device} ${entry.resolution[0]}x${entry.resolution[1]} prompt#${entry.instructionDigest}${entry.targetDigest ? ` target#${entry.targetDigest}` : ""}`;
 }

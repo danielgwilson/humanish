@@ -165,3 +165,14 @@ describe("CUA diagnostic control evidence", () => {
     });
   });
 });
+
+describe("a session cap in the diagnostics", () => {
+  it("reads a session cap as the participant's planned outcome, like one it ended itself", () => {
+    const capped = cuaParticipantDiagnostics({
+      dryRun: false,
+      session: { status: "passed", completionReason: "goal_satisfied", stopCause: "session_cap" },
+    });
+    expect(capped).toEqual({ category: "participant_outcome" });
+    expect(formatCuaStopCause("session_cap")).toBe("session cap");
+  });
+});

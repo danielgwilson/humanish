@@ -18,6 +18,7 @@ const labels: Record<ActorEnding["cause"], string> = {
   provider_refused_prompt: "provider refused the prompt under its usage policy",
   harness_aborted: "stopped by harness",
   scheduled_end: "scheduled end",
+  session_cap: "session cap",
   unspecified_limit: "limit reached",
 };
 

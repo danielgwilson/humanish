@@ -24,7 +24,7 @@ import type {
 } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyDeps } from "../../study/study-deps.js";
-import type { ArrivalPlan, ParticipantArrival } from "../../study/arrivals.js";
+import type { ArrivalPlan, ParticipantArrival, ParticipantEnd } from "../../study/arrivals.js";
 import type { StudyEvent, ParticipantRef } from "../../study/run-study-events.js";
 import type {
   InProcessDriver,
@@ -174,6 +174,8 @@ export interface CuaParticipantPlanEntry {
   startAfterMs?: number;
   /** The participant's declared end, on the same clock. */
   endAfterMs?: number;
+  /** The participant's session cap, from the start of its session. */
+  maxSessionMs?: number;
 }
 
 /** The pre-flight spend and participant plan (pure; printed to stderr + recorded as a bundle event before
@@ -498,11 +500,12 @@ export interface ParticipantModelDeps {
   openaiApiKey: string;
   timeoutMs: number;
   /**
-   * The participant's scheduled end on `now`'s clock, when it declares participants[].endAfterMs
-   * (scheduledParticipantDeps). Its session ends there with stop cause `scheduled_end`.
+   * How the participant's session ends, when it declares participants[].endAfterMs or maxSessionMs
+   * (scheduledParticipantDeps): at its scheduled end on `now`'s clock, with stop cause
+   * `scheduled_end`, or at its cap after the session starts, with stop cause `session_cap`.
    */
-  scheduledEnd?: { readonly atMs: number; readonly windDownMs: number };
-  /** The run's clock. A participant with a scheduled end runs its session on it. */
+  end?: ParticipantEnd;
+  /** The run's clock. A participant with an end or a cap runs its session on it. */
   now: () => number;
   participantCount: number;
   artifactRoot: PreparedOutputRoot;

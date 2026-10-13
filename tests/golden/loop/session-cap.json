@@ -1,0 +1,393 @@
+{
+  "endsItself": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Reached the goal.\nI found the opening hours.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+        },
+        "startedAt": "1970-01-01T00:00:00.000Z",
+        "completedAt": "1970-01-01T00:02:00.000Z",
+        "durationMs": 120000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Reached the goal.\nI found the opening hours.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 2,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.000Z"
+          },
+          {
+            "id": "message-002",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Reading the page.",
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "message-005",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Reached the goal.\nI found the opening hours.",
+            "at": "1970-01-01T00:02:00.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "declaredOutcome": "reached",
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant ended the session without a structured closing account"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}],
+      ["onMessage","Reading the page."],
+      ["executor.execute",{"kind":"click","x":1,"y":1}],
+      ["executor.observe",1],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-01.png",15],
+      ["onTrace",4,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+      ["onMessage","Reached the goal.\nI found the opening hours."]
+    ]
+  },
+  "reachesCap": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "I read three pages.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "4 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
+        },
+        "startedAt": "1970-01-01T00:00:00.000Z",
+        "completedAt": "1970-01-01T00:03:00.000Z",
+        "durationMs": 180000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "stopCause": "session_cap",
+        "reason": "I read three pages.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "waitSettings": {
+          "maxWaitMs": 120000,
+          "idleWaitMs": 5000,
+          "settleWaitMs": 500
+        },
+        "counts": {
+          "turns": 3,
+          "actions": 3,
+          "materialActions": 3,
+          "screenshots": 4,
+          "reasonings": 0,
+          "messages": 4,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.000Z"
+          },
+          {
+            "id": "message-002",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Reading the page.",
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:01:00.000Z"
+          },
+          {
+            "id": "message-005",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Still reading.",
+            "at": "1970-01-01T00:02:00.000Z"
+          },
+          {
+            "id": "ui_action-006",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (2, 2)",
+            "coord": {
+              "x": 2,
+              "y": 2
+            },
+            "at": "1970-01-01T00:02:00.000Z"
+          },
+          {
+            "id": "screenshot-007",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:02:00.000Z"
+          },
+          {
+            "id": "notice-008",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "Your session ends at 00:03 UTC at the latest, in 1 minute. You may end it sooner when you are done. If you are still working then, it ends by itself, and you will then be asked for your closing account.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:03:00.000Z"
+          },
+          {
+            "id": "message-009",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 3",
+            "text": "Reading on.",
+            "at": "1970-01-01T00:03:00.000Z"
+          },
+          {
+            "id": "ui_action-010",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (3, 3)",
+            "coord": {
+              "x": 3,
+              "y": 3
+            },
+            "at": "1970-01-01T00:03:00.000Z"
+          },
+          {
+            "id": "screenshot-011",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-03",
+            "screenshotRef": {
+              "path": "screenshots/turn-03.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:03:00.000Z"
+          },
+          {
+            "id": "message-012",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant closing report",
+            "text": "I read three pages.",
+            "at": "1970-01-01T00:03:00.000Z"
+          },
+          {
+            "id": "notice-013",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant debrief completed",
+            "text": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+            "at": "1970-01-01T00:03:00.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 3
+          },
+          "total": 3,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "session_cap",
+          "status": "completed",
+          "reason": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+          "usageReported": false,
+          "report": {
+            "summary": "I read three pages.",
+            "frictionReports": []
+          },
+          "messageId": "message-012"
+        },
+        "impressions": {
+          "status": "not_collected",
+          "reason": "the participant's closing account did not include impressions"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}],
+      ["onMessage","Reading the page."],
+      ["executor.execute",{"kind":"click","x":1,"y":1}],
+      ["executor.observe",1],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-01.png",15],
+      ["onTrace",4,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+      ["onMessage","Still reading."],
+      ["executor.execute",{"kind":"click","x":2,"y":2}],
+      ["executor.observe",2],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-02.png",15],
+      ["onTrace",7,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"},"contextHint":"Your session ends at 00:03 UTC at the latest, in 1 minute. You may end it sooner when you are done. If you are still working then, it ends by itself, and you will then be asked for your closing account."}],
+      ["onMessage","Reading on."],
+      ["executor.execute",{"kind":"click","x":3,"y":3}],
+      ["executor.observe",3],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-03.png",15],
+      ["onTrace",11,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+      ["provider.debrief",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s3"},"contextHint":"The interactive session has ended. Return a closing account with summary, frictionReports and impressions. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. In impressions, list up to six things you noticed about the product itself, each in the first person and about something you saw in this session. Give each one a kind: unclear when something looked confusing or hard to read; unfinished when something looked broken, unpolished or out of place; untrustworthy when something made you hesitate to trust the product; liked when something worked well or felt good; missing when you expected something and did not find it; unlike_my_work when the screen differs from how you do the same task in your own work or life, only if your persona does this task outside this product. Keep each under 500 characters. Use an empty list if you have none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."}],
+      ["onTrace",13,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}]
+    ]
+  }
+}

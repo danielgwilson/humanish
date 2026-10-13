@@ -131,6 +131,9 @@ export function sharedWorldValidationReason(config: StudyConfig): string | null 
   const ending = participantList(config)?.findIndex((entry) => entry?.endAfterMs !== undefined);
   if (ending !== undefined && ending >= 0)
     return `participants[${ending}].endAfterMs ends a participant at a set time on route: computer-use only. A shared-world participant runs for execution.timeoutMs; remove endAfterMs and windDownMs.`;
+  const capped = participantList(config)?.findIndex((entry) => entry?.maxSessionMs !== undefined);
+  if (capped !== undefined && capped >= 0)
+    return `participants[${capped}].maxSessionMs caps a participant's session on route: computer-use only. A shared-world participant runs for execution.timeoutMs; remove maxSessionMs and windDownMs.`;
   return config.subject.source === "app-url"
     ? externalPublicSharedWorldValidationReason(config)
     : concurrentSharedWorldValidationReason(config);
