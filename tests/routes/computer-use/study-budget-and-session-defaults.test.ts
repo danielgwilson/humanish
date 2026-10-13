@@ -306,15 +306,18 @@ describe("the study budget stops a participant with budget_reached", () => {
   it("sends no further request once a sibling's spend crosses the study budget", async () => {
     const { outcome, requests, sibling, siblingRequests } = await siblingCrossesBudget("action");
     expect(siblingRequests).toHaveLength(1);
-    expect(sibling?.session?.completionReason).toBe("budget_reached");
+    expect(sibling?.session?.trace.stopCause).toBe("study_spend_limit");
     expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.trace.stopCause).toBe("study_spend_limit");
     expect(requests).toHaveLength(1);
   });
 
   it("sends no first request when a sibling crossed the study budget before it", async () => {
-    const { outcome, requests, sibling } = await siblingCrossesBudget("look");
-    expect(sibling?.session?.completionReason).toBe("budget_reached");
+    const { outcome, requests, sibling, siblingRequests } = await siblingCrossesBudget("look");
+    expect(siblingRequests).toHaveLength(1);
+    expect(sibling?.session?.trace.stopCause).toBe("study_spend_limit");
     expect(outcome.session?.completionReason).toBe("budget_reached");
+    expect(outcome.session?.trace.stopCause).toBe("study_spend_limit");
     expect(requests).toHaveLength(0);
   });
 
