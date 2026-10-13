@@ -211,6 +211,36 @@ describe("a watch that the session ends", () => {
     expect(run.result.completionReason).toBe("budget_reached");
   });
 
+  it("keeps the look that completed a task as the turn's screenshot when the budget runs out at it", async () => {
+    // The look at 15 s shows the ticket closed and finds the study budget gone. The task funnel
+    // counts the completion, so the frame that shows it is persisted before the session stops.
+    let gone = false;
+    const run = await runWatching({
+      screen: (atMs) => {
+        gone = atMs >= 15_000;
+        return QUIET;
+      },
+      observe: (atMs) => ({ text: atMs >= 15_000 ? "Ticket closed" : "Ticket open" }),
+      turn: () => withUsage(LONG_WAIT),
+      loop: {
+        overRunBudget: () => (gone ? "the study budget is spent" : null),
+        tasks: [
+          {
+            id: "close",
+            goal: "Close the ticket.",
+            success: { any: [{ textIncludes: "closed" }] },
+          },
+        ],
+      },
+    });
+    expect(run.requests).toHaveLength(1);
+    expect(run.result.completionReason).toBe("budget_reached");
+    expect(run.result.trace.taskFunnel?.completed).toBe(1);
+    expect(
+      run.result.trace.items.filter((item) => item.kind === "screenshot").map((item) => item.title),
+    ).toEqual(["turn-00-start", "turn-01"]);
+  });
+
   it("sends no request when the budget runs out after the watch's last look", async () => {
     // After the look at 5 s the budget is checked twice: at the look, with budget left, and
     // before request 2, when it is gone.

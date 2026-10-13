@@ -171,9 +171,11 @@ async function watchScreen(
       observation: look.observation,
       ...(area === undefined ? {} : { area }),
     });
+    // A condition comes first: the checkpoint persists the look that matched it (a task completed
+    // at it is counted already), and the budget then stops the session before the next request.
+    if (look.condition) return ended("condition");
     const overBudget = spendStop(session);
     if (overBudget !== undefined) return { ...ended("stopped"), stop: overBudget };
-    if (look.condition) return ended("condition");
     if (look.speech) return ended("speech");
     const seen = compareLook(frames, referenceKey, look.observation, at);
     if (seen.changed) return ended("changed", seen.area);
