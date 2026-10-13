@@ -74,7 +74,7 @@ interface SentBody {
   input: Array<Record<string, unknown>>;
 }
 
-/** `turns` participant requests in explicit_context, each after the first carrying HINT. */
+/** `turns` participant requests in explicit_context, each after the first carrying the hint. */
 async function runTurns(
   turns: number,
   replyFor: (n: number) => Record<string, unknown>,
