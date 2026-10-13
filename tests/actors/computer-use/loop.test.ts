@@ -951,7 +951,8 @@ describe("runComputerUseLoop", () => {
 
   it("a `wait` that hangs inside the desktop SDK is skipped with a notice; the participant is not failed", async () => {
     // A default wait hung for ~90 s in the SDK after twelve turns of ordinary work and the
-    // participant ended actor_error. A wait that has hung has, by definition, waited.
+    // participant ended actor_error. A wait that has hung has, by definition, waited. A turn that
+    // only waits sends no wait to the desktop, so this one clicks first.
     let turns = 0;
     const provider: CuaProvider = {
       id: "wait-then-done",
@@ -960,7 +961,14 @@ describe("runComputerUseLoop", () => {
       async nextTurn() {
         turns += 1;
         if (turns === 1)
-          return { actions: [{ kind: "wait", ms: 5 }], pendingSafetyChecks: [], done: false };
+          return {
+            actions: [
+              { kind: "click", x: 1, y: 1 },
+              { kind: "wait", ms: 5 },
+            ],
+            pendingSafetyChecks: [],
+            done: false,
+          };
         return { actions: [], pendingSafetyChecks: [], done: true, message: "done" };
       },
     };

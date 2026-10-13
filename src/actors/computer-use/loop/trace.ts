@@ -173,7 +173,11 @@ export function loopResult(
               : { maxOutputTokens: provider.modelSettings.maxOutputTokens }),
           },
         }),
-    waitSettings: { ...session.waits },
+    waitSettings: {
+      maxWaitMs: session.waits.maxWaitMs,
+      idleWaitMs: session.waits.idleWaitMs,
+      settleWaitMs: session.waits.settleWaitMs,
+    },
     counts,
     items: recorder.items,
     ...(session.finalPage === undefined ? {} : { finalPage: session.finalPage }),

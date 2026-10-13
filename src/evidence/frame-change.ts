@@ -3,11 +3,11 @@ import { PNG } from "pngjs";
 // Whether a screen changed while a participant waited, and whether the change has stopped
 // changing. The loop's watch (src/actors/computer-use/loop/watch.ts) asks after each look.
 //
-// The constants were chosen on 323 idle screenshot pairs from 203 retained hosted-desktop runs
-// (design note for #1814). Regions that changed on their own were the panel clock (2 to 6 tiles,
-// every 60 s), a text caret (2 tiles, about every 0.5 s), Chrome's tab spinner (2 to 4 tiles) and
-// one landing page's rotating tagline (10 to 36 tiles, median 18). Page loads, navigations and app
-// updates changed 94 to 2,598 tiles. A moved list selection changed 35 tiles and a re-rendered
+// The constants were chosen on 323 idle screenshot pairs from 203 retained hosted-desktop runs.
+// Regions that changed on their own were the panel clock (2 to 6 tiles, every 60 s), a text caret
+// (2 tiles, about every 0.5 s), Chrome's tab spinner (2 to 4 tiles) and one landing page's
+// rotating tagline (10 to 36 tiles, median 18). Page loads, navigations and app updates changed
+// 94 to 2,598 tiles. A moved list selection changed 35 tiles and a re-rendered
 // block of timestamps 8 to 12, both missed by the frame hash in frame-signature.ts.
 
 /** The side of a square tile, in pixels: one tile is the unit of change. */

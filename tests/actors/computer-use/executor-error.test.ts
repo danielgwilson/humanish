@@ -18,6 +18,13 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
+/**
+ * The turn that sends `action` to the desktop. A wait in a turn that only waits is watched by the
+ * loop and never sent, so a wait goes first in a turn that also clicks.
+ */
+const sending = (action: CuaAction): CuaAction[] =>
+  action.kind === "wait" ? [action, { kind: "click", x: 1, y: 2 }] : [action];
+
 function provider(actions: CuaAction[] = []): CuaProvider {
   return {
     id: "fixture",
@@ -173,7 +180,7 @@ describe("executor failure attribution", () => {
   ] satisfies CuaAction[])(
     "does not recover or mark a failed $kind as completed",
     async (action) => {
-      const actor = provider([action]);
+      const actor = provider(sending(action));
       const error = new ComputerUseExecutorError("transport_failed", "outcome_uncertain");
       // Even a backend that mutates ordinary Error metadata cannot turn this into a recoverable
       // CommandExitError, or inject that metadata into the durable diagnostic.
@@ -454,7 +461,7 @@ describe("executor failure attribution", () => {
     "does not skip a marked $kind when the loop bound wins before the client",
     async (action) => {
       vi.useFakeTimers();
-      const actor = provider([action]);
+      const actor = provider(sending(action));
       const observe = vi.fn(async () => ({ stateSignature: "fixture" }));
       const execute = vi.fn(
         (_action: CuaAction, signal?: AbortSignal) =>

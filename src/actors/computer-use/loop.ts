@@ -1,6 +1,6 @@
 import { closingReportSchema } from "../closing-report.js";
 import { ComputerUseProviderError } from "./provider-error.js";
-import { runActionBatch } from "./loop/actions.js";
+import { isIdleTurn, runActionBatch } from "./loop/actions.js";
 import {
   advanceBackstop,
   startBackstop,
@@ -19,6 +19,7 @@ import { LoopSession } from "./loop/session.js";
 import { spendStop, unknownSpendStop } from "./loop/spend.js";
 import { accountBillingConflicts } from "./loop/usage.js";
 import { loopResult, notice } from "./loop/trace.js";
+import { watchIdleTurn, type Watched } from "./loop/watch.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
@@ -149,6 +150,8 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
   if (opening.hint !== undefined) conversation.contextHint = opening.hint;
   let backstop = startBackstop(observation);
   let turnNumber = 0;
+  // The watch of the last turn while every turn since the last action only waited or looked.
+  let lastWatch: Watched | undefined;
   // A request whose reply was cut off by the output limit, to be sent once more.
   let resend: CuaTurnRequest | undefined;
   for (;;) {
@@ -206,9 +209,20 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         : ended;
     }
 
-    const batch = await runActionBatch(session, turn.actions);
+    const watched = await watchIdleTurn(
+      session,
+      observer,
+      turnNumber,
+      observation,
+      turn.actions,
+      lastWatch,
+    );
+    lastWatch = watched ?? (isIdleTurn(turn.actions) ? lastWatch : undefined);
+    const batch = await runActionBatch(session, turn.actions, watched?.waits);
     conversation.previousExecution = batch.execution;
-    const checkpoint = await observer.checkpoint(turnNumber);
+    // An earlier reply's unknown usage still stops the session before its closing request.
+    if (watched?.stop !== undefined) return unknownSpendStop(session) ?? watched.stop;
+    const checkpoint = await observer.checkpoint(turnNumber, watched?.observation);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
 
@@ -219,12 +233,21 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         observation,
         heardNewSpeech: observer.heardNewSpeech,
         waitingIsTheTask: heldToScheduledEnd(session),
+        screenChanged:
+          watched?.wake === "changed" ||
+          watched?.wake === "speech" ||
+          watched?.wake === "condition",
       },
       { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
     );
     backstop = step.backstop;
-    const stalled = applyBackstop(session, conversation, step, [checkpoint.hint, batch.hint]);
-    if (stalled !== undefined) return stalled;
+    const stalled = applyBackstop(session, conversation, step, [
+      watched?.hint,
+      checkpoint.hint,
+      batch.hint,
+    ]);
+    // A turn that reached the participant's end is that end, never the backstop's.
+    if (stalled !== undefined) return clockEndStop(session, observation) ?? stalled;
     const unknownSpend = unknownSpendStop(session);
     if (unknownSpend !== undefined) return unknownSpend;
   }

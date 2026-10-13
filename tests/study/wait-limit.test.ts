@@ -12,7 +12,7 @@ import { lab, type BaseName } from "../admission/fixtures.js";
 const parsed = (base: BaseName, maxWaitMs: unknown) => parseStudy(lab(base, {}, { maxWaitMs }));
 
 describe("actor.maxWaitMs", () => {
-  it.each([1_000, 45_000, 120_000, 600_000])(
+  it.each([1_000, 45_000, 120_000, 600_000, 3_600_000])(
     "plans %s ms as each computer-use participant's longest wait",
     (maxWaitMs) => {
       const result = parsed("cuAppUrl", maxWaitMs);
@@ -40,7 +40,7 @@ describe("actor.maxWaitMs", () => {
       expect(computerUseParticipants(result.config)[0]?.limits).not.toHaveProperty("maxWaitMs");
   });
 
-  it.each([0, 999, 600_001, 1.5, -1, Number.NaN, Infinity, null, "60000"])(
+  it.each([0, 999, 3_600_001, 1.5, -1, Number.NaN, Infinity, null, "60000"])(
     "refuses %s",
     (maxWaitMs) => {
       const result = parsed("cuAppUrl", maxWaitMs);

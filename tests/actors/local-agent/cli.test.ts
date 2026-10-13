@@ -10,6 +10,7 @@ import {
   detectLocalAgents,
   localAgentDoctorMessage,
   parseAgentJson,
+  promptFor,
   toCuaActions,
   type SpawnLike,
 } from "../../../src/actors/local-agent/cli.js";
@@ -65,6 +66,17 @@ describe("the action vocabulary a local agent answers in", () => {
     expect(toCuaActions([{ kind: "type", text: "" }])).toEqual([]);
     expect(toCuaActions([{ kind: "keypress", keys: [] }])).toEqual([]);
     expect(toCuaActions([{ kind: "teleport", x: 1, y: 2 }])).toEqual([]);
+  });
+});
+
+describe("the turn prompt", () => {
+  it("tells Claude Code that a turn of only waits returns on a change and grows on a still screen", () => {
+    const prompt = promptFor(
+      { instructions: "Wait for the reply.", observation: observation() },
+      "/tmp/turn.png",
+    );
+    expect(prompt).toContain("only waits ends when the screen changes and holds still");
+    expect(prompt).toContain("twice as long as the one before");
   });
 });
 

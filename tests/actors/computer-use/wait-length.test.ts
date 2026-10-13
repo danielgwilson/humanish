@@ -18,7 +18,9 @@ import {
 } from "../../../src/substrates/e2b/desktop-executor.js";
 
 // How long a wait that names no duration lasts, through the loop and each desktop's executor.
-// OpenAI's computer-use `wait` action carries no duration, so the harness picks one.
+// OpenAI's computer-use `wait` action carries no duration, so the harness picks one. A turn with
+// another action sends its waits to the desktop; a turn that only waits is watched by the loop,
+// which sleeps through the injected `sleep` and looks at the screen, sending no wait.
 
 const CAPS: ActorCapabilities = {
   headless: true,
@@ -54,11 +56,16 @@ function participant(actions: CuaAction[]): CuaProvider {
 
 type WaitOptions = Pick<CuaLoopOptions, "maxWaitMs" | "idleWaitMs">;
 
+/** The loop's clock moves only when it sleeps; `slept` lists each sleep. */
+let slept: number[] = [];
+
 function runLoop(
   executor: CuaExecutor,
   actions: CuaAction[],
   options: WaitOptions = {},
 ): Promise<CuaLoopResult> {
+  let t = 0;
+  slept = [];
   return runComputerUseLoop({
     instructions: "Wait on this page until it changes.",
     provider: participant(actions),
@@ -66,7 +73,11 @@ function runLoop(
     persona,
     redaction: defaultRedactionHooks,
     timeoutMs: 600_000,
-    now: () => Date.now(),
+    now: () => t,
+    sleep: async (ms) => {
+      slept.push(ms);
+      t += ms;
+    },
     ...options,
   });
 }
@@ -135,11 +146,18 @@ function guestDesktop() {
 const shortened = (result: CuaLoopResult) =>
   result.trace.items.filter((item) => item.kind === "notice" && item.title === "wait shortened");
 
+const waitTitles = (result: CuaLoopResult) =>
+  result.trace.items
+    .filter((item) => item.kind === "ui_action" && item.title.startsWith("wait"))
+    .map((item) => item.title);
+
 describe("a wait with no duration on a hosted desktop", () => {
-  it("lasts five seconds when the participant's turn only waits", async () => {
+  it("lasts five seconds when the participant's turn only waits, and no wait goes to the desktop", async () => {
     const { waits, result } = await hostedWaits([{ kind: "wait" }]);
 
-    expect(waits).toEqual([["wait", 5_000]]);
+    expect(waits).toEqual([]);
+    expect(slept).toEqual([5_000]);
+    expect(waitTitles(result)).toEqual(["wait 5000ms"]);
     expect(result.completionReason).toBe("goal_satisfied");
   });
 
@@ -152,27 +170,37 @@ describe("a wait with no duration on a hosted desktop", () => {
     ]);
   });
 
-  it("lasts the study's actor.idleWaitMs, sent in steps one desktop call carries", async () => {
+  it("lasts the study's actor.idleWaitMs when the participant's turn only waits", async () => {
     const { waits, result } = await hostedWaits([{ kind: "wait" }], { idleWaitMs: 45_000 });
 
-    expect(waits).toEqual([
-      ["wait", 30_000],
-      ["wait", 15_000],
-    ]);
+    expect(waits).toEqual([]);
+    expect(slept).toEqual([45_000]);
     expect(shortened(result)).toEqual([]);
   });
 
   it("is never longer than the study's longest wait, and the participant is not told it was shortened", async () => {
     const { waits, result } = await hostedWaits([{ kind: "wait" }], { maxWaitMs: 4_000 });
 
-    expect(waits).toEqual([["wait", 4_000]]);
+    expect(waits).toEqual([]);
+    expect(slept).toEqual([4_000]);
     expect(shortened(result)).toEqual([]);
   });
 
   it("keeps a wait that names its duration", async () => {
-    const { waits } = await hostedWaits([{ kind: "wait", ms: 2_500 }]);
+    const { result } = await hostedWaits([{ kind: "wait", ms: 2_500 }]);
+
+    expect(slept).toEqual([2_500]);
+    expect(waitTitles(result)).toEqual(["wait 2500ms"]);
+  });
+
+  it("keeps a wait that names its duration after an action, sent to the desktop", async () => {
+    const { waits } = await hostedWaits([
+      { kind: "click", x: 10, y: 10 },
+      { kind: "wait", ms: 2_500 },
+    ]);
 
     expect(waits).toEqual([["wait", 2_500]]);
+    expect(slept).toEqual([]);
   });
 
   it("is labelled in the trace with the length it lasted", async () => {
@@ -225,14 +253,16 @@ describe("a wait with no duration on a hosted desktop", () => {
 });
 
 describe("a wait with no duration on a guest desktop", () => {
-  it("holds the desktop for the study's idle wait when the participant's turn only waits", async () => {
-    const { executor, ran } = guestDesktop();
+  it("looks at the desktop at the study's idle wait when the participant's turn only waits", async () => {
+    const { executor, ran, tools } = guestDesktop();
 
     const result = await runLoop(executor, [{ kind: "wait" }], { idleWaitMs: 1_000 });
 
     expect(result.completionReason).toBe("goal_satisfied");
-    expect(ran.map((entry) => entry.action)).toEqual([{ kind: "wait", ms: 1_000 }]);
-    expect(ran[0]?.elapsedMs).toBeGreaterThanOrEqual(990);
+    expect(ran).toEqual([]);
+    expect(slept).toEqual([1_000]);
+    // The opening observation and the look that ended the watch; no observation after it.
+    expect(tools.capture).toHaveBeenCalledTimes(2);
   });
 
   it("lasts half a second after the participant acts in the same turn", async () => {

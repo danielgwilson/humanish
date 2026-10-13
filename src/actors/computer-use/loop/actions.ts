@@ -1,4 +1,5 @@
 import { classifyCuaAction } from "../../affordance.js";
+import type { ActorWatch } from "../../contract.js";
 import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
 import {
   ComputerUseExecutorError,
@@ -140,6 +141,17 @@ export interface ActionBatch {
   readonly hint: string | undefined;
 }
 
+/**
+ * The waits of a turn the loop watched in place of sending them to the desktop (watch.ts): the
+ * part of the watch each wait covered, in order, and the `watch` field of the wait during which
+ * the watch ended.
+ */
+export interface WatchedWaits {
+  readonly ms: readonly number[];
+  readonly endedOn: number;
+  readonly watch: ActorWatch;
+}
+
 /** What the participant can do about a rejection whose reason the executor named. */
 const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.freeze({
   extra_tab:
@@ -167,22 +179,34 @@ function recordShortenedWait(session: LoopSession, title: string, requestedMs: n
 /**
  * Dispatch one turn's actions in order. A declared pre-dispatch rejection stops the batch and
  * leaves the desktop usable; a failed desktop command skips its action; any other failure ends
- * the session.
+ * the session. The waits of a watched turn (`watched`) already ran: each is recorded with the part
+ * of the watch it covered and nothing is sent for it.
  */
 export async function runActionBatch(
   session: LoopSession,
   actions: readonly CuaAction[],
+  watched?: WatchedWaits,
 ): Promise<ActionBatch> {
   const execution: ActionBatch["execution"] = { actions: [] };
   const { actionHistory, trace } = session;
   const notes: string[] = [];
   const hint = (): string | undefined => (notes.length === 0 ? undefined : notes.join(" "));
   const idleTurn = isIdleTurn(actions);
+  let waits = 0;
   for (const [index, requested] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
+    const waitIndex = requested.kind === "wait" ? waits++ : undefined;
+    const watchedMs = waitIndex === undefined ? undefined : watched?.ms[waitIndex];
     const wait =
-      requested.kind === "wait" ? planWait(session.waits, requested.ms, idleTurn) : undefined;
-    const action: CuaAction = wait === undefined ? requested : { kind: "wait", ms: wait.ms };
+      requested.kind === "wait" && watchedMs === undefined
+        ? planWait(session.waits, requested.ms, idleTurn)
+        : undefined;
+    const action: CuaAction =
+      watchedMs !== undefined
+        ? { kind: "wait", ms: watchedMs }
+        : wait === undefined
+          ? requested
+          : { kind: "wait", ms: wait.ms };
     const title = describeCuaAction(action);
     if (wait?.shortenedFromMs !== undefined)
       notes.push(recordShortenedWait(session, title, wait.shortenedFromMs));
@@ -198,7 +222,10 @@ export async function runActionBatch(
     session.phase = `executing ${title}`;
     let status: ExecutionStatus;
     try {
-      status = await dispatchAction(session, action, title, wait?.steps);
+      status =
+        watchedMs === undefined
+          ? await dispatchAction(session, action, title, wait?.steps)
+          : "completed";
     } catch (error) {
       const declared = isComputerUseExecutorError(error)
         ? error.disposition
@@ -248,6 +275,7 @@ export async function runActionBatch(
       ...(action.kind === "click" || action.kind === "double_click"
         ? { coord: { x: action.x, y: action.y } }
         : {}),
+      ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
     }));
   }
   return { execution, hint: hint() };
