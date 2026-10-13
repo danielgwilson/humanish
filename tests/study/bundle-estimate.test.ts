@@ -159,6 +159,19 @@ describe("study check's bundle estimate", () => {
     });
   });
 
+  it("counts the mission as run.json stores it, in UTF-8 with its JSON escapes", () => {
+    // A dry run's run.json grew by 29,000 bytes a copy when the mission grew by 22,000 characters of
+    // accented letters, quotes and newlines. This mission is 9 characters and 22 bytes in run.json:
+    // 3 x 3 for 名前を, 1 for the space, 2 for each escaped quote, 2 x 3 for 変更 and 2 for the
+    // escaped newline. Two participants: 4,400 + 22 + 2 x (16,500 + 2 x 22) = 37,510.
+    const visitor = {
+      schedule: participantSchedule({}),
+      limits: {},
+      assignment: { mission: '名前を "変更"\n' },
+    };
+    expect(estimateBundle([visitor, visitor], HOURS).runFileBytes).toBe(37_510);
+  });
+
   it("warns that one participant working 10 hours passes the analysis limit on its trace", async () => {
     // 3,600 turns. Trace: 5,400 + 3,600 x 4,700 = 16,925,400 bytes, over 16,777,216. The measured
     // busiest participant, 4,532 bytes a turn, passes it at about 10.3 hours. run.json: 4,400
