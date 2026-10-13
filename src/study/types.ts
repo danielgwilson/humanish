@@ -383,6 +383,12 @@ export interface StudyParticipantEntry {
    * no duration lasts while it only waits. Same range, and no longer than actor.maxWaitMs.
    */
   idleWaitMs?: number;
+  /**
+   * Computer use and shared world: this participant's clock, in place of actor.clock. Its
+   * `timeZone` is the zone each turn gives the time in and, on a hosted desktop, the zone its
+   * browser runs in.
+   */
+  clock?: { timeZone: string };
 }
 
 export interface StudyActor {
@@ -429,9 +435,10 @@ export interface StudyActor {
    */
   idleWaitMs?: number;
   /**
-   * Computer use: the participant's clock. `timeZone`, a time zone name such as "Europe/London", adds
-   * the local time to each turn, for missions that refer to appointment times, and gives a
-   * scheduled end (participants[].endAfterMs) in that zone. A hosted desktop shows no clock.
+   * Computer use: the participants' clock, unless a participant declares its own. `timeZone`, a
+   * time zone name such as "Europe/London", adds the local time to each turn, for missions that
+   * refer to clock times, gives a scheduled end or session cap in that zone, and sets the zone
+   * of a hosted desktop's browser and of the clock in its panel, which shows UTC without one.
    */
   clock?: { timeZone: string };
   /**

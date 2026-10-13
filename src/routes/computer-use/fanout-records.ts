@@ -171,6 +171,9 @@ function fanoutParticipantStream(
           }),
       desktopGeometry,
       ...(outcome?.desktopFiles === undefined ? {} : { desktopFiles: outcome.desktopFiles }),
+      ...(spec.planned.limits.timeZone === undefined
+        ? {}
+        : { timeZone: spec.planned.limits.timeZone }),
       ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
       ui: {
         route: publicTargetUrl,

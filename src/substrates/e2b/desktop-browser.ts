@@ -450,13 +450,18 @@ function desktopBrowserFamily(value: string | undefined): DesktopBrowserFamily {
  * `x-terminal-emulator` is tried first so a template that swaps
  * the emulator still works; a desktop with neither is a template problem and fails closed rather
  * than handing a participant an empty screen and calling it a study.
+ *
+ * A `timeZone` is TZ on the terminal, so its shells, the product under test and any browser started
+ * from it run in that zone.
  */
 export async function openDesktopTerminal(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   workdir: string | undefined,
+  timeZone?: string,
 ): Promise<void> {
   const dir = workdir ?? "/home/user";
+  const zone = timeZone === undefined ? "" : `TZ=${shellQuote(timeZone)} `;
   const result = await runDetachedStep(e2bShell(desktop), {
     name: "desktop-cli-terminal",
     command: [
@@ -466,7 +471,7 @@ export async function openDesktopTerminal(
       // a study that measures our own mojibake against an unconfigured template would be measuring
       // the template. The product-side fix (an ASCII fallback when the locale is not UTF-8) is in
       // src/routes/terminal/encoding.ts, and it is the one that matters for real users.
-      `    (cd ${shellQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 HUMANISH_STUDY_PARTICIPANT=1 nohup "$candidate" >/dev/null 2>&1 &)`,
+      `    (cd ${shellQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 ${zone}HUMANISH_STUDY_PARTICIPANT=1 nohup "$candidate" >/dev/null 2>&1 &)`,
       "    sleep 3",
       '    echo "humanish: opened $candidate"',
       "    exit 0",

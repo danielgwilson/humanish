@@ -207,6 +207,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
           }),
       ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
       ...(args.desktopFiles === undefined ? {} : { desktopFiles: args.desktopFiles }),
+      ...(args.timeZone === undefined ? {} : { timeZone: args.timeZone }),
       ...(args.recording === undefined ? {} : { recording: args.recording }),
       ui: {
         route: publicAppUrl,
@@ -465,6 +466,8 @@ export function buildSingleParticipantBundle(args: {
   recording?: RunDesktopRecording;
   /** participants[].files confirmed on the participant's desktop. */
   desktopFiles?: RunDesktopFile[];
+  /** The participant's time zone, which its turns and its hosted browser used. */
+  timeZone?: string;
   /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
    *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
   isMobile?: boolean;

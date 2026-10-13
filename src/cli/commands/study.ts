@@ -3,6 +3,9 @@ import { resolve } from "node:path";
 import { Command, Option } from "commander";
 import { inspectStudyManifest, listStudyManifests } from "../../study/discover.js";
 import type { StudyInspectResult, StudyListResult } from "../../study/discover.js";
+import { describeTimeZones } from "../../study/plan-participants.js";
+import type { StudyConfig } from "../../study/types.js";
+import { plannedParticipants } from "../../study/warnings.js";
 import {
   runStudyPreflight,
   type StudyPreflightReachabilityMode,
@@ -192,6 +195,7 @@ function formatStudyShowHuman(result: StudyInspectResult): HumanOutput {
       ...(result.path ? [`path: ${result.path}`] : []),
       ...(result.origin ? [`origin: ${result.origin}`] : []),
       ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
+      ...timeZoneLines(config),
       ...(result.personas ?? []).map(
         (persona) =>
           `persona ${persona.id}: ${persona.brief ? `authored context (before runtime additions)\n${persona.brief.text}` : "unresolved; id only"}`,
@@ -225,4 +229,10 @@ function formatStudyCheckHuman(result: StudyPreflightResult): HumanOutput {
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n";
   return result.error === undefined ? stdout : { stdout, error: result.error };
+}
+
+/** The `time zones:` line, for a study whose participants declare a time zone. */
+function timeZoneLines(config: StudyConfig): string[] {
+  const zones = describeTimeZones(plannedParticipants(config));
+  return zones === undefined ? [] : [`time zones: ${zones}`];
 }
