@@ -47,6 +47,7 @@ import {
   type UnscannedArtifacts,
 } from "./artifacts.js";
 import { flatContextWarnings } from "./context-growth.js";
+import { pageFindings } from "./pages.js";
 import { runNotFinished, type UnfinishedRun } from "./liveness.js";
 import { costAndReceiptFindings } from "./costs.js";
 import { rerunLineageFindings } from "./rerun.js";
@@ -335,9 +336,15 @@ function evidenceArtifactsCheck(shaped: boolean, problems: string[]): VerifyChec
 async function loadTraces(
   runPaths: PreparedRunArtifactPaths,
   stored: unknown,
-): Promise<{ bundle: unknown; refusedTraces: string[]; sensitive: string[]; opaque: string[] }> {
+): Promise<{
+  bundle: unknown;
+  refusedTraces: string[];
+  sensitive: string[];
+  opaque: string[];
+  pages: string[];
+}> {
   const scanned = { sensitive: [] as string[], opaque: [] as string[] };
-  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [], ...scanned };
+  if (!isRunBundle(stored)) return { bundle: stored, refusedTraces: [], ...scanned, pages: [] };
   // Each trace is source evidence: scanned by the bytes it was joined from, apart from the
   // directory walk and any path exemption the walk makes.
   const { bundle, refused } = await loadStreamTraces(runPaths, stored, {
@@ -346,18 +353,24 @@ async function loadTraces(
       if (scan !== "clean") scanned[scan === "sensitive" ? "sensitive" : "opaque"].push(file);
     },
   });
-  return { bundle, refusedTraces: refused.map((error) => error.message), ...scanned };
+  return {
+    bundle,
+    refusedTraces: refused.map((error) => error.message),
+    ...scanned,
+    pages: pageFindings(bundle),
+  };
 }
 
-/** The trace scan's results, beside the walk's: each file named once. */
+/** The trace scan's results, beside the walk's: each file named once, then each page finding. */
 function addTraceScan(
-  traces: { sensitive: string[]; opaque: string[] },
+  traces: { sensitive: string[]; opaque: string[]; pages: string[] },
   findings: string[],
   unscanned: UnscannedArtifacts,
 ): void {
   for (const file of traces.sensitive)
     if (!findings.includes(`sensitive text ${file}`)) findings.push(`sensitive text ${file}`);
   for (const file of traces.opaque) if (!unscanned.files.includes(file)) unscanned.files.push(file);
+  findings.push(...traces.pages);
 }
 
 /** The top-level run.json sections the shape guard requires. */

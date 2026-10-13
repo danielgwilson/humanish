@@ -1043,6 +1043,30 @@ Core-owned fields:
   click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive:
   absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
+- optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
+  `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
+  on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before
+  any action, `turn-01` the page after turn 1's actions, and dwell frames have their own.
+  `finalPage` is the page of the session's last observation, which is a closing observation with
+  no item when tasks are declared; it is absent when that observation read no URL. The screenshot
+  items with a `page`, in item order, then `finalPage`, list the participant's path through the
+  app. `origin` is the URL's scheme, host and port; `path` is its percent-encoded path. A query
+  string, fragment and user info are never kept, and a non-web URL keeps its scheme only
+  (`{ origin: "about:", path: "" }`). Redaction (`tracePage` in `src/evidence/trace-page.ts`):
+  a path segment becomes `[REDACTED_URL_PART]` when it percent-encodes a letter, digit, `-`, `.`,
+  `_` or `~`, or when any decoded reading of it is email-shaped, holds a run of 16 or more letters,
+  digits, `-` and `_` with a piece of 8 or more characters mixing letters and digits, or changes
+  under the trace text redaction (the study's secrets, then `redactText`). The whole path then
+  goes through that redaction, is cut to 1024 characters ending `[TRUNCATED]`, and is withheld
+  whole when verify's trace scan would still read it as sensitive or opaque. The origin goes
+  through the same redaction (an E2B sandbox host becomes `[REDACTED_SECRET]`), and a host label
+  shaped like that token run becomes `[REDACTED_URL_PART]`. A token shorter than 16 characters, an
+  all-digit id and personal data in readable words stay, so the sharing rules for synthetic data
+  still apply. Pages come from the browser-state probe, which hosted runs have on Chrome and
+  Chromium only; a Firefox participant, or one whose probe is unavailable, has screenshots without
+  pages. The local browser route and the shared-world route record none. verify reports a page
+  whose path holds `?` or `#`, or whose origin holds user info or anything after the host, as a
+  public-safety finding. Both fields are additive; absence means "page not recorded"
 - optional `modelSettings` (`humanish.model-settings.v1`): how the model was
   asked to run, alongside `ids.model` which says which model it was.
   `reasoningEffort` records the value the request actually carried,

@@ -146,6 +146,13 @@ certification that the artifact is free of every class in the policy below. A
 first-class PII/PHI detector is [planned](https://github.com/danielgwilson/humanish/issues/108) and would move the listed
 PII classes from author-responsibility to enforced.
 
+The same scan reads the page each computer-use observation recorded (`items[].page`,
+`finalPage`). verify also reports a page whose path holds a query string or fragment, or whose
+origin holds user info or anything after the host, since such a part can carry a short token no
+pattern matches. The recorder withholds email- and token-shaped path segments
+([schemas.md](schemas.md#actor-trace)); a name or other personal data in a readable path is not
+detected.
+
 Required redaction gates:
 
 - run bundle verification;

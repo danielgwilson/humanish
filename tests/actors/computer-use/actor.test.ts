@@ -173,6 +173,34 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ).toBe(true);
   });
 
+  it("records the page the E2B executor's browser read on the screenshot item, unless pages are off", async () => {
+    const run = (recordPages?: boolean) =>
+      runCuaActorSession({
+        ...baseOpts,
+        openai: {
+          apiKey: "test-key",
+          fetchFn: scriptedFetch([
+            {
+              id: "r1",
+              output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }],
+            },
+          ]),
+        },
+        desktop: makeFakeDesktop(),
+        executorOptions: {
+          observeBrowserState: async () => ({ url: "http://127.0.0.1:3000/items/123?tab=notes" }),
+        },
+        ...(recordPages === undefined ? {} : { recordPages }),
+      });
+    const page = { origin: "http://127.0.0.1:3000", path: "/items/123" };
+    const recorded = (await run()).trace;
+    expect(recorded.items.find((item) => item.kind === "screenshot")?.page).toEqual(page);
+    expect(recorded.finalPage).toEqual(page);
+    const off = (await run(false)).trace;
+    expect(off.items.some((item) => item.page !== undefined)).toBe(false);
+    expect(off.finalPage).toBeUndefined();
+  });
+
   it("typed secrets never reach the trace; screenshots default to raw (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([

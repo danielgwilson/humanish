@@ -92,9 +92,10 @@ export interface CuaObservation {
   appState?: Record<string, unknown>;
   /**
    * Optional browser state captured by an executor that can inspect the driven browser
-   * deterministically (for example via Chrome DevTools Protocol). These fields are runtime-only:
-   * they may drive stopWhen and progress decisions, but the loop never persists raw URL/title/text
-   * into the trace. Persisting arbitrary DOM text would make private-data leakage too easy.
+   * deterministically (for example via Chrome DevTools Protocol). These fields drive stopWhen and
+   * progress decisions. The loop never persists the raw URL, title or text: persisting arbitrary
+   * DOM text would make private-data leakage too easy. From the URL it records only the page's
+   * origin and redacted path (`page` on screenshot items, `finalPage`; src/evidence/trace-page.ts).
    */
   url?: string;
   /**
@@ -431,7 +432,7 @@ export interface LoopTaps {
   /**
    * Runtime-only URL tap: called with `observation.url` for each observation a turn may receive
    * (the initial one, each post-action one and the one after a dwell window). The loop never
-   * persists the URL. Default: no-op.
+   * persists the raw URL. Default: no-op.
    *
    * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
    * latches the host participant's lobby URL and checks that each follower reached the same lobby.
@@ -458,8 +459,16 @@ export interface LoopTaps {
   onScreenshot?: (frame: Buffer) => void;
 }
 
-/** The loop's options inside humanish: the public ones plus the handoff's taps. */
-export type LoopRunOptions = CuaLoopOptions & LoopTaps;
+/** The loop's options inside humanish: the public ones, the handoff's taps and the page switch. */
+export type LoopRunOptions = CuaLoopOptions &
+  LoopTaps & {
+    /**
+     * Whether screenshot items and the trace carry the observed page (`page`, `finalPage`).
+     * Default true. The shared-world route passes false: its observed URLs land in the bundle only
+     * as digests (docs/architecture/external-public-shared-world.md).
+     */
+    recordPages?: boolean;
+  };
 
 export type CuaLiveMetadata = Pick<
   ActorTrace,

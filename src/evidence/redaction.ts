@@ -167,6 +167,7 @@ export const REDACTION_MARKERS = {
   runtimePath: "[REDACTED_RUNTIME_PATH]",
   promptText: "[REDACTED_PROMPT_TEXT]",
   lobbyCode: "[REDACTED_LOBBY_CODE]",
+  urlPart: "[REDACTED_URL_PART]",
 } as const;
 
 const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [

@@ -176,6 +176,7 @@ export function loopResult(
     waitSettings: { ...session.waits },
     counts,
     items: recorder.items,
+    ...(session.finalPage === undefined ? {} : { finalPage: session.finalPage }),
     ...(session.actionHistory.affordances.length > 0
       ? { affordanceUse: summarizeAffordanceUse(session.actionHistory.affordances) }
       : {}),
