@@ -121,7 +121,12 @@ function sharedWorldSimulation(
     summary: participantSummary(
       name,
       { name: "the shared app" },
-      { trace: session?.trace, sessionError: outcome?.sessionError, inProgress },
+      {
+        trace: session?.trace,
+        skippedReason: outcome?.skippedReason,
+        sessionError: outcome?.sessionError,
+        inProgress,
+      },
     ),
     startedAt: args.run.createdAt,
     updatedAt: args.run.createdAt,
