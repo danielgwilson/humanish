@@ -38,20 +38,57 @@ export function pinPosition(coord: { x: number; y: number }, viewport: Size): CS
   };
 }
 
-/** The stage's recorded frame and the proportions that size it, from one render. */
-function useRecordedFrame(
-  href: string | null,
+/**
+ * The stage's recorded frame and the proportions that size the stage: the decoded raster for a
+ * recording, and for the live view the latest capture's measured size, else the participant's
+ * last decoded raster, else the declared viewport. Measurements belong to one `label`, so another
+ * participant never inherits them.
+ */
+function useStageProportions(
+  frame: PlayerFrame | undefined,
+  live: string | null,
   viewport: Size | undefined,
-  recordDimensions: (size: Size) => void,
-): { image: DecodedImageState; recordedDimensions: Size } {
-  const image = useDecodedImage(href);
+  label: string,
+): { image: DecodedImageState; recordedDimensions: Size; liveDimensions: Size | undefined } {
+  const captureHref = live ? frame?.href : undefined;
+  const [captureDimensions, setCaptureDimensions] = useState<(Size & { label: string }) | null>(
+    null,
+  );
+  const recordDimensions = useCallback(
+    (size: Size) => setCaptureDimensions({ ...size, label }),
+    [label],
+  );
+  const image = useDecodedImage(!live && frame ? frame.href : null);
   // Raster dimensions are authoritative; viewport is only a stable loading fallback.
   const recordedDimensions = image.decoded ?? viewport ?? { width: 1280, height: 800 };
   // A later live view keeps the last decoded proportions until its own capture is measured.
+  // This effect runs before the measurement below, so a measurement in the same commit wins.
   useEffect(() => {
     if (image.decoded) recordDimensions(image.decoded);
   }, [image.decoded, recordDimensions]);
-  return { image, recordedDimensions };
+  useEffect(() => {
+    if (!captureHref) return;
+    const image = new Image();
+    let active = true;
+    const measured = () => {
+      if (!active || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+      setCaptureDimensions({ label, width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onload = measured;
+    image.src = captureHref;
+    if (image.complete) measured();
+    // Keep the previous known proportions while the next capture loads or fails.
+    // A late image response must not change another participant or an unmounted stage.
+    return () => {
+      active = false;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [captureHref, label]);
+  // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
+  // establishes the actual screen proportions, including redacted/downscaled images.
+  const liveDimensions = captureDimensions?.label === label ? captureDimensions : viewport;
+  return { image, recordedDimensions, liveDimensions };
 }
 
 export function PlayerStage({
@@ -80,38 +117,12 @@ export function PlayerStage({
   const stageRef = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState<Size>({ width: 640, height: 480 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
-  const captureHref = live ? frame?.href : undefined;
-  const [captureDimensions, setCaptureDimensions] = useState<(Size & { label: string }) | null>(
-    null,
-  );
-  const recordDimensions = useCallback(
-    (size: Size) => setCaptureDimensions({ ...size, label }),
-    [label],
-  );
-  const { image, recordedDimensions } = useRecordedFrame(
-    !live && frame ? frame.href : null,
+  const { image, recordedDimensions, liveDimensions } = useStageProportions(
+    frame,
+    live,
     viewport,
-    recordDimensions,
+    label,
   );
-  useEffect(() => {
-    if (!captureHref) return;
-    const image = new Image();
-    let active = true;
-    const measured = () => {
-      if (!active || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
-      setCaptureDimensions({ label, width: image.naturalWidth, height: image.naturalHeight });
-    };
-    image.onload = measured;
-    image.src = captureHref;
-    if (image.complete) measured();
-    // Keep the previous known proportions while the next capture loads or fails.
-    // A late image response must not change another participant or an unmounted stage.
-    return () => {
-      active = false;
-      image.onload = null;
-      image.onerror = null;
-    };
-  }, [captureHref, label]);
   useEffect(() => {
     const node = stageRef.current;
     if (!node) return;
@@ -131,9 +142,6 @@ export function PlayerStage({
       window.removeEventListener("resize", measure);
     };
   }, []);
-  // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
-  // establishes the actual screen proportions, including redacted/downscaled images.
-  const liveDimensions = captureDimensions?.label === label ? captureDimensions : viewport;
   // The live view is sized from the measured stage; recorded fit is sized by CSS from the stage's
   // current box, so a measurement one frame behind can never shrink a recorded frame.
   const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
