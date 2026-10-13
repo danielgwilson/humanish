@@ -250,7 +250,11 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
         if (callId === undefined) break;
         const name = asString(item.name);
         functionCalls.push({ callId, name });
-        if (name === "wait_for_change") actions.push(waitForChangeAction(item.arguments));
+        // A call to a tool that does not exist is a wait with no length, and its output says there
+        // is no such tool. A reply of only such calls is then an idle turn, so the session goes on.
+        actions.push(
+          name === "wait_for_change" ? waitForChangeAction(item.arguments) : { kind: "wait" },
+        );
         break;
       }
       default:

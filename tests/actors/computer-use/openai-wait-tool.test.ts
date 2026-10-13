@@ -362,29 +362,33 @@ describe("the wait_for_change tool beside other calls", () => {
     );
   });
 
-  it("answers a call to a tool it does not have, on the impressions request too", async () => {
-    const { bodies } = await runOpenAi([
-      replyOf(
-        1,
-        {
-          type: "message",
-          role: "assistant",
-          content: [{ type: "output_text", text: "Nothing new came in." }],
-        },
-        fnCall("call_x", "{}", "read_page"),
-      ),
-      closingReply(2, IMPRESSIONS),
+  it("answers a call to a tool it does not have and waits as for a wait with no length", async () => {
+    // A reply of only such a call has no other action; it does not end the session.
+    const { result, bodies, sentAt } = await runOpenAi([
+      replyOf(1, fnCall("call_x", "{}", "scroll_page")),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
     ]);
-    expect(bodies).toHaveLength(2);
-    expect(bodies[1]?.input[0]).toEqual({
-      type: "function_call_output",
-      call_id: "call_x",
-      output: [
-        { type: "input_text", text: 'There is no tool named "read_page".' },
-        { type: "input_image", image_url: IMAGE },
-      ],
-    });
-    expect(imagesIn(bodies[1]!)).toBe(1);
+    expect(sentAt.slice(0, 2)).toEqual([0, 5_000]);
+    expect(watchesOf(result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [5_000, 5_000],
+    ]);
+    expect(bodies[1]?.input).toEqual([
+      {
+        type: "function_call_output",
+        call_id: "call_x",
+        output: [
+          {
+            type: "input_text",
+            text: expect.stringMatching(
+              /^There is no tool named "scroll_page"\. Your wait lasted 5 seconds;/,
+            ),
+          },
+          { type: "input_image", image_url: IMAGE },
+        ],
+      },
+    ]);
+    expect(result.trace.items.filter((item) => item.kind === "ui_action")).toHaveLength(1);
   });
 
   it("answers every call on the closing request, with the screen once and the ask as a message", async () => {
