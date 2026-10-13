@@ -4,11 +4,14 @@
 // RUN_ARTIFACT_MAX_BYTES, and the public-safety scan visits at most runEntryLimit(participants)
 // files and folders.
 //
-// observer/index.html carries every participant's items gzipped, so with busy participants it can
-// pass verify's 32 MiB before run.json passes analysis's 16 MiB: at these rates, 17 participants
-// working 8 hours. observer-data.json carries the same per-request lists as run.json and was within
-// 7 % of its size on every live run measured, so it passes 32 MiB only after run.json passes
-// 16 MiB, and the estimate does not check it.
+// observer/index.html carries every participant's items gzipped, so with busy participants it
+// passes verify's 32 MiB long before run.json passes analysis's 16 MiB: at these rates, 20
+// participants working 8 hours. From run bundle v4 run.json grows by participant, not by model
+// request: each participant's per-request lists are only in its trace. run.json can still pass
+// 16 MiB, since a study's mission is not capped and each participant's stream copies it.
+// observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
+// runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
+// check it.
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
@@ -24,19 +27,16 @@ import { runEntryLimit } from "../verify/scan-limit.js";
 // own files. Pace, session length and screenshots: the live computer-use runs kept on the
 // maintainer's machine. A trace's rate a turn on the public site/public/runs/lobby-0927 run
 // (8 participants, 20 to 78 turns) was 1,579 bytes plus 91 for the page, under the live fit.
+// The run.json and page data rates were measured again on those runs written as v4.
 const RATES = Object.freeze({
   /** run.json bytes for the run itself: its header, study, review and cost. Live fit: 4,381. */
   runBytes: 4_400,
   /**
-   * run.json bytes for each participant before its turns: its stream, actor summary and closing
-   * report request. Live fit: 16,239, plus one request.
+   * run.json bytes for each participant: its stream, actor summary and closing report request.
+   * Live fit on v3: 16,239. Written as v4, the kept runs of one participant held 20,571 to 23,160
+   * bytes and those of two 30,647 to 38,948, beside 20,900 and 37,400 at these rates.
    */
   participantBytes: 16_500,
-  /**
-   * run.json bytes a model turn adds: the request's entries in `tokenUsage.turns` and
-   * `conversation.requests`. Live: 30,623 bytes over 137 requests, 223.5 each.
-   */
-  turnRunBytes: 225,
   /** A trace file's bytes before its turns: the actor summary. Live fit: 5,378. */
   participantTraceBytes: 5_400,
   /**
@@ -67,10 +67,10 @@ const RATES = Object.freeze({
   /** observer/index.html's app before any run data: 1,199,831 bytes on the dry runs. */
   observerAppBytes: 1_200_000,
   /**
-   * The page's compact copy of observer-data.json, as a share of run.json: 0.64 to 0.81 whole on
-   * the live runs, 0.49 for a participant's part, and 0.42 for the per-request entries.
+   * The page's compact copy of observer-data.json, as a share of run.json: 0.71 to 0.84 on the
+   * live runs written as v4, where neither carries the per-request lists.
    */
-  observerPageDataShare: 0.5,
+  observerPageDataShare: 0.85,
   /**
    * The page's gzipped base64 items, as a share of all the traces' bytes: 0.087 to 0.114 on the
    * live runs of two participants, 0.097 for the busiest participant alone (about 475 bytes a
@@ -167,7 +167,7 @@ export function estimateBundle(
     largestTrace = Math.max(largestTrace, trace);
   }
   const count = participants.length;
-  const runFileBytes = RATES.runBytes + count * RATES.participantBytes + turns * RATES.turnRunBytes;
+  const runFileBytes = RATES.runBytes + count * RATES.participantBytes;
   const screenshots = count + turns + frames;
   const observerPageBytes = Math.round(
     RATES.observerAppBytes +
@@ -250,7 +250,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : `${changes.slice(0, -1).join(", ")}, or ${changes.at(-1)}`;
   return [
     ...passed,
-    `The estimate counts ${counted.join(" and ")}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)} that adds about ${RATES.turnRunBytes} bytes to run.json and up to ${(RATES.turnTraceBytes / 1000).toFixed(1)} KB to the participant's trace.`,
+    `The estimate counts ${counted.join(" and ")}, at a model turn every ${formatDuration(RATES.secondsPerTurn * 1000)} that adds up to ${(RATES.turnTraceBytes / 1000).toFixed(1)} KB to the participant's trace.`,
     "The run goes ahead.",
     `To stay under ${passed.length === 1 ? "the limit" : "the limits"}, ${advice}.`,
   ].join(" ");
