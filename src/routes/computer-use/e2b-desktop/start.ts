@@ -11,6 +11,7 @@ import {
   startDesktopStream,
   type ChromeDevToolsReadiness,
 } from "../../../substrates/e2b/desktop-browser.js";
+import { setPanelClockZone } from "../../../substrates/e2b/desktop-clock.js";
 import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import {
   prepareDesktopMedia,
@@ -59,7 +60,8 @@ export async function startParticipantMedia(
 
 /**
  * Open what the participant sees: the browser at the target, with any declared camera and mobile
- * fidelity, or a terminal window on the desktop-cli route.
+ * fidelity, or a terminal window on the desktop-cli route. A participant with a time zone sees the
+ * desktop's panel clock in it; a clock that cannot be set is a warning, and it shows UTC.
  */
 export async function openParticipantSurface(
   ctx: E2BParticipantContext,
@@ -68,6 +70,14 @@ export async function openParticipantSurface(
 ): Promise<void> {
   const { spec, deps, warnings, targetUrl } = ctx;
   const { residual, subject } = deps;
+  const { timeZone } = spec.planned.limits;
+  if (timeZone !== undefined) {
+    await setPanelClockZone(desktop, timeZone, deps.requestTimeoutMs).catch((error: unknown) => {
+      warnings.push(
+        `The desktop's panel clock for participant ${spec.planned.id} could not be set to ${timeZone} and shows UTC: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+      );
+    });
+  }
   if (subject.kind === "desktop-cli") {
     // A terminal window, opened the way the browser is opened on every other route: the
     // participant arrives at a desktop with the thing they were asked to use already in front
@@ -93,7 +103,6 @@ export async function openParticipantSurface(
   // The participant's time zone is TZ on the launch: the browser process and every renderer it
   // starts read it at startup, so every tab runs in the zone from the first page load. A CDP
   // timezone override holds only on the one tab whose DevTools session sets it, from after its load.
-  const { timeZone } = spec.planned.limits;
   const mediaEnv = state.speech?.env ?? state.recording?.env;
   const browserLaunch = await openDesktopBrowserTarget(
     desktop,

@@ -17,7 +17,7 @@ import type { RunBundle } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { lab } from "../../admission/fixtures.js";
-import { makeFanoutModule } from "../../helpers/fanout-desktop.js";
+import { makeFanoutModule, type FanoutModuleOptions } from "../../helpers/fanout-desktop.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -62,6 +62,40 @@ function participant(endsOn: number | undefined, seen: Seen[]): CuaProvider {
       };
     },
   };
+}
+
+/**
+ * Runs a two-participant app-url study, tokyo in Asia/Tokyo and plain with no zone, on fake hosted
+ * desktops whose commands `onCommand` sees, and returns the run's warnings.
+ */
+async function runTokyoAndPlain(
+  cwd: string,
+  onCommand: NonNullable<FanoutModuleOptions["commandHandler"]>,
+): Promise<string[]> {
+  const parsed = parseStudy(
+    lab("cuAppUrl", {
+      mode: "live",
+      participants: [
+        { id: "tokyo", instruction: "Tokyo visit.", clock: { timeZone: "Asia/Tokyo" } },
+        { id: "plain", instruction: "Plain visit." },
+      ],
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  const handle = makeFanoutModule({ commandHandler: onCommand });
+  const outcome = await runStudyWith(
+    parsed.config,
+    { cwd, env: KEYS },
+    {
+      desktopModule: async () => handle.module,
+      runSession: async (options: CuaActorSessionOptions) =>
+        runCuaActorSession({ ...options, provider: participant(1, []) }),
+      analysis: { run: vi.fn() },
+    },
+  );
+  if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+  expect(outcome.result.ok).toBe(true);
+  return outcome.result.warnings;
 }
 
 /** The UTC hour at `atMs` moved by `hours`, as the two digits a clock hint shows. */
@@ -151,6 +185,31 @@ describe("participants in different time zones", () => {
       ["tokyo", "Asia/Tokyo"],
       ["plain", undefined],
     ]);
+  });
+
+  // The stock template's XFCE panel shows a clock above the browser. Live, setting the clock
+  // plugin's timezone property through xfconf-query moved it from 02:12 UTC to 11:12 Asia/Tokyo
+  // and then to Mon 12 Oct 21:12 America/Chicago without a restart.
+  it("sets the desktop's panel clock to the participant's zone", async () => {
+    const panelCommands: Array<[number, string]> = [];
+    const warnings = await runTokyoAndPlain(cwd, (laneIndex, command) => {
+      if (command.includes("xfconf-query")) panelCommands.push([laneIndex, command]);
+      return undefined;
+    });
+    expect(panelCommands.map(([laneIndex]) => laneIndex)).toEqual([0]);
+    expect(panelCommands[0]?.[1]).toContain("'Asia/Tokyo'");
+    expect(warnings.filter((warning) => warning.includes("panel clock"))).toEqual([]);
+  });
+
+  it("warns, and runs the participant, when the panel clock cannot be set", async () => {
+    const warnings = await runTokyoAndPlain(cwd, (_laneIndex, command) =>
+      command.includes("xfconf-query")
+        ? { stdout: "", exitCode: 1, stderr: "Property does not exist" }
+        : undefined,
+    );
+    expect(warnings).toContain(
+      "The desktop's panel clock for participant tokyo could not be set to Asia/Tokyo and shows UTC: Property does not exist",
+    );
   });
 
   it("launches a lone participant's browser in actor.clock's zone and records it", async () => {

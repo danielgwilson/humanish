@@ -438,7 +438,7 @@ export interface StudyActor {
    * Computer use: the participants' clock, unless a participant declares its own. `timeZone`, a
    * time zone name such as "Europe/London", adds the local time to each turn, for missions that
    * refer to appointment times, gives a scheduled end or session cap in that zone, and sets the zone
-   * of a hosted desktop's browser. A hosted desktop shows no clock.
+   * of a hosted desktop's browser and of the clock in its panel, which shows UTC without one.
    */
   clock?: { timeZone: string };
   /**

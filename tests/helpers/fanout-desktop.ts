@@ -59,7 +59,10 @@ export interface FanoutModuleOptions {
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
   /** Answers one participant's sandbox command; undefined falls through to the default reply. */
-  commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
+  commandHandler?: (
+    laneIndex: number,
+    command: string,
+  ) => { stdout: string; exitCode?: number; stderr?: string } | undefined;
   /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
   measuredChrome?: boolean;
   /** The size files.getInfo reports for a written file; default its written size. */

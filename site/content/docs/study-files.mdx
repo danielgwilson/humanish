@@ -264,7 +264,7 @@ participants:
     startEveryMs: 1200000
 ```
 
-- From `endAfterMs - windDownMs` (default 10 minutes), each turn tells the participant when its session ends and how many minutes are left. A hosted desktop shows no clock, so this is how it knows.
+- From `endAfterMs - windDownMs` (default 10 minutes), each turn tells the participant when its session ends and how many minutes are left. The hosted desktop's panel clock shows the time but not the end, so this is how it knows.
 - Waiting is part of the job: before `endAfterMs`, a turn that only waits or takes screenshots counts toward neither the idle nor the no-progress backstop. Each such turn is still a model request with a screenshot, so give a participant that waits for long stretches a longer `participants[].idleWaitMs`, such as `60000`.
 - The participant does not end its own session before `endAfterMs`. When it tries, the trace records a notice, and its next turn tells it the session is not over and how many minutes are left. A participant that keeps trying, taking no action, is ended by the idle backstop as `gave_up`.
 - At `endAfterMs` the participant is asked for its closing report, and the session ends as passed, with `stopCause: scheduled_end` in its trace. The report's summary is the participant's `reason`, as the last message is for a participant that ends its own session. The outcome the report declares is the trace's `declaredOutcome`: the first line of its summary, `REACHED THE GOAL.`, `DID NOT REACH THE GOAL.` or `BLOCKED.`, or Codex's `outcome` field. `REACHED THE GOAL.` keeps the pass, and `BLOCKED.` counts the participant blocked. A report that declares `DID NOT REACH THE GOAL.` or nothing counts the participant blocked when its summary describes a blocker, and keeps the pass otherwise.
@@ -315,10 +315,11 @@ participants:
 
 - Each turn tells the participant the local time in its zone, and a scheduled end (`endAfterMs`) or session cap (`maxSessionMs`) is given in that zone.
 - On a hosted desktop, humanish launches the participant's browser with `TZ` set to its zone, so every tab and window it opens runs in that zone from the first page load: JavaScript's `Date` and `Intl.DateTimeFormat().resolvedOptions().timeZone` report it.
+- The clock in the hosted desktop's panel, at the top right of every screenshot, shows the same zone. When humanish cannot set it, the run warns and the clock shows UTC.
 - The zone is a tz database name such as `Europe/London`, written with its capitals: `america/chicago` and `us/central` are refused, since the browser does not find a name in the wrong case and runs in UTC. A UTC offset such as `+05:00` is refused, since a browser's time zone cannot be set to one.
 - The local browser runtime (`execution.target: local`) and `RunStudyOptions.inProcess` do not set the browser's zone, so a study that gives a participant a time zone there is refused before anything starts.
 - `study check` prints each participant's zone in a `time zones` row, `study show` prints a `time zones:` line, and `run.json` records each participant's `timeZone` on its stream.
-- A participant without a zone runs in UTC, and its turns carry no local time.
+- A participant without a zone runs in UTC, its desktop's panel clock shows UTC, and its turns carry no local time.
 
 ## Limit spend and time with `caps`
 

@@ -3,10 +3,11 @@ import type { Stop } from "./ending.js";
 import type { LoopSession } from "./session.js";
 import type { CuaObservation, ParticipantClock } from "./types.js";
 
-// What the participant knows about the time. A hosted desktop shows a maximized browser with no
-// OS clock, so a participant told "your shift ends at 11:00" cannot relate it to now unless each
-// turn says so. The text rides the request's context hint, which every provider sends with the
-// turn (OpenAI as a user message, Codex and the local agents as the harness note).
+// What the participant knows about the time. A hosted desktop's panel clock shows the time in the
+// participant's zone, or in UTC without one, and a local browser shows no clock. Neither shows
+// when the session ends, so a participant told "your shift ends at 11:00" relates it to now
+// through each turn's text. The text rides the request's context hint, which every provider sends
+// with the turn (OpenAI as a user message, Codex and the local agents as the harness note).
 
 /**
  * The time text for the request the loop is about to send: the local time when the participant
