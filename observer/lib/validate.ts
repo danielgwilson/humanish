@@ -7,9 +7,7 @@ const strings = (value: Record<string, unknown>, keys: string[]) =>
   keys.every((key) => typeof value[key] === "string");
 const optionalString = (value: unknown) => value === undefined || typeof value === "string";
 // No list is refused for its length. This check runs on a body the page has already parsed, so a
-// cap here saves no memory and only stops the page updating. A participant's items come from one
-// trace or live file, and the loader reads neither past RUN_ARTIFACT_MAX_BYTES (32 MiB): that
-// participant then arrives with traceUnavailable and a trace.unavailable warning.
+// cap here saves no memory and only stops the page updating.
 const list = (value: unknown, check: (item: unknown) => boolean): boolean =>
   Array.isArray(value) && value.every(check);
 const finite = (value: unknown): value is number =>
@@ -62,7 +60,8 @@ export function runDisplay(value: unknown): boolean {
 }
 
 /** Admit the fields used by the UI, including nested optional evidence. A bad poll
- * must not replace a usable snapshot. Unknown additive fields remain compatible. */
+ * must not replace a usable snapshot. Unknown additive fields remain compatible, and no list is
+ * refused for its length. */
 export function isObserverData(value: unknown): value is ObserverData {
   if (
     !object(value) ||

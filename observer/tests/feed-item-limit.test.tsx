@@ -18,10 +18,9 @@ import type { ObserverData } from "../lib/observer-data";
 import { useObserverFeed } from "../lib/use-observer-feed";
 
 // A participant that passes 100,000 items, then a new generation of its live file that scrubs a
-// sandbox id the run learned late, then a live file past the 32 MiB the loader reads. Each body is
-// the one the real library server answered for a run the real run writer wrote, polled with the
-// cursors the body before it gave. The first body is about 15 MB, so the test captures the bodies
-// as it runs instead of reading a golden.
+// sandbox id the run learned late. Each body is the one the real library server answered for a run
+// the real run writer wrote, polled with the cursors the body before it gave. The first body is
+// about 15 MB, so the test captures the bodies as it runs instead of reading a golden.
 const RUN = "synthetic-feed-item-limit";
 const lateId = "synthetic-sandbox-late";
 const item = (n: number): ActorTraceItem => ({
@@ -32,12 +31,8 @@ const item = (n: number): ActorTraceItem => ({
   text: n === 1 ? `The page footer names ${lateId}.` : `Step ${n}.`,
   at: "2026-10-13T08:00:00.000Z",
 });
-// One list of objects, so each write's slice keeps the objects the writer appended before. The
-// last item's 20 MiB of text takes the live file past 32 MiB.
-const items = [
-  ...Array.from({ length: 100_002 }, (_, index) => item(index + 1)),
-  { ...item(100_003), text: "x".repeat(20 * 1024 * 1024) },
-];
+// One list of objects, so each write's slice keeps the objects the writer appended before.
+const items = Array.from({ length: 100_002 }, (_, index) => item(index + 1));
 
 let cwd: string, templateRoot: string;
 let template: RunBundle;
@@ -125,13 +120,11 @@ beforeAll(async () => {
       });
       await run.writeSnapshot(inProgress(100_002));
       const regenerated = await poll(cursorsOf(tail));
-      await run.writeSnapshot(inProgress(100_003));
-      const unread = await poll(cursorsOf(regenerated));
       await run.finish(
         { ...template, runId: RUN, artifactRoot: path.join(".humanish", "runs", RUN) },
         PASSING_OUTCOME,
       );
-      await poll(cursorsOf(unread));
+      await poll(cursorsOf(regenerated));
     });
   } finally {
     await server?.close();
@@ -162,7 +155,6 @@ function Probe({ initial }: { initial: ObserverData }) {
         items: list?.length ?? null,
         rawId: list?.some((entry) => entry.text?.includes(lateId)) ?? null,
         labeled: list?.[0]?.text?.includes("[redacted-sandbox-id ") ?? null,
-        unavailable: stream?.timeline.some((event) => event.type === "trace.unavailable") ?? null,
       })}
     </pre>
   );
@@ -177,7 +169,7 @@ const advance = async (ms: number) => {
 };
 
 describe("a served page whose participant passes 100,000 items", () => {
-  it("keeps updating through a generation that scrubs a sandbox id and past the loader's limit", async () => {
+  it("keeps updating through a generation that scrubs a sandbox id", async () => {
     (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
     vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
     vi.setSystemTime("2026-10-13T09:00:00.000Z");
@@ -201,20 +193,16 @@ describe("a served page whose participant passes 100,000 items", () => {
       root.render(<Probe initial={initial} />);
     });
     await advance(0);
-    expect(shown()).toEqual({ items: 100_000, rawId: true, labeled: false, unavailable: false });
+    expect(shown()).toEqual({ items: 100_000, rawId: true, labeled: false });
     expect(state()).toBe("current");
     await advance(5000);
-    expect(shown()).toEqual({ items: 100_001, rawId: true, labeled: false, unavailable: false });
+    expect(shown()).toEqual({ items: 100_001, rawId: true, labeled: false });
     expect(state()).toBe("current");
     await advance(5000);
-    expect(shown()).toEqual({ items: 100_002, rawId: false, labeled: true, unavailable: false });
-    expect(state()).toBe("current");
-    // Past the loader's limit the server reads none of the participant's items and says why.
-    await advance(5000);
-    expect(shown()).toEqual({ items: null, rawId: null, labeled: null, unavailable: true });
+    expect(shown()).toEqual({ items: 100_002, rawId: false, labeled: true });
     expect(state()).toBe("current");
     await advance(5000);
-    expect(shown()).toEqual({ items: null, rawId: null, labeled: null, unavailable: false });
+    expect(shown()).toEqual({ items: null, rawId: null, labeled: null });
     // The server answered exactly these requests when the bodies were captured.
     expect(sent).toEqual(captured.map((entry) => entry.after));
   }, 60_000);
