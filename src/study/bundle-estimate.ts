@@ -11,8 +11,8 @@
 // once for the run, once in each participant's stream and once more in the feedback candidate of
 // each participant that reports friction or stops. The mission is not capped, and the estimate
 // counts that last copy for every participant, so it warns at 100 participants with a mission of
-// 75,238 bytes. On 2026-10-13 the longest mission on
-// the 139 live runs kept on the maintainer's machine was 807 characters.
+// 75,238 bytes. On 2026-10-13 the longest mission on the live computer-use runs kept on the
+// maintainer's machine was 807 characters.
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
