@@ -89,8 +89,8 @@ function clickingModel(inputs: number[], onRequest: () => void): CuaProvider {
   };
 }
 
-/** A screen on the lobby that changes on every look; each click first waits for `clicked`. */
-function lobbyScreen(clicked: () => Promise<void>): CuaExecutor {
+/** A screen on the lobby that changes on every look; each click runs `click`. */
+function lobbyScreen(click: () => Promise<void>): CuaExecutor {
   let looks = 0;
   return {
     observe: async () => ({
@@ -98,7 +98,7 @@ function lobbyScreen(clicked: () => Promise<void>): CuaExecutor {
       stateSignature: `s${(looks += 1)}`,
       url: LOBBY_URL,
     }),
-    execute: clicked,
+    execute: click,
   };
 }
 
@@ -114,26 +114,30 @@ describe("the study budget on a shared world", () => {
   it("stops the follower before its next request once the host crosses the budget", async () => {
     // At $5 per million input tokens: the host's first turn and the follower's are $0.05 each,
     // and the host's second turn adds $2, which crosses the $1 budget while the follower clicks.
-    let followerAsked!: () => void;
-    const followerHasAsked = new Promise<void>((resolve) => {
-      followerAsked = resolve;
+    // The host's click waits until the follower's click starts. By then the follower has passed
+    // the spend check after its reply, so only the check before its next request can stop it.
+    let followerClicking!: () => void;
+    const followerIsClicking = new Promise<void>((resolve) => {
+      followerClicking = resolve;
     });
     let hostEnded!: () => void;
     const hostHasEnded = new Promise<void>((resolve) => {
       hostEnded = resolve;
     });
     const requests = { host: 0, follower: 0 };
+    let followerClicks = 0;
     const sessions = new Map<string, CuaLoopResult>();
     const host = {
       provider: clickingModel([10_000, 400_000], () => (requests.host += 1)),
-      executor: lobbyScreen(() => followerHasAsked),
+      executor: lobbyScreen(() => followerIsClicking),
     };
     const follower = {
-      provider: clickingModel([10_000], () => {
-        requests.follower += 1;
-        followerAsked();
+      provider: clickingModel([10_000], () => (requests.follower += 1)),
+      executor: lobbyScreen(() => {
+        followerClicks += 1;
+        followerClicking();
+        return hostHasEnded;
       }),
-      executor: lobbyScreen(() => hostHasEnded),
     };
 
     const { module } = makeFakeModule(makeCommandHandler({ worldVersion: 0 }));
@@ -166,7 +170,8 @@ describe("the study budget on a shared world", () => {
     // The host crossed the budget with its second reply.
     expect(requests.host).toBe(2);
     expect(sessions.get("host")?.trace.stopCause).toBe("study_spend_limit");
-    // The follower stops before a second request.
+    // The follower clicked once, then stopped before a second request.
+    expect(followerClicks).toBe(1);
     expect(requests.follower).toBe(1);
     expect(sessions.get("follower")?.completionReason).toBe("budget_reached");
     expect(sessions.get("follower")?.trace.stopCause).toBe("study_spend_limit");
