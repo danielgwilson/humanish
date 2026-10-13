@@ -18,6 +18,7 @@ import { stringify } from "yaml";
 
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runStudyWith } from "../../src/run-study.js";
+import { participantSchedule } from "../../src/study/arrivals.js";
 import { estimateBundle } from "../../src/study/bundle-estimate.js";
 import { parseStudy } from "../../src/study/config.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
@@ -121,7 +122,7 @@ describe("study check's bundle estimate", () => {
   });
 
   it("counts run.json by participant, whatever the number of model turns", () => {
-    const host = { endAfterMs: 8 * HOURS, limits: {} };
+    const host = { schedule: participantSchedule({ endAfterMs: 8 * HOURS }), limits: {} };
     // 4,400 + 30 x 16,500, with 2,880 turns each.
     expect(
       estimateBundle(
