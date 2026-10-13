@@ -80,6 +80,8 @@ export async function captureEvidence(
   ) {
     throw new Error("ANALYSIS_RUN_UNFINISHED");
   }
+  // A participant's evidence share is at most limits.evidence, and admission stops at its share,
+  // so selection never admits past the first limits.evidence entries in admission order.
   const reach = { entries: limits.evidence, captures: maxCaptureReads(limits) };
   const sources = await readParticipantTraces(prepared, bundle, (stream, index) =>
     participantSources(bundle, bundle.streams[index]!, stream, captureVersion, reach),
