@@ -333,6 +333,22 @@ describe("a closing request asked once more", () => {
     expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withSchemaRow]);
   });
 
+  it("does not ask once more under a spend cap when the first closing reply reported no usage", async () => {
+    const { usage: _usage, ...unreported } = closingSaying("I renamed it.");
+    const { trace, bodies } = await stoppedSession([unreported, withImpressions], {
+      maxUsd: 10,
+      estimateTurnCostUsd: () => 0.1,
+    });
+    expect(bodies).toHaveLength(2);
+    expect(trace.debrief).toEqual({
+      trigger: "stop_when",
+      status: "failed",
+      reason:
+        "the closing response did not contain a valid structured participant report; not asked again: the closing request did not report complete usage, so the remaining model budget is unknown",
+      usageReported: false,
+    });
+  });
+
   it("does not ask once more after the first closing reply crossed the spend cap", async () => {
     const { trace, bodies } = await stoppedSession(
       [closingSaying("I renamed it."), withImpressions],

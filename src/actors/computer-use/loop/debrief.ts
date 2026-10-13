@@ -192,8 +192,14 @@ async function debriefExchange(
   }
   if (first.turn.closingRetry !== true)
     return acceptDebriefTurn(session, first.turn, trigger, ask, record, first.usageReported);
-  // The first reply's usage is already recorded, so the checks see it.
-  const again = planDebrief(session, ask, trigger);
+  // The first reply's usage is already recorded, so the checks see it. Under a cap, a reply
+  // without complete usage stops another paid request, as it does after a participant turn.
+  const again: DebriefPlan =
+    session.capDeclared && !first.usageReported
+      ? {
+          skip: "the closing request did not report complete usage, so the remaining model budget is unknown",
+        }
+      : planDebrief(session, ask, trigger);
   const second: ClosingReply =
     "skip" in again
       ? { status: "skipped", detail: again.skip }
