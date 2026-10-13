@@ -3,9 +3,12 @@
 
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import { isReadRunBundleSchema, type RunBundle } from "../run/bundle.js";
-import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
-import { reduceRunTraces, StreamTraceRefusedError } from "../run/stream-trace.js";
+import {
+  reduceRunTraces,
+  StreamTraceRefusedError,
+  StreamTraceTooLargeError,
+} from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import { EVIDENCE_LIMITS } from "./analysis-limits.js";
@@ -109,19 +112,14 @@ export function parseAnalysisSource(prepared: PreparedRunArtifactPaths, bytes: B
  * order. Each trace file is read up to RUN_ARTIFACT_MAX_BYTES, as the loader, verify and the
  * Observer read it, and is dropped once `keep` returns, so analysis holds one trace at a time
  * whatever the number of participants. run.json's digest, which the analysis record binds, binds
- * each trace's sha256.
+ * each trace's sha256. A trace whose index records more than the limit is refused as
+ * ANALYSIS_SOURCE_TOO_LARGE, and any other trace the loader refuses as ANALYSIS_SOURCE_INVALID.
  */
 export async function readParticipantTraces<T>(
   prepared: PreparedRunArtifactPaths,
   bundle: RunBundle,
   keep: (stream: RunStream, index: number) => T,
 ): Promise<T[]> {
-  for (const stream of bundle.streams)
-    if ((stream.trace?.bytes ?? 0) > RUN_ARTIFACT_MAX_BYTES)
-      throw new AnalysisSourceRefusedError(
-        "ANALYSIS_SOURCE_TOO_LARGE",
-        `Analysis did not read participant ${stream.id}'s trace: run.json records ${stream.trace!.path} at ${bytes(stream.trace!.bytes)}, more than the ${limit(RUN_ARTIFACT_MAX_BYTES)} humanish reads of one trace. A trace grows with its participant's turns; shorten the participant's window (participants[].endAfterMs) to keep it under the limit.`,
-      );
   try {
     return await reduceRunTraces(prepared, bundle, (stream, index) => {
       validateTraceItems(stream);
@@ -130,7 +128,12 @@ export async function readParticipantTraces<T>(
   } catch (error) {
     // The loader's refusal names the participant, the file, why, and what to do.
     if (error instanceof StreamTraceRefusedError)
-      throw new AnalysisSourceRefusedError("ANALYSIS_SOURCE_INVALID", error.message);
+      throw new AnalysisSourceRefusedError(
+        error instanceof StreamTraceTooLargeError
+          ? "ANALYSIS_SOURCE_TOO_LARGE"
+          : "ANALYSIS_SOURCE_INVALID",
+        error.message,
+      );
     throw error;
   }
 }

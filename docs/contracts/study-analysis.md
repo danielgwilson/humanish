@@ -188,7 +188,8 @@ dimensions and result sizes have separate limits. Analysis reads run.json up to
 It reads the traces one at a time and keeps of each only the entries selection
 can reach, so it holds one whole trace at a time whatever the number of
 participants. A file past its limit is refused as `ANALYSIS_SOURCE_TOO_LARGE`, and
-a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
+a run.json or trace without the fields analysis reads, or a trace that does not
+match its index in run.json, as `ANALYSIS_SOURCE_INVALID`;
 each message names the file, says why, and says no request was sent. Count and text budgets are
 distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible

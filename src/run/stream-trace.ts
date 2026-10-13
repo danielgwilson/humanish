@@ -59,15 +59,18 @@ const pastLimitDetail = (index: { path: string; bytes: number }, maxBytes: numbe
   `run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file`;
 
 /**
- * The refusal of a trace or live file whose index records more than `maxBytes`. The loader reads
+ * A trace or live file whose index records more than the loader reads of one file. The loader reads
  * no file past the limit, so a copy of the file is refused too.
  */
+export class StreamTraceTooLargeError extends StreamTraceRefusedError {}
+
+/** The refusal of a trace or live file whose index records more than `maxBytes`. */
 const tooLarge = (
   streamId: string,
   index: { path: string; bytes: number },
   maxBytes: number,
-): StreamTraceRefusedError =>
-  new StreamTraceRefusedError(
+): StreamTraceTooLargeError =>
+  new StreamTraceTooLargeError(
     streamId,
     pastLimitDetail(index, maxBytes),
     "Restoring a copy does not help; open the file with another tool, such as jq, to read its items.",

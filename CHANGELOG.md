@@ -28,8 +28,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   limit."; it is now `ANALYSIS_SOURCE_TOO_LARGE`, and the message gives the file's size and the
   16,777,216-byte limit and says to split the participants across studies. Both messages end "No
   request was sent." `ANALYSIS_SOURCE_UNAVAILABLE` now reads "The source recording is missing or
-  unsafe." A trace past 32 MiB gets `ANALYSIS_SOURCE_TOO_LARGE` with its path and the limit, though
-  verify refuses such a run before analysis reads it. (#1841)
+  unsafe." A trace that run.json records at more than 32 MiB gets `ANALYSIS_SOURCE_TOO_LARGE`, and a
+  trace that does not match its index gets `ANALYSIS_SOURCE_INVALID`, each with the trace loader's
+  message, which names the participant and the file; verify refuses both runs before analysis reads
+  them. (#1841)
 
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 

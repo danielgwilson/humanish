@@ -1,14 +1,19 @@
 // `humanish analyze --json` on a run that verifies but whose recorded source analysis refuses: the
-// result's error names the file that was refused and why, for each refusal code.
+// result's error names the file that was refused and why, for each refusal code. A trace the loader
+// refuses fails verify before analysis reads it, so captureEvidence's refusal of one is pinned on
+// captureEvidence.
 
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { createProgram } from "../../src/cli/program.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import type { RunBundle } from "../../src/run/bundle.js";
+import { resolveRunPath } from "../../src/run/locate.js";
+import type { StreamTraceIndex } from "../../src/run/streams.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticActor, writeRunBundle } from "../helpers/run-traces.js";
 
@@ -88,6 +93,47 @@ describe("analyze --json on a run whose source analysis refuses", () => {
           message: `Analysis did not read participant ${stream}'s trace: it holds two items with the id "step-1", and analysis cites each item by its id. No request was sent.`,
         },
       }),
+    });
+  });
+
+  describe("captureEvidence on a participant trace the loader refuses", () => {
+    /** What captureEvidence throws once `edit` changes run.json's index of the participant's trace. */
+    async function refusal(
+      edit: (trace: StreamTraceIndex) => void,
+    ): Promise<{ error: unknown; trace: StreamTraceIndex }> {
+      const written = await writeRunBundle(runRoot, {
+        ...bundle,
+        streams: [{ ...bundle.streams[0]!, actor: syntheticActor("I saved the item.") }],
+      });
+      const trace = written.streams[0]!.trace!;
+      edit(trace);
+      await writeFile(path.join(runRoot, "run.json"), JSON.stringify(written));
+      const prepared = (await resolveRunPath(cwd, RUN))!;
+      const error = await captureEvidence(
+        prepared,
+        await readFile(path.join(runRoot, "run.json")),
+      ).catch((caught: unknown) => caught);
+      return { error, trace };
+    }
+
+    it("refuses a trace whose index records more than 32 MiB as too large", async () => {
+      const { error, trace } = await refusal((index) => {
+        index.bytes = 32 * 1024 * 1024 + 1;
+      });
+      expect(error).toMatchObject({
+        message: "ANALYSIS_SOURCE_TOO_LARGE",
+        reason: `Participant ${bundle.streams[0]!.id}'s trace was not read: run.json records ${trace.path} at 33554433 bytes, more than the 33554432 bytes humanish reads of one file. Restoring a copy does not help; open the file with another tool, such as jq, to read its items.`,
+      });
+    });
+
+    it("refuses a trace that does not match its index as invalid", async () => {
+      const { error, trace } = await refusal((index) => {
+        index.sha256 = "0".repeat(64);
+      });
+      expect(error).toMatchObject({
+        message: "ANALYSIS_SOURCE_INVALID",
+        reason: `Participant ${bundle.streams[0]!.id}'s trace was not read: ${trace.path} does not match the sha256 run.json records for it. A trace file must stay as the run wrote it; restore the run folder from a copy.`,
+      });
     });
   });
 });
