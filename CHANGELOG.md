@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- The bundle estimate counts the study's mission in run.json: once for the run and twice for each
+  participant, in its stream and in the feedback candidate of a participant that reports friction
+  or stops. It counted run.json at 4,400 bytes plus 16,500 a participant whatever the mission, so
+  its warning that run.json passes the 16 MiB analysis reads could not fire within the
+  100-participant cap. 100 participants with a mission of about 75 KB now get that warning from
+  `study check`, `humanish run` and `doctor --study`, with advice to shorten `actor.mission` or
+  split the participants across studies. On dry runs, 20,000 more bytes of mission added 40,000
+  bytes to run.json with 1 participant and 100,000 with 4. (#1836)
+
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
 humanish 0.129.0 fixes three things long studies reach. Analysis no longer refuses a run by how

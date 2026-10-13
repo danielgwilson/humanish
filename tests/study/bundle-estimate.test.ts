@@ -9,7 +9,9 @@
 // run.json, which keeps the per-request lists in the traces, 16,500 bytes of run.json for each
 // participant and 4,400 for the run, 5,400 for each trace, 500 for each dwell frame, 110,000 for
 // each screenshot, and 3 minutes for a participant with no declared end. The Observer page is
-// 1,200,000 bytes of app, 0.85 of run.json and 0.12 of all the traces.
+// 1,200,000 bytes of app, 0.85 of run.json and 0.12 of all the traces. run.json also holds the
+// mission once for the run and twice for each participant. The fixture's mission, "Try it.", adds
+// 7 bytes and 14 a participant, which moves no printed figure, so the examples leave it out.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -122,7 +124,11 @@ describe("study check's bundle estimate", () => {
   });
 
   it("counts run.json by participant, whatever the number of model turns", () => {
-    const host = { schedule: participantSchedule({ endAfterMs: 8 * HOURS }), limits: {} };
+    const host = {
+      schedule: participantSchedule({ endAfterMs: 8 * HOURS }),
+      limits: {},
+      assignment: {},
+    };
     // 4,400 + 30 x 16,500, with 2,880 turns each.
     expect(
       estimateBundle(
@@ -189,6 +195,29 @@ describe("study check's bundle estimate", () => {
       ok: true,
       row: "run.json about 1.6 MiB of the 16 MiB analysis reads; largest trace about 0.09 MiB of the 16 MiB analysis reads of each; Observer page about 3.5 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 215 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [],
+    });
+  });
+
+  it("warns that 100 participants with an 80,000-byte mission pass the analysis limit on run.json", async () => {
+    // run.json holds the mission once for the run and twice for each participant: in its stream and
+    // in the feedback candidate of a participant that reports friction or stops. run.json: 4,400
+    // + 80,000 + 100 x (16,500 + 2 x 80,000) = 17,734,400 bytes, over 16,777,216. Each is counted
+    // for 3 minutes, 18 turns. Trace: 5,400 + 18 x 4,700 = 90,000. Page: 1,200,000 + 0.85
+    // x 17,734,400 + 0.12 x 100 x 90,000 = 17,354,240. Entries: 20 + 100 x (3 + 18) = 2,120.
+    // In all: 17,354,240 + 1,900 x 110,000 + 100 x 90,000 + 2 x 17,734,400 = 270,823,040.
+    const result = await check({
+      mode: "live",
+      participants: [{ id: "visitor", count: 100 }],
+      actor: { mission: "Rename the project. ".repeat(4_000) },
+      execution: { target: "e2b-desktop", timeoutMs: 2 * HOURS },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.09 MiB of the 16 MiB analysis reads of each; Observer page about 16.6 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 258 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      warnings: [
+        `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. It holds the mission once for the run and twice for each participant. The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
+      ],
     });
   });
 
