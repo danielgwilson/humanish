@@ -298,6 +298,11 @@ describe("the run writer's per-request lists", () => {
       expect(written?.tokenUsage).toEqual({ input: 320_000, output: 2_000 });
       // The long-context figure the rows give; the totals alone give $1.32.
       expect(written?.estimatedCost?.estimatedCostUsd).toBe(2.53);
+      // The saved Observer projection carries the figure run.json holds.
+      const observer = JSON.parse(await readText("observer/observer-data.json")) as {
+        streams: RunStream[];
+      };
+      expect(observer.streams[0]!.liveActor?.estimatedCost?.estimatedCostUsd).toBe(2.53);
       await run.finish(
         {
           ...template,
