@@ -84,20 +84,33 @@ describe("watchFrames on retained frames", () => {
     });
   });
 
-  it("never settles a panel clock whose minute moves again before the hold ends", () => {
-    // The minute digit changes at 30 s and again at 90 s: still for 55 s at most.
-    const clock2231 = inverted(CLOCK_2230, { x: 1385, y: 7, width: 15, height: 11 });
-    const verdicts = watch(CLOCK_2229, everyFiveSeconds(5, 90), (atMs) =>
-      atMs < 30_000 ? CLOCK_2229 : atMs < 90_000 ? CLOCK_2230 : clock2231,
+  it("settles a panel clock's tens digit on its own at a minute tick after it has held 65 s", () => {
+    // The fixtures read 22:29 and 22:30: the tens digit (x 1385 to 1391) sits in the tile column
+    // at x 1376 and the ones digit (x 1392 to 1399) in the column at x 1392. Both move at 30 s.
+    // At 90 s and 150 s only the ones digit moves, drawn here by inverting its pixels. From 95 s
+    // the still ones tiles join the tens tiles, whose region then waits on them; at 150 s the ones
+    // tiles move, the tens tiles form a region alone, still for 120 s, and settle. On a hosted
+    // desktop this ends a wait in each 10 minutes, after the tens digit changes.
+    const onesDigit = { x: 1392, y: 7, width: 8, height: 11 };
+    const clock2231 = inverted(CLOCK_2230, onesDigit);
+    const clock2232 = inverted(clock2231, { x: 1392, y: 12, width: 8, height: 6 });
+    const verdicts = watch(CLOCK_2229, everyFiveSeconds(5, 150), (atMs) =>
+      atMs < 30_000
+        ? CLOCK_2229
+        : atMs < 90_000
+          ? CLOCK_2230
+          : atMs < 150_000
+            ? clock2231
+            : clock2232,
     );
-    expect(settledTimes(verdicts)).toEqual([]);
-    expect(verdicts.find(([atMs]) => atMs === 30_000)?.[1]).toEqual({
-      verdict: "changing",
-      lookSoon: false,
-    });
+    expect(settledTimes(verdicts)).toEqual([150_000]);
     expect(verdicts.find(([atMs]) => atMs === 90_000)?.[1]).toEqual({
       verdict: "changing",
       lookSoon: false,
+    });
+    expect(verdicts.at(-1)?.[1]).toEqual({
+      verdict: "settled",
+      area: { x: 1376, y: 0, width: 16, height: 32 },
     });
   });
 

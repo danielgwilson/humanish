@@ -18,15 +18,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   participant's wind-down or end arrives, or the wait's time passes. A watch that reaches the
   participant's end stops there with no observation after it. A change of more than 24 tiles
   of 16 pixels counts at a second look half a second after it is seen, and a smaller one once it
-  has held still for more than 65 seconds. Nothing on the screen is ignored; a clock, a caret or a
-  spinner keeps moving and ends no wait.
+  has held still for more than 65 seconds. Nothing on the screen is ignored; a caret, a spinner or
+  a video keeps moving and ends no wait. A hosted desktop's panel clock ends one wait in each 10
+  minutes: its tens-of-minutes digit changes, holds still, and settles on its own at a minute tick
+  more than 65 seconds later.
 - The first such turn lasts as long as its waits did before. Each further such turn in a row whose
   time passed with no change holding still lasts twice as long as the one before, up to
   `actor.maxWaitMs`, or 10 minutes when the study does not set it. Any other ending, or a turn with
   another action, starts again from the first length. A participant that sends one wait per turn at the default
   `idleWaitMs`, on a screen that changes once at minute 17, makes 9 model requests by then with
   `actor.maxWaitMs: 1800000`, where it made one every 5 seconds, about 200. On a screen that never
-  changes it makes 12 in its first hour and 6 an hour after that.
+  changes, such as a local browser's, it makes 12 in its first hour and 6 an hour after that. On a
+  hosted desktop the clock's wake starts the waits again from 5 seconds: in a fake loop with a
+  clock drawn at the panel's digit positions, 42 to 47 requests an hour, and 12 and 6 only when
+  the looks fell in step with the clock.
 - `actor.maxWaitMs` accepts up to 3,600,000 milliseconds, and also caps how long the watches of
   repeated idle turns grow. One wait's cap is unchanged: 120,000, or 30,000 on a desktop with
   speech, when the study does not set it.

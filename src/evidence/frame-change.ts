@@ -21,7 +21,9 @@ const PIXEL_TOLERANCE = 24;
 const LARGE_REGION_TILES = 24;
 /**
  * A still region of at most LARGE_REGION_TILES tiles wakes the participant once every tile in it
- * has held still for more than this. Minute updates (a clock, "2 min ago") move again within it.
+ * has held still for more than this. Minute updates (a clock's minutes digit, "2 min ago") move
+ * again within it. A clock's tens-of-minutes digit holds for 10 minutes in its own tile column, so
+ * it settles alone at a minute tick more than this after it changed.
  */
 const SMALL_REGION_HOLD_MS = 65_000;
 
