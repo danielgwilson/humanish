@@ -206,14 +206,16 @@ read:
 | Inline live items (`humanish.live-actor.v1`)                | read    | read    | refused | refused |
 | One of the three lists in run.json's `actor` or `liveActor` | read    | read    | read    | refused |
 
-A reader that shows a run (`displayedTraces`) shows a refused stream without the lists run.json
-held for it, so run detail never prices rows the loader refused. Run detail shows a refused
-participant's cost only when run.json records an `estimatedCost` for it, since its totals alone
-could price under half of what its rows give. verify checks a running
-participant's `liveActor.estimatedCost` as it checks a finished one's: its schema, a `ratesAsOf`
-date and `source` beside a figure, and a reason beside a null figure. In a v4 run.json it no
-longer asks a running account participant for receipts; the check that account dollars stay
-unknown still applies, and the run still grades `local_only` with `RUN_NOT_FINISHED`.
+A reader that shows a run (`displayedTraces`) shows a refused stream without the lists run.json held
+for it, so run detail never prices rows the loader refused. Run detail shows a refused participant's
+cost only when run.json records an `estimatedCost` for it, since its totals alone could price under
+half of what its rows give. verify checks a running participant's `liveActor.estimatedCost` as it
+checks a finished one's: its schema, a `ratesAsOf` date and `source` beside a figure, and a reason
+beside a null figure. In a v4 run.json it no longer asks a running account participant for receipts;
+the check that account dollars stay unknown still applies, and the run still grades `local_only`
+with `RUN_NOT_FINISHED`. verify does not check the receipts of a participant whose trace the loader
+refused, in any version: the refusal fails `local evidence artifacts exist`, and from v4 the
+receipts are only in that trace.
 
 Compatibility: humanish 0.122.0 and earlier read only v1 and refuse a later run.json by its schema
 (`run schema` fails in verify, analysis refuses the source); 0.123.0 and 0.124.0 read v1 and v2

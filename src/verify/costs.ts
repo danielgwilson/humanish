@@ -49,17 +49,20 @@ export function contradictsAccountBilling(
  * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. A running participant's
  * estimate is checked the same way. Account-billed participants also have their execution profile
  * and provider request receipts checked here. From v4 a running participant's receipts are written
- * only in its trace when it finishes, so its live actor holds none.
+ * only in its trace when it finishes, so its live actor holds none. The receipts of a stream in
+ * `refused` (its trace the loader refused) are not checked: from v4 they are only in that trace,
+ * and verify reports the refusal.
  */
-export function costAndReceiptFindings(bundle: RunBundle): string[] {
+export function costAndReceiptFindings(bundle: RunBundle, refused: ReadonlySet<string>): string[] {
   const findings: string[] = [];
   if (contradictsAccountBilling(bundle.streams, bundle.cost))
     findings.push("Run cost lines contradict account billing identity");
   findings.push(...costSummaryFindings(bundle.cost));
   const liveReceipts = LIVE_RECEIPT_SCHEMAS.has(bundle.schema);
   for (const stream of bundle.streams) {
-    findings.push(...executionReceiptFindings(stream.actor, true));
-    findings.push(...executionReceiptFindings(stream.liveActor, liveReceipts));
+    const loaded = !refused.has(stream.id);
+    findings.push(...executionReceiptFindings(stream.actor, loaded));
+    findings.push(...executionReceiptFindings(stream.liveActor, liveReceipts && loaded));
     findings.push(...participantEstimateFindings(stream));
   }
   return findings;
