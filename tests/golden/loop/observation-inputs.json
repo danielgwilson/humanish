@@ -63,7 +63,7 @@
             "kind": "notice",
             "lifecycle": "started",
             "title": "watching the screen",
-            "text": "until the screen changes or 1ms pass, looking every 5000ms and at the end; no model request until then",
+            "text": "until the screen changes or 5000ms pass, looking every 5000ms and at the end; no model request until then",
             "at": "1970-01-01T00:00:07.000Z"
           },
           {
@@ -81,7 +81,7 @@
             "lifecycle": "completed",
             "title": "wait 6000ms",
             "watch": {
-              "limitMs": 1,
+              "limitMs": 5000,
               "askedMs": 1,
               "wake": "speech",
               "looks": 1

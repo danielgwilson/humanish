@@ -1084,17 +1084,17 @@ Core-owned fields:
   or moving with a region of more than 24 tiles
   (`src/evidence/frame-change.ts`). A watch lasts the turn's planned length: the
   named waits' lengths, together up to `actor.maxWaitMs` (else 600000), and
-  `idleWaitMs` for each wait that names none. A turn whose waits all name a
-  length lasts that length on every idle turn. A turn with a wait that names
-  none, after the watch of such a turn that ended at its limit or that a change
-  of 24 tiles or fewer woke, lasts twice as long as that watch, up to the larger
-  of its planned length and that cap. A turn whose waits all name a length
-  starts the doubling again. An OpenAI participant names a length with the
-  `wait_for_change` function tool; its computer tool's `wait` names none.
-  `limitMs` is how long it
-  could last; `askedMs` is what the turn's waits asked for, the same sum with no
-  cap, so it is above `limitMs` when the named waits passed the cap and below it
-  when the watch grew; `wake` is `changed`, `speech`,
+  `idleWaitMs` for each wait that names none, and at least `idleWaitMs`. A turn
+  whose waits all name a length lasts that length on every idle turn. A turn
+  with a wait that names none, after the watch of such a turn that ended at its
+  limit or that a change of 24 tiles or fewer woke, lasts twice as long as that
+  watch, up to the larger of its planned length and that cap. A turn whose waits
+  all name a length starts the doubling again. An OpenAI participant names a
+  length with the `wait_for_change` function tool; its computer tool's `wait`
+  names none. `limitMs` is how long it could last; `askedMs` is what the turn's
+  waits asked for, the same sum with no cap, so it is above `limitMs` when the
+  named waits passed the cap and below it when the watch grew or the named waits
+  were shorter than `idleWaitMs`; `wake` is `changed`, `speech`,
   `condition`, `limit`, `clock` (wind-down or end), `stalled` (a look got no
   frame; the next observation is a fresh one), or `stopped` (the study budget or
   the session's time ran out); `looks` counts its looks; `area` (`x`, `y`,

@@ -442,7 +442,7 @@ describe("the minutes a wait_for_change call names", () => {
     { args: '{"minutes":"3"}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
     { args: '{"minutes":0}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
     { args: '{"minutes":-2}', becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },
-    { args: '{"minutes":1e-9}', becomes: "a 1 ms wait", askedMs: 1, limitMs: 1 },
+    { args: '{"minutes":1e-9}', becomes: "a 1 ms wait", askedMs: 1, limitMs: 5_000 },
     { args: '{"minutes":1e9}', becomes: "a 60-minute wait", askedMs: 3_600_000, limitMs: 600_000 },
     {
       args: '{"minutes":1e400}',
@@ -450,16 +450,19 @@ describe("the minutes a wait_for_change call names", () => {
       askedMs: 3_600_000,
       limitMs: 600_000,
     },
-  ])("$args becomes $becomes, watched up to the cap", async ({ args, askedMs, limitMs }) => {
-    const { result, sentAt } = await runOpenAi([
-      waitForChangeReply(1, args),
-      doneReply(2),
-      closingReply(3, IMPRESSIONS),
-    ]);
-    expect(watchesOf(result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
-      [askedMs, limitMs],
-    ]);
-    // The next request waits for the watch: a wait with no length lasts idleWaitMs (5 s).
-    expect(sentAt[1]).toBe(limitMs);
-  });
+  ])(
+    "$args becomes $becomes, watched from idleWaitMs up to the cap",
+    async ({ args, askedMs, limitMs }) => {
+      const { result, sentAt } = await runOpenAi([
+        waitForChangeReply(1, args),
+        doneReply(2),
+        closingReply(3, IMPRESSIONS),
+      ]);
+      expect(watchesOf(result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+        [askedMs, limitMs],
+      ]);
+      // The next request waits for the watch: a wait with no length lasts idleWaitMs (5 s).
+      expect(sentAt[1]).toBe(limitMs);
+    },
+  );
 });

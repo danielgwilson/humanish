@@ -209,6 +209,30 @@ describe("the watch length over idle turns in a row", () => {
     );
   });
 
+  it("watches named waits shorter than idleWaitMs for idleWaitMs, so requests stay 5 s apart", async () => {
+    // A named length is kept and does not double, so without a floor a participant naming 1 ms
+    // on a static screen would send a request every millisecond.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) =>
+        n <= 3
+          ? turnOf([
+              { kind: "wait", ms: 1 },
+              { kind: "wait", ms: 1 },
+            ])
+          : DONE,
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [2, 5_000],
+      [2, 5_000],
+      [2, 5_000],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([0, 5_000, 10_000, 15_000]);
+    expect(run.requests[1]?.hint).toBe(
+      "Your wait lasted 5 seconds; no change on the screen held still long enough to end it.",
+    );
+  });
+
   it("starts a wait with no length again from today's length after a named wait", async () => {
     // The named 3-minute wait ends at its limit and its note tells of no longer wait, so the wait
     // after it, which names no length, lasts 5 s and not 6 minutes.

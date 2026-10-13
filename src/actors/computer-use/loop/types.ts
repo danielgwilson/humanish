@@ -321,19 +321,20 @@ export interface CuaLoopOptions {
    * its waits' lengths, the named ones together up to this or, when it is not set, 600000. A turn
    * whose waits all name a length lasts that length every time and starts the doubling again. A
    * turn with a wait that names none, after another such turn whose watch ended with no change,
-   * lasts twice as long as that watch, up to the larger of that cap and the turn's own length. A whole number from 1000 to 3600000; any other
-   * value throws a RangeError before the session starts. Default 120000, or 30000 when the executor
-   * is speechEnabled, for one wait sent to the desktop, and 600000 for a watch.
+   * lasts twice as long as that watch, up to the larger of that cap and the turn's own length. A
+   * whole number from 1000 to 3600000; any other value throws a RangeError before the session
+   * starts. Default 120000, or 30000 when the executor is speechEnabled, for one wait sent to the
+   * desktop, and 600000 for a watch.
    */
   maxWaitMs?: number;
   /**
    * How long a `wait` that names no duration lasts, in ms, when its turn only waits or takes
-   * screenshots: the study's actor.idleWaitMs. It is also how often the loop looks at the screen
-   * while such a turn is watched, at most every 30000 ms when the executor is speechEnabled. After
-   * an action in the same turn such a wait lasts 500 ms. A whole number from 1000 to 600000 and no
-   * longer than an explicit maxWaitMs; any other value throws a RangeError before the session
-   * starts. Default 5000. The session never applies more than its maxWaitMs, and the trace records
-   * the applied lengths as `waitSettings`.
+   * screenshots: the study's actor.idleWaitMs. It is also the shortest such a turn is watched for,
+   * and how often the loop looks at the screen while it is watched, at most every 30000 ms when the
+   * executor is speechEnabled. After an action in the same turn such a wait lasts 500 ms. A whole
+   * number from 1000 to 600000 and no longer than an explicit maxWaitMs; any other value throws a
+   * RangeError before the session starts. Default 5000. The session never applies more than its
+   * maxWaitMs, and the trace records the applied lengths as `waitSettings`.
    */
   idleWaitMs?: number;
   /**

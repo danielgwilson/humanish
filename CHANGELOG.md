@@ -29,7 +29,8 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - A turn of only waits whose waits all name a length now lasts that length on every idle turn,
   for OpenAI, Codex and Claude Code participants, up to `actor.maxWaitMs`, or 10 minutes when the
-  study does not set it. Before, a second named 3-minute wait in a row on a quiet screen lasted 6
+  study does not set it, and at least `idleWaitMs`, so naming 1 ms each turn does not send requests
+  back to back. Before, a second named 3-minute wait in a row on a quiet screen lasted 6
   minutes, and the note said the next wait could last twice as long. A turn with a wait that names
   no length, such as the OpenAI computer tool's `wait`, still doubles after a quiet watch of a
   turn like it, and starts again from `idleWaitMs` after a named wait. The Codex tool description
