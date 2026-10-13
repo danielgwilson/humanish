@@ -283,6 +283,7 @@ export async function runActionBatch(
         ? { coord: { x: action.x, y: action.y } }
         : {}),
       ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
+      ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));
   }
   return { execution, hint: hint() };

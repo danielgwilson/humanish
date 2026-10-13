@@ -163,6 +163,10 @@ export interface ActorTraceItem {
    *  ran in place of a turn that only waited. Additive: absent on plain waits, on other items and
    *  producers, and in older bundles. */
   watch?: ActorWatch;
+  /** On a computer-use wait's `ui_action`: the length in milliseconds the participant named for
+   *  it, before any cap. Absent on a wait that named no length, such as the OpenAI computer
+   *  tool's `wait`, on other items and producers, and in older bundles. */
+  namedMs?: number;
 }
 
 /**

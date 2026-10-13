@@ -12,7 +12,7 @@ import {
 } from "../../../src/actors/computer-use/openai-provider.js";
 import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { MINUTE, QUIET, watchesOf } from "../../helpers/watching-loop.js";
+import { MINUTE, QUIET, waitItems, watchesOf } from "../../helpers/watching-loop.js";
 
 // An OpenAI participant offered a wait_for_change function next to the computer tool, so it can
 // name how long it waits, as Codex and Claude Code participants do. The desktop's screen never
@@ -356,6 +356,27 @@ describe("the wait_for_change tool", () => {
       },
     ]);
     expect(imagesIn(bodies[1]!)).toBe(1);
+  });
+});
+
+describe("the trace of a wait", () => {
+  it("records the length a wait named, and nothing for the computer tool's wait", async () => {
+    const { result } = await runOpenAi([
+      computerWaitReply(1),
+      waitForChangeReply(2, '{"minutes":3}'),
+      replyOf(
+        3,
+        computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+        fnCall("call_w", '{"minutes":0.5}'),
+      ),
+      doneReply(4),
+      closingReply(5, IMPRESSIONS),
+    ]);
+    expect(waitItems(result).map((item) => [item.title, item.namedMs])).toEqual([
+      ["wait 5000ms", undefined],
+      ["wait 180000ms", 180_000],
+      ["wait 30000ms", 30_000],
+    ]);
   });
 });
 

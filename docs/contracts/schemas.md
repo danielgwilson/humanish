@@ -1100,6 +1100,14 @@ Core-owned fields:
   waits after the one carrying `watch` are titled `wait 0ms`. The look that
   ended a watch is the turn's `turn-NN` screenshot; other looks are not kept.
   Additive: absent on plain waits, other producers and older bundles
+- optional `items[].namedMs`, on the computer-use `ui_action` of each wait that
+  named its length: that length in milliseconds, as the participant named it,
+  before `actor.maxWaitMs` or the watch's cap applied. An OpenAI participant
+  names a length only through `wait_for_change`, so its waits with `namedMs` are
+  that tool's calls, and its waits without it are the computer tool's `wait`.
+  A `wait_for_change` call whose minutes were not a number above zero names no
+  length. Additive: absent on waits that named none, other items and producers,
+  and older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before

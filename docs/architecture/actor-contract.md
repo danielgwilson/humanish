@@ -176,6 +176,7 @@ export interface ActorTraceItem {
     looks: number;
     area?: { x: number; y: number; width: number; height: number }; // pixels, coordinates only
   };
+  namedMs?: number; // computer-use wait ui_action: the length the participant named, before any cap
 }
 
 export interface ActorCapabilities {
