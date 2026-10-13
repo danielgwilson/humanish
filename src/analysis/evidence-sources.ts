@@ -14,8 +14,9 @@ import { decodesToPlainRelativePath, isEvidencePath } from "../run/evidence-file
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
-// count and byte budgets. captureEvidence selects from these, and validateAnalysisEvidence
-// re-derives them to check a stored analysis against its run.
+// count and byte budgets. captureEvidence selects from these, taking each participant's while its
+// trace is loaded (participantSources), and validateAnalysisEvidence re-derives them to check a
+// stored analysis against its run.
 
 const stamp = (value: unknown): string | null =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
@@ -269,14 +270,14 @@ function spreadOrder<T>(entries: T[]): T[] {
 }
 
 /** The trace messages that carry a participant's closing impressions. */
-export function impressionEventIds(stream: RunStream): ReadonlySet<string> {
+function impressionEventIds(stream: RunStream): ReadonlySet<string> {
   const impressions = stream.actor?.impressions;
   return new Set(
     impressions?.status === "collected" ? impressions.items.map((item) => item.messageId) : [],
   );
 }
 
-export function sourceOrder(
+function sourceOrder(
   entries: SourceEntry[],
   capturesOnly: boolean,
   impressions: ReadonlySet<string> = new Set(),
@@ -318,4 +319,57 @@ export function sourceOrder(
   if (capturesOnly) admit(candidates.at(-2));
   for (const entry of spreadOrder(candidates)) admit(entry);
   return [...ordered];
+}
+
+/**
+ * What selection reads of one participant, taken while its trace is loaded so the trace can be
+ * dropped: the counts of its source entries and captures, and only the entries selection can
+ * reach. Selection admits entries in `textOrder` and reads captures in `captureOrder`, and neither
+ * goes past the reach captureEvidence gives.
+ */
+export interface ParticipantSources {
+  /** run.json's stream, which holds no trace items from run bundle v2. */
+  readonly stream: RunStream;
+  readonly participant: AnalysisParticipantInput;
+  /** hasUnmappedCaptures of the loaded stream. */
+  readonly unmappedCaptures: boolean;
+  /** Whether an entry declares a capture that has no local path. */
+  readonly unresolvedCaptures: boolean;
+  readonly entryCount: number;
+  /** The entries with a local capture path. */
+  readonly captureCount: number;
+  /** The first entries in admission order, the participant's impressions among the first. */
+  readonly textOrder: readonly SourceEntry[];
+  /** The first captures in the order selection reads them. */
+  readonly captureOrder: readonly SourceEntry[];
+  /** The entries of textOrder and captureOrder, in source order. */
+  readonly entries: readonly SourceEntry[];
+}
+
+/**
+ * ParticipantSources of `loaded`, the stream `stored` with its trace loaded, keeping the first
+ * `reach.entries` entries in admission order and the first `reach.captures` captures.
+ */
+export function participantSources(
+  bundle: RunBundle,
+  stored: RunStream,
+  loaded: RunStream,
+  captureVersion: CaptureVersion,
+  reach: { readonly entries: number; readonly captures: number },
+): ParticipantSources {
+  const all = sourceEntries(bundle, loaded, captureVersion);
+  const textOrder = sourceOrder(all, false, impressionEventIds(loaded)).slice(0, reach.entries);
+  const captureOrder = sourceOrder(all, true).slice(0, reach.captures);
+  const reachable = new Set([...textOrder, ...captureOrder]);
+  return {
+    stream: stored,
+    participant: participantSource(loaded, captureVersion),
+    unmappedCaptures: hasUnmappedCaptures(loaded),
+    unresolvedCaptures: all.some((entry) => entry.captureDeclared && entry.capturePath === null),
+    entryCount: all.length,
+    captureCount: all.filter((entry) => entry.capturePath !== null).length,
+    textOrder,
+    captureOrder,
+    entries: all.filter((entry) => reachable.has(entry)),
+  };
 }

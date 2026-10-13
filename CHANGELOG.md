@@ -8,6 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- Analysis reads each participant's trace up to 32 MiB, as the trace loader, verify and the
+  Observer read it. It refused a run with a trace past 16 MiB (`ANALYSIS_SOURCE_TOO_LARGE`), which a
+  participant reaches after about 3,570 model turns at the 4,700 bytes a turn the bundle estimate
+  counts. Evidence capture now reads the traces one at a time and keeps of each only the entries it
+  can select, where it held every trace at once. On 25 synthetic participants with 29.6 MiB traces,
+  capture raised peak memory by about 430 MiB, where holding every trace raised it by about 1,900
+  MiB; with 5 such participants it raised it by about 400 MiB. Each run measured gave the same
+  analysis input before and after. run.json is still read only up to 16 MiB, and verify, which
+  analysis runs first, still holds every trace at once. The bundle estimate warns about a trace past
+  32 MiB, where it warned past 16 MiB. (#1840)
+
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
 humanish 0.129.0 fixes three things long studies reach. Analysis no longer refuses a run by how

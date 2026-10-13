@@ -5,15 +5,16 @@
 // conversations, explicit_context conversations, and account participants with receipts. Analysis
 // reads it whole, and the loader gives every participant back its 2,880 rows. Every row has the
 // same input, so verify warns that each participant's context did not grow, on the threaded v4 run
-// and on a v3 copy of it whose run.json summaries hold the rows.
+// and on a v3 copy of it whose run.json summaries hold the rows. A participant whose trace passes
+// 16 MiB is analysed as the loader, verify and the Observer read it.
 
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { ActorExecutionProfile, ActorTrace } from "../../src/actors/contract.js";
-import { captureEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
 import { loadRunBundle, verifyRun } from "../../src/index.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -21,7 +22,8 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runScope } from "../../src/run/run.js";
 import type { RunStream } from "../../src/run/streams.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
-import { syntheticActor } from "../helpers/run-traces.js";
+import { syntheticActor, writeRunBundle } from "../helpers/run-traces.js";
+import { syntheticArtifact } from "./fixtures.js";
 
 const MIB = 1024 * 1024;
 const PARTICIPANTS = 30;
@@ -88,18 +90,22 @@ const IDS = Array.from(
   (_, index) => `stream-${String(index + 1).padStart(3, "0")}`,
 );
 
+/** A new project with a dry run, `template`, whose run.json the runs here are built from. */
+async function templateProject(): Promise<{ cwd: string; template: RunBundle }> {
+  const cwd = await mkdtemp(path.join(tmpdir(), "humanish-long-run-"));
+  expect((await runDryRun({ cwd, dryRun: true, runId: "template" })).ok).toBe(true);
+  const runJson = path.join(cwd, ".humanish", "runs", "template", "run.json");
+  return { cwd, template: JSON.parse(await readFile(runJson, "utf8")) as RunBundle };
+}
+
 describe("a 30-participant, 8-hour run written as v4", () => {
   let template: RunBundle;
   let cwd: string;
   const projects: string[] = [];
 
   beforeAll(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-long-run-"));
+    ({ cwd, template } = await templateProject());
     projects.push(cwd);
-    expect((await runDryRun({ cwd, dryRun: true, runId: "template" })).ok).toBe(true);
-    template = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", "template", "run.json"), "utf8"),
-    ) as RunBundle;
   });
   afterAll(async () => {
     for (const project of projects) await rm(project, { recursive: true, force: true });
@@ -235,5 +241,51 @@ describe("a 30-participant, 8-hour run written as v4", () => {
       ),
     );
     expect((await verifyRun(copy, runId)).warnings).toEqual(warnings);
+  }, 120_000);
+});
+
+describe("a participant whose trace passes 16 MiB", () => {
+  let template: RunBundle;
+  let cwd: string;
+
+  beforeAll(async () => {
+    ({ cwd, template } = await templateProject());
+  });
+  afterAll(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("is analysed, and a saved analysis of it checks against the run", async () => {
+    const runId = "long-trace";
+    const runDir = path.join(cwd, ".humanish", "runs", runId);
+    await mkdir(runDir, { recursive: true });
+    const [base] = template.streams;
+    const { actor: _actor, trace: _trace, ...stream } = base!;
+    // 6,000 turns of 2.9 KB of reasoning, then the participant's closing message.
+    const actor = syntheticActor("I exported the report.", { id: "closing" });
+    actor.items.unshift(
+      ...Array.from({ length: 6_000 }, (_, turn) => ({
+        id: `turn-${turn}`,
+        kind: "reasoning" as const,
+        lifecycle: "completed" as const,
+        title: "reasoning",
+        text: `Turn ${turn}: ${"I compare the filters before I export. ".repeat(74)}`,
+      })),
+    );
+    const written = await writeRunBundle(runDir, {
+      ...template,
+      runId,
+      mode: "live",
+      streams: [{ ...stream, status: "passed", actor }],
+    });
+    expect(written.streams[0]!.trace!.bytes).toBeGreaterThan(16 * MIB);
+
+    const bytes = await readFile(path.join(runDir, "run.json"));
+    const prepared = (await resolveRunPath(cwd, runId))!;
+    const input = await captureEvidence(prepared, bytes);
+    expect(input.evidence.map((entry) => entry.eventId)).toContain("closing");
+    await expect(
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), bytes),
+    ).resolves.toBeUndefined();
   }, 120_000);
 });

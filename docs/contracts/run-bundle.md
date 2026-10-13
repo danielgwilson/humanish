@@ -52,8 +52,8 @@ a run id or `latest`: it returns run.json with every trace file and live file jo
 as below, for v1, v2, v3 and v4 bundles, with each participant's per-request lists, and throws an Error named `StreamTraceRefusedError` for a
 file that does not match its index. Inside humanish, readers load a stream through
 `loadStreamTrace(runPaths, stream)`. A v1 stream returns as it is.
-An indexed stream's file is read under the 32 MiB per-file limit (analysis uses its 16 MiB
-source limit for each trace) and refused unless its size, sha256, item count and screenshot count
+An indexed stream's file is read under the 32 MiB per-file limit, by analysis as by every other
+reader, and refused unless its size, sha256, item count and screenshot count
 match the index. A trace or live file whose index records more than the limit is refused before it
 is read, and the refusal says the file is larger than humanish reads of one file and that
 restoring a copy does not help. A trace file whose index is under the limit and whose bytes are

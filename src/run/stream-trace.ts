@@ -592,25 +592,31 @@ async function rereadBundle(read: TraceFileReader, runId: string): Promise<RunBu
   }
 }
 
-async function loadEveryStream(
-  read: TraceFileReader,
-  bundle: RunBundle,
-  maxBytes: number,
-  liveAfter: LiveAfter | undefined,
-): Promise<LoadedTraces & { files: { path: string; bytes: Buffer }[] }> {
+/** bundleRefusal for each stream of `bundle`, with the streams that index each file counted once. */
+function bundleRefusals(bundle: RunBundle): (stream: RunStream) => string | undefined {
   const owners = new Map<string, string[]>();
   for (const stream of bundle.streams)
     if (isRecord(stream.trace)) {
       const key = traceFileKey(String(stream.trace.path));
       owners.set(key, [...(owners.get(key) ?? []), stream.id]);
     }
+  return (stream) => bundleRefusal(bundle, stream, owners);
+}
+
+async function loadEveryStream(
+  read: TraceFileReader,
+  bundle: RunBundle,
+  maxBytes: number,
+  liveAfter: LiveAfter | undefined,
+): Promise<LoadedTraces & { files: { path: string; bytes: Buffer }[] }> {
+  const refusal = bundleRefusals(bundle);
   const streams: RunStream[] = [];
   const refused: StreamTraceRefusedError[] = [];
   const files: { path: string; bytes: Buffer }[] = [];
   const live: LiveItemsRead[] = [];
   for (const stream of bundle.streams) {
     try {
-      const reason = bundleRefusal(bundle, stream, owners);
+      const reason = refusal(stream);
       if (reason !== undefined) throw new StreamTraceRefusedError(stream.id, reason);
       const loaded = await readStreamTrace(read, stream, maxBytes, liveAfter);
       files.push(...loaded.files);
@@ -675,6 +681,29 @@ export function displayedTraces(loaded: {
     streams,
     events: [...loaded.bundle.events, ...events, ...notRead],
   };
+}
+
+/**
+ * What `reduce` returns for each stream of the bundle, loaded as loadRunTraces loads it, in stream
+ * order; the first refusal throws. Streams are loaded one at a time and nothing of a stream's files
+ * is kept past its `reduce` call, so a caller that keeps part of each trace holds one trace at a
+ * time where loadRunTraces holds them all. Unlike loadStreamTraces it does not read run.json again
+ * when a live file cannot be read, so it suits a run whose participants have finished.
+ */
+export async function reduceRunTraces<T>(
+  runPaths: PreparedOutputRoot,
+  bundle: RunBundle,
+  reduce: (stream: RunStream, index: number) => T,
+): Promise<T[]> {
+  const read = containedReader(runPaths);
+  const refusal = bundleRefusals(bundle);
+  const kept: T[] = [];
+  for (const [index, stream] of bundle.streams.entries()) {
+    const reason = refusal(stream);
+    if (reason !== undefined) throw new StreamTraceRefusedError(stream.id, reason);
+    kept.push(reduce((await readStreamTrace(read, stream, RUN_ARTIFACT_MAX_BYTES)).stream, index));
+  }
+  return kept;
 }
 
 /** The bundle with every stream loaded; the first refusal throws. */
