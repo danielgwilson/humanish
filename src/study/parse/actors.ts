@@ -22,6 +22,7 @@ import { isRecord } from "../../run/type-guards.js";
 import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { isStartAfterMs, startAfterMessage, windowReason } from "../arrivals.js";
 import { parseParticipantFiles } from "../desktop-files.js";
+import { parseClock } from "./clock.js";
 
 // A participant id interpolates into its evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a study id.
@@ -108,14 +109,9 @@ export function parseActorFields(
   if (waitReason) return invalid(waitReason);
   if (typeof entry.maxWaitMs === "number") actor.maxWaitMs = entry.maxWaitMs;
   if (typeof entry.idleWaitMs === "number") actor.idleWaitMs = entry.idleWaitMs;
-  if (entry.clock !== undefined) {
-    const timeZone = isRecord(entry.clock) ? entry.clock.timeZone : undefined;
-    if (typeof timeZone !== "string" || !isTimeZone(timeZone))
-      return invalid(
-        `${path}.clock must be { timeZone }, with timeZone a time zone name such as "Europe/London": the participant's local time, which each turn tells it.`,
-      );
-    actor.clock = { timeZone };
-  }
+  const clock = parseClock(entry.clock, `${path}.clock`);
+  if (!clock.ok) return clock;
+  if (clock.value !== undefined) actor.clock = clock.value;
   const localAgent = str(entry.localAgent);
   if (entry.localAgent !== undefined) {
     if (localAgent !== "codex" && localAgent !== "claude") {
@@ -155,7 +151,7 @@ export interface ParticipantPaths {
  * Parse a participant list into a fan-out roster (computer-use E2B route): `participants` in a
  * study, `actors[0].lanes` in the v2 file migrate reads, each named in messages by `paths`.
  * Structural only: each entry is `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
- * instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }`.
+ * instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, clock?, reasoningEffort?, stopWhen?, dwell?, files? }`.
  * Participant ids (when declared) must be public-safe path tokens and unique; grouping metadata
  * must be public-safe tokens; a device must be a known preset name. The
  * route-scoped cross-validation (device XOR raw resolution, targets, the participant bound) runs in parseStudy
@@ -170,7 +166,7 @@ export function parseParticipantEntries(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }) when set.`,
+      `${paths.list} must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, clock?, reasoningEffort?, stopWhen?, dwell?, files? }) when set.`,
     );
   }
   const entries: StudyParticipantEntry[] = [];
@@ -178,7 +174,7 @@ export function parseParticipantEntries(
   for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, reasoningEffort?, stopWhen?, dwell?, files? }).`,
+        `${paths.entry(entryIndex)} must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, startAfterMs?, endAfterMs?, windDownMs?, idleWaitMs?, maxSessionMs?, clock?, reasoningEffort?, stopWhen?, dwell?, files? }).`,
       );
     }
     const parsedEntry: StudyParticipantEntry = {};
@@ -287,6 +283,9 @@ export function parseParticipantEntries(
     );
     if (idleWait) return invalid(idleWait);
     if (typeof entry.idleWaitMs === "number") parsedEntry.idleWaitMs = entry.idleWaitMs;
+    const clock = parseClock(entry.clock, `${paths.entry(entryIndex)}.clock`);
+    if (!clock.ok) return clock;
+    if (clock.value !== undefined) parsedEntry.clock = clock.value;
     entries.push(parsedEntry);
   }
   return { ok: true, value: entries };
@@ -501,14 +500,4 @@ function parseEntryMetadata(
     );
   }
   return { ok: true, value };
-}
-
-/** Whether Intl knows `name` as a time zone. */
-function isTimeZone(name: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone: name });
-    return true;
-  } catch {
-    return false;
-  }
 }

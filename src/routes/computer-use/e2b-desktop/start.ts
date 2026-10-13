@@ -90,13 +90,18 @@ export async function openParticipantSurface(
           deps.requestTimeoutMs,
         );
   const emulationFlags = mobileLaunchFlags(residual, spec);
+  // The participant's time zone is TZ on the launch: the browser process and every renderer it
+  // starts read it at startup, so every tab runs in the zone from the first page load. A CDP
+  // timezone override holds only on the one tab whose DevTools session sets it, from after its load.
+  const { timeZone } = spec.planned.limits;
+  const mediaEnv = state.speech?.env ?? state.recording?.env;
   const browserLaunch = await openDesktopBrowserTarget(
     desktop,
     targetUrl,
     deps.requestTimeoutMs,
     residual.execution?.desktop?.browser,
     [...emulationFlags, ...(mediaEvidence?.flags ?? [])],
-    state.speech?.env ?? state.recording?.env,
+    timeZone === undefined ? mediaEnv : { ...mediaEnv, TZ: timeZone },
   );
   state.desktopBrowser =
     mediaEvidence === undefined

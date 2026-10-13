@@ -47,8 +47,25 @@ executor returns `url` gets pages too, through the redaction hooks it passes. ve
 that holds a query string, fragment or user info as a public-safety finding. Both fields are
 additive to `humanish.actor-trace.v1`.
 
+Each participant can have its own time zone. `participants[].clock: { timeZone }` gives one
+participant its zone in place of `actor.clock`, on `computer-use` and `shared-world`. A hosted
+participant's browser now launches with `TZ` set to that zone, so every tab it opens reports the
+zone from the first page load, and its turns' local time and its scheduled-end or session-cap notice
+use the same zone. `study check` prints a `time zones` row, `study show` a `time zones:` line, and
+each participant's stream in run.json records `timeZone`. A participant with no zone runs as
+before, in the desktop's UTC.
+
 ### Changed
 
+- An existing `actor.clock.timeZone` now also sets the zone of each hosted participant's browser,
+  where the browser ran in UTC before. Pages that show dates and times now show them in that zone.
+- `actor.clock.timeZone` refuses a UTC offset such as `+05:00` and a name in the wrong case such as
+  `america/chicago`, which it accepted before: Chrome runs in UTC or `Etc/Unknown` for those. Write
+  a tz database name with its capitals, such as `America/Chicago`.
+- A study that gives a participant a time zone on the local browser runtime
+  (`execution.target: local`) or through `RunStudyOptions.inProcess` is refused before anything
+  starts, with `HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED`, since humanish cannot set that
+  browser's zone. Remove the clock, or run on `execution.target: e2b-desktop`.
 - The Observer's filmstrip scrolls back to the selected capture only when the selected capture
   changes. It no longer jumps back when you switch inspector tabs or page the activity list.
   Reopening the inspector shows the selected entry in the activity list, where it opened at the

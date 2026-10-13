@@ -475,6 +475,15 @@ was confirmed on that desktop: the study gave the participant none, the run was 
 copy failed before the first file was confirmed. A copy that failed records a `warn` event of type
 `cua-lab.desktop.files.completed`.
 
+## Participant Time Zone
+
+A computer-use or shared-world participant's stream carries `timeZone`, a tz database name such as
+`America/Chicago`, when its study gave it one: `participants[].clock.timeZone`, else
+`actor.clock.timeZone`. Its turns gave the local time in that zone, and on a hosted desktop its
+browser launched with `TZ` set to it. The field records the declared zone, also on a dry run; it is
+not read back from the browser. No `timeZone` means the participant had none, and its hosted
+browser ran in the desktop's UTC.
+
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for

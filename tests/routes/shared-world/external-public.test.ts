@@ -838,6 +838,44 @@ describe("observed pages on the external-public plane", () => {
   });
 });
 
+describe("time zones on the external-public plane", () => {
+  it("gives each participant its own zone in its session and on its stream", async () => {
+    const seen: CuaActorSessionOptions[] = [];
+    const { env, deps } = makeExternalSeams(makeExternalRunSession({ seen }), {
+      handoffDeadlineMs: 5_000,
+    });
+    const config = parseExternal();
+    const zones = ["America/Chicago", "Asia/Tokyo", undefined];
+    const zoned: StudyConfig = {
+      ...config,
+      participants: participantList(config)!.map((entry, index) => {
+        const timeZone = zones[index];
+        return timeZone === undefined ? entry : { ...entry, clock: { timeZone } };
+      }),
+    };
+    const result = await runSharedWorld({ cwd, config: zoned, dryRun: false, env, deps });
+    if (!result.ok) throw new Error(result.error?.message);
+    expect(
+      seen
+        .map((options) => [options.persona.id, options.clock?.timeZone])
+        .sort(([a], [b]) => String(a).localeCompare(String(b))),
+    ).toEqual([
+      ["casual-friend", undefined],
+      ["competitive-friend", "Asia/Tokyo"],
+      ["party-host", "America/Chicago"],
+    ]);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    // Streams are in roster order: host, player-2, player-3.
+    expect(bundle.streams.map((stream) => stream.timeZone)).toEqual([
+      "America/Chicago",
+      "Asia/Tokyo",
+      undefined,
+    ]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 4c. Observed-origin convergence: redirect tolerated, divergence fails closed.
 // ---------------------------------------------------------------------------

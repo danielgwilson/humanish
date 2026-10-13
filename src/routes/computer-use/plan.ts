@@ -397,6 +397,35 @@ function desktopFilesRunnerReason(
 }
 
 /**
+ * Why a participant's time zone cannot run on this runner, or undefined. The zone also sets the
+ * zone its browser runs in, which humanish sets on a hosted desktop's browser launch only: the
+ * local runtime's guest browser and an in-process caller's browser keep their own.
+ */
+function timeZoneRunnerReason(
+  desktop: ComputerUseRunner["desktop"],
+  participants: readonly ComputerUseParticipant[],
+): string | undefined {
+  const zoned = participants.find((entry) => entry.limits.timeZone !== undefined);
+  if (desktop === "e2b-desktop" || zoned === undefined) return undefined;
+  const declared = `Participant ${zoned.id} has the time zone ${zoned.limits.timeZone}, which sets the zone its browser runs in, and humanish sets a browser's zone only on a hosted desktop.`;
+  return desktop === "local-vm"
+    ? `${declared} This study runs on the local browser runtime. Remove actor.clock and participants[].clock, or set execution.target: e2b-desktop.`
+    : `${declared} This study drives your own browser through RunStudyOptions.inProcess. Remove actor.clock and participants[].clock, and set the zone in that browser yourself, or run on a hosted desktop.`;
+}
+
+/** What the participants declare that this runner cannot do, with its code, or undefined. */
+function runnerRefusal(
+  desktop: ComputerUseRunner["desktop"],
+  participants: readonly ComputerUseParticipant[],
+): { code: CuaActorStudyErrorCode; message: string } | undefined {
+  const files = desktopFilesRunnerReason(desktop, participants);
+  if (files) return { code: "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID", message: files };
+  const timeZone = timeZoneRunnerReason(desktop, participants);
+  if (timeZone) return { code: "HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED", message: timeZone };
+  return undefined;
+}
+
+/**
  * Plan a computer-use study. It is called for any config handed to the computer-use runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
@@ -531,9 +560,8 @@ export function planComputerUseStudy(
     : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
-  const filesReason = desktopFilesRunnerReason(runner.desktop, participants);
-  if (filesReason)
-    return refuse("in-scope", "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID", filesReason, actor);
+  const unsupported = runnerRefusal(runner.desktop, participants);
+  if (unsupported) return refuse("in-scope", unsupported.code, unsupported.message, actor);
   const starts = startsOf(config, runner, input.concurrentSandboxes, ceiling.ms);
   if (!starts.ok)
     return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", starts.message, actor);

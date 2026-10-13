@@ -282,6 +282,9 @@ export type CuaActorStudyErrorCode =
   // participants[].files cannot be copied: a file is missing, outside the study's folder, too
   // large, or the route has no hosted desktop. Refused before any sandbox.
   | "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID"
+  // A participant has a time zone (actor.clock or participants[].clock) on the local runtime or the
+  // in-process route, where humanish cannot set its browser's zone. Refused before any desktop.
+  | "HUMANISH_COMPUTER_USE_TIME_ZONE_UNSUPPORTED"
   | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
   | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
   | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"

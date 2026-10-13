@@ -37,7 +37,7 @@ export interface Participant {
 }
 
 /** A participant at a desktop: computer use and shared world. */
-interface DesktopParticipant extends Participant {
+export interface DesktopParticipant extends Participant {
   readonly device: {
     readonly name: string;
     readonly preset: DevicePreset;
@@ -56,7 +56,10 @@ interface DesktopParticipant extends Participant {
      * while the participant only waits.
      */
     readonly idleWaitMs?: number;
-    /** actor.clock.timeZone: the participant's local time zone, which each turn tells it the time in. */
+    /**
+     * The participant's clock.timeZone, else actor.clock.timeZone: each turn tells it the time in
+     * this zone, and a hosted desktop runs its browser in it.
+     */
     readonly timeZone?: string;
   };
   /** When it starts, in ms after the run starts its participants; absent, with the run. */
@@ -126,7 +129,7 @@ function desktopParticipant(
   const maxOutputTokens = actor?.maxOutputTokens;
   const maxWaitMs = actor?.maxWaitMs;
   const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
-  const timeZone = actor?.clock?.timeZone;
+  const timeZone = entry?.clock?.timeZone ?? actor?.clock?.timeZone;
   return {
     id: participantIdAt(index, entry?.id, kind),
     index,
@@ -227,4 +230,14 @@ export function declaredTargets(config: StudyConfig): string[] {
   return (participantList(config) ?? [])
     .map((entry) => entry.target)
     .filter((target): target is string => target !== undefined);
+}
+
+/**
+ * Each participant's time zone, as `study check` and `study show` print it, in roster order with
+ * `none` for a participant without one. Undefined when no participant has a zone.
+ */
+export function describeTimeZones(participants: readonly DesktopParticipant[]): string | undefined {
+  if (participants.every((participant) => participant.limits.timeZone === undefined))
+    return undefined;
+  return `${participants.map((participant) => `${participant.id} ${participant.limits.timeZone ?? "none"}`).join(", ")}.`;
 }
