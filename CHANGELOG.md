@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- An OpenAI computer-use participant's closing report and impressions requests now send no
+  `text.format`, so they read the session from the prompt cache. The closing request read 0
+  cached input tokens in all 8 measured 0.131.0 runs and was 25% to 42% of each run's model spend.
+  In a live 4-minute run it now read 14,989 of its 17,210 input tokens from the cache, and cost
+  about $0.02 of the run's $0.14. The request states the schema in its input and checks the
+  reply's JSON locally; a completed reply that does not match is sent once more with the strict
+  schema. A request sent twice has a `tokenUsage.turns` row for each send, and the report's
+  fields and outcomes are unchanged (#1862).
+
 ## 0.131.1: Hosted desktops keep their screens on while participants wait (2026-10-13)
 
 humanish 0.131.1 keeps a hosted desktop's screen on while a participant waits without input.

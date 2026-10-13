@@ -6,16 +6,20 @@ import {
   strictOutputSchema,
 } from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
+import { isCompleteTurnUsage } from "./loop/usage.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
+  asRecord,
   buildCallOutput,
   buildContinuationRequest,
   buildInitialRequest,
   hintItems,
+  inputMessage,
   openingMessage,
   parseOpenAiResponse,
   type OpenAiCuContext,
   type OpenAiReasoningSummary,
+  type ParsedOpenAiResponse,
 } from "./openai-wire.js";
 
 // The conversation the OpenAI computer-use provider has with the model, apart from how its
@@ -101,16 +105,47 @@ export class OpenAiConversation {
   }
 
   /**
-   * The next request, carrying `req`'s screen: the opening request, or the outputs the latest
-   * reply's computer calls are owed. A closing request asks for strict JSON and no tools.
+   * The next participant turn's request, carrying `req`'s screen: the opening request, or the
+   * outputs the latest reply's computer calls are owed.
    */
-  request(req: CuaTurnRequest, closing?: ClosingRequest): ConversationRequest {
+  request(req: CuaTurnRequest): ConversationRequest {
     const sent = this.newItems(req);
     return {
-      body: () =>
-        closing === undefined ? this.turnBody(req, sent) : this.closingBody(req, sent, closing),
-      accept: (reply) => this.accept(reply, closing, sent),
+      body: () => this.turnBody(req, sent),
+      accept: (reply) => this.accept(reply, sent),
     };
+  }
+
+  /**
+   * The read-only closing request carrying `req`'s screen, sent with `send`. It goes out first
+   * without text.format, which is part of the cached prefix, so it reads the session from the
+   * cache. A completed reply that is not JSON the schema accepts is asked once more as the same
+   * request with the strict schema set. Returns the last reply's turn with the account it gave,
+   * and the usage of every request it made.
+   */
+  async close(
+    req: CuaTurnRequest,
+    closing: ClosingRequest,
+    send: (body: Record<string, unknown>) => Promise<unknown>,
+  ): Promise<CuaTurn> {
+    const sent = [...this.newItems(req), replyForm(closing)];
+    const ask = async (schema: boolean) => {
+      const reply = await send(this.closingBody(req, sent, closing, schema));
+      // Recorded before the reply is accepted, as a participant turn is.
+      if (closing === "impressions")
+        this.evidence.requested(this.mode, this.carried, sent, closing);
+      const completed = asRecord(reply).status === "completed";
+      const parsed = parseOpenAiResponse(reply);
+      const account = completed ? closingAccount(parsed.turn.message, closing) : undefined;
+      return { parsed, account, retry: completed && account === undefined };
+    };
+    const first = await ask(false);
+    const last = first.retry ? await ask(true) : first;
+    this.moveOn(last.parsed, sent);
+    const usage =
+      last === first ? last.parsed.turn.usage : bothRequests(first.parsed.turn, last.parsed.turn);
+    const { usage: _lastUsage, ...turn } = last.parsed.turn;
+    return { ...turn, ...(usage === undefined ? {} : { usage }), ...last.account };
   }
 
   /**
@@ -187,11 +222,15 @@ export class OpenAiConversation {
     });
   }
 
-  /** A read-only closing request: no tools, its own output limit, a strict schema. */
+  /**
+   * A read-only closing request: the next turn's body with tools off and its own output limit,
+   * and the strict schema only when `schema` is set.
+   */
   private closingBody(
     req: CuaTurnRequest,
     sent: readonly unknown[],
     closing: ClosingRequest,
+    schema: boolean,
   ): Record<string, unknown> {
     return {
       ...this.turnBody(req, sent),
@@ -200,31 +239,82 @@ export class OpenAiConversation {
         this.settings.maxOutputTokens ?? CLOSING_OUTPUT_LIMIT,
         CLOSING_OUTPUT_LIMIT,
       ),
-      text: { format: CLOSING_FORMATS[closing] },
+      ...(schema ? { text: { format: CLOSING_FORMATS[closing] } } : {}),
     };
   }
 
   /**
-   * Move the conversation on to a reply to a request that added `sent`. A participant reply cut
-   * off by the output limit is set aside, so the next request is the same one again
-   * (outputLimitRetry); its actions never run, so no call output is owed for them.
+   * A participant turn's reply to a request that added `sent`. A reply cut off by the output
+   * limit is set aside, so the next request is the same one again (outputLimitRetry); its actions
+   * never run, so no call output is owed for them.
    */
-  private accept(
-    reply: unknown,
-    closing: ClosingRequest | undefined,
-    sent: readonly unknown[],
-  ): CuaTurn {
+  private accept(reply: unknown, sent: readonly unknown[]): CuaTurn {
     // Recorded before the reply is accepted: accepting can cut the carried history, and the record
     // counts what this request carried.
-    if (closing !== "report") this.evidence.requested(this.mode, this.carried, sent, closing);
+    this.evidence.requested(this.mode, this.carried, sent);
     const parsed = parseOpenAiResponse(reply);
-    if (closing === undefined && parsed.turn.interruption === "output_limit") return parsed.turn;
+    if (parsed.turn.interruption === "output_limit") return parsed.turn;
+    this.moveOn(parsed, sent);
+    return parsed.turn;
+  }
+
+  /** Move the conversation on to a reply to a request that added `sent`. */
+  private moveOn(parsed: ParsedOpenAiResponse, sent: readonly unknown[]): void {
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
-    return parsed.turn;
   }
+}
+
+/**
+ * What form a closing reply takes, said in the request itself because text.format would rewrite
+ * the cached prefix: the schema the strict retry sets.
+ */
+function replyForm(closing: ClosingRequest): unknown {
+  const text = `Reply with only a JSON object that matches this JSON Schema, with no other text: ${JSON.stringify(CLOSING_FORMATS[closing].schema)}`;
+  return inputMessage("user", [{ type: "input_text", text }]);
+}
+
+/** The account a closing reply's text gives: JSON the request's schema accepts, or none. */
+function closingAccount(
+  message: string | undefined,
+  closing: ClosingRequest,
+): Pick<CuaTurn, "closingReport"> | Pick<CuaTurn, "impressions"> | undefined {
+  let reply: unknown;
+  try {
+    reply = JSON.parse(message ?? "");
+  } catch {
+    return undefined;
+  }
+  if (closing === "report") {
+    const report = closingReportSchema.safeParse(reply);
+    return report.success ? { closingReport: report.data } : undefined;
+  }
+  const impressions = impressionsReplySchema.safeParse(reply);
+  return impressions.success ? { impressions: impressions.data.impressions } : undefined;
+}
+
+type TurnUsage = NonNullable<CuaTurn["usage"]>;
+
+/**
+ * The usage of a closing request asked twice: the sum, with each request's counts as its own row,
+ * so each is priced at its own size. Unreported unless both requests reported complete usage.
+ */
+function bothRequests(first: CuaTurn, second: CuaTurn): TurnUsage | undefined {
+  const rows = [first.usage, second.usage];
+  if (!rows.every(isCompleteTurnUsage)) return undefined;
+  const sum = (field: keyof Omit<TurnUsage, "turns">) =>
+    rows.some((row) => row[field] !== undefined)
+      ? { [field]: rows.reduce((total, row) => total + (row[field] ?? 0), 0) }
+      : {};
+  return {
+    ...sum("input"),
+    ...sum("output"),
+    ...sum("cachedInput"),
+    ...sum("cacheWriteInput"),
+    turns: rows,
+  };
 }
 
 /** The trace's account of how a session carried its conversation (ActorConversation). */

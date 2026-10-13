@@ -199,7 +199,7 @@ describe("reasoning summaries", () => {
 describe("an impressions request", () => {
   it.each([true, false])(
     "carries and records the next turn's context after a long session with explicit context %s",
-    (explicit) => {
+    async (explicit) => {
       const conversation = start(explicit);
       const continued = start(explicit);
       const req = turnRequest(screen(1920, 1080));
@@ -212,16 +212,26 @@ describe("an impressions request", () => {
       }
 
       const next = { ...req, contextHint: "Return only impressions." };
-      const impressions = conversation.request(next, "impressions");
       const turn = continued.request(next);
-      const body = impressions.body() as unknown as Body;
-      expect(body.input).toEqual(turn.body().input);
-      expect(impressions.body()).toMatchObject({
-        ...turn.body(),
-        tool_choice: "none",
-        max_output_tokens: 3072,
-        text: { format: { name: "participant_impressions" } },
+      const response = {
+        id: "resp_impressions",
+        status: "completed",
+        output: [
+          { type: "message", content: [{ type: "output_text", text: '{"impressions":[]}' }] },
+        ],
+      };
+      const sent: Record<string, unknown>[] = [];
+      await conversation.close(next, "impressions", async (closingBody) => {
+        sent.push(closingBody);
+        return response;
       });
+      expect(sent).toHaveLength(1);
+      const body = sent[0] as unknown as Body;
+      // The turn's input, then what form the reply takes.
+      expect(body.input.slice(0, -1)).toEqual(turn.body().input);
+      const { input: _input, ...turnFields } = turn.body();
+      expect(body).toMatchObject({ ...turnFields, tool_choice: "none", max_output_tokens: 3072 });
+      expect(body).not.toHaveProperty("text");
       if (explicit) {
         expect(body.previous_response_id).toBeUndefined();
         expect(body.store).toBe(false);
@@ -231,16 +241,14 @@ describe("an impressions request", () => {
         expect(body.previous_response_id).toBe("resp_30");
       }
 
-      const response = { id: "resp_impressions", status: "completed", output: [] };
       turn.accept(response);
-      impressions.accept(response);
       const record = conversation.record();
       expect(record.requests).toHaveLength(31);
       expect(record.requests.slice(0, 30)).toEqual(continued.record().requests.slice(0, 30));
-      expect(record.requests[30]).toEqual({
-        ...continued.record().requests[30],
-        kind: "impressions",
-      });
+      const { estimatedInputTokens: turnTokens, ...turnRecord } = continued.record().requests[30]!;
+      const { estimatedInputTokens, ...impressionsRecord } = record.requests[30]!;
+      expect(impressionsRecord).toEqual({ ...turnRecord, kind: "impressions" });
+      if (explicit) expect(estimatedInputTokens).toBeGreaterThan(turnTokens!);
       expect(record.summarizedTurns).toBe(continued.record().summarizedTurns);
       if (explicit) {
         expect(record.summarizedTurns).toBeGreaterThan(0);

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,
@@ -28,6 +29,12 @@ const withImpressions = JSON.parse(
       "../../fixtures/openai-closing-report/typed-closing-report-impressions.json",
       import.meta.url,
     ),
+    "utf8",
+  ),
+);
+const impressionsOnly = JSON.parse(
+  readFileSync(
+    new URL("../../fixtures/openai-closing-report/impressions-only.json", import.meta.url),
     "utf8",
   ),
 );
@@ -106,40 +113,8 @@ describe("captured OpenAI closing-report contract", () => {
       previous_response_id: pending.id,
       tool_choice: "none",
       max_output_tokens: 3072,
-      text: {
-        format: {
-          type: "json_schema",
-          strict: true,
-          schema: {
-            additionalProperties: false,
-            required: ["outcome", "summary", "frictionReports", "impressions"],
-            properties: {
-              outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
-              impressions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["kind", "text"],
-                  properties: {
-                    kind: {
-                      enum: [
-                        "unclear",
-                        "unfinished",
-                        "untrustworthy",
-                        "liked",
-                        "missing",
-                        "unlike_my_work",
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     });
+    expect(h.bodies[1]).not.toHaveProperty("text");
     expect(h.bodies[1]!.input).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -154,9 +129,14 @@ describe("captured OpenAI closing-report contract", () => {
     expect(h.delayFn).not.toHaveBeenCalled();
   });
 
-  it.each(["incomplete", "invalid-json", "extra-key", "empty-summary"])(
-    "rejects a %s report while retaining usage",
-    async (kind) => {
+  it.each([
+    ["incomplete", 2, { input: 13543, output: 221 }],
+    ["invalid-json", 3, { input: 27086, output: 442 }],
+    ["extra-key", 3, { input: 27086, output: 442 }],
+    ["empty-summary", 3, { input: 27086, output: 442 }],
+  ])(
+    "rejects a %s report while retaining usage, after %i requests",
+    async (kind, requests, usage) => {
       const invalid = structuredClone(closing);
       if (kind === "incomplete") invalid.status = "incomplete";
       if (kind === "invalid-json") invalid.output[0].content[0].text = "{broken";
@@ -172,8 +152,8 @@ describe("captured OpenAI closing-report contract", () => {
       await h.provider.nextTurn(request, signal);
       const result = await h.provider.debrief!(request, signal);
       expect(result.closingReport).toBeUndefined();
-      expect(result.usage).toMatchObject({ input: 13543, output: 221 });
-      expect(h.bodies).toHaveLength(2);
+      expect(result.usage).toMatchObject(usage);
+      expect(h.bodies).toHaveLength(requests);
     },
   );
 
@@ -195,7 +175,8 @@ describe("captured OpenAI closing-report contract", () => {
       env: {},
       fetchFn: async (_url: string, init?: { body?: unknown }) => {
         bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        return { ok: true, status: 200, text: async () => "", json: async () => pending };
+        const value = bodies.length === 1 ? pending : closing;
+        return { ok: true, status: 200, text: async () => "", json: async () => value };
       },
     });
     await provider.nextTurn(request, signal);
@@ -207,6 +188,261 @@ describe("captured OpenAI closing-report contract", () => {
     expect(JSON.stringify(bodies[1]!.input)).toContain(
       JSON.stringify(bodies[0]!.input).slice(1, 40),
     );
+  });
+});
+
+describe("a closing request that reads the session's cache", () => {
+  // OpenAI's cache reads a request's prefix: the model, instructions, tools, reasoning settings,
+  // text.format and the conversation before the new input. A closing request that changes any of
+  // them pays to write the whole session again.
+  async function nextBodies(zeroDataRetention: boolean, close: boolean) {
+    const bodies: Record<string, unknown>[] = [];
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "synthetic-key",
+      maxOutputTokens: 8192,
+      env: {},
+      ...(zeroDataRetention ? { zeroDataRetention: true } : {}),
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        const value = bodies.length === 1 ? pending : closing;
+        return { ok: true, status: 200, text: async () => "", json: async () => value };
+      },
+    });
+    await provider.nextTurn(request, signal);
+    await (close ? provider.debrief!(request, signal) : provider.nextTurn(request, signal));
+    return bodies;
+  }
+
+  it.each([false, true])(
+    "sends the next turn's prefix with tools off and no text.format, explicit context %s",
+    async (zeroDataRetention) => {
+      const turn = (await nextBodies(zeroDataRetention, false))[1]!;
+      const closingBody = (await nextBodies(zeroDataRetention, true))[1]!;
+      const { input: turnInput, max_output_tokens: _turnLimit, ...turnFields } = turn;
+      const { input: closingInput, tool_choice, max_output_tokens, ...closingFields } = closingBody;
+      expect(closingFields).toEqual(turnFields);
+      expect(closingBody).not.toHaveProperty("text");
+      expect(tool_choice).toBe("none");
+      expect(max_output_tokens).toBe(3072);
+      expect((closingInput as unknown[]).slice(0, (turnInput as unknown[]).length)).toEqual(
+        turnInput,
+      );
+    },
+  );
+});
+
+/** Replies in order, one per request; the bodies the provider sent. */
+function scripted(replies: unknown[], options: { zeroDataRetention?: boolean } = {}) {
+  const bodies: Record<string, unknown>[] = [];
+  const delayFn = vi.fn(async () => undefined);
+  const provider = createOpenAiResponsesProvider({
+    apiKey: "synthetic-key",
+    delayFn,
+    env: {},
+    ...(options.zeroDataRetention ? { zeroDataRetention: true } : {}),
+    fetchFn: async (_url, init) => {
+      bodies.push(JSON.parse(init.body));
+      const value = replies[bodies.length - 1];
+      return { ok: true, status: 200, text: async () => "", json: async () => value };
+    },
+  });
+  return { bodies, delayFn, provider };
+}
+
+/** The captured closing reply with `text` in place of its JSON, read partly from the cache. */
+function closingSaying(text: string) {
+  const reply = structuredClone(closing);
+  reply.id = "fixture-closing-reply-without-schema";
+  reply.output[0].content[0].text = text;
+  reply.usage = {
+    input_tokens: 13600,
+    input_tokens_details: { cached_tokens: 11541, cache_write_tokens: 2000 },
+    output_tokens: 90,
+  };
+  return reply;
+}
+
+describe("a closing reply that is not the schema's JSON", () => {
+  it.each([false, true])(
+    "is asked once more as the same request with the strict schema, explicit context %s",
+    async (zeroDataRetention) => {
+      const h = scripted([pending, closingSaying("I renamed the task."), closing], {
+        zeroDataRetention,
+      });
+      await h.provider.nextTurn(request, signal);
+      const result = await h.provider.debrief!(request, signal);
+      expect(h.bodies).toHaveLength(3);
+      const { text, ...retried } = h.bodies[2]!;
+      expect(retried).toEqual(h.bodies[1]);
+      expect(text).toMatchObject({
+        format: {
+          type: "json_schema",
+          name: "participant_closing_report",
+          strict: true,
+          schema: { required: ["outcome", "summary", "frictionReports", "impressions"] },
+        },
+      });
+      expect(result.closingReport).toEqual(JSON.parse(closing.output[0].content[0].text));
+      expect(result.usage).toEqual({
+        input: 27143,
+        output: 311,
+        cachedInput: 11541,
+        cacheWriteInput: 15468,
+        turns: [
+          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
+          { input: 13543, output: 221, cachedInput: 0, cacheWriteInput: 13468 },
+        ],
+      });
+      expect(h.delayFn).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["closing report", (h: ReturnType<typeof scripted>) => h.provider.debrief!(request, signal)],
+    [
+      "impressions",
+      (h: ReturnType<typeof scripted>) => h.provider.requestImpressions!(request, signal),
+    ],
+  ])(
+    "gives no %s and asks no third time when the retry fails too, keeping both usages",
+    async (_name, close) => {
+      const h = scripted([pending, closingSaying("I renamed the task."), closingSaying("{broken")]);
+      await h.provider.nextTurn(request, signal);
+      const result = await close(h);
+      expect(h.bodies).toHaveLength(3);
+      expect(result.closingReport).toBeUndefined();
+      expect(result.impressions).toBeUndefined();
+      expect(result.actions).toEqual([]);
+      expect(result.usage).toEqual({
+        input: 27200,
+        output: 180,
+        cachedInput: 23082,
+        cacheWriteInput: 4000,
+        turns: [
+          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
+          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
+        ],
+      });
+    },
+  );
+
+  it("fails as one closing request does when the retry meets an HTTP error", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const delayFn = vi.fn(async () => undefined);
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "synthetic-key",
+      delayFn,
+      maxRetries: 3,
+      env: {},
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        const value = bodies.length === 1 ? pending : closingSaying("I renamed the task.");
+        const status = bodies.length === 3 ? 500 : 200;
+        return { ok: status === 200, status, text: async () => "", json: async () => value };
+      },
+    });
+    await provider.nextTurn(request, signal);
+    await expect(provider.debrief!(request, signal)).rejects.toThrow("OpenAI Responses 500");
+    expect(bodies).toHaveLength(3);
+    expect(delayFn).not.toHaveBeenCalled();
+  });
+
+  it("lists each impressions request in the conversation record, as tokenUsage.turns rows it", async () => {
+    const asked = scripted([pending, closingSaying("I renamed the task."), impressionsOnly]);
+    await asked.provider.nextTurn(request, signal);
+    await asked.provider.requestImpressions!(request, signal);
+    expect(asked.provider.conversation?.requests).toEqual([
+      { mode: "threaded" },
+      { mode: "threaded", kind: "impressions" },
+      { mode: "threaded", kind: "impressions" },
+    ]);
+    const once = scripted([pending, impressionsOnly]);
+    await once.provider.nextTurn(request, signal);
+    await once.provider.requestImpressions!(request, signal);
+    expect(once.provider.conversation?.requests).toEqual([
+      { mode: "threaded" },
+      { mode: "threaded", kind: "impressions" },
+    ]);
+  });
+
+  it.each([
+    ["closing report", (h: ReturnType<typeof scripted>) => h.provider.debrief!(request, signal)],
+    [
+      "impressions",
+      (h: ReturnType<typeof scripted>) => h.provider.requestImpressions!(request, signal),
+    ],
+  ])("was told in the first request the %s schema the retry sets", async (_name, close) => {
+    const h = scripted([pending, closingSaying("I renamed the task."), closing]);
+    await h.provider.nextTurn(request, signal);
+    await close(h);
+    const schema = (h.bodies[2]!.text as { format: { schema: unknown } }).format.schema;
+    const texts = JSON.stringify(h.bodies[1]!.input);
+    expect(texts).toContain(JSON.stringify(JSON.stringify(schema)).slice(1, -1));
+  });
+});
+
+describe("the trace of a closing report", () => {
+  /** A session that stops when the screen shows "saved", then asks for the closing report. */
+  async function stoppedSession(closingReplies: unknown[]) {
+    const h = scripted([pending, ...closingReplies]);
+    let actions = 0;
+    let time = 0;
+    const result = await runComputerUseLoop({
+      instructions: request.instructions,
+      provider: h.provider,
+      executor: {
+        observe: async () => ({
+          screenshot: Buffer.from(`synthetic-frame-${actions}`),
+          stateSignature: `screen-${actions}`,
+          text: actions > 0 ? "saved" : "editing",
+        }),
+        execute: async () => {
+          actions += 1;
+        },
+      },
+      persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+      timeoutMs: 60_000,
+      stopWhen: { any: [{ textIncludes: "saved" }] },
+      redaction: defaultRedactionHooks,
+    });
+    return { trace: result.trace, bodies: h.bodies };
+  }
+  const turnRow = { input: 11541, output: 229, cachedInput: 9849, cacheWriteInput: 1689 };
+  const withoutSchemaRow = { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 };
+  const withSchemaRow = { input: 13543, output: 221, cachedInput: 0, cacheWriteInput: 13468 };
+
+  it("has one usage row past the participant's requests when the reply needed no retry", async () => {
+    const reply = closingSaying(closing.output[0].content[0].text);
+    const { trace, bodies } = await stoppedSession([reply]);
+    expect(bodies).toHaveLength(2);
+    expect(trace.debrief).toMatchObject({ trigger: "stop_when", status: "completed" });
+    expect(trace.conversation?.requests).toHaveLength(1);
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow]);
+  });
+
+  it("has a usage row for each closing request when the reply was asked once more", async () => {
+    const { trace, bodies } = await stoppedSession([closingSaying("I renamed it."), closing]);
+    expect(bodies).toHaveLength(3);
+    expect(trace.debrief).toMatchObject({ trigger: "stop_when", status: "completed" });
+    expect(trace.conversation?.requests).toHaveLength(1);
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withSchemaRow]);
+  });
+
+  it("records the failed debrief one bad reply gave when the retry fails too", async () => {
+    const broken = closingSaying("{broken");
+    const { trace, bodies } = await stoppedSession([closingSaying("I renamed it."), broken]);
+    expect(bodies).toHaveLength(3);
+    expect(trace.debrief).toEqual({
+      trigger: "stop_when",
+      status: "failed",
+      reason: "the closing response did not contain a valid structured participant report",
+      usageReported: true,
+    });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withoutSchemaRow]);
   });
 });
 
@@ -228,14 +464,16 @@ describe("limits the OpenAI participant is told", () => {
       },
     },
   };
+  /** The schema the strict retry sets, which the first request states in its input. */
   const schemaOf = (body: Record<string, unknown> | undefined) =>
     (body?.text as { format: { schema: unknown } } | undefined)?.format.schema;
+  const retried = () => scripted([pending, closingSaying("I renamed the task."), closing]);
 
   it("asks for a closing report within the limits its reply is checked against", async () => {
-    const h = harness();
+    const h = retried();
     await h.provider.nextTurn(request, signal);
     await h.provider.debrief!(request, signal);
-    expect(schemaOf(h.bodies[1])).toEqual({
+    expect(schemaOf(h.bodies[2])).toEqual({
       type: "object",
       additionalProperties: false,
       required: ["outcome", "summary", "frictionReports", "impressions"],
@@ -249,10 +487,10 @@ describe("limits the OpenAI participant is told", () => {
   });
 
   it("asks for impressions only within the same limits", async () => {
-    const h = harness();
+    const h = retried();
     await h.provider.nextTurn(request, signal);
     await h.provider.requestImpressions!(request, signal);
-    expect(schemaOf(h.bodies[1])).toEqual({
+    expect(schemaOf(h.bodies[2])).toEqual({
       type: "object",
       additionalProperties: false,
       required: ["impressions"],
@@ -292,17 +530,12 @@ describe("impressions in the captured OpenAI closing report", () => {
     await h.provider.nextTurn(request, signal);
     const result = await h.provider.debrief!(request, signal);
     expect(result.closingReport).toBeUndefined();
-    expect(result.usage).toMatchObject({ input: 13543, output: 221 });
+    expect(result.usage).toMatchObject({ input: 27086, output: 442 });
+    expect(h.bodies).toHaveLength(3);
   });
 });
 
 describe("impressions-only request after the participant ends the session itself", () => {
-  const impressionsOnly = JSON.parse(
-    readFileSync(
-      new URL("../../fixtures/openai-closing-report/impressions-only.json", import.meta.url),
-      "utf8",
-    ),
-  );
   const cutOff = JSON.parse(
     readFileSync(
       new URL("../../fixtures/openai-incomplete/partial-message.json", import.meta.url),
@@ -341,7 +574,7 @@ describe("impressions-only request after the participant ends the session itself
     return { bodies, delayFn, provider };
   }
 
-  it("continues the threaded conversation once with tools off and a schema of impressions only", async () => {
+  it("continues the threaded conversation once with tools off and states a schema of impressions only", async () => {
     const h = sequence([finalAnswer, impressionsOnly]);
     const ended = await h.provider.nextTurn(request, signal);
     expect(ended.actions).toEqual([]);
@@ -351,21 +584,8 @@ describe("impressions-only request after the participant ends the session itself
       previous_response_id: finalAnswer.id,
       tool_choice: "none",
       max_output_tokens: 3072,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "participant_impressions",
-          strict: true,
-          schema: { additionalProperties: false, required: ["impressions"] },
-        },
-      },
     });
-    expect(
-      Object.keys(
-        (h.bodies[1]!.text as { format: { schema: { properties: object } } }).format.schema
-          .properties,
-      ),
-    ).toEqual(["impressions"]);
+    expect(h.bodies[1]).not.toHaveProperty("text");
     expect(JSON.stringify(h.bodies[1]!.input)).toContain("Return only impressions.");
     expect(result.impressions).toEqual(
       JSON.parse(impressionsOnly.output[0].content[0].text).impressions,
@@ -389,9 +609,10 @@ describe("impressions-only request after the participant ends the session itself
   });
 
   it.each([
-    ["cut off by the output limit", () => cutOff],
+    ["cut off by the output limit", 2, () => cutOff],
     [
       "an extra key",
+      3,
       () => {
         const reply = structuredClone(impressionsOnly);
         reply.output[0].content[0].text = JSON.stringify({ summary: "Saved.", impressions: [] });
@@ -400,6 +621,7 @@ describe("impressions-only request after the participant ends the session itself
     ],
     [
       "an unknown kind",
+      3,
       () => {
         const reply = structuredClone(impressionsOnly);
         reply.output[0].content[0].text = JSON.stringify({
@@ -408,13 +630,13 @@ describe("impressions-only request after the participant ends the session itself
         return reply;
       },
     ],
-  ])("keeps no impressions from a reply %s and makes no second request", async (_name, reply) => {
-    const h = sequence([finalAnswer, reply()]);
+  ])("keeps no impressions from a reply %s, after %i requests", async (_name, requests, reply) => {
+    const h = sequence([finalAnswer, reply(), reply()]);
     await h.provider.nextTurn(request, signal);
     const result = await h.provider.requestImpressions!(hint, signal);
     expect(result.impressions).toBeUndefined();
     expect(result.usage?.input).toBeGreaterThan(0);
-    expect(h.bodies).toHaveLength(2);
+    expect(h.bodies).toHaveLength(requests);
   });
 
   it("does not retry an impressions request after HTTP 429", async () => {

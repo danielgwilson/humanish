@@ -583,6 +583,14 @@ describe("the actor trace", () => {
       redaction: defaultRedactionHooks,
     });
     expect(result.trace.reason).not.toMatch(/error/i);
+    // "Done." is not impressions JSON, so the impressions request is asked once more with its
+    // schema, carrying the same conversation.
+    const impressions = {
+      mode: "explicit_context",
+      kind: "impressions",
+      carriedExchanges: 2,
+      carriedScreenshots: 2,
+    };
     expect(result.trace.conversation).toMatchObject({
       mode: "explicit_context",
       explicitReason: "configured",
@@ -590,12 +598,8 @@ describe("the actor trace", () => {
       requests: [
         { mode: "explicit_context", carriedExchanges: 0 },
         { mode: "explicit_context", carriedExchanges: 1, carriedScreenshots: 1 },
-        {
-          mode: "explicit_context",
-          kind: "impressions",
-          carriedExchanges: 2,
-          carriedScreenshots: 2,
-        },
+        impressions,
+        impressions,
       ],
     });
   });

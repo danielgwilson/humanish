@@ -292,8 +292,9 @@ describe.each([
       },
       { capped: false },
     );
-    // The retried request ends the session; one impressions-only request follows it.
-    expect(dispatches).toBe(3);
+    // The retried request ends the session. An impressions-only request follows it, asked once
+    // more because its reply is not impressions JSON.
+    expect(dispatches).toBe(4);
     expect(result.trace.completionReason).toBe("goal_satisfied");
   });
 });
