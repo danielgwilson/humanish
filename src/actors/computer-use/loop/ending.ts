@@ -40,7 +40,9 @@ export interface Stop {
 /**
  * Read the fixed closing line the prompt asks for: the first non-empty line of the
  * participant's last message or closing report summary, exactly one of three phrases,
- * punctuation and case forgiven. Anything else is absence, never a guess. Exported for tests.
+ * punctuation and case forgiven. Anything else is absence, never a guess. A `>` blockquote line
+ * is skipped: it quotes something else, such as the page, and the blocker scan
+ * (routes/computer-use/self-report.ts) drops it too. Exported for tests.
  */
 export function declaredOutcomeFromClosingLine(
   message: string | undefined,
@@ -49,9 +51,9 @@ export function declaredOutcomeFromClosingLine(
   const first = message
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .find((line) => line.length > 0);
+    .find((line) => line.length > 0 && !line.startsWith(">"));
   if (first === undefined) return undefined;
-  const normalized = first.replace(/^[*_#>\s-]+|[*_.!\s]+$/g, "").toLowerCase();
+  const normalized = first.replace(/^[*_#\s-]+|[*_.!\s]+$/g, "").toLowerCase();
   if (normalized === "reached the goal") return "reached";
   if (normalized === "did not reach the goal") return "not_reached";
   if (normalized === "blocked") return "blocked";

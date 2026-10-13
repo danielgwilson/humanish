@@ -3,9 +3,10 @@ import {
   cuaGoalSource,
   isCuaTrace,
   CUA_COMPLETION_NOTE,
+  type ClockEnd,
   type CuaGoalSource,
 } from "../actors/goal-source.js";
-import { actorEnding } from "../actors/stop-cause.js";
+import { actorEnding, actorStopCauseLabel } from "../actors/stop-cause.js";
 import type { TaskFunnel } from "../study/tasks.js";
 import type { ParticipantOutcomes, ReviewSummary, RunTaskFunnel } from "./bundle.js";
 import { plural } from "./text.js";
@@ -17,6 +18,12 @@ export function tallyParticipantOutcomes(
   statuses: readonly ActorStatus[],
   /** Per-participant: did this one report friction or a defect? Same order as `statuses`. */
   reportedFriction: readonly boolean[] = [],
+  /**
+   * Per-participant: did its session run until its scheduled end or session cap without it
+   * declaring that it reached the goal (ranUntilClockEnd)? Same order as `statuses`. Such a pass
+   * counts under `ranUntilEnd` in place of `reachedGoal`.
+   */
+  ranUntilEnd: readonly boolean[] = [],
 ): ParticipantOutcomes {
   const tally: ParticipantOutcomes = {
     total: statuses.length,
@@ -27,14 +34,16 @@ export function tallyParticipantOutcomes(
     harnessFailed: 0,
     reportedFriction: reportedFriction.filter(Boolean).length,
   };
-  for (const status of statuses) {
-    if (status === "passed") tally.reachedGoal += 1;
+  let clockEnds = 0;
+  statuses.forEach((status, index) => {
+    if (status === "passed" && ranUntilEnd[index] === true) clockEnds += 1;
+    else if (status === "passed") tally.reachedGoal += 1;
     else if (status === "abandoned") tally.abandoned += 1;
     else if (status === "incomplete" || status === "timed_out") tally.ranOut += 1;
     else if (status === "blocked") tally.blocked += 1;
     else if (status === "failed") tally.harnessFailed += 1;
-  }
-  return tally;
+  });
+  return clockEnds === 0 ? tally : { ...tally, ranUntilEnd: clockEnds };
 }
 
 /** Roll per-participant funnels up into the study funnel. Undefined when nothing measured one. */
@@ -93,19 +102,48 @@ export function formatRunTaskFunnel(funnel: RunTaskFunnel): string {
 
 type ParticipantOutcomeDetail = { status: ActorStatus; label?: string; goalSource?: CuaGoalSource };
 
+function isClockEnd(source: CuaGoalSource | undefined): source is ClockEnd {
+  return source === "scheduled_end" || source === "session_cap";
+}
+
+/**
+ * "1 ran until its session cap", "2 ran until their scheduled end", grouped by clock end, most
+ * first. Clock ends the details cannot account for get one line that names both.
+ */
+function ranUntilPhrases(count: number, details: readonly ParticipantOutcomeDetail[]): string[] {
+  const words = (n: number, end: string) =>
+    n === 1 ? `1 ran until its ${end}` : `${n} ran until their ${end}`;
+  const ends = details.flatMap((entry) => (isClockEnd(entry.goalSource) ? [entry.goalSource] : []));
+  if (ends.length !== count) return [words(count, "scheduled end or session cap")];
+  return (["session_cap", "scheduled_end"] as const)
+    .map((end) => [end, ends.filter((entry) => entry === end).length] as const)
+    .filter(([, n]) => n > 0)
+    .sort(([, m], [, n]) => n - m)
+    .map(([end, n]) => words(n, actorStopCauseLabel(end)));
+}
+
 function participantCompletionLine(
   outcomes: ParticipantOutcomes,
   terminalCauses: readonly ParticipantOutcomeDetail[],
 ): string {
-  const completions = terminalCauses.filter((entry) => entry.status === "passed");
+  const passed = terminalCauses.filter((entry) => entry.status === "passed");
+  // A bundle without `ranUntilEnd` either has no such clock end or predates the count and tallied
+  // its clock ends under reachedGoal. Those stay among its completions, and the breakdown names
+  // them, so a re-read never changes a recorded count.
+  const completions =
+    outcomes.ranUntilEnd === undefined
+      ? passed
+      : passed.filter((entry) => !isClockEnd(entry.goalSource));
   const reported = completions.filter((entry) => entry.goalSource === "participant_report").length;
   const matched = completions.filter((entry) => entry.goalSource === "condition_matched").length;
+  const clockEnds = completions.filter((entry) => isClockEnd(entry.goalSource));
   let goalLine =
     outcomes.reachedGoal === 0
       ? `0/${outcomes.total} recorded completions`
       : `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
   if (outcomes.reachedGoal > 0 && terminalCauses.some((entry) => entry.goalSource !== undefined)) {
     const count = `${outcomes.reachedGoal}/${outcomes.total}`;
+    const other = outcomes.reachedGoal - reported - matched - clockEnds.length;
     goalLine =
       completions.length !== outcomes.reachedGoal
         ? `${count} recorded completions (completion source unavailable)`
@@ -116,9 +154,8 @@ function participantCompletionLine(
             : `${count} recorded completions (${[
                 reported > 0 ? `${reported} participant-reported` : undefined,
                 matched > 0 ? `${matched} condition-matched` : undefined,
-                outcomes.reachedGoal - reported - matched > 0
-                  ? `${outcomes.reachedGoal - reported - matched} other or unavailable source`
-                  : undefined,
+                ...(clockEnds.length > 0 ? ranUntilPhrases(clockEnds.length, clockEnds) : []),
+                other > 0 ? `${other} other or unavailable source` : undefined,
               ]
                 .filter(Boolean)
                 .join(", ")})`;
@@ -135,6 +172,7 @@ export function sessionEndingInWords(trace: ActorTrace): string {
     case "goal_satisfied": {
       const source = cuaGoalSource(trace);
       if (source === "participant_report") return "reported reaching the goal";
+      if (isClockEnd(source)) return `ran until its ${actorStopCauseLabel(source)}`;
       return source === "condition_matched" ? "met its completion condition" : "reached the goal";
     }
     case "turn_completed":
@@ -210,6 +248,15 @@ export function formatParticipantOutcomes(
 ): string {
   if (outcomes.total === 0) return "no participants reached a terminal state";
   const parts: string[] = [participantCompletionLine(outcomes, terminalCauses)];
+  // Passed at the clock without declaring that they reached the goal: next to the completions,
+  // and never counted among them.
+  if (outcomes.ranUntilEnd !== undefined && outcomes.ranUntilEnd > 0)
+    parts.push(
+      ...ranUntilPhrases(
+        outcomes.ranUntilEnd,
+        terminalCauses.filter((entry) => entry.status === "passed"),
+      ),
+    );
   // Detail may explain a recorded outcome, but must never change its count or invent a match
   // between a tally and an incomplete set of traces.
   const append = (count: number, statuses: readonly ActorStatus[], fallback: string) => {

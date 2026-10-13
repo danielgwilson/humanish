@@ -1,7 +1,8 @@
 // A participant run outcome's facts for the judge (src/run/judge.ts), and the pass check built on
 // them. The bundle builders, the result, the participant runner and shared-world all read these,
-// so they sit in a file that imports only the judge and the types.
+// so they sit in a file that imports only the judge, the clock-end rule and the types.
 
+import { ranUntilClockEnd } from "../../actors/goal-source.js";
 import {
   participantHarnessFailed,
   participantPassed,
@@ -17,6 +18,8 @@ export function participantFactsOf(
 ): ParticipantRecordFacts {
   if (outcome === undefined)
     return { skipped: false, noEngagement: false, selfReportedBlocker: false };
+  const ranUntil =
+    outcome.session === undefined ? undefined : ranUntilClockEnd(outcome.session.trace);
   return {
     id: outcome.spec.planned.id,
     ...(outcome.skippedReason === undefined ? {} : { skippedReason: outcome.skippedReason }),
@@ -32,6 +35,7 @@ export function participantFactsOf(
     skipped: outcome.skippedReason !== undefined,
     noEngagement: outcome.noEngagement === true,
     selfReportedBlocker: outcome.selfReportedBlocker === true,
+    ...(ranUntil === undefined ? {} : { ranUntil }),
   };
 }
 

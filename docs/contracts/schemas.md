@@ -254,9 +254,11 @@ The rest of this section names keys by their v3 spelling:
   `src/study/arrivals.ts`) in place of `execution.timeoutMs`, and its sandbox deadline adds the
   route's headroom to that. At the end the loop requests the closing report (`debrief.trigger:
   scheduled_end`) and the session ends `goal_satisfied` with `stopCause: scheduled_end`. The
-  outcome an accepted report declares, its `outcome` field or the first line of its summary, is
-  the trace's `declaredOutcome`. The blocker rule reads a declared `reached` or `blocked` before
-  the summary, and after a declared `not_reached` it reads the summary. Before
+  outcome an accepted report declares, its `outcome` field or the first line of its summary that
+  is not a `>` blockquote, is the trace's `declaredOutcome`. The blocker rule reads a declared
+  `reached` or `blocked` before the summary, and after a declared `not_reached` it reads the
+  summary. A participant that passes without declaring `reached` counts in the review's
+  `participants.ranUntilEnd`, and its completion labels say it ran until its scheduled end. Before
   the end, a turn that requests no action does not end the session: the trace records a
   `participant ended before its scheduled end` notice, the next request says the time left, and
   the turn counts toward the idle backstop. Before the end, a turn that only waits or takes
@@ -1914,8 +1916,13 @@ verification or maintainer acceptance.
 the run passed also reads `run.json`'s `outcome.ok` ([Run Outcome](run-bundle.md#run-outcome)):
 a run whose execution failed shows as failed beside a `pass` verdict. `participants.reachedGoal` retains the count of
 recorded successful sessions; it is not an independent adjudication of their
-claims. Computer-use review and Observer labels distinguish a participant's
-reported completion from a recorded `stopWhen` or dwell condition match. A
+claims. A computer-use session that passed at its scheduled end or session cap
+counts there only when its participant declared `reached`; otherwise it counts
+in `participants.ranUntilEnd`, present when above 0. Bundles written before
+`ranUntilEnd` existed counted it in `reachedGoal`, and a re-read keeps that
+count. Computer-use review and Observer labels distinguish a participant's
+reported completion from a recorded `stopWhen` or dwell condition match, and
+from a pass at a clock end without a declared reach. A
 condition match establishes that condition, not every aspect of the mission.
 Missing or malformed completion evidence is labeled unavailable. Other actor
 routes retain their own completion semantics. Re-reading a historical review

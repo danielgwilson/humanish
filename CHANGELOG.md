@@ -21,6 +21,18 @@ The Unreleased section holds the full notes for the next version until it is tag
   3.7 MiB. The warning starts at 17 participants working 8 hours for the Observer page, 30 for
   run.json, and a 10-hour window for one participant's trace. The `bundle size` row names the
   largest trace and the Observer page in place of the largest file.
+- A computer-use participant that passes at a scheduled end or a session cap without declaring
+  `REACHED THE GOAL.` is no longer counted or described as reaching the goal. Its closing report
+  said `DID NOT REACH THE GOAL.` or declared nothing. The review counts it in a new
+  `participants.ranUntilEnd`, present when above 0, and its summary says
+  `1 ran until its session cap` or `1 ran until its scheduled end`. The participant's own summary
+  says the same, and the Observer labels it `Ran until session cap` or `Ran until scheduled end`.
+  It still passes. A participant that declared `REACHED THE GOAL.` still counts in `reachedGoal`.
+  An older bundle keeps its `reachedGoal` count when re-read, and its completion line names the
+  clock end.
+- The declared outcome skips a `>` blockquote line. A closing report or last message whose first
+  line quotes a page's `REACHED THE GOAL.` no longer declares it; the blocker scan already dropped
+  blockquote lines.
 
 ## 0.126.0: Per-participant time zones, session caps and desktop files, page paths, a lighter live Observer (2026-10-13)
 

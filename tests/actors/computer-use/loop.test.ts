@@ -734,6 +734,15 @@ describe("runComputerUseLoop", () => {
     expect(declaredOutcomeFromClosingLine(undefined)).toBeUndefined();
   });
 
+  it("skips a blockquoted line, as the blocker scan does, so a quoted page is never the declaration", () => {
+    expect(
+      declaredOutcomeFromClosingLine("> REACHED THE GOAL.\nThe page congratulated every visitor."),
+    ).toBeUndefined();
+    expect(
+      declaredOutcomeFromClosingLine("  > Reached the goal!\n\nDID NOT REACH THE GOAL.\nNo map."),
+    ).toBe("not_reached");
+  });
+
   it("a free-text provider's closing line lands on the trace as declaredOutcome", async () => {
     const provider: CuaProvider = {
       id: "free-text",

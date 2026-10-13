@@ -2,6 +2,7 @@ import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import type { ActorStatus } from "../../actors/contract.js";
 import { actorEnding } from "../../actors/stop-cause.js";
+import { cuaGoalSource } from "../../actors/goal-source.js";
 import { redactText } from "../../evidence/redaction.js";
 import {
   REVIEW_SCHEMA,
@@ -125,9 +126,11 @@ function fanoutReview(
   const runTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
   const participantEndings = terminalOutcomes.map((outcome) => {
     const ending = actorEnding(outcome.session.trace);
+    const goalSource = cuaGoalSource(outcome.session.trace);
     return {
       status: outcome.session.status,
       ...(ending === undefined ? {} : { label: ending.label }),
+      ...(goalSource === undefined ? {} : { goalSource }),
     };
   });
   const review: ReviewSummary = withCuaReviewProvenance(

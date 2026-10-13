@@ -108,7 +108,17 @@ describe("a staff participant with a scheduled end", () => {
       "passed",
       "passed",
     ]);
-    expect(bundle.review?.participants).toMatchObject({ total: 3, reachedGoal: 3, ranOut: 0 });
+    // The staff member's closing report declares no outcome, so it passes as running until its
+    // scheduled end and is not counted as reaching the goal.
+    expect(bundle.review?.participants).toMatchObject({
+      total: 3,
+      reachedGoal: 2,
+      ranUntilEnd: 1,
+      ranOut: 0,
+    });
+    expect(bundle.review?.summary).toContain(
+      "3 participants took part, each in their own copy of the app: 2/3 reported reaching the goal, 1 ran until its scheduled end.",
+    );
 
     const staff = JSON.parse(
       await readFile(

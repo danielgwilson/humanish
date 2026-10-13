@@ -29,6 +29,7 @@ import {
 } from "../../run/outcomes.js";
 import { participantCaption } from "../../run/participant-caption.js";
 import { actorEnding } from "../../actors/stop-cause.js";
+import { cuaGoalSource, ranUntilClockEnd } from "../../actors/goal-source.js";
 import {
   describeSubjectState,
   phaseEventIdSuffix,
@@ -88,6 +89,7 @@ function runCost(args: SingleParticipantBundleArgs): ReturnType<typeof buildRunC
 
 /** The participant's status, reason, last frame, geometry and screenshot mode, shared by its records. */
 function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string) {
+  const ranUntil = args.session === undefined ? undefined : ranUntilClockEnd(args.session.trace);
   const judgment = judgeParticipantRecords([
     {
       ...(args.session === undefined
@@ -97,6 +99,7 @@ function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string
             completionReason: args.session.completionReason,
             reason: args.session.reason,
           }),
+      ...(ranUntil === undefined ? {} : { ranUntil }),
       ...(args.sessionError === undefined ? {} : { sessionError: args.sessionError }),
       inProgress: args.inProgress === true,
       skipped: false,
@@ -366,8 +369,13 @@ function singleSummary(
       : `1 participant was planned, but the run failed before their session finished: ${view.reason}`;
   }
   const ending = actorEnding(args.session.trace);
+  const goalSource = cuaGoalSource(args.session.trace);
   const outcomes = formatParticipantOutcomes(view.tally, [
-    { status: args.session.status, ...(ending === undefined ? {} : { label: ending.label }) },
+    {
+      status: args.session.status,
+      ...(ending === undefined ? {} : { label: ending.label }),
+      ...(goalSource === undefined ? {} : { goalSource }),
+    },
   ]);
   return [
     `1 participant took part: ${outcomes}.`,
