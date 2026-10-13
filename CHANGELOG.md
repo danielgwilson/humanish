@@ -14,17 +14,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   is refused with a message that calls `actor.maxWaitMs` "the longest one wait or one turn of only
   waits lasts". It said "the longest one wait action lasts", which since 0.131.0 leaves out that
   the field also caps how long a turn of only waits is watched.
-- A hosted desktop's screen stays on while a participant waits without input. The stock E2B
-  desktop's XFCE session sets the X screen saver timeout three times in its first seconds:
+- A hosted desktop's screen stays on while a participant waits without input. Three programs in
+  the stock E2B desktop's XFCE session set the X screen saver timeout in its first seconds:
   xfce4-screensaver to 300 s, xfce4-power-manager to 600 s, and an autostart entry to off. The last
   write wins. Where it was 300 s, xfce4-screensaver turns the screen black after 5 minutes without
   input. That matches 2 of 8 desktops in one live check, where one participant then spent the rest
   of its hour keeping the screen awake, 171 requests for $17.70 against 43 for $2.03 in its pair.
-  humanish now runs `xset s off` on each participant's desktop once its browser or terminal has
-  opened and settled, after those writes. A desktop where it fails gets a warning and the
-  participant runs; a desktop without `xset` is left as it is. On a live desktop set to 300 s, the
-  screen went black at 300 s without input; after `xset s off` on the same state it stayed lit for
-  9 minutes. (#1855)
+  In a later check, 1 of 16 fresh desktops also ended at 300 s. humanish now runs `xset s off` on
+  each participant's desktop once its browser or terminal has opened and the desktop has waited 8 s
+  to settle. Nothing waits for the three programs, so the order rests on that time: on the 16 fresh
+  desktops, the last write came 1.6 to 2.5 s after a command sent as soon as the desktop was
+  created. A desktop where `xset` fails gets a warning and the participant runs; a desktop without
+  `xset` is left as it is. On a live desktop set to 300 s, the screen went black at 300 s without
+  input; after `xset s off` on the same state it stayed lit for 9 minutes. (#1855)
 
 ## 0.131.0: Participants that wait watch the screen and wake when it changes (2026-10-13)
 

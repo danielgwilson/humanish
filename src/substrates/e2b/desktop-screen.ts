@@ -10,10 +10,12 @@ import type { E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
 /**
- * Turn the desktop's X screen saver off with `xset s off`. xfce4-screensaver and
- * xfce4-power-manager write the timeout again only when the xfconf settings of either one change,
- * which setting the panel clock does not do, so a call after the session has settled stays in
- * force. A desktop without xset is left as it is. Throws with xset's error output when xset fails.
+ * Turn the desktop's X screen saver off with `xset s off`. Nothing here waits for the three
+ * writers, so a call holds only when it comes after their last write: on 16 fresh desktops that
+ * write came 1.6 to 2.5 s after a command sent as soon as the desktop was created, and none came
+ * in the following 27 s. After that, xfce4-screensaver and xfce4-power-manager write the timeout
+ * again only when the xfconf settings of either one change, which setting the panel clock does not
+ * do. A desktop without xset is left as it is. Throws with xset's error output when xset fails.
  */
 export async function turnOffScreenSaver(
   desktop: E2BDesktopSandbox,

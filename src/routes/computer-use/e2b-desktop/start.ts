@@ -147,9 +147,11 @@ export async function openParticipantSurface(
 
 /**
  * Turn the desktop's screen saver off, so the screen stays on while the participant waits without
- * input. This runs after the browser or terminal has opened and settled: the XFCE session sets the
- * screen saver's timeout in its first seconds, and the last write wins. A screen saver that cannot
- * be turned off is a warning.
+ * input. The XFCE session sets the screen saver's timeout in its first seconds, and the last write
+ * wins. Nothing waits for those writes: this runs after the browser or terminal has opened and the
+ * desktop has waited DESKTOP_SETTLE_MS, and on 16 fresh desktops the last write came within 2.5 s
+ * of a command sent as soon as the desktop was created. A screen saver that cannot be turned off
+ * is a warning.
  */
 export async function keepParticipantScreenOn(
   ctx: E2BParticipantContext,

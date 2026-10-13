@@ -3,7 +3,7 @@
 // xfce4-screensaver sets 300 s, xfce4-power-manager sets 600 s, and an autostart entry runs
 // `xset s off`. The last one wins, and a timeout of 300 s turns a waiting participant's screen
 // black after 5 minutes without input. humanish turns the screen saver off once the participant's
-// browser has opened and settled, after those writers have run.
+// browser has opened and the desktop has waited 8 s to settle.
 
 import { execFile } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
@@ -102,8 +102,9 @@ describe("the hosted desktop's screen saver", () => {
     });
     const stepsOf = (index: number) =>
       steps.filter(([laneIndex]) => laneIndex === index).map(([, step]) => step);
-    // The XFCE session's writers act in its first seconds. The live checks that kept the screen
-    // on turned the screen saver off after this 8 s settle.
+    // Nothing waits for the XFCE writers. On 16 fresh desktops their last write came within 2.5 s
+    // of a command sent as soon as the desktop was created, so this 8 s settle keeps the screen
+    // saver call after it.
     expect(stepsOf(0)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     expect(stepsOf(1)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
