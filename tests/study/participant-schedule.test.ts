@@ -177,11 +177,12 @@ describe("a roster of starts, ends and caps", () => {
     if (!result.ok) throw new Error(result.refusal.message);
     // Turns at one every 10 s: host 720, lead 180 and brief 48 over their windows; quick 18 over
     // 3 minutes of its 8-minute cap; each guest 6 over its 1-minute budget. 978 in all.
-    // Files and folders: 20 + 6 x 3 + 978. run.json: 4,400 + 6 x 16,500, whatever the turns. The
+    // Files and folders: 20 + 6 x 3 + 978. run.json: 4,400 + 6 x 16,500, whatever the turns, and
+    // the 7-byte mission "Try it." once for the run and twice for each participant: 103,491. The
     // host's trace: 5,400 + 720 x 4,700.
     expect(result.planned.bundle).toMatchObject({
       entries: 1_016,
-      runFileBytes: 103_400,
+      runFileBytes: 103_491,
       largestTraceBytes: 3_389_400,
       basis: {
         participants: 6,
