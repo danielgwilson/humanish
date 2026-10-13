@@ -1202,10 +1202,11 @@ Core-owned fields:
   and summarization of older turns. The closing report and impressions requests
   send no `text.format`, so they can read the session from the prompt cache; the
   request states the JSON Schema in its input instead. A completed reply that is
-  not JSON the schema accepts is sent once more with the strict schema, and only
-  once. An impressions request sent twice has two entries. The closing report has
-  no entry here; it has one row in `tokenUsage.turns` after the participant's
-  requests, or two when it was sent twice. Billed input per request is in `tokenUsage.turns`. A
+  not JSON the schema accepts can be sent once more with the strict schema. That
+  request goes out only after the budget and time checks the first passed, with
+  a time bound of its own. An impressions request sent twice has two entries. The
+  closing report has no entry here. Each closing request that reported usage has
+  its own row in `tokenUsage.turns` after the participant's requests. Billed input per request is in `tokenUsage.turns`. A
   participant that ran in `explicit_context` gets a run warning. Absent on other
   providers and on earlier bundles
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which kind of route this

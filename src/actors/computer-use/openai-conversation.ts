@@ -6,7 +6,6 @@ import {
   strictOutputSchema,
 } from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
-import { isCompleteTurnUsage } from "./loop/usage.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   asRecord,
@@ -97,6 +96,8 @@ export class OpenAiConversation {
   /** Undefined once the account or model rejected reasoning summaries. */
   private reasoningSummary: OpenAiReasoningSummary | undefined;
   private readonly evidence: ConversationRecord;
+  /** The items of a closing request whose reply was not the stated JSON, for its strict retry. */
+  private openClosing: readonly unknown[] | undefined;
 
   constructor(private readonly settings: OpenAiConversationSettings) {
     this.mode = settings.zeroDataRetention ? "explicit_context" : "threaded";
@@ -117,35 +118,32 @@ export class OpenAiConversation {
   }
 
   /**
-   * The read-only closing request carrying `req`'s screen, sent with `send`. It goes out first
+   * The read-only closing request carrying `req`'s screen, sent once with `send`. It goes out
    * without text.format, which is part of the cached prefix, so it reads the session from the
-   * cache. A completed reply that is not JSON the schema accepts is asked once more as the same
-   * request with the strict schema set. Returns the last reply's turn with the account it gave,
-   * and the usage of every request it made.
+   * cache. A completed reply that is not JSON the schema accepts comes back marked closingRetry and
+   * leaves the conversation where it was, so the next closing request is the same one with the
+   * strict schema set. Returns the reply's turn with the account it gave.
    */
   async close(
     req: CuaTurnRequest,
     closing: ClosingRequest,
     send: (body: Record<string, unknown>) => Promise<unknown>,
   ): Promise<CuaTurn> {
-    const sent = [...this.newItems(req), replyForm(closing)];
-    const ask = async (schema: boolean) => {
-      const reply = await send(this.closingBody(req, sent, closing, schema));
-      // Recorded before the reply is accepted, as a participant turn is.
-      if (closing === "impressions")
-        this.evidence.requested(this.mode, this.carried, sent, closing);
-      const completed = asRecord(reply).status === "completed";
-      const parsed = parseOpenAiResponse(reply);
-      const account = completed ? closingAccount(parsed.turn.message, closing, schema) : undefined;
-      return { parsed, account, retry: completed && account === undefined };
-    };
-    const first = await ask(false);
-    const last = first.retry ? await ask(true) : first;
-    this.moveOn(last.parsed, sent);
-    const usage =
-      last === first ? last.parsed.turn.usage : bothRequests(first.parsed.turn, last.parsed.turn);
-    const { usage: _lastUsage, ...turn } = last.parsed.turn;
-    return { ...turn, ...(usage === undefined ? {} : { usage }), ...last.account };
+    const strict = this.openClosing !== undefined;
+    const sent = this.openClosing ?? [...this.newItems(req), replyForm(closing)];
+    this.openClosing = undefined;
+    const reply = await send(this.closingBody(req, sent, closing, strict));
+    // Recorded before the reply is accepted, as a participant turn is.
+    if (closing === "impressions") this.evidence.requested(this.mode, this.carried, sent, closing);
+    const completed = asRecord(reply).status === "completed";
+    const parsed = parseOpenAiResponse(reply);
+    const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
+    if (completed && account === undefined && !strict) {
+      this.openClosing = sent;
+      return { ...parsed.turn, closingRetry: true };
+    }
+    this.moveOn(parsed, sent);
+    return { ...parsed.turn, ...account };
   }
 
   /**
@@ -298,28 +296,6 @@ function closingAccount(
   }
   const impressions = impressionsReplySchema.safeParse(reply);
   return impressions.success ? { impressions: impressions.data.impressions } : undefined;
-}
-
-type TurnUsage = NonNullable<CuaTurn["usage"]>;
-
-/**
- * The usage of a closing request asked twice: the sum, with each request's counts as its own row,
- * so each is priced at its own size. Unreported unless both requests reported complete usage.
- */
-function bothRequests(first: CuaTurn, second: CuaTurn): TurnUsage | undefined {
-  const rows = [first.usage, second.usage];
-  if (!rows.every(isCompleteTurnUsage)) return undefined;
-  const sum = (field: keyof Omit<TurnUsage, "turns">) =>
-    rows.some((row) => row[field] !== undefined)
-      ? { [field]: rows.reduce((total, row) => total + (row[field] ?? 0), 0) }
-      : {};
-  return {
-    ...sum("input"),
-    ...sum("output"),
-    ...sum("cachedInput"),
-    ...sum("cacheWriteInput"),
-    turns: rows,
-  };
 }
 
 /** The trace's account of how a session carried its conversation (ActorConversation). */

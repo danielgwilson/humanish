@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
-import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import {
+  runComputerUseLoop,
+  type CuaLoopOptions,
+  type CuaTurnRequest,
+} from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import {
   createOpenAiResponsesProvider,
@@ -130,32 +134,30 @@ describe("captured OpenAI closing-report contract", () => {
   });
 
   it.each([
-    ["incomplete", 2, { input: 13543, output: 221 }],
-    ["invalid-json", 3, { input: 27086, output: 442 }],
-    ["extra-key", 3, { input: 27086, output: 442 }],
-    ["empty-summary", 3, { input: 27086, output: 442 }],
-  ])(
-    "rejects a %s report while retaining usage, after %i requests",
-    async (kind, requests, usage) => {
-      const invalid = structuredClone(closing);
-      if (kind === "incomplete") invalid.status = "incomplete";
-      if (kind === "invalid-json") invalid.output[0].content[0].text = "{broken";
-      if (kind === "extra-key")
-        invalid.output[0].content[0].text = JSON.stringify({
-          summary: "Saved.",
-          frictionReports: [],
-          extra: true,
-        });
-      if (kind === "empty-summary")
-        invalid.output[0].content[0].text = JSON.stringify({ summary: "", frictionReports: [] });
-      const h = harness(invalid);
-      await h.provider.nextTurn(request, signal);
-      const result = await h.provider.debrief!(request, signal);
-      expect(result.closingReport).toBeUndefined();
-      expect(result.usage).toMatchObject(usage);
-      expect(h.bodies).toHaveLength(requests);
-    },
-  );
+    ["incomplete", undefined],
+    ["invalid-json", true],
+    ["extra-key", true],
+    ["empty-summary", true],
+  ])("rejects a %s report while retaining usage; closingRetry %s", async (kind, closingRetry) => {
+    const invalid = structuredClone(closing);
+    if (kind === "incomplete") invalid.status = "incomplete";
+    if (kind === "invalid-json") invalid.output[0].content[0].text = "{broken";
+    if (kind === "extra-key")
+      invalid.output[0].content[0].text = JSON.stringify({
+        summary: "Saved.",
+        frictionReports: [],
+        extra: true,
+      });
+    if (kind === "empty-summary")
+      invalid.output[0].content[0].text = JSON.stringify({ summary: "", frictionReports: [] });
+    const h = harness(invalid);
+    await h.provider.nextTurn(request, signal);
+    const result = await h.provider.debrief!(request, signal);
+    expect(result.closingReport).toBeUndefined();
+    expect(result.closingRetry).toBe(closingRetry);
+    expect(result.usage).toMatchObject({ input: 13543, output: 221 });
+    expect(h.bodies).toHaveLength(2);
+  });
 
   it.each([429, 500])("does not retry a closing request after HTTP %i", async (status) => {
     const h = harness({}, status);
@@ -231,7 +233,13 @@ describe("a closing request that reads the session's cache", () => {
   );
 });
 
-/** Replies in order, one per request; the bodies the provider sent. */
+/** How the transport answers one request other than with a completed reply. */
+type Answer = () => ReturnType<FetchLike>;
+
+/**
+ * Replies in order, one per request, each a response body or an Answer; the bodies the provider
+ * sent.
+ */
 function scripted(replies: unknown[], options: { zeroDataRetention?: boolean } = {}) {
   const bodies: Record<string, unknown>[] = [];
   const delayFn = vi.fn(async () => undefined);
@@ -243,11 +251,20 @@ function scripted(replies: unknown[], options: { zeroDataRetention?: boolean } =
     fetchFn: async (_url, init) => {
       bodies.push(JSON.parse(init.body));
       const value = replies[bodies.length - 1];
+      if (typeof value === "function") return (value as Answer)();
       return { ok: true, status: 200, text: async () => "", json: async () => value };
     },
   });
   return { bodies, delayFn, provider };
 }
+
+/** An answer that gives `reply` after `ms` of wall-clock time. */
+const after =
+  (ms: number, reply: unknown): Answer =>
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return { ok: true, status: 200, text: async () => "", json: async () => reply };
+  };
 
 /** The captured closing reply with `text` in place of its JSON, read partly from the cache. */
 function closingSaying(text: string) {
@@ -263,14 +280,28 @@ function closingSaying(text: string) {
 }
 
 describe("a closing reply that is not the schema's JSON", () => {
+  const debrief = (h: ReturnType<typeof scripted>) => h.provider.debrief!(request, signal);
+  const impressions = (h: ReturnType<typeof scripted>) =>
+    h.provider.requestImpressions!(request, signal);
+
   it.each([false, true])(
-    "is asked once more as the same request with the strict schema, explicit context %s",
+    "is marked for a retry that sends the same request with the strict schema, explicit context %s",
     async (zeroDataRetention) => {
       const h = scripted([pending, closingSaying("I renamed the task."), closing], {
         zeroDataRetention,
       });
       await h.provider.nextTurn(request, signal);
-      const result = await h.provider.debrief!(request, signal);
+      const first = await debrief(h);
+      expect(h.bodies).toHaveLength(2);
+      expect(first.closingRetry).toBe(true);
+      expect(first.closingReport).toBeUndefined();
+      expect(first.usage).toEqual({
+        input: 13600,
+        output: 90,
+        cachedInput: 11541,
+        cacheWriteInput: 2000,
+      });
+      const second = await debrief(h);
       expect(h.bodies).toHaveLength(3);
       const { text, ...retried } = h.bodies[2]!;
       expect(retried).toEqual(h.bodies[1]);
@@ -282,75 +313,59 @@ describe("a closing reply that is not the schema's JSON", () => {
           schema: { required: ["outcome", "summary", "frictionReports", "impressions"] },
         },
       });
-      expect(result.closingReport).toEqual(JSON.parse(closing.output[0].content[0].text));
-      expect(result.usage).toEqual({
-        input: 27143,
-        output: 311,
-        cachedInput: 11541,
-        cacheWriteInput: 15468,
-        turns: [
-          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
-          { input: 13543, output: 221, cachedInput: 0, cacheWriteInput: 13468 },
-        ],
+      expect(second.closingRetry).toBeUndefined();
+      expect(second.closingReport).toEqual(JSON.parse(closing.output[0].content[0].text));
+      expect(second.usage).toEqual({
+        input: 13543,
+        output: 221,
+        cachedInput: 0,
+        cacheWriteInput: 13468,
       });
       expect(h.delayFn).not.toHaveBeenCalled();
     },
   );
 
   it.each([
-    ["closing report", (h: ReturnType<typeof scripted>) => h.provider.debrief!(request, signal)],
-    [
-      "impressions",
-      (h: ReturnType<typeof scripted>) => h.provider.requestImpressions!(request, signal),
-    ],
-  ])(
-    "gives no %s and asks no third time when the retry fails too, keeping both usages",
-    async (_name, close) => {
-      const h = scripted([pending, closingSaying("I renamed the task."), closingSaying("{broken")]);
-      await h.provider.nextTurn(request, signal);
-      const result = await close(h);
-      expect(h.bodies).toHaveLength(3);
-      expect(result.closingReport).toBeUndefined();
-      expect(result.impressions).toBeUndefined();
-      expect(result.actions).toEqual([]);
-      expect(result.usage).toEqual({
-        input: 27200,
-        output: 180,
-        cachedInput: 23082,
-        cacheWriteInput: 4000,
-        turns: [
-          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
-          { input: 13600, output: 90, cachedInput: 11541, cacheWriteInput: 2000 },
-        ],
-      });
-    },
-  );
-
-  it("fails as one closing request does when the retry meets an HTTP error", async () => {
-    const bodies: Record<string, unknown>[] = [];
-    const delayFn = vi.fn(async () => undefined);
-    const provider = createOpenAiResponsesProvider({
-      apiKey: "synthetic-key",
-      delayFn,
-      maxRetries: 3,
-      env: {},
-      fetchFn: async (_url, init) => {
-        bodies.push(JSON.parse(init.body));
-        const value = bodies.length === 1 ? pending : closingSaying("I renamed the task.");
-        const status = bodies.length === 3 ? 500 : 200;
-        return { ok: status === 200, status, text: async () => "", json: async () => value };
-      },
+    ["closing report", debrief],
+    ["impressions", impressions],
+  ])("gives no %s and no retry mark when the strict request fails too", async (_name, close) => {
+    const h = scripted([pending, closingSaying("I renamed the task."), closingSaying("{broken")]);
+    await h.provider.nextTurn(request, signal);
+    await close(h);
+    const result = await close(h);
+    expect(h.bodies).toHaveLength(3);
+    expect(result.closingRetry).toBeUndefined();
+    expect(result.closingReport).toBeUndefined();
+    expect(result.impressions).toBeUndefined();
+    expect(result.actions).toEqual([]);
+    expect(result.usage).toEqual({
+      input: 13600,
+      output: 90,
+      cachedInput: 11541,
+      cacheWriteInput: 2000,
     });
-    await provider.nextTurn(request, signal);
-    await expect(provider.debrief!(request, signal)).rejects.toThrow("OpenAI Responses 500");
-    expect(bodies).toHaveLength(3);
-    expect(delayFn).not.toHaveBeenCalled();
   });
 
-  it("lists each impressions request in the conversation record, as tokenUsage.turns rows it", async () => {
+  it("sends the strict request once when it meets an HTTP error", async () => {
+    const failed: Answer = async () => ({
+      ok: false,
+      status: 500,
+      text: async () => "",
+      json: async () => ({}),
+    });
+    const h = scripted([pending, closingSaying("I renamed the task."), failed]);
+    await h.provider.nextTurn(request, signal);
+    await debrief(h);
+    await expect(debrief(h)).rejects.toThrow("OpenAI Responses 500");
+    expect(h.bodies).toHaveLength(3);
+    expect(h.delayFn).not.toHaveBeenCalled();
+  });
+
+  it("lists each impressions request in the conversation record", async () => {
     const asked = scripted([pending, closingSaying("I renamed the task."), impressionsOnly]);
     await asked.provider.nextTurn(request, signal);
-    await asked.provider.requestImpressions!(request, signal);
+    await impressions(asked);
+    await impressions(asked);
     expect(asked.provider.conversation?.requests).toEqual([
       { mode: "threaded" },
       { mode: "threaded", kind: "impressions" },
@@ -358,7 +373,7 @@ describe("a closing reply that is not the schema's JSON", () => {
     ]);
     const once = scripted([pending, impressionsOnly]);
     await once.provider.nextTurn(request, signal);
-    await once.provider.requestImpressions!(request, signal);
+    await impressions(once);
     expect(once.provider.conversation?.requests).toEqual([
       { mode: "threaded" },
       { mode: "threaded", kind: "impressions" },
@@ -366,14 +381,12 @@ describe("a closing reply that is not the schema's JSON", () => {
   });
 
   it.each([
-    ["closing report", (h: ReturnType<typeof scripted>) => h.provider.debrief!(request, signal)],
-    [
-      "impressions",
-      (h: ReturnType<typeof scripted>) => h.provider.requestImpressions!(request, signal),
-    ],
+    ["closing report", debrief],
+    ["impressions", impressions],
   ])("was told in the first request the %s schema the retry sets", async (_name, close) => {
     const h = scripted([pending, closingSaying("I renamed the task."), closing]);
     await h.provider.nextTurn(request, signal);
+    await close(h);
     await close(h);
     const schema = (h.bodies[2]!.text as { format: { schema: unknown } }).format.schema;
     const texts = JSON.stringify(h.bodies[1]!.input);
@@ -383,7 +396,10 @@ describe("a closing reply that is not the schema's JSON", () => {
 
 describe("the trace of a closing report", () => {
   /** A session that stops when the screen shows "saved", then asks for the closing report. */
-  async function stoppedSession(closingReplies: unknown[]) {
+  async function stoppedSession(
+    closingReplies: unknown[],
+    limits: Pick<CuaLoopOptions, "turnTimeoutMs" | "maxUsd" | "estimateTurnCostUsd"> = {},
+  ) {
     const h = scripted([pending, ...closingReplies]);
     let actions = 0;
     let time = 0;
@@ -408,6 +424,7 @@ describe("the trace of a closing report", () => {
       timeoutMs: 60_000,
       stopWhen: { any: [{ textIncludes: "saved" }] },
       redaction: defaultRedactionHooks,
+      ...limits,
     });
     return { trace: result.trace, bodies: h.bodies };
   }
@@ -458,6 +475,73 @@ describe("the trace of a closing report", () => {
     });
     expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withoutSchemaRow]);
   });
+
+  it("keeps the first closing reply's usage when asking once more meets an HTTP error", async () => {
+    const failed: Answer = async () => ({
+      ok: false,
+      status: 500,
+      text: async () => "",
+      json: async () => ({}),
+    });
+    const { trace, bodies } = await stoppedSession([closingSaying("I renamed it."), failed]);
+    expect(bodies).toHaveLength(3);
+    expect(trace.debrief).toEqual({
+      trigger: "stop_when",
+      status: "failed",
+      reason:
+        "the closing response did not contain a valid structured participant report; asked once more: OpenAI Responses 500; closing request usage is unreported",
+      usageReported: false,
+    });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow]);
+  });
+
+  it("says the first closing request was sent when the adapter refuses to ask once more", async () => {
+    const refused: Answer = async () => {
+      throw new ComputerUseAdmissionLimitError();
+    };
+    const { trace, bodies } = await stoppedSession([closingSaying("I renamed it."), refused]);
+    expect(bodies).toHaveLength(3);
+    expect(trace.debrief).toEqual({
+      trigger: "stop_when",
+      status: "failed",
+      reason:
+        "the closing response did not contain a valid structured participant report; not asked again: the adapter reported a local admission limit before provider dispatch",
+      usageReported: true,
+    });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow]);
+  });
+
+  it("keeps the first closing reply's usage when the reply asked once more reports none", async () => {
+    const { usage: _usage, ...unreported } = withImpressions;
+    const { trace } = await stoppedSession([closingSaying("I renamed it."), unreported]);
+    expect(trace.debrief).toMatchObject({ status: "completed", usageReported: false });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow]);
+  });
+
+  it("gives the request asked once more a time bound of its own", async () => {
+    const { trace } = await stoppedSession(
+      [after(150, closingSaying("I renamed it.")), after(150, withImpressions)],
+      { turnTimeoutMs: 200 },
+    );
+    expect(trace.debrief).toMatchObject({ status: "completed", usageReported: true });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow, withSchemaRow]);
+  });
+
+  it("does not ask once more after the first closing reply crossed the spend cap", async () => {
+    const { trace, bodies } = await stoppedSession(
+      [closingSaying("I renamed it."), withImpressions],
+      { maxUsd: 1, estimateTurnCostUsd: (usage) => (usage.turns?.length ?? 0) * 0.75 },
+    );
+    expect(bodies).toHaveLength(2);
+    expect(trace.debrief).toEqual({
+      trigger: "stop_when",
+      status: "failed",
+      reason:
+        "the closing response did not contain a valid structured participant report; not asked again: the estimated model budget was reached",
+      usageReported: true,
+    });
+    expect(trace.tokenUsage?.turns).toEqual([turnRow, withoutSchemaRow]);
+  });
 });
 
 describe("limits the OpenAI participant is told", () => {
@@ -487,6 +571,7 @@ describe("limits the OpenAI participant is told", () => {
     const h = retried();
     await h.provider.nextTurn(request, signal);
     await h.provider.debrief!(request, signal);
+    await h.provider.debrief!(request, signal);
     expect(schemaOf(h.bodies[2])).toEqual({
       type: "object",
       additionalProperties: false,
@@ -503,6 +588,7 @@ describe("limits the OpenAI participant is told", () => {
   it("asks for impressions only within the same limits", async () => {
     const h = retried();
     await h.provider.nextTurn(request, signal);
+    await h.provider.requestImpressions!(request, signal);
     await h.provider.requestImpressions!(request, signal);
     expect(schemaOf(h.bodies[2])).toEqual({
       type: "object",
@@ -544,8 +630,9 @@ describe("impressions in the captured OpenAI closing report", () => {
     await h.provider.nextTurn(request, signal);
     const result = await h.provider.debrief!(request, signal);
     expect(result.closingReport).toBeUndefined();
-    expect(result.usage).toMatchObject({ input: 27086, output: 442 });
-    expect(h.bodies).toHaveLength(3);
+    expect(result.closingRetry).toBe(true);
+    expect(result.usage).toMatchObject({ input: 13543, output: 221 });
+    expect(h.bodies).toHaveLength(2);
   });
 });
 
@@ -647,7 +734,9 @@ describe("impressions-only request after the participant ends the session itself
   ])("keeps no impressions from a reply %s, after %i requests", async (_name, requests, reply) => {
     const h = sequence([finalAnswer, reply(), reply()]);
     await h.provider.nextTurn(request, signal);
-    const result = await h.provider.requestImpressions!(hint, signal);
+    // As the loop asks: once, and once more for a reply marked closingRetry.
+    const first = await h.provider.requestImpressions!(hint, signal);
+    const result = first.closingRetry ? await h.provider.requestImpressions!(hint, signal) : first;
     expect(result.impressions).toBeUndefined();
     expect(result.usage?.input).toBeGreaterThan(0);
     expect(h.bodies).toHaveLength(requests);
