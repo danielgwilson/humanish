@@ -143,6 +143,16 @@ describe("computer-use completion provenance", () => {
       );
       expect(run).toEqual(original);
     });
+
+    it("qualifies the completion line an older bundle wrote for a clock end in place, under one header", () => {
+      const run = clockEnd("session_cap", "not_reached");
+      // The summary 0.125.0 wrote for this run.
+      run.review.summary =
+        "1 participant took part: 1/1 reported reaching the goal. Reader: DID NOT REACH THE GOAL.";
+      expect(withCuaReviewProvenance(run.review, run.streams).summary).toBe(
+        "1 participant took part: 1/1 recorded completions (1 ran until its session cap). Reader: DID NOT REACH THE GOAL.",
+      );
+    });
   });
 
   it("does not promote a quoted condition or an unfinished dwell to condition evidence", () => {

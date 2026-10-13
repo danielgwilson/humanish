@@ -1,5 +1,6 @@
 import { ACTOR_STATUSES, type ActorStatus, type ActorTrace } from "../actors/contract.js";
 import {
+  cuaEndpointSource,
   cuaGoalSource,
   isClockEnd,
   isCuaTrace,
@@ -286,11 +287,15 @@ export function formatParticipantOutcomes(
 /** Presentation details tolerate optional legacy actor payloads without changing their tallies. */
 export function participantOutcomeDetails(
   streams: readonly { actor?: unknown; status?: unknown }[],
+  goalSourceOf: (
+    actor: unknown,
+    recordedStatus: unknown,
+  ) => CuaGoalSource | undefined = cuaGoalSource,
 ): ParticipantOutcomeDetail[] {
   return streams.flatMap((stream) => {
     if (!isRecord(stream.actor)) return [];
     const actor = stream.actor;
-    const goalSource = cuaGoalSource(actor, stream.status);
+    const goalSource = goalSourceOf(actor, stream.status);
     if (!(ACTOR_STATUSES as readonly string[]).includes(String(actor.status))) {
       return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
     }
@@ -339,6 +344,12 @@ export function withCuaReviewProvenance(
   const { reachedGoal, total } = review.participants;
   const bareLine = `${reachedGoal}/${total} reached the goal`;
   const qualifiedLine = participantCompletionLine(review.participants, details);
+  // Earlier releases qualified the count with the endpoint source (cuaEndpointSource), which
+  // reads a clock end as a participant report.
+  const endpointLine = participantCompletionLine(
+    review.participants,
+    participantOutcomeDetails(streams, cuaEndpointSource),
+  );
   // A summary with no count gets it in a header. Earlier releases wrote a header in other words.
   const header = `${plural(total, "participant")} took part: ${outcomes}.${tasks} `;
   const olderHeader = `Run gate: ${review.verdict}. Participants: ${outcomes}.${tasks} Recorded summary: `;
@@ -348,7 +359,9 @@ export function withCuaReviewProvenance(
       ? review.summary.split(bareLine).join(qualifiedLine)
       : review.summary.includes(qualifiedLine)
         ? review.summary
-        : `${header}${review.summary}`;
+        : review.summary.includes(endpointLine)
+          ? review.summary.split(endpointLine).join(qualifiedLine)
+          : `${header}${review.summary}`;
   return {
     ...review,
     summary,
