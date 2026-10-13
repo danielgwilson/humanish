@@ -292,7 +292,7 @@ describe("immutable study analysis store", () => {
     await mkdir(outside);
     await writeFile(path.join(outside, "sentinel"), "unchanged");
     await symlink(outside, path.join(prepared.physicalRunRoot, "analysis"));
-    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow();
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow("must not be symbolic links");
     expect((await loadAnalysis(prepared)).state).toBe("invalid");
     expect((await loadAnalysis(prepared, "../outside")).state).toBe("invalid");
     expect(await readFile(path.join(outside, "sentinel"), "utf8")).toBe("unchanged");
@@ -719,6 +719,36 @@ describe("immutable study analysis store", () => {
       goalSource: null,
     });
   });
+
+  // 0.125.0 recorded participant_report for these sessions, and saved analyses hash that value.
+  it.each(["session_cap", "scheduled_end"])(
+    "records the completion provenance 0.125.0 recorded for a session that passed at its %s",
+    async (stopCause) => {
+      const changed = JSON.parse(source.toString());
+      Object.assign(changed.streams[0].actor, {
+        status: "passed",
+        completionReason: "goal_satisfied",
+        lane: "computer-use",
+        protocol: "cua-loop",
+        stopCause,
+        declaredOutcome: "not_reached",
+      });
+      for (const item of changed.streams[0].actor.items) item.lifecycle = "completed";
+      source = Buffer.from(JSON.stringify(changed));
+      await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+      const captured = await captureEvidence(prepared, source);
+      expect(captured.participants[0]!.provenance).toMatchObject({
+        stopCause,
+        goalSource: "participant_report",
+        declaredOutcome: "not_reached",
+      });
+      await writeAnalysis(prepared, syntheticArtifact(captured));
+      expect(await loadAnalysis(prepared)).toMatchObject({
+        state: "ready",
+        analysis: { participants: captured.participants },
+      });
+    },
+  );
 
   it("keeps task goals paired with their IDs independently of measurement order", async () => {
     const changed = JSON.parse(source.toString());

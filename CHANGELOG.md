@@ -38,7 +38,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   says the same, and the Observer labels it `Ran until session cap` or `Ran until scheduled end`.
   It still passes. A participant that declared `REACHED THE GOAL.` still counts in `reachedGoal`.
   An older bundle keeps its `reachedGoal` count when re-read, and its completion line names the
-  clock end.
+  clock end. Analysis input still records `goalSource: participant_report` for such a participant,
+  as 0.125.0 did, so an analysis saved then stays valid; its `stopCause` and `declaredOutcome`
+  name the clock end.
 - The declared outcome skips a `>` blockquote line. A closing report or last message whose first
   line quotes a page's `REACHED THE GOAL.` no longer declares it; the blocker scan already dropped
   blockquote lines.

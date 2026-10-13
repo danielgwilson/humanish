@@ -1,9 +1,9 @@
 import { ACTOR_STATUSES, type ActorStatus, type ActorTrace } from "../actors/contract.js";
 import {
   cuaGoalSource,
+  isClockEnd,
   isCuaTrace,
   CUA_COMPLETION_NOTE,
-  type ClockEnd,
   type CuaGoalSource,
 } from "../actors/goal-source.js";
 import { actorEnding, actorStopCauseLabel } from "../actors/stop-cause.js";
@@ -101,10 +101,6 @@ export function formatRunTaskFunnel(funnel: RunTaskFunnel): string {
 }
 
 type ParticipantOutcomeDetail = { status: ActorStatus; label?: string; goalSource?: CuaGoalSource };
-
-function isClockEnd(source: CuaGoalSource | undefined): source is ClockEnd {
-  return source === "scheduled_end" || source === "session_cap";
-}
 
 /**
  * "1 ran until its session cap", "2 ran until their scheduled end", grouped by clock end, most
