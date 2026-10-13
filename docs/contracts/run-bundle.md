@@ -454,6 +454,25 @@ contain the older requested-screen `stream.viewport` shape without `desktopGeome
 Deterministic Playwright-style adapters remain free to declare a viewport that they also render
 exactly; this hosted-desktop rule does not change that contract.
 
+## Desktop Files
+
+A hosted computer-use participant's stream carries `desktopFiles` when its study gave it
+`participants[].files`: one entry per file confirmed on the desktop before the participant
+started, in the order they landed.
+
+```yaml
+desktopFiles:
+  - as: Downloads/insurance-card.png
+    size: 251
+    sha256: <64 hex characters>
+```
+
+`as` is relative to the desktop user's home folder. `size` is the byte count humanish copied,
+which `files.getInfo` on the desktop matched. `sha256` is the digest of those bytes, read on the
+host before any sandbox existed. The contents and the `from` path are not recorded. A participant
+whose copy failed records the files that landed before the failure. No `desktopFiles` means the
+study gave the participant no files.
+
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for

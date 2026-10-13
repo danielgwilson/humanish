@@ -210,6 +210,22 @@ The rest of this section names keys by their v3 spelling:
   Public/non-loopback targets still require `policies.allowPublicTargets: true`.
   `target` is mutually exclusive with `entry`: `target` is an absolute app-url
   browser target; `entry` is a shared-world participant's same-origin path;
+- `participants[].files` (computer-use on `execution.target: e2b-desktop` only):
+  1 to 20 `{ from, as }` entries, each a file copied onto that participant's desktop
+  before its browser opens. `from` is relative to the folder that holds the study file
+  (`cwd` for a library config); `as` is relative to the desktop user's home folder.
+  The parser refuses an absolute path, a `.`, `..` or empty part, a backslash, an `as`
+  that starts with `~`, looks like a secret or local path, repeats another `as` or is
+  its folder, and a `from` the local-tree denylist names (`isLocalTreeDenylisted` in
+  `src/subject/local-tree-archive.ts`). The route reads each distinct `from` once, before
+  any sandbox and on dry runs too, with `readContainedRegularFile`: a missing file, a
+  folder, a symbolic or hard link, a path out of the folder, a file above 10 MiB, more
+  than 25 MiB for one participant or 100 MiB of distinct files for the study is
+  refused with `HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID` (`readDesktopFiles` in
+  `src/study/desktop-files.ts`). Each file
+  is written with the E2B SDK's `files.write` and its `files.getInfo` size must match, or
+  the participant fails before its first turn. The stream records `desktopFiles`
+  ([run-bundle.md](run-bundle.md#desktop-files)). Other routes refuse the field;
 - a `participants` entry with `count: n` (computer-use E2B route): a group of
   repeated participants. It needs an `id` and the parser expands it to
   `<id>-01` … `<id>-NN`, even when n is 1, before the engine runs (`viewer-01`,

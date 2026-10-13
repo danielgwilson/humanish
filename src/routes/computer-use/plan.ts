@@ -21,7 +21,11 @@ import {
   planBase,
   provisionedSubject,
 } from "../../study/plan-base.js";
-import { computerUseParticipants, declaredTargets } from "../../study/plan-participants.js";
+import {
+  type ComputerUseParticipant,
+  computerUseParticipants,
+  declaredTargets,
+} from "../../study/plan-participants.js";
 import { planStarts, windowDeadlineRefusal, type ArrivalPlan } from "../../study/arrivals.js";
 import type {
   AppUrlSubject,
@@ -379,6 +383,20 @@ function rerunPlan({
 }
 
 /**
+ * Why participants[].files cannot run on this runner, or undefined. The parser refuses them off the
+ * hosted desktop; a library caller's config skips the parser, and only the hosted desktop copies
+ * files.
+ */
+function desktopFilesRunnerReason(
+  desktop: ComputerUseRunner["desktop"],
+  participants: readonly ComputerUseParticipant[],
+): string | undefined {
+  if (desktop === "e2b-desktop" || participants.every((entry) => entry.files === undefined))
+    return undefined;
+  return `participants[].files: ${DESKTOP_FILES_ROUTE_REASON}. This study runs on a ${desktop} desktop; remove the files or set execution.target: e2b-desktop.`;
+}
+
+/**
  * Plan a computer-use study. It is called for any config handed to the computer-use runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
  */
@@ -513,15 +531,9 @@ export function planComputerUseStudy(
     : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
       : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
-  // The parser refuses these; a library caller's config skips it, and only the hosted desktop
-  // copies files.
-  if (runner.desktop !== "e2b-desktop" && participants.some((entry) => entry.files !== undefined))
-    return refuse(
-      "in-scope",
-      "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID",
-      `participants[].files: ${DESKTOP_FILES_ROUTE_REASON}. This study runs on a ${runner.desktop} desktop; remove the files or set execution.target: e2b-desktop.`,
-      actor,
-    );
+  const filesReason = desktopFilesRunnerReason(runner.desktop, participants);
+  if (filesReason)
+    return refuse("in-scope", "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID", filesReason, actor);
   const starts = startsOf(config, runner, input.concurrentSandboxes, ceiling.ms);
   if (!starts.ok)
     return refuse("after-personas", "HUMANISH_COMPUTER_USE_FANOUT_INVALID", starts.message, actor);

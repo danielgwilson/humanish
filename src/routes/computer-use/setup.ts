@@ -218,11 +218,7 @@ export async function admitCuaRun(
   }
   const { participantRuns, participantPlan, rerunLineage } = participants;
   const participantCount = participantRuns.length;
-  // Read on dry runs too, so a bad file is named before anyone pays for a live one.
-  const desktopFiles = await readDesktopFiles(
-    studyFolder(input.cwd, plan.study),
-    participantRuns.map((run) => run.planned),
-  );
+  const desktopFiles = await readStudyDesktopFiles(input.cwd, plan, participantRuns);
   if (!desktopFiles.ok)
     return refuse(
       "HUMANISH_COMPUTER_USE_DESKTOP_FILES_INVALID",
@@ -331,13 +327,23 @@ export async function admitCuaRun(
 }
 
 /**
- * The folder that holds the study file, which participants[].files paths are relative to. A
- * library caller's config comes from no file, so its paths are relative to the project.
+ * Each participant's files, read on dry runs too so a bad file is named before a live run. Paths
+ * are relative to the folder that holds the study file; a library caller's config comes from no
+ * file, so its paths are relative to the project.
  */
-function studyFolder(cwd: string, study: ComputerUsePlan["study"]): string {
-  return study?.path === undefined
-    ? path.resolve(cwd)
-    : path.dirname(path.resolve(cwd, study.path));
+function readStudyDesktopFiles(
+  cwd: string,
+  plan: ComputerUsePlan,
+  participantRuns: readonly DesktopParticipantRun[],
+): ReturnType<typeof readDesktopFiles> {
+  const folder =
+    plan.study?.path === undefined
+      ? path.resolve(cwd)
+      : path.dirname(path.resolve(cwd, plan.study.path));
+  return readDesktopFiles(
+    folder,
+    participantRuns.map((run) => run.planned),
+  );
 }
 
 /**
