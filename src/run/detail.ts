@@ -15,7 +15,7 @@ import path from "node:path";
 import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
-import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
+import { RUN_BUNDLE_FILE, type RunBundle, type StoredRunBundle } from "./bundle.js";
 import { savedCaption } from "./participant-caption.js";
 import { recordedPersonaId, streamParticipantIdOf } from "./participant-records.js";
 import type { RunStream } from "./streams.js";
@@ -214,7 +214,10 @@ async function displayedStreams(
   streams: StreamFacts[],
   bundle: object,
 ): Promise<StreamFacts[]> {
-  const loaded = await loadStreamTraces(runPaths, { ...bundle, streams } as unknown as RunBundle);
+  const loaded = await loadStreamTraces(runPaths, {
+    ...bundle,
+    streams,
+  } as unknown as StoredRunBundle);
   return displayedTraces(loaded).streams as unknown as StreamFacts[];
 }
 

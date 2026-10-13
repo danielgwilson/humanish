@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import {
@@ -17,7 +17,7 @@ import {
   splitStreamTraces,
   type TraceFileReader,
 } from "../../src/run/stream-trace.js";
-import type { RunStream } from "../../src/run/streams.js";
+import type { StoredRunStream } from "../../src/run/streams.js";
 
 const FIXTURE = path.resolve("tests/fixtures/runs-0107/source-convention-only");
 const RUN = "fanout-proof-2026-10-01t00-00-00-000z-v2";
@@ -44,7 +44,7 @@ const TWO_LINES = `${JSON.stringify(FIRST)}\n${JSON.stringify(SECOND)}\n`;
 let cwd: string;
 let runRoot: string;
 let runPaths: PreparedRunArtifactPaths;
-let stored: RunBundle;
+let stored: StoredRunBundle;
 
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-live-items-"));
@@ -68,7 +68,7 @@ function liveStream(
   file: string,
   text: string,
   overrides: Record<string, unknown> = {},
-): RunStream {
+): StoredRunStream {
   const generation = Number(/\.(\d+)\.ndjson$/.exec(file)![1]);
   return {
     ...stored.streams[0]!,
@@ -83,12 +83,12 @@ function liveStream(
         sha256: sha256(text),
       },
       ...overrides,
-    } as unknown as NonNullable<RunStream["liveActor"]>,
+    } as unknown as NonNullable<StoredRunStream["liveActor"]>,
   };
 }
 
 /** The bundle with its first stream replaced, as an in-progress run.json holds it. */
-function inProgress(stream: RunStream): RunBundle {
+function inProgress(stream: StoredRunStream): StoredRunBundle {
   const { outcome: _outcome, ...rest } = stored;
   return { ...rest, streams: [stream, ...stored.streams.slice(1)] };
 }

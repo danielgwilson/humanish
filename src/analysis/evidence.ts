@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
-import { isReadRunBundleSchema, RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
+import {
+  isReadRunBundleSchema,
+  RUN_BUNDLE_FILE,
+  type RunBundle,
+  type StoredRunBundle,
+} from "../run/bundle.js";
 import { loadStreamTraces } from "../run/stream-trace.js";
 import type { RunStream } from "../run/streams.js";
 import {
@@ -53,7 +58,7 @@ export type EvidenceLimits = {
 };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
-function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
+function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): StoredRunBundle {
   if (bytes.length > EVIDENCE_LIMITS.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
@@ -92,7 +97,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
     )
       throw new Error("ANALYSIS_SOURCE_INVALID");
   }
-  return value as unknown as RunBundle;
+  return value as unknown as StoredRunBundle;
 }
 
 /**

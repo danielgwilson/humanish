@@ -19,6 +19,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunOutcome } from "../run/bundle-shape.js";
+import type { StoredRunBundle } from "../run/bundle.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
 import {
   displayedTraces,
@@ -362,11 +363,11 @@ async function observerDataOrReason(
         (await pastReadLimit(runRoot, "run.json")) ??
         "run.json is there but could not be read: it is a link or changed.",
     };
-  let stored: Parameters<typeof buildObserverData>[0];
+  let stored: StoredRunBundle;
   try {
     const parsed: unknown = JSON.parse(bundleBytes.toString("utf8"));
     if (!isRecord(parsed) || !Array.isArray(parsed.streams)) throw new Error("not a run bundle");
-    stored = parsed as unknown as Parameters<typeof buildObserverData>[0];
+    stored = parsed as unknown as StoredRunBundle;
   } catch {
     return { unavailable: "run.json is not a run bundle; it may be mid-write, so try again." };
   }

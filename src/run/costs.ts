@@ -6,7 +6,7 @@ import { EVIDENCE_LIMITS } from "../analysis/evidence.js";
 import { readBoundedFile } from "./evidence-files.js";
 import { readAutomaticAnalysisAccounting } from "../analysis/job.js";
 import { readAnalysisAccountingRecords } from "../analysis/store-executions.js";
-import { RUN_BUNDLE_FILE } from "./bundle.js";
+import { RUN_BUNDLE_FILE, type StoredRunBundle } from "./bundle.js";
 
 /** Additive accounting for retained attempts. Null means no estimate, never an invented zero. */
 export interface CostTotals {
@@ -64,6 +64,9 @@ export function addCostTotals(into: CostTotals, next: CostTotals): void {
   }
 }
 
+/** What the accounting pass reads of run.json, unchecked: it tests each field before using it. */
+type CostFacts = Partial<Pick<StoredRunBundle, "runId" | "cost" | "streams">>;
+
 /** A read-only, bounded accounting pass. Never validates findings, dispatches, repairs or writes. */
 export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise<CostRow> {
   const costs = emptyCostTotals();
@@ -77,9 +80,9 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
     const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
-    let bundle = null;
+    let bundle: CostFacts | null = null;
     try {
-      bundle = bytes ? JSON.parse(bytes.toString("utf8")) : null;
+      bundle = bytes ? (JSON.parse(bytes.toString("utf8")) as CostFacts) : null;
     } catch {
       runWarnings.push("RUN_COST_SOURCE_UNREADABLE");
     }

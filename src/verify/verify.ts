@@ -162,7 +162,7 @@ export async function verifyResolvedRun(
   // Every check below reads the streams with their traces loaded; a trace that does not match its
   // index fails the evidence-artifacts check and its stream is checked without its items.
   const traces = await loadTraces(runPaths, runJsonValue(bundleRead));
-  const { bundle, refusedTraces } = traces;
+  const { bundle, recorded, refusedTraces } = traces;
   const cleanupRead = await readRunJsonIfExists(runPaths, "cleanup.json");
   const review = {
     json: await readRunJsonIfExists(runPaths, "review.json"),
@@ -186,25 +186,25 @@ export async function verifyResolvedRun(
     derivedPublicSafetyFindings,
     {
       recordingPaths: new Set(
-        isRunBundle(bundle)
+        bundle
           ? bundle.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : []))
           : [],
       ),
-      screenshotPaths: isRunBundle(bundle) ? streamScreenshotPaths(bundle) : new Set(),
+      screenshotPaths: bundle ? streamScreenshotPaths(bundle) : new Set(),
       // A run from before 0.110 with no receipts still names its ids in run.json.
-      sandboxIds: [...new Set([...journaledSandboxIds, ...keyedSandboxIds(bundle)])],
+      sandboxIds: [...new Set([...journaledSandboxIds, ...keyedSandboxIds(recorded)])],
       sandboxIdFiles,
     },
     unscannedArtifacts,
-    isRunBundle(bundle) ? bundle.simulations.length : 0,
+    bundle ? bundle.simulations.length : 0,
   );
   addTraceScan(traces, publicSafetyFindings, unscannedArtifacts);
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
   if (
     publicSafetyFindings.length < MAX_REPORTED_FINDINGS &&
-    bundle !== null &&
-    containsSensitive(JSON.stringify(bundle))
+    recorded !== null &&
+    containsSensitive(JSON.stringify(recorded))
   ) {
     publicSafetyFindings.push("sensitive decoded run.json");
   }
@@ -216,15 +216,15 @@ export async function verifyResolvedRun(
         ? "no run text artifact or public-proof path matches a known secret or browser-profile pattern"
         : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
-  const missingEvidenceArtifacts = isRunBundle(bundle)
+  const missingEvidenceArtifacts = bundle
     ? await missingLocalEvidenceArtifacts(runPaths, bundle)
     : [];
-  const redactedShapeFrames = isRunBundle(bundle)
+  const redactedShapeFrames = bundle
     ? await redactedShapeFramePaths(runPaths, bundle)
     : new Set<string>();
-  const invalidEvidenceReferences = isRunBundle(bundle) ? invalidRunEvidenceReferences(bundle) : [];
+  const invalidEvidenceReferences = bundle ? invalidRunEvidenceReferences(bundle) : [];
   checks.push(
-    evidenceArtifactsCheck(isRunBundle(bundle), [
+    evidenceArtifactsCheck(bundle !== undefined, [
       ...refusedTraces,
       ...(invalidEvidenceReferences.length > 0
         ? [`invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`]
@@ -244,10 +244,10 @@ export async function verifyResolvedRun(
         "Derived analysis contains sensitive text or unsafe artifact paths; sharing is blocked, original recording remains independently verifiable.",
     });
   const ok = checks.every((check) => check.ok);
-  const notFinished = isRunBundle(bundle)
+  const notFinished = bundle
     ? await runNotFinished(runPaths, bundle)
     : { warnings: [], unfinished: undefined };
-  const warnings = isRunBundle(bundle)
+  const warnings = bundle
     ? [
         ...rawScreenshotPostureWarnings(bundle, redactedShapeFrames),
         ...undeclaredSubjectStateWarnings(bundle),
@@ -256,7 +256,7 @@ export async function verifyResolvedRun(
         ...notFinished.warnings,
       ]
     : [];
-  const shareSafety = isRunBundle(bundle)
+  const shareSafety = bundle
     ? buildShareSafety({
         ok,
         bundle,
@@ -333,13 +333,14 @@ function evidenceArtifactsCheck(shaped: boolean, problems: string[]): VerifyChec
 /**
  * run.json with each stream's trace loaded, one file at a time, and the refusal of each trace that
  * does not match its index, with the ids of those streams. A run.json that fails the shape guard
- * is returned as it is.
+ * gives no bundle. `recorded` is the loaded bundle, or run.json as parsed when it has none.
  */
 async function loadTraces(
   runPaths: PreparedRunArtifactPaths,
   stored: unknown,
 ): Promise<{
-  bundle: unknown;
+  bundle: RunBundle | undefined;
+  recorded: unknown;
   refusedTraces: string[];
   refusedStreams: ReadonlySet<string>;
   sensitive: string[];
@@ -348,7 +349,14 @@ async function loadTraces(
 }> {
   const scanned = { sensitive: [] as string[], opaque: [] as string[] };
   if (!isRunBundle(stored))
-    return { bundle: stored, refusedTraces: [], refusedStreams: new Set(), ...scanned, pages: [] };
+    return {
+      bundle: undefined,
+      recorded: stored,
+      refusedTraces: [],
+      refusedStreams: new Set(),
+      ...scanned,
+      pages: [],
+    };
   // Each trace is source evidence: scanned by the bytes it was joined from, apart from the
   // directory walk and any path exemption the walk makes.
   const { bundle, refused } = await loadStreamTraces(runPaths, stored, {
@@ -359,6 +367,7 @@ async function loadTraces(
   });
   return {
     bundle,
+    recorded: bundle,
     refusedTraces: refused.map((error) => error.message),
     refusedStreams: new Set(refused.map((error) => error.streamId)),
     ...scanned,
@@ -523,18 +532,17 @@ function findingsCheck(
 const SHAPE_UNCHECKED = "not checked, because run.json failed the shape check";
 
 /**
- * The bundle-content checks, in report order. A bundle that fails its shape guard has no findings.
- * `refusedStreams` names the streams whose traces the loader refused, which the evidence-artifacts
+ * The bundle-content checks of the loaded bundle `valid`, in report order. Without one (run.json
+ * failed its shape guard) no check has findings. `refusedStreams` names the streams whose traces the loader refused, which the evidence-artifacts
  * check reports.
  */
 async function evidenceChecks(
   runPaths: PreparedRunArtifactPaths,
-  bundle: unknown,
+  valid: RunBundle | undefined,
   cleanupRead: RunJsonRead,
   refusedStreams: ReadonlySet<string>,
 ): Promise<VerifyCheck[]> {
   const cleanupJson = runJsonValue(cleanupRead);
-  const valid = isRunBundle(bundle) ? bundle : null;
   const pass = (message: string) => (valid ? message : SHAPE_UNCHECKED);
   const checks: VerifyCheck[] = [
     findingsCheck(
