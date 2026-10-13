@@ -160,6 +160,8 @@ it("local saved moments admit bounded identifiers rather than arbitrary payloads
   };
   expect(isMoments([moment])).toBe(true);
   expect(isMoments([{ ...moment, frame: -1 }])).toBe(false);
+  expect(isMoments([{ ...moment, frame: Number.MAX_SAFE_INTEGER }])).toBe(true);
+  expect(isMoments([{ ...moment, frame: Number.MAX_SAFE_INTEGER + 1 }])).toBe(false);
   expect(isMoments(Array(51).fill(moment))).toBe(false);
   expect(isStringList(["x".repeat(257)])).toBe(false);
 });
