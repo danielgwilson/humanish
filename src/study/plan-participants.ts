@@ -49,7 +49,7 @@ export interface DesktopParticipant extends Participant {
     readonly dwell?: DwellWindow;
     readonly reasoningEffort?: ReasoningEffort;
     readonly maxOutputTokens?: number;
-    /** actor.maxWaitMs: the longest one wait action lasts. */
+    /** actor.maxWaitMs: the longest one wait or one turn of only waits lasts. */
     readonly maxWaitMs?: number;
     /**
      * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts

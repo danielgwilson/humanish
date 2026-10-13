@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A study whose `actor.maxWaitMs` is out of range, or whose `actor.idleWaitMs` is longer than it,
+  is refused with a message that calls `actor.maxWaitMs` "the longest one wait or one turn of only
+  waits lasts". It said "the longest one wait action lasts", which since 0.131.0 leaves out that
+  the field also caps how long a turn of only waits is watched.
+
 ## 0.131.0: Participants that wait watch the screen and wake when it changes (2026-10-13)
 
 humanish 0.131.0 watches the screen while a computer-use or shared-world participant waits. A

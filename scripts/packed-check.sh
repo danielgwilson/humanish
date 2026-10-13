@@ -2760,7 +2760,7 @@ for v in 90000 999 3600001; do
   mw_view="$mw_view $v:$?"
   rm -f "$project/humanish/studies/wait-max-$v.yaml"
 done
-mw_range="actor.maxWaitMs, the longest one wait action lasts, must be a whole number of milliseconds from 1000 to 3600000."
+mw_range="actor.maxWaitMs, the longest one wait or one turn of only waits lasts, must be a whole number of milliseconds from 1000 to 3600000."
 if [ "$mw_view" = " 90000:0 999:2 3600001:2" ] && grep -qxF "humanish run wait-max-90000: dry run finished" "$work/logs/wait-max-90000.out" &&
   grep -qF "$mw_range" "$work/logs/wait-max-999.out" "$work/logs/wait-max-999.err" &&
   grep -qF "$mw_range" "$work/logs/wait-max-3600001.out" "$work/logs/wait-max-3600001.err"; then
@@ -2823,7 +2823,7 @@ wait_cu_study wait-idle-over "  maxWaitMs: 45000
 hx run wait-idle-over --no-open >"$work/logs/wait-idle-over.out" 2>"$work/logs/wait-idle-over.err"
 wi_over=$?
 rm -f "$project/humanish/studies/wait-idle-15000.yaml" "$project/humanish/studies/wait-idle-over.yaml"
-wi_msg="actor.idleWaitMs (60000) is longer than actor.maxWaitMs (45000), the longest one wait action lasts. Lower actor.idleWaitMs or raise actor.maxWaitMs."
+wi_msg="actor.idleWaitMs (60000) is longer than actor.maxWaitMs (45000), the longest one wait or one turn of only waits lasts. Lower actor.idleWaitMs or raise actor.maxWaitMs."
 if [ "$wi_ok" = 0 ] && [ "$wi_over" = 2 ] && grep -qF "$wi_msg" "$work/logs/wait-idle-over.out" "$work/logs/wait-idle-over.err"; then
   record "run: actor.idleWaitMs plans; above actor.maxWaitMs it is refused" PASS "15000 exit 0; 60000 over 45000 exit 2 naming both" "#1736"
 else

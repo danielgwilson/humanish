@@ -100,7 +100,7 @@ describe("actor.idleWaitMs", () => {
     expect(result.ok).toBe(false);
     if (!result.ok)
       expect(result.error.message).toBe(
-        "actor.idleWaitMs (60000) is longer than actor.maxWaitMs (45000), the longest one wait action lasts. Lower actor.idleWaitMs or raise actor.maxWaitMs.",
+        "actor.idleWaitMs (60000) is longer than actor.maxWaitMs (45000), the longest one wait or one turn of only waits lasts. Lower actor.idleWaitMs or raise actor.maxWaitMs.",
       );
   });
 
