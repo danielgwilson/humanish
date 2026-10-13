@@ -140,8 +140,9 @@ function sharedWorldSummary(
     const served = facts.external ? ", as it is deployed" : ", served from a sandbox";
     return `Dry run: ${people} would use ${app} at the same time${served}. No sandboxes were launched and $0 was spent.`;
   }
+  // The live summary is written once, before any participant starts, so it names the plan.
   if (facts.inProgress) {
-    return `${people} ${count === 1 ? "is" : "are"} using ${app} at the same time. The run is still going, so nothing here is final.`;
+    return `${people} ${count === 1 ? "is planned, in" : "are planned, all in"} ${app}. The run is still going, so nothing here is final.`;
   }
   const passed = facts.outcomes.filter((outcome) => outcome.ok);
   const reached = passed.filter((outcome) => outcome.completionReason === "goal_satisfied").length;

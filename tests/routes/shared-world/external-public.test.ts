@@ -1703,6 +1703,32 @@ describe("the live Observer gate on the external-public plane", () => {
 });
 
 describe("the in-progress bundle on the external-public plane", () => {
+  it("names the plan in its summary before any participant has started", async () => {
+    const runId = "external-public-planned-summary";
+    const inner = makeExternalRunSession({ seen: [] });
+    const live: string[] = [];
+    const { env, deps } = makeExternalSeams(async (options) => {
+      // The host's session is the first to start; run.json still holds the in-progress bundle.
+      if (live.length === 0) {
+        const runJson = path.join(cwd, ".humanish", "runs", runId, "run.json");
+        live.push((JSON.parse(await readFile(runJson, "utf8")) as RunBundle).review.summary);
+      }
+      return inner(options);
+    });
+    const result = await runSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      env,
+      deps,
+      runId,
+    });
+    expect(result.ok).toBe(true);
+    expect(live).toEqual([
+      "3 participants are planned, all in one public app. The run is still going, so nothing here is final.",
+    ]);
+  });
+
   it("publishes each participant's live trace with no Observer attached", async () => {
     const inner = makeExternalRunSession({ seen: [] });
     let seatsTraced = 0;
