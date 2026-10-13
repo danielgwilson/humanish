@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
 import type { ActorCapabilities, ActorPersonaRef } from "../../../src/actors/contract.js";
-import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -30,11 +29,13 @@ import type {
   CuaRunBudget,
   ParticipantRunOutcome,
 } from "../../../src/routes/computer-use/types.js";
-import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { parseStudy } from "../../../src/study/config.js";
-import { STUDY_SCHEMA } from "../../../src/study/types.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { participantPlanOf, participantRun } from "../../helpers/participant-run.js";
+import {
+  participantPlanOf,
+  participantRun,
+  participantRunDeps,
+} from "../../helpers/participant-run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -120,53 +121,20 @@ function clickingProvider(input: number, requests: CuaTurnRequest[]): CuaProvide
   };
 }
 
-/** A live in-process study's participant runner inputs, sharing one study budget ledger. */
+/** Participant runner inputs for an in-process study whose participants share one budget ledger. */
 async function inProcessParticipantDeps(
   runBudget: CuaRunBudget,
-): Promise<(provider: CuaProvider, executor: CuaExecutor) => CuaParticipantDeps> {
+): Promise<(provider: CuaProvider, executor: CuaExecutor) => Promise<CuaParticipantDeps>> {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-study-budget-"));
   temporary.push(cwd);
-  const parsed = parseStudy({
-    schema: STUDY_SCHEMA,
-    id: "study-budget",
-    route: "computer-use",
-    mode: "live",
-    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actor: { type: "openai-computer-use", persona: "first-time-visitor", mission: "Save a note." },
-    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-  });
-  if (!parsed.ok) throw new Error(parsed.error.message);
-  const artifactRoot = await prepareSelectedOutputDirectory(cwd, "artifacts");
-  return (provider, executor) => {
-    const deps: CuaParticipantDeps = {
-      residual: parsed.config,
-      studyId: parsed.config.id,
+  return async (provider, executor) => {
+    const deps = await participantRunDeps(cwd, {
       caps: { maxTotalUsd: runBudget.maxTotalUsd },
-      brain: { kind: "caller" },
-      appUrl: "http://127.0.0.1:3000/",
-      subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },
-      env: {},
-      openaiApiKey: "",
-      e2bApiKey: "",
-      requestTimeoutMs: 60_000,
-      sandboxMs: 60_000,
-      timeoutMs: 60_000,
       participantCount: 2,
-      artifactRoot,
-      studyCwd: cwd,
-      redactScreenshots: false,
-      scrubKnownValues: (value) => value,
       runBudget,
-      runSession: runCuaActorSession,
-      now: Date.now,
-      desktopModule: async () => {
-        throw new Error("An in-process participant must never load an E2B desktop");
-      },
       createProvider: async () => provider,
       inProcessExecutor: async () => executor,
-      onStream: async () => undefined,
-      reportSubjectPhase: () => undefined,
-    };
+    });
     deps.createDesktop = () => createInProcessDesktop(deps);
     return deps;
   };
@@ -202,7 +170,7 @@ async function siblingCrossesBudget(during: "look" | "action") {
   const run = (id: string, index: number) =>
     participantRun({ id, index, persona, instructions: "Save a note." });
   const siblingRequests: CuaTurnRequest[] = [];
-  const siblingDeps = participantDeps(
+  const siblingDeps = await participantDeps(
     clickingProvider(400_000, siblingRequests),
     changingDesktop(),
   );
@@ -213,7 +181,10 @@ async function siblingCrossesBudget(during: "look" | "action") {
   const requests: CuaTurnRequest[] = [];
   const outcome = await runCuaParticipant(
     run("first", 0),
-    participantDeps(clickingProvider(10_000, requests), changingDesktop({ [during]: runSibling })),
+    await participantDeps(
+      clickingProvider(10_000, requests),
+      changingDesktop({ [during]: runSibling }),
+    ),
   );
   return { outcome, requests, sibling, siblingRequests };
 }

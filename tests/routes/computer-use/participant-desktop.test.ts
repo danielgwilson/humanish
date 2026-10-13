@@ -12,7 +12,6 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { describeCodexCliAdmission } from "../../../src/actors/codex/codex-admission.js";
 import { runCuaParticipant } from "../../../src/routes/computer-use/participant-execution.js";
-import { type CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import type {
   ParticipantDesktop,
   ParticipantDesktopEvidence,
@@ -27,8 +26,7 @@ import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
 } from "../../../src/actors/computer-use/openai-provider.js";
-import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
-import { participantRun } from "../../helpers/participant-run.js";
+import { participantRun, participantRunDeps } from "../../helpers/participant-run.js";
 import { runComputerUse } from "../../helpers/route-run.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
@@ -80,35 +78,19 @@ async function fixture() {
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("The alternate port must never load an E2B desktop");
   });
-  const deps: CuaParticipantDeps = {
-    residual: parsed.config,
-    studyId: parsed.config.id,
-    caps: {},
+  const deps = await participantRunDeps(cwd, {
+    residual: config,
+    studyId: config.id,
     brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
-    appUrl: "http://127.0.0.1:3000/",
-    subject: { kind: "app-url", appUrl: "http://127.0.0.1:3000/", publicTargets: false },
-    env: {},
-    openaiApiKey: "",
-    e2bApiKey: "",
-    requestTimeoutMs: 60_000,
-    sandboxMs: 60_000,
-    timeoutMs: 60_000,
-    participantCount: 1,
-    artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
-    studyCwd: cwd,
-    redactScreenshots: false,
     scrubKnownValues: (value) => value.replaceAll("synthetic-secret-canary", "[scrubbed]"),
     runSession: vi.fn(async () => {
       throw new Error("Unexpected participant dispatch");
     }),
-    now: Date.now,
     desktopModule: loadDesktopModule,
-    onStream: async () => undefined,
-    reportSubjectPhase: () => undefined,
     signalReady: () => {
       order.push("ready");
     },
-  };
+  });
   let saved = false;
   const frame = PNG.sync.write(new PNG({ width: 16, height: 16 }));
   const backend: CuaExecutor = {
