@@ -89,6 +89,8 @@ export function planSharedWorldStudy(
     readonly sandboxCeiling: SandboxCeiling;
     /** How many sandboxes the operator's E2B plan runs at once (concurrentSandboxes). */
     readonly concurrentSandboxes: ConcurrentSandboxes;
+    /** HUMANISH_CUA_MAX_CONCURRENCY (concurrencyCap), which may only lower the participants at once. */
+    readonly concurrencyCap?: number | undefined;
   },
 ): SharedWorldPlanResult {
   const refuse = (
@@ -183,7 +185,7 @@ export function planSharedWorldStudy(
   const starts = startsOf(
     plane,
     config.execution?.concurrency,
-    input.concurrentSandboxes,
+    { sandboxes: input.concurrentSandboxes, cap: input.concurrencyCap },
     sessionTimeoutMs,
   );
   if (!starts.ok) return refuse(invalid, starts.message, actor);
@@ -237,7 +239,7 @@ export function planSharedWorldStudy(
 function startsOf(
   plane: SharedWorldPlane,
   declared: number | undefined,
-  limit: ConcurrentSandboxes,
+  limits: { readonly sandboxes: ConcurrentSandboxes; readonly cap: number | undefined },
   sessionMs: number,
 ):
   | { ok: true; count: number; arrivals: ArrivalPlan; warnings: string[] }
@@ -251,7 +253,7 @@ function startsOf(
       alongside: plane.kind === "provisioned" ? 1 : 0,
       minimum: 2,
     },
-    limit,
+    limits,
   );
   if (!atOnce.ok) return atOnce;
   const hostIndex = plane.participants.findIndex((participant) => participant.host === true);

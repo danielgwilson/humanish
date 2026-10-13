@@ -1055,8 +1055,8 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(result.ok).toBe(true);
     expect(result.plan).toMatchObject({ concurrency: 2, envLoweredConcurrencyFrom: 4, waves: 2 });
     expect(result.laneSummary).toMatchObject({ concurrency: 2, waves: 2 });
-    // The lab declares 4. The runner must take its bound from the participant plan, which the env
-    // override lowered to 2; the route plan still says 4, and both have a concurrency field.
+    // The study declares 4. HUMANISH_CUA_MAX_CONCURRENCY lowers the plan to 2, and the runner
+    // takes its bound from the plan.
     expect(active.max).toBe(2);
     expect(handle.maxLive()).toBeLessThanOrEqual(2);
   });

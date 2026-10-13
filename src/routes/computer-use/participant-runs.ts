@@ -18,7 +18,6 @@ import { resolveCommittedPersonas } from "../../study/persona-resolve.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
 import {
   CUA_FANOUT_STRATEGY,
-  CUA_MAX_CONCURRENCY_ENV,
   type CuaActorStudyErrorCode,
   type CuaParticipantDeps,
   type CuaParticipantPlan,
@@ -28,8 +27,7 @@ import {
   type ParticipantRunsAndPlan,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
 } from "./types.js";
-import { sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
-import { readPositiveInt } from "../../study/parse/values.js";
+import { CUA_MAX_CONCURRENCY_ENV, sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
 import { digestUrl } from "./bundle-parts.js";
 import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
@@ -39,7 +37,6 @@ import {
   describeArrivals,
   participantEnd,
   participantSession,
-  planArrivals,
   type ParticipantSchedule,
 } from "../../study/arrivals.js";
 
@@ -103,7 +100,7 @@ export function scheduledParticipantDeps(
  * declared participant runs at once, because a throttle nobody asked for silently turns "N actors
  * live" into waves; total session count and spend are the same either way, only wall-clock
  * and simultaneity differ. A declared execution.concurrency is a cap, clamped to [1, participants].
- * The planner records it; the route may only lower it from the environment.
+ * participantsAtOnce then lowers it to what the E2B plan and HUMANISH_CUA_MAX_CONCURRENCY allow.
  */
 export function boundedConcurrency(declared: number | undefined, participantCount: number): number {
   return Math.max(
@@ -113,38 +110,14 @@ export function boundedConcurrency(declared: number | undefined, participantCoun
 }
 
 /**
- * The planned bound, lowered by the env override. The override may only lower it (never raise
- * concurrent paid desktops), and a lowering is reported via envLoweredFrom so the
- * plan never silently disagrees with the manifest.
- */
-function envLoweredConcurrency(
-  planned: number,
-  participantCount: number,
-  env: Record<string, string | undefined>,
-): { bound: number; envLoweredFrom?: number } {
-  const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
-  if (envLower > 0 && envLower < planned) {
-    return {
-      bound: Math.max(1, Math.min(planned, envLower, participantCount)),
-      envLoweredFrom: planned,
-    };
-  }
-  return { bound: planned };
-}
-
-/**
  * Build the participant runs and the public plan from a computer-use plan (pure). The same plan
- * appears in dry-run and live, marked $0 for a dry run. `env` may lower the planned concurrency;
- * `personas` are the compiled committed personas the prompts carry.
+ * appears in dry-run and live, marked $0 for a dry run. `personas` are the compiled committed
+ * personas the prompts carry.
  */
 export function participantRunsAndPlan(
   plan: ComputerUsePlan,
-  opts: {
-    env?: Record<string, string | undefined>;
-    personas?: Map<string, ResolvedPersona>;
-  } = {},
+  opts: { personas?: Map<string, ResolvedPersona> } = {},
 ): ParticipantRunsAndPlan {
-  const env = opts.env ?? {};
   // Who each participant is (id, persona, focus, device, limits) comes from the plan; this adds
   // what the route derives from it: the prompt, bundle ids and artifact paths.
   const { participants } = plan.runner;
@@ -182,16 +155,7 @@ export function participantRunsAndPlan(
     };
   });
 
-  const resolved = envLoweredConcurrency(plan.concurrency, participantCount, env);
-  const concurrency = resolved.bound;
-  const { sessionBudgetMs } = plan;
-  const schedule =
-    resolved.envLoweredFrom === undefined
-      ? plan.arrivals
-      : planArrivals(
-          participants.map((participant) => participant.schedule),
-          { slots: concurrency, sessionMs: sessionBudgetMs },
-        );
+  const { concurrency, sessionBudgetMs, arrivals: schedule, envLoweredConcurrencyFrom } = plan;
   const study = { sessionMs: sessionBudgetMs, sandboxMs: plan.sandboxMs };
   const sandboxesMs = participants.reduce(
     (sum, participant) => sum + participantSession(participant.schedule, study).sandboxMs,
@@ -201,9 +165,7 @@ export function participantRunsAndPlan(
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
     concurrency,
-    ...(resolved.envLoweredFrom === undefined
-      ? {}
-      : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
+    ...(envLoweredConcurrencyFrom === undefined ? {} : { envLoweredConcurrencyFrom }),
     waves: Math.ceil(participantCount / concurrency),
     perLaneSessionBudgetMs: sessionBudgetMs,
     worstCaseSandboxMinutes: Math.round(sandboxesMs / 60_000),
@@ -303,7 +265,6 @@ export async function loadCuaParticipants(args: {
   plan: ComputerUsePlan;
   cwd: string;
   projectRoot: PreparedSelectedOutputDirectory;
-  env: Record<string, string | undefined>;
 }): Promise<
   | {
       ok: true;
@@ -321,10 +282,7 @@ export async function loadCuaParticipants(args: {
     args.projectRoot,
     participants.map((participant) => participant.personaId),
   );
-  const { runs: participantRuns, participantPlan } = participantRunsAndPlan(plan, {
-    env: args.env,
-    personas,
-  });
+  const { runs: participantRuns, participantPlan } = participantRunsAndPlan(plan, { personas });
   const rerun = plan.rerun;
   if (!rerun) return { ok: true, participantRuns, participantPlan };
 

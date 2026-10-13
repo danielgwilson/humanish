@@ -66,10 +66,6 @@ import { type StudyResultErrorCode, type StudyResultIdentity } from "../../run/s
 // each its own world (clone/serve + subject.state per participant). Shared-world has its own route.
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 
-// Env override that may only lower the effective concurrency (never raise concurrent paid
-// desktops). Read names-only into a local; the value never persists.
-export const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
-
 // The default session budget, sized so a study can finish (docs/principles/three-roles.md: a
 // session ends because the participant is done, not because a timer fired; the time-box is a
 // session-level cap a researcher sets generously; spend protection is the dollar caps' job).
@@ -186,8 +182,8 @@ export interface CuaParticipantPlan {
   /** Effective in-flight bound (defaults to laneCount, all participants live; a declared
    *  execution.concurrency is a cap; the env override may only lower it). */
   concurrency: number;
-  /** Present when the env override lowered the bound below the config's value, recorded so the
-   *  plan never silently disagrees with the manifest. */
+  /** Present when HUMANISH_CUA_MAX_CONCURRENCY lowered the bound (the plan's
+   *  envLoweredConcurrencyFrom), recorded so the plan never silently disagrees with the manifest. */
   envLoweredConcurrencyFrom?: number;
   /** ceil(laneCount / concurrency). */
   waves: number;

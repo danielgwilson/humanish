@@ -204,4 +204,76 @@ describe("HUMANISH_CUA_MAX_CONCURRENCY", () => {
       waves: 2,
     });
   });
+
+  const spread = {
+    participants: [
+      { id: "a" },
+      { id: "b", startAfterMs: 10 * S },
+      { id: "c", startAfterMs: 20 * S },
+      { id: "d", startAfterMs: 30 * S },
+    ],
+  };
+  const capped = { HUMANISH_CUA_MAX_CONCURRENCY: "2" };
+
+  it("plans the schedule under the lowered count, and warns that it lowered it", () => {
+    const planned = computerUse(plan(study("cuAppUrl", spread), capped));
+    expect(planned.concurrency).toBe(2);
+    // a 0 to 60 s, b 10 to 70 s; c waits for a's slot from 20 s to 60 s, d for b's from 30 s to
+    // 70 s, and d ends at 130 s.
+    expect(planned.arrivals).toMatchObject({
+      peak: 2,
+      waiting: 2,
+      longestWaitMs: 40 * S,
+      lastEndMs: 130 * S,
+    });
+    expect(planned.warnings).toEqual([
+      "2 participants would start after their time when every session uses its 1m budget, the latest by 40s: the run starts at most 2 at once and holds the next one until a slot frees.",
+      "This study's 4 participants run 2 at a time, because HUMANISH_CUA_MAX_CONCURRENCY is 2.",
+    ]);
+    const { participantPlan } = participantRunsAndPlan(planned);
+    expect(participantPlan).toMatchObject({
+      concurrency: 2,
+      envLoweredConcurrencyFrom: 4,
+      waves: 2,
+      schedule: planned.arrivals,
+    });
+  });
+
+  it("shows the lowered schedule in study check", async () => {
+    const cwd = await makeTestTempDir("humanish-concurrency-cap-");
+    await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish", "studies", "spread.yaml"),
+      stringify(lab("cuAppUrl", { id: "spread", ...spread })),
+    );
+    const check = await runStudyPreflight({ cwd, study: "spread", env: capped });
+    expect(check.checks.find((row) => row.name === "schedule")?.message).toBe(
+      "the first participant starts at +0s and the last at +30s; at most 2 run at once when every session uses its 1m budget; 2 participants then start late, waiting for a free slot, the latest by 40s.",
+    );
+  });
+
+  it("lowers a shared world's participants at once", () => {
+    const shared = study("sharedProvisioned", {
+      participants: [
+        { id: "author", entry: "/a" },
+        { id: "reviewer", entry: "/b" },
+        { id: "editor", entry: "/c" },
+      ],
+    });
+    const result = plan(shared, capped);
+    if (!result.ok) throw new Error(result.refusal.message);
+    if (result.planned.plan.route !== "shared-world") throw new Error(result.planned.plan.route);
+    expect(result.planned.plan.concurrency).toBe(2);
+    expect(result.planned.plan.warnings).toContain(
+      "This study's 3 participants run 2 at a time, because HUMANISH_CUA_MAX_CONCURRENCY is 2.",
+    );
+  });
+
+  it("refuses a shared world when it allows fewer than the two participants it needs at once", () => {
+    const result = plan(study("sharedProvisioned"), { HUMANISH_CUA_MAX_CONCURRENCY: "1" });
+    if (result.ok) throw new Error("expected a refusal");
+    expect(result.refusal.message).toBe(
+      "This study runs at least 2 participants at once, and HUMANISH_CUA_MAX_CONCURRENCY allows 1. Set it to 2 or more, or unset it.",
+    );
+  });
 });

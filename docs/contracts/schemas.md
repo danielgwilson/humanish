@@ -307,8 +307,11 @@ The rest of this section names keys by their v3 spelling:
   there is refused at parse, since the sequential turn-taking route was removed
   in 0.106.0. The env override
   `HUMANISH_CUA_MAX_CONCURRENCY` may only lower the effective bound, never
-  raise concurrent paid desktops, and a lowering is recorded on
-  the plan (`envLoweredConcurrencyFrom`). Inert (warned) on other routes.
+  raise concurrent paid desktops. The plan applies it on every computer-use desktop
+  and on shared-world, so the schedule, `study check` and the late-start warnings
+  use the lowered count; the plan records a warning and, on computer-use,
+  `envLoweredConcurrencyFrom`. A shared world refuses a value under 2. Inert
+  (warned) on other routes.
   `execution.timeoutMs` is the per-participant session budget on this route (semantics
   change: it was the single-session budget pre-fan-out); there is no run-level
   wall clock. `policies.allowPublicTargets` cannot combine with N>1 against one
