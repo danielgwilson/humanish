@@ -122,7 +122,24 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
 export interface ParsedOpenAiResponse {
   turn: CuaTurn;
   callIds: string[];
+  /** wait_for_change call ids, each owed a function_call_output. */
+  waitCallIds: string[];
   outputItems: unknown[];
+}
+
+/**
+ * A wait_for_change call as a wait of the minutes it names. Arguments that do not parse to a
+ * number of minutes make a wait that names no length, as the computer tool's `wait` does.
+ */
+function waitForChangeAction(args: unknown): CuaAction {
+  try {
+    const minutes = asRecord(JSON.parse(asString(args))).minutes;
+    if (typeof minutes === "number" && Number.isFinite(minutes))
+      return { kind: "wait", ms: Math.round(minutes * 60_000) };
+  } catch {
+    /* Unparsable arguments wait the default length. */
+  }
+  return { kind: "wait" };
 }
 
 // Collect plain strings or { text } entries from a reasoning summary/content array.
@@ -166,6 +183,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 
   const actions: CuaAction[] = [];
   const callIds: string[] = [];
+  const waitCallIds: string[] = [];
   const reasoningParts: string[] = [];
   const messageParts: string[] = [];
   const safetyChecks: CuaSafetyCheck[] = [];
@@ -216,6 +234,13 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
             message: asString(check.message) || code || id || "safety_check",
           });
         }
+        break;
+      }
+      case "function_call": {
+        const callId = optionalString(item.call_id);
+        if (asString(item.name) !== "wait_for_change" || callId === undefined) break;
+        waitCallIds.push(callId);
+        actions.push(waitForChangeAction(item.arguments));
         break;
       }
       default:
@@ -273,7 +298,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     ...(usage === undefined ? {} : { usage }),
   };
 
-  return { turn, callIds, outputItems: output };
+  return { turn, callIds, waitCallIds, outputItems: output };
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +307,28 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 // ---------------------------------------------------------------------------
 
 export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
+
+/**
+ * A function the participant names its wait length with; the computer tool's `wait` names none.
+ * Declared on every request, so adding it changes no request's cached prefix after the first.
+ */
+const WAIT_FOR_CHANGE_TOOL = {
+  type: "function",
+  name: "wait_for_change",
+  description: "Wait, then look at the screen again. The wait ends early when the screen changes.",
+  parameters: {
+    type: "object",
+    properties: {
+      minutes: {
+        type: "number",
+        description: "How long to wait before looking again, in minutes.",
+      },
+    },
+    required: ["minutes"],
+    additionalProperties: false,
+  },
+  strict: true,
+};
 
 export interface OpenAiCuContext {
   /**
@@ -312,7 +359,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // The Responses API `computer` tool takes no display/environment fields; the model infers
     // resolution from the screenshots it is sent. (Sending display_* returns a 400
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
-    tools: [{ type: "computer" }],
+    tools: [{ type: "computer" }, WAIT_FOR_CHANGE_TOOL],
     truncation: "auto",
     // `summary` asks for the provider-sanctioned reasoning summary items; the
     // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by
@@ -392,18 +439,10 @@ export function buildCallOutput(
   screenshot: Buffer | undefined,
   acknowledged?: CuaSafetyCheck[],
 ): Record<string, unknown> {
-  if (screenshot === undefined) {
-    throw new Error(
-      "openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
-    );
-  }
   return {
     type: "computer_call_output",
     call_id: callId,
-    output: {
-      type: "computer_screenshot",
-      image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
-    },
+    output: { type: "computer_screenshot", image_url: screenshotUrl(screenshot) },
     ...(acknowledged && acknowledged.length > 0
       ? {
           acknowledged_safety_checks: acknowledged.map(({ id, code, message }) => ({
@@ -414,6 +453,34 @@ export function buildCallOutput(
         }
       : {}),
   };
+}
+
+/**
+ * The answer to a wait_for_change call: the note on how the wait ended, when there is one, and the
+ * screen at its end.
+ */
+export function buildWaitOutput(
+  callId: string,
+  screenshot: Buffer | undefined,
+  note: string | undefined,
+): Record<string, unknown> {
+  return {
+    type: "function_call_output",
+    call_id: callId,
+    output: [
+      ...(note ? [{ type: "input_text", text: note }] : []),
+      { type: "input_image", image_url: screenshotUrl(screenshot) },
+    ],
+  };
+}
+
+function screenshotUrl(screenshot: Buffer | undefined): string {
+  if (screenshot === undefined) {
+    throw new Error(
+      "openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
+    );
+  }
+  return `data:image/png;base64,${screenshot.toString("base64")}`;
 }
 
 export interface ContinuationRequestArgs {

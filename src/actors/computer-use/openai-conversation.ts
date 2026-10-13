@@ -13,6 +13,7 @@ import {
   buildCallOutput,
   buildContinuationRequest,
   buildInitialRequest,
+  buildWaitOutput,
   hintItems,
   inputMessage,
   openingMessage,
@@ -89,6 +90,8 @@ export class OpenAiConversation {
   private lastResponseId: string | undefined;
   /** computer_call ids the next request owes an output for. */
   private pendingCallIds: readonly string[] = [];
+  /** wait_for_change call ids the next request owes an output for. */
+  private pendingWaitCallIds: readonly string[] = [];
   /** Accepted replies so far; the next request is number `replies + 1`. */
   private replies = 0;
   /** The whole conversation, which explicit-context requests carry within its token budget. */
@@ -131,7 +134,7 @@ export class OpenAiConversation {
     send: (body: Record<string, unknown>) => Promise<unknown>,
   ): Promise<CuaTurn> {
     const strict = this.openClosing !== undefined;
-    const sent = this.openClosing ?? [...this.newItems(req), replyForm(closing)];
+    const sent = this.openClosing ?? [...this.newItems(req, closing), replyForm(closing)];
     this.openClosing = undefined;
     const reply = await send(this.closingBody(req, sent, closing, strict));
     // Recorded before the reply is accepted, as a participant turn is.
@@ -179,13 +182,19 @@ export class OpenAiConversation {
    * The items a request adds to the conversation: the opening message with the first screen, or
    * an output for each pending computer_call with the latest screenshot and any hint.
    */
-  private newItems(req: CuaTurnRequest): readonly unknown[] {
+  private newItems(req: CuaTurnRequest, closing?: ClosingRequest): readonly unknown[] {
     if (this.replies === 0) return [openingMessage(req.instructions, req.observation.screenshot)];
+    // A turn's hint says how the wait ended, so it answers a wait_for_change call in place of a
+    // message. A closing request's hint asks for the closing account and stays a user message.
+    const note = closing === undefined && this.pendingWaitCallIds.length > 0;
     return [
       ...this.pendingCallIds.map((id) =>
         buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),
       ),
-      ...hintItems(req.contextHint),
+      ...this.pendingWaitCallIds.map((id) =>
+        buildWaitOutput(id, req.observation.screenshot, note ? req.contextHint : undefined),
+      ),
+      ...(note ? [] : hintItems(req.contextHint)),
     ];
   }
 
@@ -262,6 +271,7 @@ export class OpenAiConversation {
   private moveOn(parsed: ParsedOpenAiResponse, sent: readonly unknown[]): void {
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
+    this.pendingWaitCallIds = parsed.waitCallIds;
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
   }
