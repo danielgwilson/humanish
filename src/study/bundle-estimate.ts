@@ -71,8 +71,12 @@ const RATES = Object.freeze({
   /** observer/index.html's app before any run data: 1,199,831 bytes on the dry runs. */
   observerAppBytes: 1_200_000,
   /**
-   * The page's compact copy of observer-data.json, as a share of run.json: 0.71 to 0.84 on the
-   * live runs written as v4, where neither carries the per-request lists.
+   * The page's compact copy of observer-data.json, as a share of run.json before the mission: 0.71
+   * to 0.84 on the live runs written as v4, where neither carries the per-request lists. The page
+   * holds the mission at its full size once for the run and once for each participant: dry runs of
+   * 1 and 4 participants grew the page by 2 and 5 copies, as run.json grew, and a 0.128.0 run of 2
+   * participants with 2 feedback candidates held 5 copies in run.json and 3 on the page. An
+   * analysis adds each participant's assignment, cut to 8,000 bytes.
    */
   observerPageDataShare: 0.85,
   /**
@@ -172,24 +176,28 @@ export function estimateBundle(
     frames += ownFrames;
     traces += trace;
     largestTrace = Math.max(largestTrace, trace);
-    // The mission's bytes as run.json stores them, a JSON string without its quotes, for the
-    // participant's stream and for its feedback candidate, which only a participant that reports
-    // friction or stops has. The run's scenario goal holds one more copy. The rates were fit on runs
-    // with short missions, so a short mission is counted twice.
+    // The mission's bytes as run.json stores them, a JSON string without its quotes.
     const mission =
       assignment.mission === undefined
         ? 0
         : Buffer.byteLength(JSON.stringify(assignment.mission)) - 2;
-    missionBytes += 2 * mission;
+    missionBytes += mission;
     longestMission = Math.max(longestMission, mission);
   }
   const count = participants.length;
-  const runFileBytes =
-    RATES.runBytes + longestMission + count * RATES.participantBytes + missionBytes;
+  const dataBytes = RATES.runBytes + count * RATES.participantBytes;
+  // run.json holds the mission in the run's scenario goal, in each participant's stream and in the
+  // feedback candidate of each participant that reports friction or stops, counted for every
+  // participant. The rates were fit on runs with short missions, so a short mission is counted
+  // twice.
+  const runFileBytes = dataBytes + longestMission + 2 * missionBytes;
   const screenshots = count + turns + frames;
+  // The page holds no feedback candidate's copy.
   const observerPageBytes = Math.round(
     RATES.observerAppBytes +
-      RATES.observerPageDataShare * runFileBytes +
+      RATES.observerPageDataShare * dataBytes +
+      longestMission +
+      missionBytes +
       RATES.observerPageItemsShare * traces,
   );
   return {
