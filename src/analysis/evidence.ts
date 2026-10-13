@@ -27,7 +27,7 @@ import {
 } from "./evidence-sources.js";
 import { readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 import { analysisCohortCount, analysisCohorts, EVIDENCE_LIMITS } from "./analysis-limits.js";
-import { parseAnalysisSource, readParticipantTraces } from "./source.js";
+import { parseAnalysisSource, readParticipantTraces, runFileTooLarge } from "./source.js";
 
 export { EVIDENCE_LIMITS };
 // A second guard for direct callers. The analysis service already requires every stream to be in
@@ -67,7 +67,8 @@ export async function captureEvidence(
       throw new Error("ANALYSIS_INPUT_LIMIT_INVALID");
     }
   }
-  if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  if (bundleBytes.length > limits.sourceBytes)
+    throw runFileTooLarge(bundleBytes.length, limits.sourceBytes);
   const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const bundle = parseAnalysisSource(prepared, bundleBytes);

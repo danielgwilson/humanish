@@ -20,6 +20,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   analysis input before and after. run.json is still read only up to 16 MiB, and verify, which
   analysis runs first, still holds every trace at once. The bundle estimate warns about a trace past
   32 MiB, where it warned past 16 MiB. (#1840)
+- `humanish analyze` now says which file of a run it refused and why. A run.json or participant
+  trace without the fields analysis reads (`ANALYSIS_SOURCE_INVALID`) printed "Analysis could not
+  be completed safely. Source evidence was not changed."; the message now names the file and the
+  problem, such as a trace that holds two items with one id. A run.json past 16 MiB was refused as
+  `ANALYSIS_SOURCE_UNAVAILABLE`, "The source recording is missing, unsafe, or exceeds the input
+  limit."; it is now `ANALYSIS_SOURCE_TOO_LARGE`, and the message gives the file's size and the
+  16,777,216-byte limit and says to split the participants across studies. Both messages end "No
+  request was sent." `ANALYSIS_SOURCE_UNAVAILABLE` now reads "The source recording is missing or
+  unsafe." A trace past 32 MiB gets `ANALYSIS_SOURCE_TOO_LARGE` with its path and the limit, though
+  verify refuses such a run before analysis reads it. (#1841)
 
 ## 0.129.0: Analysis reads long runs past 100,000 items; traces past 32 MiB get their own advice; shared-world skips counted apart (2026-10-13)
 
