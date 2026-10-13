@@ -190,10 +190,12 @@ reach: the participant's share of its request's 800 evidence items, worked out
 from run.json before any trace is read, and the first 80 captures selection may
 read. Beside the one trace it is reading, analysis holds at most 800 entries for
 each request and 80 for each participant; their size grows with each trace
-item's text. A file past its limit is refused as `ANALYSIS_SOURCE_TOO_LARGE`, and
-a run.json or trace without the fields analysis reads, or a trace that does not
-match its index in run.json, as `ANALYSIS_SOURCE_INVALID`;
-each message names the file, says why, and says no request was sent. Count and text budgets are
+item's text. A run.json past 16 MiB is refused as `ANALYSIS_SOURCE_TOO_LARGE`, and
+a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
+each message names the file, says why, and says no request was sent. Analysis
+verifies the run before it reads a trace, so a trace that does not match its
+index in run.json, or whose index records more than 32 MiB, fails verify and
+`humanish analyze` reports `ANALYSIS_VERIFY_FAILED`. Count and text budgets are
 distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible
 participants with fewer admitted images, including those deferred by their
