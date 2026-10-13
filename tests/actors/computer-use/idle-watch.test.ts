@@ -191,6 +191,19 @@ describe("the watch length over idle turns in a row", () => {
     ]);
   });
 
+  it("keeps a named wait's length on each quiet turn in a row, and tells of no longer wait", async () => {
+    // Codex, Claude Code and OpenAI's wait_for_change name a length; the participant chose it.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= 3 ? turnOf([{ kind: "wait", ms: 60_000 }]) : DONE),
+    });
+    expect(limits(run)).toEqual([60_000, 60_000, 60_000]);
+    expect(run.requests.map((request) => request.at)).toEqual([0, 60_000, 120_000, 180_000]);
+    expect(run.requests[2]?.hint).toBe(
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it.",
+    );
+  });
+
   it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
     // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
     const run = await runWatching({

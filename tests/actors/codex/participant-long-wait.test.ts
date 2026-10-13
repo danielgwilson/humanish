@@ -189,7 +189,10 @@ describe("a Codex participant that asks for a long wait", () => {
       expect(native.descriptions[0]).toContain(
         `after its waits' ms, together at most ${watched} ms`,
       );
-      expect(native.descriptions[0]).toContain(`up to ${watched} ms`);
+      expect(native.descriptions[0]).toContain("A call whose waits all give ms waits that long");
+      expect(native.descriptions[0]).toContain(
+        `with a wait that gives no ms waits twice as long as the one before, up to ${watched} ms`,
+      );
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },
   );

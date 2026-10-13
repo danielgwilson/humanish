@@ -5,7 +5,8 @@ import type { ActorWaitSettings } from "../contract.js";
 // only waits (actor.idleWaitMs). The loop asks planWait for each wait. A turn with another action
 // sends its waits to the desktop in steps one desktop call carries; a turn that only waits watches
 // the screen instead (loop/watch.ts), for its waits' lengths, the named ones together up to
-// watchMaxMs, or longer as the watches of idle turns in a row grow.
+// watchMaxMs. A turn whose waits all name a length lasts that length every time; one with a wait
+// that names none grows as the watches of idle turns in a row grow.
 
 export const CUA_WAIT_LIMITS = Object.freeze({
   /**
@@ -22,23 +23,25 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   defaultMaxMs: 120_000,
   /**
    * The longest a watch over an unchanged screen grows to, and the longest the named waits of a
-   * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. Each further watch
-   * in a row that ends with no change lasts twice as long as the one before, so on a static screen
-   * a participant settles at one model request per 10 minutes.
+   * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. A
+   * turn with a wait that names no length, after a watch in a row that ended with no change, lasts
+   * twice as long as that watch, so on a static screen such a participant settles at one model
+   * request per 10 minutes. A turn whose waits all name a length lasts that length every time.
    */
   defaultWatchMaxMs: 600_000,
   /**
    * How long a wait that names no duration lasts in a turn that only waits or takes screenshots,
-   * when a study does not set actor.idleWaitMs. OpenAI's computer-use `wait` names no duration. A
-   * participant told to wait about a minute sent ten in one turn, which lasts 50 s at this length;
-   * one wait a turn makes a one-minute wait about six turns. It is also how often a watch looks.
+   * when a study does not set actor.idleWaitMs. OpenAI's computer tool `wait` names no duration;
+   * its wait_for_change function names one in minutes. A participant told to wait about a minute
+   * sent ten computer tool waits in one turn, which lasts 50 s at this length; one wait a turn
+   * makes a one-minute wait about six turns. It is also how often a watch looks.
    */
   defaultIdleMs: 5_000,
   /**
    * How long a wait that names no duration lasts after the participant acts in the same turn, so
-   * the screen can settle before the next screenshot. Nearly every OpenAI computer-use wait follows
-   * a click or keypress this way, so a longer one would slow every run. A watch looks again this
-   * soon after a large part of the screen moved.
+   * the screen can settle before the next screenshot. Nearly every OpenAI computer tool wait
+   * follows a click or keypress this way, so a longer one would slow every run. A watch looks again
+   * this soon after a large part of the screen moved.
    */
   settleMs: 500,
   /**
@@ -57,8 +60,9 @@ export const CUA_WAIT_LIMITS = Object.freeze({
 
 /**
  * The wait lengths one session applies. The trace records the first three as `waitSettings`.
- * `watchMaxMs` is the longest a watch grows to over an unchanged screen and the longest a watched
- * turn's named waits last together, and `lookEveryMs` how often a watch looks.
+ * `watchMaxMs` is the longest a watch of waits with no length grows to over an unchanged screen
+ * and the longest a watched turn's named waits last together, and `lookEveryMs` how often a watch
+ * looks.
  */
 export type WaitSettings = Readonly<ActorWaitSettings> & {
   readonly watchMaxMs: number;
@@ -126,7 +130,7 @@ export function waitFieldsReason(
 
 /**
  * The wait lengths a session applies: the study's values, or their defaults. The idle wait never
- * outlasts the longest wait, which on a desktop with speech defaults to 30 s. A watch grows to
+ * outlasts the longest wait, which on a desktop with speech defaults to 30 s. A watch lasts at most
  * actor.maxWaitMs, else 10 minutes, and looks every idle wait, at most every 30 s on a desktop with
  * speech. Throws a RangeError for fields waitFieldsReason refuses.
  */

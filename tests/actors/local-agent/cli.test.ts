@@ -70,13 +70,14 @@ describe("the action vocabulary a local agent answers in", () => {
 });
 
 describe("the turn prompt", () => {
-  it("tells Claude Code that a turn of only waits returns on a change and grows on a still screen", () => {
+  it("tells Claude Code that a turn of only waits returns on a change, that set ms hold, and that null ms grow", () => {
     const prompt = promptFor(
       { instructions: "Wait for the reply.", observation: observation() },
       "/tmp/turn.png",
     );
     expect(prompt).toContain("only waits ends when the screen changes and holds still");
-    expect(prompt).toContain("twice as long as the one before");
+    expect(prompt).toContain("A turn whose waits all set ms lasts their ms each time");
+    expect(prompt).toContain("with a wait whose ms is null lasts twice as long as the one before");
   });
 });
 

@@ -20,12 +20,14 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // when a change holds still (evidence/frame-change.ts), speech arrives, a study condition matches,
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
-// A watch first lasts the turn's planned length: its waits' named lengths, together up to
-// watchMaxMs, and idleWaitMs for each wait that names none. Each further idle turn in a row whose
-// watch ended at its limit, or was woken by a small change (at most 24 tiles) that held still,
-// watches twice as long, up to the longer of its planned length and watchMaxMs. Any other ending,
-// or a turn with another action, starts again from the planned length. A participant waiting on a
-// static screen settles at one request per watchMaxMs.
+// A watch lasts the turn's planned length: its waits' named lengths, together up to watchMaxMs,
+// and idleWaitMs for each wait that names none. A turn whose waits all name a length lasts that
+// length on every idle turn: the participant chose it. A turn with a wait that names none, after
+// an idle turn whose watch ended at its limit or was woken by a small change (at most 24 tiles)
+// that held still, watches twice as long as that watch, up to the longer of its planned length and
+// watchMaxMs. Any other ending, or a turn with another action, starts again from the planned
+// length. A participant sending waits with no length on a static screen settles at one request
+// per watchMaxMs.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -62,7 +64,7 @@ interface Ending {
 /**
  * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
  * doubling counts: a watch that ended at its limit or on a small change makes the next one in the
- * run longer, and a turn with another action ends the run.
+ * run longer when that one has a wait with no length, and a turn with another action ends the run.
  */
 export class IdleWatcher {
   /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
