@@ -114,6 +114,31 @@ describe("the watch length over idle turns in a row", () => {
     expect(limits(run)).toEqual([5_000, 10_000, 5_000]);
   });
 
+  it("keeps doubling after a small change that held still for over a minute woke the participant", async () => {
+    // Watch 6 runs from 155 s for 160 s. A 3-tile label appears at 160 s, is still from 165 s, and
+    // has held for 70 s at the 230 s look, with nothing moving near it: it wakes the participant.
+    // The next watch lasts 320 s, as after a watch that reached its limit.
+    const LABEL = { x: 16, y: 16, width: 48, height: 16 };
+    const label = frame([LABEL]);
+    const run = await runWatching({
+      screen: (atMs) => (atMs >= 160_000 ? label : QUIET),
+      turn: (_request, n) => (n <= 7 ? turnOf([WAIT]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [5_000, "limit"],
+      [10_000, "limit"],
+      [20_000, "limit"],
+      [40_000, "limit"],
+      [80_000, "limit"],
+      [160_000, "changed"],
+      [320_000, "limit"],
+    ]);
+    expect(watchesOf(run.result)[5]?.area).toEqual(LABEL);
+    expect(run.requests[6]?.hint).toBe(
+      "Your wait lasted 75 seconds and ended when a small part of the screen changed and then stayed the same for over a minute, at x 16, y 16 (48 x 16 pixels). A wait right after it can last twice as long, at most 10 minutes.",
+    );
+  });
+
   it("keeps today's pacing on a static screen when maxWaitMs equals idleWaitMs", async () => {
     // Three waits with no duration plan 3 x 5 s; the cap is the larger of that and maxWaitMs.
     const run = await runWatching({
@@ -160,6 +185,41 @@ describe("the turn a watch ends", () => {
     expect(run.requests[2]?.observation.screenshot).toBe(label);
     expect(run.requests[2]?.hint).toBe(
       "Your wait lasted 10 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+    );
+  });
+
+  it("tells the participant a large part of the screen was changing at the limit's last look", async () => {
+    // The row appears at 5 s, at the only look of a 5 s watch: it moved there, so it has not held
+    // still, and the watch ends at its limit with the row in the frame (wave 7 live run 2a).
+    const run = await runWatching({
+      screen: (atMs) => (atMs >= 5_000 ? NEW_ROW : QUIET),
+      turn: (_request, n) => (n === 1 ? turnOf([WAIT]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => watch.wake)).toEqual(["limit"]);
+    expect(run.requests[1]?.observation.screenshot).toBe(NEW_ROW);
+    expect(run.requests[1]?.hint).toBe(
+      "Your wait lasted 5 seconds; a large part of the screen was changing at its last check. A wait right after it can last twice as long, at most 10 minutes.",
+    );
+  });
+
+  it("names a small change held back by a ticking counter beside it, at the limit", async () => {
+    // A counter in the first tile changes at 30 s and 90 s, a minute apart; a 3-tile label two
+    // tiles from it appears at 10 s. The label holds still from 15 s, but the counter ticked within
+    // the last 65 s at every look, so the 2-minute wait ends at its limit.
+    const LABEL = { x: 32, y: 0, width: 48, height: 16 };
+    const counter = (atMs: number) => {
+      const ticks = atMs < 30_000 ? 0 : 1 + Math.floor((atMs - 30_000) / 60_000);
+      return { x: 0, y: 0, width: 4 + 4 * ticks, height: 16 };
+    };
+    const run = await runWatching({
+      screen: (atMs) => frame(atMs < 10_000 ? [counter(atMs)] : [counter(atMs), LABEL]),
+      turn: (_request, n) => (n === 1 ? turnOf([{ kind: "wait", ms: 120_000 }]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [120_000, "limit"],
+    ]);
+    expect(run.requests[1]?.hint).toBe(
+      "Your wait lasted 2 minutes; a small part of the screen changed and stayed the same, at x 32, y 0 (48 x 16 pixels). A small change does not end a wait. A wait right after it can last twice as long, at most 10 minutes.",
     );
   });
 

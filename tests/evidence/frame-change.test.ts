@@ -81,6 +81,7 @@ describe("watchFrames on retained frames", () => {
     expect(frames.next(TUI_LIVE, 5_500)).toEqual({
       verdict: "settled",
       area: { x: 0, y: 384, width: 192, height: 48 },
+      small: false,
     });
   });
 
@@ -120,6 +121,7 @@ describe("watchFrames on retained frames", () => {
     expect(verdicts.find(([atMs]) => atMs === 100_000)?.[1]).toEqual({
       verdict: "settled",
       area: { x: 1376, y: 0, width: 32, height: 32 },
+      small: true,
     });
   });
 });
@@ -205,7 +207,7 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
       ]);
     expect(firstSettled(scene)).toEqual([
       90_000,
-      { verdict: "settled", area: { x: 96, y: 80, width: 48, height: 16 } },
+      { verdict: "settled", area: { x: 96, y: 80, width: 48, height: 16 }, small: true },
     ]);
   });
 
@@ -215,7 +217,7 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
       glyphs(atMs < 100_000 ? [] : [12, 13, 14].map((column): Glyph => [column, 7, 900 + column]));
     expect(firstSettled(scene)).toEqual([
       170_000,
-      { verdict: "settled", area: { x: 192, y: 112, width: 48, height: 16 } },
+      { verdict: "settled", area: { x: 192, y: 112, width: 48, height: 16 }, small: true },
     ]);
   });
 
@@ -226,7 +228,7 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
       for (const row of [0, 1]) popup.push([column, row, 1000 + column + row]);
     expect(firstSettled((atMs) => glyphs(atMs < 10_000 ? [] : popup))).toEqual([
       15_000,
-      { verdict: "settled", area: { x: 80, y: 0, width: 240, height: 32 } },
+      { verdict: "settled", area: { x: 80, y: 0, width: 240, height: 32 }, small: false },
     ]);
   });
 
@@ -240,7 +242,7 @@ describe("watchFrames on the wave 9 synthetic screens", () => {
       glyphs([[5, 5, 500 + Math.floor(atMs / 5_000)], ...(atMs < 50_000 ? [] : row)]);
     expect(firstSettled(scene)).toEqual([
       55_000,
-      { verdict: "settled", area: { x: 32, y: 96, width: 240, height: 32 } },
+      { verdict: "settled", area: { x: 32, y: 96, width: 240, height: 32 }, small: false },
     ]);
   });
 });
@@ -293,7 +295,7 @@ describe("watchFrames on drawn frames", () => {
       return drawn(320, 240, atMs < 10_000 ? [spinner(step)] : [LABEL, spinner(step)]);
     });
     expect(settledTimes(verdicts)).toEqual([80_000]);
-    expect(verdicts.at(-1)?.[1]).toEqual({ verdict: "settled", area: LABEL });
+    expect(verdicts.at(-1)?.[1]).toEqual({ verdict: "settled", area: LABEL, small: true });
   });
 
   it("settles the icon a progress bar ends in once the icon has held past the hold", () => {
@@ -312,6 +314,7 @@ describe("watchFrames on drawn frames", () => {
     expect(verdicts.find(([atMs]) => atMs === 90_000)?.[1]).toEqual({
       verdict: "settled",
       area: ICON,
+      small: true,
     });
   });
 
@@ -342,6 +345,7 @@ describe("watchFrames on drawn frames", () => {
     expect(frames.next(drawn(160, 120, []), 5_000)).toEqual({
       verdict: "settled",
       area: { x: 0, y: 0, width: 160, height: 120 },
+      small: false,
     });
   });
 });

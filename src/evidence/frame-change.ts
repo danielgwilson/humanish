@@ -71,7 +71,8 @@ export interface FrameRegion {
 
 /**
  * What one look found, compared with the frame the participant last saw. `settled`: a region of
- * change held still long enough to wake the participant; `area` bounds it. `changing`: tiles moved
+ * change held still long enough to wake the participant; `area` bounds it, and `small` is true
+ * when it is at most LARGE_REGION_TILES tiles, which the participant's hint names. `changing`: tiles moved
  * since the previous look and nothing settled; `lookSoon` when more than LARGE_REGION_TILES moved,
  * so a large change is confirmed by a quick look. `unchanged`: nothing moved and nothing settled.
  * `held` on the last two bounds a small region that held still past the hold and is held back by a
@@ -80,7 +81,7 @@ export interface FrameRegion {
 export type FrameVerdict =
   | { readonly verdict: "unchanged"; readonly held?: FrameRegion }
   | { readonly verdict: "changing"; readonly lookSoon: boolean; readonly held?: FrameRegion }
-  | { readonly verdict: "settled"; readonly area: FrameRegion };
+  | { readonly verdict: "settled"; readonly area: FrameRegion; readonly small: boolean };
 
 interface Decoded {
   readonly width: number;
@@ -161,6 +162,7 @@ function wholeFrame(image: Decoded | undefined): FrameVerdict {
   return {
     verdict: "settled",
     area: { x: 0, y: 0, width: image?.width ?? 0, height: image?.height ?? 0 },
+    small: false,
   };
 }
 
@@ -204,12 +206,12 @@ function compare(
   const regions = connectedRegions(still, columns);
   const area = (region: readonly number[]) => areaOf(region, columns, base.width, base.height);
   const large = largest(regions.filter((region) => region.length > LARGE_REGION_TILES));
-  if (large !== undefined) return { verdict: "settled", area: area(large) };
+  if (large !== undefined) return { verdict: "settled", area: area(large), small: false };
   const heldSmall = regions.filter((region) =>
     region.every((tile) => atMs - (differing.get(tile)?.movedAt ?? atMs) > SMALL_REGION_HOLD_MS),
   );
   const settled = largest(heldSmall.filter((region) => !heldBack(region, moves, atMs)));
-  if (settled !== undefined) return { verdict: "settled", area: area(settled) };
+  if (settled !== undefined) return { verdict: "settled", area: area(settled), small: true };
   const waiting = largest(heldSmall);
   const held = waiting === undefined ? {} : { held: area(waiting) };
   if (moved > 0) return { verdict: "changing", lookSoon: moved > LARGE_REGION_TILES, ...held };

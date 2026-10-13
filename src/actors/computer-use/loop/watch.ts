@@ -1,5 +1,9 @@
 import type { ActorWatch } from "../../contract.js";
-import { watchFrames, type FrameRegion } from "../../../evidence/frame-change.js";
+import {
+  watchFrames,
+  type FrameRegion,
+  type FrameVerdict,
+} from "../../../evidence/frame-change.js";
 import { plural } from "../../../run/text.js";
 import { planWait } from "../wait.js";
 import { isIdleTurn, type WatchedWaits } from "./actions.js";
@@ -19,9 +23,10 @@ import type { CuaAction, CuaObservation } from "./types.js";
 //
 // A watch first lasts the turn's planned length, what planWait gave its waits before watches, so
 // it never lasts longer than that wait did. Each further idle turn in a row whose watch ended at
-// its limit with no change watches twice as long, up to the longer of its planned length and
-// watchMaxMs. Any other ending, or a turn with another action, starts again from the planned
-// length. A participant waiting on a static screen settles at one request per watchMaxMs.
+// its limit, or was woken by a small change (at most 24 tiles) that held still, watches twice as
+// long, up to the longer of its planned length and watchMaxMs. Any other ending, or a turn with
+// another action, starts again from the planned length. A participant waiting on a static screen
+// settles at one request per watchMaxMs.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -49,17 +54,19 @@ interface Ending {
   readonly ms: number;
   readonly looks: number;
   readonly area?: FrameRegion;
+  /** What the look that ended the watch found, for the hint. */
+  readonly seen?: FrameVerdict;
   readonly observation?: CuaObservation;
   readonly stop?: Stop;
 }
 
 /**
  * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
- * doubling counts: a watch that ended at its limit makes the next one in the run longer, and a
- * turn with another action ends the run.
+ * doubling counts: a watch that ended at its limit or on a small change makes the next one in the
+ * run longer, and a turn with another action ends the run.
  */
 export class IdleWatcher {
-  /** The limit of the run's last watch, while that watch ended at its limit. */
+  /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
   private grownFromMs: number | undefined;
 
   constructor(
@@ -94,12 +101,17 @@ export class IdleWatcher {
         ? plannedMs
         : Math.min(capMs, Math.max(plannedMs, 2 * this.grownFromMs));
     const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
-    this.grownFromMs = ending.wake === "limit" ? limitMs : undefined;
+    // A small change that held still (a status label, or a counter the rule did not hold back)
+    // wakes the participant and keeps the doubling, so a repeating small change cannot keep every
+    // watch short.
+    const grows =
+      ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small);
+    this.grownFromMs = grows ? limitMs : undefined;
     return {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending, limitMs < capMs ? capMs : undefined),
+      hint: hintFor(ending, grows && limitMs < capMs ? capMs : undefined),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,
@@ -197,12 +209,13 @@ async function watchScreen(
     looks += 1;
     lastLook = look.observation;
     const ms = lasted();
-    const ended = (wake: ActorWatch["wake"], area?: FrameRegion): Ending => ({
+    const ended = (wake: ActorWatch["wake"], seen?: FrameVerdict): Ending => ({
       wake,
       ms,
       looks,
       observation: look.observation,
-      ...(area === undefined ? {} : { area }),
+      ...(seen === undefined ? {} : { seen }),
+      ...(seen?.verdict === "settled" ? { area: seen.area } : {}),
     });
     // A condition comes first: the checkpoint persists the look that matched it (a task completed
     // at it is counted already), and the budget then stops the session before the next request.
@@ -211,12 +224,14 @@ async function watchScreen(
     if (overBudget !== undefined) return { ...ended("stopped"), stop: overBudget };
     if (look.speech) return ended("speech");
     const seen = compareLook(frames, referenceKey, look.observation, at);
-    if (seen.changed) return ended("changed", seen.area);
+    if (seen.verdict === "settled") return ended("changed", seen);
     const windingDown = windDownAt !== undefined && at >= windDownAt;
     // A change still moving at the last look, such as a video, ended nothing: the participant
-    // sees it in that look's frame, and the next watch grows as after a still screen.
-    if (at >= limitAt || windingDown) return ended(windingDown ? "clock" : "limit");
-    quickLooks = seen.largeMove && quickLooks < 2 ? quickLooks + 1 : 0;
+    // sees it in that look's frame, the hint says a large part was changing, and the next watch
+    // grows as after a still screen.
+    if (at >= limitAt || windingDown) return ended(windingDown ? "clock" : "limit", seen);
+    const largeMove = seen.verdict === "changing" && seen.lookSoon;
+    quickLooks = largeMove && quickLooks < 2 ? quickLooks + 1 : 0;
     nextLookAt = at + (quickLooks > 0 ? settleWaitMs : lookEveryMs);
   }
 }
@@ -232,12 +247,12 @@ function compareLook(
   referenceKey: string,
   observation: CuaObservation,
   atMs: number,
-): { readonly changed: boolean; readonly area?: FrameRegion; readonly largeMove: boolean } {
+): FrameVerdict {
   if (frames === undefined || observation.screenshot === undefined)
-    return { changed: progressKeyOf(observation) !== referenceKey, largeMove: false };
-  const verdict = frames.next(observation.screenshot, atMs);
-  if (verdict.verdict === "settled") return { changed: true, area: verdict.area, largeMove: false };
-  return { changed: false, largeMove: verdict.verdict === "changing" && verdict.lookSoon };
+    return progressKeyOf(observation) === referenceKey
+      ? { verdict: "unchanged" }
+      : { verdict: "settled", area: { x: 0, y: 0, width: 0, height: 0 }, small: false };
+  return frames.next(observation.screenshot, atMs);
 }
 
 /**
@@ -268,12 +283,24 @@ function splitWatch(
   };
 }
 
-/** The next request's note. A clock ending says nothing: the clock text that follows says it. */
+/**
+ * The next request's note. A clock ending says nothing: the clock text that follows says it. A
+ * small change is named by its place, so a participant is not told the screen changed when what
+ * changed was a counter or a timestamp. `growsToMs` adds the growth sentence when the next watch
+ * doubles.
+ */
 function hintFor(ending: Ending, growsToMs: number | undefined): string | undefined {
   const lasted = `Your wait lasted ${duration(ending.ms)}`;
+  const grows =
+    growsToMs === undefined
+      ? ""
+      : ` A wait right after it can last twice as long, at most ${duration(growsToMs)}.`;
+  const { seen } = ending;
   switch (ending.wake) {
     case "changed":
-      return `${lasted} and ended when the screen changed.`;
+      return seen?.verdict === "settled" && seen.small
+        ? `${lasted} and ended when a small part of the screen changed and then stayed the same for over a minute, ${place(seen.area)}.${grows}`
+        : `${lasted} and ended when the screen changed.`;
     case "speech":
       return `${lasted} and ended when you heard speech.`;
     case "condition":
@@ -281,9 +308,11 @@ function hintFor(ending: Ending, growsToMs: number | undefined): string | undefi
     // A small change seen less than 65 s before the limit has not held still yet, so the hint
     // never says the screen stayed the same.
     case "limit":
-      return growsToMs === undefined
-        ? `${lasted}; no change on the screen held still long enough to end it.`
-        : `${lasted}; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most ${duration(growsToMs)}.`;
+      if (seen?.verdict === "changing" && seen.lookSoon)
+        return `${lasted}; a large part of the screen was changing at its last check.${grows}`;
+      if (seen?.verdict !== "settled" && seen?.held !== undefined)
+        return `${lasted}; a small part of the screen changed and stayed the same, ${place(seen.held)}. A small change does not end a wait.${grows}`;
+      return `${lasted}; no change on the screen held still long enough to end it.${grows}`;
     case "stalled":
       return `${lasted}; the screen could not be checked during it.`;
     case "clock":
@@ -291,6 +320,9 @@ function hintFor(ending: Ending, growsToMs: number | undefined): string | undefi
       return undefined;
   }
 }
+
+const place = (area: FrameRegion): string =>
+  `at x ${area.x}, y ${area.y} (${area.width} x ${area.height} pixels)`;
 
 function duration(ms: number): string {
   if (ms < 1_000) return plural(ms, "millisecond");
