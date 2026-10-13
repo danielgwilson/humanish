@@ -83,10 +83,14 @@ function concurrentParticipantResults(
     const session = result.outcome.session;
     const thisOk = participantOk(result);
     const { skippedReason } = result.outcome;
+    // The same judged record run.json writes, so the run line and the bundle name one status.
+    const record = judgeParticipantRecords([participantFactsOf(result.outcome)], {
+      sessionLabel: "Participant",
+      missingSessionMessage: "Actor did not produce a terminal session.",
+    }).participants[0]!;
     return {
       ...base,
-      // A skipped participant never started its session, so it did not fail one.
-      status: session ? session.status : skippedReason === undefined ? "failed" : "blocked",
+      status: record.status,
       ...(skippedReason === undefined ? {} : { skippedReason }),
       ok: thisOk,
       window: { startedAt: result.startedAt, endedAt: result.endedAt },
@@ -108,10 +112,7 @@ function concurrentParticipantResults(
         : {
             error: {
               code: "HUMANISH_SHARED_WORLD_FAILED" as const,
-              message: judgeParticipantRecords([participantFactsOf(result.outcome)], {
-                sessionLabel: "Participant",
-                missingSessionMessage: "Actor did not produce a terminal session.",
-              }).participants[0]!.notPassedMessage,
+              message: record.notPassedMessage,
             },
           }),
     };
