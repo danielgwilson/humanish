@@ -71,7 +71,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
         error: {
           code: "ANALYSIS_SOURCE_TOO_LARGE",
           message:
-            "Analysis did not read run.json: it holds 16,777,217 bytes, more than the 16,777,216 bytes (16 MiB) analysis reads of it. run.json grows with each participant and the study's mission; split the participants across studies to keep it under the limit. No request was sent.",
+            "Analysis did not read run.json: it holds 16,777,217 bytes, more than the 16,777,216 bytes (16 MiB) analysis reads of it. run.json grows with each participant, its instruction, the mission and the task goals; split the participants across studies to keep it under the limit. No request was sent.",
         },
       }),
     });

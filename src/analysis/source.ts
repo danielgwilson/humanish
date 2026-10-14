@@ -48,7 +48,7 @@ const traceInvalid = (streamId: string, reason: string): AnalysisSourceRefusedEr
 export function runFileTooLarge(size: number | bigint, max: number): AnalysisSourceRefusedError {
   return new AnalysisSourceRefusedError(
     "ANALYSIS_SOURCE_TOO_LARGE",
-    `Analysis did not read run.json: it holds ${bytes(size)}, more than the ${limit(max)} analysis reads of it. run.json grows with each participant and the study's mission; split the participants across studies to keep it under the limit.`,
+    `Analysis did not read run.json: it holds ${bytes(size)}, more than the ${limit(max)} analysis reads of it. run.json grows with each participant, its instruction, the mission and the task goals; split the participants across studies to keep it under the limit.`,
   );
 }
 
