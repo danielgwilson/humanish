@@ -1,19 +1,16 @@
 import fc from "fast-check";
-import vm from "node:vm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { redactSandboxIds, sandboxIdDigest } from "../../src/evidence/redaction.js";
-import {
-  publicSandboxView,
-  scrubSandboxIdBytes,
-  scrubSandboxIds,
-} from "../../src/run/sandbox-ids.js";
+import { publicSandboxView } from "../../src/run/sandbox-ids.js";
+import { isRecord } from "../../src/run/type-guards.js";
 import { propertyParameters } from "../helpers/scrub-arbitraries.js";
 
-// publicSandboxView on a run bundle: with E2B ids, each participant's trace is scrubbed without
-// its items joining another participant's in one string, so a hosted run whose traces together
-// pass V8's longest string still writes run.json. For any ids, the result must stay what the
-// scrub of the whole JSON text returned, which wholeTextView below keeps as the reference.
+// publicSandboxView on a run bundle: with E2B ids, the shell and each participant's stream are
+// scrubbed on their own, so no string holds two participants' items and a hosted run whose traces
+// together pass V8's longest string still writes run.json. For any ids, the result's JSON text
+// must stay what the scrub of the whole JSON text returned, which wholeTextView below keeps as
+// the reference, and so must the value wherever a label went in.
 
 // Shaped like E2B ids and built at run time, so this file holds none at a sandbox-id key.
 const HOST_ID = ["i", "q7m2x9k4w8", "n1p3v6z5a"].join("");
@@ -25,7 +22,7 @@ afterEach(() => {
 });
 
 /**
- * The scrub as it was before it worked one token at a time: the whole value's JSON text, each id
+ * The scrub as it was before it worked one stream at a time: the whole value's JSON text, each id
  * replaced longest first, parsed back when anything changed.
  */
 function wholeTextView(value: unknown, ids: readonly string[]): unknown {
@@ -66,11 +63,22 @@ function twoParticipantBundle() {
   };
 }
 
+/** An array of `item` after a hole, which JSON.stringify writes as null. */
+function afterHole(item: unknown): unknown[] {
+  const items: unknown[] = [];
+  items[1] = item;
+  return items;
+}
+
 describe("publicSandboxView on a run bundle", () => {
   it("serializes no two participants' items in one string", () => {
+    const bundle = {
+      ...twoParticipantBundle(),
+      events: [{ id: "event-1", message: `kill(${HOST_ID}) returned true` }],
+    };
     const stringify = vi.spyOn(JSON, "stringify");
     const parse = vi.spyOn(JSON, "parse");
-    const view = publicSandboxView(twoParticipantBundle(), [HOST_ID, GUEST_ID]);
+    const view = publicSandboxView(bundle, [HOST_ID, GUEST_ID]);
     const strings = [
       ...stringify.mock.results.map((result) => result.value as unknown),
       ...parse.mock.calls.map(([text]) => text as unknown),
@@ -85,6 +93,130 @@ describe("publicSandboxView on a run bundle", () => {
       `first-participant opened https://6080-${label(HOST_ID)}.e2b.app`,
       `second-participant opened https://6080-${label(GUEST_ID)}.e2b.app`,
     ]);
+    expect(view.events[0]!.message).toBe(`kill(${label(HOST_ID)}) returned true`);
+  });
+
+  it.each([
+    {
+      name: "an id in a URL in the last stream",
+      value: {
+        runId: "r",
+        streams: [{ text: "safe" }, { url: `https://6080-${GUEST_ID}.e2b.app` }],
+      },
+      ids: [HOST_ID, GUEST_ID],
+      expected: {
+        runId: "r",
+        streams: [{ text: "safe" }, { url: `https://6080-${label(GUEST_ID)}.e2b.app` }],
+      },
+    },
+    {
+      name: "an id in the shell and its events, before and after the streams",
+      value: {
+        note: `seen ${HOST_ID}`,
+        streams: [{ text: "safe" }],
+        events: [{ message: `kill(${GUEST_ID})` }],
+      },
+      ids: [HOST_ID, GUEST_ID],
+      expected: {
+        note: `seen ${label(HOST_ID)}`,
+        streams: [{ text: "safe" }],
+        events: [{ message: `kill(${label(GUEST_ID)})` }],
+      },
+    },
+    {
+      name: "an id in a key that two streams repeat",
+      value: { streams: [{ [`seen ${HOST_ID}`]: 1 }, { [`seen ${HOST_ID}`]: 2 }] },
+      ids: [HOST_ID],
+      expected: { streams: [{ [`seen ${label(HOST_ID)}`]: 1 }, { [`seen ${label(HOST_ID)}`]: 2 }] },
+    },
+    {
+      name: "two keys of a stream that scrub to one, keeping the last value at the first position",
+      value: { streams: [{ [HOST_ID]: 1, between: 2, [label(HOST_ID)]: 3 }] },
+      ids: [HOST_ID],
+      expected: { streams: [{ [label(HOST_ID)]: 3, between: 2 }] },
+    },
+    {
+      name: "two shell keys that scrub to one, around the streams",
+      value: { [HOST_ID]: 1, streams: [{ url: HOST_ID }], [label(HOST_ID)]: 3 },
+      ids: [HOST_ID],
+      expected: { [label(HOST_ID)]: 3, streams: [{ url: label(HOST_ID) }] },
+    },
+    {
+      name: "-0, Infinity, undefined and a Date in a stream that names an id, read back as JSON",
+      value: {
+        streams: [
+          {
+            url: `https://3000-${HOST_ID}.e2b.app`,
+            numbers: [-0, Infinity, undefined],
+            gone: undefined,
+            at: new Date("2026-10-14T00:00:00.000Z"),
+          },
+        ],
+      },
+      ids: [HOST_ID],
+      expected: {
+        streams: [
+          {
+            url: `https://3000-${label(HOST_ID)}.e2b.app`,
+            numbers: [0, null, null],
+            at: "2026-10-14T00:00:00.000Z",
+          },
+        ],
+      },
+    },
+    {
+      name: "an id that spans two streams and the text between them",
+      value: { runId: "r", streams: [{ note: "abc" }, { note: "def" }] },
+      ids: ['abc"},{"note":"def'],
+      expected: { runId: "r", streams: [{ note: label('abc"},{"note":"def') }] },
+    },
+    {
+      name: "an id inside the key streams",
+      value: { runId: "r", streams: [{ note: "safe" }] },
+      ids: ["reams"],
+      expected: { runId: "r", [`st${label("reams")}`]: [{ note: "safe" }] },
+    },
+    {
+      name: "a stream whose toJSON reads its index, which it gets only inside the bundle",
+      value: { streams: [{ toJSON: (key: string) => ({ note: key === "0" ? HOST_ID : "safe" }) }] },
+      ids: [HOST_ID],
+      expected: { streams: [{ note: label(HOST_ID) }] },
+    },
+    {
+      name: "streams with a hole, which the whole text writes as null",
+      value: { streams: afterHole({ url: HOST_ID }) },
+      ids: [HOST_ID],
+      expected: { streams: [null, { url: label(HOST_ID) }] },
+    },
+  ])("rewrites $name as the whole text did", ({ value, ids, expected }) => {
+    expect(publicSandboxView(value, ids)).toStrictEqual(expected);
+    expect(wholeTextView(value, ids)).toStrictEqual(expected);
+  });
+
+  it("returns the bundle itself when no stream and no shell member names an id", () => {
+    const value = { runId: "r", streams: [{ at: new Date(0) }, { gone: undefined }] };
+    expect(publicSandboxView(value, [HOST_ID])).toBe(value);
+  });
+
+  it("keeps a stream that names no id as given, with the JSON text of the whole-text scrub", () => {
+    const quiet = { at: new Date("2026-10-14T00:00:00.000Z"), gone: undefined };
+    const value = { streams: [quiet, { url: HOST_ID }] };
+    const view = publicSandboxView(value, [HOST_ID]);
+    expect(view.streams[0]).toBe(quiet);
+    expect(JSON.stringify(view)).toBe(JSON.stringify(wholeTextView(value, [HOST_ID])));
+  });
+
+  it("leaves out a streams member that JSON.stringify leaves out", () => {
+    const value = { runId: "r" };
+    Object.defineProperty(value, "streams", { value: [{ url: HOST_ID }], enumerable: false });
+    expect(JSON.stringify(publicSandboxView(value, [HOST_ID]))).toBe('{"runId":"r"}');
+    expect(JSON.stringify(wholeTextView(value, [HOST_ID]))).toBe('{"runId":"r"}');
+  });
+
+  it("throws on an id inside a number in a stream, as the whole-text scrub did", () => {
+    const value = { streams: [{ text: "safe" }, { at: 1424242424242 }] };
+    expect(() => wholeTextView(value, ["4242424242"])).toThrow(SyntaxError);
+    expect(() => publicSandboxView(value, ["4242424242"])).toThrow(SyntaxError);
   });
 });
 
@@ -134,7 +266,7 @@ describe("publicSandboxView against the whole-text scrub", () => {
     expect(wholeTextView(value, ids)).toStrictEqual(expected);
   });
 
-  it("returns the value itself when no token names an id", () => {
+  it("returns the value itself when nothing in it names an id", () => {
     const value = { numbers: [-0, Infinity], at: new Date(0), gone: undefined };
     expect(publicSandboxView(value, [HOST_ID])).toBe(value);
   });
@@ -167,127 +299,42 @@ describe("publicSandboxView against the whole-text scrub", () => {
     expect(() => publicSandboxView(value, [id])).toThrow(SyntaxError);
   });
 
-  it("agrees with it on generated values with ids in strings, keys, URLs and numbers", () => {
-    const seen = { changed: 0, threw: 0, spanned: 0 };
+  it("agrees with it on generated values and bundles with ids in strings, keys, URLs and numbers", () => {
+    const seen = { changed: 0, threw: 0, spanned: 0, streamwise: 0 };
     fc.assert(
       fc.property(viewCases(), ({ value, ids }) => {
         const expected = outcome(() => wholeTextView(value, ids));
         const actual = outcome(() => publicSandboxView(value, ids));
-        expect(actual).toStrictEqual(expected);
-        // Both return the value itself when nothing in it changed.
-        if (typeof actual !== "string" && typeof expected !== "string")
+        if (typeof expected === "string" || typeof actual === "string") {
+          expect(actual).toStrictEqual(expected);
+        } else {
+          // A stream that names no id comes back as given, where the whole-text scrub returned
+          // JSON.parse's copy of it once anything else changed, so the JSON texts are compared.
+          expect(actual.text).toBe(expected.text);
+          // Both return the value itself when nothing in it changed.
           expect(actual.value === value).toBe(expected.value === value);
+        }
         if (typeof expected === "string") seen.threw += 1;
         else if (expected.text !== JSON.stringify(redactSandboxIds(value))) {
           seen.changed += 1;
           if (ids.some((one) => /[{}[\],:"\\]/.test(one))) seen.spanned += 1;
+          else if (
+            !ids.some((one) => "streams".includes(one)) &&
+            isRecord(value) &&
+            Array.isArray(value.streams) &&
+            value.streams.length > 1
+          )
+            seen.streamwise += 1;
         }
       }),
       propertyParameters(),
     );
-    // Both outcomes the scrub can have were reached, also for ids that can span two tokens, so
-    // the comparison covered them.
+    // Both outcomes the scrub can have were reached, for ids that can span two tokens and for
+    // bundles of two or more streams with ids that cannot, so the comparison covered them.
     expect(seen.changed).toBeGreaterThan(20);
     expect(seen.threw).toBeGreaterThan(2);
     expect(seen.spanned).toBeGreaterThan(5);
-  });
-});
-
-describe("publicSandboxView on values JSON.stringify converts", () => {
-  const ids = [HOST_ID, GUEST_ID];
-  const id = label(HOST_ID);
-  const callable = Object.assign(() => 0, { toJSON: () => HOST_ID });
-  const renamed = Object.assign(Object("safe") as object, { toString: () => HOST_ID });
-  const flipped = Object.assign(Object(true) as object, { valueOf: () => false });
-  const rawJSON = (JSON as unknown as { rawJSON: (text: string) => unknown }).rawJSON;
-  // An array from toJSON whose first read shrinks or grows it: JSON.stringify reads its length once.
-  const resized = (resize: (array: unknown[]) => void) => ({
-    toJSON: () => {
-      const array: unknown[] = [HOST_ID, 42];
-      Object.defineProperty(array, "0", {
-        get: () => {
-          resize(array);
-          return HOST_ID;
-        },
-      });
-      return array;
-    },
-  });
-
-  it.each([
-    { name: "a function's toJSON", value: { f: callable }, expected: { f: id } },
-    { name: "a boxed string by its toString", value: { s: renamed }, expected: { s: id } },
-    {
-      name: "a boxed boolean by its own value",
-      value: { x: HOST_ID, b: flipped },
-      expected: { x: id, b: true },
-    },
-    {
-      name: "a boxed string from another realm",
-      value: { x: HOST_ID, s: vm.runInNewContext('new String("hello")') as unknown },
-      expected: { x: id, s: "hello" },
-    },
-    {
-      name: "an object on String.prototype that boxes nothing",
-      value: { x: HOST_ID, v: Object.create(String.prototype) as unknown },
-      expected: { x: id, v: {} },
-    },
-    {
-      name: "raw JSON text",
-      value: { x: HOST_ID, n: rawJSON("123") },
-      expected: { x: id, n: 123 },
-    },
-    {
-      name: "an array that shrinks while it is read",
-      value: resized((array) => (array.length = 1)),
-      expected: [id, null],
-    },
-    {
-      name: "an array that grows while it is read",
-      value: resized((array) => array.push(7)),
-      expected: [id, 42],
-    },
-    {
-      name: "a boxed bigint",
-      value: { x: HOST_ID, b: Object(1n) as unknown },
-      expected: "TypeError",
-    },
-  ])("converts $name as the whole text did", ({ value, expected }) => {
-    const written =
-      typeof expected === "string" ? expected : { value: expected, text: JSON.stringify(expected) };
-    expect(outcome(() => publicSandboxView(value, ids))).toStrictEqual(written);
-    expect(outcome(() => wholeTextView(value, ids))).toStrictEqual(written);
-  });
-
-  it("calls a bigint's toJSON with its key, as JSON.stringify does", () => {
-    const prototype = BigInt.prototype as unknown as { toJSON?: (key: string) => string };
-    prototype.toJSON = (key) => (key === "n" ? HOST_ID : "safe");
-    try {
-      const value = { n: 1n, m: 2n };
-      const written = { value: { n: id, m: "safe" }, text: JSON.stringify({ n: id, m: "safe" }) };
-      expect(outcome(() => publicSandboxView(value, ids))).toStrictEqual(written);
-      expect(outcome(() => wholeTextView(value, ids))).toStrictEqual(written);
-    } finally {
-      delete prototype.toJSON;
-    }
-  });
-});
-
-describe("the sandbox id scrub with a 50,000-character id", () => {
-  // V8 refuses to compile a RegExp of about 40,000 characters, so no single pattern can hold it.
-  const LONG_ID = "a".repeat(50_000);
-
-  it("labels it in text, bytes and values, and passes text without it through", () => {
-    expect(scrubSandboxIds("safe", [LONG_ID])).toBe("safe");
-    expect(scrubSandboxIds(`x${LONG_ID}y é`, [LONG_ID])).toBe(`x${label(LONG_ID)}y é`);
-    expect(scrubSandboxIdBytes("trace.txt", Buffer.from(LONG_ID), [LONG_ID]).toString()).toBe(
-      label(LONG_ID),
-    );
-    const value = { text: "safe", quoted: `kill ${LONG_ID}` };
-    expect(publicSandboxView(value, [HOST_ID, LONG_ID])).toStrictEqual({
-      text: "safe",
-      quoted: `kill ${label(LONG_ID)}`,
-    });
+    expect(seen.streamwise).toBeGreaterThan(5);
   });
 });
 
@@ -296,8 +343,8 @@ const ALPHANUMERIC = range("abcdefghijklmnopqrstuvwxyz0123456789");
 
 /**
  * Ids drawn from E2B's shape, short ids that start like an escape's tail or hold characters JSON
- * or a RegExp escapes, ids holding `{}[],:` that can span two tokens of the whole text, and digit
- * ids a number can hold.
+ * or a RegExp escapes, ids holding `{}[],:` that can span two tokens of the whole text, digit ids
+ * a number can hold, and parts of the key `streams`.
  */
 function sandboxIds(): fc.Arbitrary<string[]> {
   const e2b = fc
@@ -323,9 +370,10 @@ function sandboxIds(): fc.Arbitrary<string[]> {
   // The end of one string, the JSON between two tokens, and the start of the next.
   const word = fc.string({ unit: fc.constantFrom(...range("abc1")), minLength: 1, maxLength: 3 });
   const spanning = fc
-    .tuple(word, fc.constantFrom('","', '":"', '":', '",', ",", '"]', '"}'), word)
+    .tuple(word, fc.constantFrom('","', '":"', '":', '",', ",", '"]', '"}', '"},{"'), word)
     .map((parts) => parts.join(""));
-  return fc.uniqueArray(fc.oneof(e2b, e2b, escaping, digits, spanning), {
+  const streamsKey = fc.constantFrom("streams", "tream", "ams");
+  return fc.uniqueArray(fc.oneof(e2b, e2b, e2b, escaping, digits, spanning, streamsKey), {
     minLength: 1,
     maxLength: 3,
   });
@@ -333,7 +381,9 @@ function sandboxIds(): fc.Arbitrary<string[]> {
 
 /**
  * A value whose strings, keys and numbers hold the ids whole, cut, split at JSON punctuation, next
- * to escapes and as labels.
+ * to escapes and as labels, or a bundle of such members around a `streams` array. Most streams
+ * are plain objects; a hole, a stream that is not one, or a stream with a toJSON that reads its
+ * index is mixed in.
  */
 function viewCases(): fc.Arbitrary<{ value: unknown; ids: string[] }> {
   return sandboxIds().chain((ids) => {
@@ -358,24 +408,50 @@ function viewCases(): fc.Arbitrary<{ value: unknown; ids: string[] }> {
       fc.double(),
       fc.constantFrom(-0, Infinity, -Infinity, NaN, ...digitIds),
     );
-    const { value } = fc.letrec<{ value: unknown; array: unknown[]; object: object }>((tie) => ({
-      value: fc.oneof(
-        { depthSize: "small" },
-        text,
-        number,
-        fc.boolean(),
-        fc.constant(null),
-        fc.constant(undefined),
-        fc.date({ min: new Date(0), max: new Date(4102444800000) }),
-        id.map((one) => ({ sandboxId: one, providerResources: [{ id: one }] })),
-        tie("array"),
-        tie("object"),
-      ),
-      array: fc.array(tie("value"), { maxLength: 4 }),
-      object: fc
-        .array(fc.tuple(key, tie("value")), { maxLength: 4 })
-        .map((entries) => Object.fromEntries(entries) as object),
-    }));
-    return value.map((generated) => ({ value: generated, ids }));
+    const { value, object } = fc.letrec<{ value: unknown; array: unknown[]; object: object }>(
+      (tie) => ({
+        value: fc.oneof(
+          { depthSize: "small" },
+          text,
+          number,
+          fc.boolean(),
+          fc.constant(null),
+          fc.constant(undefined),
+          fc.date({ min: new Date(0), max: new Date(4102444800000) }),
+          id.map((one) => ({ sandboxId: one, providerResources: [{ id: one }] })),
+          tie("array"),
+          tie("object"),
+        ),
+        array: fc.array(tie("value"), { maxLength: 4 }),
+        object: fc
+          .array(fc.tuple(key, tie("value")), { maxLength: 4 })
+          .map((entries) => Object.fromEntries(entries) as object),
+      }),
+    );
+    const stream = fc.oneof(
+      { weight: 6, arbitrary: object },
+      { weight: 1, arbitrary: value },
+      { weight: 1, arbitrary: text.map((note) => ({ toJSON: (at: string) => ({ at, note }) })) },
+    );
+    const streams = fc.oneof(
+      { weight: 5, arbitrary: fc.array(stream, { maxLength: 4 }) },
+      {
+        weight: 1,
+        arbitrary: fc.array(stream, { minLength: 2, maxLength: 4 }).map((list) =>
+          list.reduce<unknown[]>((holed, item, at) => {
+            if (at > 0) holed[at] = item;
+            return holed;
+          }, []),
+        ),
+      },
+    );
+    const members = fc.array(fc.tuple(key, value), { maxLength: 3 });
+    const bundle = fc
+      .tuple(members, streams, members)
+      .map(
+        ([before, list, after]) =>
+          Object.fromEntries([...before, ["streams", list], ...after]) as object,
+      );
+    return fc.oneof(value, bundle).map((generated) => ({ value: generated, ids }));
   });
 }

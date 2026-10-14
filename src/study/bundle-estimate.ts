@@ -17,11 +17,11 @@
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
 // The Observer page and the Observer server join every participant's items in one string before
-// gzip. On a hosted desktop the sandbox id scrub (publicSandboxView) does too, on every write of
-// run.json and on a bundle export of the loaded run, which its 25 MiB default --max-bytes refuses
-// first. V8's longest string is 536,870,888 characters
-// on Node 24. A trace file's bytes are at least the characters of its items as compact JSON, so the
-// estimate compares the traces' bytes and may warn a little early.
+// gzip. A bundle export renders the Observer page, so it fails there too once --max-bytes is
+// raised past its 25 MiB default, which refuses such a run first. Writing run.json joins none: the
+// sandbox id scrub (publicSandboxView) works one participant at a time. V8's longest string is
+// 536,870,888 characters on Node 24. A trace file's bytes are at least the characters of its
+// items as compact JSON, so the estimate compares the traces' bytes and may warn a little early.
 
 import { constants } from "node:buffer";
 
@@ -120,10 +120,7 @@ export interface BundleEstimate {
   readonly runFileBytes: number;
   /** The largest participant trace file, which analysis also reads whole. */
   readonly largestTraceBytes: number;
-  /**
-   * Every participant's trace file together, whose items the run writer and the Observer page join
-   * in one string.
-   */
+  /** Every participant's trace file together, whose items the Observer page joins in one string. */
   readonly tracesBytes: number;
   /** observer/index.html, which verify reads whole. */
   readonly observerPageBytes: number;
@@ -260,7 +257,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
     ...(joined
       ? [
-          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. On a hosted desktop, writing run.json puts them in one string, and so does a bundle export allowed past its 25 MiB default; the Observer page always does. run.json may then stop updating, that export would fail and the page would not build.`,
+          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. The Observer page puts all their items in one string, so the page would not build. A bundle export allowed past its 25 MiB default renders that page, so it would fail too.`,
         ]
       : []),
     ...(entries

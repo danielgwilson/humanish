@@ -1,10 +1,10 @@
 // Before a computer-use study runs, the plan estimates how large its run bundle grows: run.json,
 // which analysis reads up to 16 MiB, each participant's trace, which analysis, verify and the
 // Observer read up to 32 MiB, the Observer page, which verify reads up to 32 MiB, all the traces
-// together, whose items the run writer and the page join in one string of at most 536,870,888
-// characters, and the files the public-safety scan visits. A live study whose estimate passes one
-// of those limits gets a plan warning, which `study check` and `humanish run` print before any
-// sandbox is created, and runs.
+// together, whose items the page joins in one string of at most 536,870,888 characters, and the
+// files the public-safety scan visits. A live study whose estimate passes one of those limits
+// gets a plan warning, which `study check` and `humanish run` print before any sandbox is
+// created, and runs.
 //
 // The worked examples use the rates in src/study/bundle-estimate.ts: a model turn every 10 s that
 // adds 4,700 bytes to its participant's trace (the busiest participant measured) and none to
@@ -130,11 +130,12 @@ describe("study check's bundle estimate", () => {
 
   it("warns that 40 hosts working 8 hours pass the longest string on all their traces", async () => {
     // All traces: 40 x 13,541,400 = 541,656,000 bytes, past V8's 536,870,888 characters, which
-    // the run writer, feedback export and the Observer page need in one string. run.json: 4,400 + 40 x 16,500 = 664,400.
+    // the Observer page, and a bundle export that renders it, need in one string. run.json: 4,400 +
+    // 40 x 16,500 = 664,400.
     // Page: 1,200,000 + 0.85 x 664,400 + 0.12 x 541,656,000 = 66,763,460. Entries: 20 + 40 x 3
     // + 40 x 2,880 = 115,340, of 10,000 + 40 x 5,000.
     expect((await check(eventDay(40, 8))).warnings).toEqual([
-      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. On a hosted desktop, writing run.json puts them in one string, and so does a bundle export allowed past its 25 MiB default; the Observer page always does. run.json may then stop updating, that export would fail and the page would not build. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. The Observer page puts all their items in one string, so the page would not build. A bundle export allowed past its 25 MiB default renders that page, so it would fail too. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
     ]);
   });
 
