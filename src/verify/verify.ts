@@ -2,7 +2,8 @@ import path from "node:path";
 import { listAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
-import { containsSensitive, REDACTED_SANDBOX_ID } from "../evidence/redaction.js";
+import { REDACTED_SANDBOX_ID } from "../evidence/redaction.js";
+import { containsSensitiveJson } from "../evidence/sensitive-json.js";
 import { keyedSandboxIds, readRunSandboxIds } from "../run/sandbox-ids.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
@@ -201,10 +202,11 @@ export async function verifyResolvedRun(
   addTraceScan(traces, publicSafetyFindings, unscannedArtifacts);
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
+  // Each participant is scanned apart: together their traces can pass V8's longest string.
   if (
     publicSafetyFindings.length < MAX_REPORTED_FINDINGS &&
     recorded !== null &&
-    containsSensitive(JSON.stringify(recorded))
+    containsSensitiveJson(recorded, "streams")
   ) {
     publicSafetyFindings.push("sensitive decoded run.json");
   }

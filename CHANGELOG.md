@@ -12,23 +12,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - An OpenAI computer-use participant can name how long it waits, as Codex and Claude Code
   participants do. Every request, from the first, offers a `wait_minutes` function tool with one
-  field, `minutes`, next to the computer tool, so the cached prompt prefix does not change. A call
-  in a turn of only waits is watched for its minutes: it ends early when the screen changes, and
-  lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. The named minutes
-  set where the doubling of quiet turns in a row starts: a participant that names 1 minute on each
-  turn of a quiet screen waits 60, 120, 240 and 480 seconds, then 10 minutes at a time, and starts
-  again from 1 minute after a large change on the screen. The tool's description is "Wait, then
-  get a new screenshot. The reply says how long the wait lasted and why it ended." It says nothing
-  of the screen or of later waits, for the reasons under Changed. Minutes that are not a finite
-  number above zero make a wait with no length, which lasts `idleWaitMs`. A call to a function the
-  participant does not have is answered that there is no such tool and is a wait with no length,
-  so a reply of only such a call does not end the session. A call sent with other actions goes to
-  the desktop for at most `actor.maxWaitMs`, as any such wait does. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the
-  tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
-  pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the A/B
-  experiment's model spend per participant-hour and requests per hour against 0.132.0 go here. Each
-  wait's `ui_action` in the trace now carries `namedMs` when the wait named its length, before any
-  cap, so a bundle shows which waits used the tool and the lengths they named (#1862).
+  field, `minutes`, next to the computer tool, so the cached prompt prefix does not change. Its
+  description is "Wait, then get a new screenshot. The reply says how long the wait lasted and why
+  it ended." A call in a turn of only waits is watched for its minutes: it ends early when a change
+  on the screen holds still, and lasts at most `actor.maxWaitMs`, or 10 minutes when the study does
+  not set it. The named minutes set where the doubling of quiet turns in a row starts: a
+  participant that names 1 minute on each turn of a quiet screen waits 60, 120, 240 and 480
+  seconds, then 10 minutes at a time, and any other action, such as a reload, starts again from
+  1 minute. Minutes that are not a finite number above zero make a wait with no length, which lasts
+  `idleWaitMs`. A call to a function the participant does not have is answered that there is no
+  such tool and is a wait with no length, so a reply of only such a call does not end the session.
+  A call sent with other actions goes to the desktop for at most `actor.maxWaitMs`, as any such wait
+  does. Each wait's `ui_action` in the trace carries `namedMs` when the wait named its length,
+  before any cap. In a live A/B of 60-minute runs with `gpt-5.6-sol` against 0.132.0, 3 runs per
+  arm on each page and 6 on the reload page, median model spend per participant-hour fell from
+  $0.92 to $0.81 on a resident portal that shows a notice and a badge, from $1.36 to $0.66 on a
+  support queue, from $4.77 to $2.57 on an issue list that gains issues only on reload, and from
+  $6.86 to $1.50 on a dispatch board. Every scheduled change reached a request, and all 6
+  participants on the issue list first reloaded within 2.4 minutes and reported all four new
+  issues (#1862).
 
 ### Changed
 
@@ -37,12 +39,40 @@ The Unreleased section holds the full notes for the next version until it is tag
   20 seconds by default. Before, a turn whose named waits came to 1 ms lasted 1 ms, then 2 ms, and
   sent its requests nearly back to back. The Codex tool description and the Claude Code prompt state
   the floor (#1862).
-- The note after a wait no longer says how long the next wait can last. In live hours on an issue
-  list that gains an issue only on reload, OpenAI participants whose tool description and notes
-  said each wait in a row lasts twice as long named 1, 2, 4, 8 and 10 minutes in turn. One of three
-  never reloaded and reported that no new issue appeared when four had; the other two first
-  reloaded after 18 and 26 minutes. The note still says how long the wait lasted and why it ended.
-  This also removes the note's misleading length after a small change ended a wait early (#1869).
+- The note after a wait no longer says how long the next wait can last. In live hours on the issue
+  list, OpenAI participants whose tool description and notes said each wait in a row lasts twice as
+  long named 1, 2, 4, 8 and 10 minutes in turn. One of three never reloaded and reported that no new
+  issue appeared when four had; the other two first reloaded after 18 and 26 minutes. The note
+  still says how long the wait lasted and why it ended. This also removes the note's misleading
+  length after a small change ended a wait early (#1869).
+- The Codex tool description and the Claude Code prompt no longer say that a turn of only waits
+  returns when the screen changes. They say how long such a turn can last, and the note after it
+  says how long it lasted and why it ended. A tool named `wait_for_change` and described that way
+  led OpenAI participants to wait for the issue list to change: in their first reasoning, 1 of
+  about 10 planned to refresh the page, against 7 of 8 on 0.132.0, and 3 of 9 reported fewer
+  issues than had arrived. The new Codex and Claude Code wording has no live run yet (#1862).
+
+### Fixed
+
+- verify scans the decoded run one participant at a time. It scanned run.json with every
+  participant's trace loaded as one string, and V8's longest string is 536,870,888 characters, so
+  on a run whose traces together passed about 512 MiB, such as 25 participants at 30 MiB, verify
+  stopped with `RangeError: Invalid string length` and analysis with `ANALYSIS_UNAVAILABLE`. On 25
+  synthetic participants with 30 MiB traces, verify now grades the run `share_ready` and
+  `analyze --dry-run` passes. A key planted in the last participant's trace, escaped so that only
+  the decoded run shows it, still blocks the run. The scan answers as the single string did on
+  every value JSON.parse returns. One pattern can match across participants: a URL whose user info
+  runs up to an `@` and an E2B host. verify checks it across each cut and keeps only the URL's
+  scheme between participants. Peak memory on that run was 2,044 MiB; verify still holds every trace at once.
+  (#1848)
+- The bundle estimate warns when all participants' traces together may pass 512 MiB. The Observer
+  page and the Observer server join every participant's items in one string, so on the 25 x
+  30 MiB run `humanish observe` still stops with `RangeError: Invalid string length`. On a hosted
+  desktop, the sandbox id scrub joins them too, on each write of run.json, so a hosted run that
+  size stops updating run.json once its finished participants' traces pass the limit (#1870).
+  `humanish export --format bundle` joins them as well, once `--max-bytes` is raised past its
+  25 MiB default. The Observer fix is #1871. The estimate reaches the limit at 40
+  participants working 8 hours. It warns about the Observer page passing 32 MiB from 20. (#1848)
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 
