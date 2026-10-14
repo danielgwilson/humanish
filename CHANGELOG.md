@@ -8,6 +8,28 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- verify scans the decoded run one participant at a time. It scanned run.json with every
+  participant's trace loaded as one string, and V8's longest string is 536,870,888 characters, so
+  on a run whose traces together passed about 512 MiB, such as 25 participants at 30 MiB, verify
+  stopped with `RangeError: Invalid string length` and analysis with `ANALYSIS_UNAVAILABLE`. On 25
+  synthetic participants with 30 MiB traces, verify now grades the run `share_ready` and
+  `analyze --dry-run` passes. A key planted in the last participant's trace, escaped so that only
+  the decoded run shows it, still blocks the run. The scan answers as the single string did on
+  every value JSON.parse returns. One pattern can match across participants: a URL whose user info runs up to an `@`
+  and an E2B host. verify checks it across each cut and keeps only the URL's scheme between
+  participants. Peak memory on that run was 2,044 MiB; verify still holds every trace at once.
+  (#1848)
+- The bundle estimate warns when all participants' traces together may pass 512 MiB. The Observer
+  page and the Observer server join every participant's items in one string, so on the 25 x
+  30 MiB run `humanish observe` still stops with `RangeError: Invalid string length`. On a hosted
+  desktop, the sandbox id scrub joins them too, on each write of run.json, so a hosted run that
+  size stops updating run.json once its finished participants' traces pass the limit (#1870).
+  `humanish export --format bundle` joins them as well, once `--max-bytes` is raised past its
+  25 MiB default. The Observer fix is #1871. The estimate reaches the limit at 40
+  participants working 8 hours. It warns about the Observer page passing 32 MiB from 20. (#1848)
+
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 
 humanish 0.132.0 cuts the cost of an OpenAI computer-use participant's closing report. The closing
