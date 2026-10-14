@@ -154,15 +154,16 @@ describe("a held participant whose turns ask for no wait time", () => {
   const notices = (run: Awaited<ReturnType<typeof runWatching>>) =>
     run.result.trace.items.filter((item) => item.title === "watched the screen");
 
-  it("is watched for idleWaitMs at a turn of only a screenshot, and its watches grow", async () => {
-    // Without the watch the clock never moves, so the script stops after 1,000 requests.
+  it("is watched for idleWaitMs from its second screenshot turn in a row, and its watches grow", async () => {
+    // Turn 1 is sent at once. Without the watch the clock never moves, so the script stops after
+    // 1,000 requests.
     const run = await runWatching({
       screen: () => QUIET,
       turn: (_request, n) => (n <= 1_000 ? turnOf([{ kind: "screenshot" }]) : DONE),
       loop: { clock: { end: { atMs: 10 * MINUTE, windDownMs: MINUTE } } },
     });
-    expect(run.requests.slice(0, 6).map((request) => request.at)).toEqual([
-      0, 5_000, 15_000, 35_000, 75_000, 155_000,
+    expect(run.requests.slice(0, 7).map((request) => request.at)).toEqual([
+      0, 0, 5_000, 15_000, 35_000, 75_000, 155_000,
     ]);
     expect(
       notices(run)
@@ -175,13 +176,14 @@ describe("a held participant whose turns ask for no wait time", () => {
       [40_000, "limit"],
       [80_000, "limit"],
     ]);
-    expect(run.requests[1]?.hint).toBe(
+    expect(run.requests[2]?.hint).toBe(
       "The wait before your screenshot lasted 5 seconds; no change on the screen held still long enough to end it.",
     );
     expect(run.result.trace.stopCause).toBe("scheduled_end");
   });
 
-  it("is watched for idleWaitMs at a turn of 0 ms waits, which no longer reach the desktop", async () => {
+  it("is watched for idleWaitMs from its second turn of 0 ms waits in a row, whose waits are not sent", async () => {
+    // Turn 1 is sent at once, its two 0 ms waits to the desktop, as for a participant with no end.
     const run = await runWatching({
       screen: () => QUIET,
       turn: (_request, n) =>
@@ -193,18 +195,45 @@ describe("a held participant whose turns ask for no wait time", () => {
           : DONE,
       loop: HELD,
     });
-    expect(run.executed).toEqual([]);
+    expect(run.executed).toEqual([
+      { kind: "wait", ms: 0 },
+      { kind: "wait", ms: 0 },
+    ]);
     expect(waitItems(run.result).map((item) => [item.title, item.watch?.limitMs])).toEqual([
+      ["wait 0ms", undefined],
+      ["wait 0ms", undefined],
       ["wait 5000ms", 5_000],
       ["wait 0ms", undefined],
       ["wait 10000ms", 10_000],
       ["wait 0ms", undefined],
-      ["wait 20000ms", 20_000],
-      ["wait 0ms", undefined],
     ]);
-    expect(run.requests[1]?.hint).toBe(
+    expect(run.requests[2]?.hint).toBe(
       "Your wait lasted 5 seconds; no change on the screen held still long enough to end it.",
     );
+  });
+
+  it("is not watched at a screenshot turn at the start or after an action", async () => {
+    // idleWaitMs is 60 s. Turns 1, 3 and 5 take only a screenshot and turns 2 and 4 click, so
+    // requests 1 to 6 come at 0 s. Turn 6 is the second screenshot turn in a row and is watched.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) =>
+        n === 2 || n === 4
+          ? turnOf([{ kind: "click", x: 10 * n, y: 10 * n }])
+          : n <= 6
+            ? turnOf([{ kind: "screenshot" }])
+            : DONE,
+      loop: { ...HELD, idleWaitMs: MINUTE },
+    });
+    expect(run.requests.slice(0, 7).map((request) => request.at)).toEqual([
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      MINUTE,
+    ]);
   });
 });
 

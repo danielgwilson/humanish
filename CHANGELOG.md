@@ -30,9 +30,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   review.json lists it in its gaps. (#1873)
 - A participant held to a scheduled end no longer sends model requests back to back with turns of
   only screenshots or only 0 ms waits. Such a turn asked for no wait time, so the loop ran no watch
-  for it. It is now watched as a wait with no length: `idleWaitMs`, 5 seconds by default, doubling
-  on each further quiet turn in a row. 0 ms waits are no longer sent to the desktop for such a
-  participant. A watch that no wait carries, such as one for a turn of only screenshots, is recorded
+  for it. Such a turn that follows another turn of only waits or screenshots is now watched as a
+  wait with no length: `idleWaitMs`, 5 seconds by default, doubling on each further quiet turn in a
+  row, and its 0 ms waits are not sent to the desktop. The first such turn, at the start or after an
+  action, is sent at once, so a participant that looks again after acting does not wait for it. A
+  watch that no wait carries, such as one for a turn of only screenshots, is recorded
   on a `notice` titled `watched the screen`, with the same `watch` field a wait's `ui_action`
   carries. Participants without a scheduled end keep their behavior. (#1868)
 

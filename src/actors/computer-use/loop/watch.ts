@@ -21,10 +21,10 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
 // A participant held to its scheduled end waits for that end as its task, so two more of its turns
-// are watched as a wait with no length: a turn of only screenshots or 0 ms waits, and, after the
-// action is sent, a turn that repeats a recent action on an unchanged screen past the no-progress
-// limit (backstop.ts repeatsPastLimit). Without these watches it would send requests back to back
-// until its end.
+// are watched as a wait with no length: a turn of only screenshots or 0 ms waits after another turn
+// that only waited or took screenshots, and, after the action is sent, a turn that repeats a recent
+// action on an unchanged screen past the no-progress limit (backstop.ts repeatsPastLimit). Without
+// these watches it would send requests back to back until its end.
 //
 // A watch first lasts the turn's planned length: its waits' named lengths, together up to
 // watchMaxMs, and idleWaitMs for each wait that names none, and at least idleWaitMs. Each further
@@ -75,6 +75,8 @@ interface Ending {
 export class IdleWatcher {
   /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
   private grownFromMs: number | undefined;
+  /** The last turn only waited or took screenshots. */
+  private quiet = false;
 
   constructor(
     private readonly session: LoopSession,
@@ -84,9 +86,12 @@ export class IdleWatcher {
   /**
    * Watch the screen in place of this turn's waits. Undefined, with nothing run, for a turn with
    * another action, which ends the run, or with no wait time (screenshots only, or waits of 0 ms),
-   * which leaves the run as it is. A participant held to its scheduled end is watched for such a
-   * turn as for a wait with no length: it waits for its end, and without the watch it would send
-   * its requests back to back. `reference` is the observation the participant chose to wait on.
+   * which leaves the run as it is. A participant held to its scheduled end is watched for a turn
+   * with no wait time after another turn that only waited or took screenshots, as for a wait with
+   * no length: it waits for its end, and without the watch it would send its requests back to back.
+   * The first such turn, at the start or after an action, is sent at once, so a participant that
+   * looks again after acting does not wait idleWaitMs for it. `reference` is the observation the
+   * participant chose to wait on.
    */
   async watch(
     turnNumber: number,
@@ -94,7 +99,9 @@ export class IdleWatcher {
     actions: readonly CuaAction[],
   ): Promise<Watched | undefined> {
     const { session } = this;
-    if (!isIdleTurn(actions)) {
+    const quietBefore = this.quiet;
+    this.quiet = isIdleTurn(actions);
+    if (!this.quiet) {
       this.grownFromMs = undefined;
       return undefined;
     }
@@ -113,7 +120,8 @@ export class IdleWatcher {
       namedMs += ms;
       return [ms];
     });
-    if (lengths.every((ms) => ms === 0) && !heldToScheduledEnd(session)) return undefined;
+    if (lengths.every((ms) => ms === 0) && !(quietBefore && heldToScheduledEnd(session)))
+      return undefined;
     return this.run(turnNumber, reference, {
       lengths,
       askedMs: asked.reduce((sum, ms) => sum + ms, 0),
@@ -122,7 +130,7 @@ export class IdleWatcher {
         : {
             lead: "The wait before your screenshot",
             unasked:
-              "The turn took only screenshots and the participant is held to its scheduled end, so the screen was watched as for a wait with no length.",
+              "The turn took only screenshots after a turn of only waits or screenshots, and the participant is held to its scheduled end, so the screen was watched as for a wait with no length.",
           }),
     });
   }
@@ -135,6 +143,7 @@ export class IdleWatcher {
    * its action made wakes it.
    */
   async watchAfterRepeat(turnNumber: number, reference: CuaObservation): Promise<Watched> {
+    this.quiet = false;
     return this.run(turnNumber, reference, {
       lengths: [],
       askedMs: 0,
