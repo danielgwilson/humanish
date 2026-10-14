@@ -31,9 +31,11 @@ const SLASH_OR_SPACE = /[/\s]/;
 
 /**
  * containsSensitive(JSON.stringify(value)), with each element of the array `value[key]` serialized
- * and scanned on its own, so no one string holds two elements. The value, the array and each
- * element must be plain data, as JSON.parse returns it; any other shape is scanned as the whole
- * text, which can be longer than one string holds.
+ * and scanned on its own, so no one string holds two elements. Only an array of plain objects is
+ * scanned that way. Any other array, and a value, array or element with a toJSON or a prototype of
+ * its own, is scanned as the whole text, which can be longer than one string holds. Getters and
+ * proxies are not detected, so the answer is the whole text's for values as JSON.parse returns
+ * them.
  */
 export function containsSensitiveJson(value: unknown, key: string): boolean {
   // JSON.stringify writes only own enumerable keys, and `around` cuts the text at this one.

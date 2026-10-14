@@ -18,7 +18,8 @@
 // check it.
 // The Observer page and the Observer server join every participant's items in one string before
 // gzip. On a hosted desktop the sandbox id scrub (publicSandboxView) does too, on every write of
-// run.json and on feedback export of the loaded run. V8's longest string is 536,870,888 characters
+// run.json and on a bundle export of the loaded run, which its 25 MiB default --max-bytes refuses
+// first. V8's longest string is 536,870,888 characters
 // on Node 24. A trace file's bytes are at least the characters of its items as compact JSON, so the
 // estimate compares the traces' bytes and may warn a little early.
 
@@ -259,7 +260,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
     ...(joined
       ? [
-          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. Writing run.json and exporting feedback put them in one string on a hosted desktop, and the Observer page always does. run.json may then stop updating, export would fail and the page would not build.`,
+          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. On a hosted desktop, writing run.json puts them in one string, and so does a bundle export allowed past its 25 MiB default; the Observer page always does. run.json may then stop updating, that export would fail and the page would not build.`,
         ]
       : []),
     ...(entries

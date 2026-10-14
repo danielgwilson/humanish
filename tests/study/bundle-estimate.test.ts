@@ -134,7 +134,7 @@ describe("study check's bundle estimate", () => {
     // Page: 1,200,000 + 0.85 x 664,400 + 0.12 x 541,656,000 = 66,763,460. Entries: 20 + 40 x 3
     // + 40 x 2,880 = 115,340, of 10,000 + 40 x 5,000.
     expect((await check(eventDay(40, 8))).warnings).toEqual([
-      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. Writing run.json and exporting feedback put them in one string on a hosted desktop, and the Observer page always does. run.json may then stop updating, export would fail and the page would not build. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. On a hosted desktop, writing run.json puts them in one string, and so does a bundle export allowed past its 25 MiB default; the Observer page always does. run.json may then stop updating, that export would fail and the page would not build. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
     ]);
   });
 
