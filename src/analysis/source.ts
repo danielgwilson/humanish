@@ -2,14 +2,15 @@
 // and the refusals it gives for either.
 
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
-import { isReadRunBundleSchema, type StoredRunBundle } from "../run/bundle.js";
+import { isReadRunBundleSchema, type RunEvent, type StoredRunBundle } from "../run/bundle.js";
+import { eventRecordIdOf, recordIdOf } from "../run/participant-records.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
   reduceRunTraces,
   StreamTraceRefusedError,
   StreamTraceTooLargeError,
 } from "../run/stream-trace.js";
-import type { RunStream } from "../run/streams.js";
+import type { RunStream, StoredRunStream } from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import { EVIDENCE_LIMITS } from "./analysis-limits.js";
 
@@ -51,10 +52,16 @@ export function runFileTooLarge(size: number | bigint, max: number): AnalysisSou
   );
 }
 
+/** Whether `event` is `stream`'s: it names the stream, or no stream and the stream's record. */
+export const isRunEventOf = (stream: StoredRunStream, event: RunEvent): boolean =>
+  event.streamId === stream.id ||
+  (event.streamId === undefined && eventRecordIdOf(event) === recordIdOf(stream));
+
 /**
  * run.json's bundle, when it is a run bundle of the prepared run that analysis reads: at most
- * EVIDENCE_LIMITS.sourceBytes, at most EVIDENCE_LIMITS.participants participants, and each
- * participant and event with the fields analysis reads.
+ * EVIDENCE_LIMITS.sourceBytes, at most EVIDENCE_LIMITS.participants participants, each
+ * participant and event with the fields analysis reads, and no two run events of one participant
+ * with one id.
  */
 export function parseAnalysisSource(
   prepared: PreparedRunArtifactPaths,
@@ -107,7 +114,21 @@ export function parseAnalysisSource(
     )
       throw runFileInvalid(`event ${index + 1} needs an id, a type and a message.`);
   }
-  return value as unknown as StoredRunBundle;
+  const bundle = value as unknown as StoredRunBundle;
+  for (const stream of bundle.streams) {
+    // The place each id was first seen, since an analysis cites a participant's run event by its id.
+    const firstPlace = new Map<string, number>();
+    for (const [index, event] of bundle.events.entries()) {
+      if (!isRunEventOf(stream, event)) continue;
+      const first = firstPlace.get(event.id);
+      if (first !== undefined)
+        throw runFileInvalid(
+          `events ${first + 1} and ${index + 1} are participant ${stream.id}'s and share the id ${JSON.stringify(event.id)}, and analysis cites each of a participant's run events by its id.`,
+        );
+      firstPlace.set(event.id, index);
+    }
+  }
+  return bundle;
 }
 
 /**

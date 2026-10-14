@@ -689,13 +689,8 @@ describe("the requests of an analysis in cohorts", () => {
 });
 
 describe("a participant past the participant limit", () => {
-  it("is left out of the packet even when its run events repeat an id", async () => {
-    const run = JSON.parse((await saveRun(2, 1)).toString("utf8"));
-    const repeated = { id: "e1", type: "note", message: "Saved.", streamId: participantId(1) };
-    run.events = [repeated, { ...repeated }];
-    const source = Buffer.from(JSON.stringify(run));
-    await fs.writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const input = await captureEvidence(prepared, source, { participants: 1 });
+  it("is left out of the packet", async () => {
+    const input = await captureEvidence(prepared, await saveRun(2, 1), { participants: 1 });
     expect(input.coverage.includedStreamIds).toEqual([participantId(0)]);
     expect(input.coverage.omittedStreamIds).toEqual([participantId(1)]);
   });

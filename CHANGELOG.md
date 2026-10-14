@@ -27,6 +27,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
   Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
   3% of its earlier time. (#1872)
+- `humanish analyze` names the participant and the event id when two of a participant's run events
+  in run.json share an id, as in `events 4 and 5 are participant p01's and share the id
+  "note-1"`. It refused such a run with "Analysis could not be completed safely." The run still
+  passes verify. (#1849)
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 

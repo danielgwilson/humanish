@@ -11,13 +11,33 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { createProgram } from "../../src/cli/program.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import type { RunBundle, RunEvent } from "../../src/run/bundle.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import type { StreamTraceIndex } from "../../src/run/streams.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticActor, writeRunBundle } from "../helpers/run-traces.js";
 
 const RUN = "refused-source";
+
+/** `humanish analyze --dry-run --json` on this file's run in `cwd`: its exit code and its result. */
+async function analyzeJson(
+  cwd: string,
+): Promise<{ exit: number; result: Record<string, unknown> }> {
+  const output: string[] = [];
+  let exit = 0;
+  const program = createProgram({
+    writeOut: (text) => output.push(text),
+    writeErr: () => {},
+    setExitCode: (code) => {
+      exit = code;
+    },
+  });
+  await program.parseAsync(
+    ["analyze", "--cwd", cwd, "--run", RUN, "--max-cost", "5", "--dry-run", "--json"],
+    { from: "user" },
+  );
+  return { exit, result: JSON.parse(output.join("")) as Record<string, unknown> };
+}
 
 describe("analyze --json on a run whose source analysis refuses", () => {
   let cwd: string;
@@ -38,30 +58,13 @@ describe("analyze --json on a run whose source analysis refuses", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  async function analyzeJson(): Promise<{ exit: number; result: Record<string, unknown> }> {
-    const output: string[] = [];
-    let exit = 0;
-    const program = createProgram({
-      writeOut: (text) => output.push(text),
-      writeErr: () => {},
-      setExitCode: (code) => {
-        exit = code;
-      },
-    });
-    await program.parseAsync(
-      ["analyze", "--cwd", cwd, "--run", RUN, "--max-cost", "5", "--dry-run", "--json"],
-      { from: "user" },
-    );
-    return { exit, result: JSON.parse(output.join("")) as Record<string, unknown> };
-  }
-
   it("names run.json, its size and the limit when run.json is larger than analysis reads", async () => {
     const json = Buffer.from(JSON.stringify(bundle));
     // Trailing spaces keep run.json valid JSON at one byte past 16 MiB.
     const padding = Buffer.alloc(16 * 1024 * 1024 + 1 - json.length, " ");
     await writeFile(path.join(runRoot, "run.json"), Buffer.concat([json, padding]));
 
-    expect(await analyzeJson()).toEqual({
+    expect(await analyzeJson(cwd)).toEqual({
       exit: 2,
       result: expect.objectContaining({
         ok: false,
@@ -84,7 +87,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
     expect((await verifyRun(cwd, RUN)).checks.filter((check) => !check.ok)).toEqual([]);
     const stream = bundle.streams[0]!.id;
 
-    expect(await analyzeJson()).toEqual({
+    expect(await analyzeJson(cwd)).toEqual({
       exit: 2,
       result: expect.objectContaining({
         ok: false,
@@ -95,6 +98,40 @@ describe("analyze --json on a run whose source analysis refuses", () => {
       }),
     });
   });
+
+  // A participant's run events name its stream, or name no stream and its record.
+  it.each([
+    ["both name its stream", false],
+    ["the second names only its record", true],
+  ])(
+    "names run.json, the participant and the id when two of its run events share an id: %s",
+    async (_, secondNamesOnlyRecord) => {
+      const stream = bundle.streams[0]!;
+      const event: RunEvent = {
+        id: "note-1",
+        at: "2026-09-01T00:00:00.000Z",
+        level: "info",
+        type: "note",
+        message: "Saved.",
+        simId: stream.simId,
+      };
+      const named = { ...event, streamId: stream.id };
+      const events = [...bundle.events, named, secondNamesOnlyRecord ? event : named];
+      await writeRunBundle(runRoot, { ...bundle, events });
+      expect((await verifyRun(cwd, RUN)).checks.filter((check) => !check.ok)).toEqual([]);
+
+      expect(await analyzeJson(cwd)).toEqual({
+        exit: 2,
+        result: expect.objectContaining({
+          ok: false,
+          error: {
+            code: "ANALYSIS_SOURCE_INVALID",
+            message: `Analysis did not read run.json: events ${bundle.events.length + 1} and ${bundle.events.length + 2} are participant ${stream.id}'s and share the id "note-1", and analysis cites each of a participant's run events by its id. No request was sent.`,
+          },
+        }),
+      });
+    },
+  );
 
   it("names the participant, its trace file and the limit when the trace is larger than analysis reads", async () => {
     const [stream] = bundle.streams;
@@ -115,7 +152,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
     const trace = written.streams[0]!.trace!;
     expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("local_only");
 
-    expect(await analyzeJson()).toEqual({
+    expect(await analyzeJson(cwd)).toEqual({
       exit: 2,
       result: expect.objectContaining({
         ok: false,
