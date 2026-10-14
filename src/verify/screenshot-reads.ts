@@ -58,7 +58,7 @@ export async function readScreenshot(
   const facts: Facts = {
     state: "read",
     size: read.bytes.length,
-    error: screenshotEvidenceError(relativePath, read.bytes),
+    error: await screenshotEvidenceError(relativePath, read.bytes),
     redactedShape: isRedactedFrameShape(read.bytes),
   };
   if (read.stamp.ctimeNs <= startedNs - RACY_WINDOW_NS)

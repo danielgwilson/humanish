@@ -1,4 +1,4 @@
-import { createDeflate } from "node:zlib";
+import { createDeflate, deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
@@ -19,12 +19,12 @@ function encodePng(width = 2, height = 2): Buffer {
 }
 
 describe("a screenshot PNG's structure", () => {
-  it.each(VALID_PNGS)("accepts %s", (_name, bytes) => {
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+  it.each(VALID_PNGS)("accepts %s", async (_name, bytes) => {
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
   });
 
-  it.each(BROKEN_PNGS)("refuses %s", (_name, bytes) => {
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+  it.each(BROKEN_PNGS)("refuses %s", async (_name, bytes) => {
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
       "could not decode PNG evidence",
     );
   });
@@ -51,58 +51,97 @@ describe("a screenshot PNG's structure", () => {
       { type: "IDAT", data: Buffer.concat(chunks) },
       { type: "IEND", data: Buffer.alloc(0) },
     ]);
-    expect(screenshotEvidenceError("screenshots/wide.png", wide)).toBe(
+    expect(await screenshotEvidenceError("screenshots/wide.png", wide)).toBe(
       "could not decode PNG evidence",
     );
+  });
+
+  it("refuses a filter type past the first MiB of a frame's rows", async () => {
+    // 1440x950 RGB: rows of 4,321 bytes, about 4 MB in all. Row 900 starts past 3.8 MB.
+    const [width, height, rowBytes] = [1440, 950, 1 + 1440 * 3];
+    const rows = Buffer.alloc(rowBytes * height);
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(width, 0);
+    ihdr.writeUInt32BE(height, 4);
+    ihdr[8] = 8;
+    ihdr[9] = 2;
+    const frame = (data: Buffer) =>
+      pngOf([
+        { type: "IHDR", data: ihdr },
+        { type: "IDAT", data: deflateSync(data) },
+        { type: "IEND", data: Buffer.alloc(0) },
+      ]);
+    expect(await screenshotEvidenceError("screenshots/frame.png", frame(rows))).toBeNull();
+    rows[900 * rowBytes] = 5;
+    expect(await screenshotEvidenceError("screenshots/frame.png", frame(rows))).toBe(
+      "could not decode PNG evidence",
+    );
+  });
+
+  it("lets other callbacks run while it inflates a frame", async () => {
+    // A 1440x950 RGBA frame inflates to about 5.5 MB of rows. verify checks several frames at a
+    // time, and one frame's inflate holding the thread would leave the others waiting.
+    const bytes = encodePng(1440, 950);
+    let turns = 0;
+    let checking = true;
+    const turn = (): void => {
+      if (!checking) return;
+      turns += 1;
+      setImmediate(turn);
+    };
+    setImmediate(turn);
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+    checking = false;
+    expect(turns).toBeGreaterThan(0);
   });
 });
 
 describe("screenshot evidence", () => {
-  it("accepts a valid small PNG", () => {
+  it("accepts a valid small PNG", async () => {
     const bytes = encodePng();
 
-    expect(screenshotEvidenceError("screenshots/tiny.png", bytes)).toBeNull();
-    expect(() => assertScreenshotEvidence("screenshots/tiny.png", bytes)).not.toThrow();
+    expect(await screenshotEvidenceError("screenshots/tiny.png", bytes)).toBeNull();
+    await expect(assertScreenshotEvidence("screenshots/tiny.png", bytes)).resolves.toBeUndefined();
   });
 
-  it("rejects text saved with a PNG extension", () => {
+  it("rejects text saved with a PNG extension", async () => {
     expect(
-      screenshotEvidenceError("screenshots/not-an-image.png", Buffer.from("not an image")),
+      await screenshotEvidenceError("screenshots/not-an-image.png", Buffer.from("not an image")),
     ).toBe("expected PNG signature");
   });
 
-  it("rejects a truncated PNG that still has a valid signature", () => {
+  it("rejects a truncated PNG that still has a valid signature", async () => {
     const truncated = encodePng().subarray(0, 24);
 
-    expect(screenshotEvidenceError("screenshots/truncated.png", truncated)).toBe(
+    expect(await screenshotEvidenceError("screenshots/truncated.png", truncated)).toBe(
       "could not decode PNG evidence",
     );
   });
 
-  it("rejects PNG dimensions that exceed the pixel limit before decoding", () => {
+  it("rejects PNG dimensions that exceed the pixel limit before decoding", async () => {
     const oversized = Buffer.from(encodePng());
     oversized.writeUInt32BE(100_000, 16);
     oversized.writeUInt32BE(100_000, 20);
 
-    expect(screenshotEvidenceError("screenshots/oversized.png", oversized)).toBe(
+    expect(await screenshotEvidenceError("screenshots/oversized.png", oversized)).toBe(
       "PNG pixel count exceeds 50000000 pixel limit",
     );
   });
 
-  it("rejects PNG payloads that exceed the byte limit before decoding", () => {
+  it("rejects PNG payloads that exceed the byte limit before decoding", async () => {
     const oversized = Buffer.alloc(32 * 1024 * 1024 + 1);
     encodePng().copy(oversized);
 
-    expect(screenshotEvidenceError("screenshots/oversized.png", oversized)).toBe(
+    expect(await screenshotEvidenceError("screenshots/oversized.png", oversized)).toBe(
       "PNG byte size exceeds 33554432 byte limit",
     );
   });
 
-  it("rejects zero declared dimensions", () => {
+  it("rejects zero declared dimensions", async () => {
     const emptyWidth = Buffer.from(encodePng());
     emptyWidth.writeUInt32BE(0, 16);
 
-    expect(screenshotEvidenceError("screenshots/zero-width.png", emptyWidth)).toBe(
+    expect(await screenshotEvidenceError("screenshots/zero-width.png", emptyWidth)).toBe(
       "PNG dimensions must be greater than zero",
     );
   });
@@ -112,43 +151,45 @@ describe("screenshot evidence", () => {
     ["jpeg", Buffer.from([0xff, 0xd8, 0xff])],
     ["webp", Buffer.from("RIFF0000WEBP", "ascii")],
     ["gif", Buffer.from("GIF89a", "ascii")],
-  ])("rejects signature-only .%s evidence", (extension, bytes) => {
-    expect(screenshotEvidenceError(`screenshots/image.${extension}`, bytes)).toBe(
+  ])("rejects signature-only .%s evidence", async (extension, bytes) => {
+    expect(await screenshotEvidenceError(`screenshots/image.${extension}`, bytes)).toBe(
       `unsupported screenshot extension .${extension}; only decoded PNG evidence is supported`,
     );
   });
 
-  it("rejects an unknown screenshot extension with a clear message", () => {
-    expect(screenshotEvidenceError("screenshots/tiny.bmp", encodePng())).toBe(
+  it("rejects an unknown screenshot extension with a clear message", async () => {
+    expect(await screenshotEvidenceError("screenshots/tiny.bmp", encodePng())).toBe(
       "unsupported screenshot extension .bmp; only decoded PNG evidence is supported",
     );
   });
 
   it.each(["tEXt", "zTXt", "iTXt"] as const)(
     "rejects a %s chunk, which no pixel review would see",
-    (type) => {
+    async (type) => {
       const bytes = withPngChunk(encodePng(), type, pngTextChunk(type, "a note"));
-      expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+      expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
         `PNG carries a ${type} chunk; screenshot evidence may hold image data only`,
       );
     },
   );
 
-  it.each(["eXIf", "iCCP", "tIME", "prVt"])("rejects a %s chunk", (type) => {
+  it.each(["eXIf", "iCCP", "tIME", "prVt"])("rejects a %s chunk", async (type) => {
     const bytes = withPngChunk(encodePng(), type, Buffer.from("payload"));
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toContain(`a ${type} chunk`);
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toContain(
+      `a ${type} chunk`,
+    );
   });
 
-  it("accepts the display chunks an E2B desktop frame carries", () => {
+  it("accepts the display chunks an E2B desktop frame carries", async () => {
     const bytes = withPngChunk(
       withPngChunk(encodePng(), "sBIT", Buffer.from([8, 8, 8, 8])),
       "gAMA",
       Buffer.from([0, 0, 0xb1, 0x8f]),
     );
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
   });
 
-  it("strips metadata chunks and keeps the image chunks byte for byte", () => {
+  it("strips metadata chunks and keeps the image chunks byte for byte", async () => {
     const clean = withPngChunk(encodePng(), "sBIT", Buffer.from([8, 8, 8, 8]));
     const dirty = withPngChunk(
       withPngChunk(clean, "tEXt", pngTextChunk("tEXt", "a note")),
@@ -157,7 +198,7 @@ describe("screenshot evidence", () => {
     );
     const stripped = stripPngMetadataChunks(dirty);
     expect(stripped.equals(clean)).toBe(true);
-    expect(screenshotEvidenceError("screenshots/frame.png", stripped)).toBeNull();
+    expect(await screenshotEvidenceError("screenshots/frame.png", stripped)).toBeNull();
     expect(stripPngMetadataChunks(clean)).toBe(clean);
   });
 
@@ -169,24 +210,24 @@ describe("screenshot evidence", () => {
   });
 
   // 1207 5a: an IHDR of another length hides its dimensions from the pre-decode pixel cap.
-  it("refuses an IHDR that is not 13 bytes before decoding", () => {
+  it("refuses an IHDR that is not 13 bytes before decoding", async () => {
     const declared = Buffer.alloc(14);
     declared.writeUInt32BE(20_000, 0);
     declared.writeUInt32BE(20_000, 4);
     declared.set([8, 6, 0, 0, 0], 8);
     const bytes = withPngChunkData(encodePng(), "IHDR", declared);
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
       "PNG must start with a 13-byte IHDR chunk",
     );
     expect(redactScreenshot(bytes).decoded).toBe(false);
   });
 
   // 1207 5b: pngjs inflates interlaced data with no bound.
-  it("refuses an interlaced PNG before decoding", () => {
+  it("refuses an interlaced PNG before decoding", async () => {
     const header = Buffer.from(encodePng().subarray(16, 29));
     header[12] = 1;
     const bytes = withPngChunkData(encodePng(), "IHDR", header);
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
       "interlaced PNG evidence is not supported",
     );
     expect(redactScreenshot(bytes).decoded).toBe(false);
@@ -199,9 +240,9 @@ describe("screenshot evidence", () => {
     expect(stripPngMetadataChunks(oversized)).toBe(oversized);
   });
 
-  it("rejects an IEND with a payload", () => {
+  it("rejects an IEND with a payload", async () => {
     const bytes = withPngChunkData(encodePng(), "IEND", Buffer.from("payload"));
-    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+    expect(await screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
       "PNG IEND chunk must be empty",
     );
   });

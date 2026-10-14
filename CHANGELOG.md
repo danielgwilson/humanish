@@ -17,6 +17,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   verify took 2.6 s where it took 8.7 s (median of 5), and 6.0 s where it took 13.6 s with 16 busy
   processes on a 16-core host. Rendering the Observer, analysis, feedback and export run the same
   check and gain the concurrency. (#1796)
+- The screenshot check inflates a frame on libuv's thread pool, so the 8 frames verify checks at a
+  time inflate together. It reads a frame's rows 1 MiB at a time where it held them whole, about 4
+  MB for a 1440x950 capture. On a run of 3 participants with 3,000 real 147 KB screenshots, verify
+  took 5.4 s where it took 12.0 s (median of 5). Capture and analysis run the same check. (#1780)
 
 ### Fixed
 

@@ -349,7 +349,7 @@ async function selectCaptures(
       const bytes = result.state === "read" ? result.bytes : null;
       sel.returnedImageBytes += bytes?.length ?? 0;
       packing.readBytes += bytes?.length ?? 0;
-      if (bytes === null || screenshotEvidenceError(source.capturePath!, bytes) !== null) {
+      if (bytes === null || (await screenshotEvidenceError(source.capturePath!, bytes)) !== null) {
         omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
         continue;
       }
@@ -651,7 +651,7 @@ export async function validateAnalysisEvidence(
           source.capturePath,
           EVIDENCE_LIMITS.imageBytes,
         );
-        if (!bytes || screenshotEvidenceError(source.capturePath, bytes) !== null)
+        if (!bytes || (await screenshotEvidenceError(source.capturePath, bytes)) !== null)
           throw new Error("ANALYSIS_CAPTURE_UNAVAILABLE");
         checkedImageBytes += bytes.length;
         if (checkedImageBytes > imageByteLimit) throw new Error("ANALYSIS_IMAGE_LIMIT_EXCEEDED");

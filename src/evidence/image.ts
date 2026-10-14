@@ -1,4 +1,4 @@
-import { crc32, inflateSync, type ZlibOptions } from "node:zlib";
+import { crc32, createInflate } from "node:zlib";
 
 import { PNG } from "pngjs";
 
@@ -148,7 +148,10 @@ export function isRedactedFrameShape(bytes: Buffer): boolean {
   );
 }
 
-export function screenshotEvidenceError(relativePath: string, bytes: Buffer): string | null {
+export async function screenshotEvidenceError(
+  relativePath: string,
+  bytes: Buffer,
+): Promise<string | null> {
   const extension = relativePath.toLowerCase().split(".").pop() ?? "";
 
   if (extension !== "png") {
@@ -169,7 +172,7 @@ export function screenshotEvidenceError(relativePath: string, bytes: Buffer): st
     return "PNG IEND chunk must be empty";
   }
 
-  return chunks === null || !pngStructureHolds(bytes, chunks)
+  return chunks === null || !(await pngStructureHolds(bytes, chunks))
     ? "could not decode PNG evidence"
     : null;
 }
@@ -189,14 +192,14 @@ const PNG_MIN_CHUNK_BYTES: Readonly<Record<string, number>> = { gAMA: 4 };
 /**
  * Whether a PNG that passed pngDecodeRefusal decodes, read from its structure: the file ends at an
  * empty IEND, every chunk's CRC matches, IHDR comes once with fields PNG defines, the image data is
- * one run of IDAT chunks, and it inflates, with zlib's native code, to exactly the
- * bytes its rows need with nothing after the stream, each row starting with a filter type from 0
- * to 4. For an image without a palette that is all a decode establishes, at about an eighth of
- * the time of pngjs, which unfilters every pixel in JavaScript; a run holds a screenshot for each
- * turn. A palette image is also decoded, since each pixel must index a palette that comes before
- * the image data; in any other image a palette chunk is only a suggestion, wherever it is.
+ * one run of IDAT chunks, and it inflates (inflatesToRows) to exactly the bytes its rows need with
+ * nothing after the stream, each row starting with a filter type from 0 to 4. For an image without
+ * a palette that is all a decode establishes, at about an eighth of the time of pngjs, which
+ * unfilters every pixel in JavaScript; a run holds a screenshot for each turn. A palette image is
+ * also decoded, since each pixel must index a palette that comes before the image data; in any
+ * other image a palette chunk is only a suggestion, wherever it is.
  */
-function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean {
+async function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): Promise<boolean> {
   const last = chunks.at(-1);
   if (last?.type !== "IEND" || last.end !== bytes.length) return false;
   const crcHolds = (chunk: PngChunk) =>
@@ -225,26 +228,42 @@ function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): boolean 
   if (chunks.some(tooShort)) return false;
   const rowBytes = 1 + Math.ceil(rowBits / 8);
   const data = Buffer.concat(idats.map((chunk) => bytes.subarray(chunk.start + 8, chunk.end - 4)));
-  let rows: Buffer;
-  try {
-    // A stream that would inflate past the rows the image needs stops there, so a small file
-    // cannot claim gigabytes.
-    const options: ZlibOptions & { info: true } = {
-      maxOutputLength: rowBytes * height,
-      info: true,
-    };
-    const inflated = inflateSync(data, options) as unknown as {
-      buffer: Buffer;
-      engine: { bytesWritten: number };
-    };
-    if (inflated.engine.bytesWritten !== data.length) return false;
-    rows = inflated.buffer;
-  } catch {
-    return false;
-  }
-  if (rows.length !== rowBytes * height) return false;
-  for (let row = 0; row < rows.length; row += rowBytes) if (rows[row]! > 4) return false;
+  if (!(await inflatesToRows(data, rowBytes, height))) return false;
   return colorType !== 3 || pngDecodes(bytes);
+}
+
+// The most inflated bytes one check holds at once. A 1440x950 capture's rows come to about 4 MB;
+// checked a chunk at a time, they are never held whole.
+const INFLATE_CHUNK_BYTES = 1024 * 1024;
+
+/**
+ * Whether `data` inflates to exactly `rows` rows of `rowBytes` bytes, each starting with a filter
+ * type from 0 to 4, with nothing after the stream. zlib inflates on libuv's thread pool, so checks
+ * of several frames overlap. A stream that would inflate past the rows stops there, so a small
+ * file cannot claim gigabytes.
+ */
+function inflatesToRows(data: Buffer, rowBytes: number, rows: number): Promise<boolean> {
+  const total = rowBytes * rows;
+  return new Promise((resolve) => {
+    const inflate = createInflate({
+      chunkSize: Math.max(64, Math.min(total, INFLATE_CHUNK_BYTES)),
+    });
+    let seen = 0;
+    inflate.on("data", (chunk: Buffer) => {
+      let filtersHold = true;
+      // The first row that starts in this chunk, then each row after it.
+      for (let at = (rowBytes - (seen % rowBytes)) % rowBytes; at < chunk.length; at += rowBytes)
+        if (chunk[at]! > 4) filtersHold = false;
+      seen += chunk.length;
+      if (!filtersHold || seen > total) {
+        inflate.destroy();
+        resolve(false);
+      }
+    });
+    inflate.on("error", () => resolve(false));
+    inflate.on("end", () => resolve(seen === total && inflate.bytesWritten === data.length));
+    inflate.end(data);
+  });
 }
 
 function pngDecodes(bytes: Buffer): boolean {
@@ -256,8 +275,8 @@ function pngDecodes(bytes: Buffer): boolean {
   }
 }
 
-export function assertScreenshotEvidence(relativePath: string, bytes: Buffer): void {
-  const error = screenshotEvidenceError(relativePath, bytes);
+export async function assertScreenshotEvidence(relativePath: string, bytes: Buffer): Promise<void> {
+  const error = await screenshotEvidenceError(relativePath, bytes);
   if (error) {
     throw new Error(`Invalid screenshot evidence ${relativePath}: ${error}`);
   }
