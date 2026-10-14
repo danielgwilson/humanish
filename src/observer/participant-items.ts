@@ -1,13 +1,14 @@
 // The Observer's data in two parts: observer-data.json, the run and every participant without
 // their trace items, and the items themselves. A participant working for hours records thousands
 // of items, so the items are most of the bytes; apart, the saved observer-data.json stays small
-// enough to verify, and the page carries the items compressed. The Observer bundles this module,
-// so it imports types only (docs/decisions/0002-observer-is-one-self-contained-file.md).
+// enough to verify, and the page and the feed carry each participant's items compressed on their
+// own. The Observer bundles this module, so it imports types only
+// (docs/decisions/0002-observer-is-one-self-contained-file.md).
 
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { ObserverData, ObserverStream } from "./data.js";
 
-export const OBSERVER_ITEMS_SCHEMA = "humanish.observer-items.v1";
+export const OBSERVER_ITEMS_SCHEMA = "humanish.observer-items.v2";
 
 /** A stream's actor and live actor, each without its items. */
 type ObserverShellStream = Omit<ObserverStream, "actor" | "liveActor"> & {
@@ -42,6 +43,14 @@ export interface ObserverItems {
       liveAfter?: string;
     }
   >;
+}
+
+/**
+ * ObserverItems as the page and the feed carry them: each stream's entry as gzip-compressed JSON in
+ * base64, so no string holds two participants' items.
+ */
+export interface PackedObserverItems extends Omit<ObserverItems, "streams"> {
+  streams: Record<string, string>;
 }
 
 /** The data as observer-data.json and the page's items carry it. */

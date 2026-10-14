@@ -153,6 +153,9 @@ projection is served.
 observer-data.json is built from the loaded bundle. From 0.124.0 it leaves out each participant's
 trace items, which stay in the traces, and from this release it is `humanish.observer-data.v3`,
 which also leaves out each participant's per-request lists (docs/architecture/observer.md).
+The Observer page and `observer-feed.json` carry the items as `humanish.observer-items.v2`, each
+participant's entry gzip-compressed on its own, so they render a run whose traces together pass
+V8's longest string.
 
 ## Per-request lists
 

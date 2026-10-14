@@ -2,6 +2,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -16,6 +17,7 @@ import { PASSING_OUTCOME } from "../../tests/helpers/finished-run.js";
 import { observerDataFromFeed } from "../lib/data";
 import type { ObserverData } from "../lib/observer-data";
 import { useObserverFeed } from "../lib/use-observer-feed";
+import { decodeInMicrotasks } from "./microtask-gunzip";
 
 // A participant that passes 100,000 items, then a new generation of its live file that scrubs a
 // sandbox id the run learned late. Each body is the one the real library server answered for a run
@@ -62,10 +64,14 @@ function inProgress(count: number): RunBundle {
 
 /** The cursors a body gives, as the page sends them back; null when it gives none. */
 function cursorsOf(text: string): string | null {
-  const body = JSON.parse(text) as { items: { streams: Record<string, { live?: string }> } };
-  const cursors = Object.values(body.items.streams).flatMap((entry) =>
-    entry.live === undefined ? [] : [entry.live],
-  );
+  // Each participant's entry is gzip-compressed JSON in base64.
+  const body = JSON.parse(text) as { items: { streams: Record<string, string> } };
+  const cursors = Object.values(body.items.streams).flatMap((packed) => {
+    const entry = JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8")) as {
+      live?: string;
+    };
+    return entry.live === undefined ? [] : [entry.live];
+  });
   return cursors.length === 0 ? null : cursors.join(",");
 }
 
@@ -135,6 +141,8 @@ afterAll(async () => {
   await rm(templateRoot, { recursive: true, force: true });
 });
 
+decodeInMicrotasks();
+
 let container: HTMLDivElement, root: Root;
 afterEach(async () => {
   await act(async () => {
@@ -187,7 +195,7 @@ describe("a served page whose participant passes 100,000 items", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    const initial = observerDataFromFeed(JSON.parse(captured[0]!.text))!;
+    const initial = (await observerDataFromFeed(JSON.parse(captured[0]!.text)))!;
     expect(initial).not.toBeNull();
     await act(async () => {
       root.render(<Probe initial={initial} />);

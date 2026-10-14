@@ -6,8 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { analysisFixture, fixture, screenshot } from "./observer-browser-fixtures.mjs";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
-import { observerDataElements } from "../dist/observer/page-data.js";
-import { splitObserverData } from "../dist/observer/participant-items.js";
+import { observerDataElements, observerFeedBody } from "../dist/observer/page-data.js";
 
 // Bounded supplement to observer-browser-proof: appearance, pin visibility,
 // library motion and fitted card geometry over synthetic retained recordings.
@@ -38,9 +37,8 @@ const server = createServer((request, response) => {
     response.setHeader("content-type", "text/html");
     response.end(artifact);
   } else if (url.pathname === "/observer/observer-feed.json") {
-    const { shell, items } = splitObserverData(data);
     response.setHeader("content-type", "application/json");
-    response.end(JSON.stringify({ data: shell, items }));
+    response.end(observerFeedBody(data));
   } else if (url.pathname === "/observer/study-analysis.json") {
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify(analysis));

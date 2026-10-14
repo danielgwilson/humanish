@@ -29,9 +29,9 @@ export function isSnapshotArtifact(doc: Document): boolean {
 
 /**
  * The run's data from the page: observer-data.json's content in the data slot, joined with the
- * participants' items the page carries gzip-compressed. Null for a page with no run, or with data
- * or items that do not hold together, which renders the empty state: participants shown with no
- * steps would say they did nothing.
+ * participants' items the page carries packed. Null for a page with no run, or with data or items
+ * that do not hold together, which renders the empty state: participants shown with no steps would
+ * say they did nothing.
  */
 export async function readInlineObserverData(doc: Document): Promise<ObserverData | null> {
   const text = doc.getElementById("observer-data")?.textContent ?? "";
@@ -46,8 +46,8 @@ export async function readInlineObserverData(doc: Document): Promise<ObserverDat
 }
 
 /** Data the served page polls: observer-feed.json's run data and items, joined. */
-export function observerDataFromFeed(value: unknown): ObserverData | null {
-  return observerFeedFrom(value, null)?.data ?? null;
+export async function observerDataFromFeed(value: unknown): Promise<ObserverData | null> {
+  return (await observerFeedFrom(value, null))?.data ?? null;
 }
 
 /**
@@ -71,16 +71,20 @@ export interface ObserverFeed {
  * cursor for this run. Null when an entry follows a list `held` does not have, or the joined data
  * does not hold together.
  */
-export function observerFeedFrom(value: unknown, held: ObserverFeed | null): ObserverFeed | null {
+export async function observerFeedFrom(
+  value: unknown,
+  held: ObserverFeed | null,
+): Promise<ObserverFeed | null> {
   if (typeof value !== "object" || value === null) return null;
   const feed = value as { data?: unknown; items?: unknown };
   try {
-    if (!isObserverItems(feed.items)) return null;
-    const items = joinedItems(feed.items, held);
+    const unpacked = await unpackItems(feed.items);
+    if (unpacked === null) return null;
+    const items = joinedItems(unpacked, held);
     const data = items === null ? null : observerDataFrom(feed.data, items);
     if (data === null) return null;
     const live = new Map<string, string>();
-    for (const [id, entry] of Object.entries(feed.items.streams))
+    for (const [id, entry] of Object.entries(unpacked.streams))
       if (entry.live !== undefined && SENDABLE_CURSOR.test(entry.live)) live.set(id, entry.live);
     return { data, live };
   } catch {
@@ -116,25 +120,49 @@ function observerDataFrom(shell: unknown, items: ObserverItems): ObserverData | 
 
 async function readInlineItems(doc: Document): Promise<ObserverItems | null> {
   const element = doc.getElementById("observer-items");
+  if (element?.tagName !== "SCRIPT" || element.getAttribute("type") !== "application/json")
+    return null;
+  const packed: unknown = JSON.parse(element.textContent ?? "");
+  // The joined data holds the items now; the page need not keep their packed text too.
+  element.remove();
+  return unpackItems(packed);
+}
+
+/**
+ * Items as the page and the feed carry them, with each participant's entry decoded on its own: no
+ * string holds two participants' items, so a run whose items together pass the longest string a
+ * browser holds still opens. Null when they are malformed.
+ */
+async function unpackItems(value: unknown): Promise<ObserverItems | null> {
+  if (typeof value !== "object" || value === null) return null;
+  const packed = value as { schema?: unknown; runId?: unknown; streams?: unknown };
   if (
-    element?.tagName !== "SCRIPT" ||
-    element.getAttribute("type") !== "application/octet-stream" ||
-    element.getAttribute("data-encoding") !== "gzip"
+    typeof packed.streams !== "object" ||
+    packed.streams === null ||
+    Array.isArray(packed.streams)
   )
     return null;
-  const encoded = element.textContent ?? "";
+  // No prototype, so a stream id such as `__proto__` is an entry like any other.
+  const streams = Object.create(null) as Record<string, unknown>;
+  // One at a time, so the page holds one participant's decoded text at once.
+  for (const [id, entry] of Object.entries(packed.streams)) {
+    if (typeof entry !== "string") return null;
+    const text = await gunzipBase64(entry);
+    if (text === null) return null;
+    streams[id] = JSON.parse(text);
+  }
+  const items = { schema: packed.schema, runId: packed.runId, streams };
+  return isObserverItems(items) ? items : null;
+}
+
+async function gunzipBase64(encoded: string): Promise<string | null> {
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) return null;
   const binary = atob(encoded);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   const body = new Response(bytes).body;
   if (body === null) return null;
-  const parsed: unknown = JSON.parse(
-    await new Response(body.pipeThrough(new DecompressionStream("gzip"))).text(),
-  );
-  // The joined data holds the items now; the page need not keep their base64 text too.
-  element.remove();
-  return isObserverItems(parsed) ? parsed : null;
+  return new Response(body.pipeThrough(new DecompressionStream("gzip"))).text();
 }
 
 function isObserverItems(value: unknown): value is ObserverItems {

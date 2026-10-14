@@ -6,10 +6,12 @@
 import { mkdir, mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { buildObserverData } from "../../src/observer/data.js";
+import type { PackedObserverItems } from "../../src/observer/participant-items.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../../src/run/contained-output.js";
@@ -17,6 +19,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
 import type { RunStream } from "../../src/run/streams.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
+import { unpackItems } from "../helpers/observer-page.js";
 
 const RUN = "synthetic-feed-cursor";
 const item = (n: number): ActorTraceItem => ({
@@ -112,8 +115,10 @@ interface FeedBody {
       timeline: { type: string; level: string; message: string }[];
     }[];
   };
-  items: { runId: string; streams: Record<string, FeedEntry> };
+  items: { schema: string; runId: string; streams: Record<string, FeedEntry> };
 }
+/** A body as the server sends it: each participant's entry is gzip-compressed JSON in base64. */
+type PackedFeedBody = Omit<FeedBody, "items"> & { items: PackedObserverItems };
 
 let server: { url: string; close(): Promise<void> } | undefined;
 afterEach(async () => {
@@ -121,8 +126,14 @@ afterEach(async () => {
   server = undefined;
 });
 
-/** One poll of the run's feed, sending `after` when given. */
+/** One poll of the run's feed, sending `after` when given, with each participant's entry decoded. */
 async function poll(after?: string): Promise<FeedBody> {
+  const body = await pollPacked(after);
+  return { ...body, items: unpackItems(body.items) };
+}
+
+/** One poll of the run's feed, as the server sends it. */
+async function pollPacked(after?: string): Promise<PackedFeedBody> {
   if (server === undefined) {
     const started = await serveObserverLibrary(cwd, {
       port: 0,
@@ -137,7 +148,7 @@ async function poll(after?: string): Promise<FeedBody> {
   if (after !== undefined) url.searchParams.set("after", after);
   const response = await fetch(url);
   expect(response.status).toBe(200);
-  return (await response.json()) as FeedBody;
+  return (await response.json()) as PackedFeedBody;
 }
 
 /** The items entry of stream `position` (from 0). */
@@ -152,6 +163,31 @@ const cursorsOf = (body: FeedBody) =>
   Object.values(body.items.streams)
     .flatMap((value) => (value.live === undefined ? [] : [value.live]))
     .join(",");
+
+describe("the Observer feed's items", () => {
+  it("packs each participant's entry on its own, as the page packs them", async () => {
+    const [a, b, c] = [item(1), item(2), item(3)];
+    await withRun(async (run) => {
+      await run.writeSnapshot(inProgress([a, b], [c]));
+      const body = await pollPacked();
+      expect(body.items.schema).toBe("humanish.observer-items.v2");
+      const decoded = body.data.streams.map(
+        (stream) =>
+          JSON.parse(
+            gunzipSync(Buffer.from(body.items.streams[stream.id]!, "base64")).toString("utf8"),
+          ) as FeedEntry,
+      );
+      expect(decoded.map((value) => ids(value.liveActor))).toEqual([
+        ["reasoning-001", "reasoning-002"],
+        ["reasoning-003"],
+      ]);
+      expect(decoded.map((value) => value.live)).toEqual([
+        `1.1.2.${bytes(a, b)}`,
+        `2.1.1.${bytes(c)}`,
+      ]);
+    });
+  });
+});
 
 describe("the Observer feed's live cursors", () => {
   it("gives each running participant's cursor: its live file, items and bytes", async () => {
@@ -322,8 +358,9 @@ describe("the Observer feed of a run with no live files", () => {
 });
 
 // The bodies a page meets over one run, kept for the page's tests (observer/tests/feed-cursor.test.tsx):
-// each entry is the `after` a poll sent and the body the server answered. Rerun with
-// UPDATE_OBSERVER_FEED_GOLDENS=1 after an intended change to the feed and review the diff.
+// each entry is the `after` a poll sent and the body the server answered, with each participant's
+// packed entry decoded so the diff reads. Rerun with UPDATE_OBSERVER_FEED_GOLDENS=1 after an
+// intended change to the feed and review the diff.
 const SEQUENCE_GOLDEN = path.resolve("tests/golden/observer-feed/sequence.json");
 
 /** A body with every timestamp masked, so two runs of the writer compare equal. */

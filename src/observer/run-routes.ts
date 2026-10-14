@@ -43,7 +43,8 @@ import {
   type RunStatusRecord,
 } from "../run/status.js";
 import { renderObserverHtml } from "./artifact.js";
-import { parseFeedCursors, withFeedCursors } from "./feed-cursors.js";
+import { parseFeedCursors } from "./feed-cursors.js";
+import { observerFeedBody } from "./page-data.js";
 import { splitObserverData } from "./participant-items.js";
 import {
   buildObserverData,
@@ -220,13 +221,12 @@ export async function serveRunPath(
       );
       return;
     }
-    const { shell, items } = splitObserverData(observed.data);
     writeResponse(
       response,
       200,
       cleanedRelativePath === "observer/observer-data.json"
-        ? JSON.stringify(shell, null, 2)
-        : JSON.stringify({ data: shell, items: withFeedCursors(items, observed.live) }),
+        ? JSON.stringify(splitObserverData(observed.data).shell, null, 2)
+        : observerFeedBody(observed.data, observed.live),
       "application/json; charset=utf-8",
     );
     return;
