@@ -86,8 +86,8 @@ export async function captureEvidence(
   // Admission stops at a participant's evidence share. The shares come from run.json's counts, so
   // only the first share of each participant's entries in admission order is kept of its trace.
   const shares = evidenceShares(bundle, limits, captureVersion);
-  // A participant past limits.participants has its trace read and checked by the loader, and gives
-  // no entries, so nothing in its run events or items can refuse the participants that are kept.
+  // A participant past limits.participants has its trace read and checked like the others' and
+  // gives no entries.
   const sources = await readParticipantTraces(prepared, bundle, (stream, index) =>
     index < limits.participants
       ? participantSources(bundle, bundle.streams[index]!, stream, captureVersion, {

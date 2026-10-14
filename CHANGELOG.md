@@ -21,6 +21,32 @@ The Unreleased section holds the full notes for the next version until it is tag
   run of 3 participants with 3,000 real 147 KB screenshots, verify took 4.2 s where it took 10.3 s
   (median of 5, with the change above). Capture and analysis run the same check. (#1780)
 
+### Fixed
+
+- `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
+  A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
+  next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
+  where it printed 25. In a project that had only a package.json, a second run counts 11 existing
+  paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
+  each directory. (#1882)
+- Reading a run refuses a participant whose actor records a conversation without its requests
+  list, and names the participant. Three shapes loaded before: a trace file that leaves out the
+  conversation run.json records, a v1 run.json conversation without the list, and a conversation
+  that is not an object. A reader that counted the conversation's requests then threw a TypeError.
+  The writer never writes any of them. (#1850)
+- `humanish analyze` names the participant and the event id when two of a participant's run events
+  in run.json share an id, as in `events 4 and 5 are participant p01's and share the id
+  "note-1"`, and says to give one of them another id. `analyze --json` reports the refusal as
+  `ANALYSIS_SOURCE_INVALID`. It reported `ANALYSIS_UNAVAILABLE`, with "Analysis could not be
+  completed safely." The run still passes verify. (#1849)
+- The bundle estimate behind the size warning of `study check` and `humanish run` counts each
+  participant's instruction (`participants.instruction` or `participants[].instruction`) and the
+  task goals (`actor.tasks[].goal`) with the mission. run.json copies all three into each
+  participant's stream and feedback candidate. A study of 100 participants with a 90,000-byte
+  instruction and a short mission now gets the warning that run.json may grow to about 18.8 MiB,
+  past the 16 MiB analysis reads; it got none. The advice names the field with the most bytes.
+  (#1852)
+
 ## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 
 humanish 0.135.0 keeps a base64- or percent-encoded key in a study's own text out of the copies of

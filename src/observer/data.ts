@@ -1,3 +1,4 @@
+import type { ActorTrace } from "../actors/contract.js";
 import { actorEnding, type ActorEnding } from "../actors/stop-cause.js";
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import {
@@ -7,10 +8,22 @@ import {
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "../actors/goal-source.js";
-import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
+import type {
+  DisplayedRunBundle,
+  RunBundle,
+  RunCostSummary,
+  RunEvent,
+  RunSimulation,
+} from "../run/bundle.js";
 import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
 import { withoutRequestLists } from "../run/stream-trace.js";
-import type { RunStream, RunStreamKind, StoredRunStream } from "../run/streams.js";
+import type {
+  DisplayedRunStream,
+  RunStream,
+  RunStreamKind,
+  StoredRunStream,
+  WithoutRequestLists,
+} from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import { joinObserverData, shellNeedsItems, type ObserverShell } from "./participant-items.js";
 
@@ -112,6 +125,9 @@ export interface ObserverData {
 }
 
 export interface ObserverStream extends StoredRunStream {
+  /** The loaded actor, with its items and without its per-request lists, as is the live actor. */
+  actor?: WithoutRequestLists<ActorTrace>;
+  liveActor?: WithoutRequestLists<NonNullable<RunStream["liveActor"]>>;
   /** Only the attached server may grant provider-origin access for a live desktop iframe. */
   embed?: NonNullable<RunStream["embed"]> & { runtimeDesktop?: true };
   /** Participant-facing status. The actor and simulation retain their original protocol status. */
@@ -162,7 +178,7 @@ const allKinds: RunStreamKind[] = [
  * carried its outcome.
  */
 export function buildObserverData(
-  bundle: RunBundle,
+  bundle: DisplayedRunBundle,
   generatedAt = new Date().toISOString(),
   statusRecord?: unknown,
 ): ObserverData {
@@ -296,9 +312,9 @@ export function buildObserverData(
 }
 
 /** The stream without its participant's per-request lists; a saved stream that is not an object as it is. */
-function withoutStreamLists<T extends StoredRunStream>(
+function withoutStreamLists<T extends DisplayedRunStream | ObserverStream>(
   stream: T,
-): Omit<T, "actor" | "liveActor"> & Pick<StoredRunStream, "actor" | "liveActor"> {
+): Omit<T, "actor" | "liveActor"> & Pick<ObserverStream, "actor" | "liveActor"> {
   if (!isRecord(stream)) return stream;
   return {
     ...stream,
@@ -385,7 +401,7 @@ export function withObserverEndings(data: ObserverData): ObserverData {
   };
 }
 
-function buildLaneGroups(bundle: RunBundle): ObserverLaneGroup[] {
+function buildLaneGroups(bundle: DisplayedRunBundle): ObserverLaneGroup[] {
   const outcomes = new Map(
     (bundle.sharedWorld?.outcomes ?? []).map((outcome) => [outcome.roleId, outcome.status]),
   );
@@ -406,7 +422,7 @@ function stripAnsi(value: string): string {
     .replace(/\u001b\][^\u0007]*(?:\u0007|\u001b\\)/g, "");
 }
 
-function fallbackSimulation(bundle: RunBundle, stream: RunStream): RunSimulation {
+function fallbackSimulation(bundle: DisplayedRunBundle, stream: DisplayedRunStream): RunSimulation {
   return {
     id: stream.simId,
     index: bundle.simulations.length + 1,
