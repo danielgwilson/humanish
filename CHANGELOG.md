@@ -8,6 +8,30 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A participant held to a scheduled end (`endAfterMs`) is no longer ended as `gave_up` for
+  reloading a page that changes only on reload. 20 turns in a row that repeated a recent action on
+  an unchanged screen ended its session, and waits between its reloads left that count as it was.
+  In one of 72 live 60-minute runs on 0.132.0, a participant that reloaded an issue list about every
+  9 seconds was ended at minute 13 as abandoned. Such a streak now ends only a participant without a
+  scheduled end, at 20 turns as before. From the 20th repeat, humanish watches a held participant's
+  screen after each further one before its next request, as after a wait with no length: by default
+  the watches last 5, 10 and 20 seconds and keep doubling up to `actor.maxWaitMs`, or 10 minutes
+  when the study does not set it. The note on the next request says how long the wait after the last
+  action lasted and why it ended. In a fake-loop test, a held participant that reloads an unchanged
+  page every turn for an hour makes its requests from its 20th repeat on at the times one that only
+  waits makes them. When the streak ends, or the session ends in it, the trace records a notice
+  titled `repeated an action on an unchanged screen` with the streak's turn count and time span, and
+  review.json lists it in its gaps. (#1873)
+- A participant held to a scheduled end no longer sends model requests back to back with turns of
+  only screenshots or only 0 ms waits. Such a turn asked for no wait time, so the loop ran no watch
+  for it. It is now watched as a wait with no length: `idleWaitMs`, 5 seconds by default, doubling
+  on each further quiet turn in a row. 0 ms waits are no longer sent to the desktop for such a
+  participant. A watch that no wait carries, such as one for a turn of only screenshots, is recorded
+  on a `notice` titled `watched the screen`, with the same `watch` field a wait's `ui_action`
+  carries. Participants without a scheduled end keep their behavior. (#1868)
+
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
 humanish 0.133.1 keeps a hosted run writing run.json once its finished participants' traces

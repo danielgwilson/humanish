@@ -34,6 +34,7 @@ import {
   describeSubjectState,
   phaseEventIdSuffix,
   publicSafeAppUrlLabel,
+  streakGaps,
   subjectProvenanceMessage,
 } from "./bundle-parts.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
@@ -429,7 +430,7 @@ function singleReview(
       )}`,
       gaps:
         args.session || args.sessionError !== undefined
-          ? []
+          ? streakGaps(args.participantId ?? "lane-01", args.session)
           : args.inProgress === true
             ? ["Live desktop session is still running."]
             : ["Live desktop session not yet run (dry run only)."],

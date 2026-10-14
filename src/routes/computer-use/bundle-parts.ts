@@ -1,15 +1,30 @@
 // The parts both computer-use bundle shapes share: the subject-state story and provenance line,
-// provider-resource records, and the public-safe app URL label, the URL digest and the
-// subject-phase event id suffix. The builders are bundle.ts (the dispatcher and the judge),
-// single-bundle.ts and fanout-bundle.ts. Feedback candidates from participant reports are in
-// participant-feedback.ts, which the shared-world bundle reads too.
+// provider-resource records, the review's gap for a held participant's streak, and the public-safe
+// app URL label, the URL digest and the subject-phase event id suffix. The builders are bundle.ts
+// (the dispatcher and the judge), single-bundle.ts and fanout-bundle.ts. Feedback candidates from
+// participant reports are in participant-feedback.ts, which the shared-world bundle reads too.
 
+import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
+import { STREAK_TITLE } from "../../actors/computer-use/loop/streak.js";
 import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { digestText } from "../../evidence/redaction.js";
 import { type RunProviderResource, type RunSubjectProvenance } from "../../run/bundle.js";
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
 import { type ParticipantRunOutcome } from "./types.js";
 import { plural } from "../../run/text.js";
+
+/**
+ * The review's gap for each streak a participant's trace records: turns that repeated a recent
+ * action on an unchanged screen past noProgressSteps, which did not end the session of a
+ * participant held to its scheduled end. Its session passes, so no other gap names the streak.
+ */
+export function streakGaps(participantId: string, session: CuaLoopResult | undefined): string[] {
+  return (session?.trace.items ?? []).flatMap((item) =>
+    item.kind === "notice" && item.title === STREAK_TITLE && item.text !== undefined
+      ? [`${participantId}: ${item.text}`]
+      : [],
+  );
+}
 
 /** The human-readable state story appended to the provenance event (and review.md via it). */
 export function describeSubjectState(

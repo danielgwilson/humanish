@@ -134,6 +134,29 @@ export function startBackstop(observation: CuaObservation): Backstop {
   };
 }
 
+function repeatsRecentAction(backstop: Backstop, actions: readonly CuaAction[]): boolean {
+  const fingerprint = actionFingerprint(actions);
+  return fingerprint.length > 0 && backstop.recentFingerprints.includes(fingerprint);
+}
+
+/**
+ * Whether a turn that acts would be at least the noProgressSteps-th no-progress turn in a row if
+ * the screen stays the same: it repeats a recent action and the streak before it is one short of
+ * the limit or longer. The loop watches the screen after such a turn of a held participant, since
+ * its streak no longer ends its session.
+ */
+export function repeatsPastLimit(
+  backstop: Backstop,
+  actions: readonly CuaAction[],
+  limits: BackstopLimits,
+): boolean {
+  return (
+    !isIdleTurn(actions) &&
+    backstop.consecutiveNoProgress + 1 >= limits.noProgressSteps &&
+    repeatsRecentAction(backstop, actions)
+  );
+}
+
 export interface BackstopLimits {
   readonly idleSteps: number;
   readonly noProgressSteps: number;
@@ -152,8 +175,9 @@ export interface BackstopStep {
 /**
  * Fold one acted turn and the observation after it into the backstop. `waitingIsTheTask` says the
  * participant has a scheduled end still to come: waiting for it is its job, so an idle turn counts
- * toward neither streak and earns no nudge. A turn that acts is folded as usual. `screenChanged`
- * says the turn's watch woke on a change it saw, which the progress key can miss.
+ * toward neither streak and earns no nudge, and the no-progress streak does not end the session.
+ * A turn that acts is otherwise folded as usual. `screenChanged` says the turn's watch woke on a
+ * change it saw, which the progress key can miss.
  */
 export function advanceBackstop(
   previous: Backstop,
@@ -189,12 +213,11 @@ export function advanceBackstop(
   // just tried. An agent doing varied work is never counted stuck, however blind the hash is;
   // an agent re-clicking the same dead control trips it as fast as it did before, arguably
   // faster, since that is the actual signature of being stuck.
-  const fingerprint = actionFingerprint(turn.actions);
-  const repeatingRecentAction =
-    fingerprint.length > 0 && previous.recentFingerprints.includes(fingerprint);
-  const recentFingerprints = [...previous.recentFingerprints, fingerprint].slice(
-    -ACTION_REPEAT_WINDOW,
-  );
+  const repeatingRecentAction = repeatsRecentAction(previous, turn.actions);
+  const recentFingerprints = [
+    ...previous.recentFingerprints,
+    actionFingerprint(turn.actions),
+  ].slice(-ACTION_REPEAT_WINDOW);
   // Corroboration governs the frame-staleness backstop only. The idle backstop below is a direct
   // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
   // reading the frame on its own: a repeated screenshot is exactly what an idle streak is, and
@@ -244,10 +267,12 @@ export function advanceBackstop(
     );
   }
 
+  // A held participant past the no-progress limit keeps its session: on a page that shows new items
+  // only after a reload, reloading an unchanged screen is how it waits.
   const tripReason =
     consecutiveIdle >= limits.idleSteps
       ? `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`
-      : consecutiveNoProgress >= limits.noProgressSteps
+      : consecutiveNoProgress >= limits.noProgressSteps && turn.waitingIsTheTask !== true
         ? `gave up: ${consecutiveNoProgress} consecutive turns that repeated a recent action on an unchanged UI state`
         : undefined;
   return {
