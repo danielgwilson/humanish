@@ -41,8 +41,10 @@ contract that live adapters update while a run is active.
 `observer/index.html` carries both parts: the data slot holds observer-data.json's
 content, and `<script id="observer-items" type="application/json">` holds the items
 and full artifact lists by stream id (`humanish.observer-items.v2`) as
-`{ schema, runId, streams }`. Each entry of `streams` is that participant's JSON,
-gzip-compressed in base64, which a `file://` page decodes without a fetch. Each
+`{ schema, runId, streams }`, where `streams` lists `[stream id, entry]` pairs. Each
+entry is that participant's JSON, gzip-compressed in base64, which a `file://` page
+decodes without a fetch. The ids are not object keys: as a key, an id such as
+`GITHUB_TOKEN` before a long base64 value reads to verify's scan as a credential. Each
 participant is packed (`src/observer/page-data.ts`) and decoded (`observer/lib/data.ts`)
 on its own, so no string holds two participants' items: a run whose traces together
 pass V8's longest string, 536,870,888 characters, still renders while each trace stays

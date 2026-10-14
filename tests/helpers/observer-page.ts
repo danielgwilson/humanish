@@ -36,7 +36,7 @@ export function readFeedBody(text: string): { data: unknown; items: ObserverItem
 /** Packed items with each participant's entry decoded. */
 export function unpackItems(packed: PackedObserverItems): ObserverItems {
   const streams = Object.create(null) as ObserverItems["streams"];
-  for (const [id, entry] of Object.entries(packed.streams))
+  for (const [id, entry] of packed.streams)
     streams[id] = JSON.parse(
       gunzipSync(Buffer.from(entry, "base64")).toString("utf8"),
     ) as ObserverItems["streams"][string];

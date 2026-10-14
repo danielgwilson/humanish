@@ -136,17 +136,14 @@ async function readInlineItems(doc: Document): Promise<ObserverItems | null> {
 async function unpackItems(value: unknown): Promise<ObserverItems | null> {
   if (typeof value !== "object" || value === null) return null;
   const packed = value as { schema?: unknown; runId?: unknown; streams?: unknown };
-  if (
-    typeof packed.streams !== "object" ||
-    packed.streams === null ||
-    Array.isArray(packed.streams)
-  )
-    return null;
+  if (!Array.isArray(packed.streams)) return null;
   // No prototype, so a stream id such as `__proto__` is an entry like any other.
   const streams = Object.create(null) as Record<string, unknown>;
   // One at a time, so the page holds one participant's decoded text at once.
-  for (const [id, entry] of Object.entries(packed.streams)) {
-    if (typeof entry !== "string") return null;
+  for (const pair of packed.streams as unknown[]) {
+    if (!Array.isArray(pair) || pair.length !== 2) return null;
+    const [id, entry] = pair as unknown[];
+    if (typeof id !== "string" || typeof entry !== "string") return null;
     const text = await gunzipBase64(entry);
     if (text === null) return null;
     streams[id] = JSON.parse(text);

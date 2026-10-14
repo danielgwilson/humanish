@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { renderObserverHtml } from "../../src/observer/artifact.js";
 import { withObserverEndings, type ObserverData } from "../../src/observer/data.js";
+import { scanEncodedTextCached } from "../../src/evidence/encoded-text.js";
 import { readObserverPage } from "../helpers/observer-page.js";
 
 const live = async (): Promise<ObserverData> =>
@@ -46,21 +47,31 @@ describe("an Observer page", () => {
     const items = JSON.parse(element ?? "null") as {
       schema: string;
       runId: string;
-      streams: Record<string, unknown>;
+      streams: [string, string][];
     };
     expect(items.schema).toBe("humanish.observer-items.v2");
     expect(items.runId).toBe(data.run.runId);
-    expect(Object.keys(items.streams)).toEqual(["stream-001", "stream-002"]);
-    const decoded = Object.values(items.streams).map((packed) =>
-      JSON.stringify(
-        JSON.parse(gunzipSync(Buffer.from(String(packed), "base64")).toString("utf8")),
-      ),
+    expect(items.streams.map(([id]) => id)).toEqual(["stream-001", "stream-002"]);
+    const decoded = items.streams.map(([, packed]) =>
+      JSON.stringify(JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8"))),
     );
     expect(decoded.map((text) => [text.includes(FIRST_ITEM), text.includes(SECOND_ITEM)])).toEqual([
       [true, false],
       [false, true],
     ]);
     expect(readObserverPage(html)).toEqual(withObserverEndings(data));
+  });
+
+  it("scans clean as verify scans it when a participant's stream id reads as a credential name", async () => {
+    // A stream id followed by `:` and a long base64 value reads as `TOKEN: <secret>`.
+    const data = await live();
+    const [stream] = data.streams;
+    const named = { ...data, streams: [{ ...stream!, id: "GITHUB_TOKEN" }] };
+    const scan = (text: string) => scanEncodedTextCached(text, { allowOpaqueBase64: true });
+    expect(scan(JSON.stringify(named)).sensitive).toBe(false);
+    const html = renderObserverHtml(named);
+    expect(scan(html)).toEqual({ sensitive: false, opaque: false });
+    expect(readObserverPage(html)).toEqual(withObserverEndings(named));
   });
 });
 

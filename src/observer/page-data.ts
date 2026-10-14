@@ -34,10 +34,9 @@ export function observerFeedBody(data: ObserverData, live: readonly LiveItemsRea
 }
 
 function packObserverItems(items: ObserverItems): PackedObserverItems {
-  // No prototype, so a stream id such as `__proto__` is an entry like any other.
-  const streams = Object.create(null) as PackedObserverItems["streams"];
-  for (const [id, entry] of Object.entries(items.streams))
-    streams[id] = gzipSync(JSON.stringify(entry)).toString("base64");
+  const streams: PackedObserverItems["streams"] = Object.entries(items.streams).map(
+    ([id, entry]) => [id, gzipSync(JSON.stringify(entry)).toString("base64")],
+  );
   return { ...items, streams };
 }
 

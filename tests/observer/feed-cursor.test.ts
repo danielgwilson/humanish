@@ -171,11 +171,12 @@ describe("the Observer feed's items", () => {
       await run.writeSnapshot(inProgress([a, b], [c]));
       const body = await pollPacked();
       expect(body.items.schema).toBe("humanish.observer-items.v2");
-      const decoded = body.data.streams.map(
-        (stream) =>
-          JSON.parse(
-            gunzipSync(Buffer.from(body.items.streams[stream.id]!, "base64")).toString("utf8"),
-          ) as FeedEntry,
+      expect(body.items.streams.map(([id]) => id)).toEqual(
+        body.data.streams.map((stream) => stream.id),
+      );
+      const decoded = body.items.streams.map(
+        ([, packed]) =>
+          JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8")) as FeedEntry,
       );
       expect(decoded.map((value) => ids(value.liveActor))).toEqual([
         ["reasoning-001", "reasoning-002"],

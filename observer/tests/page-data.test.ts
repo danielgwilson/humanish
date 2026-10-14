@@ -46,7 +46,7 @@ describe("the page's run data", () => {
     const data = await live();
     const filled = injectObserverData(SLOT, data).replace(
       /(<script id="observer-items"[^>]*>)[^<]*/,
-      `$1${JSON.stringify({ schema: "humanish.observer-items.v2", runId: data.run.runId, streams: { [data.streams[0]!.id]: "bm90IGd6aXA=" } })}`,
+      `$1${JSON.stringify({ schema: "humanish.observer-items.v2", runId: data.run.runId, streams: [[data.streams[0]!.id, "bm90IGd6aXA="]] })}`,
     );
     expect(await readInlineObserverData(page(filled))).toBeNull();
     const missing = injectObserverData(SLOT, data).replace(
@@ -71,14 +71,15 @@ describe("the page's run data", () => {
     const data = await live();
     const body = JSON.parse(feed(data)) as {
       data: unknown;
-      items: { runId: string; streams: Record<string, unknown> };
+      items: { runId: string; streams: [string, string][] };
     };
-    const [id] = Object.keys(body.items.streams);
+    const [[id, packed]] = body.items.streams as [[string, string]];
     for (const items of [
       { ...body.items, runId: "another-run" },
-      { ...body.items, streams: {} },
-      // An entry as a page before per-participant packing carried it.
-      { ...body.items, streams: { [id!]: { actor: [] } } },
+      { ...body.items, streams: [] },
+      // Entries as a page before per-participant packing carried them.
+      { ...body.items, streams: { [id]: { actor: [] } } },
+      { ...body.items, streams: { [id]: packed } },
     ]) {
       const served = (async () => ({
         ok: true,

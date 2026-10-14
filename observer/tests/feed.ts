@@ -16,11 +16,9 @@ export function packed(body: {
   data: unknown;
   items: { streams: Record<string, unknown> };
 }): string {
-  const streams = Object.fromEntries(
-    Object.entries(body.items.streams).map(([id, entry]) => [
-      id,
-      gzipSync(JSON.stringify(entry)).toString("base64"),
-    ]),
-  );
+  const streams = Object.entries(body.items.streams).map(([id, entry]) => [
+    id,
+    gzipSync(JSON.stringify(entry)).toString("base64"),
+  ]);
   return JSON.stringify({ ...body, items: { ...body.items, streams } });
 }
