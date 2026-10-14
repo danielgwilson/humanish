@@ -195,6 +195,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-09 | 0.118.0, src/ as of d183d1ae | `neutral` | `openai-computer-use` | 3            | 6/15          | 6/15            | 0 and 0             | $5.38           | [summary](2026-10-09-0.118.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.119.0, src/ as of 6405a7c0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 10/15           | 0 and 0             | $6.12           | [summary](2026-10-09-0.119.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.120.0, src/ as of cf75cc6f | `neutral` | `openai-computer-use` | 3            | 12/15         | 11/15           | 0 and 0             | $5.87           | [summary](2026-10-09-0.120.0-neutral-openai-computer-use.md) |
+| 2026-10-14 | 0.133.0, src/ as of 7147b595 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $5.87           | [summary](2026-10-14-0.133.0-neutral-openai-computer-use.md) |
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
@@ -354,6 +355,17 @@ filters changed, which is D5. Read by hand, analysis recall is 12/15, and report
 No planted participant typed more than 28 characters in one action, so none met D2. Five of six
 reports say the participant saw no terminal output, from the persona's `clear_terminal_output`
 trait. Three runs per arm cannot separate this rise from the run-to-run variation described above.
+
+The 0.133.0 run is the first since 0.120.0. Every participant ran threaded and ended on its own
+with `goal_satisfied`. D3 and D4 stayed 3/3 for reports and analyses. The misses come from reach:
+read from the traces, one planted participant of three pressed Clear completed after checking a
+task, and that one reported D1; no planted participant met D2. All three used the row's Save
+button, and two reported D5. Planted 1's unresolved analysis line "Repeated Clear completed attempts
+left both completed tasks visible" is D1, so analysis recall read by hand is 9/15. On the clean arm,
+two reports and two unresolved lines say Enter did not save an edit or the list was empty after a
+refresh, which is what the clean build does. Six of six reports say the participant saw no terminal
+output, from the persona's `clear_terminal_output` trait. Three runs per arm cannot separate this
+result from the run-to-run variation described above.
 
 ## What these numbers are not
 
