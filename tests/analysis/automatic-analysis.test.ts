@@ -33,6 +33,7 @@ import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/study/plan.js";
 import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 import { libraryConfig } from "../helpers/library-config.js";
+import { SECRET_ENCODINGS, SECRET_FORMATS } from "../helpers/secret-formats.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 
 const fixtures = JSON.parse(
@@ -89,6 +90,21 @@ describe("automatic analysis admission and producer boundary", () => {
   ])("rejects malformed settings %j", (raw) => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
   });
+  // The question is sent to the provider and saved in analysis.json, which verify scans decoded.
+  it.each(Object.entries(SECRET_ENCODINGS))(
+    "refuses a question holding a key %s, on both providers",
+    (_name, encode) => {
+      const question = encode(SECRET_FORMATS[0]!.text);
+      for (const raw of [
+        { maxCostUsd: 2, question },
+        { provider: "codex", timeoutMs: 1000, question },
+      ]) {
+        const resolved = resolveAutomaticAnalysis(raw);
+        if (resolved.ok) throw new Error(`accepted ${raw.question}`);
+        expect(resolved.message).not.toContain(question);
+      }
+    },
+  );
   it.each(fixtures)("preserves explicit opt-out on every route: $name", ({ config: base }) => {
     const parsed = parseStudy({ ...base, review: { analysis: false } });
     expect(parsed.ok).toBe(true);
