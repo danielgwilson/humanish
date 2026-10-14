@@ -191,8 +191,9 @@ from run.json before any trace is read, and the first 80 captures selection may
 read. Beside the one trace it is reading, analysis holds at most 800 entries for
 each request and 80 for each participant; their size grows with each trace
 item's text. A run.json past 16 MiB is refused as `ANALYSIS_SOURCE_TOO_LARGE`, and
-a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
-each message names the file, says why, and says no request was sent. Analysis
+a run.json or trace without the fields analysis reads, or a run.json with two of a
+participant's run events sharing an id, as `ANALYSIS_SOURCE_INVALID`; each message
+names the file, says why, and says no request was sent. Analysis
 verifies the run before it reads a trace, so a trace that does not match its
 index in run.json fails verify and `humanish analyze` reports
 `ANALYSIS_VERIFY_FAILED`. A trace past 32 MiB leaves the run `local_only`, and

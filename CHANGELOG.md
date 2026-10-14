@@ -29,8 +29,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   3% of its earlier time. (#1872)
 - `humanish analyze` names the participant and the event id when two of a participant's run events
   in run.json share an id, as in `events 4 and 5 are participant p01's and share the id
-  "note-1"`. It refused such a run with "Analysis could not be completed safely." The run still
-  passes verify. (#1849)
+  "note-1"`, and says to give one of them another id. `analyze --json` reports the refusal as
+  `ANALYSIS_SOURCE_INVALID`. It reported `ANALYSIS_UNAVAILABLE`, with "Analysis could not be
+  completed safely." The run still passes verify. (#1849)
 - The bundle estimate behind the size warning of `study check` and `humanish run` counts each
   participant's instruction (`participants.instruction` or `participants[].instruction`) and the
   task goals (`actor.tasks[].goal`) with the mission. run.json copies all three into each
