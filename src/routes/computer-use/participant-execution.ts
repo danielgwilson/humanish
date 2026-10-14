@@ -51,7 +51,7 @@ export function makeParticipantWriteScreenshot(
     const rel = path.posix.join(relPrefix, name);
     // Evidence holds image data only, whatever the executor's frames carried.
     const frame = stripPngMetadataChunks(bytes);
-    assertScreenshotEvidence(rel, frame);
+    await assertScreenshotEvidence(rel, frame);
     await writeContainedOutputFile(artifactRoot, path.join(...dirParts, name), frame);
     screenshots.push(rel);
     return rel;

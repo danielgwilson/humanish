@@ -1,6 +1,7 @@
 import { lstat, mkdir, readdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 
+import { mapWithConcurrency } from "./concurrency.js";
 import { isNodeError } from "./type-guards.js";
 
 export const RUNS_RELATIVE_ROOT = path.join(".humanish", "runs");
@@ -367,35 +368,47 @@ export async function assertRegularFileOrMissing(
   }
 }
 
-async function assertNoSymlinkDescendants(directory: string): Promise<void> {
-  const entries = await readdir(directory, { withFileTypes: true });
-  for (const entry of entries) {
-    const child = path.join(directory, entry.name);
-    // A run directory can be written concurrently with this walk: the atomic writer creates a
-    // `.humanish-write-*.tmp` sibling and renames it, and a run now also refreshes its own status
-    // record on a cadence. An entry that vanished between readdir and lstat therefore proves
-    // nothing except that it is gone, and a path that no longer exists cannot be a symlink escape:
-    // skip it rather than failing the containment check on a benign race.
-    let stats;
-    try {
-      stats = await lstat(child);
-    } catch (error) {
-      if (isNodeError(error) && error.code === "ENOENT") {
-        continue;
-      }
-      throw error;
-    }
-    if (stats.isSymbolicLink()) {
-      throw new Error("humanish run directories must not contain symbolic links.");
-    }
-    if (stats.isDirectory()) {
-      await assertNoSymlinkDescendants(child);
-    } else if (!stats.isFile() || stats.nlink > 1) {
-      throw new Error(
-        "humanish run leaves must be single-link regular files, not hardlinks or special files.",
-      );
-    }
+// Entries the storage check lists or lstats at once. A run folder holds one entry per screenshot,
+// about 70,000 for 24 participants working 8 hours, and one call at a time left the process idle
+// between calls.
+const STORAGE_CHECK_CONCURRENCY = 32;
+
+/** Every entry under `root` is a directory or a single-link regular file, checked a level at a time. */
+async function assertNoSymlinkDescendants(root: string): Promise<void> {
+  let directories = [root];
+  while (directories.length > 0) {
+    const listed = await mapWithConcurrency(directories, STORAGE_CHECK_CONCURRENCY, async (dir) =>
+      (await readdir(dir, { withFileTypes: true })).map((entry) => path.join(dir, entry.name)),
+    );
+    const children = listed.flat();
+    const kinds = await mapWithConcurrency(children, STORAGE_CHECK_CONCURRENCY, storageEntryKind);
+    directories = children.filter((_, index) => kinds[index] === "directory");
   }
+}
+
+async function storageEntryKind(child: string): Promise<"directory" | "file" | "gone"> {
+  // A run directory can be written concurrently with this walk: the atomic writer creates a
+  // `.humanish-write-*.tmp` sibling and renames it, and a run also refreshes its own status record
+  // on a cadence. An entry that vanished between readdir and lstat therefore proves nothing except
+  // that it is gone, and a path that no longer exists cannot be a symlink escape: skip it rather
+  // than failing the containment check on a benign race.
+  let stats;
+  try {
+    stats = await lstat(child);
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return "gone";
+    throw error;
+  }
+  if (stats.isSymbolicLink()) {
+    throw new Error("humanish run directories must not contain symbolic links.");
+  }
+  if (stats.isDirectory()) return "directory";
+  if (!stats.isFile() || stats.nlink > 1) {
+    throw new Error(
+      "humanish run leaves must be single-link regular files, not hardlinks or special files.",
+    );
+  }
+  return "file";
 }
 
 async function capturePreparedRunArtifactPaths(
