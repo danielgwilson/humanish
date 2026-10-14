@@ -37,9 +37,15 @@ import { runEntryLimit } from "../verify/scan-limit.js";
 // the 0.125.0 smoke test and the 2026-10-12 live checks, 10 participants with 1 to 28 turns and 137
 // model requests. Dry: runs of 1, 2, 24 and 100 participants, for the Observer app and the run's
 // own files. Pace, session length and screenshots: the live computer-use runs kept on the
-// maintainer's machine. A trace's rate a turn on the public site/public/runs/lobby-0927 run
-// (8 participants, 20 to 78 turns) was 1,579 bytes plus 91 for the page, under the live fit.
-// The run.json and page data rates were measured again on those runs written as v4.
+// maintainer's machine. The run.json and page data rates were measured again on those runs
+// written as v4.
+// The trace rates were measured on trace files written indented. The writer now writes them as
+// compact JSON, so each trace rate below is the indented figure divided by 1.36, the ratio of
+// indented to compact bytes over 236 kept computer-use traces (1.17 to 1.49 each), and the page's
+// share of the traces is multiplied by it. A trace's rate a turn on the public
+// site/public/runs/lobby-0927 run (8 participants, 20 to 78 turns) was 1,579 bytes plus 91 for the
+// page indented, under the live fit. Its participant of 78 turns writes a trace of 149,637 bytes
+// indented and 107,897 compact.
 const RATES = Object.freeze({
   /** run.json bytes for the run itself: its header, study, review and cost. Live fit: 4,381. */
   runBytes: 4_400,
@@ -49,21 +55,21 @@ const RATES = Object.freeze({
    * bytes and those of two 30,647 to 38,948, beside 20,900 and 37,400 at these rates.
    */
   participantBytes: 16_500,
-  /** A trace file's bytes before its turns: the actor summary. Live fit: 5,378. */
-  participantTraceBytes: 5_400,
+  /** A trace file's bytes before its turns: the actor summary. Live fit: 5,378 indented. */
+  participantTraceBytes: 4_000,
   /**
    * Trace bytes a model turn adds: its items, its screenshot entry and its request's usage, plus 91
-   * for the `page` each screenshot item now carries. Live fit: 1,965 a turn. Participants with 4
-   * or more turns ranged from 1,140 to 4,532; the busiest made 311 items in 15 turns, most of them
-   * UI actions. Analysis refuses the whole run when one trace passes its limit, so each trace is
-   * counted at the busiest participant's rate.
+   * for the `page` each screenshot item now carries, all indented. Live fit: 1,965 a turn.
+   * Participants with 4 or more turns ranged from 1,140 to 4,532; the busiest made 311 items in 15
+   * turns, most of them UI actions. Analysis refuses the whole run when one trace passes its limit,
+   * so each trace is counted at the busiest participant's rate, 4,700 indented.
    */
-  turnTraceBytes: 4_700,
+  turnTraceBytes: 3_500,
   /**
    * Trace bytes a dwell frame adds: 395 for its item and entry on the kept runs with dwell frames,
-   * plus 91 for the page.
+   * plus 91 for the page, indented.
    */
-  frameTraceBytes: 500,
+  frameTraceBytes: 400,
   /**
    * Seconds between model turns: the median of the 27 of 185 kept live participants that worked 5
    * minutes or more was 10.4.
@@ -88,12 +94,12 @@ const RATES = Object.freeze({
    */
   observerPageDataShare: 0.85,
   /**
-   * The page's gzipped base64 items, as a share of all the traces' bytes: 0.087 to 0.114 on the
-   * live runs of two participants, 0.097 for the busiest participant alone (about 475 bytes a
-   * turn), 0.142 to 0.184 on runs of one participant and 4 to 11 turns, and 0.095 on 0.124.0's
-   * synthetic 8-hour run.
+   * The page's gzipped base64 items, as a share of all the traces' bytes indented: 0.087 to 0.114
+   * on the live runs of two participants, 0.097 for the busiest participant alone (about 475 bytes
+   * a turn), 0.142 to 0.184 on runs of one participant and 4 to 11 turns, and 0.095 on 0.124.0's
+   * synthetic 8-hour run. The estimate counted 0.12 of indented traces.
    */
-  observerPageItemsShare: 0.12,
+  observerPageItemsShare: 0.16,
   /** A desktop screenshot: the median of 3,990 kept live PNG frames was 107,895 bytes. */
   screenshotBytes: 110_000,
   /**

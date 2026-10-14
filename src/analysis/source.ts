@@ -123,22 +123,25 @@ export async function readParticipantTraces<T>(
   bundle: StoredRunBundle,
   keep: (stream: RunStream, index: number) => T,
 ): Promise<T[]> {
-  try {
-    return await reduceRunTraces(prepared, bundle, (stream, index) => {
-      validateTraceItems(stream);
-      return keep(stream, index);
-    });
-  } catch (error) {
-    // The loader's refusal names the participant, the file, why, and what to do.
-    if (error instanceof StreamTraceRefusedError)
-      throw new AnalysisSourceRefusedError(
-        error instanceof StreamTraceTooLargeError
-          ? "ANALYSIS_SOURCE_TOO_LARGE"
-          : "ANALYSIS_SOURCE_INVALID",
-        error.message,
-      );
-    throw error;
-  }
+  return reduceRunTraces(prepared, bundle, (stream, index) => {
+    validateTraceItems(stream);
+    return keep(stream, index);
+  }).catch(throwAsAnalysisRefusal);
+}
+
+/**
+ * The trace loader's refusal as analysis gives it, ANALYSIS_SOURCE_TOO_LARGE for a trace past the
+ * read limit and ANALYSIS_SOURCE_INVALID for any other; another error as it is. The loader's
+ * message names the participant, the file, why, and what to do.
+ */
+export function throwAsAnalysisRefusal(error: unknown): never {
+  if (!(error instanceof StreamTraceRefusedError)) throw error;
+  throw new AnalysisSourceRefusedError(
+    error instanceof StreamTraceTooLargeError
+      ? "ANALYSIS_SOURCE_TOO_LARGE"
+      : "ANALYSIS_SOURCE_INVALID",
+    error.message,
+  );
 }
 
 function validateTraceItems(stream: RunStream): void {

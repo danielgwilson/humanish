@@ -20,7 +20,7 @@ writer (`src/run/run.ts`, through `splitStreamTraces` in `src/run/stream-trace.t
 each stream with an `actor`:
 
 - the trace file: the actor trace (`humanish.actor-trace.v1`) with every item, plus `artifacts`,
-  the stream's screenshot entries. Its path is the stream's actor trace artifact (`actor.json` for
+  the stream's screenshot entries, as one line of compact JSON. Its path is the stream's actor trace artifact (`actor.json` for
   one participant, `actors/<stream>.json` for more, `actor-<surface>.json` on the scripted route),
   or `actors/<n>.json`, `n` its position in `streams[]` (from 1), for a stream with none or whose
   trace artifact an earlier stream claimed. Names of that form are never reused as a stream's own
@@ -65,7 +65,11 @@ names, is refused before any file is read. The writer claims names the same way.
 must have an index: an actor with no index, with
 or without inline `items`, is refused, and so is one with both an index and inline `items`.
 verify reports a refused trace in the `local evidence artifacts exist` check, so the run is
-`blocked`. verify also scans the bytes of each trace it loaded with the public-safety text scan,
+`blocked`. A trace or live file whose index records more than the limit is reported that way only
+when verify's walk of the run folder reads it, since its bytes are then fewer than the index
+records. When the walk cannot read it either, verify lists it under `UNSCANNED_ARTIFACT`, so the
+run is `local_only`, adds the refusal to its warnings, and checks that participant without its
+items. verify also scans the bytes of each trace it loaded with the public-safety text scan,
 apart from its walk of the run folder, so no path exemption the walk makes applies to a trace.
 run.json's digest, which an analysis record binds, covers each index and so each trace.
 
@@ -370,6 +374,12 @@ An Observer that does not render is an `evidence` failure known only after
 `status.json` before the route returns, and no Observer page exists that could
 show the run without it. Messages pass the same redaction and sandbox id scrub
 as the rest of the bundle.
+
+After that write, `Run.finish` replaces each raw sandbox id `sandbox-receipts.ndjson` names in the
+run's other text files with its label (`scrubRunSandboxIds` in `src/run/sandbox-ids.ts`). A file
+the sweep cannot read, such as a trace past the 32 MiB read limit, may still name a sandbox. The run
+still finishes: `Run.finish` writes `run.json` again with a `sandbox-ids.unresolved` warn event that
+names each such file and why.
 
 When a signal stops a live run, the handler writes `interrupted` into the last
 flushed `run.json`, and every later write of that run keeps it. A run stopped

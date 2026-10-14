@@ -194,8 +194,10 @@ item's text. A run.json past 16 MiB is refused as `ANALYSIS_SOURCE_TOO_LARGE`, a
 a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
 each message names the file, says why, and says no request was sent. Analysis
 verifies the run before it reads a trace, so a trace that does not match its
-index in run.json, or whose index records more than 32 MiB, fails verify and
-`humanish analyze` reports `ANALYSIS_VERIFY_FAILED`. Count and text budgets are
+index in run.json fails verify and `humanish analyze` reports
+`ANALYSIS_VERIFY_FAILED`. A trace past 32 MiB leaves the run `local_only`, and
+analysis refuses it as `ANALYSIS_SOURCE_TOO_LARGE`, naming the participant and
+the file. Count and text budgets are
 distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible
 participants with fewer admitted images, including those deferred by their
