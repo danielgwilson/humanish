@@ -1,7 +1,8 @@
 // Before a computer-use study runs, the plan estimates how large its run bundle grows: run.json,
 // which analysis reads up to 16 MiB, each participant's trace, which analysis, verify and the
-// Observer read up to 32 MiB, the Observer page, which verify reads up to 32 MiB, and the files the
-// public-safety scan visits. A live study whose estimate
+// Observer read up to 32 MiB, the Observer page, which verify reads up to 32 MiB, all the traces
+// together, whose items the page joins in one string of at most 536,870,888 characters, and the
+// files the public-safety scan visits. A live study whose estimate
 // passes one of those limits gets a plan warning, which `study check` and `humanish run` print
 // before any sandbox is created, and runs.
 //
@@ -125,6 +126,16 @@ describe("study check's bundle estimate", () => {
       row: "run.json about 0.5 MiB of the 16 MiB analysis reads; largest trace about 12.9 MiB of the 32 MiB humanish reads of each; Observer page about 48.0 MiB of the 32 MiB verify reads; about 86,510 files and folders of the 160,000 the public-safety scan reads; about 9503 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [WARN_30_HOSTS],
     });
+  });
+
+  it("warns that 40 hosts working 8 hours pass the longest string on all their traces", async () => {
+    // All traces: 40 x 13,541,400 = 541,656,000 bytes, past V8's 536,870,888 characters, which
+    // the Observer page's items need in one string. run.json: 4,400 + 40 x 16,500 = 664,400.
+    // Page: 1,200,000 + 0.85 x 664,400 + 0.12 x 541,656,000 = 66,763,460. Entries: 20 + 40 x 3
+    // + 40 x 2,880 = 115,340, of 10,000 + 40 x 5,000.
+    expect((await check(eventDay(40, 8))).warnings).toEqual([
+      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. The Observer page carries them in one, so it would not build. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+    ]);
   });
 
   it("counts run.json by participant, whatever the number of model turns", () => {

@@ -16,6 +16,11 @@
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
+// The page and the Observer server join every participant's items in one string before gzip, and
+// V8's longest string is 536,870,888 characters on Node 24. A trace file's bytes are at least the
+// characters of its items as compact JSON, so comparing the traces' bytes warns early, never late.
+
+import { constants } from "node:buffer";
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
@@ -112,6 +117,8 @@ export interface BundleEstimate {
   readonly runFileBytes: number;
   /** The largest participant trace file, which analysis also reads whole. */
   readonly largestTraceBytes: number;
+  /** Every participant's trace file together, whose items the Observer page joins in one string. */
+  readonly tracesBytes: number;
   /** observer/index.html, which verify reads whole. */
   readonly observerPageBytes: number;
   /** Every file, screenshots included. */
@@ -203,6 +210,7 @@ export function estimateBundle(
   return {
     runFileBytes,
     largestTraceBytes: largestTrace,
+    tracesBytes: traces,
     observerPageBytes,
     // observer-data.json is about run.json's size.
     totalBytes: observerPageBytes + screenshots * RATES.screenshotBytes + traces + 2 * runFileBytes,
@@ -226,6 +234,7 @@ export function estimateBundle(
 export function bundleLimitReason(estimate: BundleEstimate): string | undefined {
   const runFile = estimate.runFileBytes > EVIDENCE_LIMITS.sourceBytes;
   const page = estimate.observerPageBytes > RUN_ARTIFACT_MAX_BYTES;
+  const joined = estimate.tracesBytes > constants.MAX_STRING_LENGTH;
   const entries = estimate.entries > estimate.entryLimit;
   const passed = [
     ...(runFile
@@ -241,6 +250,11 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
     ...(page
       ? [
           `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file.`,
+        ]
+      : []),
+    ...(joined
+      ? [
+          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. The Observer page carries them in one, so it would not build.`,
         ]
       : []),
     ...(entries
@@ -269,7 +283,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
     ...(runFile ? ["shorten the mission (actor.mission)"] : []),
   ];
   // A trace is one participant's, so splitting the study helps only the run's own files.
-  if (runFile || page || entries || changes.length === 0)
+  if (runFile || page || joined || entries || changes.length === 0)
     changes.push("split the participants across studies");
   const advice =
     changes.length < 2

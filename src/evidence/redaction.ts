@@ -91,6 +91,10 @@ const SANDBOX_URL = new RegExp(
   "gi",
 );
 
+// src/evidence/sensitive-json.ts scans a JSON array one element at a time and relies on which of
+// these patterns can match across the `},{` between two elements. A new pattern that can cross
+// those characters needs a case in tests/evidence/sensitive-json.test.ts.
+//
 // A pattern that matches a credential by its context puts the context in a `keep` group, which
 // redaction leaves in place: `?token=[REDACTED_SECRET]`. Context goes in a group and not in a
 // lookbehind, because a pattern that starts with a lookbehind is tried at every position of the
@@ -210,6 +214,11 @@ const CREDENTIAL_PATTERNS = SECRET_PATTERNS.filter((pattern) => pattern !== SAND
 /** True if the text contains a credential. Local paths and a URL on an E2B host alone do not count. */
 export function containsCredential(text: string): boolean {
   return CREDENTIAL_PATTERNS.some((pattern) => matchesPattern(pattern, text));
+}
+
+/** True if the text contains a URL on an E2B host, as containsSensitive reads one. */
+export function containsSandboxUrl(text: string): boolean {
+  return matchesPattern(SANDBOX_URL, text);
 }
 
 /** True if the text contains any secret-shaped token or known local path. */
