@@ -19,7 +19,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import type { RunPointer } from "./results.js";
-import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
+import { type DisplayedRunBundle, RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
 import { displayedTraces, loadRunTraces, loadStreamTraces } from "./stream-trace.js";
 import { readUnchangedFile, type BoundedFileResult } from "./evidence-files.js";
@@ -186,6 +186,9 @@ export async function loadRunBundle(
   return loadRunBundlePrepared(cwd, runPaths);
 }
 
+/** A run's bundle, run.json's path relative to the working directory, and the run folder. */
+type LoadedRun<T> = { bundle: T; bundlePath: string; runDir: string };
+
 /**
  * loadRunBundle for a caller that already holds prepared paths. Revalidates them first. With
  * `display`, a participant whose trace the loader refuses, such as one past the read limit, is
@@ -194,8 +197,17 @@ export async function loadRunBundle(
 export async function loadRunBundlePrepared(
   cwdInput: string,
   runPaths: PreparedRunArtifactPaths,
-  options: { display?: boolean } = {},
-): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+  options: { display: true },
+): Promise<LoadedRun<DisplayedRunBundle> | null>;
+export async function loadRunBundlePrepared(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths,
+): Promise<LoadedRun<RunBundle> | null>;
+export async function loadRunBundlePrepared(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths,
+  options: { display?: true } = {},
+): Promise<LoadedRun<RunBundle | DisplayedRunBundle> | null> {
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
   const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);

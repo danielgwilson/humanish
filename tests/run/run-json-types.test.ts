@@ -17,6 +17,7 @@ import { buildObserverData, type ObserverData } from "../../src/observer/data.js
 import type { RunBundle } from "../../src/run/bundle.js";
 import { isRunBundle } from "../../src/run/bundle-shape.js";
 import {
+  displayedTraces,
   loadStreamTraces,
   splitStreamTraces,
   type TraceFileReader,
@@ -75,6 +76,18 @@ function observerReads(data: ObserverData): unknown[] {
     stream.actor?.providerRequests,
     // @ts-expect-error the Observer's live actor has no tokenUsage.turns
     stream.liveActor?.tokenUsage?.turns,
+  ]);
+}
+
+/** The lists of a run's participants as a reader that shows the run has them: none compiles. */
+function displayedReads(bundle: ReturnType<typeof displayedTraces>): unknown[] {
+  return bundle.streams.flatMap(({ actor }) => [
+    // @ts-expect-error a refused participant's actor has no conversation.requests
+    actor?.conversation?.requests,
+    // @ts-expect-error a refused participant's actor has no tokenUsage.turns
+    actor?.tokenUsage?.turns,
+    // @ts-expect-error a refused participant's actor has no providerRequests
+    actor?.providerRequests,
   ]);
 }
 
@@ -142,5 +155,19 @@ describe("run.json's per-request lists", () => {
       bundle.streams.map((stream) => stream.actor!.items),
     );
     expect(summaryReads(written.streams[0]!.actor!)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("are absent from a participant whose trace the loader refused, as a reader shows it", async () => {
+    const split = splitStreamTraces(await bundleWithLists());
+    const runJson: unknown = JSON.parse(JSON.stringify(split.bundle));
+    if (!isRunBundle(runJson)) throw new Error("not a run bundle");
+    const missing: TraceFileReader = async (relativePath) => ({
+      refused: `${relativePath} is missing`,
+    });
+    const loaded = await loadStreamTraces(missing, runJson);
+    expect(loaded.refused).toHaveLength(runJson.streams.length);
+    const shown = displayedTraces(loaded);
+    expect(shown.streams[0]!.actor?.conversation).toEqual({ mode: "threaded", summarizedTurns: 0 });
+    expect(displayedReads(shown).filter((list) => list !== undefined)).toEqual([]);
   });
 });

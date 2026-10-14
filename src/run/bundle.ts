@@ -5,7 +5,13 @@ import type { ExecutionOutcome } from "./judge.js";
 import type { SharedWorldEvidence } from "./shared-world-evidence.js";
 import { studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import type { RunInterruptSignal } from "./status.js";
-import type { RunSimulationStatus, RunStream, RunStreamKind, StoredRunStream } from "./streams.js";
+import type {
+  DisplayedRunStream,
+  RunSimulationStatus,
+  RunStream,
+  RunStreamKind,
+  StoredRunStream,
+} from "./streams.js";
 
 /**
  * The run bundle version this release writes: each stream's trace, and each running participant's
@@ -433,6 +439,9 @@ export interface RunBundle {
  * per-request lists that from v4 only its trace file holds. loadStreamTraces gives the RunBundle.
  */
 export type StoredRunBundle = Omit<RunBundle, "streams"> & { streams: StoredRunStream[] };
+
+/** A loaded bundle as a reader that shows the run has it (displayedTraces): DisplayedRunStreams. */
+export type DisplayedRunBundle = Omit<RunBundle, "streams"> & { streams: DisplayedRunStream[] };
 
 /**
  * How a run ended. `finished`: Run.finish published the final bundle with the route result's `ok`

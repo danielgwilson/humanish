@@ -14,6 +14,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V2_SCHEMA,
   RUN_BUNDLE_V3_SCHEMA,
+  type DisplayedRunBundle,
   type RunBundle,
   type StoredRunBundle,
 } from "./bundle.js";
@@ -36,6 +37,7 @@ import {
 import { estimateActorCostForExecution } from "./pricing.js";
 import { isRunStreamArtifact, isStreamTraceIndex, isStreamTracePath } from "./stream-shape.js";
 import type {
+  DisplayedRunStream,
   LiveItemsIndex,
   RunStream,
   StoredRunStream,
@@ -294,6 +296,8 @@ function joinTrace(
  * run.json's actor with each per-request list its trace file holds, whatever the bundle's
  * version: before v4 the writer wrote run.json's lists and the file's from one actor, so they are
  * equal. A nested list goes into run.json's `tokenUsage` or `conversation` when run.json has it.
+ * A conversation left without a requests list is refused: ActorTrace types the list as present,
+ * so a reader that counts it would throw.
  */
 function joinRequestLists(
   summary: WithoutRequestLists<ActorTrace>,
@@ -313,6 +317,8 @@ function joinRequestLists(
     if (second === undefined) joined[first] = value;
     else if (isRecord(parent)) joined[first] = { ...parent, [second]: value };
   }
+  if (isRecord(joined.conversation) && !Array.isArray(joined.conversation.requests))
+    refuse(`run.json records a conversation and ${filePath} holds no requests list for it`);
   return joined as unknown as ActorTrace;
 }
 
@@ -678,20 +684,20 @@ export function displayedTraces(loaded: {
   bundle: RunBundle;
   refused: readonly StreamTraceRefusedError[];
   live?: readonly LiveItemsRead[];
-}): RunBundle {
+}): DisplayedRunBundle {
   const reasons = new Map(loaded.refused.map((error) => [error.streamId, error.message]));
   const stopped = (loaded.live ?? []).filter((read) => read.stopped !== undefined);
   if (reasons.size === 0 && stopped.length === 0) return loaded.bundle;
-  const streams = loaded.bundle.streams.map((stream): RunStream => {
+  const streams = loaded.bundle.streams.map((stream): DisplayedRunStream => {
     const reason = reasons.get(stream.id);
     if (reason === undefined) return stream;
     const { liveActor: _live, trace: _index, actor, ...rest } = stream;
-    return asLoaded({
+    return {
       ...rest,
       ...(actor === undefined ? {} : { actor: { ...withoutRequestLists(actor), items: [] } }),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       traceUnavailable: reason,
-    });
+    };
   });
   const events = loaded.bundle.streams
     .filter((stream) => reasons.has(stream.id))

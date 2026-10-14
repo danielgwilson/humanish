@@ -403,3 +403,12 @@ export type StoredRunStream = Omit<RunStream, "actor" | "liveActor"> & {
   actor?: StoredTrace<ActorTrace>;
   liveActor?: StoredTrace<NonNullable<RunStream["liveActor"]>>;
 };
+
+/**
+ * A stream as a reader that shows the run has it (displayedTraces in src/run/stream-trace.ts):
+ * loaded, or with `traceUnavailable` when the loader refused its trace. A refused stream's actor
+ * keeps run.json's summary, which from v4 has none of the per-request lists, so the type has none.
+ */
+export type DisplayedRunStream = Omit<RunStream, "actor"> & {
+  actor?: WithoutRequestLists<ActorTrace>;
+};
