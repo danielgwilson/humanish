@@ -220,13 +220,19 @@ export function renderPersonaPromptSection(persona: ResolvedPersona): string {
     .join("\n\n");
 }
 
-/** Only the authored persona section; excludes task criteria, runtime grants and inbox URLs. */
+/**
+ * Only the authored persona section; excludes task criteria, runtime grants and inbox URLs. With
+ * `scrub`, the run's known values come out first, then keys as written or encoded. Without it, only
+ * keys as written come out. A route that learns its known values later passes this brief to
+ * scrubPersonaBrief, and an encoded key replaced here would cut a known value that holds one, so
+ * that scrub could no longer find the value whole.
+ */
 export function personaBrief(
   persona: ResolvedPersona,
-  scrub: (text: string) => string = (text) => text,
+  scrub?: (text: string) => string,
 ): NonNullable<ActorPersonaRef["brief"]> {
   const original = renderPersonaPromptSection(persona),
-    text = redactEncodedText(scrub(original));
+    text = scrub === undefined ? redactText(original) : redactEncodedText(scrub(original));
   return {
     compilerVersion: PERSONA_COMPILER_VERSION,
     text,
