@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish verify` checks a run folder for links and special files twice where it checked four
+  times: once when it binds the run and once after the public-safety scan. The check looks at 32
+  entries at a time where it looked at one. The check after the scan still refuses a run whose file
+  was swapped for a link or a FIFO while the scan read it. On a run folder of 15,000 entries,
+  verify took 2.6 s where it took 8.7 s (median of 5), and 6.0 s where it took 13.6 s with 16 busy
+  processes on a 16-core host. Rendering the Observer, analysis, feedback and export run the same
+  check and gain the concurrency. (#1796)
+
 ### Fixed
 
 - verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,

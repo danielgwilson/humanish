@@ -464,11 +464,13 @@ export async function scanRunPublicSafetyArtifacts(
   participants: number,
 ): Promise<string[]> {
   const findings: string[] = [];
-  await validatePreparedRunArtifactPaths(runPaths);
   await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned, {
     entries: 0,
     limit: runEntryLimit(participants),
   });
+  // The storage check after the scan refuses a run whose file was swapped for a link or a special
+  // file while the scan read it. The caller ran the same check when it bound the run, and each read
+  // since then refuses a link or a changed file on its own.
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }

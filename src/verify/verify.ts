@@ -141,7 +141,11 @@ export function invalidRunStorageVerifyResult(cwd: string, runInput: string): Ve
   };
 }
 
-/** Verify a run already resolved to prepared paths; null reports the run as not found. */
+/**
+ * Verify a run already resolved to prepared paths; null reports the run as not found. The paths
+ * must come from resolveRunPath or a validatePreparedRunArtifactPaths just before: verify runs the
+ * storage check again only after its public-safety scan.
+ */
 export async function verifyResolvedRun(
   cwd: string,
   runInput: string,
