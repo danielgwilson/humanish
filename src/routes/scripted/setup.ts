@@ -16,6 +16,7 @@ import type {
 import type { ScriptedPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { RunSecrets } from "../../run/secrets.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
@@ -117,8 +118,8 @@ export async function prepareScriptedRun(
     scenarioId: idHoldsKnownValue(scenario.journey.scenarioId, secrets)
       ? "scenario"
       : scenario.journey.scenarioId,
-    goal: secrets.scrub(scenario.journey.goal),
-    scenarioTitle: secrets.scrub(scenario.journey.scenarioTitle),
+    goal: recordedText(scenario.journey.goal, secrets),
+    scenarioTitle: recordedText(scenario.journey.scenarioTitle, secrets),
     steps: recordedStepIds(scenario.journey.steps, secrets),
   };
 
@@ -191,6 +192,14 @@ export async function prepareScriptedRun(
 }
 
 /**
+ * Scenario text the run records, without the run's known values and then without keys as written
+ * or encoded, since verify decodes the files that record it.
+ */
+function recordedText(text: string, secrets: RunSecrets): string {
+  return redactEncodedText(secrets.scrub(text));
+}
+
+/**
  * Whether an id holds a known value as written or as the parser's id token of it, lower-cased with
  * other characters as `-`, which the scrub would not find.
  */
@@ -205,10 +214,10 @@ function idHoldsKnownValue(id: string, secrets: RunSecrets): boolean {
 }
 
 /**
- * The steps with their labels scrubbed and their ids safe to record. A step id names the step's
+ * The steps with their labels redacted and their ids safe to record. A step id names the step's
  * screenshot file and is recorded beside it, and the parser derives an omitted id from the label,
- * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose
- * label or id holds a known value is renamed by its position instead.
+ * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose label
+ * changes under recordedText, or whose id holds a known value, is renamed by its position instead.
  */
 function recordedStepIds(
   steps: readonly BrowserPersonaStepManifest[],
@@ -216,7 +225,7 @@ function recordedStepIds(
 ): BrowserPersonaStepManifest[] {
   const taken = new Set(steps.map((step) => step.id));
   return steps.map((step, index) => {
-    const label = secrets.scrub(step.label);
+    const label = recordedText(step.label, secrets);
     if (label === step.label && !idHoldsKnownValue(step.id, secrets)) return { ...step, label };
     const position = `step-${String(index + 1).padStart(2, "0")}`;
     let id = position;
