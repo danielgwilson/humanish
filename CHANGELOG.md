@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
+  A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
+  next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
+  where it printed 25. In a project that had only a package.json, a second run counts 11 existing
+  paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
+  each directory. (#1882)
+
 ## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 
 humanish 0.135.0 keeps a base64- or percent-encoded key in a study's own text out of the copies of
