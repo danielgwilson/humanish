@@ -1,7 +1,8 @@
 // runStudy takes a StudyConfig a library caller may have built without parseStudy. Since 0.111.0
 // that config has the keys of a humanish.study.v3 file, and the planners read only those. runStudy
 // refuses, in the route's own envelope and before anything runs, a config that still sets a
-// humanish 0.110 field, one with no `actor`, and one whose `route` is not the route it takes.
+// humanish 0.110 field, one with no `actor`, one whose `route` is not the route it takes, and one
+// whose `actor.model` holds a key.
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,6 +11,8 @@ import { runStudy } from "../../src/run-study.js";
 import { parseStudy } from "../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { SECRET_ENCODINGS, SECRET_FORMATS } from "../helpers/secret-formats.js";
+import { lab } from "../admission/fixtures.js";
 
 type Raw = Record<string, unknown>;
 
@@ -110,6 +113,28 @@ describe("runStudy with a config built without parseStudy", () => {
       message: parsed.error.message.replace("route: preview", "route: shared-world"),
     });
   });
+
+  // The provider is asked for actor.model and the run records it, and the planners pass it on as
+  // written, so a key in it is refused here as parseStudy refuses it.
+  it.each(
+    Object.entries(SECRET_ENCODINGS).flatMap(([encoding, encode]) =>
+      [study, lab("terminal")].map((config) => [encoding, config.route, encode, config] as const),
+    ),
+  )(
+    "refuses an actor.model holding a key %s on %s, with parseStudy's message",
+    async (_encoding, _route, encode, config) => {
+      const model = encode(SECRET_FORMATS[0]!.text);
+      const withModel = { ...config, actor: { ...(config.actor as Raw), model } };
+      const parsed = parseStudy(withModel);
+      if (parsed.ok) throw new Error("parsed");
+      const outcome = await refused(withModel);
+      expect(outcome.result.error).toEqual({
+        code: "HUMANISH_STUDY_INVALID",
+        message: parsed.error.message,
+      });
+      expect(parsed.error.message).not.toContain(model);
+    },
+  );
 
   it("runs a v3 config", async () => {
     const cwd = await makeTestTempDir("humanish-library-config-");

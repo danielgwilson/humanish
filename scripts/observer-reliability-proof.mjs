@@ -7,8 +7,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { fixture, analysisFixture, screenshot } from "./observer-browser-fixtures.mjs";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
-import { observerDataElements } from "../dist/observer/page-data.js";
-import { splitObserverData } from "../dist/observer/participant-items.js";
+import { observerDataElements, observerFeedBody } from "../dist/observer/page-data.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const option = (name, fallback) => {
   const i = process.argv.indexOf(name);
@@ -56,9 +55,8 @@ const handleRequest = async (req, res) => {
     return;
   }
   if (pathname === "/observer/observer-feed.json") {
-    const { shell, items } = splitObserverData(data);
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify({ data: shell, items }));
+    void observerFeedBody(data).then((body) => res.end(body));
     return;
   }
   if (pathname === "/observer/study-analysis.json") {

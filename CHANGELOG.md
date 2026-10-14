@@ -21,25 +21,20 @@ The Unreleased section holds the full notes for the next version until it is tag
   run of 3 participants with 3,000 real 147 KB screenshots, verify took 4.2 s where it took 10.3 s
   (median of 5, with the change above). Capture and analysis run the same check. (#1780)
 
-### Fixed
+## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 
-- verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
-  as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
-  pattern's word boundary fails, so a text file other than run.json passed with the key in it. The
-  scan now also reads the text with its JSON, JS and percent escapes decoded and its references left
-  as written, that reading with transfer escapes expanded, and the text with only its references
-  decoded. The second finds a key behind a letter reference when a quoted-printable soft break
-  splits it. The third finds a key of fixed length, such as `npm_` and 36 characters, whose last
-  character is a reference followed by an escaped letter. The scan also decodes the base64 or hex
-  run that starts right after a reference, as in `&#65;dG9r...`, where decoding the reference adds a
-  letter to the run and shifts it out of alignment. The redacted export's text check, the trace page
-  path check and the known-value scrubs read the same readings, so they gain all three. A scrub
-  whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
-  after two layers of encoding, now replaces the whole text with the marker as it does for other
-  values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
-  percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
-  Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
-  3% of its earlier time. (#1872)
+humanish 0.135.0 keeps a base64- or percent-encoded key in a study's own text out of the copies of
+that text the run records. The run redacted keys as written, and verify also decodes those
+encodings, so a study whose title, mission, instructions, persona or scripted scenario held an
+encoded key produced a run graded `blocked`. A participant that repeats such a key in its own words
+still does (#1892). `actor.model`, `subject.envValues` and the analysis question now refuse such a
+value before anything runs, which a study that ran before may now meet. verify's per-file scan also
+finds a key behind an HTML reference and a JSON escape. The Observer page and its live feed carry
+each participant's items on their own, so `humanish observe` writes the page of a run whose traces
+together pass V8's longest string: on a synthetic run of 25 participants with 30 MiB traces it
+exits 0 where it exited 2.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.135.0)
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 

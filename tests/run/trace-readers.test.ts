@@ -15,8 +15,11 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticActor, writeTwoParticipantRun } from "../helpers/run-traces.js";
+import { readFeedBody } from "../helpers/observer-page.js";
 
 const RUN = "synthetic-trace-readers";
+/** A feed body's items, each participant's entry decoded, as JSON text. */
+const feedItems = (text: string) => JSON.stringify(readFeedBody(text).items);
 const thought = (text: string) =>
   syntheticActor(text, { id: "r1", kind: "reasoning", title: "thinking" });
 const forged = thought("FORGED").items;
@@ -152,7 +155,7 @@ describe("readers of a v2 run's traces", () => {
     it("is served only while the run has no run.json, and never when it leaves items out", async () => {
       await forgeSaved();
       await rm(path.join(runDir, "run.json"));
-      expect(await served(200, "observer-feed.json")).toContain("FORGED-SAVED-DATA");
+      expect(feedItems(await served(200, "observer-feed.json"))).toContain("FORGED-SAVED-DATA");
       await forgeSaved(2);
       expect(await served(404)).not.toContain("FORGED-SAVED-DATA");
     });

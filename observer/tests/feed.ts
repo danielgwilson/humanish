@@ -1,8 +1,24 @@
+import { gzipSync } from "node:zlib";
+
 import type { ObserverData } from "../../src/observer/data";
 import { splitObserverData } from "../../src/observer/participant-items";
 
 /** The body a serving process answers observer-feed.json with: the run's data and its items. */
 export function feed(data: ObserverData): string {
   const { shell, items } = splitObserverData(data);
-  return JSON.stringify({ data: shell, items });
+  return packed({ data: shell, items });
+}
+
+/**
+ * A feed body recorded with each participant's entry decoded (tests/golden/observer-feed/), as the
+ * server sends it: each entry with its stream id, gzip-compressed JSON in base64.
+ */
+export function packed(body: {
+  data: unknown;
+  items: { streams: Record<string, unknown> };
+}): string {
+  const streams = Object.entries(body.items.streams).map(([id, entry]) =>
+    gzipSync(JSON.stringify({ id, ...(entry as object) })).toString("base64"),
+  );
+  return JSON.stringify({ ...body, items: { ...body.items, streams } });
 }

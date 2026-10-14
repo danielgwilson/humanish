@@ -29,6 +29,7 @@ import {
 } from "../../src/run/transient-comms-secrets.js";
 import { runAutomaticAnalysis, readAutomaticAnalysis } from "../../src/analysis/automatic.js";
 import { writeRunBundle } from "../helpers/run-traces.js";
+import { SECRET_ENCODINGS, SECRET_FORMATS } from "../helpers/secret-formats.js";
 
 const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -264,6 +265,23 @@ describe("ordinary study analysis flow", () => {
       `humanish analyze --run analysis-flow --max-cost ${Math.ceil(worstCaseCostUsd!)}`,
     );
   });
+
+  it.each(Object.entries(SECRET_ENCODINGS))(
+    "refuses a question holding a key %s before any provider request",
+    async (_name, encode) => {
+      const fetch = await transport();
+      const question = encode(SECRET_FORMATS[0]!.text);
+      const result = await analyzeRun(
+        cwd,
+        "analysis-flow",
+        { config: { ...config, question } },
+        { apiKey: "synthetic-key", fetch },
+      );
+      expect(result.error?.code).toBe("ANALYSIS_QUESTION_UNSAFE");
+      expect(JSON.stringify(result)).not.toContain(question);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it("requires opt-in cost and refuses budget, dry-run source, active source and cancellation before dispatch", async () => {
     const fetch = await transport();

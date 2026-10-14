@@ -3,7 +3,7 @@ import { receivingPublication } from "../../comms/receiving-runtime.js";
 import type { ActorStatus } from "../../actors/contract.js";
 import { actorEnding } from "../../actors/stop-cause.js";
 import { cuaGoalSource } from "../../actors/goal-source.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import {
   REVIEW_SCHEMA,
   bundleArtifacts,
@@ -248,7 +248,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
             participantId: spec.planned.id,
             streamId: spec.streamId,
             personaId: spec.persona.id,
-            goal: redactText(spec.evidenceInstructions ?? spec.instructions),
+            goal: redactEncodedText(spec.evidenceInstructions ?? spec.instructions),
             ...(outcome?.session === undefined ? {} : { session: outcome.session }),
             ...(outcome?.session === undefined
               ? {}
@@ -355,7 +355,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       // this writer produced. The only adopter-side workaround was scanner evasion.
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
-      goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
+      goal: redactEncodedText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
       source: `study:${plan.studyId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },

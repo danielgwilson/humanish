@@ -1,4 +1,4 @@
-import { redactText } from "../evidence/redaction.js";
+import { redactEncodedText } from "../evidence/encoded-text.js";
 import type { RunParticipantAssignment } from "../run/streams.js";
 
 /** Project only authored participant-facing fields. Never pass runtime-composed instructions:
@@ -8,7 +8,7 @@ export function participantAssignment(
   assignment: { mission: string; focus?: string; tasks?: readonly { id: string; goal: string }[] },
   scrubKnownValues: (text: string) => string = (text) => text,
 ): RunParticipantAssignment {
-  const sanitize = (text: string): string => redactText(scrubKnownValues(text));
+  const sanitize = (text: string): string => redactEncodedText(scrubKnownValues(text));
   return {
     mission: sanitize(assignment.mission),
     ...(assignment.focus === undefined ? {} : { focus: sanitize(assignment.focus) }),

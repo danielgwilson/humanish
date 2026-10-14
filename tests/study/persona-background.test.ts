@@ -17,6 +17,8 @@ import {
 import { inspectStudyManifest } from "../../src/study/discover.js";
 import { buildInitialRequest } from "../../src/actors/computer-use/openai-wire.js";
 import { DEVICE_PRESETS } from "../../src/study/device-presets.js";
+import { scanEncodedText } from "../../src/evidence/encoded-text.js";
+import { RunSecrets } from "../../src/run/secrets.js";
 import { stringify } from "yaml";
 
 const fallback = { id: "organizer", name: "Organizer" };
@@ -166,6 +168,25 @@ describe("rich participant backgrounds", () => {
     expect(sanitized.brief?.redacted).toBe(true);
     expect(sanitized.brief?.digest).toBe(reference.brief.digest);
     expect(renderPersonaPromptSection(persona)).toContain(secret);
+  });
+
+  it("scrubs a known value whole from the brief when the value holds an encoded key", () => {
+    // A credential the run provisions, quoted in the persona file. The computer-use and
+    // shared-world routes compose the brief before they hold the run's known values.
+    const password = ["fictional", "private", "passphrase"].join("-");
+    const token = Buffer.from("sk-" + "syntheticvalue1234567890abcdef").toString("base64");
+    const credential = JSON.stringify({ user: "reader", password, token }, null, 2);
+    const persona = parseResolvedPersona({ background: credential }, fallback);
+    const composed = composeParticipantInstructions({
+      mission: "Browse the catalog.",
+      resolvedPersona: persona,
+      persona: "organizer",
+      device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
+    });
+    const secrets = new RunSecrets([credential]);
+    const brief = scrubPersonaBrief(composed.persona, secrets.scrub).brief!;
+    expect(brief.text).not.toContain(password);
+    expect(scanEncodedText(brief.text).sensitive).toBe(false);
   });
 
   it("states where email is available without forbidding participant abandonment", () => {

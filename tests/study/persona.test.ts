@@ -3,6 +3,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 
+import { scanEncodedText } from "../../src/evidence/encoded-text.js";
 import {
   parseResolvedPersona,
   personaToDirectives,
@@ -183,6 +184,23 @@ describe("personaToDirectives", () => {
       { id: "m", name: "M" },
     );
     expect(personaToDirectives(multi).traitsApplied).toContain("constraints:3");
+  });
+
+  // A live participant's trace records traitsApplied, and verify scans the trace.
+  const key = "sk-" + "syntheticvalue1234567890abcdef";
+  it.each([
+    ["as written", key],
+    ["base64", Buffer.from(key).toString("base64")],
+    ["percent-encoded", key.replaceAll("-", "%2D")],
+  ])("records an accessibility need holding a key %s without the key", (_name, encoded) => {
+    const persona = parseResolvedPersona(
+      { traits: { accessibility_needs: `Use ${encoded}` } },
+      { id: "k", name: "K" },
+    );
+    expect(renderPersonaPromptSection(persona)).toContain(encoded);
+    const { traitsApplied } = personaToDirectives(persona);
+    expect(traitsApplied.filter((trait) => trait.startsWith("accessibility:"))).toHaveLength(1);
+    expect(scanEncodedText(traitsApplied.join("\n")).sensitive).toBe(false);
   });
 });
 

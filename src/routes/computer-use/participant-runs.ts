@@ -11,7 +11,7 @@ import type { ComputerUsePlan } from "../../study/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { type StudyConfig } from "../../study/types.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../study/persona.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { resolveCommittedPersonas } from "../../study/persona-resolve.js";
@@ -314,7 +314,7 @@ export function sanitizeParticipantRuns(
   for (const spec of runs) {
     if (spec.evidenceAssignment)
       spec.evidenceAssignment = participantAssignment(spec.evidenceAssignment, scrub);
-    spec.evidenceInstructions = redactText(scrub(spec.instructions));
+    spec.evidenceInstructions = redactEncodedText(scrub(spec.instructions));
     spec.persona = scrubPersonaBrief(spec.persona, scrub);
   }
 }

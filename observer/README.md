@@ -28,13 +28,15 @@ From the repo root (pnpm workspace):
 ## Layout
 
 - `index.html`: app shell, pre-paint register init, and the `observer-data` slot the CLI fills
-  per run.
+  per run with the run's data and an `observer-items` element, which holds each participant's
+  items gzip-compressed on their own (docs/architecture/observer.md).
 - `main.tsx` / `app.tsx`: boot (validated inline snapshot → polling → dev fixtures) and the
   composition of the study views. `components/observer-shell.tsx` draws the frame around them,
   and `components/participants-view.tsx` and `components/findings-view.tsx` are the two views.
 - `components/`: chrome, grid cards, review player and comparison, plus vendored registry
   components (see `PROVENANCE.md`).
-- `lib/`: type-only bridge to `src/observer/data.ts`, slot reading, dev fixtures.
+- `lib/`: type-only bridge to `src/observer/data.ts`, slot and feed reading (`lib/data.ts` decodes
+  one participant's items at a time), dev fixtures.
 - `styles/globals.css` holds the chrome styles; `styles/humanish/` holds the vendored registry
   CSS.
 - `scripts/inject.ts`: the reference slot-injection helper. Since the 2026-08-16 cutover,
