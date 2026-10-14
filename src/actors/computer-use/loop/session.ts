@@ -8,6 +8,7 @@ import type {
 import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
+import { StreakRecord } from "./streak.js";
 import { TraceRecorder } from "./trace.js";
 import type { CuaExecutor, CuaProvider, CuaSafetyCheck, LoopRunOptions } from "./types.js";
 import { UsageLedger } from "./usage.js";
@@ -100,6 +101,8 @@ export class LoopSession {
   readonly usage: UsageLedger;
   // The funnel is recorded, never consulted: task completion does not steer the loop.
   readonly taskTracker: TaskTracker | undefined;
+  /** The no-progress streak a held participant is in, for the trace. */
+  readonly streak = new StreakRecord(this);
   readonly actionHistory: ActionHistory = {
     lastActionTitle: undefined,
     lastMaterialActionTitle: undefined,

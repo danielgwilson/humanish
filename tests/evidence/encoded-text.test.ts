@@ -128,6 +128,37 @@ describe("scanEncodedText", () => {
     }
   });
 
+  it("finds a JSON-escaped key behind a letter entity, which decoding both joins to a word", () => {
+    const key = "sk-" + "proj-" + "syntheticvalue1234567890abcdefghijklmn";
+    // Decoding both layers reads `Ask-proj-...`, where the pattern's word boundary fails.
+    const text = `{"t":"&#65;\\u0073${key.slice(1)}"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
+  it("finds a fixed-length key ending in a reference before a JSON escape", () => {
+    const key = "npm" + "_" + "syntheticvalue1234567890abcdefghijkl";
+    // `&#108;` is the key's last `l`. Decoding the escape after it too adds an `A`, and the
+    // pattern takes exactly 36 characters after `npm_`.
+    const text = `{"t":"${key.slice(0, -1)}&#108;\\u0041"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
+  it("finds a key behind a letter reference that a quoted-printable soft break splits", () => {
+    const key = "sk-" + "proj-" + "syntheticvalue1234567890abcdefghijklmn";
+    // The soft break is `=` and a JSON-escaped newline. Expanding it joins the key, and decoding
+    // the reference as well joins `A` to it.
+    const text = `{"t":"&#65;${key.slice(0, 15)}=\\n${key.slice(15)}"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
+  it("finds a key in a base64 or hex run behind a letter reference", () => {
+    // Decoding the reference puts an `A` at the front of the run, which shifts every base64
+    // quartet and hex pair after it.
+    const plain = Buffer.from(`token ${SECRET} end`);
+    for (const run of [plain.toString("base64"), plain.toString("hex")])
+      expect(scanEncodedText(`{"t":"&#65;${run}"}`).sensitive, run).toBe(true);
+  });
+
   it("calls an encoded archive or a long encoded binary run opaque", () => {
     expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
     expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);

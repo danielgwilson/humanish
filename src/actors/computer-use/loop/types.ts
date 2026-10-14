@@ -311,7 +311,11 @@ export interface CuaLoopOptions {
   signal?: AbortSignal;
   /** Idle streak (no material action) that trips the backstop. Default 24. */
   idleSteps?: number;
-  /** No-progress streak that trips the backstop. Default 20. */
+  /**
+   * No-progress streak that trips the backstop. Default 20. It does not end a participant held to
+   * its scheduled end: from this many repeats on, the screen is watched after each further one that
+   * follows a turn with no progress.
+   */
   noProgressSteps?: number;
   /**
    * The longest one `wait` action lasts, in ms: the study's actor.maxWaitMs. In a turn with another

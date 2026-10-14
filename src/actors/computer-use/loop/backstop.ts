@@ -121,7 +121,15 @@ export interface Backstop {
   // reason all read this counter, so alternating idle and no-progress turns cannot slip past both
   // backstops.
   readonly consecutiveNoProgress: number;
+  /**
+   * No-progress turns in a row whose actions all failed or were refused before reaching the
+   * desktop. They end a held participant's session at noProgressSteps, since a reload that never
+   * reached the desktop is not how it waits; one such turn in a longer streak does not.
+   */
+  readonly consecutiveUnsent: number;
   readonly idleProgressForgivenessUsed: number;
+  /** A no-progress streak in this session reached noProgressSteps. */
+  readonly reachedLimit: boolean;
 }
 
 export function startBackstop(observation: CuaObservation): Backstop {
@@ -130,8 +138,39 @@ export function startBackstop(observation: CuaObservation): Backstop {
     recentFingerprints: [],
     consecutiveIdle: 0,
     consecutiveNoProgress: 0,
+    consecutiveUnsent: 0,
     idleProgressForgivenessUsed: 0,
+    reachedLimit: false,
   };
+}
+
+function repeatsRecentAction(backstop: Backstop, actions: readonly CuaAction[]): boolean {
+  const fingerprint = actionFingerprint(actions);
+  return fingerprint.length > 0 && backstop.recentFingerprints.includes(fingerprint);
+}
+
+/**
+ * Whether a turn that acts repeats a recent action past the no-progress limit: the streak before it
+ * is one short of the limit or longer, or, once a streak in the session reached the limit, the turn
+ * before it was a no-progress turn. The loop watches the screen after such a turn of a held
+ * participant, since its streak no longer ends its session. A change a reload brings, or an item
+ * the participant opens, resets the streak; without the second case each one would give the
+ * participant noProgressSteps more requests back to back. A repeat after a turn that changed the
+ * screen, such as a second scroll, is not past the limit.
+ */
+export function repeatsPastLimit(
+  backstop: Backstop,
+  actions: readonly CuaAction[],
+  limits: BackstopLimits,
+): boolean {
+  const limit = backstop.reachedLimit
+    ? Math.min(2, limits.noProgressSteps)
+    : limits.noProgressSteps;
+  return (
+    !isIdleTurn(actions) &&
+    backstop.consecutiveNoProgress + 1 >= limit &&
+    repeatsRecentAction(backstop, actions)
+  );
 }
 
 export interface BackstopLimits {
@@ -152,8 +191,9 @@ export interface BackstopStep {
 /**
  * Fold one acted turn and the observation after it into the backstop. `waitingIsTheTask` says the
  * participant has a scheduled end still to come: waiting for it is its job, so an idle turn counts
- * toward neither streak and earns no nudge. A turn that acts is folded as usual. `screenChanged`
- * says the turn's watch woke on a change it saw, which the progress key can miss.
+ * toward neither streak and earns no nudge, and the no-progress streak does not end the session.
+ * A turn that acts is otherwise folded as usual. `screenChanged` says the turn's watch woke on a
+ * change it saw, which the progress key can miss.
  */
 export function advanceBackstop(
   previous: Backstop,
@@ -163,6 +203,8 @@ export function advanceBackstop(
     heardNewSpeech: boolean;
     waitingIsTheTask?: boolean;
     screenChanged?: boolean;
+    /** An action of the turn may have reached the desktop (ActionBatch.sent). */
+    sent: boolean;
   },
   limits: BackstopLimits,
 ): BackstopStep {
@@ -189,12 +231,11 @@ export function advanceBackstop(
   // just tried. An agent doing varied work is never counted stuck, however blind the hash is;
   // an agent re-clicking the same dead control trips it as fast as it did before, arguably
   // faster, since that is the actual signature of being stuck.
-  const fingerprint = actionFingerprint(turn.actions);
-  const repeatingRecentAction =
-    fingerprint.length > 0 && previous.recentFingerprints.includes(fingerprint);
-  const recentFingerprints = [...previous.recentFingerprints, fingerprint].slice(
-    -ACTION_REPEAT_WINDOW,
-  );
+  const repeatingRecentAction = repeatsRecentAction(previous, turn.actions);
+  const recentFingerprints = [
+    ...previous.recentFingerprints,
+    actionFingerprint(turn.actions),
+  ].slice(-ACTION_REPEAT_WINDOW);
   // Corroboration governs the frame-staleness backstop only. The idle backstop below is a direct
   // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
   // reading the frame on its own: a repeated screenshot is exactly what an idle streak is, and
@@ -217,6 +258,7 @@ export function advanceBackstop(
     consecutiveIdle += 1;
   }
   const consecutiveNoProgress = progressed ? 0 : previous.consecutiveNoProgress + 1;
+  const consecutiveUnsent = progressed || turn.sent ? 0 : previous.consecutiveUnsent + 1;
 
   // An unchanged screen can be legitimate waiting (for example, a shared-world lobby).
   // Recovery may suggest another approach, but must not instruct early abandonment while
@@ -244,11 +286,15 @@ export function advanceBackstop(
     );
   }
 
+  // A held participant past the no-progress limit keeps its session: on a page that shows new items
+  // only after a reload, reloading an unchanged screen is how it waits. Repeats that never reached
+  // the desktop still end it.
+  const stuckTurns = turn.waitingIsTheTask === true ? consecutiveUnsent : consecutiveNoProgress;
   const tripReason =
     consecutiveIdle >= limits.idleSteps
       ? `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`
-      : consecutiveNoProgress >= limits.noProgressSteps
-        ? `gave up: ${consecutiveNoProgress} consecutive turns that repeated a recent action on an unchanged UI state`
+      : stuckTurns >= limits.noProgressSteps
+        ? `gave up: ${stuckTurns} consecutive turns that repeated a recent action on an unchanged UI state`
         : undefined;
   return {
     backstop: {
@@ -256,7 +302,9 @@ export function advanceBackstop(
       recentFingerprints,
       consecutiveIdle,
       consecutiveNoProgress,
+      consecutiveUnsent,
       idleProgressForgivenessUsed,
+      reachedLimit: previous.reachedLimit || consecutiveNoProgress >= limits.noProgressSteps,
     },
     idle,
     progressed,

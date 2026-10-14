@@ -23,7 +23,7 @@ import {
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
-import { providerResourcesForOutcome, publicSafeAppUrlLabel } from "./bundle-parts.js";
+import { providerResourcesForOutcome, publicSafeAppUrlLabel, streakGaps } from "./bundle-parts.js";
 import { subjectName } from "../../run/subject-name.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
 import { participantFactsOf } from "./participant-facts.js";
@@ -102,7 +102,7 @@ function fanoutSummary(
 
 /**
  * The review's gaps: one line for the participants a host suspension likely failed, then a line
- * for each other participant that did not pass.
+ * for each other participant that did not pass, then a line for each held participant's streaks.
  */
 function fanoutGaps(
   args: CuaFanoutBundleArgs,
@@ -114,10 +114,14 @@ function fanoutGaps(
       ? []
       : [participant.gapLine],
   );
-  if (suspended.size === 0) return others;
+  const streaks = args.specs.flatMap((spec, index) =>
+    streakGaps(spec.planned.id, args.outcomes?.[index]?.session),
+  );
+  if (suspended.size === 0) return [...others, ...streaks];
   return [
     `${[...suspended].join(", ")}: failed after the host was suspended, likely its effect. Each participant's record keeps its own error.`,
     ...others,
+    ...streaks,
   ];
 }
 

@@ -3,7 +3,7 @@
 // v1 bundle held it, and refuses a trace that does not match its index.
 
 import { createHash } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ActorTrace } from "../../src/actors/contract.js";
 import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
 import type { RunStream, StoredRunStream } from "../../src/run/streams.js";
+import { RUN_ARTIFACT_MAX_BYTES } from "../../src/run/contained-output.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { isRunStream } from "../../src/run/stream-shape.js";
@@ -21,6 +22,7 @@ import {
   loadStreamTraces,
   splitStreamTraces,
   StreamTraceRefusedError,
+  StreamTraceTooLargeError,
 } from "../../src/run/stream-trace.js";
 
 const FIXTURE = path.resolve("tests/fixtures/runs-0107/source-convention-only");
@@ -122,6 +124,39 @@ describe("writing a run's participant traces", () => {
       streams.map((stream) => stream.actor.items),
     );
   });
+
+  it("writes each trace file as one line of JSON", async () => {
+    const stored = await writeV2(v1);
+    for (const stream of stored.streams) {
+      const bytes = await readFile(path.join(runRoot, stream.trace!.path));
+      // JSON.stringify escapes a newline inside a string, so the only one ends the file.
+      expect(bytes.indexOf("\n")).toBe(bytes.length - 1);
+    }
+  });
+});
+
+describe("a trace at the read limit", () => {
+  // The fixture's first participant with one item whose text is `length` bytes of "x".
+  const withText = (length: number): RunBundle => {
+    const base = v1.streams[0]!;
+    const items = [{ ...base.actor!.items[0]!, text: "x".repeat(length) }];
+    return { ...v1, streams: [{ ...base, actor: { ...base.actor!, items } }] };
+  };
+
+  it("loads a trace file of exactly the limit, and refuses one byte more unread after writing it whole", async () => {
+    const around = splitStreamTraces(withText(0)).files[0]!.bytes.length;
+    const atLimit = await writeV2(withText(RUN_ARTIFACT_MAX_BYTES - around));
+    expect(atLimit.streams[0]!.trace!.bytes).toBe(RUN_ARTIFACT_MAX_BYTES);
+    expect((await loadStreamTraces(runPaths, atLimit)).refused).toEqual([]);
+
+    const past = await writeV2(withText(RUN_ARTIFACT_MAX_BYTES - around + 1));
+    const index = past.streams[0]!.trace!;
+    expect(index.bytes).toBe(RUN_ARTIFACT_MAX_BYTES + 1);
+    expect((await stat(path.join(runRoot, index.path))).size).toBe(RUN_ARTIFACT_MAX_BYTES + 1);
+    const { refused } = await loadStreamTraces(runPaths, past);
+    expect(refused).toHaveLength(1);
+    expect(refused[0]).toBeInstanceOf(StreamTraceTooLargeError);
+  }, 60_000);
 });
 
 // Three requests, the first past the 272K long-context tier, as a participant's usage rows.

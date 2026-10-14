@@ -66,22 +66,22 @@ const pastLimitDetail = (index: { path: string; bytes: number }, maxBytes: numbe
   `run.json records ${index.path} at ${index.bytes} bytes, more than the ${maxBytes} bytes humanish reads of one file`;
 
 /**
- * A trace or live file whose index records more than the loader reads of one file. The loader reads
- * no file past the limit, so a copy of the file is refused too.
+ * A trace or live file whose index records more than the loader reads of one file, `maxBytes`. The
+ * loader reads no file past the limit, so a copy of the file is refused too.
  */
-export class StreamTraceTooLargeError extends StreamTraceRefusedError {}
+export class StreamTraceTooLargeError extends StreamTraceRefusedError {
+  /** The file's run-relative path, as its index records it. */
+  readonly file: string;
 
-/** The refusal of a trace or live file whose index records more than `maxBytes`. */
-const tooLarge = (
-  streamId: string,
-  index: { path: string; bytes: number },
-  maxBytes: number,
-): StreamTraceTooLargeError =>
-  new StreamTraceTooLargeError(
-    streamId,
-    pastLimitDetail(index, maxBytes),
-    "Restoring a copy does not help; open the file with another tool, such as jq, to read its items.",
-  );
+  constructor(streamId: string, index: { path: string; bytes: number }, maxBytes: number) {
+    super(
+      streamId,
+      pastLimitDetail(index, maxBytes),
+      "Restoring a copy does not help; open the file with another tool, such as jq, to read its items.",
+    );
+    this.file = index.path;
+  }
+}
 
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
@@ -201,7 +201,9 @@ export function splitStreamTraces(bundle: RunBundle): {
       throw new Error(`Two participants' traces would both be written to ${filePath}.`);
     claimed.add(traceFileKey(filePath));
     const screenshots = stream.artifacts.filter(isScreenshot);
-    const bytes = Buffer.from(`${JSON.stringify({ ...actor, artifacts: screenshots }, null, 2)}\n`);
+    // Compact: every reader refuses a file past RUN_ARTIFACT_MAX_BYTES, and indenting made a
+    // trace 1.36 times its compact size on 236 recorded computer-use traces.
+    const bytes = Buffer.from(`${JSON.stringify({ ...actor, artifacts: screenshots })}\n`);
     files.push({ path: filePath, bytes });
     const { items, ...summary } = actor;
     return {
@@ -394,7 +396,7 @@ async function readLiveItems(
   const after = liveAfter?.(index);
   if (index.bytes > maxBytes) {
     if (after === undefined || !cursorFits(index, after))
-      throw tooLarge(stream.id, index, maxBytes);
+      throw new StreamTraceTooLargeError(stream.id, index, maxBytes);
     // The caller keeps the prefix it holds, read when the file was under the limit.
     return {
       stream: { ...stream, liveActor: { ...summary, items: [] } },
@@ -471,7 +473,8 @@ async function readStreamTrace(
   let joined = unjoined(stream);
   if (stream.trace !== undefined) {
     assertIndex(stream);
-    if (stream.trace.bytes > maxBytes) throw tooLarge(stream.id, stream.trace, maxBytes);
+    if (stream.trace.bytes > maxBytes)
+      throw new StreamTraceTooLargeError(stream.id, stream.trace, maxBytes);
     const file = await read(stream.trace.path, maxBytes);
     if ("refused" in file) throw new StreamTraceRefusedError(stream.id, file.refused);
     joined = joinTrace(stream, file.bytes);

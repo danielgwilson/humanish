@@ -194,8 +194,10 @@ item's text. A run.json past 16 MiB is refused as `ANALYSIS_SOURCE_TOO_LARGE`, a
 a run.json or trace without the fields analysis reads as `ANALYSIS_SOURCE_INVALID`;
 each message names the file, says why, and says no request was sent. Analysis
 verifies the run before it reads a trace, so a trace that does not match its
-index in run.json, or whose index records more than 32 MiB, fails verify and
-`humanish analyze` reports `ANALYSIS_VERIFY_FAILED`. Count and text budgets are
+index in run.json fails verify and `humanish analyze` reports
+`ANALYSIS_VERIFY_FAILED`. A trace past 32 MiB leaves the run `local_only`, and
+analysis refuses it as `ANALYSIS_SOURCE_TOO_LARGE`, naming the participant and
+the file. Count and text budgets are
 distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible
 participants with fewer admitted images, including those deferred by their
@@ -285,9 +287,10 @@ value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: 
 humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
 `[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If another reading of
 the stored field still holds a value (decoded once more, with percent escapes as UTF-8, with
-transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes), as for a value encoded
-twice, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
-these forms in an ID, enum or reference refuses the response.
+transfer escapes expanded, with Latin-1 characters read as UTF-8 bytes, with HTML references
+left as written, or with only HTML references decoded), as for a value encoded twice, the whole
+field becomes `[REDACTED_SECRET]`. A known value in any of these forms in an ID, enum or
+reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the

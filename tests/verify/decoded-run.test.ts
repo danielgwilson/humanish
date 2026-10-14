@@ -26,8 +26,8 @@ import { syntheticActor, writeRunBundle } from "../helpers/run-traces.js";
 
 const RUN = "decoded-run";
 const TEXTS = ["Participant one saved.", "Participant two opened.", "Participant three left."];
-// The byte scan decodes `&#65;` and the escaped `s` together to `Ask-`, which hides the key.
-// JSON.parse decodes only the escape, so the decoded run shows `sk-proj-...`.
+// The byte scan finds the key in its reading with `&#65;` left as written, and the decoded run
+// finds it once JSON.parse decodes the escaped `s`. Each scan adds its own finding.
 const ESCAPED_KEY = "&#65;\\u0073" + "k-proj-" + "Synthetic0123456789abcdef";
 
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
@@ -75,17 +75,17 @@ describe("verify's decoded run scan", () => {
     await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(stored, null, 2)}\n`);
   }
 
-  it("finds a key in the last participant's trace that only the decoded run shows", async () => {
+  it("finds a key in the last participant's trace in the decoded run", async () => {
     const stored = await writeParticipants(TEXTS);
     await editLastTrace(stored, TEXTS[2]!, `${TEXTS[2]} ${ESCAPED_KEY}`);
     const verified = await verifyRun(cwd, RUN);
     expect(verified.shareSafety.status).toBe("blocked");
     expect(verified.checks.find((check) => check.name === "public-safety scan")?.message).toBe(
-      "public-safety findings: sensitive decoded run.json",
+      "public-safety findings: sensitive text actors/3.json, sensitive decoded run.json",
     );
   });
 
-  it("finds a key beside the participants that only the decoded run shows", async () => {
+  it("finds a key beside the participants in the decoded run", async () => {
     const stored = await writeParticipants(TEXTS);
     // run.json writes `events` after `streams`, so the scan reads it with the last participant.
     stored.events.push({
@@ -100,7 +100,7 @@ describe("verify's decoded run scan", () => {
     const verified = await verifyRun(cwd, RUN);
     expect(verified.shareSafety.status).toBe("blocked");
     expect(verified.checks.find((check) => check.name === "public-safety scan")?.message).toBe(
-      "public-safety findings: sensitive decoded run.json",
+      "public-safety findings: sensitive text run.json, sensitive decoded run.json",
     );
   });
 

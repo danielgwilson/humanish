@@ -180,10 +180,15 @@ async function stopActiveRuns(
       stopping
         .filter((stop) => stop.report !== null)
         .map((stop) =>
-          scrubRunSandboxIds(stop.run.paths).catch((error: unknown) => {
+          scrubRunSandboxIds(stop.run.paths).then(
             // A file the sweep refused to read may still name a sandbox; say which.
-            if (error instanceof Error) say(io, `humanish: ${signal}: ${error.message}`);
-          }),
+            (unread) => {
+              if (unread !== undefined) say(io, `humanish: ${signal}: ${unread}`);
+            },
+            (error: unknown) => {
+              if (error instanceof Error) say(io, `humanish: ${signal}: ${error.message}`);
+            },
+          ),
         ),
     ),
   );

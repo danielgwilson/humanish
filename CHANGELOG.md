@@ -10,6 +10,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
+  as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
+  pattern's word boundary fails, so a text file other than run.json passed with the key in it. The
+  scan now also reads the text with its JSON, JS and percent escapes decoded and its references left
+  as written, that reading with transfer escapes expanded, and the text with only its references
+  decoded. The second finds a key behind a letter reference when a quoted-printable soft break
+  splits it. The third finds a key of fixed length, such as `npm_` and 36 characters, whose last
+  character is a reference followed by an escaped letter. The scan also decodes the base64 or hex
+  run that starts right after a reference, as in `&#65;dG9r...`, where decoding the reference adds a
+  letter to the run and shifts it out of alignment. The redacted export's text check, the trace page
+  path check and the known-value scrubs read the same readings, so they gain all three. A scrub
+  whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
+  after two layers of encoding, now replaces the whole text with the marker as it does for other
+  values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
+  percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
+  Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
+  3% of its earlier time. (#1872)
 - A key written in base64 or percent-encoded in a study's title, mission, task goals, participant
   instructions or persona file stays out of the run's files. The run redacted that text for keys as
   written, and verify also decodes base64, percent-encoding and other escapes, so verify found the
@@ -31,6 +48,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   refused only when they held one as written, and `actor.model` was not checked. The model is
   refused because the provider is asked for it by name. `runStudy` refuses such a model in a
   StudyConfig built without `parseStudy` too.
+
+## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
+
+humanish 0.134.0 keeps a participant held to a scheduled end running when it reloads a page that
+changes only on reload. 20 reloads in a row on an unchanged screen ended its session as `gave_up`.
+Now humanish watches the screen after each further reload, as after a wait, so a participant that
+reloads every few seconds costs about what one that waits costs. In 60-minute live runs with a
+persona that refreshes every few seconds, 0.133.1 ended 3 of 4 within 7 minutes; this release ran
+all 4 to their end at a median $3.23 an hour. Trace files are now written as compact JSON, about a
+quarter smaller, and a run whose trace still passes the 32 MiB read limit finishes and grades
+`local_only` where it failed.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.134.0)
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 

@@ -105,34 +105,70 @@ export function decodeEscapes(text: string): string {
   return decodeWith(text, decodePercentBytes);
 }
 
-/** The readings a scan matches, with the two that scanEncodedText also searches for runs. */
-function readings(text: string): { decoded: string; expanded: string; all: string[] } {
-  const decoded = decodeEscapes(text);
+/** The readings a scan matches, with the three that scanEncodedText also searches for runs. */
+function readings(text: string): {
+  all: string[];
+  decoded: string;
+  expanded: string;
+  unescapedExpanded: string;
+} {
+  // Decoding references with the other escapes joins a letter reference to the escaped key after
+  // it, `&#65;\u0073k-` to `Ask-`, where a pattern's word boundary fails. With references left as
+  // written, the `;` before the key keeps that boundary. A key that ends in a reference before an
+  // escaped letter, `&#108;\u0041`, keeps the boundary after it when only references are decoded.
+  // The reading with references left as written is also read with transfer escapes expanded, as
+  // the decoded one is, for a key that a quoted-printable soft break splits.
+  const unescaped = decodeCodeEscapes(text, decodePercentBytes);
+  const decoded = decodeReferences(unescaped);
   // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
   // decodeEscapes writes as a character from U+0080 to U+00FF. Testing the decoded text also
   // catches a `%` that a `\u0025` wrote.
   const utf8 = HIGH_BYTE.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
   const expanded = decodeTransferEscapes(decoded);
+  // Without references in the text, or without code escapes, each of these two readings is one
+  // already decoded above, so it reuses that string. On a real 2 MiB Observer page, decoding both
+  // again took 12 ms of the 60 that readingsOf took.
+  const unescapedExpanded = unescaped === decoded ? expanded : decodeTransferEscapes(unescaped);
+  const referencesDecoded = text === unescaped ? decoded : decodeReferences(text);
   const recovered = [text, decoded].filter((reading) => HIGH_BYTE.test(reading));
   return {
+    all: [
+      ...new Set([
+        text,
+        decoded,
+        utf8,
+        expanded,
+        ...recovered.map(latin1RunsAsUtf8),
+        unescaped,
+        unescapedExpanded,
+        referencesDecoded,
+      ]),
+    ],
     decoded,
     expanded,
-    all: [...new Set([text, decoded, utf8, expanded, ...recovered.map(latin1RunsAsUtf8)])],
+    unescapedExpanded,
   };
 }
 
 /**
  * Every reading of the text a scan matches, each once: as written, decodeEscapes, with percent
- * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, and the text as written and
+ * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, the text as written and
  * decoded with each run of U+0080 to U+00FF characters read as UTF-8 bytes, which undoes text that
- * a reader already decoded one byte per character. Either percent reading can split a value that
- * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
+ * a reader already decoded one byte per character, decodeEscapes with HTML references left as
+ * written and that reading with transfer escapes expanded, and the text with only HTML references
+ * decoded. Either percent reading can split a value that the other keeps whole, as `%E2%80%80`
+ * (U+2000, a space, in UTF-8) does.
  */
 export function readingsOf(text: string): string[] {
   return readings(text).all;
 }
 
 function decodeWith(text: string, percent: (match: string) => string): string {
+  return decodeReferences(decodeCodeEscapes(text, percent));
+}
+
+/** JSON and JS string escapes, then percent-encoding. */
+function decodeCodeEscapes(text: string, percent: (match: string) => string): string {
   return text
     .replace(/\\u([0-9a-f]{4})/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
@@ -141,7 +177,12 @@ function decodeWith(text: string, percent: (match: string) => string): string {
       codePoint(Number.parseInt(hex, 16), match),
     )
     .replace(/\\\//g, "/")
-    .replace(/(?:%[0-9a-f]{2})+/gi, percent)
+    .replace(/(?:%[0-9a-f]{2})+/gi, percent);
+}
+
+/** HTML character references: numeric ones and the ASCII_ENTITIES names. */
+function decodeReferences(text: string): string {
+  return text
     .replace(/&#x([0-9a-f]{1,6});?/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
     )
@@ -164,6 +205,8 @@ const BASE64_RUN = /[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}/g;
 const BASE64URL_RUN = /[A-Za-z0-9_-]{16}[A-Za-z0-9_-]*={0,2}/g;
 // Hex-encoded text, at least sixteen bytes of it.
 const HEX_RUN = /[0-9a-f]{32}[0-9a-f]*/gi;
+// The base64, URL-safe base64 or hex run right after a `;`, such as the one that ends a reference.
+const RUN_AFTER_SEMICOLON = /;([A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*={0,2})/g;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
 // this length. Across 173 real run folders surveyed on 2026-10-01, the longest such run outside
 // observer/index.html was a 69-character URL path in a terminal log; base64 of a 94-byte payload,
@@ -331,6 +374,18 @@ function inspectDecoded(
   };
 }
 
+/** The base64 and URL-safe base64 runs in a reading, each with its bytes. */
+function base64Runs(reading: string): { run: string; bytes: Buffer }[] {
+  const runs: { run: string; bytes: Buffer }[] = [];
+  for (const [match] of reading.matchAll(BASE64_RUN))
+    // Hex digests and ids decode to noise; scanEncodedText's hex pass reads hex as hex.
+    if (!/^[0-9a-f]+$/i.test(match.replace(/=+$/, "")))
+      runs.push({ run: match, bytes: Buffer.from(match, "base64") });
+  for (const [match] of reading.matchAll(BASE64URL_RUN))
+    if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
+  return runs;
+}
+
 /**
  * Scans text for secrets in each of its readingsOf, and inside each base64 (standard, URL-safe or
  * line-wrapped) and hex run. A run that decodes to text is scanned in
@@ -343,31 +398,33 @@ export function scanEncodedText(
   depth = 0,
 ): EncodedTextScan {
   const matches = matcherOf(options);
-  const { decoded, expanded, all } = readings(text);
+  const { all, decoded, expanded, unescapedExpanded } = readings(text);
   if (all.some(matches)) return SENSITIVE;
-  const runs: { run: string; bytes: Buffer }[] = [];
+  const runs = base64Runs(expanded);
   // A piece or a run decoded from a slash only adds findings; its bytes are not judged opaque.
   const slashStarts: Buffer[] = [];
-  for (const [match] of expanded.matchAll(BASE64_RUN)) {
-    // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
-    if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
-    runs.push({ run: match, bytes: Buffer.from(match, "base64") });
-    if (match.length > MAX_SLASH_START_RUN) continue;
-    for (const piece of match.split("/"))
-      if (piece.length >= 16 && piece.length < match.length)
+  for (const { run } of runs) {
+    if (run.length > MAX_SLASH_START_RUN) continue;
+    for (const piece of run.split("/"))
+      if (piece.length >= 16 && piece.length < run.length)
         slashStarts.push(Buffer.from(piece, "base64"));
     for (
-      let slash = match.indexOf("/");
-      slash !== -1 && slash < SLASH_START_SPAN && match.length - slash > 16;
-      slash = match.indexOf("/", slash + 1)
+      let slash = run.indexOf("/");
+      slash !== -1 && slash < SLASH_START_SPAN && run.length - slash > 16;
+      slash = run.indexOf("/", slash + 1)
     )
-      slashStarts.push(Buffer.from(match.slice(slash + 1), "base64"));
-  }
-  for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
-    if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
+      slashStarts.push(Buffer.from(run.slice(slash + 1), "base64"));
   }
   for (const run of wrappedBase64Runs(expanded))
     runs.push({ run, bytes: Buffer.from(run, "base64") });
+  // A decoded reference right before a run joins its character to the run, which shifts every
+  // base64 quartet and hex pair in it. The run after each `;` with references left as written
+  // adds findings, as a slash start does.
+  const runsAfterSemicolons =
+    unescapedExpanded === expanded
+      ? []
+      : [...unescapedExpanded.matchAll(RUN_AFTER_SEMICOLON)].map(([, run]) => run!);
+  for (const { bytes } of runsAfterSemicolons.flatMap(base64Runs)) slashStarts.push(bytes);
   let opaque = false;
   for (const { run, bytes } of runs) {
     const result = inspectDecoded(bytes, run, options, depth);
@@ -382,6 +439,7 @@ export function scanEncodedText(
   const hexRuns = new Set([
     ...[...expanded.matchAll(HEX_RUN)].map(([match]) => match),
     ...(expanded === decoded ? [] : [...decoded.matchAll(HEX_RUN)].map(([match]) => match)),
+    ...runsAfterSemicolons.flatMap((run) => [...run.matchAll(HEX_RUN)].map(([match]) => match)),
   ]);
   for (const match of hexRuns) {
     const plain = readPlainText(Buffer.from(match, "hex"));
@@ -410,7 +468,7 @@ export function redactEncodedText(text: string): string {
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 5;
+const ENCODED_SCAN_VERSION = 6;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();
