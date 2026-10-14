@@ -110,9 +110,10 @@ action**, not a fatal error:
 
 Public-safety: the notice text carries only the substrate's own stderr (tailed +
 whitespace-collapsed) and a numeric exit code, and is still run through the loop's
-`redactNarration` (known-value scrub + pattern redaction). Raw typed text, secret
-values, and machine paths never appear. The action label comes from
-`describeCuaAction`, which never includes typed text.
+`redactNarration` (known-value scrub, then pattern redaction of keys as written, base64- or
+percent-encoded, then the known-value scrub again). Raw typed text, secret values, and machine
+paths never appear. The action label comes from `describeCuaAction`, which never includes typed
+text.
 
 ## You need a non-vision provider too
 

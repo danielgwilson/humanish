@@ -5,6 +5,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { digestText, redactToSecretLabel } from "../../evidence/redaction.js";
 import {
@@ -446,6 +447,7 @@ export function sanitizeBrowserEvidenceUrl(
 export async function probeAppUrl(
   appUrl: string,
   timeoutMs: number,
+  scrubKnown: (text: string) => string,
 ): Promise<{ ok: boolean; reason: string; status?: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -461,7 +463,7 @@ export async function probeAppUrl(
   } catch (error) {
     return {
       ok: false,
-      reason: compactBrowserError(error),
+      reason: compactBrowserError(error, scrubKnown),
     };
   } finally {
     clearTimeout(timer);
@@ -487,12 +489,18 @@ export function normalizeLocalAppUrl(value: string): string | null {
   }
 }
 
-export function compactBrowserError(error: unknown): string {
-  if (error instanceof Error) {
-    return redactSensitiveText(error.message).replace(/\s+/g, " ").slice(0, 240);
-  }
-
-  return redactSensitiveText(String(error)).replace(/\s+/g, " ").slice(0, 240);
+/**
+ * A browser error as a step records it, cut to 240 characters. It can quote the step's selector or
+ * URL, which the scenario wrote and the browser received as written, so keys are redacted as
+ * written and in the encoded forms verify decodes. The run's known values are scrubbed between
+ * the two passes, so the encoded pass cannot cut one apart before its scrub reads it. The cut
+ * comes last, so it cannot split a value either pass would find.
+ */
+export function compactBrowserError(error: unknown, scrubKnown: (text: string) => string): string {
+  const text = error instanceof Error ? error.message : String(error);
+  return redactEncodedText(scrubKnown(redactToSecretLabel(text)))
+    .replace(/\s+/g, " ")
+    .slice(0, 240);
 }
 
 function browserScreenshotBytes(value: unknown): Buffer {
@@ -536,8 +544,4 @@ async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Bu
       .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))
       .catch(() => undefined);
   }
-}
-
-function redactSensitiveText(text: string): string {
-  return redactToSecretLabel(text);
 }

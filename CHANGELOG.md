@@ -10,6 +10,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A computer-use, shared-world, Claude Code or Codex local-agent participant that repeats a base64-
+  or percent-encoded key from its instructions no longer writes it into the run. The participant
+  receives its instructions as written, and its narration, messages, closing reason, debrief and
+  impressions were redacted for keys as written only, so verify decoded the repeated key and graded
+  the run `blocked`. That text now also goes through the encoded-key redaction 0.135.0 added for
+  study text, after the run's known values are scrubbed and before they are scrubbed again. A
+  scripted step's browser error, which can quote the step's selector or URL, gets the same passes.
+  The terminal route and the Codex app-server participant still redact such a key as written only
+  (#1899). (#1892)
+
 - `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
   A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
   next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
