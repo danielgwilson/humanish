@@ -39,6 +39,21 @@ async function analyzeJson(
   return { exit, result: JSON.parse(output.join("")) as Record<string, unknown> };
 }
 
+/** Adds to `bundle` a second participant, a copy of its first under other ids, and returns it. */
+function addSecondParticipant(bundle: RunBundle): RunBundle["streams"][number] {
+  const first = bundle.streams[0]!;
+  const stream = { ...first, id: `${first.id}-2`, simId: `${first.simId}-2`, label: "Second" };
+  bundle.simCount = 2;
+  bundle.simulations.push({
+    ...bundle.simulations[0]!,
+    id: stream.simId,
+    index: 2,
+    streamIds: [stream.id],
+  });
+  bundle.streams.push(stream);
+  return stream;
+}
+
 describe("analyze --json on a run whose source analysis refuses", () => {
   let cwd: string;
   let runRoot: string;
@@ -107,16 +122,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
   ])(
     "names run.json, the participant and the id when two of its run events share an id: %s",
     async (_, secondNamesOnlyRecord) => {
-      const first = bundle.streams[0]!;
-      const stream = { ...first, id: `${first.id}-2`, simId: `${first.simId}-2`, label: "Second" };
-      bundle.simCount = 2;
-      bundle.simulations.push({
-        ...bundle.simulations[0]!,
-        id: stream.simId,
-        index: 2,
-        streamIds: [stream.id],
-      });
-      bundle.streams.push(stream);
+      const stream = addSecondParticipant(bundle);
       const event: RunEvent = {
         id: "note-1",
         at: "2026-09-01T00:00:00.000Z",
