@@ -4,7 +4,7 @@ import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browse
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import {
   REVIEW_SCHEMA,
   bundleArtifacts,
@@ -554,7 +554,7 @@ export function buildSingleParticipantBundle(args: {
     scenario: {
       id: `cua-${args.studyId}`,
       title: args.studyTitle ?? `Computer-use run: ${args.studyId}`,
-      goal: redactText(args.mission),
+      goal: redactEncodedText(args.mission),
       source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },
@@ -596,7 +596,7 @@ export function buildSingleParticipantBundle(args: {
                 participantId: args.participantId ?? "lane-01",
                 streamId: SINGLE.streamId,
                 personaId: args.persona.id,
-                goal: redactText(args.mission),
+                goal: redactEncodedText(args.mission),
                 ...(args.session === undefined ? {} : { session: args.session }),
                 ...(args.traceArtifactPath === undefined
                   ? {}

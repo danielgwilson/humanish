@@ -9,26 +9,24 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scanEncodedText } from "../../src/evidence/encoded-text.js";
 import { containsCredential, containsSensitive, redactText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
-import { ALNUM, ORDINARY_VALUES, SECRET_FORMATS, synthetic } from "../helpers/secret-formats.js";
+import {
+  ALNUM,
+  ORDINARY_VALUES,
+  SECRET_ENCODINGS,
+  SECRET_FORMATS,
+  synthetic,
+} from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 
 // An E2B app host, `<port>-<sandbox id>.e2b.app`, with an id built at run time.
 const E2B_APP_HOST = `3000-${synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, 60)}.${"e2b"}.app`;
-
-const ENCODINGS: Record<string, (text: string) => string> = {
-  "as written": (text) => text,
-  "percent-encoded": (text) => encodeURIComponent(text),
-  base64: (text) => Buffer.from(text).toString("base64"),
-  // A quoted-printable `=XX` reading of the first hex pair must not hide the rest.
-  "hex-encoded in a parameter": (text) => `state=${Buffer.from(text).toString("hex")}`,
-};
 
 describe("secret formats", () => {
   it("covers at least fifteen formats", () => {
     expect(SECRET_FORMATS.length).toBeGreaterThanOrEqual(15);
   });
 
-  for (const [encoding, encode] of Object.entries(ENCODINGS)) {
+  for (const [encoding, encode] of Object.entries(SECRET_ENCODINGS)) {
     it.each(SECRET_FORMATS.map((format) => [format.name, format.text] as const))(
       `finds %s ${encoding}`,
       (_name, text) => {
@@ -39,7 +37,7 @@ describe("secret formats", () => {
 
   // The study URL check reads credentials only. It drops local paths and E2B app URLs, and nothing
   // else the share scan finds.
-  for (const [encoding, encode] of Object.entries(ENCODINGS)) {
+  for (const [encoding, encode] of Object.entries(SECRET_ENCODINGS)) {
     it.each(
       SECRET_FORMATS.filter((format) => !format.name.endsWith(" path")).map(
         (format) => [format.name, format.text] as const,

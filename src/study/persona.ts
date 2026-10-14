@@ -1,3 +1,4 @@
+import { redactEncodedText } from "../evidence/encoded-text.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
 import { isRecord } from "../run/type-guards.js";
@@ -190,7 +191,9 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
     ...(patience ? [`patience:${patience}`] : []),
     ...(skill ? [`skill:${skill}`] : []),
   ];
-  if (accessibilityNeeds) traitsApplied.push(`accessibility:${accessibilityNeeds}`);
+  // A live participant's trace records traitsApplied as it is, and the need is free text.
+  if (accessibilityNeeds)
+    traitsApplied.push(`accessibility:${redactEncodedText(accessibilityNeeds)}`);
   if (persona.constraints.length) traitsApplied.push(`constraints:${persona.constraints.length}`);
   return {
     frictionTolerance: patience ? FRICTION_TOLERANCE[patience] : "",
@@ -219,13 +222,19 @@ export function renderPersonaPromptSection(persona: ResolvedPersona): string {
     .join("\n\n");
 }
 
-/** Only the authored persona section; excludes task criteria, runtime grants and inbox URLs. */
+/**
+ * Only the authored persona section; excludes task criteria, runtime grants and inbox URLs. With
+ * `scrub`, the run's known values come out first, then keys as written or encoded. Without it, only
+ * keys as written come out. A route that learns its known values later passes this brief to
+ * scrubPersonaBrief, and an encoded key replaced here would cut a known value that holds one, so
+ * that scrub could no longer find the value whole.
+ */
 export function personaBrief(
   persona: ResolvedPersona,
-  scrub: (text: string) => string = (text) => text,
+  scrub?: (text: string) => string,
 ): NonNullable<ActorPersonaRef["brief"]> {
   const original = renderPersonaPromptSection(persona),
-    text = redactText(scrub(original));
+    text = scrub === undefined ? redactText(original) : redactEncodedText(scrub(original));
   return {
     compilerVersion: PERSONA_COMPILER_VERSION,
     text,
@@ -240,7 +249,7 @@ export function scrubPersonaBrief(
   scrub: (text: string) => string,
 ): ActorPersonaRef {
   if (!persona.brief) return persona;
-  const text = redactText(scrub(persona.brief.text));
+  const text = redactEncodedText(scrub(persona.brief.text));
   return {
     ...persona,
     brief: {
