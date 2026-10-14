@@ -8,54 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.136.0: verify takes less than half the time on large runs (2026-10-14)
 
-- `humanish verify` checks a run folder for links and special files 32 entries at a time where it
-  checked one at a time. It still runs the check 4 times per verify. On a run folder of 15,000
-  entries on a 16-core host at load 3 to 5, verify took 3.3 s where it took 7.7 s (median of 5).
-  With 16 busy processes it took 7.8 s where it took 14.0 s (median of 3). Rendering the Observer,
-  analysis, feedback and export run the same check and gain the concurrency. (#1796)
-- The screenshot check inflates frames on libuv's thread pool where it inflated them one at a time
-  on the main thread. Up to 4 frames inflate at once on Node's default pool of 4 threads. It reads a
-  frame's rows 1 MiB at a time where it held them whole, about 4 MB for a 1440x950 capture. On a
-  run of 3 participants with 3,000 real 147 KB screenshots, verify took 4.2 s where it took 10.3 s
-  (median of 5, with the change above). Capture and analysis run the same check. (#1780)
+humanish 0.136.0 makes `humanish verify` take less than half the time on large runs. It checks a
+run folder for links 32 entries at a time and inflates screenshots on Node's thread pool, 1 MiB of
+rows at a time, and still runs every check it ran before. On a run folder of 15,000 entries verify
+took 3.3 seconds where it took 7.7, and on a run with 3,000 real screenshots 4.2 seconds where it
+took 10.3. A computer-use participant that repeats a base64- or percent-encoded key from its
+instructions no longer makes the run `blocked`. `humanish analyze` names the participant and the
+event id when two run events share an id, and reports `ANALYSIS_SOURCE_INVALID` where it reported
+`ANALYSIS_UNAVAILABLE`. The bundle estimate counts participants' instructions and task goals with
+the mission, `init` prints three next steps in 24 lines, and reading a run refuses a conversation
+without its requests list.
 
-### Fixed
-
-- A computer-use, shared-world, Claude Code or Codex local-agent participant that repeats a base64-
-  or percent-encoded key from its instructions no longer writes it into the run. The participant
-  receives its instructions as written, and its narration, messages, closing reason, debrief and
-  impressions were redacted for keys as written only, so verify decoded the repeated key and graded
-  the run `blocked`. That text now also goes through the encoded-key redaction 0.135.0 added for
-  study text, after the run's known values are scrubbed and before they are scrubbed again. A
-  scripted step's browser error, which can quote the step's selector or URL, gets the same passes.
-  The terminal route and the Codex app-server participant still redact such a key as written only
-  (#1899). (#1892)
-
-- `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
-  A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
-  next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
-  where it printed 25. In a project that had only a package.json, a second run counts 11 existing
-  paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
-  each directory. (#1882)
-- Reading a run refuses a participant whose actor records a conversation without its requests
-  list, and names the participant. Three shapes loaded before: a trace file that leaves out the
-  conversation run.json records, a v1 run.json conversation without the list, and a conversation
-  that is not an object. A reader that counted the conversation's requests then threw a TypeError.
-  The writer never writes any of them. (#1850)
-- `humanish analyze` names the participant and the event id when two of a participant's run events
-  in run.json share an id, as in `events 4 and 5 are participant p01's and share the id
-  "note-1"`, and says to give one of them another id. `analyze --json` reports the refusal as
-  `ANALYSIS_SOURCE_INVALID`. It reported `ANALYSIS_UNAVAILABLE`, with "Analysis could not be
-  completed safely." The run still passes verify. (#1849)
-- The bundle estimate behind the size warning of `study check` and `humanish run` counts each
-  participant's instruction (`participants.instruction` or `participants[].instruction`) and the
-  task goals (`actor.tasks[].goal`) with the mission. run.json copies all three into each
-  participant's stream and feedback candidate. A study of 100 participants with a 90,000-byte
-  instruction and a short mission now gets the warning that run.json may grow to about 18.8 MiB,
-  past the 16 MiB analysis reads; it got none. The advice names the field with the most bytes.
-  (#1852)
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.136.0)
 
 ## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 
