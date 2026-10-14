@@ -191,7 +191,9 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
     ...(patience ? [`patience:${patience}`] : []),
     ...(skill ? [`skill:${skill}`] : []),
   ];
-  if (accessibilityNeeds) traitsApplied.push(`accessibility:${accessibilityNeeds}`);
+  // A live participant's trace records traitsApplied as it is, and the need is free text.
+  if (accessibilityNeeds)
+    traitsApplied.push(`accessibility:${redactEncodedText(accessibilityNeeds)}`);
   if (persona.constraints.length) traitsApplied.push(`constraints:${persona.constraints.length}`);
   return {
     frictionTolerance: patience ? FRICTION_TOLERANCE[patience] : "",
