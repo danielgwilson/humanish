@@ -525,27 +525,20 @@ function formatInitHuman(result: InitResult): string {
   const lines = [title, `cwd: ${result.cwd}`];
   if (result.ok && result.mode === "applied") {
     // Name each file init wrote, so the person or agent who ran it can review exactly those
-    // files; directories and preserved files are counts. JSON always carries every change.
+    // files; preserved paths are a count. The empty runtime directories under the ignored
+    // `.humanish/` give the reader nothing to review, and leaving them out keeps a first setup
+    // with three next steps on a 24-line screen. JSON always carries every change.
     const files = (action: InitChange["action"]) =>
       result.changes.filter((change) => change.action === action && change.target !== "runtime");
     const created = files("create");
     const updated = files("update");
     const preserved = result.changes.filter((change) => change.action === "skip").length;
-    const directories = result.changes.filter((change) => change.action === "mkdir").length;
     lines.push("");
     if (created.length > 0) lines.push("created:", ...created.map((change) => `  ${change.path}`));
     if (updated.length > 0)
       lines.push("updated:", ...updated.map((change) => `  ${change.path} (${change.reason})`));
     if (created.length === 0 && updated.length === 0) lines.push("no files changed");
-    if (preserved > 0 || directories > 0)
-      lines.push(
-        [
-          ...(preserved > 0 ? [`${plural(preserved, "existing path")} unchanged`] : []),
-          ...(directories > 0
-            ? [`${plural(directories, "ignored directory", "ignored directories")} prepared`]
-            : []),
-        ].join(", "),
-      );
+    if (preserved > 0) lines.push(`${plural(preserved, "existing path")} unchanged`);
   } else {
     lines.push("", "changes:", ...result.changes.map(formatInitChange));
   }

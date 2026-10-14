@@ -12,7 +12,21 @@ import { formatCuaStudyHuman } from "../../src/cli/commands/study-format.js";
 import { resolveRouteShouldOpen } from "../../src/cli/commands/study-route-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { runFactsFor, writeResult } from "../../src/cli/io.js";
+import type { LocalBrowserHost } from "../../src/cli/first-run-path.js";
 import * as humanishIndex from "../../src/index.js";
+
+// init offers the local browser study only where /dev/kvm, /dev/net/tun and docker are present, or
+// on an M3-or-newer Mac. A test that needs that step sets the host init sees; every other test reads
+// the machine it runs on.
+const initHost = vi.hoisted(() => ({ localBrowser: undefined as LocalBrowserHost | undefined }));
+vi.mock("../../src/study/local-browser-host.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/study/local-browser-host.js")>();
+  return {
+    ...actual,
+    probeLocalBrowserHost: async () =>
+      initHost.localBrowser ?? (await actual.probeLocalBrowserHost()),
+  };
+});
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
 // treat "no getuid" the same as "not root" (permission fault injection still works).
@@ -516,6 +530,38 @@ describe("humanish CLI scaffold", () => {
           ]);
         },
       );
+    });
+  });
+
+  it("keeps three next steps on one screen when the host can also run a local browser study", async () => {
+    await asFirstTimeUser(async () => {
+      const bin = await mkdtemp(path.join(os.tmpdir(), "humanish-signed-in-codex-"));
+      try {
+        await writeFile(path.join(bin, "codex"), "#!/bin/sh\necho 'Logged in using ChatGPT'\n");
+        await chmod(path.join(bin, "codex"), 0o755);
+        vi.stubEnv("PATH", `${bin}${path.delimiter}${process.env.PATH ?? ""}`);
+        vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+        vi.stubEnv("E2B_API_KEY", "test-e2b-key");
+        initHost.localBrowser = { ok: true };
+        await withTempApp(
+          { "package.json": JSON.stringify({ name: "fixture-app" }) },
+          async (cwd) => {
+            const applied = await runCli(["init", "--yes", "--cwd", cwd]);
+            expect(applied.exitCode).toBe(0);
+            const lines = applied.stdout.trimEnd().split("\n");
+            const next = lines.slice(lines.indexOf("next:"));
+            expect(next.filter((line) => /^ {2}\S/.test(line))).toEqual([
+              "  humanish run first-run",
+              "  humanish run try-live",
+              "  humanish doctor --study local-browser",
+            ]);
+            expect(lines.length).toBeLessThanOrEqual(24);
+          },
+        );
+      } finally {
+        initHost.localBrowser = undefined;
+        await rm(bin, { force: true, recursive: true });
+      }
     });
   });
 
