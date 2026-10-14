@@ -283,7 +283,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   const passed = [
     ...(runFile
       ? [
-          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission, the task goals and its instruction in each participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's once more for the run, and the estimate counts a feedback candidate for every participant.`,
+          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.`,
         ]
       : []),
     ...(estimate.largestTraceBytes > RUN_ARTIFACT_MAX_BYTES
