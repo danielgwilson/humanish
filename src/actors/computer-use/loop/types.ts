@@ -313,7 +313,8 @@ export interface CuaLoopOptions {
   idleSteps?: number;
   /**
    * No-progress streak that trips the backstop. Default 20. It does not end a participant held to
-   * its scheduled end: from this many repeats on, the screen is watched after each further one.
+   * its scheduled end: from this many repeats on, the screen is watched after each further one that
+   * follows a turn with no progress.
    */
   noProgressSteps?: number;
   /**

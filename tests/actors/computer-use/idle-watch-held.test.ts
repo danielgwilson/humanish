@@ -105,6 +105,31 @@ describe("a held participant whose reload brings a new issue", () => {
       "25 turns in a row repeated a recent action on an unchanged screen, from 0:00 to 5:15 into the session. The participant is held to its scheduled end, so 20 such turns did not end its session, and from then on the screen was watched after each one before the next request.",
     );
   });
+
+  it("after its first streak, watches each reload that follows one on an unchanged screen", async () => {
+    // As above, request 28 at 320.5 s shows the issue, which ended the streak. Reload 28 is sent
+    // with no watch; it shows the same screen, so reloads 29 and 30 are watched, for 5 and 10 s.
+    // The click at turn 31 opens the issue, and reload 32 after it is sent with no watch, reload 33
+    // with one. Without that, each issue the participant saw or opened gave it 20 more requests
+    // back to back.
+    let seenAt = 0;
+    let reloadedAt = -1;
+    const run = await runWatching({
+      screen: (atMs) => {
+        seenAt = atMs;
+        return reloadedAt >= 300_000 ? NEW_ROW : QUIET;
+      },
+      turn: (_request, n) => {
+        if (n === 31) return turnOf([{ kind: "click", x: 80, y: 80 }]);
+        reloadedAt = seenAt;
+        return turnOf([RELOAD]);
+      },
+      loop: { clock: { end: { atMs: 10 * MINUTE, windDownMs: MINUTE } } },
+    });
+    expect(run.requests.slice(27, 34).map((request) => request.at)).toEqual([
+      320_500, 320_500, 325_500, 335_500, 335_500, 335_500, 340_500,
+    ]);
+  });
 });
 
 describe("a participant with no scheduled end that reloads an unchanged page", () => {

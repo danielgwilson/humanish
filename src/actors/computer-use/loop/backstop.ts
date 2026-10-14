@@ -122,6 +122,8 @@ export interface Backstop {
   // backstops.
   readonly consecutiveNoProgress: number;
   readonly idleProgressForgivenessUsed: number;
+  /** A no-progress streak in this session reached noProgressSteps. */
+  readonly reachedLimit: boolean;
 }
 
 export function startBackstop(observation: CuaObservation): Backstop {
@@ -131,6 +133,7 @@ export function startBackstop(observation: CuaObservation): Backstop {
     consecutiveIdle: 0,
     consecutiveNoProgress: 0,
     idleProgressForgivenessUsed: 0,
+    reachedLimit: false,
   };
 }
 
@@ -140,19 +143,25 @@ function repeatsRecentAction(backstop: Backstop, actions: readonly CuaAction[]):
 }
 
 /**
- * Whether a turn that acts would be at least the noProgressSteps-th no-progress turn in a row if
- * the screen stays the same: it repeats a recent action and the streak before it is one short of
- * the limit or longer. The loop watches the screen after such a turn of a held participant, since
- * its streak no longer ends its session.
+ * Whether a turn that acts repeats a recent action past the no-progress limit: the streak before it
+ * is one short of the limit or longer, or, once a streak in the session reached the limit, the turn
+ * before it was a no-progress turn. The loop watches the screen after such a turn of a held
+ * participant, since its streak no longer ends its session. A change a reload brings, or an item
+ * the participant opens, resets the streak; without the second case each one would give the
+ * participant noProgressSteps more requests back to back. A repeat after a turn that changed the
+ * screen, such as a second scroll, is not past the limit.
  */
 export function repeatsPastLimit(
   backstop: Backstop,
   actions: readonly CuaAction[],
   limits: BackstopLimits,
 ): boolean {
+  const limit = backstop.reachedLimit
+    ? Math.min(2, limits.noProgressSteps)
+    : limits.noProgressSteps;
   return (
     !isIdleTurn(actions) &&
-    backstop.consecutiveNoProgress + 1 >= limits.noProgressSteps &&
+    backstop.consecutiveNoProgress + 1 >= limit &&
     repeatsRecentAction(backstop, actions)
   );
 }
@@ -282,6 +291,7 @@ export function advanceBackstop(
       consecutiveIdle,
       consecutiveNoProgress,
       idleProgressForgivenessUsed,
+      reachedLimit: previous.reachedLimit || consecutiveNoProgress >= limits.noProgressSteps,
     },
     idle,
     progressed,

@@ -18,10 +18,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   scheduled end, at 20 turns as before. From the 20th repeat, humanish watches a held participant's
   screen after each further one before its next request, as after a wait with no length: by default
   the watches last 5, 10 and 20 seconds and keep doubling up to `actor.maxWaitMs`, or 10 minutes
-  when the study does not set it. The note on the next request says how long the wait after the last
-  action lasted and why it ended. In a fake-loop test, a held participant that reloads an unchanged
-  page every turn for an hour makes its requests from its 20th repeat on at the times one that only
-  waits makes them. When the streak ends, or the session ends in it, the trace records a notice
+  when the study does not set it. After that streak, a repeat is watched whenever the turn before it
+  also repeated an action on an unchanged screen, so a new item that a reload shows, or one the
+  participant opens, costs one request with no watch. The note on the next request says how long the
+  wait after the last action lasted and why it ended. In a fake-loop test, a held participant that
+  reloads an unchanged page every turn for an hour makes its requests from its 20th repeat on at the
+  times one that only waits makes them. In a fake loop with a 9-second model reply, one that reloads
+  a page gaining an item every 8 minutes made 82 requests in the hour, and 92 when it also opened
+  each item. When the streak ends, or the session ends in it, the trace records a notice
   titled `repeated an action on an unchanged screen` with the streak's turn count and time span, and
   review.json lists it in its gaps. (#1873)
 - A participant held to a scheduled end no longer sends model requests back to back with turns of
