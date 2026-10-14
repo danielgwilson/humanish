@@ -125,7 +125,11 @@ function readings(text: string): {
   // catches a `%` that a `\u0025` wrote.
   const utf8 = HIGH_BYTE.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
   const expanded = decodeTransferEscapes(decoded);
-  const unescapedExpanded = decodeTransferEscapes(unescaped);
+  // Without references in the text, or without code escapes, each of these two readings is one
+  // already decoded above, so it reuses that string. On a real 2 MiB Observer page, decoding both
+  // again took 12 ms of the 60 that readingsOf took.
+  const unescapedExpanded = unescaped === decoded ? expanded : decodeTransferEscapes(unescaped);
+  const referencesDecoded = text === unescaped ? decoded : decodeReferences(text);
   const recovered = [text, decoded].filter((reading) => HIGH_BYTE.test(reading));
   return {
     all: [
@@ -137,7 +141,7 @@ function readings(text: string): {
         ...recovered.map(latin1RunsAsUtf8),
         unescaped,
         unescapedExpanded,
-        decodeReferences(text),
+        referencesDecoded,
       ]),
     ],
     decoded,

@@ -24,9 +24,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
   after two layers of encoding, now replaces the whole text with the marker as it does for other
   values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
-  percent-encoded links, the scan took 780 ms where it took 694 ms (median of 15). On a real 2 MiB
-  Observer page and a 1.1 MiB run.json, where the new reading matches an existing one, it took
-  within 3% of its earlier time. (#1872)
+  percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
+  Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
+  3% of its earlier time. (#1872)
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
