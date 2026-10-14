@@ -181,7 +181,7 @@ On a hosted desktop, in a live hour on a support queue page that gained a row ev
 - humanish does not reload, scroll or move the pointer while it looks. On an app that shows new data only after a reload, the participant reloads as an action and waits in its next turn.
 - The next turn's note tells the participant how long it waited and why the wait ended: that the screen changed, that a small part of it changed at a named place, that a large part was still changing at the last look, or that a small change was held back. The trace records each watch as `watch` on the wait's `ui_action`: how long it could last, how long the turn's waits asked for, why it ended, how many looks it took, and the area of the change that ended it.
 - A wait in a turn with another action is sent to the desktop for its length.
-- Setting `actor.maxWaitMs` to the same value as `actor.idleWaitMs` stops the growth for waits that name no duration, as the OpenAI computer tool's `wait` does: on a screen that does not change, each such turn keeps its first length.
+- Setting `actor.maxWaitMs` to the same value as `actor.idleWaitMs` stops the growth: on a screen that does not change, each turn that only waits keeps its first length.
 
 ## List the participants in `participants`
 

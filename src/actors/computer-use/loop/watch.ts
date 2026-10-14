@@ -24,7 +24,7 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // watchMaxMs, and idleWaitMs for each wait that names none, and at least idleWaitMs. Each further
 // idle turn in a row whose watch ended at its limit, or was woken by a small change (at most 24
 // tiles) that held still, watches twice as long, up to the longer of its planned length and
-// watchMaxMs. Any other ending, or a turn with another action, starts again from the planned
+// watchMaxMs. Any other ending, or a turn with another action, starts again from its first
 // length. A participant waiting on a static screen settles at one request per watchMaxMs: at the
 // default 10 minutes, one naming 1 minute each turn waits 60, 120, 240 and 480 s, then 10 minutes
 // at a time.

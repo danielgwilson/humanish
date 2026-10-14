@@ -15,6 +15,7 @@ vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOrig
   createRestrictedCodexParticipant: vi.fn(() => participant),
 }));
 
+import { createRestrictedCodexParticipant } from "../../../src/actors/codex/restricted-participant.js";
 import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 import { closeParticipantModel } from "../../../src/routes/computer-use/participant-model.js";
 
@@ -31,6 +32,7 @@ const config = libraryConfig({
 describe("local study Codex participant close", () => {
   let cwd: string;
   beforeEach(async () => {
+    vi.mocked(createRestrictedCodexParticipant).mockClear();
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-codex-close-"));
   });
   afterEach(async () => {
@@ -49,7 +51,10 @@ describe("local study Codex participant close", () => {
       dryRun: false,
       assets: { image: "synthetic-image", runtimeRevision: "synthetic-revision" },
     });
-    const provider = await study.options.createProvider!({ executor: {} } as never);
+    const provider = await study.options.createProvider!({
+      executor: {},
+      participant: { id: "participant-1", index: 0, count: 1 },
+    } as never);
     const warnings: string[] = [];
 
     expect(await closeParticipantModel({ provider }, warnings)).toEqual({
@@ -57,6 +62,32 @@ describe("local study Codex participant close", () => {
       refusal: "codex_tool_call",
     });
     expect(warnings).toEqual(["synthetic unknown-method warning"]);
+    await study.close();
+  });
+
+  it("gives each participant's Codex its own idleWaitMs, which its tool description states", async () => {
+    const study = prepareLocalVmRun({
+      cwd,
+      config: libraryConfig({
+        ...config,
+        actor: { ...config.actor, idleWaitMs: 5_000, maxWaitMs: 60_000 },
+        participants: [{ id: "first" }, { id: "second", idleWaitMs: 30_000 }],
+      }),
+      dryRun: false,
+      assets: { image: "synthetic-image", runtimeRevision: "synthetic-revision" },
+    });
+    for (const [index, id] of ["first", "second"].entries())
+      await study.options.createProvider!({
+        executor: {},
+        participant: { id, index, count: 2 },
+      } as never);
+
+    expect(
+      vi.mocked(createRestrictedCodexParticipant).mock.calls.map(([options]) => options),
+    ).toEqual([
+      { speechEnabled: false, maxWaitMs: 60_000, idleWaitMs: 5_000 },
+      { speechEnabled: false, maxWaitMs: 60_000, idleWaitMs: 30_000 },
+    ]);
     await study.close();
   });
 

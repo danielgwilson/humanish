@@ -195,6 +195,9 @@ describe("a Codex participant that asks for a long wait", () => {
       await waitInCall(1_000, options);
 
       expect(native.descriptions[0]).toContain(
+        "A call whose actions are only waits and that asks for some wait time returns when",
+      );
+      expect(native.descriptions[0]).toContain(
         `after its waits' ms, together at least ${shortest} ms and at most ${watched} ms.`,
       );
       expect(native.descriptions[0]).toContain(

@@ -205,7 +205,7 @@ describe("the watch length over idle turns in a row", () => {
 describe("a named wait", () => {
   const limits = (run: WatchRun) => watchesOf(run.result).map((watch) => watch.limitMs);
 
-  it("doubles from its length on each quiet turn in a row, up to maxWaitMs", async () => {
+  it("doubles from its length on each quiet turn in a row, up to 10 minutes", async () => {
     // Codex, Claude Code and OpenAI's wait_for_change name a length; the length sets where the
     // doubling starts. A participant naming 1 minute each turn waits 60, 120, 240 and 480 s, then
     // 10 minutes at a time.

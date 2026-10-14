@@ -17,14 +17,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. The named minutes
   set where the doubling of quiet turns in a row starts: a participant that names 1 minute on each
   turn of a quiet screen waits 60, 120, 240 and 480 seconds, then 10 minutes at a time, and starts
-  again from 1 minute after the screen changes. The tool's description says that while nothing
-  changes, each further wait in a row lasts twice as long. Minutes that are not a finite number
-  above zero make a wait with no length, which lasts `idleWaitMs`. A call to a function the
-  participant does not have is answered that there is no such tool and is a wait with no length, so
-  a reply of only such a call does not end the session. A call sent with other actions goes to the
-  desktop for at most `actor.maxWaitMs`, as any such wait does, and its output says such a wait does
-  not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the tool on 22
-  of 25 idle turns and named 1 to 15 minutes: the session time left on two
+  again from 1 minute after a large change on the screen. The tool's description says that while
+  nothing changes, each further wait in a row lasts twice as long, up to a limit. Minutes that are
+  not a finite number above zero make a wait with no length, which lasts `idleWaitMs`. A call to a
+  function the participant does not have is answered that there is no such tool and is a wait with
+  no length, so a reply of only such a call does not end the session. A call sent with other actions
+  goes to the desktop for at most `actor.maxWaitMs`, as any such wait does, and its output says such
+  a wait does not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the
+  tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
   pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the A/B
   experiment's model spend per participant-hour and requests per hour against 0.132.0 go here. Each
   wait's `ui_action` in the trace now carries `namedMs` when the wait named its length, before any
@@ -32,11 +32,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
-- A turn of only waits now lasts at least `idleWaitMs`, for OpenAI, Codex and Claude Code
-  participants, so naming 1 ms on each turn of a quiet screen waits 5, 10 and 20 seconds by
-  default. Before, a turn whose named waits came to 1 ms lasted 1 ms, then 2 ms, and sent its
-  requests nearly back to back. The Codex tool description and the Claude Code prompt state the
-  floor (#1862).
+- A turn of only waits that asks for some wait time now lasts at least `idleWaitMs`, for OpenAI,
+  Codex and Claude Code participants, so naming 1 ms on each turn of a quiet screen waits 5, 10 and
+  20 seconds by default. Before, a turn whose named waits came to 1 ms lasted 1 ms, then 2 ms, and
+  sent its requests nearly back to back. The Codex tool description and the Claude Code prompt state
+  the floor (#1862).
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

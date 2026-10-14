@@ -75,7 +75,9 @@ describe("the turn prompt", () => {
       { instructions: "Wait for the reply.", observation: observation() },
       "/tmp/turn.png",
     );
-    expect(prompt).toContain("only waits ends when the screen changes and holds still");
+    expect(prompt).toContain(
+      "only waits and that asks for some wait time ends when the screen changes and holds still",
+    );
     expect(prompt).toContain("and lasts at least as long as a wait whose ms is null");
     expect(prompt).toContain(
       "each further turn in a row that only waits lasts twice as long as the one before",

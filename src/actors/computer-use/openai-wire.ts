@@ -332,7 +332,7 @@ const WAIT_FOR_CHANGE_TOOL = {
   type: "function",
   name: "wait_for_change",
   description:
-    "Wait, then look at the screen again. The wait ends early when the screen changes. While nothing changes, each further wait in a row lasts twice as long as the one before.",
+    "Wait, then look at the screen again. The wait ends early when the screen changes. While nothing changes, each further wait in a row lasts twice as long as the one before, up to a limit.",
   parameters: {
     type: "object",
     properties: {
