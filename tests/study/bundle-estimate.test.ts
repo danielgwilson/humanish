@@ -353,9 +353,22 @@ describe("study check's warning on run.json", () => {
       ok: true,
       row: "run.json about 18.8 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 12.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 256 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [
-        `This study's run.json may grow to about 18.8 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the participants' instructions (participants[].instruction), or split the participants across studies.`,
+        `This study's run.json may grow to about 18.8 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the participants' instructions (participants.instruction or participants[].instruction), or split the participants across studies.`,
       ],
     });
+  });
+
+  it("counts the instruction of the { count, instruction } form for each participant it gives", async () => {
+    // The same 100 participants and 90,000-byte instruction as the list form above.
+    const result = await check({
+      mode: "live",
+      participants: { count: 100, instruction: "Rename the project. ".repeat(4_500) },
+      execution: { target: "e2b-desktop", timeoutMs: 2 * HOURS },
+    });
+
+    expect(result.warnings).toEqual([
+      `This study's run.json may grow to about 18.8 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the participants' instructions (participants.instruction or participants[].instruction), or split the participants across studies.`,
+    ]);
   });
 });
 

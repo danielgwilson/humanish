@@ -129,10 +129,14 @@ export interface EstimatedParticipant {
   readonly tasks?: readonly { readonly goal: string }[];
 }
 
-/** The study fields run.json copies into each participant's stream, and the advice to shorten each. */
+/**
+ * The study fields run.json copies into each participant's stream, and the advice to shorten each.
+ * The plan does not keep which form declared the participants, so the advice names both paths.
+ */
 const COPIED_FIELDS = Object.freeze({
   mission: "shorten the mission (actor.mission)",
-  focus: "shorten the participants' instructions (participants[].instruction)",
+  focus:
+    "shorten the participants' instructions (participants.instruction or participants[].instruction)",
   tasks: "shorten the task goals (actor.tasks[].goal)",
 });
 type CopiedField = keyof typeof COPIED_FIELDS;
