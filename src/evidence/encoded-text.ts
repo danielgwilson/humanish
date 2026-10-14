@@ -107,7 +107,11 @@ export function decodeEscapes(text: string): string {
 
 /** The readings a scan matches, with the two that scanEncodedText also searches for runs. */
 function readings(text: string): { decoded: string; expanded: string; all: string[] } {
-  const decoded = decodeEscapes(text);
+  // Decoding references with the other escapes joins a letter reference to the escaped key after
+  // it, `&#65;\u0073k-` to `Ask-`, where a pattern's word boundary fails. With references left as
+  // written, the `;` before the key keeps that boundary.
+  const unescaped = decodeCodeEscapes(text, decodePercentBytes);
+  const decoded = decodeReferences(unescaped);
   // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
   // decodeEscapes writes as a character from U+0080 to U+00FF. Testing the decoded text also
   // catches a `%` that a `\u0025` wrote.
@@ -117,22 +121,30 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
   return {
     decoded,
     expanded,
-    all: [...new Set([text, decoded, utf8, expanded, ...recovered.map(latin1RunsAsUtf8)])],
+    all: [
+      ...new Set([text, decoded, utf8, expanded, ...recovered.map(latin1RunsAsUtf8), unescaped]),
+    ],
   };
 }
 
 /**
  * Every reading of the text a scan matches, each once: as written, decodeEscapes, with percent
- * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, and the text as written and
+ * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, the text as written and
  * decoded with each run of U+0080 to U+00FF characters read as UTF-8 bytes, which undoes text that
- * a reader already decoded one byte per character. Either percent reading can split a value that
- * the other keeps whole, as `%E2%80%80` (U+2000, a space, in UTF-8) does.
+ * a reader already decoded one byte per character, and decodeEscapes with HTML references left as
+ * written. Either percent reading can split a value that the other keeps whole, as `%E2%80%80`
+ * (U+2000, a space, in UTF-8) does.
  */
 export function readingsOf(text: string): string[] {
   return readings(text).all;
 }
 
 function decodeWith(text: string, percent: (match: string) => string): string {
+  return decodeReferences(decodeCodeEscapes(text, percent));
+}
+
+/** JSON and JS string escapes, then percent-encoding. */
+function decodeCodeEscapes(text: string, percent: (match: string) => string): string {
   return text
     .replace(/\\u([0-9a-f]{4})/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
@@ -141,7 +153,12 @@ function decodeWith(text: string, percent: (match: string) => string): string {
       codePoint(Number.parseInt(hex, 16), match),
     )
     .replace(/\\\//g, "/")
-    .replace(/(?:%[0-9a-f]{2})+/gi, percent)
+    .replace(/(?:%[0-9a-f]{2})+/gi, percent);
+}
+
+/** HTML character references: numeric ones and the ASCII_ENTITIES names. */
+function decodeReferences(text: string): string {
+  return text
     .replace(/&#x([0-9a-f]{1,6});?/gi, (match, hex: string) =>
       codePoint(Number.parseInt(hex, 16), match),
     )
@@ -394,7 +411,7 @@ export function scanEncodedText(
 // Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
 // cache lives in one process, so the version guards results across a hot reload or a test that
 // swaps the scanner.
-const ENCODED_SCAN_VERSION = 5;
+const ENCODED_SCAN_VERSION = 6;
 // Distinct files one process verifies in a burst (a run's files, a serve library's runs).
 const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();

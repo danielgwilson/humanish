@@ -135,15 +135,20 @@ function percentAsUtf8(run: string): string {
   return text;
 }
 
-/** The documented decoding, one pass for each kind of escape, in the documented order. */
-function decode(text: string, percent: (run: string) => string): string {
+/** The documented JSON, JS and percent passes, in the documented order. */
+function decodeCodeEscapes(text: string, percent: (run: string) => string): string {
   return text
     .replace(/\\u[0-9a-f]{4}/gi, (escape) => JSON.parse(`"${escape}"`) as string)
     .replace(/\\x([0-9a-f]{2})/gi, (_escape, digits: string) =>
       String.fromCharCode(Number.parseInt(digits, 16)),
     )
     .replaceAll("\\/", "/")
-    .replace(/(?:%[0-9a-f]{2})+/gi, percent)
+    .replace(/(?:%[0-9a-f]{2})+/gi, percent);
+}
+
+/** The documented decoding, one pass for each kind of escape, in the documented order. */
+function decode(text: string, percent: (run: string) => string): string {
+  return decodeCodeEscapes(text, percent)
     .replace(/&#x([0-9a-f]{1,6});?/gi, (written, digits: string) =>
       fromCode(Number.parseInt(digits, 16), written),
     )
@@ -156,13 +161,14 @@ function decode(text: string, percent: (run: string) => string): string {
     );
 }
 
+/** A run of percent escapes with each escape read as one character, the byte's code. */
+const percentAsBytes = (run: string): string =>
+  (run.match(/%[0-9a-f]{2}/gi) ?? [])
+    .map((escape) => String.fromCharCode(Number.parseInt(escape.slice(1), 16)))
+    .join("");
+
 /** The text with each percent escape read as one character, the byte's code. */
-export const modelDecode = (text: string): string =>
-  decode(text, (run) =>
-    (run.match(/%[0-9a-f]{2}/gi) ?? [])
-      .map((escape) => String.fromCharCode(Number.parseInt(escape.slice(1), 16)))
-      .join(""),
-  );
+export const modelDecode = (text: string): string => decode(text, percentAsBytes);
 
 /** JSON whitespace escapes and quoted-printable bytes and soft line breaks expanded. */
 const expandTransfer = (text: string): string =>
@@ -182,8 +188,9 @@ const recoverLatin1 = (text: string): string =>
   );
 
 /**
- * The text as written, decoded with percent escapes as bytes and as UTF-8, expanded, and the text
- * as written and decoded with Latin-1 runs read as UTF-8.
+ * The text as written, decoded with percent escapes as bytes and as UTF-8, expanded, the text as
+ * written and decoded with Latin-1 runs read as UTF-8, and decoded with HTML references left as
+ * written.
  */
 export function modelReadings(text: string): string[] {
   const decoded = modelDecode(text);
@@ -195,6 +202,7 @@ export function modelReadings(text: string): string[] {
       expandTransfer(decoded),
       recoverLatin1(text),
       recoverLatin1(decoded),
+      decodeCodeEscapes(text, percentAsBytes),
     ]),
   ];
 }

@@ -120,6 +120,13 @@ describe("scanEncodedText", () => {
     }
   });
 
+  it("finds a JSON-escaped key behind a letter entity, which decoding both joins to a word", () => {
+    const key = "sk-" + "proj-" + "syntheticvalue1234567890abcdefghijklmn";
+    // Decoding both layers reads `Ask-proj-...`, where the pattern's word boundary fails.
+    const text = `{"t":"&#65;\\u0073${key.slice(1)}"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
   it("calls an encoded archive or a long encoded binary run opaque", () => {
     expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
     expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);
