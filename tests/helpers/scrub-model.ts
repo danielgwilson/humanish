@@ -147,8 +147,12 @@ function decodeCodeEscapes(text: string, percent: (run: string) => string): stri
 }
 
 /** The documented decoding, one pass for each kind of escape, in the documented order. */
-function decode(text: string, percent: (run: string) => string): string {
-  return decodeCodeEscapes(text, percent)
+const decode = (text: string, percent: (run: string) => string): string =>
+  decodeReferences(decodeCodeEscapes(text, percent));
+
+/** The documented HTML reference passes: hexadecimal, decimal, then named. */
+function decodeReferences(text: string): string {
+  return text
     .replace(/&#x([0-9a-f]{1,6});?/gi, (written, digits: string) =>
       fromCode(Number.parseInt(digits, 16), written),
     )
@@ -189,8 +193,8 @@ const recoverLatin1 = (text: string): string =>
 
 /**
  * The text as written, decoded with percent escapes as bytes and as UTF-8, expanded, the text as
- * written and decoded with Latin-1 runs read as UTF-8, and decoded with HTML references left as
- * written.
+ * written and decoded with Latin-1 runs read as UTF-8, decoded with HTML references left as
+ * written, and with only HTML references decoded.
  */
 export function modelReadings(text: string): string[] {
   const decoded = modelDecode(text);
@@ -203,6 +207,7 @@ export function modelReadings(text: string): string[] {
       recoverLatin1(text),
       recoverLatin1(decoded),
       decodeCodeEscapes(text, percentAsBytes),
+      decodeReferences(text),
     ]),
   ];
 }

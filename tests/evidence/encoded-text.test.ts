@@ -127,6 +127,14 @@ describe("scanEncodedText", () => {
     expect(scanEncodedText(text).sensitive).toBe(true);
   });
 
+  it("finds a fixed-length key ending in a reference before a JSON escape", () => {
+    const key = "npm" + "_" + "syntheticvalue1234567890abcdefghijkl";
+    // `&#108;` is the key's last `l`. Decoding the escape after it too adds an `A`, and the
+    // pattern takes exactly 36 characters after `npm_`.
+    const text = `{"t":"${key.slice(0, -1)}&#108;\\u0041"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
   it("calls an encoded archive or a long encoded binary run opaque", () => {
     expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
     expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);

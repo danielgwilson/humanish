@@ -10,17 +10,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- verify's per-file scan finds a key written with a JSON escape right after a letter HTML
-  reference, as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`,
-  where the key pattern's word boundary fails, so a text file other than run.json passed with the
-  key in it. The scan now also reads the text with its JSON, JS and percent escapes decoded and its
-  references left as written. The redacted export's text check, the trace page path check and the
-  known-value scrubs read the same readings, so they gain it too. A scrub whose output still holds a
-  value in that reading, as a value with `&amp;` or `&#65;` in it can after two layers of encoding,
-  now replaces the whole text with the marker as it does for other values encoded twice. On a 4 MiB
-  synthetic page of references, inline JSON escapes and percent-encoded links, the scan took 780 ms
-  where it took 694 ms (median of 15). On a real 2 MiB Observer page and a 1.1 MiB run.json, where
-  the new reading matches an existing one, it took within 3% of its earlier time. (#1872)
+- verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
+  as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
+  pattern's word boundary fails, so a text file other than run.json passed with the key in it. The
+  scan now also reads the text with its JSON, JS and percent escapes decoded and its references left
+  as written, and with only its references decoded. The second reading finds a key of fixed length,
+  such as `npm_` and 36 characters, whose last character is a reference followed by an escaped
+  letter. The redacted export's text check, the trace page path check and the known-value scrubs
+  read the same readings, so they gain both. A scrub whose output still holds a value in either
+  reading, as a value with `&amp;` or `&#65;` in it can after two layers of encoding, now replaces
+  the whole text with the marker as it does for other values encoded twice. On a 4 MiB synthetic
+  page of references, inline JSON escapes and percent-encoded links, the scan took 780 ms where it
+  took 694 ms (median of 15). On a real 2 MiB Observer page and a 1.1 MiB run.json, where the new
+  reading matches an existing one, it took within 3% of its earlier time. (#1872)
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
