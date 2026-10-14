@@ -2,7 +2,7 @@
 // the structural parse of `subject.state`, and subjectStateInvalidReason, the semantic check
 // parseStudy and the computer-use route share.
 
-import { containsSensitive } from "../../evidence/redaction.js";
+import { scanEncodedText } from "../../evidence/encoded-text.js";
 import { ENV_NAME_PATTERN, invalid, posInt, str, strList } from "./values.js";
 import type { StudyParseFailure, StudyStateStepWhen, StudySubjectState } from "../types.js";
 import { isRecord } from "../../run/type-guards.js";
@@ -38,9 +38,9 @@ export function parseEnvValues(
     if (value === undefined) {
       return invalid(`\`subject.envValues.${name}\` must be a string, number, or boolean.`);
     }
-    // Reuse the redaction module's own detector rather than inventing a second opinion about what
-    // a secret looks like; the two must never disagree about the same string.
-    if (containsSensitive(value)) {
+    // verify blocks a run whose files scanEncodedText reads as sensitive, so this refuses what that
+    // scan reads: a secret or local path as written, or decoded from base64 or an escape.
+    if (scanEncodedText(value).sensitive) {
       return invalid(
         `\`subject.envValues.${name}\` looks like a secret or a local path, and envValues are committed with the study and recorded in evidence. List the name in \`subject.env\` instead: its value then comes from your environment and is never stored.`,
       );

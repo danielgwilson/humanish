@@ -16,6 +16,7 @@ import type {
 import type { ScriptedPlan } from "../../study/plan-types.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { RunSecrets } from "../../run/secrets.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import { type ScriptedBrowserStudyResult, type ScriptedRunInput } from "./types.js";
@@ -110,6 +111,9 @@ export async function prepareScriptedRun(
       result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", scenario.message),
     };
   }
+  const steps = recordedStepIds(scenario.journey.steps, secrets);
+  if (!steps.ok)
+    return { ok: false, result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", steps.message) };
   // The goal, title and step labels are recorded; a step's path, selector, value and expected text
   // drive the browser and stay as written.
   const journey: BrowserPersonaJourney = {
@@ -117,9 +121,9 @@ export async function prepareScriptedRun(
     scenarioId: idHoldsKnownValue(scenario.journey.scenarioId, secrets)
       ? "scenario"
       : scenario.journey.scenarioId,
-    goal: secrets.scrub(scenario.journey.goal),
-    scenarioTitle: secrets.scrub(scenario.journey.scenarioTitle),
-    steps: recordedStepIds(scenario.journey.steps, secrets),
+    goal: recordedText(scenario.journey.goal, secrets),
+    scenarioTitle: recordedText(scenario.journey.scenarioTitle, secrets),
+    steps: steps.steps,
   };
 
   // The plan lists E2B_API_KEY and the subject env only for a live clone.
@@ -191,6 +195,14 @@ export async function prepareScriptedRun(
 }
 
 /**
+ * Scenario text the run records, without the run's known values and then without keys as written
+ * or encoded, since verify decodes the files that record it.
+ */
+function recordedText(text: string, secrets: RunSecrets): string {
+  return redactEncodedText(secrets.scrub(text));
+}
+
+/**
  * Whether an id holds a known value as written or as the parser's id token of it, lower-cased with
  * other characters as `-`, which the scrub would not find.
  */
@@ -205,23 +217,61 @@ function idHoldsKnownValue(id: string, secrets: RunSecrets): boolean {
 }
 
 /**
- * The steps with their labels scrubbed and their ids safe to record. A step id names the step's
- * screenshot file and is recorded beside it, and the parser derives an omitted id from the label,
- * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose
- * label or id holds a known value is renamed by its position instead.
+ * The steps with their labels redacted and their ids safe to record, or why the run is refused. A
+ * step id names the step's screenshot file and is recorded beside it, and the parser derives an
+ * omitted id from the label, lower-cased and cut to 80 characters, so the scrub may not find a
+ * value in it. A step whose label changes under recordedText, or whose id holds a known value, is
+ * renamed by its position instead.
  */
 function recordedStepIds(
   steps: readonly BrowserPersonaStepManifest[],
   secrets: RunSecrets,
-): BrowserPersonaStepManifest[] {
+): { ok: true; steps: BrowserPersonaStepManifest[] } | { ok: false; message: string } {
   const taken = new Set(steps.map((step) => step.id));
-  return steps.map((step, index) => {
-    const label = secrets.scrub(step.label);
-    if (label === step.label && !idHoldsKnownValue(step.id, secrets)) return { ...step, label };
-    const position = `step-${String(index + 1).padStart(2, "0")}`;
-    let id = position;
-    for (let suffix = 2; taken.has(id); suffix += 1) id = `${position}-${suffix}`;
+  const recorded: BrowserPersonaStepManifest[] = [];
+  for (const [index, step] of steps.entries()) {
+    const label = recordedText(step.label, secrets);
+    if (label === step.label && !idHoldsKnownValue(step.id, secrets)) {
+      recorded.push({ ...step, label });
+      continue;
+    }
+    const id = positionId(index, taken, secrets);
+    if (id === undefined)
+      return {
+        ok: false,
+        message: `The label or id of scenario step ${index + 1} holds a key, a local path or a value this run keeps out of its files, so the run renames the step by its position, and each id that position gives holds one of those values too. Remove it from the step's label and id.`,
+      };
     taken.add(id);
-    return { ...step, id, label };
-  });
+    recorded.push({ ...step, id, label });
+  }
+  return { ok: true, steps: recorded };
 }
+
+/**
+ * The id a renamed step takes by its position, such as step-03 for the third step, then step-03-2,
+ * step-03-3 and on when another step has it. A known value can be one of these ids, so one that
+ * holds a known value is passed over. Every id holds the position id, so a position id that holds a
+ * known value gives undefined at once. Otherwise taken.size + 1 ids that hold no known value are
+ * tried, which includes a free one, as long as known values pass over at most
+ * MAX_KNOWN_VALUE_SKIPS of them; a value such as `-01-` that every numbered id holds gives undefined.
+ */
+function positionId(
+  index: number,
+  taken: ReadonlySet<string>,
+  secrets: RunSecrets,
+): string | undefined {
+  const position = `step-${String(index + 1).padStart(2, "0")}`;
+  if (idHoldsKnownValue(position, secrets)) return undefined;
+  let skips = 0;
+  for (let suffix = 1; suffix <= taken.size + 1 + skips; suffix += 1) {
+    const id = suffix === 1 ? position : `${position}-${suffix}`;
+    if (taken.has(id)) continue;
+    if (!idHoldsKnownValue(id, secrets)) return id;
+    if (skips === MAX_KNOWN_VALUE_SKIPS) return undefined;
+    skips += 1;
+  }
+  return undefined;
+}
+
+// Known values are few, and a numbered id holds one only when the value matches its digits.
+const MAX_KNOWN_VALUE_SKIPS = 32;

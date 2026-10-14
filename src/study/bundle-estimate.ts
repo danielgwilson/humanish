@@ -20,14 +20,14 @@
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
-// The Observer page and the Observer server join every participant's items in one string before
-// gzip. A bundle export renders the Observer page, so it fails there too once --max-bytes is
-// raised past its 25 MiB default, which refuses such a run first. Writing run.json joins none: the
-// sandbox id scrub (publicSandboxView) works one participant at a time. V8's longest string is
-// 536,870,888 characters on Node 24. A trace file's bytes are at least the characters of its
-// items as compact JSON, so the estimate compares the traces' bytes and may warn a little early.
-
-import { constants } from "node:buffer";
+// A page past 32 MiB grades the run local_only. humanish export then needs --local-only, and a
+// bundle export fails even with it, since its copy must verify as share_ready.
+// The Observer feed, verify, analysis and the run.json writer each hold one participant's items in
+// a string at a time. The page holds all of them gzipped in base64, about 0.18 characters for each
+// trace byte, so it reaches V8's longest string, 536,870,888 characters, near 3 GB of traces.
+// humanish observe on 25 participants with 30 MiB traces wrote a 138 MiB page at a peak of
+// 3.8 GiB, so memory may run out first. Neither limit was measured past that run, and the estimate
+// checks neither.
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
@@ -147,8 +147,6 @@ export interface BundleEstimate {
   readonly runFileBytes: number;
   /** The largest participant trace file, which analysis also reads whole. */
   readonly largestTraceBytes: number;
-  /** Every participant's trace file together, whose items the Observer page joins in one string. */
-  readonly tracesBytes: number;
   /** observer/index.html, which verify reads whole. */
   readonly observerPageBytes: number;
   /** Every file, screenshots included. */
@@ -248,7 +246,6 @@ export function estimateBundle(
   return {
     runFileBytes,
     largestTraceBytes: largestTrace,
-    tracesBytes: traces,
     observerPageBytes,
     // observer-data.json is about run.json's size.
     totalBytes: observerPageBytes + screenshots * RATES.screenshotBytes + traces + 2 * runFileBytes,
@@ -278,7 +275,6 @@ function storedBytes(text: string | undefined): number {
 export function bundleLimitReason(estimate: BundleEstimate): string | undefined {
   const runFile = estimate.runFileBytes > EVIDENCE_LIMITS.sourceBytes;
   const page = estimate.observerPageBytes > RUN_ARTIFACT_MAX_BYTES;
-  const joined = estimate.tracesBytes > constants.MAX_STRING_LENGTH;
   const entries = estimate.entries > estimate.entryLimit;
   const passed = [
     ...(runFile
@@ -293,12 +289,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
     ...(page
       ? [
-          `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file.`,
-        ]
-      : []),
-    ...(joined
-      ? [
-          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. The Observer page puts all their items in one string, so the page would not build. A bundle export allowed past its 25 MiB default renders that page, so it would fail too.`,
+          `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail.`,
         ]
       : []),
     ...(entries
@@ -327,7 +318,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
     ...(runFile && largestField !== undefined ? [COPIED_FIELDS[largestField]] : []),
   ];
   // A trace is one participant's, so splitting the study helps only the run's own files.
-  if (runFile || page || joined || entries || changes.length === 0)
+  if (runFile || page || entries || changes.length === 0)
     changes.push("split the participants across studies");
   const advice =
     changes.length < 2

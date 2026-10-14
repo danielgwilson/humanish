@@ -2,7 +2,7 @@
 // and the requirement and subject helpers.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
-import { redactText } from "../evidence/redaction.js";
+import { redactEncodedText } from "../evidence/encoded-text.js";
 import type {
   Brain,
   ComputerUsePlan,
@@ -153,8 +153,9 @@ export function planBase(
   return {
     studyId: config.id,
     // Every bundle writer takes the title from here, and review.md, run.json and the Observer show
-    // it, so a key or sandbox URL in it would make verify grade the run blocked.
-    ...(config.title === undefined ? {} : { title: redactText(config.title) }),
+    // it, so a key or sandbox URL in it, as written or encoded, would make verify grade the run
+    // blocked.
+    ...(config.title === undefined ? {} : { title: redactEncodedText(config.title) }),
     residual: residualOf(config),
     dryRun: input.dryRun,
     ...(analysis === undefined

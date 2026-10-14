@@ -39,10 +39,22 @@ account participant's `executionProfile` without its receipts. `events.ndjson` i
 contract that live adapters update while a run is active.
 
 `observer/index.html` carries both parts: the data slot holds observer-data.json's
-content, and `<script id="observer-items" type="application/octet-stream"
-data-encoding="gzip">` holds the items and full artifact lists (`humanish.observer-items.v1`, by stream id)
-gzip-compressed in base64, which a `file://` page decodes without a fetch. Real
-trace items compress about eight times. The page joins the two before it renders
+content, and `<script id="observer-items" type="application/json">` holds the items
+and full artifact lists by stream id (`humanish.observer-items.v2`) as
+`{ schema, runId, streams }`, where `streams` lists one entry for each participant: its
+JSON with its stream id, gzip-compressed in base64, which a `file://` page decodes
+without a fetch. The ids stay inside the compressed entries because verify's scan
+reads the element's plain text. There, an id such as `GITHUB_TOKEN` before a long
+base64 value reads as a credential, and `https://` with a later id shaped like an
+address at an E2B host reads as one E2B URL across the base64 between them. Each participant is packed
+(`src/observer/page-data.ts`) and decoded (`observer/lib/data.ts`) on its own, so no
+string holds two participants' items. A run of 25 participants with
+30 MiB traces, 786 MB together, past V8's longest string of 536,870,888 characters,
+renders to a 138 MiB page. The page itself is one string, at about 0.18 characters
+for each trace byte, so it passes that limit near 3 GB of traces, and memory may run
+out first; neither has been measured past 25 participants. Real trace items compress
+about eight times. The page
+joins the two before it renders
 (`joinObserverData` in `src/observer/participant-items.ts`), so every view reads the
 same data as before. A stream whose screenshot entries moved records how many in
 `screenshotArtifacts`, and the page renders nothing from items that are another
@@ -83,9 +95,14 @@ public-safe metadata.
 
 The browser polls `observer-feed.json` with `no-store` caching: the server's
 projection of the run as `{ data, items }`, observer-data.json's content and the
-items, from one read of the run per poll. While a participant runs, its entry in
-`items` carries `live`, a cursor `<position>.<generation>.<items>.<bytes>` naming its
-live file (`live/<position>.<generation>.ndjson`) and how far the list goes. The page
+items packed as the page packs them (`observerFeedBody`), from one read of the run
+per poll. The feed compresses each entry at gzip level 1 on the libuv thread pool, one
+participant at a time, so the server answers other requests while it builds a poll.
+Every poll sends every finished participant's items again: on the 25-participant run
+above a poll takes 17 to 20 seconds, past the 15 seconds the page waits, so that page
+never updates and says the server stopped answering. While a participant runs, its entry in `items` carries `live`, a cursor
+`<position>.<generation>.<items>.<bytes>` naming its live file
+(`live/<position>.<generation>.ndjson`) and how far the list goes. The page
 sends the cursors of its last body back as `?after=<cursor>,<cursor>`, and the server
 then reads and sends only the items past each one, marking that entry with
 `liveAfter`, the cursor they follow (`src/observer/feed-cursors.ts`). A cursor for an

@@ -21,6 +21,7 @@ import type { RunStream } from "../../src/run/streams.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import { readRunWithTraces, syntheticActor } from "../helpers/run-traces.js";
+import { readFeedBody } from "../helpers/observer-page.js";
 
 // The next unlink of a path ending in `unlinkFails` fails as a disk error would.
 const fault = vi.hoisted(() => ({ unlinkFails: "" }));
@@ -492,9 +493,7 @@ describe("readers of a run in progress", () => {
         new URL(`/_humanish/runs/${RUN}/observer/observer-feed.json`, started.server.url),
       );
       expect(response.status).toBe(200);
-      const feed = (await response.json()) as {
-        items: { streams: Record<string, { liveActor?: { id: string }[] }> };
-      };
+      const feed = readFeedBody(await response.text());
       const streamId = template.streams[0]!.id;
       expect(feed.items.streams[streamId]?.liveActor?.map((entry) => entry.id)).toEqual([
         "reasoning-001",
