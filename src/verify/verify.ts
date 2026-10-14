@@ -22,11 +22,7 @@ import {
   RUN_ARTIFACT_MAX_BYTES,
 } from "../run/contained-output.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
-import {
-  loadStreamTraces,
-  StreamTraceRefusedError,
-  StreamTraceTooLargeError,
-} from "../run/stream-trace.js";
+import { loadStreamTraces, StreamTraceTooLargeError } from "../run/stream-trace.js";
 import {
   readRunJsonIfExists,
   readRunTextIfExists,
@@ -225,7 +221,7 @@ export async function verifyResolvedRun(
         : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
   const missingEvidenceArtifacts = bundle
-    ? await missingLocalEvidenceArtifacts(runPaths, bundle)
+    ? await missingLocalEvidenceArtifacts(runPaths, bundle, traces.pastReadLimit)
     : [];
   const redactedShapeFrames = bundle
     ? await redactedShapeFramePaths(runPaths, bundle)
@@ -354,6 +350,8 @@ async function loadTraces(
   refusedStreams: ReadonlySet<string>;
   /** The refusal of each trace or live file past the read limit, which is not in refusedTraces. */
   unreadTraces: string[];
+  /** The path of each of those files. */
+  pastReadLimit: ReadonlySet<string>;
   sensitive: string[];
   opaque: string[];
   pages: string[];
@@ -366,6 +364,7 @@ async function loadTraces(
       refusedTraces: [],
       refusedStreams: new Set(),
       unreadTraces: [],
+      pastReadLimit: new Set(),
       ...scanned,
       pages: [],
     };
@@ -379,7 +378,7 @@ async function loadTraces(
   });
   // A file whose index records more than the read limit is not read. One past the limit on disk
   // too is listed as unscanned, so its run grades local_only; one under it does not match its index.
-  const unread: StreamTraceRefusedError[] = [];
+  const unread: StreamTraceTooLargeError[] = [];
   for (const error of refused)
     if (error instanceof StreamTraceTooLargeError && (await pastReadLimit(runPaths, error.file))) {
       unread.push(error);
@@ -388,9 +387,12 @@ async function loadTraces(
   return {
     bundle,
     recorded: bundle,
-    refusedTraces: refused.filter((error) => !unread.includes(error)).map((error) => error.message),
+    refusedTraces: refused
+      .filter((error) => !unread.some((past) => past === error))
+      .map((error) => error.message),
     refusedStreams: new Set(refused.map((error) => error.streamId)),
     unreadTraces: unread.map((error) => error.message),
+    pastReadLimit: new Set(unread.map((error) => error.file)),
     ...scanned,
     pages: pageFindings(bundle),
   };

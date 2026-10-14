@@ -68,8 +68,8 @@ verify reports a refused trace in the `local evidence artifacts exist` check, so
 `blocked`. A trace or live file whose index records more than the limit is reported that way only
 when verify's walk of the run folder reads it, since its bytes are then fewer than the index
 records. When the walk cannot read it either, verify lists it under `UNSCANNED_ARTIFACT`, so the
-run is `local_only`, adds the refusal to its warnings, and checks that participant without its
-items. verify also scans the bytes of each trace it loaded with the public-safety text scan,
+run is `local_only`, adds the refusal to its warnings, counts the file as present wherever the run
+cites it as evidence, and checks that participant without its items. verify also scans the bytes of each trace it loaded with the public-safety text scan,
 apart from its walk of the run folder, so no path exemption the walk makes applies to a trace.
 run.json's digest, which an analysis record binds, covers each index and so each trace.
 

@@ -22,6 +22,8 @@ import { syntheticActor } from "../helpers/run-traces.js";
 // receipt makes Run.finish sweep the run's files for it.
 const RAW = ["i", "q7m2x9k4w8", "n1p3v6z5a"].join("");
 const RUN = "long-trace";
+// The trace path the computer-use route registers for a run of one participant.
+const TRACE = "actor.json";
 
 let cwd: string;
 
@@ -32,7 +34,11 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
-/** A live run of one participant whose one message is `text`, finished through the run scope. */
+/**
+ * A live run of one participant whose one message is `text`, finished through the run scope. Like
+ * a computer-use participant, the stream registers its trace as actor.json and a feedback
+ * candidate cites that trace, so verify requires the file as evidence.
+ */
 async function finishLiveRun(text: string) {
   await runDryRun({ cwd, dryRun: true, runId: "template" });
   const template = JSON.parse(
@@ -44,7 +50,38 @@ async function finishLiveRun(text: string) {
     runId: RUN,
     mode: "live",
     artifactRoot: path.join(".humanish", "runs", RUN),
-    streams: [{ ...stream!, actor: syntheticActor(text) }],
+    streams: [
+      {
+        ...stream!,
+        actor: syntheticActor(text),
+        artifacts: [
+          ...stream!.artifacts,
+          { label: "actor trace", path: TRACE, kind: "trace" as const },
+        ],
+      },
+    ],
+    feedbackCandidates: [
+      {
+        schema: "humanish.feedback-candidate.v1",
+        id: "participant-report",
+        run_id: RUN,
+        stream_id: stream!.id,
+        adapter_id: "synthetic-app",
+        scenario_id: template.scenario.id,
+        persona_id: template.persona.id,
+        actor: "computer-use",
+        substrate: "e2b-desktop",
+        failure_owner: "target-app",
+        summary: "The participant reported friction.",
+        expected: "Finish the task.",
+        actual: "The participant stopped.",
+        evidence: [{ path: TRACE, kind: "trace", note: "Full actor trace." }],
+        redaction: { status: "passed", notes: "Synthetic text." },
+        idempotency_key: "participant-report",
+        proposed_next_state: "watch",
+        acceptance_proof: ["Read the participant's trace."],
+      },
+    ],
   };
   return runScope(async (scope) => {
     const started = await scope.startRun({

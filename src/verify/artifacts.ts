@@ -84,9 +84,15 @@ function listed(paths: readonly string[]): string {
   return `${paths.slice(0, MAX_LISTED_UNSCANNED).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
+/**
+ * Why each local evidence path the bundle requires is missing or unusable. A path in
+ * `pastReadLimit` is a trace verify found larger than it reads: it exists, and the run grades
+ * local_only because verify lists it as unscanned.
+ */
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
   bundle: RunBundle,
+  pastReadLimit: ReadonlySet<string>,
 ): Promise<string[]> {
   const recordings = new Map(
     bundle.streams.flatMap((stream) =>
@@ -176,7 +182,7 @@ export async function missingLocalEvidenceArtifacts(
 
   // Reads overlap, so one frame's file system calls run while another frame's PNG is checked.
   const found = await mapWithConcurrency(
-    [...requiredPaths],
+    [...requiredPaths].filter(([artifactPath]) => !pastReadLimit.has(artifactPath)),
     EVIDENCE_READ_CONCURRENCY,
     ([artifactPath, requirements]) =>
       missingArtifact(runPaths, artifactPath, requirements, recordings.get(artifactPath)),

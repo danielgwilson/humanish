@@ -97,9 +97,20 @@ describe("analyze --json on a run whose source analysis refuses", () => {
   });
 
   it("names the participant, its trace file and the limit when the trace is larger than analysis reads", async () => {
+    const [stream] = bundle.streams;
+    // The stream registers its trace as the computer-use route does, so verify requires the file.
     const written = await writeRunBundle(runRoot, {
       ...bundle,
-      streams: [{ ...bundle.streams[0]!, actor: syntheticActor("x".repeat(32 * 1024 * 1024)) }],
+      streams: [
+        {
+          ...stream!,
+          actor: syntheticActor("x".repeat(32 * 1024 * 1024)),
+          artifacts: [
+            ...stream!.artifacts,
+            { label: "actor trace", path: "actor.json", kind: "trace" },
+          ],
+        },
+      ],
     });
     const trace = written.streams[0]!.trace!;
     expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("local_only");
