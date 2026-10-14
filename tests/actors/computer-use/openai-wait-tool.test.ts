@@ -203,24 +203,33 @@ describe("the wait_for_change tool", () => {
     ]);
   });
 
-  it("lasts the minutes it names on each quiet turn in a row, with no word of a longer wait", async () => {
+  it("doubles from the minutes it names on each quiet turn in a row, as its description says", async () => {
     const { result, bodies, sentAt } = await runOpenAi([
       waitForChangeReply(1, '{"minutes":3}'),
       waitForChangeReply(2, '{"minutes":3}'),
       doneReply(3),
       doneReply(4),
     ]);
-    expect(watchesOf(result).map((watch) => watch.limitMs)).toEqual([180_000, 180_000]);
-    expect(sentAt.slice(0, 3)).toEqual([0, 180_000, 360_000]);
-    expect(bodies[2]?.input).toMatchObject([
+    expect(watchesOf(result).map((watch) => watch.limitMs)).toEqual([180_000, 360_000]);
+    expect(sentAt.slice(0, 3)).toEqual([0, 180_000, 540_000]);
+    expect(bodies[1]?.input).toMatchObject([
       {
-        call_id: "call_2",
+        call_id: "call_1",
         output: [
           {
-            text: "Your wait lasted 3 minutes; no change on the screen held still long enough to end it.",
+            text: "Your wait lasted 3 minutes; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
           },
           { type: "input_image" },
         ],
+      },
+    ]);
+    expect(bodies[0]?.tools).toMatchObject([
+      { type: "computer" },
+      {
+        name: "wait_for_change",
+        description: expect.stringContaining(
+          "each further wait in a row lasts twice as long as the one before",
+        ),
       },
     ]);
   });

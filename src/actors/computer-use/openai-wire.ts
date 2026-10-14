@@ -324,12 +324,15 @@ export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
 
 /**
  * A function the participant names its wait length with; the computer tool's `wait` names none.
- * Declared on every request, so adding it changes no request's cached prefix after the first.
+ * The minutes set where the doubling of idle turns in a row starts (loop/watch.ts). Declared on
+ * every request, so adding it changes no request's cached prefix after the first. Its description
+ * names no length, since every study shares it; each watch's note states its own.
  */
 const WAIT_FOR_CHANGE_TOOL = {
   type: "function",
   name: "wait_for_change",
-  description: "Wait, then look at the screen again. The wait ends early when the screen changes.",
+  description:
+    "Wait, then look at the screen again. The wait ends early when the screen changes. While nothing changes, each further wait in a row lasts twice as long as the one before.",
   parameters: {
     type: "object",
     properties: {

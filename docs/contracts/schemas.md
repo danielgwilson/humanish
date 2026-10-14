@@ -1082,16 +1082,14 @@ Core-owned fields:
   16 pixels counts once it holds still at a look; one of 24 tiles or fewer once
   it has held still for more than 65 s with no tile within 4 tiles of it ticking
   or moving with a region of more than 24 tiles
-  (`src/evidence/frame-change.ts`). A watch lasts the turn's planned length: the
-  named waits' lengths, together up to `actor.maxWaitMs` (else 600000), and
-  `idleWaitMs` for each wait that names none, and at least `idleWaitMs`. A turn
-  whose waits all name a length lasts that length on every idle turn. A turn
-  with a wait that names none, after the watch of such a turn that ended at its
-  limit or that a change of 24 tiles or fewer woke, lasts twice as long as that
-  watch, up to the larger of its planned length and that cap. A turn whose waits
-  all name a length starts the doubling again. An OpenAI participant names a
-  length with the `wait_for_change` function tool; its computer tool's `wait`
-  names none. `limitMs` is how long it could last; `askedMs` is what the turn's
+  (`src/evidence/frame-change.ts`). The first watch lasts the turn's planned
+  length: the named waits' lengths, together up to `actor.maxWaitMs` (else
+  600000), and `idleWaitMs` for each wait that names none, and at least
+  `idleWaitMs`. Each further one in a row that ended at its limit, or that a
+  change of 24 tiles or fewer woke, lasts twice as long, up to the larger of its
+  planned length and that cap. An OpenAI participant names a length with the
+  `wait_for_change` function tool; its computer tool's `wait` names none.
+  `limitMs` is how long it could last; `askedMs` is what the turn's
   waits asked for, the same sum with no cap, so it is above `limitMs` when the
   named waits passed the cap and below it when the watch grew or the named waits
   were shorter than `idleWaitMs`; `wake` is `changed`, `speech`,
@@ -1174,11 +1172,10 @@ Core-owned fields:
   `actor.idleWaitMs`), and the time between looks at the screen while the loop
   watches such a turn, at most 30000 on a desktop with speech. `settleWaitMs` is
   how long a wait that names no duration lasts after an action in the same turn,
-  and the time to a watch's quick look after a large change. A watch of waits
-  that name no length grows to `actor.maxWaitMs`, else 600000, which
-  `waitSettings` does not record; each watch's `watch.limitMs` does. The named
-  waits of a turn that only waits are watched for their lengths every time,
-  together up to that cap, past `maxWaitMs`. A wait sent to the desktop has a
+  and the time to a watch's quick look after a large change. A watch's length
+  grows to `actor.maxWaitMs`, else 600000, which `waitSettings` does not record;
+  each watch's `watch.limitMs` does. The named waits of a turn that only waits
+  are watched for their lengths, together up to that cap, past `maxWaitMs`. A wait sent to the desktop has a
   `ui_action` titled with its planned length, which a stalled wait keeps. A
   watched wait's `ui_action` is titled with the part of the watch it covered.
   Absent on other routes and on earlier bundles

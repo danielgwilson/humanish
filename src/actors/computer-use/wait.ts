@@ -4,9 +4,8 @@ import type { ActorWaitSettings } from "../contract.js";
 // longest (actor.maxWaitMs) and how long a wait that names no duration lasts while the participant
 // only waits (actor.idleWaitMs). The loop asks planWait for each wait. A turn with another action
 // sends its waits to the desktop in steps one desktop call carries; a turn that only waits watches
-// the screen instead (loop/watch.ts), for its waits' lengths, the named ones together up to
-// watchMaxMs. A turn whose waits all name a length lasts that length every time; one with a wait
-// that names none grows as the watches of idle turns in a row grow.
+// the screen instead (loop/watch.ts), for its waits' lengths and at least idleWaitMs, the named
+// ones together up to watchMaxMs, or longer as the watches of idle turns in a row grow.
 
 export const CUA_WAIT_LIMITS = Object.freeze({
   /**
@@ -23,11 +22,9 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   defaultMaxMs: 120_000,
   /**
    * The longest a watch over an unchanged screen grows to, and the longest the named waits of a
-   * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. A
-   * turn with a wait that names no length, after the watch of another such turn that ended with no
-   * change, lasts twice as long as that watch, so on a static screen such a participant settles at
-   * one model request per 10 minutes. A turn whose waits all name a length lasts that length every
-   * time and starts the doubling again.
+   * turn that only waits are watched for together, when a study does not set actor.maxWaitMs. Each further watch
+   * in a row that ends with no change lasts twice as long as the one before, so on a static screen
+   * a participant settles at one model request per 10 minutes.
    */
   defaultWatchMaxMs: 600_000,
   /**
@@ -62,9 +59,8 @@ export const CUA_WAIT_LIMITS = Object.freeze({
 
 /**
  * The wait lengths one session applies. The trace records the first three as `waitSettings`.
- * `watchMaxMs` is the longest a watch of waits with no length grows to over an unchanged screen
- * and the longest a watched turn's named waits last together, and `lookEveryMs` how often a watch
- * looks.
+ * `watchMaxMs` is the longest a watch grows to over an unchanged screen and the longest a watched
+ * turn's named waits last together, and `lookEveryMs` how often a watch looks.
  */
 export type WaitSettings = Readonly<ActorWaitSettings> & {
   readonly watchMaxMs: number;
@@ -132,7 +128,7 @@ export function waitFieldsReason(
 
 /**
  * The wait lengths a session applies: the study's values, or their defaults. The idle wait never
- * outlasts the longest wait, which on a desktop with speech defaults to 30 s. A watch lasts at most
+ * outlasts the longest wait, which on a desktop with speech defaults to 30 s. A watch grows to
  * actor.maxWaitMs, else 10 minutes, and looks every idle wait, at most every 30 s on a desktop with
  * speech. Throws a RangeError for fields waitFieldsReason refuses.
  */

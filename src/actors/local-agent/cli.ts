@@ -267,11 +267,10 @@ export function promptFor(request: CuaTurnRequest, screenshotPath: string): stri
       "the task is finished, blocked if something in the app stopped you, not_reached if you are " +
       "stopping for another reason. Otherwise outcome is null.",
     "A turn whose actions are only waits ends when the screen changes and holds still, or when its " +
-      "waits' ms pass. A turn whose waits all set ms lasts their ms each time, and at least as long as " +
-      "a wait whose ms is null, together at most the study's longest wait. While no change on the screen holds still, each further turn in a row " +
-      "with a wait whose ms is null lasts twice as long as the one before, up to the study's longest " +
-      "wait. The note from the harness says how long you waited and why it ended. A wait among other " +
-      "actions lasts its ms.",
+      "waits' ms pass, and lasts at least as long as a wait whose ms is null. While no change on the " +
+      "screen holds still, each further turn in a row that only waits lasts twice as long as the one " +
+      "before, up to the study's longest wait, and the note from the harness says how long you " +
+      "waited and why it ended. A wait among other actions lasts its ms.",
     `Reply with ONLY a JSON object of this shape: ${shape}`,
     hint,
   ].join("\n");

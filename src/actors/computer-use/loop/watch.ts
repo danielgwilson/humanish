@@ -20,14 +20,14 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // when a change holds still (evidence/frame-change.ts), speech arrives, a study condition matches,
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
-// A watch lasts the turn's planned length: its waits' named lengths, together up to watchMaxMs, and
-// idleWaitMs for each wait that names none, and at least idleWaitMs. A turn whose waits all name a
-// length lasts that length on every idle turn: the participant chose it. A turn with a wait that
-// names none, after another such turn whose watch ended at its limit or was woken by a small change
-// (at most 24 tiles) that held still, watches twice as long as that watch, up to the longer of its
-// planned length and watchMaxMs. Any other ending, a turn whose waits all name a length, or a turn
-// with another action starts again from the planned length. A participant sending waits with no
-// length on a static screen settles at one request per watchMaxMs.
+// A watch first lasts the turn's planned length: its waits' named lengths, together up to
+// watchMaxMs, and idleWaitMs for each wait that names none, and at least idleWaitMs. Each further
+// idle turn in a row whose watch ended at its limit, or was woken by a small change (at most 24
+// tiles) that held still, watches twice as long, up to the longer of its planned length and
+// watchMaxMs. Any other ending, or a turn with another action, starts again from the planned
+// length. A participant waiting on a static screen settles at one request per watchMaxMs: at the
+// default 10 minutes, one naming 1 minute each turn waits 60, 120, 240 and 480 s, then 10 minutes
+// at a time.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -63,9 +63,8 @@ interface Ending {
 
 /**
  * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
- * doubling counts: the watch of a turn with a wait that names no length, ended at its limit or on
- * a small change, makes the next such turn's longer. A turn whose waits all name a length, or a
- * turn with another action, ends the run.
+ * doubling counts: a watch that ended at its limit or on a small change makes the next one in the
+ * run longer, and a turn with another action ends the run.
  */
 export class IdleWatcher {
   /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
@@ -109,24 +108,20 @@ export class IdleWatcher {
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
     if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
-    // A turn whose waits all name a length lasts that length: the participant chose it.
-    const named = actions.every((action) => action.kind !== "wait" || action.ms !== undefined);
     // Never shorter than idleWaitMs, so a participant naming a few milliseconds on a static screen
     // does not send requests back to back, and never shorter than the turn's own planned length, so
     // a long named wait is not cut short.
     const shortestMs = Math.max(plannedMs, session.waits.idleWaitMs);
     const limitMs =
-      named || this.grownFromMs === undefined
+      this.grownFromMs === undefined
         ? shortestMs
         : Math.min(capMs, Math.max(shortestMs, 2 * this.grownFromMs));
     const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
     // A small change that held still (a status label, or a counter the rule did not hold back)
     // wakes the participant and keeps the doubling, so a repeating small change cannot keep every
-    // watch short. A turn whose waits all name a length starts the run again: the wait after it
-    // that names none lasts idleWaitMs, as its note tells of no longer wait.
+    // watch short.
     const grows =
-      !named &&
-      (ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small));
+      ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small);
     this.grownFromMs = grows ? limitMs : undefined;
     return {
       wake: ending.wake,
