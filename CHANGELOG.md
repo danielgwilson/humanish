@@ -8,43 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 
-- A participant held to a scheduled end (`endAfterMs`) is no longer ended as `gave_up` for reloading
-  a page that changes only on reload. 20 repeats in a row of a recent action on an unchanged screen
-  ended its session: in one of 72 live 60-minute runs on 0.132.0, a participant that reloaded an
-  issue list every 9 seconds was ended at minute 13. Such a streak now ends only a participant
-  without a scheduled end, and a held one whose 20 repeats never reached the desktop, as when each
-  reload's desktop command fails. From the 20th repeat on, humanish watches a held participant's
-  screen after each further repeat before its next request, as after a wait with no length: 5, 10
-  and 20 seconds, doubling up to `actor.maxWaitMs`. The trace records the streak in a `repeated an
-  action on an unchanged screen` notice with its turn count and time span, and review.json lists it
-  in its gaps. In 60-minute live runs with a persona that refreshes every few seconds, 0.133.1
-  ended 3 of 4 as `gave_up` within 7 minutes; this release ran all 4 to their end at a median $3.23
-  an hour (#1873).
-- A participant held to a scheduled end no longer sends model requests back to back with turns of
-  only screenshots or only 0 ms waits. Such a turn after another turn of only waits or screenshots is
-  watched as a wait with no length, `idleWaitMs` and doubling, and its 0 ms waits are not sent to the
-  desktop. The first such turn, at the start or after an action, goes out at once. A watch that no
-  wait carries is recorded on a `watched the screen` notice with the usual `watch` field. Participants
-  without a scheduled end keep their behavior (#1868).
-- A run whose participant's trace passes 32 MiB, the most humanish reads of one file, now finishes.
-  The sandbox id sweep at the end of the run threw when it could not read the trace. It now records
-  each file it could not read in a `sandbox-ids.unresolved` warn event in run.json, and the run goes
-  on. `humanish verify` lists such a trace under `UNSCANNED_ARTIFACT`, grades the run `local_only`
-  and names the trace in its warnings, where it reported the run invalid and exited 2. The Observer
-  shows that participant without its items, and `humanish analyze` refuses the run as
-  `ANALYSIS_SOURCE_TOO_LARGE`, naming the participant and the file (#1877).
+humanish 0.134.0 keeps a participant held to a scheduled end running when it reloads a page that
+changes only on reload. 20 reloads in a row on an unchanged screen ended its session as `gave_up`.
+Now humanish watches the screen after each further reload, as after a wait, so a participant that
+reloads every few seconds costs about what one that waits costs. In 60-minute live runs with a
+persona that refreshes every few seconds, 0.133.1 ended 3 of 4 within 7 minutes; this release ran
+all 4 to their end at a median $3.23 an hour. Trace files are now written as compact JSON, about a
+quarter smaller, and a run whose trace still passes the 32 MiB read limit finishes and grades
+`local_only` where it failed.
 
-### Changed
-
-- Trace files are written as one line of compact JSON. Indented, a trace was 1.36 times its compact
-  size over 236 kept computer-use traces, so a participant now reaches the 32 MiB read limit about
-  1.36 times later. A synthetic participant with 30 MiB of items, repeated from a recorded
-  participant of 78 turns, wrote a 47,068,524-byte trace before and a 34,552,066-byte trace now.
-  run.json stays indented. The bundle estimate counts 3.5 KB of trace a turn where it counted 4.7
-  KB, so a participant at the busiest measured rate passes the trace limit only after about 27
-  hours, longer than a window may last (#1877).
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.134.0)
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
