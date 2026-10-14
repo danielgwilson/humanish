@@ -5,6 +5,7 @@ import {
   joinObserverData,
   type ObserverItems,
   type ObserverShell,
+  type PackedObserverEntry,
   type PackedObserverItems,
 } from "../../src/observer/participant-items.js";
 
@@ -33,12 +34,13 @@ export function readFeedBody(text: string): { data: unknown; items: ObserverItem
   return { data: body.data, items: unpackItems(body.items) };
 }
 
-/** Packed items with each participant's entry decoded. */
+/** Packed items with each participant's entry decoded, keyed by the stream id it carries. */
 export function unpackItems(packed: PackedObserverItems): ObserverItems {
   const streams = Object.create(null) as ObserverItems["streams"];
-  for (const [id, entry] of packed.streams)
-    streams[id] = JSON.parse(
-      gunzipSync(Buffer.from(entry, "base64")).toString("utf8"),
-    ) as ObserverItems["streams"][string];
+  for (const { id, ...entry } of packed.streams.map(decodeEntry)) streams[id] = entry;
   return { ...packed, streams };
 }
+
+/** One packed entry decoded: the stream's entry with its stream id. */
+export const decodeEntry = (packed: string): PackedObserverEntry =>
+  JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8")) as PackedObserverEntry;

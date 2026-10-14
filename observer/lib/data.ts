@@ -140,13 +140,15 @@ async function unpackItems(value: unknown): Promise<ObserverItems | null> {
   // No prototype, so a stream id such as `__proto__` is an entry like any other.
   const streams = Object.create(null) as Record<string, unknown>;
   // One at a time, so the page holds one participant's decoded text at once.
-  for (const pair of packed.streams as unknown[]) {
-    if (!Array.isArray(pair) || pair.length !== 2) return null;
-    const [id, entry] = pair as unknown[];
-    if (typeof id !== "string" || typeof entry !== "string") return null;
-    const text = await gunzipBase64(entry);
+  for (const encoded of packed.streams as unknown[]) {
+    if (typeof encoded !== "string") return null;
+    const text = await gunzipBase64(encoded);
     if (text === null) return null;
-    streams[id] = JSON.parse(text);
+    const entry: unknown = JSON.parse(text);
+    if (typeof entry !== "object" || entry === null) return null;
+    const { id, ...rest } = entry as { id?: unknown };
+    if (typeof id !== "string") return null;
+    streams[id] = rest;
   }
   const items = { schema: packed.schema, runId: packed.runId, streams };
   return isObserverItems(items) ? items : null;

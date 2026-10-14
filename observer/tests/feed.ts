@@ -11,15 +11,14 @@ export function feed(data: ObserverData): string {
 
 /**
  * A feed body recorded with each participant's entry decoded (tests/golden/observer-feed/), as the
- * server sends it: each entry gzip-compressed JSON in base64.
+ * server sends it: each entry with its stream id, gzip-compressed JSON in base64.
  */
 export function packed(body: {
   data: unknown;
   items: { streams: Record<string, unknown> };
 }): string {
-  const streams = Object.entries(body.items.streams).map(([id, entry]) => [
-    id,
-    gzipSync(JSON.stringify(entry)).toString("base64"),
-  ]);
+  const streams = Object.entries(body.items.streams).map(([id, entry]) =>
+    gzipSync(JSON.stringify({ id, ...(entry as object) })).toString("base64"),
+  );
   return JSON.stringify({ ...body, items: { ...body.items, streams } });
 }

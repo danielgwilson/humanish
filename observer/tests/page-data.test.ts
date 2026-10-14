@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ObserverData } from "../../src/observer/data";
@@ -46,7 +47,7 @@ describe("the page's run data", () => {
     const data = await live();
     const filled = injectObserverData(SLOT, data).replace(
       /(<script id="observer-items"[^>]*>)[^<]*/,
-      `$1${JSON.stringify({ schema: "humanish.observer-items.v2", runId: data.run.runId, streams: [[data.streams[0]!.id, "bm90IGd6aXA="]] })}`,
+      `$1${JSON.stringify({ schema: "humanish.observer-items.v2", runId: data.run.runId, streams: ["bm90IGd6aXA="] })}`,
     );
     expect(await readInlineObserverData(page(filled))).toBeNull();
     const missing = injectObserverData(SLOT, data).replace(
@@ -71,15 +72,18 @@ describe("the page's run data", () => {
     const data = await live();
     const body = JSON.parse(feed(data)) as {
       data: unknown;
-      items: { runId: string; streams: [string, string][] };
+      items: { runId: string; streams: string[] };
     };
-    const [[id, packed]] = body.items.streams as [[string, string]];
+    const [packed] = body.items.streams as [string];
+    const id = data.streams[0]!.id;
     for (const items of [
       { ...body.items, runId: "another-run" },
       { ...body.items, streams: [] },
       // Entries as a page before per-participant packing carried them.
       { ...body.items, streams: { [id]: { actor: [] } } },
       { ...body.items, streams: { [id]: packed } },
+      // An entry that does not name its stream.
+      { ...body.items, streams: [gzipSync(JSON.stringify({ actor: [] })).toString("base64")] },
     ]) {
       const served = (async () => ({
         ok: true,

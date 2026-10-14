@@ -65,8 +65,8 @@ function inProgress(count: number): RunBundle {
 /** The cursors a body gives, as the page sends them back; null when it gives none. */
 function cursorsOf(text: string): string | null {
   // Each participant's entry is gzip-compressed JSON in base64.
-  const body = JSON.parse(text) as { items: { streams: [string, string][] } };
-  const cursors = body.items.streams.flatMap(([, packed]) => {
+  const body = JSON.parse(text) as { items: { streams: string[] } };
+  const cursors = body.items.streams.flatMap((packed) => {
     const entry = JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8")) as {
       live?: string;
     };

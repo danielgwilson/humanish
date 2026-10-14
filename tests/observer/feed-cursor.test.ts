@@ -6,7 +6,6 @@
 import { mkdir, mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { gunzipSync } from "node:zlib";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
@@ -20,7 +19,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
 import type { RunStream } from "../../src/run/streams.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
-import { readFeedBody, unpackItems } from "../helpers/observer-page.js";
+import { decodeEntry, readFeedBody, unpackItems } from "../helpers/observer-page.js";
 
 const RUN = "synthetic-feed-cursor";
 const item = (n: number): ActorTraceItem => ({
@@ -172,12 +171,9 @@ describe("the Observer feed's items", () => {
       await run.writeSnapshot(inProgress([a, b], [c]));
       const body = await pollPacked();
       expect(body.items.schema).toBe("humanish.observer-items.v2");
-      expect(body.items.streams.map(([id]) => id)).toEqual(
+      const decoded = body.items.streams.map(decodeEntry);
+      expect(decoded.map((value) => value.id)).toEqual(
         body.data.streams.map((stream) => stream.id),
-      );
-      const decoded = body.items.streams.map(
-        ([, packed]) =>
-          JSON.parse(gunzipSync(Buffer.from(packed, "base64")).toString("utf8")) as FeedEntry,
       );
       expect(decoded.map((value) => ids(value.liveActor))).toEqual([
         ["reasoning-001", "reasoning-002"],

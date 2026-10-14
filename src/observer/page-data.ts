@@ -13,6 +13,7 @@ import { withFeedCursors } from "./feed-cursors.js";
 import {
   splitObserverData,
   type ObserverItems,
+  type PackedObserverEntry,
   type PackedObserverItems,
 } from "./participant-items.js";
 
@@ -43,18 +44,21 @@ export async function observerFeedBody(
   // at a time, so a poll holds one participant's JSON text at once.
   const streams: PackedObserverItems["streams"] = [];
   for (const [id, entry] of Object.entries(cursored.streams)) {
-    const packed = await gzipOnThreadPool(JSON.stringify(entry), { level: constants.Z_BEST_SPEED });
-    streams.push([id, packed.toString("base64")]);
+    const packed = await gzipOnThreadPool(entryText(id, entry), { level: constants.Z_BEST_SPEED });
+    streams.push(packed.toString("base64"));
   }
   return JSON.stringify({ data: shell, items: { ...cursored, streams } });
 }
 
 function packObserverItems(items: ObserverItems): PackedObserverItems {
-  const streams: PackedObserverItems["streams"] = Object.entries(items.streams).map(
-    ([id, entry]) => [id, gzipSync(JSON.stringify(entry)).toString("base64")],
+  const streams = Object.entries(items.streams).map(([id, entry]) =>
+    gzipSync(entryText(id, entry)).toString("base64"),
   );
   return { ...items, streams };
 }
+
+const entryText = (id: string, entry: ObserverItems["streams"][string]): string =>
+  JSON.stringify({ id, ...entry } satisfies PackedObserverEntry);
 
 /** JSON that stays inert inside a script element: no `</script>` breakout, no HTML entities. */
 export function escapeJsonScript(value: unknown): string {

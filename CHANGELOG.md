@@ -49,7 +49,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   page does not update and after 3 polls says the server stopped answering. With 16 such
   participants a poll takes 11.5 to 12.4 seconds and sends 102 MB, where it took 9.2 to 10.1
   seconds and sent 503 MB. Larger runs have not been measured. The page of the recorded
-  8-participant run in `site/public/runs/lobby-0927` grows by 2,442 bytes, 0.2 percent. The study
+  8-participant run in `site/public/runs/lobby-0927` grows by 2,425 bytes, 0.2 percent. The study
   plan no longer warns about traces past 512 MiB, and its warning for an Observer page past 32 MiB
   now says that verify grades the run `local_only`, that `humanish export` refuses it without
   `--local-only`, and that a bundle export fails (#1871).

@@ -46,14 +46,18 @@ export interface ObserverItems {
 }
 
 /**
- * ObserverItems as the page and the feed carry them: each stream's entry as gzip-compressed JSON in
- * base64, so no string holds two participants' items. Each entry is a `[stream id, packed]` pair:
- * as an object key, a stream id such as `GITHUB_TOKEN` before a long base64 value reads to the
- * public-safety scan as a credential.
+ * ObserverItems as the page and the feed carry them: each stream's entry with its stream id, as
+ * gzip-compressed JSON in base64, so no string holds two participants' items. The id goes inside
+ * the entry because the public-safety scan reads the page's plain text: there, `GITHUB_TOKEN`
+ * before a long base64 value reads as a credential, and `https://` with a later
+ * `person@e2b.example` reads as one E2B URL across the base64 between them.
  */
 export interface PackedObserverItems extends Omit<ObserverItems, "streams"> {
-  streams: Array<[id: string, packed: string]>;
+  streams: string[];
 }
+
+/** A packed entry once decoded: the stream's entry with its stream id. */
+export type PackedObserverEntry = ObserverItems["streams"][string] & { id: string };
 
 /** The data as observer-data.json and the page's items carry it. */
 export function splitObserverData(data: ObserverData): {
