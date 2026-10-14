@@ -29,6 +29,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish export --format bundle` joins them as well, once `--max-bytes` is raised past its
   25 MiB default. The Observer fix is #1871. The estimate reaches the limit at 40
   participants working 8 hours. It warns about the Observer page passing 32 MiB from 20. (#1848)
+- A hosted run keeps writing run.json once its finished participants' traces together pass V8's
+  longest string, 536,870,888 characters. The sandbox id scrub serialized the whole bundle, every
+  finished trace included, into one string on each snapshot write and on the final write, so past
+  that size every write threw `RangeError: Invalid string length` before run.json, the trace
+  files, review.json or events.ndjson changed. A bundle export allowed past its 25 MiB default
+  threw the same way in its scrub. The scrub now serializes, scrubs and parses one JSON token at a
+  time, and writes the same bytes as before. The Observer page an export renders still joins every
+  trace in one string. On a synthetic bundle of 25 participants with 30 MiB traces each, a
+  snapshot write took 10.2 seconds and the process peaked at 2.1 GiB, 1.0 GiB of it the bundle
+  itself. On 10 participants with 10 MiB traces, a snapshot write took 1.15 seconds where it took
+  1.73, and the process peaked at 0.57 GiB where it peaked at 1.6 GiB.
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

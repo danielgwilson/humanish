@@ -32,6 +32,7 @@ import {
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
 } from "./sandbox-receipts.js";
+import { escapeRegExp } from "./text.js";
 
 /** How text names a sandbox: the marker with the id's digest. */
 function sandboxIdLabel(id: string): string {
@@ -46,29 +47,103 @@ function yamlSandboxIdLabel(id: string): string {
   return `redacted-sandbox-id-${sandboxIdDigest(id)}`;
 }
 
+/** The scrub of one text: every occurrence of each raw id replaced by its label, longest id first. */
+function idScrub(ids: Iterable<string>, label: (id: string) => string): (text: string) => string {
+  const unique = [...new Set(ids)].filter((id) => id.length > 0);
+  unique.sort((left, right) => right.length - left.length);
+  const labels = unique.map((id): [string, string] => [id, label(id)]);
+  // One scan for any id first, since nearly every token of a trace holds none: on 25 participants'
+  // 750 MiB of trace text, one scan for each id took 6.6 of 7.8 seconds. A text with no id gets
+  // no label, so skipping it changes nothing.
+  const anyId = new RegExp(unique.map(escapeRegExp).join("|"));
+  return (text) =>
+    labels.length === 0 || !anyId.test(text)
+      ? text
+      : labels.reduce((current, [id, replacement]) => current.split(id).join(replacement), text);
+}
+
 /** `text` with every occurrence of each raw id replaced by its label, longest id first. */
 export function scrubSandboxIds(
   text: string,
   ids: Iterable<string>,
   label: (id: string) => string = sandboxIdLabel,
 ): string {
-  const unique = [...new Set(ids)].filter((id) => id.length > 0);
-  unique.sort((left, right) => right.length - left.length);
-  return unique.reduce((current, id) => current.split(id).join(label(id)), text);
+  return idScrub(ids, label)(text);
+}
+
+/** A value JSON.stringify leaves out: an object drops the property, an array writes null. */
+const OMITTED = Symbol("omitted");
+
+/**
+ * JSON.parse(scrub(JSON.stringify(value))), built one JSON token at a time: each string, key,
+ * number, boolean and null is serialized, scrubbed and parsed on its own, following the rules
+ * JSON.stringify applies (toJSON, boxed primitives, members it omits). A run bundle holds every
+ * finished trace, and its whole text can pass V8's longest string. A raw id that holds none of
+ * `{}[],:` lies inside one token of the whole text, so the result is the same. An id holding one
+ * of them could span two tokens there, and this leaves such a span: the sweep at Run.finish
+ * scrubs each written file's whole text, and verify grades a file that still names an id.
+ * `changed` says whether the scrub rewrote any token.
+ */
+function scrubTokens(
+  value: unknown,
+  scrub: (text: string) => string,
+): { value: unknown; changed: boolean } {
+  let changed = false;
+  const token = (primitive: unknown): unknown => {
+    // A bigint throws here, as it did in the whole text's JSON.stringify.
+    const text = JSON.stringify(primitive);
+    const scrubbed = scrub(text);
+    if (scrubbed !== text) changed = true;
+    // An unchanged string parses back to itself. A number parses, so -0 and Infinity read as
+    // JSON.parse reads them. A label that breaks an escape or a quote throws, as before.
+    return typeof primitive === "string" && scrubbed === text ? primitive : JSON.parse(scrubbed);
+  };
+  const property = (key: string, raw: unknown): unknown => {
+    let json = raw;
+    if (json !== null && typeof json === "object" && "toJSON" in json) {
+      const toJSON: unknown = json.toJSON;
+      if (typeof toJSON === "function") json = toJSON.call(json, key) as unknown;
+    }
+    if (json instanceof Number || json instanceof String || json instanceof Boolean)
+      json = json.valueOf();
+    if (json === undefined || typeof json === "function" || typeof json === "symbol")
+      return OMITTED;
+    if (json === null || typeof json !== "object") return token(json);
+    if (Array.isArray(json)) {
+      const items: unknown[] = [];
+      for (let index = 0; index < json.length; index += 1) {
+        const item = property(String(index), json[index]);
+        // The whole text holds `null` there, which an id can occur in.
+        items.push(item === OMITTED ? token(null) : item);
+      }
+      return items;
+    }
+    const entries: [string, unknown][] = [];
+    for (const name of Object.keys(json)) {
+      const item = property(name, (json as Record<string, unknown>)[name]);
+      if (item !== OMITTED) entries.push([token(name) as string, item]);
+    }
+    // fromEntries keeps a key such as __proto__ an own property, and a key that two members
+    // scrub to holds the last value at the first position, as JSON.parse does.
+    return Object.fromEntries(entries);
+  };
+  const scrubbed = property("", value);
+  return { value: scrubbed, changed };
 }
 
 /**
  * `value` as it may be written or returned: ids at the sandbox-id keys become the marker and a
- * digest, and any raw id left in free text or a URL becomes its label.
+ * digest, and any raw id left in free text, a key or a URL becomes its label. When a label
+ * replaces anything, the result is what JSON.parse returns for the scrubbed JSON text; otherwise
+ * it is the key-redacted value. No string built holds more than one token of that text, so a run
+ * bundle's traces are never joined in one string.
  */
 export function publicSandboxView<T>(value: T, ids: Iterable<string>): T {
   const redacted = redactSandboxIds(value);
   const known = [...ids];
   if (known.length === 0) return redacted as T;
-  const text = JSON.stringify(redacted);
-  if (text === undefined) return redacted as T;
-  const scrubbed = scrubSandboxIds(text, known);
-  return (scrubbed === text ? redacted : JSON.parse(scrubbed)) as T;
+  const scrubbed = scrubTokens(redacted, idScrub(known, sandboxIdLabel));
+  return (scrubbed.changed ? scrubbed.value : redacted) as T;
 }
 
 /** The raw sandbox ids a receipts journal names. */
