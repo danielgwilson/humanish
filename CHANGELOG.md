@@ -10,6 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
+  A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
+  next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
+  where it printed 25. In a project that had only a package.json, a second run counts 11 existing
+  paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
+  each directory. (#1882)
 - Reading a run refuses a participant whose actor records a conversation without its requests
   list, and names the participant. Three shapes loaded before: a trace file that leaves out the
   conversation run.json records, a v1 run.json conversation without the list, and a conversation
