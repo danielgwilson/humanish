@@ -367,6 +367,23 @@ describe("scripted gives a renamed step no id that holds a known value", () => {
     expect(trace.steps.map((step: { id: string }) => step.id)).toEqual(["step-01-3", "step-01"]);
   });
 
+  it("passes over a numbered id that holds one when the step's own id is its position id", async () => {
+    const e2b = ["step", "01", "2"].join("-");
+    const result = await runSteps(e2b, ["    - id: step-01", ...firstStep.slice(1)]);
+    expect(result.error).toBeUndefined();
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    expect(await filesHolding(runDir, [e2b])).toEqual([]);
+    const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
+    expect(trace.steps.map((step: { id: string }) => step.id)).toEqual(["step-01-3"]);
+  });
+
+  it("refuses the run when its own id takes the position id and every numbered id holds one", async () => {
+    const e2b = ["", "01", ""].join("-");
+    const result = await runSteps(e2b, ["    - id: step-01", ...firstStep.slice(1)]);
+    expect(result.runId).toBe("not-created");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
+  });
+
   it("refuses the run when the id its position gives holds one", async () => {
     const e2b = ["step", "01"].join("-");
     const result = await runSteps(e2b, firstStep);

@@ -250,8 +250,10 @@ function recordedStepIds(
 /**
  * The id a renamed step takes by its position, such as step-03 for the third step, then step-03-2,
  * step-03-3 and on when another step has it. A known value can be one of these ids, so one that
- * holds a known value is passed over. Of the first taken.size + 1 ids at least one is free, and
- * undefined comes back when each free one holds a known value.
+ * holds a known value is passed over. Every id holds the position id, so a position id that holds a
+ * known value gives undefined at once. Otherwise taken.size + 1 ids that hold no known value are
+ * tried, which includes a free one, as long as known values pass over at most
+ * MAX_KNOWN_VALUE_SKIPS of them; a value such as `-01-` that every numbered id holds gives undefined.
  */
 function positionId(
   index: number,
@@ -259,9 +261,17 @@ function positionId(
   secrets: RunSecrets,
 ): string | undefined {
   const position = `step-${String(index + 1).padStart(2, "0")}`;
-  for (let suffix = 1; suffix <= taken.size + 1; suffix += 1) {
+  if (idHoldsKnownValue(position, secrets)) return undefined;
+  let skips = 0;
+  for (let suffix = 1; suffix <= taken.size + 1 + skips; suffix += 1) {
     const id = suffix === 1 ? position : `${position}-${suffix}`;
-    if (!taken.has(id) && !idHoldsKnownValue(id, secrets)) return id;
+    if (taken.has(id)) continue;
+    if (!idHoldsKnownValue(id, secrets)) return id;
+    if (skips === MAX_KNOWN_VALUE_SKIPS) return undefined;
+    skips += 1;
   }
   return undefined;
 }
+
+// Known values are few, and a numbered id holds one only when the value matches its digits.
+const MAX_KNOWN_VALUE_SKIPS = 32;
