@@ -527,7 +527,7 @@ function formatInitHuman(result: InitResult): string {
     // Name each file init wrote, so the person or agent who ran it can review exactly those
     // files; preserved paths are a count. The empty runtime directories under the ignored
     // `.humanish/` give the reader nothing to review, and leaving them out keeps a first setup
-    // with three next steps on a 24-line screen. JSON always carries every change.
+    // with three next steps to 24 lines. JSON always carries every change.
     const files = (action: InitChange["action"]) =>
       result.changes.filter((change) => change.action === action && change.target !== "runtime");
     const created = files("create");

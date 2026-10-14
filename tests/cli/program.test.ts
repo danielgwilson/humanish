@@ -533,7 +533,7 @@ describe("humanish CLI scaffold", () => {
     });
   });
 
-  it("keeps three next steps on one screen when the host can also run a local browser study", async () => {
+  it("prints three next steps in 24 lines when the host can also run a local browser study", async () => {
     await asFirstTimeUser(async () => {
       const bin = await mkdtemp(path.join(os.tmpdir(), "humanish-signed-in-codex-"));
       try {
