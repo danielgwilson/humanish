@@ -228,7 +228,7 @@ describe("the wait_for_change tool", () => {
       {
         name: "wait_for_change",
         description: expect.stringContaining(
-          "each further wait in a row lasts twice as long as the one before, up to a limit.",
+          "each further wait in a row lasts at least twice as long as the one before, up to a limit.",
         ),
       },
     ]);

@@ -78,9 +78,11 @@ describe("the turn prompt", () => {
     expect(prompt).toContain(
       "only waits and that asks for some wait time ends when the screen changes and holds still",
     );
-    expect(prompt).toContain("and lasts at least as long as a wait whose ms is null");
     expect(prompt).toContain(
-      "each further turn in a row that only waits lasts twice as long as the one before",
+      "or when its waits' ms pass, together at most the study's longest wait, and lasts at least as long as a wait whose ms is null",
+    );
+    expect(prompt).toContain(
+      "each further turn in a row that only waits lasts at least twice as long as the one before",
     );
   });
 });

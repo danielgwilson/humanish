@@ -18,7 +18,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   set where the doubling of quiet turns in a row starts: a participant that names 1 minute on each
   turn of a quiet screen waits 60, 120, 240 and 480 seconds, then 10 minutes at a time, and starts
   again from 1 minute after a large change on the screen. The tool's description says that while
-  nothing changes, each further wait in a row lasts twice as long, up to a limit. Minutes that are
+  nothing changes, each further wait in a row lasts at least twice as long, up to a limit. Minutes that are
   not a finite number above zero make a wait with no length, which lasts `idleWaitMs`. A call to a
   function the participant does not have is answered that there is no such tool and is a wait with
   no length, so a reply of only such a call does not end the session. A call sent with other actions
