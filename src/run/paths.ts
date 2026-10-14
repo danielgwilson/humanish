@@ -101,6 +101,7 @@ export async function prepareRunArtifactPaths(
   if (prepared !== paths.absoluteRunRoot) {
     throw new Error("Run directory resolved outside the expected storage root.");
   }
+  await assertNoSymlinkDescendants(prepared);
   await assertRegularFileOrMissing(paths.absoluteLatestPointer);
   return validatePreparedRunArtifactPaths(await capturePreparedRunArtifactPaths(paths, prepared));
 }
@@ -214,6 +215,7 @@ export async function bindExistingRunArtifactPaths(
   if (!existing || existing !== paths.absoluteRunRoot) {
     throw new Error("Run directory is not an existing humanish run directory.");
   }
+  await assertNoSymlinkDescendants(existing);
   await assertRegularFileOrMissing(paths.absoluteLatestPointer);
   return validatePreparedRunArtifactPaths(await capturePreparedRunArtifactPaths(paths, existing));
 }
