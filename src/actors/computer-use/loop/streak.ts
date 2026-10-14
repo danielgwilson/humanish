@@ -1,4 +1,3 @@
-import { heldToScheduledEnd } from "./clock.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 
@@ -25,12 +24,14 @@ export class StreakRecord {
   /**
    * Fold one turn's streak length, the backstop's consecutiveNoProgress after the turn. A held
    * participant's idle turn leaves the length as it was, and the streak's time span with it. Only
-   * a held participant's streak is followed: any other one ends the session at noProgressSteps.
+   * the streak of a participant with a scheduled end is followed: any other one ends the session
+   * at noProgressSteps. The end may have passed, since the turn that reaches it is still counted.
    */
   fold(turns: number): void {
     const { open, session } = this;
+    const end = session.settings.clock?.end;
     if (turns === 0) this.close();
-    else if (open?.turns !== turns && heldToScheduledEnd(session)) {
+    else if (open?.turns !== turns && end !== undefined && end.kind !== "session_cap") {
       const now = session.now();
       this.open = { turns, fromMs: open?.fromMs ?? now, toMs: now };
     }

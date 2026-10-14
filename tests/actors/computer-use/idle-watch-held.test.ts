@@ -265,7 +265,8 @@ describe("the trace of a held participant's repeats on an unchanged screen", () 
   it("records the streak the session ends in", async () => {
     // Reloads 2 to 20 are seen at 0 s. Watches of 5, 10, 20 and 40 s show reload 24 at 75 s; the
     // wind-down at 90 s ends the next one, so reload 25 is seen at 90 s, and watches start again at
-    // 5 and 10 s: reload 27 is seen at 105 s (1:45). The end at 120 s ends reload 28's watch.
+    // 5 and 10 s: reload 27 is seen at 105 s. Reload 28 was sent, and the end at 120 s (2:00) ends
+    // its watch, so the streak is reloads 2 to 28.
     const run = await runWatching({
       screen: () => QUIET,
       turn: () => turnOf([RELOAD]),
@@ -274,7 +275,7 @@ describe("the trace of a held participant's repeats on an unchanged screen", () 
     expect(streaks(run)).toEqual([
       [
         "warn",
-        "26 turns in a row repeated a recent action on an unchanged screen, from 0:00 to 1:45 into the session. The participant is held to its scheduled end, so 20 such turns did not end its session, and from then on the screen was watched after each one before the next request.",
+        "27 turns in a row repeated a recent action on an unchanged screen, from 0:00 to 2:00 into the session. The participant is held to its scheduled end, so 20 such turns did not end its session, and from then on the screen was watched after each one before the next request.",
         new Date(2 * MINUTE).toISOString(),
       ],
     ]);

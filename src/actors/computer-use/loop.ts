@@ -218,7 +218,11 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const watched = repeat ? await watcher.watchAfterRepeat(turnNumber, observation) : waited;
     conversation.previousExecution = batch.execution;
     // An earlier reply's unknown usage still stops the session before its closing request.
-    if (watched?.stop !== undefined) return unknownSpendStop(session) ?? watched.stop;
+    if (watched?.stop !== undefined) {
+      // The repeat was sent before its watch ended the session, so its streak counts it.
+      if (repeat) session.streak.fold(backstop.consecutiveNoProgress + 1);
+      return unknownSpendStop(session) ?? watched.stop;
+    }
     const checkpoint = await observer.checkpoint(turnNumber, watched?.observation);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
