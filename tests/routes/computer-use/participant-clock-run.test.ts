@@ -24,14 +24,15 @@ import { makeFanoutModule, type FanoutModuleOptions } from "../../helpers/fanout
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
-interface Seen {
-  hint: string | undefined;
-  /** When the turn was requested: the hint was written just before. */
-  atMs: number;
-}
-
-/** A participant that clicks once per turn and ends its own session on turn `endsOn`, if any. */
-function participant(endsOn: number | undefined, seen: Seen[]): CuaProvider {
+/**
+ * A participant that clicks once per turn and ends its own session on turn `endsOn`, if any. It
+ * records each request's clock hint, and each turn moves `clock` on by 100 ms when one is given.
+ */
+function participant(
+  endsOn: number | undefined,
+  hints: (string | undefined)[],
+  clock?: { ms: number },
+): CuaProvider {
   return {
     id: "clock-reader",
     capabilities: {
@@ -45,12 +46,12 @@ function participant(endsOn: number | undefined, seen: Seen[]): CuaProvider {
       license: "open",
     },
     async nextTurn(request: CuaTurnRequest) {
-      seen.push({ hint: request.contextHint, atMs: Date.now() });
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      if (seen.length === endsOn)
+      hints.push(request.contextHint);
+      if (clock !== undefined) clock.ms += 100;
+      if (hints.length === endsOn)
         return { actions: [], pendingSafetyChecks: [], done: true, message: "REACHED THE GOAL." };
       return {
-        actions: [{ kind: "click", x: 10 + seen.length, y: 20 }],
+        actions: [{ kind: "click", x: 10 + hints.length, y: 20 }],
         pendingSafetyChecks: [],
         done: false,
         message: "Checking the time again.",
@@ -119,11 +120,6 @@ async function terminalZoneOnBash(script: string, dir: string): Promise<string> 
   return readFile(seen, "utf8");
 }
 
-/** The UTC hour at `atMs` moved by `hours`, as the two digits a clock hint shows. */
-function hourAt(atMs: number, hours: number): string {
-  return String((new Date(atMs).getUTCHours() + hours + 24) % 24).padStart(2, "0");
-}
-
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-participant-clock-"));
@@ -152,12 +148,20 @@ describe("participants in different time zones", () => {
     );
     if (!parsed.ok) throw new Error(parsed.error.message);
     const handle = makeFanoutModule();
-    const seen = { london: [] as Seen[], tokyo: [] as Seen[], plain: [] as Seen[] };
+    const seen: Record<"london" | "tokyo" | "plain", (string | undefined)[]> = {
+      london: [],
+      tokyo: [],
+      plain: [],
+    };
+    // The run's clock, 05:13 UTC, moved only by Tokyo's turns. A session with an end reads this
+    // clock, so Tokyo's wind-down and cap fall on the same turns however long a turn takes.
+    const clock = { ms: Date.UTC(2026, 0, 15, 5, 13) };
     const outcome = await runStudyWith(
       parsed.config,
       { cwd, env: KEYS },
       {
         desktopModule: async () => handle.module,
+        now: () => clock.ms,
         runSession: async (options: CuaActorSessionOptions) => {
           const id = options.instructions.includes("London")
             ? "london"
@@ -166,7 +170,8 @@ describe("participants in different time zones", () => {
               : "plain";
           return runCuaActorSession({
             ...options,
-            provider: participant(id === "tokyo" ? undefined : 2, seen[id]),
+            provider:
+              id === "tokyo" ? participant(undefined, seen.tokyo, clock) : participant(2, seen[id]),
           });
         },
         analysis: { run: vi.fn() },
@@ -186,17 +191,18 @@ describe("participants in different time zones", () => {
 
     // The clock hint. Tokyo is UTC+9 all year; London changes with daylight saving time, so only
     // its zone name is checked.
-    expect(seen.london[0]?.hint).toMatch(/^The local time is \d\d:\d\d \(Europe\/London\)\.$/);
-    const tokyoFirst = seen.tokyo[0]!;
-    expect(tokyoFirst.hint).toMatch(
-      new RegExp(`^The local time is ${hourAt(tokyoFirst.atMs, 9)}:\\d\\d \\(Asia/Tokyo\\)\\.$`),
-    );
-    expect(seen.plain.map((turn) => turn.hint)).toEqual([undefined, undefined]);
-    // The cap's notice gives its end in the participant's zone: without one it would end in UTC.
-    // The end is rounded to the minute, so its hour is not checked against the turn's.
-    expect(seen.tokyo.at(-1)?.hint).toMatch(
-      /^The local time is \d\d:\d\d \(Asia\/Tokyo\)\. Your session ends at \d\d:\d\d at the latest, in 1 minute\./,
-    );
+    expect(seen.london[0]).toMatch(/^The local time is \d\d:\d\d \(Europe\/London\)\.$/);
+    expect(seen.plain).toEqual([undefined, undefined]);
+    // The run starts at 05:13 UTC, which is 14:13 in Tokyo. Each turn takes 100 ms on the run's
+    // clock, so the wind-down starts 500 ms in, at the sixth request, and the cap ends the session
+    // after the fifteenth. The cap's notice gives its end in the participant's zone: without one it
+    // would read 05:13 UTC.
+    const local = "The local time is 14:13 (Asia/Tokyo).";
+    const notice = `${local} Your session ends at 14:13 at the latest, in 1 minute.`;
+    expect(seen.tokyo).toEqual([
+      ...Array<string>(5).fill(local),
+      ...Array<unknown>(10).fill(expect.stringContaining(notice)),
+    ]);
 
     // run.json records each participant's zone on its stream.
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId!);
@@ -214,14 +220,13 @@ describe("participants in different time zones", () => {
     );
     if (!parsed.ok) throw new Error(parsed.error.message);
     const handle = makeFanoutModule();
-    const seen: Seen[] = [];
     const outcome = await runStudyWith(
       parsed.config,
       { cwd, env: KEYS },
       {
         desktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) =>
-          runCuaActorSession({ ...options, provider: participant(1, seen) }),
+          runCuaActorSession({ ...options, provider: participant(1, []) }),
         analysis: { run: vi.fn() },
       },
     );

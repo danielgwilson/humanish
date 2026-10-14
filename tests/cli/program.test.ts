@@ -5,7 +5,7 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "n
 import { connect as netConnect, createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 
 import { createProgram, normalizeCliArgv } from "../../src/cli/program.js";
 import { formatCuaStudyHuman } from "../../src/cli/commands/study-format.js";
@@ -80,6 +80,28 @@ async function withTempApp<T>(
     return await callback(cwd);
   } finally {
     await rm(cwd, { force: true, recursive: true });
+  }
+}
+
+/**
+ * Runs `callback` on what a first-time user's machine has: a new empty home directory, so no
+ * signed-in Codex or Claude Code and no stored key, and no *_API_KEY, *_TOKEN or HUMANISH_
+ * variable from the shell that started the suite. DO_NOT_TRACK from the suite's config stays, so
+ * telemetry stays off.
+ */
+async function asFirstTimeUser<T>(callback: () => Promise<T>): Promise<T> {
+  const home = await mkdtemp(path.join(os.tmpdir(), "humanish-first-time-home-"));
+  try {
+    for (const name of Object.keys(process.env))
+      if (name.startsWith("HUMANISH_") || /_API_KEY$|_TOKEN$/.test(name))
+        vi.stubEnv(name, undefined);
+    for (const name of ["XDG_CONFIG_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR"])
+      vi.stubEnv(name, undefined);
+    vi.stubEnv("HOME", home);
+    return await callback();
+  } finally {
+    vi.unstubAllEnvs();
+    await rm(home, { force: true, recursive: true });
   }
 }
 
@@ -443,11 +465,8 @@ describe("humanish CLI scaffold", () => {
   });
 
   it("names each file setup wrote and keeps the next action on one screen", async () => {
-    await withTempApp(
-      {
-        "package.json": JSON.stringify({ name: "fixture-app" }),
-      },
-      async (cwd) => {
+    await asFirstTimeUser(() =>
+      withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }) }, async (cwd) => {
         const plan = await runCli(["init", "--dry-run", "--cwd", cwd]);
         expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
         const applied = await runCli(["init", "--yes", "--cwd", cwd]);
@@ -465,7 +484,10 @@ describe("humanish CLI scaffold", () => {
         );
         expect(lines.find((line) => line.startsWith("  package.json"))).toBeDefined();
         const next = lines.slice(lines.indexOf("next:"));
-        expect(next[1]).toBe("  humanish run first-run");
+        expect(next.filter((line) => /^ {2}\S/.test(line))).toEqual([
+          "  humanish run first-run",
+          "  humanish keys set e2b",
+        ]);
         const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
         expect(JSON.parse(details.stdout).changes).toContainEqual(
           expect.objectContaining({
@@ -473,8 +495,28 @@ describe("humanish CLI scaffold", () => {
             action: "skip",
           }),
         );
-      },
+      }),
     );
+  });
+
+  it("names the hosted live study next when the E2B and OpenAI keys are set", async () => {
+    await asFirstTimeUser(async () => {
+      vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+      vi.stubEnv("E2B_API_KEY", "test-e2b-key");
+      await withTempApp(
+        { "package.json": JSON.stringify({ name: "fixture-app" }) },
+        async (cwd) => {
+          const applied = await runCli(["init", "--yes", "--cwd", cwd]);
+          expect(applied.exitCode).toBe(0);
+          const lines = applied.stdout.trimEnd().split("\n");
+          const next = lines.slice(lines.indexOf("next:"));
+          expect(next.filter((line) => /^ {2}\S/.test(line))).toEqual([
+            "  humanish run first-run",
+            "  humanish run try-live",
+          ]);
+        },
+      );
+    });
   });
 
   it("keeps preservation warnings visible in compact setup output", async () => {
