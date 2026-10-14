@@ -6,7 +6,7 @@ import {
   type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
 
-// A participant that waits with wait_for_change, carried by the client (explicit_context): every
+// A participant that waits with wait_minutes, carried by the client (explicit_context): every
 // function call travels with its output, the outputs' screenshots count toward the budget, and
 // once old turns become the progress note, the note says how the participant waited and how each
 // wait ended.
@@ -36,7 +36,7 @@ const thought = (n: number) => ({
   encrypted_content: `enc-${n}`,
 });
 
-/** Turn `n`'s reply: a reasoning summary and one wait_for_change call of 3 minutes. */
+/** Turn `n`'s reply: a reasoning summary and one wait_minutes call of 3 minutes. */
 function waitReply(n: number): Record<string, unknown> {
   return {
     id: `resp_${n}`,
@@ -47,7 +47,7 @@ function waitReply(n: number): Record<string, unknown> {
         type: "function_call",
         id: `fc_${n}`,
         call_id: `call_${n}`,
-        name: "wait_for_change",
+        name: "wait_minutes",
         arguments: '{"minutes":3}',
         status: "completed",
       },
@@ -101,7 +101,7 @@ async function runTurns(
   return { bodies, provider };
 }
 
-describe("wait_for_change in an explicit-context conversation", () => {
+describe("wait_minutes in an explicit-context conversation", () => {
   it("carries each call with its output, in order, and no previous_response_id", async () => {
     const { bodies } = await runTurns(5, waitReply);
     const fifth = bodies[4]!;
@@ -137,7 +137,7 @@ describe("wait_for_change in an explicit-context conversation", () => {
     expect(note.role).toBe("assistant");
     const line = note.content[0]!.text.split("\n").find((text) => text.startsWith("Turn 3: "));
     expect(line).toBe(
-      `Turn 3: thought: turn-3 thought: the queue is empty; did: wait_for_change {"minutes":3}; was told: ${HINT}`,
+      `Turn 3: thought: turn-3 thought: the queue is empty; did: wait_minutes {"minutes":3}; was told: ${HINT}`,
     );
   });
 });

@@ -30,7 +30,7 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   /**
    * How long a wait that names no duration lasts in a turn that only waits or takes screenshots,
    * when a study does not set actor.idleWaitMs. OpenAI's computer tool `wait` names no duration;
-   * its wait_for_change function names one in minutes. A participant told to wait about a minute
+   * its wait_minutes function names one in minutes. A participant told to wait about a minute
    * sent ten computer tool waits in one turn, which lasts 50 s at this length; one wait a turn
    * makes a one-minute wait about six turns. It is also the shortest a watch lasts and how often
    * it looks.

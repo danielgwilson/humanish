@@ -7,7 +7,7 @@ import type { CuaAction } from "./loop.js";
 // session keeps everything before the switch.
 //
 // The Responses API pairs items: every computer_call needs its computer_call_output, every
-// function_call (wait_for_change) its function_call_output, and a reasoning item travels with the
+// function_call (wait_minutes) its function_call_output, and a reasoning item travels with the
 // item it preceded. The conversation is therefore cut only at exchange boundaries: one reply's
 // output items together with the items that answered them. When the estimate passes the budget, the
 // conversation is cut down to half the budget in one step: the opening screenshot goes first, then
@@ -214,7 +214,7 @@ function describeExchange(exchange: CarriedExchange): string {
         if (mapped !== null) did.push(describeAction(mapped));
       }
     }
-    // A function call is noted as it was made, such as wait_for_change {"minutes":3}.
+    // A function call is noted as it was made, such as wait_minutes {"minutes":3}.
     if (item.type === "function_call" && typeof item.name === "string")
       did.push(
         typeof item.arguments === "string"

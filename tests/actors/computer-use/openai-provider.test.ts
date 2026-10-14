@@ -375,7 +375,7 @@ describe("request builders", () => {
     // 2026-06; sending them returns 400 "Unknown parameter tools[0].display_width").
     expect(body.tools).toEqual([
       { type: "computer" },
-      expect.objectContaining({ type: "function", name: "wait_for_change" }),
+      expect.objectContaining({ type: "function", name: "wait_minutes" }),
     ]);
     expect(body.truncation).toBe("auto");
     expect(body.reasoning).toEqual({ effort: "medium" });

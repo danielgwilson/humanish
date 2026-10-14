@@ -127,19 +127,19 @@ export interface ParsedOpenAiResponse {
   outputItems: unknown[];
 }
 
-/** A function call a reply made: its id, and its name, which is wait_for_change unless it erred. */
+/** A function call a reply made: its id, and its name, which is WAIT_TOOL_NAME unless it erred. */
 export interface FunctionCall {
   readonly callId: string;
   readonly name: string;
 }
 
 /**
- * A wait_for_change call as a wait of the minutes it names, in whole milliseconds and at least 1.
+ * A wait_minutes call as a wait of the minutes it names, in whole milliseconds and at least 1.
  * The session's caps then apply as to any named wait, and the trace records the length as named.
  * Arguments that do not parse, or minutes that are not a finite number above zero, make a wait
  * that names no length, as the computer tool's `wait` does.
  */
-function waitForChangeAction(args: unknown): CuaAction {
+function waitMinutesAction(args: unknown): CuaAction {
   let minutes: unknown;
   try {
     minutes = asRecord(JSON.parse(asString(args))).minutes;
@@ -253,7 +253,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
         // A call to a tool that does not exist is a wait with no length, and its output says there
         // is no such tool. A reply of only such calls is then an idle turn, so the session goes on.
         actions.push(
-          name === "wait_for_change" ? waitForChangeAction(item.arguments) : { kind: "wait" },
+          name === WAIT_TOOL_NAME ? waitMinutesAction(item.arguments) : { kind: "wait" },
         );
         break;
       }
@@ -325,21 +325,24 @@ export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
 /**
  * A function the participant names its wait length with; the computer tool's `wait` names none.
  * The minutes set where the doubling of idle turns in a row starts (loop/watch.ts). Declared on
- * every request, so adding it changes no request's cached prefix after the first. Its description
- * names no length, since every study shares it, and states no schedule, which a participant
- * copies; each watch's note says how long it lasted.
+ * every request, so adding it changes no request's cached prefix after the first. Its name and
+ * description say nothing of the screen or of later waits: participants told that a wait ends when
+ * the screen changes treated waiting as watching and stopped reloading a page that updates only on
+ * reload, and participants told a schedule copied it. Each watch's note says how long it lasted.
  */
-const WAIT_FOR_CHANGE_TOOL = {
+export const WAIT_TOOL_NAME = "wait_minutes";
+
+const WAIT_TOOL = {
   type: "function",
-  name: "wait_for_change",
+  name: WAIT_TOOL_NAME,
   description:
-    "Wait, then look at the screen again. The wait ends early when something on the screen changes; it does not reload anything. When waits come one after another, a later one can last longer than asked, up to a limit.",
+    "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
   parameters: {
     type: "object",
     properties: {
       minutes: {
         type: "number",
-        description: "How long to wait before looking again, in minutes.",
+        description: "How long you want to wait, in minutes.",
       },
     },
     required: ["minutes"],
@@ -377,7 +380,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // The Responses API `computer` tool takes no display/environment fields; the model infers
     // resolution from the screenshots it is sent. (Sending display_* returns a 400
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
-    tools: [{ type: "computer" }, WAIT_FOR_CHANGE_TOOL],
+    tools: [{ type: "computer" }, WAIT_TOOL],
     truncation: "auto",
     // `summary` asks for the provider-sanctioned reasoning summary items; the
     // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by

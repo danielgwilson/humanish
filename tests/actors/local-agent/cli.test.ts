@@ -70,21 +70,18 @@ describe("the action vocabulary a local agent answers in", () => {
 });
 
 describe("the turn prompt", () => {
-  it("tells Claude Code that a turn of only waits returns on a change, lasts at least a null-ms wait, does not reload, and can last longer in a row", () => {
+  it("tells Claude Code how long a turn of only waits can last and says nothing about the screen", () => {
     const prompt = promptFor(
       { instructions: "Wait for the reply.", observation: observation() },
       "/tmp/turn.png",
     );
     expect(prompt).toContain(
-      "only waits and that asks for some wait time ends when the screen changes and holds still",
+      "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; it lasts at least as long as a wait whose ms is null and at most the study's longest wait",
     );
     expect(prompt).toContain(
-      "or when its waits' ms pass, together at most the study's longest wait, and lasts at least as long as a wait whose ms is null",
+      "the note from the harness says how long you waited and why it ended.",
     );
-    expect(prompt).toContain("It does not reload anything.");
-    expect(prompt).toContain(
-      "When such turns come one after another, a later one can last longer than its ms, up to the study's longest wait",
-    );
+    expect(prompt).not.toMatch(/screen changes|reload|longer than/);
   });
 });
 

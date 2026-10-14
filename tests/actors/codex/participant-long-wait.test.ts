@@ -190,20 +190,17 @@ describe("a Codex participant that asks for a long wait", () => {
     { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000, shortest: 5_000 },
     { options: { idleWaitMs: 60_000 }, perWait: 120_000, watched: 600_000, shortest: 60_000 },
   ])(
-    "is told a call of only waits lasts $shortest to $watched ms, can last longer in a row, and a wait among other actions at most $perWait ms",
+    "is told a call of only waits lasts $shortest to $watched ms, with nothing about the screen, and a wait among other actions at most $perWait ms",
     async ({ options, perWait, watched, shortest }) => {
       await waitInCall(1_000, options);
 
       expect(native.descriptions[0]).toContain(
-        "A call whose actions are only waits and that asks for some wait time returns when",
+        `A call whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; it waits at least ${shortest} ms and at most ${watched} ms`,
       );
       expect(native.descriptions[0]).toContain(
-        `after its waits' ms, together at least ${shortest} ms and at most ${watched} ms.`,
+        "contextHint says how long it waited and why it returned.",
       );
-      expect(native.descriptions[0]).toContain("It does not reload anything.");
-      expect(native.descriptions[0]).toContain(
-        `When such calls come one after another, a later one can wait longer than its ms, up to ${watched} ms`,
-      );
+      expect(native.descriptions[0]).not.toMatch(/screen changes|reload|longer than/);
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },
   );

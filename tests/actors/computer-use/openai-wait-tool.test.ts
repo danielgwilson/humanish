@@ -15,7 +15,7 @@ import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { MINUTE, QUIET, waitItems, watchesOf } from "../../helpers/watching-loop.js";
 
-// An OpenAI participant offered a wait_for_change function next to the computer tool, so it can
+// An OpenAI participant offered a wait_minutes function next to the computer tool, so it can
 // name how long it waits, as Codex and Claude Code participants do. The desktop's screen never
 // changes and the clock moves only when the loop sleeps, so request times are exact.
 
@@ -35,7 +35,7 @@ const computerWaitReply = (n: number) => ({
   ],
 });
 
-/** A reply whose only output is one wait_for_change call with `args` as its arguments. */
+/** A reply whose only output is one wait_minutes call with `args` as its arguments. */
 const waitForChangeReply = (n: number, args: string) => ({
   id: `resp_${n}`,
   status: "completed",
@@ -44,7 +44,7 @@ const waitForChangeReply = (n: number, args: string) => ({
       type: "function_call",
       id: `fc_${n}`,
       call_id: `call_${n}`,
-      name: "wait_for_change",
+      name: "wait_minutes",
       arguments: args,
     },
   ],
@@ -69,8 +69,8 @@ const replyOf = (n: number, ...output: unknown[]) => ({
   status: "completed",
   output,
 });
-/** A function call item, wait_for_change unless `name` says otherwise. */
-const fnCall = (callId: string, args: string, name = "wait_for_change") => ({
+/** A function call item, wait_minutes unless `name` says otherwise. */
+const fnCall = (callId: string, args: string, name = "wait_minutes") => ({
   type: "function_call",
   id: `fc_${callId}`,
   call_id: callId,
@@ -156,7 +156,7 @@ async function runOpenAi(
   return { result, bodies, sentAt, executed };
 }
 
-describe("the wait_for_change tool", () => {
+describe("the wait_minutes tool", () => {
   it("is offered next to the computer tool on every request, the closing one included", async () => {
     const { bodies } = await runOpenAi([
       computerWaitReply(1),
@@ -168,7 +168,7 @@ describe("the wait_for_change tool", () => {
       { type: "computer" },
       {
         type: "function",
-        name: "wait_for_change",
+        name: "wait_minutes",
         parameters: { properties: { minutes: { type: "number" } }, required: ["minutes"] },
       },
     ]);
@@ -203,7 +203,7 @@ describe("the wait_for_change tool", () => {
     ]);
   });
 
-  it("doubles from the minutes it names on each quiet turn in a row, and says only that a later wait can last longer", async () => {
+  it("doubles from the minutes it names on each quiet turn in a row, and its description says nothing about the screen", async () => {
     const { result, bodies, sentAt } = await runOpenAi([
       waitForChangeReply(1, '{"minutes":3}'),
       waitForChangeReply(2, '{"minutes":3}'),
@@ -226,9 +226,9 @@ describe("the wait_for_change tool", () => {
     expect(bodies[0]?.tools).toMatchObject([
       { type: "computer" },
       {
-        name: "wait_for_change",
+        name: "wait_minutes",
         description:
-          "Wait, then look at the screen again. The wait ends early when something on the screen changes; it does not reload anything. When waits come one after another, a later one can last longer than asked, up to a limit.",
+          "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
       },
     ]);
   });
@@ -263,7 +263,7 @@ describe("the wait_for_change tool", () => {
   });
 });
 
-describe("the wait_for_change tool beside other calls", () => {
+describe("the wait_minutes tool beside other calls", () => {
   it("answers each of several calls in one reply once, with the screen and the note in the first", async () => {
     const { result, bodies } = await runOpenAi([
       replyOf(1, fnCall("call_a", '{"minutes":2}'), fnCall("call_b", '{"minutes":1}')),
@@ -335,7 +335,7 @@ describe("the wait_for_change tool beside other calls", () => {
         type: "function_call_output",
         call_id: "call_w",
         output:
-          "A wait sent with other actions does not end early when the screen changes. Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
+          "Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
       },
     ]);
   });
@@ -399,7 +399,7 @@ describe("the wait_for_change tool beside other calls", () => {
   });
 });
 
-describe("a wait_for_change call in a batch rejected before dispatch", () => {
+describe("a wait_minutes call in a batch rejected before dispatch", () => {
   it("does not say a wait ran with other actions when the batch was rejected before it", async () => {
     const attempted: CuaAction[] = [];
     const { bodies, sentAt } = await runOpenAi(
@@ -425,13 +425,11 @@ describe("a wait_for_change call in a batch rejected before dispatch", () => {
     expect(attempted.map((action) => action.kind)).toEqual(["click"]);
     expect(sentAt.slice(0, 2)).toEqual([0, 0]);
     const output = (bodies[1]!.input[1] as { output: string }).output;
-    expect(output).toMatch(
-      /^A wait sent with other actions does not end early when the screen changes\. Your action \(click \(10, 10\)\) was rejected before dispatch\./,
-    );
+    expect(output).toMatch(/^Your action \(click \(10, 10\)\) was rejected before dispatch\./);
   });
 });
 
-describe("a wait_for_change answer with no frame", () => {
+describe("a wait_minutes answer with no frame", () => {
   it("is refused as a computer_call answer is, not sent as text alone", async () => {
     const reply = waitForChangeReply(1, '{"minutes":1}');
     const provider = createOpenAiResponsesProvider({
@@ -475,7 +473,7 @@ describe("the trace of a wait", () => {
       ["wait 180000ms", 180_000],
       ["wait 30000ms", 30_000],
     ]);
-    // The affordance record classes a wait_for_change call as a wait: observation.
+    // The affordance record classes a wait_minutes call as a wait: observation.
     expect(result.trace.affordanceUse?.counts).toEqual({ observation: 3, pointer: 1 });
   });
 
@@ -494,7 +492,7 @@ describe("the trace of a wait", () => {
   });
 });
 
-describe("the minutes a wait_for_change call names", () => {
+describe("the minutes a wait_minutes call names", () => {
   it.each([
     { args: '{"minutes":0.5}', becomes: "a 30-second wait", askedMs: 30_000, limitMs: 30_000 },
     { args: "{minutes: 3}", becomes: "a wait with no length", askedMs: 5_000, limitMs: 5_000 },

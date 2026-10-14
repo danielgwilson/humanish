@@ -1088,7 +1088,7 @@ Core-owned fields:
   `idleWaitMs`. Each further one in a row that ended at its limit, or that a
   change of 24 tiles or fewer woke, lasts twice as long, up to the larger of its
   planned length and that cap. An OpenAI participant names a length with the
-  `wait_for_change` function tool; its computer tool's `wait` names none.
+  `wait_minutes` function tool; its computer tool's `wait` names none.
   `limitMs` is how long it could last; `askedMs` is what the turn's
   waits asked for, the same sum with no cap, so it is above `limitMs` when the
   named waits passed the cap and below it when the watch grew or the named waits
@@ -1106,9 +1106,9 @@ Core-owned fields:
 - optional `items[].namedMs`, on the computer-use `ui_action` of each wait that
   named its length: that length in milliseconds, as the participant named it,
   before `actor.maxWaitMs` or the watch's cap applied. An OpenAI participant
-  names a length only through `wait_for_change`, so its waits with `namedMs` are
+  names a length only through `wait_minutes`, so its waits with `namedMs` are
   that tool's calls. Its waits without it are the computer tool's `wait`, a
-  `wait_for_change` call whose minutes were not a finite number above zero, and
+  `wait_minutes` call whose minutes were not a finite number above zero, and
   a call to a function it does not have. Additive: absent on waits that named
   none, other items and producers, and older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
@@ -1195,7 +1195,7 @@ Core-owned fields:
   64,000 input tokens it is cut down to 32,000 in one step: the opening
   screenshot is dropped first, then the oldest exchanges become lines of a note,
   sent as an assistant message, that keeps their reasoning summaries, messages,
-  actions and `wait_for_change` calls as text, with any text that came back with
+  actions and `wait_minutes` calls as text, with any text that came back with
   their screenshots or in a function call's output, such as how a wait ended.
   Past 32,000 characters the note keeps its first four lines and its newest
   ones, and names the turns between them as not listed.

@@ -11,21 +11,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 ### Added
 
 - An OpenAI computer-use participant can name how long it waits, as Codex and Claude Code
-  participants do. Every request, from the first, offers a `wait_for_change` function tool with one
+  participants do. Every request, from the first, offers a `wait_minutes` function tool with one
   field, `minutes`, next to the computer tool, so the cached prompt prefix does not change. A call
   in a turn of only waits is watched for its minutes: it ends early when the screen changes, and
   lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. The named minutes
   set where the doubling of quiet turns in a row starts: a participant that names 1 minute on each
   turn of a quiet screen waits 60, 120, 240 and 480 seconds, then 10 minutes at a time, and starts
-  again from 1 minute after a large change on the screen. The tool's description says the wait ends
-  early when something on the screen changes, that it does not reload anything, and that a later
-  wait in a row can last longer than asked; it states no schedule, for the reason under Changed.
-  Minutes that are not a finite number above zero make a wait with no length, which lasts
-  `idleWaitMs`. A call to a function the participant does not have is answered that there is no
-  such tool and is a wait with no length, so a reply of only such a call does not end the session.
-  A call sent with other actions
-  goes to the desktop for at most `actor.maxWaitMs`, as any such wait does, and its output says such
-  a wait does not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the
+  again from 1 minute after a large change on the screen. The tool's description is "Wait, then
+  get a new screenshot. The reply says how long the wait lasted and why it ended." It says nothing
+  of the screen or of later waits, for the reasons under Changed. Minutes that are not a finite
+  number above zero make a wait with no length, which lasts `idleWaitMs`. A call to a function the
+  participant does not have is answered that there is no such tool and is a wait with no length,
+  so a reply of only such a call does not end the session. A call sent with other actions goes to
+  the desktop for at most `actor.maxWaitMs`, as any such wait does. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the
   tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
   pages, and 1 minute on each of 14 turns on a page it had to reload. LIVE_AT_MERGE: the A/B
   experiment's model spend per participant-hour and requests per hour against 0.132.0 go here. Each
