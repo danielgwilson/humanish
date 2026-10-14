@@ -8,6 +8,17 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The detectors, recorded, so a test can read every text the scan hands them.
+vi.mock("../../src/evidence/redaction.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/evidence/redaction.js")>();
+  return {
+    ...actual,
+    containsSensitive: vi.fn(actual.containsSensitive),
+    containsSandboxUrl: vi.fn(actual.containsSandboxUrl),
+  };
+});
+
+import { containsSandboxUrl, containsSensitive } from "../../src/evidence/redaction.js";
 import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -74,14 +85,36 @@ describe("verify's decoded run scan", () => {
     );
   });
 
+  it("finds a key beside the participants that only the decoded run shows", async () => {
+    const stored = await writeParticipants(TEXTS);
+    // run.json writes `events` after `streams`, so the scan reads it with the last participant.
+    stored.events.push({
+      id: "event-note",
+      at: stored.createdAt,
+      level: "info",
+      type: "note",
+      message: "NOTE",
+    });
+    const text = `${JSON.stringify(stored, null, 2)}\n`.replace('"NOTE"', `"${ESCAPED_KEY}"`);
+    await writeFile(path.join(runDir, "run.json"), text);
+    const verified = await verifyRun(cwd, RUN);
+    expect(verified.shareSafety.status).toBe("blocked");
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.message).toBe(
+      "public-safety findings: sensitive decoded run.json",
+    );
+  });
+
   it("holds no two participants' traces in one string", async () => {
     await writeParticipants(TEXTS);
+    const detectors = [vi.mocked(containsSensitive), vi.mocked(containsSandboxUrl)];
+    for (const detector of detectors) detector.mockClear();
     const stringify = vi.spyOn(JSON, "stringify");
     const verified = await verifyRun(cwd, RUN);
     const results = stringify.mock.results.map((result) => result.value as unknown);
     stringify.mockRestore();
+    const scanned = detectors.flatMap((detector) => detector.mock.calls.map(([text]) => text));
     expect(verified.shareSafety.status).toBe("share_ready");
-    const joined = results.filter(
+    const joined = [...results, ...scanned].filter(
       (value) =>
         typeof value === "string" && TEXTS.filter((text) => value.includes(text)).length > 1,
     );

@@ -16,9 +16,11 @@
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
-// The page and the Observer server join every participant's items in one string before gzip, and
-// V8's longest string is 536,870,888 characters on Node 24. A trace file's bytes are at least the
-// characters of its items as compact JSON, so comparing the traces' bytes warns early, never late.
+// The Observer page and the Observer server join every participant's items in one string before
+// gzip. On a hosted desktop the sandbox id scrub (publicSandboxView) does too, on every write of
+// run.json and on feedback export of the loaded run. V8's longest string is 536,870,888 characters
+// on Node 24. A trace file's bytes are at least the characters of its items as compact JSON, so the
+// estimate compares the traces' bytes and may warn a little early.
 
 import { constants } from "node:buffer";
 
@@ -117,7 +119,10 @@ export interface BundleEstimate {
   readonly runFileBytes: number;
   /** The largest participant trace file, which analysis also reads whole. */
   readonly largestTraceBytes: number;
-  /** Every participant's trace file together, whose items the Observer page joins in one string. */
+  /**
+   * Every participant's trace file together, whose items the run writer and the Observer page join
+   * in one string.
+   */
   readonly tracesBytes: number;
   /** observer/index.html, which verify reads whole. */
   readonly observerPageBytes: number;
@@ -254,7 +259,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
     ...(joined
       ? [
-          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. The Observer page carries them in one, so it would not build.`,
+          `All participants' traces together may grow to about ${mib(estimate.tracesBytes)}, past the ${mib(constants.MAX_STRING_LENGTH)} that fits in one string. Writing run.json and exporting feedback put them in one string on a hosted desktop, and the Observer page always does. run.json may then stop updating, export would fail and the page would not build.`,
         ]
       : []),
     ...(entries

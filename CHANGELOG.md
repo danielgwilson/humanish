@@ -17,14 +17,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   synthetic participants with 30 MiB traces, verify now grades the run `share_ready` and
   `analyze --dry-run` passes. A key planted in the last participant's trace, escaped so that only
   the decoded run shows it, still blocks the run. The scan answers as the single string did on
-  every input. One pattern can match across two participants: a URL whose user info runs up to an
-  `@` and an E2B host. verify checks it across each cut. Peak memory on that run was 2,044 MiB;
+  every input. One pattern can match across participants: a URL whose user info runs up to an `@`
+  and an E2B host. verify checks it across each cut and keeps only the URL's scheme between
+  participants. Peak memory on that run was 2,044 MiB;
   verify still holds every trace at once. (#1848)
 - The bundle estimate warns when all participants' traces together may pass 512 MiB. The Observer
-  page and the Observer server join every participant's items in one string, so on the 25 x 30 MiB
-  run `humanish observe` still stops with `RangeError: Invalid string length`. The estimate reaches
-  that at 40 participants working 8 hours. It warns about the Observer page passing 32 MiB from 20.
-  (#1848)
+  page and the Observer server join every participant's items in one string, so on the 25 x
+  30 MiB run `humanish observe` still stops with `RangeError: Invalid string length`. On a hosted
+  desktop, the sandbox id scrub joins them too, on each write of run.json and on feedback export.
+  A hosted run that size stops updating run.json once its finished participants' traces pass the
+  limit, and its feedback export stops with the same error. The estimate reaches the limit at 40
+  participants working 8 hours. It warns about the Observer page passing 32 MiB from 20. (#1848)
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

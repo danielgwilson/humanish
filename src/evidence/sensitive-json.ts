@@ -11,9 +11,16 @@
 //
 // The sandbox URL can cross a cut. Its user info runs over quotes, braces and commas up to an `@`:
 // `https://host"},{"contact":"ops@e2b.dev`. From the end of its scheme to one character past
-// `e2b`, that match holds no slash and no whitespace. So the only text it can carry over a cut is
-// what follows a scheme with no slash or whitespace after it, and the only text it can reach is the
-// next piece up to its first slash or whitespace. Each cut's junction scans exactly that.
+// `e2b`, that match holds no slash and no whitespace. So a match across a cut starts at a scheme
+// with no slash or whitespace after it up to the cut, and reaches the next piece only up to its
+// first slash or whitespace. Between that scheme and the cut, the match can only be in its user
+// info. The scheme and every `@` there are inside JSON strings, so a host that starts after one
+// stops at its string's closing quote. Had that host reached `e2b` first, the scan of its piece or
+// an earlier junction would have matched. So the scan keeps only the scheme between pieces. Each
+// cut's junction scans the scheme, `"}` in place of the text after it, the cut's `,` and the next
+// piece up to its first slash or whitespace. A public E2B page after the scheme would need a space
+// or the text's end before the cut, so neither text exempts the URL. The scan holds one piece at a
+// time.
 
 import { isRecord } from "../run/type-guards.js";
 import { containsSandboxUrl, containsSensitive } from "./redaction.js";
@@ -24,33 +31,52 @@ const SLASH_OR_SPACE = /[/\s]/;
 
 /**
  * containsSensitive(JSON.stringify(value)), with each element of the array `value[key]` serialized
- * and scanned on its own, so no one string holds two elements. On data as JSON.parse returns it,
- * the answer is the whole text's. Any other shape is scanned as the whole text.
+ * and scanned on its own, so no one string holds two elements. The value, the array and each
+ * element must be plain data, as JSON.parse returns it; any other shape is scanned as the whole
+ * text, which can be longer than one string holds.
  */
 export function containsSensitiveJson(value: unknown, key: string): boolean {
   // JSON.stringify writes only own enumerable keys, and `around` cuts the text at this one.
-  const elements = isRecord(value) && Object.keys(value).includes(key) ? value[key] : undefined;
-  if (!isRecord(value) || !Array.isArray(elements) || !elements.every(isRecord))
+  const elements =
+    isPlainRecord(value) && Object.keys(value).includes(key) ? value[key] : undefined;
+  // Array.from reads a hole as undefined, where every would skip it.
+  if (
+    !isPlainRecord(value) ||
+    !isPlainArray(elements) ||
+    !Array.from(elements).every(isPlainRecord)
+  )
     return wholeTextSensitive(value);
   const [prefix, suffix] = around(value, key);
   if (elements.length === 0) return containsSensitive(prefix + suffix);
-  // The text since the last scheme no slash or whitespace has followed, across earlier pieces.
-  let carry = "";
+  // The scheme of a URL no slash or whitespace has followed, from an earlier piece.
+  let scheme: string | undefined;
   for (const [index, element] of elements.entries()) {
     const own = JSON.stringify(element);
-    // An object whose toJSON gives anything else would put a cut somewhere the reasoning above
-    // does not cover. JSON.parse never makes one.
-    if (!own.startsWith("{") || !own.endsWith("}")) return wholeTextSensitive(value);
     const piece = (index === 0 ? prefix : "") + own + (index === elements.length - 1 ? suffix : "");
     if (containsSensitive(piece)) return true;
-    if (carry !== "" && containsSandboxUrl(`${carry},${head(piece)}`)) return true;
-    carry = carried(carry, piece);
+    if (scheme !== undefined && containsSandboxUrl(`${scheme}"},${head(piece)}`)) return true;
+    scheme = schemeAfter(scheme, piece);
   }
   return false;
 }
 
 const wholeTextSensitive = (value: unknown): boolean =>
   containsSensitive(JSON.stringify(value) ?? "");
+
+// JSON.stringify calls a toJSON with the value's key in its parent, and an element serialized
+// alone gets "" in place of its index. It writes a boxed primitive as the primitive. A plain object
+// or array with no toJSON is written as its own keys or items wherever it sits.
+const hasToJson = (value: object): boolean =>
+  typeof (value as { toJSON?: unknown }).toJSON === "function";
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value) || hasToJson(value)) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+const isPlainArray = (value: unknown): value is unknown[] =>
+  Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype && !hasToJson(value);
 
 /** The document's text before the first element of `value[key]` and after its last. */
 function around(value: Record<string, unknown>, key: string): [string, string] {
@@ -69,12 +95,11 @@ function head(piece: string): string {
   return at === -1 ? piece : piece.slice(0, at + 1);
 }
 
-/** The text a sandbox URL could continue from after `piece`, given what came before it. */
-function carried(carry: string, piece: string): string {
+/** The scheme a sandbox URL could continue from after `piece`, given the one before it. */
+function schemeAfter(before: string | undefined, piece: string): string | undefined {
   let last = piece.length - 1;
   while (last >= 0 && !SLASH_OR_SPACE.test(piece[last]!)) last -= 1;
-  if (last === -1) return carry === "" ? "" : `${carry},${piece}`;
+  if (last === -1) return before;
   // `https:\/\/` is the longest scheme: ten characters ending at the slash.
-  const scheme = SCHEME_AT_END.exec(piece.slice(Math.max(0, last - 9), last + 1));
-  return scheme === null ? "" : piece.slice(last + 1 - scheme[0].length);
+  return SCHEME_AT_END.exec(piece.slice(Math.max(0, last - 9), last + 1))?.[0];
 }
