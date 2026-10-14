@@ -21,7 +21,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A key as written or encoded in a scripted scenario's title, goal or step labels, or in a
   persona's accessibility need, stays out of the run's files. The scripted route removed only the
   run's known values from that scenario text, and a live participant's trace recorded the
-  accessibility need as written.
+  accessibility need as written. A step renamed by its position for a key or known value in its
+  label or id no longer takes a numbered id that holds one of the run's known values, such as a
+  subject env value spelled `step-01`. The run is refused when every id its position gives holds
+  one.
 - `subject.envValues`, `actor.model` and the analysis question (`review.analysis.question` or
   `humanish analyze --question`) refuse a value that verify would read as a secret or local path,
   as written or in base64, percent-encoding or another escape. envValues and the question were

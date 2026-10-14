@@ -111,6 +111,9 @@ export async function prepareScriptedRun(
       result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", scenario.message),
     };
   }
+  const steps = recordedStepIds(scenario.journey.steps, secrets);
+  if (!steps.ok)
+    return { ok: false, result: failed("HUMANISH_SCRIPTED_SCENARIO_INVALID", steps.message) };
   // The goal, title and step labels are recorded; a step's path, selector, value and expected text
   // drive the browser and stay as written.
   const journey: BrowserPersonaJourney = {
@@ -120,7 +123,7 @@ export async function prepareScriptedRun(
       : scenario.journey.scenarioId,
     goal: recordedText(scenario.journey.goal, secrets),
     scenarioTitle: recordedText(scenario.journey.scenarioTitle, secrets),
-    steps: recordedStepIds(scenario.journey.steps, secrets),
+    steps: steps.steps,
   };
 
   // The plan lists E2B_API_KEY and the subject env only for a live clone.
@@ -214,23 +217,51 @@ function idHoldsKnownValue(id: string, secrets: RunSecrets): boolean {
 }
 
 /**
- * The steps with their labels redacted and their ids safe to record. A step id names the step's
- * screenshot file and is recorded beside it, and the parser derives an omitted id from the label,
- * lower-cased and cut to 80 characters, so the scrub may not find a value in it. A step whose label
- * changes under recordedText, or whose id holds a known value, is renamed by its position instead.
+ * The steps with their labels redacted and their ids safe to record, or why the run is refused. A
+ * step id names the step's screenshot file and is recorded beside it, and the parser derives an
+ * omitted id from the label, lower-cased and cut to 80 characters, so the scrub may not find a
+ * value in it. A step whose label changes under recordedText, or whose id holds a known value, is
+ * renamed by its position instead.
  */
 function recordedStepIds(
   steps: readonly BrowserPersonaStepManifest[],
   secrets: RunSecrets,
-): BrowserPersonaStepManifest[] {
+): { ok: true; steps: BrowserPersonaStepManifest[] } | { ok: false; message: string } {
   const taken = new Set(steps.map((step) => step.id));
-  return steps.map((step, index) => {
+  const recorded: BrowserPersonaStepManifest[] = [];
+  for (const [index, step] of steps.entries()) {
     const label = recordedText(step.label, secrets);
-    if (label === step.label && !idHoldsKnownValue(step.id, secrets)) return { ...step, label };
-    const position = `step-${String(index + 1).padStart(2, "0")}`;
-    let id = position;
-    for (let suffix = 2; taken.has(id); suffix += 1) id = `${position}-${suffix}`;
+    if (label === step.label && !idHoldsKnownValue(step.id, secrets)) {
+      recorded.push({ ...step, label });
+      continue;
+    }
+    const id = positionId(index, taken, secrets);
+    if (id === undefined)
+      return {
+        ok: false,
+        message: `The label or id of scenario step ${index + 1} holds a key, a local path or a value this run keeps out of its files, so the run renames the step by its position, and each id that position gives holds one of those values too. Remove it from the step's label and id.`,
+      };
     taken.add(id);
-    return { ...step, id, label };
-  });
+    recorded.push({ ...step, id, label });
+  }
+  return { ok: true, steps: recorded };
+}
+
+/**
+ * The id a renamed step takes by its position, such as step-03 for the third step, then step-03-2,
+ * step-03-3 and on when another step has it. A known value can be one of these ids, so one that
+ * holds a known value is passed over. Of the first taken.size + 1 ids at least one is free, and
+ * undefined comes back when each free one holds a known value.
+ */
+function positionId(
+  index: number,
+  taken: ReadonlySet<string>,
+  secrets: RunSecrets,
+): string | undefined {
+  const position = `step-${String(index + 1).padStart(2, "0")}`;
+  for (let suffix = 1; suffix <= taken.size + 1; suffix += 1) {
+    const id = suffix === 1 ? position : `${position}-${suffix}`;
+    if (!taken.has(id) && !idHoldsKnownValue(id, secrets)) return id;
+  }
+  return undefined;
 }
