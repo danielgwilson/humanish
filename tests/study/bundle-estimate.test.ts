@@ -39,7 +39,7 @@ const ENV = {
 };
 const COUNTED =
   "at a model turn every 10s that adds up to 3.5 KB to the participant's trace. The run goes ahead.";
-const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 47.7 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only and a bundle export would fail. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
+const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 47.7 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
 
 /** An event day: `hosts` hosts working `hours` from the start, and `guests` arriving a minute apart. */
 function eventDay(hosts: number, hours: number, guests = 0): Patch {
@@ -110,7 +110,7 @@ describe("study check's bundle estimate", () => {
       ok: true,
       row: "run.json about 0.3 MiB of the 16 MiB analysis reads; largest trace about 9.6 MiB of the 32 MiB humanish reads of each; Observer page about 32.2 MiB of the 32 MiB verify reads; about 57,680 files and folders of the 110,000 the public-safety scan reads; about 6270 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [
-        `The Observer page, observer/index.html, may grow to about 32.2 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only and a bundle export would fail. The estimate counts 20 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+        `The Observer page, observer/index.html, may grow to about 32.2 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail. The estimate counts 20 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
       ],
     });
   });
@@ -133,7 +133,7 @@ describe("study check's bundle estimate", () => {
     // Page: 1,200,000 + 0.85 x 895,400 + 0.16 x 544,536,000 = 89,086,850. Entries: 20 + 54 x 3
     // + 54 x 2,880 = 155,702, of 10,000 + 54 x 5,000.
     expect((await check(eventDay(54, 8))).warnings).toEqual([
-      `The Observer page, observer/index.html, may grow to about 85.0 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only and a bundle export would fail. The estimate counts 54 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+      `The Observer page, observer/index.html, may grow to about 85.0 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail. The estimate counts 54 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
     ]);
   });
 

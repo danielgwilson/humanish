@@ -16,10 +16,14 @@
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
-// A page past 32 MiB grades the run local_only, so a bundle export, whose copy must verify as
-// share_ready, fails too. The page, the Observer feed, verify, analysis and the run.json writer
-// each hold one participant's items in a string at a time, so the estimate does not check V8's
-// longest string, 536,870,888 characters.
+// A page past 32 MiB grades the run local_only. humanish export then needs --local-only, and a
+// bundle export fails even with it, since its copy must verify as share_ready.
+// The Observer feed, verify, analysis and the run.json writer each hold one participant's items in
+// a string at a time. The page holds all of them gzipped in base64, about 0.18 characters for each
+// trace byte, so it reaches V8's longest string, 536,870,888 characters, near 3 GB of traces.
+// humanish observe on 25 participants with 30 MiB traces wrote a 138 MiB page at a peak of
+// 3.8 GiB, so memory may run out first. Neither limit was measured past that run, and the estimate
+// checks neither.
 
 import { EVIDENCE_LIMITS } from "../analysis/analysis-limits.js";
 import type { DwellWindow } from "../actors/stop-conditions.js";
@@ -250,7 +254,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
     ...(page
       ? [
-          `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file, so verify would grade the run local_only and a bundle export would fail.`,
+          `The Observer page, observer/index.html, may grow to about ${mib(estimate.observerPageBytes)}, past the ${mib(RUN_ARTIFACT_MAX_BYTES)} verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail.`,
         ]
       : []),
     ...(entries

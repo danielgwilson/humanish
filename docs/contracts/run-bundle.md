@@ -154,8 +154,8 @@ observer-data.json is built from the loaded bundle. From 0.124.0 it leaves out e
 trace items, which stay in the traces, and from this release it is `humanish.observer-data.v3`,
 which also leaves out each participant's per-request lists (docs/architecture/observer.md).
 The Observer page and `observer-feed.json` carry the items as `humanish.observer-items.v2`, each
-participant's entry gzip-compressed on its own, so they render a run whose traces together pass
-V8's longest string.
+participant's entry gzip-compressed on its own, so `humanish observe` renders a run whose traces
+together pass V8's longest string. It was measured on 25 participants with 30 MiB traces.
 
 ## Per-request lists
 
