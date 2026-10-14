@@ -1,3 +1,4 @@
+import type { ActorTrace } from "../actors/contract.js";
 import { actorEnding, type ActorEnding } from "../actors/stop-cause.js";
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import {
@@ -10,7 +11,12 @@ import { cuaGoalSource, CUA_COMPLETION_NOTE, type CuaGoalSource } from "../actor
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
 import { bundleDisplayFacts, runDisplay, type RunDisplay } from "../run/display.js";
 import { withoutRequestLists } from "../run/stream-trace.js";
-import type { RunStream, RunStreamKind, StoredRunStream } from "../run/streams.js";
+import type {
+  RunStream,
+  RunStreamKind,
+  StoredRunStream,
+  WithoutRequestLists,
+} from "../run/streams.js";
 import { isRecord } from "../run/type-guards.js";
 import { joinObserverData, shellNeedsItems, type ObserverShell } from "./participant-items.js";
 
@@ -112,6 +118,9 @@ export interface ObserverData {
 }
 
 export interface ObserverStream extends StoredRunStream {
+  /** The loaded actor, with its items and without its per-request lists, as is the live actor. */
+  actor?: WithoutRequestLists<ActorTrace>;
+  liveActor?: WithoutRequestLists<NonNullable<RunStream["liveActor"]>>;
   /** Only the attached server may grant provider-origin access for a live desktop iframe. */
   embed?: NonNullable<RunStream["embed"]> & { runtimeDesktop?: true };
   /** Participant-facing status. The actor and simulation retain their original protocol status. */
@@ -296,9 +305,9 @@ export function buildObserverData(
 }
 
 /** The stream without its participant's per-request lists; a saved stream that is not an object as it is. */
-function withoutStreamLists<T extends StoredRunStream>(
+function withoutStreamLists<T extends RunStream | ObserverStream>(
   stream: T,
-): Omit<T, "actor" | "liveActor"> & Pick<StoredRunStream, "actor" | "liveActor"> {
+): Omit<T, "actor" | "liveActor"> & Pick<ObserverStream, "actor" | "liveActor"> {
   if (!isRecord(stream)) return stream;
   return {
     ...stream,

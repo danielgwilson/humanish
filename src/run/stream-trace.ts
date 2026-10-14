@@ -252,12 +252,12 @@ function containedReader(runPaths: PreparedOutputRoot): TraceFileReader {
 
 /**
  * The stream from the bytes of its trace file: its actor with the file's items, and its artifacts
- * followed by the file's screenshot entries, without the index.
+ * followed by the file's screenshot entries, without the index. Its live actor is as it was.
  */
 function joinTrace(
   stream: StoredRunStream & { trace: StreamTraceIndex; actor: WithoutRequestLists<ActorTrace> },
   bytes: Buffer,
-): RunStream {
+): StoredRunStream {
   const index = stream.trace;
   const refuse = (detail: string): never => {
     throw new StreamTraceRefusedError(stream.id, detail);
@@ -334,15 +334,16 @@ function assertIndex(stream: StoredRunStream): asserts stream is StoredRunStream
 }
 
 /**
- * A stream of run.json typed as a loaded one, for the streams the loader joins no trace into: one
- * without an index, which v1 wrote with its actor's lists, and a refused one, kept as run.json
- * holds it. From v4 a refused stream's actor has none of the lists, and its `conversation` lacks
- * the `requests` ActorTrace declares; the loader's `refused` names each such stream.
+ * A stream of run.json typed as a loaded one. The loader joins each file run.json indexes, and
+ * takes what run.json holds inline as it is: a v1 actor's items and lists, and the items of a live
+ * actor of humanish.live-actor.v1. It also types each refused stream this way, kept as run.json
+ * holds it: from v2 its actor has no items, from v4 none of the lists, and the loader's `refused`
+ * names it.
  */
-const unjoined = (stream: StoredRunStream): RunStream => stream as RunStream;
+const asLoaded = (stream: StoredRunStream): RunStream => stream as RunStream;
 
 /** A live actor whose items run.json holds inline: humanish.live-actor.v1, or one with no schema. */
-const isInlineLiveActor = (live: LiveActor): boolean =>
+const isInlineLiveActor = (live: Pick<LiveActor, "schema">): boolean =>
   live.schema === LIVE_ACTOR_V1_SCHEMA || (live.schema as unknown) === undefined;
 
 /** A live file that could not be read, which a writer that moved on may have removed. */
@@ -364,7 +365,7 @@ type LiveAfter = (index: LiveItemsIndex) => LiveItemsCursor | undefined;
 
 /** A stream with its live items joined, the file bytes they came from, and what was read. */
 interface JoinedLiveItems {
-  stream: RunStream;
+  stream: StoredRunStream;
   file?: { path: string; bytes: Buffer };
   read?: LiveItemsRead;
 }
@@ -376,7 +377,7 @@ interface JoinedLiveItems {
  */
 async function readLiveItems(
   read: TraceFileReader,
-  stream: RunStream,
+  stream: StoredRunStream,
   maxBytes: number,
   liveAfter: LiveAfter | undefined,
 ): Promise<JoinedLiveItems> {
@@ -446,7 +447,7 @@ const cursorFits = (index: LiveItemsIndex, after: LiveItemsCursor): boolean =>
  */
 async function readLiveTail(
   read: TraceFileReader,
-  stream: RunStream,
+  stream: StoredRunStream,
   index: LiveItemsIndex,
   after: LiveItemsCursor,
 ): Promise<{ items: ActorTrace["items"]; bytes: Buffer } | undefined> {
@@ -470,7 +471,7 @@ async function readStreamTrace(
   liveAfter?: LiveAfter,
 ): Promise<{ stream: RunStream; files: { path: string; bytes: Buffer }[]; live?: LiveItemsRead }> {
   const files: { path: string; bytes: Buffer }[] = [];
-  let joined = unjoined(stream);
+  let joined = stream;
   if (stream.trace !== undefined) {
     assertIndex(stream);
     if (stream.trace.bytes > maxBytes)
@@ -482,7 +483,11 @@ async function readStreamTrace(
   }
   const live = await readLiveItems(read, joined, maxBytes, liveAfter);
   if (live.file !== undefined) files.push(live.file);
-  return { stream: live.stream, files, ...(live.read === undefined ? {} : { live: live.read }) };
+  return {
+    stream: asLoaded(live.stream),
+    files,
+    ...(live.read === undefined ? {} : { live: live.read }),
+  };
 }
 
 /**
@@ -655,7 +660,7 @@ async function loadEveryStream(
     } catch (error) {
       if (!(error instanceof StreamTraceRefusedError)) throw error;
       refused.push(error);
-      streams.push(unjoined(stream));
+      streams.push(asLoaded(stream));
     }
   }
   return { bundle: { ...bundle, streams }, refused, files, live };
@@ -681,7 +686,7 @@ export function displayedTraces(loaded: {
     const reason = reasons.get(stream.id);
     if (reason === undefined) return stream;
     const { liveActor: _live, trace: _index, actor, ...rest } = stream;
-    return unjoined({
+    return asLoaded({
       ...rest,
       ...(actor === undefined ? {} : { actor: { ...withoutRequestLists(actor), items: [] } }),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),

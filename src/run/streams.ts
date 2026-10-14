@@ -389,10 +389,17 @@ export type WithoutRequestLists<T> = Omit<T, "providerRequests" | "tokenUsage" |
 } & { [K in "conversation" & keyof T]?: Omit<NonNullable<T[K]>, "requests"> | undefined };
 
 /**
- * A stream as run.json holds it, in any version: its actor and live actor WithoutRequestLists.
- * loadStreamTraces joins the lists from the trace file.
+ * `T` WithoutRequestLists and with `items` optional: a v1 run.json holds the items inline, and from
+ * v2 (an actor) or v3 (a live actor) a file holds them.
+ */
+type StoredTrace<T extends { items: unknown }> = WithoutRequestLists<Omit<T, "items">> &
+  Partial<Pick<T, "items">>;
+
+/**
+ * A stream as run.json holds it, in any version: its actor and live actor without the per-request
+ * lists, and with items only in a v1 run.json. loadStreamTraces joins both from the files.
  */
 export type StoredRunStream = Omit<RunStream, "actor" | "liveActor"> & {
-  actor?: WithoutRequestLists<ActorTrace>;
-  liveActor?: WithoutRequestLists<NonNullable<RunStream["liveActor"]>>;
+  actor?: StoredTrace<ActorTrace>;
+  liveActor?: StoredTrace<NonNullable<RunStream["liveActor"]>>;
 };
