@@ -81,6 +81,8 @@ export async function runWatching(options: {
   turn: (request: CuaTurnRequest, n: number) => CuaTurn;
   observe?: (atMs: number) => Partial<CuaObservation> | "hang";
   executor?: Pick<CuaExecutor, "speechEnabled" | "stallRecovery">;
+  /** Whether the desktop command for an action fails, as a hosted desktop's does on a non-zero exit. */
+  fails?: (action: CuaAction) => boolean;
   /** How far each observe moves the clock; 0 by default. */
   observeMs?: number;
   /** How much sooner than asked each sleep returns, as a host timer can; 0 by default. */
@@ -116,6 +118,8 @@ export async function runWatching(options: {
       },
       async execute(action) {
         executed.push(action);
+        if (options.fails?.(action) === true)
+          throw Object.assign(new Error("desktop command failed"), { exitCode: 1 });
       },
     },
     persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },

@@ -244,9 +244,9 @@ describe("study check and the estimates", () => {
     if (!result.ok) throw new Error(result.refusal.message);
     // A participant that ends itself is counted for 3 minutes at most, or its budget when shorter:
     // 2 minutes, 3 minutes and the study's 1 minute, at a turn every 10 s, are 12 + 18 + 6 turns.
-    // Files and folders: 20 + 3 x 3 + 36. The longest trace: 5,400 + 18 x 4,700 bytes.
+    // Files and folders: 20 + 3 x 3 + 36. The longest trace: 4,000 + 18 x 3,500 bytes.
     expect(result.planned.bundle?.entries).toBe(65);
-    expect(result.planned.bundle?.largestTraceBytes).toBe(90_000);
+    expect(result.planned.bundle?.largestTraceBytes).toBe(67_000);
     expect(result.planned.bundle?.basis).toMatchObject({ scheduled: 0, open: 3, openMs: 3 * MIN });
   });
 

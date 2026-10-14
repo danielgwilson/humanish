@@ -179,11 +179,11 @@ describe("a roster of starts, ends and caps", () => {
     // 3 minutes of its 8-minute cap; each guest 6 over its 1-minute budget. 978 in all.
     // Files and folders: 20 + 6 x 3 + 978. run.json: 4,400 + 6 x 16,500, whatever the turns, and
     // the 7-byte mission "Try it." once for the run and twice for each participant: 103,491. The
-    // host's trace: 5,400 + 720 x 4,700.
+    // host's trace: 4,000 + 720 x 3,500.
     expect(result.planned.bundle).toMatchObject({
       entries: 1_016,
       runFileBytes: 103_491,
-      largestTraceBytes: 3_389_400,
+      largestTraceBytes: 2_524_000,
       basis: {
         participants: 6,
         scheduled: 3,

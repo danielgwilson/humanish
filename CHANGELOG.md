@@ -28,6 +28,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
   3% of its earlier time. (#1872)
 
+## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
+
+humanish 0.134.0 keeps a participant held to a scheduled end running when it reloads a page that
+changes only on reload. 20 reloads in a row on an unchanged screen ended its session as `gave_up`.
+Now humanish watches the screen after each further reload, as after a wait, so a participant that
+reloads every few seconds costs about what one that waits costs. In 60-minute live runs with a
+persona that refreshes every few seconds, 0.133.1 ended 3 of 4 within 7 minutes; this release ran
+all 4 to their end at a median $3.23 an hour. Trace files are now written as compact JSON, about a
+quarter smaller, and a run whose trace still passes the 32 MiB read limit finishes and grades
+`local_only` where it failed.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.134.0)
+
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
 humanish 0.133.1 keeps a hosted run writing run.json once its finished participants' traces

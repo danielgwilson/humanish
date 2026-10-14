@@ -160,7 +160,9 @@ export interface ActorTraceItem {
    *  the observation read no URL, on other producers and in older bundles. */
   page?: TracePage;
   /** On the computer-use `ui_action` of the wait during which a watch ended: the watch the loop
-   *  ran in place of a turn that only waited. Additive: absent on plain waits, on other items and
+   *  ran in place of a turn that only waited. A watch no wait carries, which a participant held to
+   *  its scheduled end gets for a turn of only screenshots or after a repeated action, is on a
+   *  `notice` titled `watched the screen`. Additive: absent on plain waits, on other items and
    *  producers, and in older bundles. */
   watch?: ActorWatch;
   /** On a computer-use wait's `ui_action`: the length in milliseconds the participant named for

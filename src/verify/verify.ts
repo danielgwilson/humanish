@@ -15,9 +15,14 @@ import {
   RUN_BUNDLE_V3_SCHEMA,
   type RunBundle,
 } from "../run/bundle.js";
-import { ContainedReadRefusedError, refusalText } from "../run/contained-output.js";
+import {
+  ContainedReadRefusedError,
+  readContainedRegularFile,
+  refusalText,
+  RUN_ARTIFACT_MAX_BYTES,
+} from "../run/contained-output.js";
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
-import { loadStreamTraces } from "../run/stream-trace.js";
+import { loadStreamTraces, StreamTraceTooLargeError } from "../run/stream-trace.js";
 import {
   readRunJsonIfExists,
   readRunTextIfExists,
@@ -161,7 +166,8 @@ export async function verifyResolvedRun(
   const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
   const bundleRead = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
   // Every check below reads the streams with their traces loaded; a trace that does not match its
-  // index fails the evidence-artifacts check and its stream is checked without its items.
+  // index fails the evidence-artifacts check, and its stream, like one past the read limit, is
+  // checked without its items.
   const traces = await loadTraces(runPaths, runJsonValue(bundleRead));
   const { bundle, recorded, refusedTraces } = traces;
   const cleanupRead = await readRunJsonIfExists(runPaths, "cleanup.json");
@@ -186,11 +192,7 @@ export async function verifyResolvedRun(
     runPaths,
     derivedPublicSafetyFindings,
     {
-      recordingPaths: new Set(
-        bundle
-          ? bundle.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : []))
-          : [],
-      ),
+      recordingPaths: recordingPaths(bundle),
       screenshotPaths: bundle ? streamScreenshotPaths(bundle) : new Set(),
       // A run from before 0.110 with no receipts still names its ids in run.json.
       sandboxIds: [...new Set([...journaledSandboxIds, ...keyedSandboxIds(recorded)])],
@@ -219,7 +221,7 @@ export async function verifyResolvedRun(
         : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
   const missingEvidenceArtifacts = bundle
-    ? await missingLocalEvidenceArtifacts(runPaths, bundle)
+    ? await missingLocalEvidenceArtifacts(runPaths, bundle, traces.pastReadLimit)
     : [];
   const redactedShapeFrames = bundle
     ? await redactedShapeFramePaths(runPaths, bundle)
@@ -251,6 +253,7 @@ export async function verifyResolvedRun(
     : { warnings: [], unfinished: undefined };
   const warnings = bundle
     ? [
+        ...traces.unreadTraces,
         ...rawScreenshotPostureWarnings(bundle, redactedShapeFrames),
         ...undeclaredSubjectStateWarnings(bundle),
         ...desktopGeometryWarnings(bundle),
@@ -345,6 +348,10 @@ async function loadTraces(
   recorded: unknown;
   refusedTraces: string[];
   refusedStreams: ReadonlySet<string>;
+  /** The refusal of each trace or live file past the read limit, which is not in refusedTraces. */
+  unreadTraces: string[];
+  /** The path of each of those files. */
+  pastReadLimit: ReadonlySet<string>;
   sensitive: string[];
   opaque: string[];
   pages: string[];
@@ -356,6 +363,8 @@ async function loadTraces(
       recorded: stored,
       refusedTraces: [],
       refusedStreams: new Set(),
+      unreadTraces: [],
+      pastReadLimit: new Set(),
       ...scanned,
       pages: [],
     };
@@ -367,15 +376,39 @@ async function loadTraces(
       if (scan !== "clean") scanned[scan === "sensitive" ? "sensitive" : "opaque"].push(file);
     },
   });
+  // A file whose index records more than the read limit is not read. One past the limit on disk
+  // too is listed as unscanned, so its run grades local_only; one under it does not match its index.
+  const unread: StreamTraceTooLargeError[] = [];
+  for (const error of refused)
+    if (error instanceof StreamTraceTooLargeError && (await pastReadLimit(runPaths, error.file))) {
+      unread.push(error);
+      scanned.opaque.push(error.file);
+    }
   return {
     bundle,
     recorded: bundle,
-    refusedTraces: refused.map((error) => error.message),
+    refusedTraces: refused
+      .filter((error) => !unread.some((past) => past === error))
+      .map((error) => error.message),
     refusedStreams: new Set(refused.map((error) => error.streamId)),
+    unreadTraces: unread.map((error) => error.message),
+    pastReadLimit: new Set(unread.map((error) => error.file)),
     ...scanned,
     pages: pageFindings(bundle),
   };
 }
+
+/** Whether the run file at `file` holds more than RUN_ARTIFACT_MAX_BYTES, read only when it does not. */
+async function pastReadLimit(runPaths: PreparedRunArtifactPaths, file: string): Promise<boolean> {
+  const read = await readContainedRegularFile(runPaths, file, RUN_ARTIFACT_MAX_BYTES);
+  return read.status === "refused" && read.reason === "too-large";
+}
+
+/** The continuous recordings the bundle registers, which CONTINUOUS_MEDIA grades. */
+const recordingPaths = (bundle: RunBundle | undefined): Set<string> =>
+  new Set(
+    bundle?.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : [])) ?? [],
+  );
 
 /** The trace scan's results, beside the walk's: each file named once, then each page finding. */
 function addTraceScan(

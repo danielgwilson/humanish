@@ -100,10 +100,13 @@ action**, not a fatal error:
   `budget_reached` after material progress), a `CuaAbortError` as `harness_error`,
   and any genuine non-`CommandExitError` adapter fault as `actor_error`.
 - **No infinite loop.** A skipped action changes nothing on screen, so it is not
-  progress. A run that keeps failing every action makes no progress and still
-  terminates through the existing idle / no-progress backstop
-  (`gave_up`). The resilience only converts a _single flaky command_ from fatal
-  to survivable; it never masks a genuinely stuck run.
+  progress. A run that keeps repeating a failing action makes no progress and
+  ends through the no-progress backstop (`gave_up`) at 20 such turns in a row.
+  A participant held to its scheduled end keeps its session through repeats on
+  an unchanged screen, which is how it waits on a page that changes only on
+  reload, but 20 repeats in a row that never reached the desktop end it the
+  same way. The resilience only converts a _single flaky command_ from fatal
+  to survivable.
 
 Public-safety: the notice text carries only the substrate's own stderr (tailed +
 whitespace-collapsed) and a numeric exit code, and is still run through the loop's
