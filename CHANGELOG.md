@@ -35,11 +35,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   that size every write threw `RangeError: Invalid string length` before run.json, the trace
   files, review.json or events.ndjson changed. A bundle export allowed past its 25 MiB default
   threw the same way in its scrub. The scrub now serializes, scrubs and parses one JSON token at a
-  time, and writes the same bytes as before. The Observer page an export renders still joins every
-  trace in one string. On a synthetic bundle of 25 participants with 30 MiB traces each, a
-  snapshot write took 10.2 seconds and the process peaked at 2.1 GiB, 1.0 GiB of it the bundle
-  itself. On 10 participants with 10 MiB traces, a snapshot write took 1.15 seconds where it took
-  1.73, and the process peaked at 0.57 GiB where it peaked at 1.6 GiB.
+  time, and writes the same bytes as before. A sandbox id that holds JSON punctuation, a quote or a
+  backslash still goes through the scrub of the whole text; no E2B id holds one. The Observer page
+  an export renders still joins every trace in one string. The timings below used synthetic
+  bundles whose trace items repeat a recorded hosted run's, about 13 bytes per JSON token. With 10
+  participants of 10 MiB each, a snapshot write took 3.4 seconds where it took 6.0, and the process
+  peaked at 0.92 GiB where it peaked at 2.7 GiB. With 25 participants of 30 MiB each, the scrub
+  took 14 seconds of a 37-second snapshot write.
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

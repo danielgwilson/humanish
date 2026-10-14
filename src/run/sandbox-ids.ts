@@ -5,6 +5,7 @@
 
 import { opendir, realpath } from "node:fs/promises";
 import path from "node:path";
+import { types } from "node:util";
 
 import { readPlainText } from "../evidence/plain-text.js";
 import {
@@ -47,17 +48,36 @@ function yamlSandboxIdLabel(id: string): string {
   return `redacted-sandbox-id-${sandboxIdDigest(id)}`;
 }
 
+/**
+ * Whether a text holds any of `ids`, in one RegExp scan, since nearly every token of a trace holds
+ * none: on 25 participants' 750 MiB of trace text, one scan for each id took 6.6 of 7.8 seconds.
+ */
+function anyIdTest(ids: readonly string[]): (text: string) => boolean {
+  const eachId = (text: string): boolean => ids.some((id) => text.includes(id));
+  let pattern: RegExp | undefined = new RegExp(ids.map(escapeRegExp).join("|"));
+  return (text) => {
+    if (pattern !== undefined) {
+      try {
+        return pattern.test(text);
+      } catch {
+        // V8 compiles the pattern on its first use, and refuses one of 40,000 characters or so.
+        // Its error quotes the pattern and so the ids, and a scan for each id finds the same.
+        pattern = undefined;
+      }
+    }
+    return eachId(text);
+  };
+}
+
 /** The scrub of one text: every occurrence of each raw id replaced by its label, longest id first. */
 function idScrub(ids: Iterable<string>, label: (id: string) => string): (text: string) => string {
   const unique = [...new Set(ids)].filter((id) => id.length > 0);
   unique.sort((left, right) => right.length - left.length);
   const labels = unique.map((id): [string, string] => [id, label(id)]);
-  // One scan for any id first, since nearly every token of a trace holds none: on 25 participants'
-  // 750 MiB of trace text, one scan for each id took 6.6 of 7.8 seconds. A text with no id gets
-  // no label, so skipping it changes nothing.
-  const anyId = new RegExp(unique.map(escapeRegExp).join("|"));
+  // A text with no id gets no label, so skipping it changes nothing.
+  const holdsId = anyIdTest(unique);
   return (text) =>
-    labels.length === 0 || !anyId.test(text)
+    labels.length === 0 || !holdsId(text)
       ? text
       : labels.reduce((current, [id, replacement]) => current.split(id).join(replacement), text);
 }
@@ -74,58 +94,118 @@ export function scrubSandboxIds(
 /** A value JSON.stringify leaves out: an object drops the property, an array writes null. */
 const OMITTED = Symbol("omitted");
 
+/** JSON.isRawJSON, which the ES2023 types leave out. */
+const isRawJSON = (JSON as unknown as { isRawJSON: (value: unknown) => boolean }).isRawJSON;
+
+/**
+ * What JSON.stringify serializes for `raw` at `key`: what its toJSON returns, and a boxed
+ * primitive's value. The steps follow SerializeJSONProperty, so a value converts as it did there.
+ */
+function jsonValue(key: string | number, raw: unknown): unknown {
+  // JSON.stringify asks only an object, a function or a bigint for toJSON.
+  if (
+    raw === null ||
+    (typeof raw !== "object" && typeof raw !== "function" && typeof raw !== "bigint")
+  )
+    return raw;
+  const toJSON: unknown = (raw as { toJSON?: unknown }).toJSON;
+  const json: unknown = typeof toJSON === "function" ? toJSON.call(raw, String(key)) : raw;
+  if (json === null || typeof json !== "object") return json;
+  // These find the boxed value in any realm, and read it as JSON.stringify does.
+  if (types.isNumberObject(json)) return Number(json);
+  if (types.isStringObject(json)) return String(json);
+  if (types.isBooleanObject(json)) return Boolean.prototype.valueOf.call(json);
+  if (types.isBigIntObject(json)) return BigInt.prototype.valueOf.call(json);
+  return json;
+}
+
+/**
+ * The characters that let an id reach past one token of a JSON text: the punctuation between
+ * tokens, and the quote and backslash that decide where a string ends.
+ */
+const CROSSES_TOKENS = /[{}[\],:"\\]/;
+
 /**
  * JSON.parse(scrub(JSON.stringify(value))), built one JSON token at a time: each string, key,
  * number, boolean and null is serialized, scrubbed and parsed on its own, following the rules
  * JSON.stringify applies (toJSON, boxed primitives, members it omits). A run bundle holds every
- * finished trace, and its whole text can pass V8's longest string. A raw id that holds none of
- * `{}[],:` lies inside one token of the whole text, so the result is the same. An id holding one
- * of them could span two tokens there, and this leaves such a span: the sweep at Run.finish
- * scrubs each written file's whole text, and verify grades a file that still names an id.
+ * finished trace, and its whole text can pass V8's longest string. For ids that hold none of
+ * CROSSES_TOKENS, every occurrence lies inside one token of the whole text, and the labels add
+ * no quote or backslash. Each scrubbed token then parses on its own exactly when the whole text
+ * parses, so this returns what the whole text parsed to and throws where its parse threw.
  * `changed` says whether the scrub rewrote any token.
  */
-function scrubTokens(
-  value: unknown,
-  scrub: (text: string) => string,
-): { value: unknown; changed: boolean } {
+function scrubTokens(value: unknown, ids: readonly string[]): { value: unknown; changed: boolean } {
+  const scrub = idScrub(ids, sandboxIdLabel);
   let changed = false;
-  const token = (primitive: unknown): unknown => {
-    // A bigint throws here, as it did in the whole text's JSON.stringify.
-    const text = JSON.stringify(primitive);
+  // What JSON.parse reads from one token's text once its ids are labeled. `asWritten` gives what
+  // it reads from the text unchanged, which saves a parse on nearly every token.
+  const token = (text: string, asWritten: () => unknown): unknown => {
     const scrubbed = scrub(text);
-    if (scrubbed !== text) changed = true;
-    // An unchanged string parses back to itself. A number parses, so -0 and Infinity read as
-    // JSON.parse reads them. A label that breaks an escape or a quote throws, as before.
-    return typeof primitive === "string" && scrubbed === text ? primitive : JSON.parse(scrubbed);
+    if (scrubbed === text) return asWritten();
+    changed = true;
+    // A label that breaks an escape or lands outside a string throws, as the whole text did.
+    return JSON.parse(scrubbed);
   };
-  const property = (key: string, raw: unknown): unknown => {
-    let json = raw;
-    if (json !== null && typeof json === "object" && "toJSON" in json) {
-      const toJSON: unknown = json.toJSON;
-      if (typeof toJSON === "function") json = toJSON.call(json, key) as unknown;
+  // Keys repeat across a trace's items, so each key that holds no id is scrubbed once.
+  const cleanKeys = new Set<string>();
+  const scrubKey = (name: string): string => {
+    if (cleanKeys.has(name)) return name;
+    const text = JSON.stringify(name);
+    const scrubbed = scrub(text);
+    if (scrubbed === text) {
+      cleanKeys.add(name);
+      return name;
     }
-    if (json instanceof Number || json instanceof String || json instanceof Boolean)
-      json = json.valueOf();
-    if (json === undefined || typeof json === "function" || typeof json === "symbol")
-      return OMITTED;
-    if (json === null || typeof json !== "object") return token(json);
+    changed = true;
+    return JSON.parse(scrubbed) as string;
+  };
+  // The text of a finite number reads back as the same number, apart from -0, which reads as 0.
+  const readNumber = (number: number): number | null =>
+    Number.isFinite(number) ? (number === 0 ? 0 : number) : null;
+  const property = (key: string | number, raw: unknown): unknown => {
+    const json = jsonValue(key, raw);
+    if (typeof json === "bigint") throw new TypeError("Do not know how to serialize a BigInt");
+    if (json === null) return token("null", () => null);
+    if (typeof json === "boolean") return token(String(json), () => json);
+    if (typeof json === "number") return token(JSON.stringify(json), () => readNumber(json));
+    if (typeof json === "string") return token(JSON.stringify(json), () => json);
+    // Left: undefined, a symbol, a function.
+    if (typeof json !== "object") return OMITTED;
+    if (isRawJSON(json)) {
+      const text = (json as { rawJSON: string }).rawJSON;
+      return token(text, () => JSON.parse(text) as unknown);
+    }
     if (Array.isArray(json)) {
       const items: unknown[] = [];
-      for (let index = 0; index < json.length; index += 1) {
-        const item = property(String(index), json[index]);
+      // JSON.stringify reads the length once, before any element.
+      const length = json.length;
+      for (let index = 0; index < length; index += 1) {
+        const item = property(index, json[index]);
         // The whole text holds `null` there, which an id can occur in.
-        items.push(item === OMITTED ? token(null) : item);
+        items.push(item === OMITTED ? token("null", () => null) : item);
       }
       return items;
     }
-    const entries: [string, unknown][] = [];
+    // Built by assignment, which took 1.8 seconds where Object.fromEntries took 2.0 on 100 MiB of
+    // trace items. A key that two members scrub to holds the last value at the first position,
+    // as JSON.parse does.
+    const members: Record<string, unknown> = {};
     for (const name of Object.keys(json)) {
       const item = property(name, (json as Record<string, unknown>)[name]);
-      if (item !== OMITTED) entries.push([token(name) as string, item]);
+      if (item === OMITTED) continue;
+      const member = scrubKey(name);
+      // Assigning __proto__ would set the prototype; JSON.parse makes it an own property.
+      if (member === "__proto__")
+        Object.defineProperty(members, member, {
+          value: item,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      else members[member] = item;
     }
-    // fromEntries keeps a key such as __proto__ an own property, and a key that two members
-    // scrub to holds the last value at the first position, as JSON.parse does.
-    return Object.fromEntries(entries);
+    return members;
   };
   const scrubbed = property("", value);
   return { value: scrubbed, changed };
@@ -135,14 +215,22 @@ function scrubTokens(
  * `value` as it may be written or returned: ids at the sandbox-id keys become the marker and a
  * digest, and any raw id left in free text, a key or a URL becomes its label. When a label
  * replaces anything, the result is what JSON.parse returns for the scrubbed JSON text; otherwise
- * it is the key-redacted value. No string built holds more than one token of that text, so a run
- * bundle's traces are never joined in one string.
+ * it is the key-redacted value. With ids shaped like E2B's, no string built holds more than one
+ * token of that text, so a run bundle's traces are never joined in one string.
  */
 export function publicSandboxView<T>(value: T, ids: Iterable<string>): T {
   const redacted = redactSandboxIds(value);
   const known = [...ids];
   if (known.length === 0) return redacted as T;
-  const scrubbed = scrubTokens(redacted, idScrub(known, sandboxIdLabel));
+  if (known.some((id) => CROSSES_TOKENS.test(id))) {
+    // Such an id can span two tokens or move where a string ends, which only the whole text
+    // shows. No E2B id holds one; a bundle past V8's longest string throws here.
+    const text = JSON.stringify(redacted);
+    if (text === undefined) return redacted as T;
+    const scrubbed = scrubSandboxIds(text, known);
+    return (scrubbed === text ? redacted : JSON.parse(scrubbed)) as T;
+  }
+  const scrubbed = scrubTokens(redacted, known);
   return (scrubbed.changed ? scrubbed.value : redacted) as T;
 }
 
