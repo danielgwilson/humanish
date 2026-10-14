@@ -10,7 +10,7 @@
 // the array joins the last element.
 //
 // The sandbox URL can cross a cut. Its user info runs over quotes, braces and commas up to an `@`:
-// `https://host"},{"contact":"ops@e2b.dev`. From the end of its scheme to one character past
+// `https://host"},{"contact":"ops@e2b-host`. From the end of its scheme to one character past
 // `e2b`, that match holds no slash and no whitespace. So a match across a cut starts at a scheme
 // with no slash or whitespace after it up to the cut, and reaches the next piece only up to its
 // first slash or whitespace. Between that scheme and the cut, the match can only be in its user

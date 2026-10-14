@@ -29,32 +29,32 @@ const CASES: Array<[string, Record<string, unknown>, boolean]> = [
   ["a key after the array", { streams: [{ a: 1 }, { b: 2 }], events: [{ message: KEY }] }, true],
   [
     "URL user info from one element into the next",
-    { streams: [{ url: "https://host" }, { contact: "ops@e2b.dev" }] },
+    { streams: [{ url: "https://host" }, { contact: "ops@e2b-host" }] },
     true,
   ],
   [
     "URL user info across an element with no slash or space",
-    { streams: [{ url: "https://host" }, { n: 1 }, { contact: "ops@e2b.dev" }] },
+    { streams: [{ url: "https://host" }, { n: 1 }, { contact: "ops@e2b-host" }] },
     true,
   ],
   [
     "URL user info stopped by a slash in the element between",
-    { streams: [{ url: "https://host" }, { path: "a/b" }, { contact: "ops@e2b.dev" }] },
+    { streams: [{ url: "https://host" }, { path: "a/b" }, { contact: "ops@e2b-host" }] },
     false,
   ],
   [
     "URL user info stopped by a space in the element between",
-    { streams: [{ url: "https://host" }, { text: "a b" }, { contact: "ops@e2b.dev" }] },
+    { streams: [{ url: "https://host" }, { text: "a b" }, { contact: "ops@e2b-host" }] },
     false,
   ],
   [
     "URL user info from before the array into its first element",
-    { url: "https://host", streams: [{ contact: "ops@e2b.dev" }] },
+    { url: "https://host", streams: [{ contact: "ops@e2b-host" }] },
     true,
   ],
   [
     "URL user info from the last element past the array",
-    { streams: [{ id: "a" }, { url: "https://host" }], contact: "ops@e2b.dev" },
+    { streams: [{ id: "a" }, { url: "https://host" }], contact: "ops@e2b-host" },
     true,
   ],
   [
@@ -69,10 +69,10 @@ const CASES: Array<[string, Record<string, unknown>, boolean]> = [
     { streams: [{ TOKEN: [[[[-1e21]]]] }, { id: "a" }] },
     false,
   ],
-  ["an empty array", { url: "https://host", streams: [], contact: "ops@e2b.dev" }, true],
+  ["an empty array", { url: "https://host", streams: [], contact: "ops@e2b-host" }, true],
   [
     "URL user info across an element with an @ and no slash or space",
-    { streams: [{ url: "https://host" }, { n: "a@b" }, { contact: "ops@e2b.dev" }] },
+    { streams: [{ url: "https://host" }, { n: "a@b" }, { contact: "ops@e2b-host" }] },
     true,
   ],
   [
