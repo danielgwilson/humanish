@@ -105,8 +105,13 @@ export function decodeEscapes(text: string): string {
   return decodeWith(text, decodePercentBytes);
 }
 
-/** The readings a scan matches, with the two that scanEncodedText also searches for runs. */
-function readings(text: string): { decoded: string; expanded: string; all: string[] } {
+/** The readings a scan matches, with the three that scanEncodedText also searches for runs. */
+function readings(text: string): {
+  all: string[];
+  decoded: string;
+  expanded: string;
+  unescapedExpanded: string;
+} {
   // Decoding references with the other escapes joins a letter reference to the escaped key after
   // it, `&#65;\u0073k-` to `Ask-`, where a pattern's word boundary fails. With references left as
   // written, the `;` before the key keeps that boundary. A key that ends in a reference before an
@@ -120,10 +125,9 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
   // catches a `%` that a `\u0025` wrote.
   const utf8 = HIGH_BYTE.test(decoded) ? decodeWith(text, decodePercentRun) : decoded;
   const expanded = decodeTransferEscapes(decoded);
+  const unescapedExpanded = decodeTransferEscapes(unescaped);
   const recovered = [text, decoded].filter((reading) => HIGH_BYTE.test(reading));
   return {
-    decoded,
-    expanded,
     all: [
       ...new Set([
         text,
@@ -132,10 +136,13 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
         expanded,
         ...recovered.map(latin1RunsAsUtf8),
         unescaped,
-        decodeTransferEscapes(unescaped),
+        unescapedExpanded,
         decodeReferences(text),
       ]),
     ],
+    decoded,
+    expanded,
+    unescapedExpanded,
   };
 }
 
@@ -194,6 +201,8 @@ const BASE64_RUN = /[A-Za-z0-9+/]{16}[A-Za-z0-9+/]*={0,2}/g;
 const BASE64URL_RUN = /[A-Za-z0-9_-]{16}[A-Za-z0-9_-]*={0,2}/g;
 // Hex-encoded text, at least sixteen bytes of it.
 const HEX_RUN = /[0-9a-f]{32}[0-9a-f]*/gi;
+// The base64, URL-safe base64 or hex run right after a `;`, such as the one that ends a reference.
+const RUN_AFTER_SEMICOLON = /;([A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*={0,2})/g;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
 // this length. Across 173 real run folders surveyed on 2026-10-01, the longest such run outside
 // observer/index.html was a 69-character URL path in a terminal log; base64 of a 94-byte payload,
@@ -361,6 +370,18 @@ function inspectDecoded(
   };
 }
 
+/** The base64 and URL-safe base64 runs in a reading, each with its bytes. */
+function base64Runs(reading: string): { run: string; bytes: Buffer }[] {
+  const runs: { run: string; bytes: Buffer }[] = [];
+  for (const [match] of reading.matchAll(BASE64_RUN))
+    // Hex digests and ids decode to noise; scanEncodedText's hex pass reads hex as hex.
+    if (!/^[0-9a-f]+$/i.test(match.replace(/=+$/, "")))
+      runs.push({ run: match, bytes: Buffer.from(match, "base64") });
+  for (const [match] of reading.matchAll(BASE64URL_RUN))
+    if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
+  return runs;
+}
+
 /**
  * Scans text for secrets in each of its readingsOf, and inside each base64 (standard, URL-safe or
  * line-wrapped) and hex run. A run that decodes to text is scanned in
@@ -373,31 +394,33 @@ export function scanEncodedText(
   depth = 0,
 ): EncodedTextScan {
   const matches = matcherOf(options);
-  const { decoded, expanded, all } = readings(text);
+  const { all, decoded, expanded, unescapedExpanded } = readings(text);
   if (all.some(matches)) return SENSITIVE;
-  const runs: { run: string; bytes: Buffer }[] = [];
+  const runs = base64Runs(expanded);
   // A piece or a run decoded from a slash only adds findings; its bytes are not judged opaque.
   const slashStarts: Buffer[] = [];
-  for (const [match] of expanded.matchAll(BASE64_RUN)) {
-    // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
-    if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
-    runs.push({ run: match, bytes: Buffer.from(match, "base64") });
-    if (match.length > MAX_SLASH_START_RUN) continue;
-    for (const piece of match.split("/"))
-      if (piece.length >= 16 && piece.length < match.length)
+  for (const { run } of runs) {
+    if (run.length > MAX_SLASH_START_RUN) continue;
+    for (const piece of run.split("/"))
+      if (piece.length >= 16 && piece.length < run.length)
         slashStarts.push(Buffer.from(piece, "base64"));
     for (
-      let slash = match.indexOf("/");
-      slash !== -1 && slash < SLASH_START_SPAN && match.length - slash > 16;
-      slash = match.indexOf("/", slash + 1)
+      let slash = run.indexOf("/");
+      slash !== -1 && slash < SLASH_START_SPAN && run.length - slash > 16;
+      slash = run.indexOf("/", slash + 1)
     )
-      slashStarts.push(Buffer.from(match.slice(slash + 1), "base64"));
-  }
-  for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
-    if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
+      slashStarts.push(Buffer.from(run.slice(slash + 1), "base64"));
   }
   for (const run of wrappedBase64Runs(expanded))
     runs.push({ run, bytes: Buffer.from(run, "base64") });
+  // A decoded reference right before a run joins its character to the run, which shifts every
+  // base64 quartet and hex pair in it. The run after each `;` with references left as written
+  // adds findings, as a slash start does.
+  const runsAfterSemicolons =
+    unescapedExpanded === expanded
+      ? []
+      : [...unescapedExpanded.matchAll(RUN_AFTER_SEMICOLON)].map(([, run]) => run!);
+  for (const { bytes } of runsAfterSemicolons.flatMap(base64Runs)) slashStarts.push(bytes);
   let opaque = false;
   for (const { run, bytes } of runs) {
     const result = inspectDecoded(bytes, run, options, depth);
@@ -412,6 +435,7 @@ export function scanEncodedText(
   const hexRuns = new Set([
     ...[...expanded.matchAll(HEX_RUN)].map(([match]) => match),
     ...(expanded === decoded ? [] : [...decoded.matchAll(HEX_RUN)].map(([match]) => match)),
+    ...runsAfterSemicolons.flatMap((run) => [...run.matchAll(HEX_RUN)].map(([match]) => match)),
   ]);
   for (const match of hexRuns) {
     const plain = readPlainText(Buffer.from(match, "hex"));

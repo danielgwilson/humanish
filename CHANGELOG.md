@@ -17,10 +17,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   as written, that reading with transfer escapes expanded, and the text with only its references
   decoded. The second finds a key behind a letter reference when a quoted-printable soft break
   splits it. The third finds a key of fixed length, such as `npm_` and 36 characters, whose last
-  character is a reference followed by an escaped letter. The redacted export's text check, the
-  trace page path check and the known-value scrubs read the same readings, so they gain all three. A
-  scrub whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it
-  can after two layers of encoding, now replaces the whole text with the marker as it does for other
+  character is a reference followed by an escaped letter. The scan also decodes the base64 or hex
+  run that starts right after a reference, as in `&#65;dG9r...`, where decoding the reference adds a
+  letter to the run and shifts it out of alignment. The redacted export's text check, the trace page
+  path check and the known-value scrubs read the same readings, so they gain all three. A scrub
+  whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
+  after two layers of encoding, now replaces the whole text with the marker as it does for other
   values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
   percent-encoded links, the scan took 780 ms where it took 694 ms (median of 15). On a real 2 MiB
   Observer page and a 1.1 MiB run.json, where the new reading matches an existing one, it took

@@ -143,6 +143,14 @@ describe("scanEncodedText", () => {
     expect(scanEncodedText(text).sensitive).toBe(true);
   });
 
+  it("finds a key in a base64 or hex run behind a letter reference", () => {
+    // Decoding the reference puts an `A` at the front of the run, which shifts every base64
+    // quartet and hex pair after it.
+    const plain = Buffer.from(`token ${SECRET} end`);
+    for (const run of [plain.toString("base64"), plain.toString("hex")])
+      expect(scanEncodedText(`{"t":"&#65;${run}"}`).sensitive, run).toBe(true);
+  });
+
   it("calls an encoded archive or a long encoded binary run opaque", () => {
     expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
     expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);
