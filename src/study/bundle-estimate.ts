@@ -7,12 +7,16 @@
 // observer/index.html carries every participant's items gzipped, so with busy participants it
 // passes verify's 32 MiB long before run.json passes analysis's 16 MiB: at these rates, 20
 // participants working 8 hours. From run bundle v4 run.json grows by participant, not by model
-// request: each participant's per-request lists are only in its trace. run.json holds the mission
-// once for the run, once in each participant's stream and once more in the feedback candidate of
-// each participant that reports friction or stops. The mission is not capped, and the estimate
-// counts that last copy for every participant, so it warns at 100 participants with a mission of
-// 75,238 bytes. On 2026-10-13 the longest mission on the live computer-use runs kept on the
-// maintainer's machine was 807 characters.
+// request: each participant's per-request lists are only in its trace. run.json holds each
+// participant's text, its mission, its instruction and its task goals, in its stream and again in
+// the feedback candidate of a participant that reports friction or stops, and the first
+// participant's once more in the scenario goal. A synthetic live run of 3 participants that all
+// reported friction held their instructions 3, 2 and 2 times, and the mission and each of 2 task
+// goals 7 times. None of the three fields is capped, and the estimate counts the feedback
+// candidate's copy for every participant, so it warns at 100 participants with 75,238 bytes of
+// text each. On 2026-10-13 the longest mission on the live computer-use runs kept on the
+// maintainer's machine was 807 characters. On 2026-10-14 the longest instruction on the 170 live
+// runs kept there was 4,061 characters, and none declared task goals.
 // observer-data.json leaves the lists out too and was 0.94 to 1.12 of run.json's size on the live
 // runs measured, so it passes 32 MiB only after run.json passes 16 MiB, and the estimate does not
 // check it.
@@ -87,10 +91,11 @@ const RATES = Object.freeze({
   /**
    * The page's compact copy of observer-data.json, as a share of run.json before the mission: 0.71
    * to 0.84 on the live runs written as v4, where neither carries the per-request lists. The page
-   * holds the mission at its full size once for the run and once for each participant: dry runs of
-   * 1 and 4 participants grew the page by 2 and 5 copies, as run.json grew, and a 0.128.0 run of 2
-   * participants with 2 feedback candidates held 5 copies in run.json and 3 on the page. An
-   * analysis adds each participant's assignment, cut to 8,000 bytes.
+   * holds each participant's text at its full size once, and the first participant's once more for
+   * the run: dry runs of 1 and 4 participants grew the page by 2 and 5 copies of the mission, as
+   * run.json grew, and a 0.128.0 run of 2 participants with 2 feedback candidates held 5 copies in
+   * run.json and 3 on the page. The synthetic run of 3 held their instructions 2, 1 and 1 times on
+   * the page. An analysis adds each participant's assignment, cut to 8,000 bytes.
    */
   observerPageDataShare: 0.85,
   /**
@@ -113,12 +118,28 @@ const RATES = Object.freeze({
 
 const MIB = 1024 * 1024;
 
-/** One participant as the plan has it: its schedule, its dwell window and its mission. */
+/**
+ * One participant as the plan has it: its schedule, its dwell window, its mission and instruction,
+ * and its task goals.
+ */
 export interface EstimatedParticipant {
   readonly schedule: ParticipantSchedule;
   readonly limits: { readonly dwell?: DwellWindow };
-  readonly assignment: { readonly mission?: string };
+  readonly assignment: { readonly mission?: string; readonly focus?: string };
+  readonly tasks?: readonly { readonly goal: string }[];
 }
+
+/**
+ * The study fields run.json copies into each participant's stream, and the advice to shorten each.
+ * The plan does not keep which form declared the participants, so the advice names both paths.
+ */
+const COPIED_FIELDS = Object.freeze({
+  mission: "shorten the mission (actor.mission)",
+  focus:
+    "shorten the participants' instructions (participants.instruction or participants[].instruction)",
+  tasks: "shorten the task goals (actor.tasks[].goal)",
+});
+type CopiedField = keyof typeof COPIED_FIELDS;
 
 /** A run's estimated bundle, and the scan's limit for its participants. */
 export interface BundleEstimate {
@@ -144,6 +165,8 @@ export interface BundleEstimate {
     readonly open: number;
     readonly openMs: number;
     readonly dwell: boolean;
+    /** The copied field with the most bytes over all participants, when one has any. */
+    readonly largestField?: CopiedField;
   };
 }
 
@@ -162,13 +185,14 @@ export function estimateBundle(
   let frames = 0;
   let traces = 0;
   let largestTrace = 0;
-  let missionBytes = 0;
-  let longestMission = 0;
+  // The bytes of each copied field over all participants, and the longest participant's text.
+  const fieldBytes: Record<CopiedField, number> = { mission: 0, focus: 0, tasks: 0 };
+  let longestText = 0;
   let longestWindowMs = 0;
   // The longest any participant without an end is counted, for the messages.
   let openMs = Math.min(sessionMs, RATES.openSessionMs);
   let scheduled = 0;
-  for (const { schedule, limits, assignment } of participants) {
+  for (const { schedule, limits, assignment, tasks = [] } of participants) {
     const { end } = schedule;
     const budgetMs = end?.windowMs ?? sessionMs;
     let countedMs: number;
@@ -190,28 +214,33 @@ export function estimateBundle(
     frames += ownFrames;
     traces += trace;
     largestTrace = Math.max(largestTrace, trace);
-    // The mission's bytes as run.json stores them, a JSON string without its quotes.
-    const mission =
-      assignment.mission === undefined
-        ? 0
-        : Buffer.byteLength(JSON.stringify(assignment.mission)) - 2;
-    missionBytes += mission;
-    longestMission = Math.max(longestMission, mission);
+    const mission = storedBytes(assignment.mission);
+    const focus = storedBytes(assignment.focus);
+    const goals = tasks.reduce((sum, task) => sum + storedBytes(task.goal), 0);
+    fieldBytes.mission += mission;
+    fieldBytes.focus += focus;
+    fieldBytes.tasks += goals;
+    longestText = Math.max(longestText, mission + focus + goals);
   }
+  const textBytes = fieldBytes.mission + fieldBytes.focus + fieldBytes.tasks;
+  // Sorting is stable, so of fields with equal bytes the first declared is named.
+  const [largestField] = (Object.keys(fieldBytes) as CopiedField[])
+    .filter((field) => fieldBytes[field] > 0)
+    .sort((a, b) => fieldBytes[b] - fieldBytes[a]);
   const count = participants.length;
   const dataBytes = RATES.runBytes + count * RATES.participantBytes;
-  // run.json holds the mission in the run's scenario goal, in each participant's stream and in the
-  // feedback candidate of each participant that reports friction or stops, counted for every
-  // participant. The rates were fit on runs with short missions, so a short mission is counted
-  // twice.
-  const runFileBytes = dataBytes + longestMission + 2 * missionBytes;
+  // run.json holds each participant's text in its stream and in its feedback candidate if it
+  // reports friction or stops, counted for every participant, and the first participant's in the
+  // run's scenario goal, counted at the longest. The rates were fit on runs with short texts, so a
+  // short text is counted twice.
+  const runFileBytes = dataBytes + longestText + 2 * textBytes;
   const screenshots = count + turns + frames;
   // The page holds no feedback candidate's copy.
   const observerPageBytes = Math.round(
     RATES.observerAppBytes +
       RATES.observerPageDataShare * dataBytes +
-      longestMission +
-      missionBytes +
+      longestText +
+      textBytes +
       RATES.observerPageItemsShare * traces,
   );
   return {
@@ -229,8 +258,14 @@ export function estimateBundle(
       open: count - scheduled,
       openMs,
       dwell: frames > 0,
+      ...(largestField === undefined ? {} : { largestField }),
     },
   };
+}
+
+/** A text's bytes as run.json stores it, a JSON string without its quotes. */
+function storedBytes(text: string | undefined): number {
+  return text === undefined ? 0 : Buffer.byteLength(JSON.stringify(text)) - 2;
 }
 
 /**
@@ -244,7 +279,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   const passed = [
     ...(runFile
       ? [
-          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant.`,
+          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.`,
         ]
       : []),
     ...(estimate.largestTraceBytes > RUN_ARTIFACT_MAX_BYTES
@@ -264,7 +299,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
       : []),
   ];
   if (passed.length === 0) return undefined;
-  const { scheduled, longestWindowMs, open, openMs, dwell } = estimate.basis;
+  const { scheduled, longestWindowMs, open, openMs, dwell, largestField } = estimate.basis;
   const counted = [
     ...(scheduled > 0
       ? [
@@ -280,7 +315,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   const changes = [
     ...(scheduled > 0 ? ["shorten the longest windows (participants[].endAfterMs)"] : []),
     ...(dwell ? ["shorten the dwell window (dwell.ms) or capture less often (dwell.everyMs)"] : []),
-    ...(runFile ? ["shorten the mission (actor.mission)"] : []),
+    ...(runFile && largestField !== undefined ? [COPIED_FIELDS[largestField]] : []),
   ];
   // A trace is one participant's, so splitting the study helps only the run's own files.
   if (runFile || page || entries || changes.length === 0)

@@ -1,5 +1,5 @@
 import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
-import { eventRecordIdOf, recordIdOf, streamParticipantIdOf } from "../run/participant-records.js";
+import { streamParticipantIdOf } from "../run/participant-records.js";
 import { cuaEndpointSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { StoredRunBundle } from "../run/bundle.js";
@@ -11,6 +11,7 @@ import {
   type CaptureVersion,
 } from "./types.js";
 import { decodesToPlainRelativePath, isEvidencePath } from "../run/evidence-files.js";
+import { isRunEventOf } from "./source.js";
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
@@ -138,11 +139,7 @@ export function participantSource(
 }
 
 const runEventsOf = (bundle: StoredRunBundle, stream: StoredRunStream): StoredRunBundle["events"] =>
-  bundle.events.filter(
-    (entry) =>
-      entry.streamId === stream.id ||
-      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
-  );
+  bundle.events.filter((event) => isRunEventOf(stream, event));
 
 /**
  * How many entries sourceEntries gives of run.json's `stream` once its trace is loaded, counted
@@ -234,10 +231,8 @@ export function sourceEntries(
       failed: ["failed", "blocked", "timed_out"].includes(item.status ?? ""),
     });
   }
-  const runEventIds = new Set<string>();
+  // parseAnalysisSource refuses a run.json in which two of a participant's run events share an id.
   for (const event of runEventsOf(bundle, stream)) {
-    if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
-    runEventIds.add(event.id);
     entries.push({
       eventId: event.id,
       kind: `run_event:${event.type}`,
