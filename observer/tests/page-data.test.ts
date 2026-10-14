@@ -68,7 +68,7 @@ describe("the page's run data", () => {
     expect(asked).toBe("observer-feed.json");
   });
 
-  it("refuses a feed whose items are another run's or leave a participant out", async () => {
+  it("refuses a feed whose items are another run's, leave a participant out or repeat one", async () => {
     const data = await live();
     const body = JSON.parse(feed(data)) as {
       data: unknown;
@@ -84,6 +84,15 @@ describe("the page's run data", () => {
       { ...body.items, streams: { [id]: packed } },
       // An entry that does not name its stream.
       { ...body.items, streams: [gzipSync(JSON.stringify({ actor: [] })).toString("base64")] },
+      // Two entries for one stream: the second would replace the first's items.
+      { ...body.items, streams: [...body.items.streams, packed] },
+      {
+        ...body.items,
+        streams: [
+          gzipSync(JSON.stringify({ id, actor: "malformed" })).toString("base64"),
+          ...body.items.streams,
+        ],
+      },
     ]) {
       const served = (async () => ({
         ok: true,

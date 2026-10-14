@@ -147,7 +147,8 @@ async function unpackItems(value: unknown): Promise<ObserverItems | null> {
     const entry: unknown = JSON.parse(text);
     if (typeof entry !== "object" || entry === null) return null;
     const { id, ...rest } = entry as { id?: unknown };
-    if (typeof id !== "string") return null;
+    // A second entry for one stream would replace the first's items before they are checked.
+    if (typeof id !== "string" || id in streams) return null;
     streams[id] = rest;
   }
   const items = { schema: packed.schema, runId: packed.runId, streams };
