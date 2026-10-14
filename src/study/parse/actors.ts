@@ -98,7 +98,14 @@ export function parseActorFields(
   if (persona.value !== undefined) actor.persona = persona.value;
   const mission = str(entry.mission);
   if (mission) actor.mission = mission;
+  // The provider is asked for this model and its trace records the name, so redacting it would ask
+  // for another model. Text verify would flag, as written or encoded, is refused instead.
   const model = str(entry.model);
+  if (model && scanEncodedText(model).sensitive) {
+    return invalid(
+      `\`${path}.model\` looks like a secret or a local path, and the run records it. Set the model id your provider lists, or leave \`${path}.model\` out to use the default.`,
+    );
+  }
   if (model) actor.model = model;
   if (entry.maxOutputTokens !== undefined) {
     if (!isMaxOutputTokens(entry.maxOutputTokens))

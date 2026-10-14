@@ -2,7 +2,6 @@
 // published through the run scope with no sandbox, key or spend. session.ts holds the live path.
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import type { TerminalPlan } from "../../study/plan-types.js";
@@ -162,8 +161,7 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
         declaredRuntimeProvenance({
           doNotTrack: runtime.doNotTrack,
           ...(version === undefined ? {} : { version }),
-          // The study names the model, so it is study text.
-          model: redactEncodedText(model),
+          model,
           modelSource,
           ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
         }),
