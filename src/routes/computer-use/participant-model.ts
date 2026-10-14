@@ -82,6 +82,9 @@ export async function startParticipantModel(
       ...(spec.planned.limits.maxWaitMs === undefined
         ? {}
         : { maxWaitMs: spec.planned.limits.maxWaitMs }),
+      ...(spec.planned.limits.idleWaitMs === undefined
+        ? {}
+        : { idleWaitMs: spec.planned.limits.idleWaitMs }),
       session: { env },
     });
     return { provider: codexParticipant.provider, codexParticipant };

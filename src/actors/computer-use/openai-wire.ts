@@ -122,7 +122,33 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
 export interface ParsedOpenAiResponse {
   turn: CuaTurn;
   callIds: string[];
+  /** The function calls, in reply order, each owed a function_call_output. */
+  functionCalls: FunctionCall[];
   outputItems: unknown[];
+}
+
+/** A function call a reply made: its id, and its name, which is WAIT_TOOL_NAME unless it erred. */
+export interface FunctionCall {
+  readonly callId: string;
+  readonly name: string;
+}
+
+/**
+ * A wait_minutes call as a wait of the minutes it names, in whole milliseconds and at least 1.
+ * The session's caps then apply as to any named wait, and the trace records the length as named.
+ * Arguments that do not parse, or minutes that are not a finite number above zero, make a wait
+ * that names no length, as the computer tool's `wait` does.
+ */
+function waitMinutesAction(args: unknown): CuaAction {
+  let minutes: unknown;
+  try {
+    minutes = asRecord(JSON.parse(asString(args))).minutes;
+  } catch {
+    return { kind: "wait" };
+  }
+  if (typeof minutes !== "number" || !(minutes > 0)) return { kind: "wait" };
+  const ms = Math.max(1, Math.round(minutes * 60_000));
+  return Number.isFinite(ms) ? { kind: "wait", ms } : { kind: "wait" };
 }
 
 // Collect plain strings or { text } entries from a reasoning summary/content array.
@@ -166,6 +192,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 
   const actions: CuaAction[] = [];
   const callIds: string[] = [];
+  const functionCalls: FunctionCall[] = [];
   const reasoningParts: string[] = [];
   const messageParts: string[] = [];
   const safetyChecks: CuaSafetyCheck[] = [];
@@ -216,6 +243,18 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
             message: asString(check.message) || code || id || "safety_check",
           });
         }
+        break;
+      }
+      case "function_call": {
+        const callId = optionalString(item.call_id);
+        if (callId === undefined) break;
+        const name = asString(item.name);
+        functionCalls.push({ callId, name });
+        // A call to a tool that does not exist is a wait with no length, and its output says there
+        // is no such tool. A reply of only such calls is then an idle turn, so the session goes on.
+        actions.push(
+          name === WAIT_TOOL_NAME ? waitMinutesAction(item.arguments) : { kind: "wait" },
+        );
         break;
       }
       default:
@@ -273,7 +312,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     ...(usage === undefined ? {} : { usage }),
   };
 
-  return { turn, callIds, outputItems: output };
+  return { turn, callIds, functionCalls, outputItems: output };
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +321,35 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 // ---------------------------------------------------------------------------
 
 export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
+
+/**
+ * A function the participant names its wait length with; the computer tool's `wait` names none.
+ * The minutes set where the doubling of idle turns in a row starts (loop/watch.ts). Declared on
+ * every request, so adding it changes no request's cached prefix after the first. Its name and
+ * description say nothing of the screen or of later waits: participants told that a wait ends when
+ * the screen changes treated waiting as watching and stopped reloading a page that updates only on
+ * reload, and participants told a schedule copied it. Each watch's note says how long it lasted.
+ */
+export const WAIT_TOOL_NAME = "wait_minutes";
+
+const WAIT_TOOL = {
+  type: "function",
+  name: WAIT_TOOL_NAME,
+  description:
+    "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+  parameters: {
+    type: "object",
+    properties: {
+      minutes: {
+        type: "number",
+        description: "How long you want to wait, in minutes.",
+      },
+    },
+    required: ["minutes"],
+    additionalProperties: false,
+  },
+  strict: true,
+};
 
 export interface OpenAiCuContext {
   /**
@@ -312,7 +380,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // The Responses API `computer` tool takes no display/environment fields; the model infers
     // resolution from the screenshots it is sent. (Sending display_* returns a 400
     // "Unknown parameter tools[0].display_width", confirmed against the live API 2026-06.)
-    tools: [{ type: "computer" }],
+    tools: [{ type: "computer" }, WAIT_TOOL],
     truncation: "auto",
     // `summary` asks for the provider-sanctioned reasoning summary items; the
     // capture side never scrapes or reconstructs raw chain-of-thought. Parsed by
@@ -392,18 +460,10 @@ export function buildCallOutput(
   screenshot: Buffer | undefined,
   acknowledged?: CuaSafetyCheck[],
 ): Record<string, unknown> {
-  if (screenshot === undefined) {
-    throw new Error(
-      "openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
-    );
-  }
   return {
     type: "computer_call_output",
     call_id: callId,
-    output: {
-      type: "computer_screenshot",
-      image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
-    },
+    output: { type: "computer_screenshot", image_url: screenshotUrl(screenshot) },
     ...(acknowledged && acknowledged.length > 0
       ? {
           acknowledged_safety_checks: acknowledged.map(({ id, code, message }) => ({
@@ -414,6 +474,37 @@ export function buildCallOutput(
         }
       : {}),
   };
+}
+
+/**
+ * The answer to a function call: `text`, followed by the screen. `screenshot` null sends the text
+ * alone; undefined is a missing frame, refused as buildCallOutput refuses it.
+ */
+export function buildFunctionOutput(
+  callId: string,
+  text: string,
+  screenshot: Buffer | undefined | null,
+): Record<string, unknown> {
+  return {
+    type: "function_call_output",
+    call_id: callId,
+    output:
+      screenshot === null
+        ? text
+        : [
+            ...(text ? [{ type: "input_text", text }] : []),
+            { type: "input_image", image_url: screenshotUrl(screenshot) },
+          ],
+  };
+}
+
+function screenshotUrl(screenshot: Buffer | undefined): string {
+  if (screenshot === undefined) {
+    throw new Error(
+      "openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
+    );
+  }
+  return `data:image/png;base64,${screenshot.toString("base64")}`;
 }
 
 export interface ContinuationRequestArgs {

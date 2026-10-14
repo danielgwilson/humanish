@@ -108,6 +108,7 @@
           "kind": "ui_action",
           "lifecycle": "completed",
           "title": "wait 50ms",
+          "namedMs": 50,
           "at": "1970-01-01T00:00:17.000Z"
         },
         {

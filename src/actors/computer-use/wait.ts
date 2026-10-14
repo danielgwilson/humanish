@@ -4,8 +4,8 @@ import type { ActorWaitSettings } from "../contract.js";
 // longest (actor.maxWaitMs) and how long a wait that names no duration lasts while the participant
 // only waits (actor.idleWaitMs). The loop asks planWait for each wait. A turn with another action
 // sends its waits to the desktop in steps one desktop call carries; a turn that only waits watches
-// the screen instead (loop/watch.ts), for its waits' lengths, the named ones together up to
-// watchMaxMs, or longer as the watches of idle turns in a row grow.
+// the screen instead (loop/watch.ts), for its waits' lengths and at least idleWaitMs, the named
+// ones together up to watchMaxMs, or longer as the watches of idle turns in a row grow.
 
 export const CUA_WAIT_LIMITS = Object.freeze({
   /**
@@ -29,16 +29,18 @@ export const CUA_WAIT_LIMITS = Object.freeze({
   defaultWatchMaxMs: 600_000,
   /**
    * How long a wait that names no duration lasts in a turn that only waits or takes screenshots,
-   * when a study does not set actor.idleWaitMs. OpenAI's computer-use `wait` names no duration. A
-   * participant told to wait about a minute sent ten in one turn, which lasts 50 s at this length;
-   * one wait a turn makes a one-minute wait about six turns. It is also how often a watch looks.
+   * when a study does not set actor.idleWaitMs. OpenAI's computer tool `wait` names no duration;
+   * its wait_minutes function names one in minutes. A participant told to wait about a minute
+   * sent ten computer tool waits in one turn, which lasts 50 s at this length; one wait a turn
+   * makes a one-minute wait about six turns. It is also the shortest a watch lasts and how often
+   * it looks.
    */
   defaultIdleMs: 5_000,
   /**
    * How long a wait that names no duration lasts after the participant acts in the same turn, so
-   * the screen can settle before the next screenshot. Nearly every OpenAI computer-use wait follows
-   * a click or keypress this way, so a longer one would slow every run. A watch looks again this
-   * soon after a large part of the screen moved.
+   * the screen can settle before the next screenshot. Nearly every OpenAI computer tool wait
+   * follows a click or keypress this way, so a longer one would slow every run. A watch looks again
+   * this soon after a large part of the screen moved.
    */
   settleMs: 500,
   /**

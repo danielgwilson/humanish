@@ -373,7 +373,10 @@ describe("request builders", () => {
     expect(body.model).toBe(DEFAULT_OPENAI_CU_MODEL);
     // The live `computer` tool takes no display/environment fields (verified against the API
     // 2026-06; sending them returns 400 "Unknown parameter tools[0].display_width").
-    expect(body.tools).toEqual([{ type: "computer" }]);
+    expect(body.tools).toEqual([
+      { type: "computer" },
+      expect.objectContaining({ type: "function", name: "wait_minutes" }),
+    ]);
     expect(body.truncation).toBe("auto");
     expect(body.reasoning).toEqual({ effort: "medium" });
     expect(body.instructions).toBe("Do the thing.");

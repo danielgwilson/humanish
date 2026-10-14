@@ -21,11 +21,13 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
 // A watch first lasts the turn's planned length: its waits' named lengths, together up to
-// watchMaxMs, and idleWaitMs for each wait that names none. Each further idle turn in a row whose
-// watch ended at its limit, or was woken by a small change (at most 24 tiles) that held still,
-// watches twice as long, up to the longer of its planned length and watchMaxMs. Any other ending,
-// or a turn with another action, starts again from the planned length. A participant waiting on a
-// static screen settles at one request per watchMaxMs.
+// watchMaxMs, and idleWaitMs for each wait that names none, and at least idleWaitMs. Each further
+// idle turn in a row whose watch ended at its limit, or was woken by a small change (at most 24
+// tiles) that held still, watches twice as long, up to the longer of its planned length and
+// watchMaxMs. Any other ending, or a turn with another action, starts again from its first
+// length. A participant waiting on a static screen settles at one request per watchMaxMs: at the
+// default 10 minutes, one naming 1 minute each turn waits 60, 120, 240 and 480 s, then 10 minutes
+// at a time.
 
 /** A watch that ran for one idle turn: how it ended, and what the loop does next. */
 export interface Watched {
@@ -106,11 +108,14 @@ export class IdleWatcher {
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
     if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
-    // Never shorter than the turn's own planned length, so a long named wait is not cut short.
+    // Never shorter than idleWaitMs, so a participant naming a few milliseconds on a static screen
+    // does not send requests back to back, and never shorter than the turn's own planned length, so
+    // a long named wait is not cut short.
+    const shortestMs = Math.max(plannedMs, session.waits.idleWaitMs);
     const limitMs =
       this.grownFromMs === undefined
-        ? plannedMs
-        : Math.min(capMs, Math.max(plannedMs, 2 * this.grownFromMs));
+        ? shortestMs
+        : Math.min(capMs, Math.max(shortestMs, 2 * this.grownFromMs));
     const ending = await watchScreen(session, this.observer, turnNumber, reference, limitMs);
     // A small change that held still (a status label, or a counter the rule did not hold back)
     // wakes the participant and keeps the doubling, so a repeating small change cannot keep every
@@ -122,7 +127,7 @@ export class IdleWatcher {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending, grows && limitMs < capMs ? capMs : undefined),
+      hint: hintFor(ending),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,
@@ -296,22 +301,18 @@ function splitWatch(
 }
 
 /**
- * The next request's note. A clock ending says nothing: the clock text that follows says it. A
+ * The next request's note. A clock ending says only how long the wait lasted. A
  * small change is named by its place, so a participant is not told the screen changed when what
- * changed was a counter or a timestamp. `growsToMs` adds the growth sentence when the next watch
- * doubles.
+ * changed was a counter or a timestamp. The note says nothing of the next wait's length: a
+ * participant told it names that length and keeps waiting.
  */
-function hintFor(ending: Ending, growsToMs: number | undefined): string | undefined {
+function hintFor(ending: Ending): string | undefined {
   const lasted = `Your wait lasted ${duration(ending.ms)}`;
-  const grows =
-    growsToMs === undefined
-      ? ""
-      : ` A wait right after it can last twice as long, at most ${duration(growsToMs)}.`;
   const { seen } = ending;
   switch (ending.wake) {
     case "changed":
       return seen?.verdict === "settled" && seen.small
-        ? `${lasted} and ended when a small part of the screen changed and then stayed the same for over a minute, ${place(seen.area)}.${grows}`
+        ? `${lasted} and ended when a small part of the screen changed and then stayed the same for over a minute, ${place(seen.area)}.`
         : `${lasted} and ended when the screen changed.`;
     case "speech":
       return `${lasted} and ended when you heard speech.`;
@@ -321,13 +322,15 @@ function hintFor(ending: Ending, growsToMs: number | undefined): string | undefi
     // never says the screen stayed the same.
     case "limit":
       if (seen?.verdict === "changing" && seen.lookSoon)
-        return `${lasted}; a large part of the screen was changing at its last check.${grows}`;
+        return `${lasted}; a large part of the screen was changing at its last check.`;
       if (seen?.verdict !== "settled" && seen?.held !== undefined)
-        return `${lasted}; a small part of the screen changed and stayed the same, ${place(seen.held)}. A small change does not end a wait.${grows}`;
-      return `${lasted}; no change on the screen held still long enough to end it.${grows}`;
+        return `${lasted}; a small part of the screen changed and stayed the same, ${place(seen.held)}. A small change does not end a wait.`;
+      return `${lasted}; no change on the screen held still long enough to end it.`;
     case "stalled":
       return `${lasted}; the screen could not be checked during it.`;
+    // The clock text that follows says why the wait ended.
     case "clock":
+      return `${lasted}.`;
     case "stopped":
       return undefined;
   }

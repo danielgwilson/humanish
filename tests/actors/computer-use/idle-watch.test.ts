@@ -135,7 +135,7 @@ describe("the watch length over idle turns in a row", () => {
     ]);
     expect(watchesOf(run.result)[5]?.area).toEqual(LABEL);
     expect(run.requests[6]?.hint).toBe(
-      "Your wait lasted 75 seconds and ended when a small part of the screen changed and then stayed the same for over a minute, at x 16, y 16 (48 x 16 pixels). A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 75 seconds and ended when a small part of the screen changed and then stayed the same for over a minute, at x 16, y 16 (48 x 16 pixels).",
     );
   });
 
@@ -202,6 +202,74 @@ describe("the watch length over idle turns in a row", () => {
   });
 });
 
+describe("a named wait", () => {
+  const limits = (run: WatchRun) => watchesOf(run.result).map((watch) => watch.limitMs);
+
+  it("doubles from its length on each quiet turn in a row, up to 10 minutes", async () => {
+    // Codex, Claude Code and OpenAI's wait_minutes name a length; the length sets where the
+    // doubling starts. A participant naming 1 minute each turn waits 60, 120, 240 and 480 s, then
+    // 10 minutes at a time.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= 6 ? turnOf([{ kind: "wait", ms: MINUTE }]) : DONE),
+    });
+    expect(limits(run)).toEqual([60_000, 120_000, 240_000, 480_000, 600_000, 600_000]);
+    expect(run.requests.map((request) => request.at)).toEqual([
+      0, 60_000, 180_000, 420_000, 900_000, 1_500_000, 2_100_000,
+    ]);
+    expect(run.requests[1]?.hint).toBe(
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it.",
+    );
+  });
+
+  it("is watched from idleWaitMs when shorter, so requests on a quiet screen come 5, 10 and 20 s apart", async () => {
+    // Without the floor a participant naming 1 ms on a static screen would start at 2 ms.
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) =>
+        n <= 3
+          ? turnOf([
+              { kind: "wait", ms: 1 },
+              { kind: "wait", ms: 1 },
+            ])
+          : DONE,
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.askedMs, watch.limitMs])).toEqual([
+      [2, 5_000],
+      [2, 10_000],
+      [2, 20_000],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([0, 5_000, 15_000, 35_000]);
+  });
+
+  it("starts again from its named length after the screen changed", async () => {
+    // Watch 2 runs from 60 s for 120 s; its look at 100 s sees the new row and its quick look at
+    // 100.5 s sees it still. The screen then stays the same.
+    const run = await runWatching({
+      screen: (atMs) => (atMs >= 100_000 ? NEW_ROW : QUIET),
+      turn: (_request, n) => (n <= 4 ? turnOf([{ kind: "wait", ms: MINUTE }]) : DONE),
+    });
+    expect(watchesOf(run.result).map((watch) => [watch.limitMs, watch.wake])).toEqual([
+      [60_000, "limit"],
+      [120_000, "changed"],
+      [60_000, "limit"],
+      [120_000, "limit"],
+    ]);
+    expect(run.requests.map((request) => request.at)).toEqual([
+      0, 60_000, 100_500, 160_500, 280_500,
+    ]);
+  });
+
+  it("doubles into a wait with no length after it, as one run of quiet turns", async () => {
+    const script: CuaAction[][] = [[{ kind: "wait", ms: 180_000 }], [WAIT], [WAIT]];
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => (n <= script.length ? turnOf(script[n - 1]!) : DONE),
+    });
+    expect(limits(run)).toEqual([180_000, 360_000, 600_000]);
+  });
+});
+
 describe("the turn a watch ends", () => {
   it("hands the look that woke the participant to its next request, with no observe after it", async () => {
     // Looks at 5, 10 and 15 s; the one at 20 s sees the new row and the quick look at 20.5 s sees
@@ -236,7 +304,7 @@ describe("the turn a watch ends", () => {
     ]);
     expect(run.requests[2]?.observation.screenshot).toBe(label);
     expect(run.requests[2]?.hint).toBe(
-      "Your wait lasted 10 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 10 seconds; no change on the screen held still long enough to end it.",
     );
   });
 
@@ -250,7 +318,7 @@ describe("the turn a watch ends", () => {
     expect(watchesOf(run.result).map((watch) => watch.wake)).toEqual(["limit"]);
     expect(run.requests[1]?.observation.screenshot).toBe(NEW_ROW);
     expect(run.requests[1]?.hint).toBe(
-      "Your wait lasted 5 seconds; a large part of the screen was changing at its last check. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 5 seconds; a large part of the screen was changing at its last check.",
     );
   });
 
@@ -271,7 +339,7 @@ describe("the turn a watch ends", () => {
       [120_000, "limit"],
     ]);
     expect(run.requests[1]?.hint).toBe(
-      "Your wait lasted 2 minutes; a small part of the screen changed and stayed the same, at x 32, y 0 (48 x 16 pixels). A small change does not end a wait. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 2 minutes; a small part of the screen changed and stayed the same, at x 32, y 0 (48 x 16 pixels). A small change does not end a wait.",
     );
   });
 

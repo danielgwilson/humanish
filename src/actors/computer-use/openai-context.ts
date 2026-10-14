@@ -6,16 +6,17 @@ import type { CuaAction } from "./loop.js";
 // provider still threads on previous_response_id feed it too, so a switch partway through a
 // session keeps everything before the switch.
 //
-// The Responses API pairs items: every computer_call needs its computer_call_output, and a
-// reasoning item travels with the item it preceded. The conversation is therefore cut only at
-// exchange boundaries: one reply's output items together with the items that answered them.
-// When the estimate passes the budget, the conversation is cut down to half the budget in one
-// step: the opening screenshot goes first, then the oldest exchanges become lines of a progress
-// note that keeps their reasoning summaries, messages and actions, and the text that answered
-// them, such as a note that an action was not run. The note is an assistant message, so text the
-// model wrote (which can quote a web page) keeps the trust it had when the model wrote it. The newest MIN_KEPT_EXCHANGES exchanges are never collapsed, so a
-// request passes the budget when they alone exceed it; the trace's per-request estimate shows when
-// that happens.
+// The Responses API pairs items: every computer_call needs its computer_call_output, every
+// function_call (wait_minutes) its function_call_output, and a reasoning item travels with the
+// item it preceded. The conversation is therefore cut only at exchange boundaries: one reply's
+// output items together with the items that answered them. When the estimate passes the budget, the
+// conversation is cut down to half the budget in one step: the opening screenshot goes first, then
+// the oldest exchanges become lines of a progress note that keeps their reasoning summaries,
+// messages, actions and function calls, and the text that answered them, such as a note that an
+// action was not run or how a wait ended. The note is an assistant message, so text the model wrote
+// (which can quote a web page) keeps the trust it had when the model wrote it. The newest
+// MIN_KEPT_EXCHANGES exchanges are never collapsed, so a request passes the budget when they alone
+// exceed it; the trace's per-request estimate shows when that happens.
 //
 // A cut rewrites the start of the prompt, so the provider's prompt cache misses on the request
 // after it. Between cuts nothing already sent changes: each request starts with the whole of the
@@ -183,11 +184,13 @@ function describeExchange(exchange: CarriedExchange): string {
   const said: string[] = [];
   const did: string[] = [];
   const told: string[] = [];
-  // The answers are the call outputs, whose content is a screenshot, and hint messages.
+  // The answers are the computer_call outputs, whose content is a screenshot, the function call
+  // outputs, which say how a wait ended as text beside any screenshot, and hint messages.
   for (const raw of exchange.answers) {
     const item = asRecord(raw);
     if (item.type === "computer_call_output") continue;
-    for (const entry of asArray(item.content)) {
+    if (typeof item.output === "string" && item.output.length > 0) told.push(item.output);
+    for (const entry of [...asArray(item.content), ...asArray(item.output)]) {
       const text = asRecord(entry).text;
       if (typeof text === "string" && text.length > 0) told.push(text);
     }
@@ -211,6 +214,13 @@ function describeExchange(exchange: CarriedExchange): string {
         if (mapped !== null) did.push(describeAction(mapped));
       }
     }
+    // A function call is noted as it was made, such as wait_minutes {"minutes":3}.
+    if (item.type === "function_call" && typeof item.name === "string")
+      did.push(
+        typeof item.arguments === "string"
+          ? `${item.name} ${clip(item.arguments, 120)}`
+          : item.name,
+      );
   }
   const lead = `Turn ${exchange.turn}: `;
   const before = [
@@ -252,13 +262,16 @@ function clip(text: string, limit: number): string {
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 3)}...`;
 }
 
-/** The data URLs of the images an input item carries. */
+/**
+ * The data URLs of the images an input item carries: a computer_call output's screenshot, and the
+ * image parts of a message's content or a function call output's output.
+ */
 function imagesOf(item: unknown): string[] {
   const record = asRecord(item);
   const output = asRecord(record.output);
   const urls: string[] = [];
   if (typeof output.image_url === "string") urls.push(output.image_url);
-  for (const part of asArray(record.content)) {
+  for (const part of [...asArray(record.content), ...asArray(record.output)]) {
     const url = asRecord(part).image_url;
     if (typeof url === "string") urls.push(url);
   }

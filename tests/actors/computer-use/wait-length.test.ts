@@ -187,10 +187,11 @@ describe("a wait with no duration on a hosted desktop", () => {
   });
 
   it("keeps a wait that names its duration", async () => {
-    const { result } = await hostedWaits([{ kind: "wait", ms: 2_500 }]);
+    // The watch looks at 5 s, every idleWaitMs, and again at its limit.
+    const { result } = await hostedWaits([{ kind: "wait", ms: 7_500 }]);
 
-    expect(slept).toEqual([2_500]);
-    expect(waitTitles(result)).toEqual(["wait 2500ms"]);
+    expect(slept).toEqual([5_000, 2_500]);
+    expect(waitTitles(result)).toEqual(["wait 7500ms"]);
   });
 
   it("keeps a wait that names its duration after an action, sent to the desktop", async () => {

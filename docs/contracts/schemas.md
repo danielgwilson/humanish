@@ -1082,14 +1082,17 @@ Core-owned fields:
   16 pixels counts once it holds still at a look; one of 24 tiles or fewer once
   it has held still for more than 65 s with no tile within 4 tiles of it ticking
   or moving with a region of more than 24 tiles
-  (`src/evidence/frame-change.ts`). The first watch lasts the turn's planned
-  length: the named waits' lengths, together up to `actor.maxWaitMs` (else
-  600000), and `idleWaitMs` for each wait that names none. Each further one in a row that ended
-  at its limit, or that a change of 24 tiles or fewer woke, lasts twice as long,
-  up to the larger of its planned length and that cap. `limitMs` is how long it
-  could last; `askedMs` is what the turn's waits asked for, the same sum with no
-  cap, so it is above `limitMs` when the named waits passed the cap and below it
-  when the watch grew; `wake` is `changed`, `speech`,
+  (`src/evidence/frame-change.ts`). The first watch's limit is the turn's
+  planned length: the named waits' lengths, together up to `actor.maxWaitMs` (else
+  600000), and `idleWaitMs` for each wait that names none, and at least
+  `idleWaitMs`. Each further one in a row that ended at its limit, or that a
+  change of 24 tiles or fewer woke, lasts twice as long, up to the larger of its
+  planned length and that cap. An OpenAI participant names a length with the
+  `wait_minutes` function tool; its computer tool's `wait` names none.
+  `limitMs` is how long it could last; `askedMs` is what the turn's
+  waits asked for, the same sum with no cap, so it is above `limitMs` when the
+  named waits passed the cap and below it when the watch grew or the named waits
+  were shorter than `idleWaitMs`; `wake` is `changed`, `speech`,
   `condition`, `limit`, `clock` (wind-down or end), `stalled` (a look got no
   frame; the next observation is a fresh one), or `stopped` (the study budget or
   the session's time ran out); `looks` counts its looks; `area` (`x`, `y`,
@@ -1100,6 +1103,14 @@ Core-owned fields:
   waits after the one carrying `watch` are titled `wait 0ms`. The look that
   ended a watch is the turn's `turn-NN` screenshot; other looks are not kept.
   Additive: absent on plain waits, other producers and older bundles
+- optional `items[].namedMs`, on the computer-use `ui_action` of each wait that
+  named its length: that length in milliseconds, as the participant named it,
+  before `actor.maxWaitMs` or the watch's cap applied. An OpenAI participant
+  names a length only through `wait_minutes`, so its waits with `namedMs` are
+  that tool's calls. Its waits without it are the computer tool's `wait`, a
+  `wait_minutes` call whose minutes were not a finite number above zero, and
+  a call to a function it does not have. Additive: absent on waits that named
+  none, other items and producers, and older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before
@@ -1183,8 +1194,9 @@ Core-owned fields:
   with the outputs that answered it, and the latest reply. Past an estimated
   64,000 input tokens it is cut down to 32,000 in one step: the opening
   screenshot is dropped first, then the oldest exchanges become lines of a note,
-  sent as an assistant message, that keeps their reasoning summaries, messages
-  and actions as text, with any text that came back with their screenshots.
+  sent as an assistant message, that keeps their reasoning summaries, messages,
+  actions and `wait_minutes` calls as text, with any text that came back with
+  their screenshots or in a function call's output, such as how a wait ended.
   Past 32,000 characters the note keeps its first four lines and its newest
   ones, and names the turns between them as not listed.
   The two newest exchanges are always carried whole, even when they alone pass

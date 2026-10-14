@@ -10,38 +10,34 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- verify scans the decoded run one participant at a time. It scanned run.json with every
-  participant's trace loaded as one string, and V8's longest string is 536,870,888 characters, so
-  on a run whose traces together passed about 512 MiB, such as 25 participants at 30 MiB, verify
-  stopped with `RangeError: Invalid string length` and analysis with `ANALYSIS_UNAVAILABLE`. On 25
-  synthetic participants with 30 MiB traces, verify now grades the run `share_ready` and
-  `analyze --dry-run` passes. A key planted in the last participant's trace, escaped so that only
-  the decoded run shows it, still blocks the run. The scan answers as the single string did on
-  every value JSON.parse returns. One pattern can match across participants: a URL whose user info runs up to an `@`
-  and an E2B host. verify checks it across each cut and keeps only the URL's scheme between
-  participants. Peak memory on that run was 2,044 MiB; verify still holds every trace at once.
-  (#1848)
-- The bundle estimate warns when all participants' traces together may pass 512 MiB. The Observer
-  page and the Observer server join every participant's items in one string, so on the 25 x
-  30 MiB run `humanish observe` still stops with `RangeError: Invalid string length`.
-  `humanish export --format bundle` renders that page, so it fails the same way once
-  `--max-bytes` is raised past its 25 MiB default. The Observer fix is #1871. The estimate
-  reaches the limit at 40 participants working 8 hours. It warns about the Observer page passing
-  32 MiB from 20. (#1848)
 - A hosted run keeps writing run.json once its finished participants' traces together pass V8's
   longest string, 536,870,888 characters. The sandbox id scrub serialized the whole bundle, every
   finished trace included, into one string on each snapshot write and on the final write, so past
-  that size every write threw `RangeError: Invalid string length` before run.json, the trace
-  files, review.json or events.ndjson changed. The scrub now serializes the bundle without its
-  traces and then each participant on its own, and writes the same bytes as before. A sandbox id
-  that holds JSON punctuation, a quote or a backslash still goes through the scrub of the whole
-  text; no E2B id holds one. The timings below used synthetic bundles whose trace items repeat a
-  recorded hosted run's, about 13 bytes per JSON token. With 10 participants of 10 MiB each, a
-  snapshot write took 3.8 seconds where it took 4.7, and the process peaked at 1.3 GiB where it
-  peaked at 2.7 GiB. With 25 participants of 30 MiB each, the scrub took 18 seconds of a
-  37-second snapshot write, and the process peaked at 4.4 GiB. That run still cannot finish: each
-  30 MiB trace is written indented as a 44 MB file, past the 32 MiB humanish reads of one run
-  file, so the sandbox id sweep at finish and the export's verify both stop on it. (#1870)
+  that size every write threw `RangeError: Invalid string length` before run.json, the trace files,
+  review.json or events.ndjson changed. The scrub now serializes the bundle without its traces and
+  then each participant on its own, and writes the same bytes as before. A sandbox id that holds
+  JSON punctuation, a quote or a backslash still goes through the scrub of the whole text; no E2B id
+  holds one. The timings below used synthetic bundles whose trace items repeat a recorded hosted
+  run's, about 13 bytes per JSON token. With 10 participants of 10 MiB each, a snapshot write took
+  3.8 seconds where it took 4.7, and the process peaked at 1.3 GiB where it peaked at 2.7 GiB. With
+  25 participants of 30 MiB each, the scrub took 18 seconds of a 37-second snapshot write, and the
+  process peaked at 4.4 GiB. That run still cannot finish: each 30 MiB trace is written indented as
+  a 44 MB file, past the 32 MiB humanish reads of one run file, so the sandbox id sweep at finish
+  and the export's verify both stop on it (#1877). The bundle estimate's warning for traces past 512
+  MiB no longer names the run.json writer. (#1870)
+
+## 0.133.0: An OpenAI participant names how long it waits (2026-10-14)
+
+humanish 0.133.0 lets an OpenAI computer-use participant name how long it waits, with a
+`wait_minutes` tool, and cuts what a participant costs while nothing on its screen changes. A turn of
+only waits is watched, and each further quiet wait in a row lasts twice as long, starting from the
+length the participant named, up to 10 minutes. In live 60-minute runs against 0.132.0, median model
+spend per participant-hour fell 13% on a resident portal, 52% on a support queue, 46% on an issue
+list that shows new issues only on reload, and 78% on a dispatch board, and all 6 participants on
+the issue list reloaded and reported every new issue. verify and analysis also no longer fail on a
+run whose traces together pass 512 MiB.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.133.0)
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 
