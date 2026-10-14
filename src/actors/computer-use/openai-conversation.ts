@@ -6,6 +6,7 @@ import {
   strictOutputSchema,
 } from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
+import { isIdleTurn } from "./loop/actions.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   asArray,
@@ -94,6 +95,8 @@ export class OpenAiConversation {
   private pendingCallIds: readonly string[] = [];
   /** The function calls the next request owes an output for. */
   private pendingFunctionCalls: readonly FunctionCall[] = [];
+  /** Whether the latest reply acted, so its waits went to the desktop and were not watched. */
+  private pendingActed = false;
   /** Accepted replies so far; the next request is number `replies + 1`. */
   private replies = 0;
   /** The whole conversation, which explicit-context requests carry within its token budget. */
@@ -207,10 +210,21 @@ export class OpenAiConversation {
           .join(" ");
         return withScreen
           ? buildFunctionOutput(call.callId, text, screenshot)
-          : buildFunctionOutput(call.callId, text || "The wait ended.", null);
+          : buildFunctionOutput(call.callId, text || this.waitOutcome(), null);
       }),
       ...(hintInCall ? [] : hintItems(req.contextHint)),
     ];
+  }
+
+  /**
+   * What a call's output says when no note does, so every reply says how the wait went: a wait
+   * among actions ran for its length (a shortened or unsent one has a note), and a further call in
+   * a reply of only waits was part of the one watch the first call's output reports.
+   */
+  private waitOutcome(): string {
+    return this.pendingActed
+      ? "The wait ran for its length with your other actions."
+      : "This wait was watched together with the first one in the reply.";
   }
 
   private context(instructions: string): OpenAiCuContext {
@@ -289,6 +303,7 @@ export class OpenAiConversation {
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
     this.pendingFunctionCalls = parsed.functionCalls;
+    this.pendingActed = !isIdleTurn(parsed.turn.actions);
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
   }

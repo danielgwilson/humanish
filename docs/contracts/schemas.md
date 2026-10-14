@@ -1082,8 +1082,8 @@ Core-owned fields:
   16 pixels counts once it holds still at a look; one of 24 tiles or fewer once
   it has held still for more than 65 s with no tile within 4 tiles of it ticking
   or moving with a region of more than 24 tiles
-  (`src/evidence/frame-change.ts`). The first watch lasts the turn's planned
-  length: the named waits' lengths, together up to `actor.maxWaitMs` (else
+  (`src/evidence/frame-change.ts`). The first watch's limit is the turn's
+  planned length: the named waits' lengths, together up to `actor.maxWaitMs` (else
   600000), and `idleWaitMs` for each wait that names none, and at least
   `idleWaitMs`. Each further one in a row that ended at its limit, or that a
   change of 24 tiles or fewer woke, lasts twice as long, up to the larger of its

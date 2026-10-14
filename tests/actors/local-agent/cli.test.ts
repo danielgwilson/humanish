@@ -76,10 +76,13 @@ describe("the turn prompt", () => {
       "/tmp/turn.png",
     );
     expect(prompt).toContain(
-      "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; it lasts at least as long as a wait whose ms is null and at most the study's longest wait",
+      "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask shorter than a wait whose ms is null counts as one, and named ms count up to the study's longest wait",
     );
     expect(prompt).toContain(
-      "the note from the harness says how long you waited and why it ended.",
+      "The note from the harness says how long you waited and why it ended.",
+    );
+    expect(prompt).toContain(
+      "A wait among other actions lasts its ms, and the note says when the study's limit for one wait shortened it.",
     );
     expect(prompt).not.toMatch(/screen changes|reload|longer than/);
   });

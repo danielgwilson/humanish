@@ -301,7 +301,7 @@ function splitWatch(
 }
 
 /**
- * The next request's note. A clock ending says nothing: the clock text that follows says it. A
+ * The next request's note. A clock ending says only how long the wait lasted. A
  * small change is named by its place, so a participant is not told the screen changed when what
  * changed was a counter or a timestamp. The note says nothing of the next wait's length: a
  * participant told it names that length and keeps waiting.
@@ -328,7 +328,9 @@ function hintFor(ending: Ending): string | undefined {
       return `${lasted}; no change on the screen held still long enough to end it.`;
     case "stalled":
       return `${lasted}; the screen could not be checked during it.`;
+    // The clock text that follows says why the wait ended.
     case "clock":
+      return `${lasted}.`;
     case "stopped":
       return undefined;
   }

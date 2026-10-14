@@ -282,7 +282,11 @@ describe("the wait_minutes tool beside other calls", () => {
           { type: "input_image", image_url: IMAGE },
         ],
       },
-      { type: "function_call_output", call_id: "call_b", output: "The wait ended." },
+      {
+        type: "function_call_output",
+        call_id: "call_b",
+        output: "This wait was watched together with the first one in the reply.",
+      },
     ]);
     expect(imagesIn(bodies[1]!)).toBe(1);
   });
@@ -308,34 +312,6 @@ describe("the wait_minutes tool beside other calls", () => {
         type: "function_call_output",
         call_id: "call_w",
         output: expect.stringMatching(/^Your wait lasted 2 minutes;/),
-      },
-    ]);
-  });
-
-  it("goes to the desktop among other actions, at most maxWaitMs, and its output says so", async () => {
-    const { result, bodies, executed } = await runOpenAi([
-      replyOf(
-        1,
-        computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
-        fnCall("call_w", '{"minutes":3}'),
-      ),
-      doneReply(2),
-      closingReply(3, IMPRESSIONS),
-    ]);
-    expect(watchesOf(result)).toEqual([]);
-    const waited = executed.flatMap((action) => (action.kind === "wait" ? [action.ms] : []));
-    expect(waited.reduce((sum, ms) => sum! + ms!, 0)).toBe(120_000);
-    expect(bodies[1]?.input).toEqual([
-      {
-        type: "computer_call_output",
-        call_id: "call_c",
-        output: { type: "computer_screenshot", image_url: IMAGE },
-      },
-      {
-        type: "function_call_output",
-        call_id: "call_w",
-        output:
-          "Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
       },
     ]);
   });
@@ -384,7 +360,11 @@ describe("the wait_minutes tool beside other calls", () => {
         call_id: "call_a",
         output: [{ type: "input_image", image_url: IMAGE }],
       },
-      { type: "function_call_output", call_id: "call_b", output: "The wait ended." },
+      {
+        type: "function_call_output",
+        call_id: "call_b",
+        output: "This wait was watched together with the first one in the reply.",
+      },
       {
         role: "user",
         content: [
@@ -396,6 +376,55 @@ describe("the wait_minutes tool beside other calls", () => {
       },
     ]);
     expect(imagesIn(bodies[1]!)).toBe(1);
+  });
+});
+
+describe("a wait_minutes call among other actions", () => {
+  it("goes to the desktop among other actions, at most maxWaitMs, and its output says so", async () => {
+    const { result, bodies, executed } = await runOpenAi([
+      replyOf(
+        1,
+        computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+        fnCall("call_w", '{"minutes":3}'),
+      ),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    expect(watchesOf(result)).toEqual([]);
+    const waited = executed.flatMap((action) => (action.kind === "wait" ? [action.ms] : []));
+    expect(waited.reduce((sum, ms) => sum! + ms!, 0)).toBe(120_000);
+    expect(bodies[1]?.input).toEqual([
+      {
+        type: "computer_call_output",
+        call_id: "call_c",
+        output: { type: "computer_screenshot", image_url: IMAGE },
+      },
+      {
+        type: "function_call_output",
+        call_id: "call_w",
+        output:
+          "Your wait of 180000ms was shortened to 120000ms, the longest one wait action lasts. To keep waiting, send another wait.",
+      },
+    ]);
+  });
+
+  it("says a wait among other actions ran for its length when nothing shortened it", async () => {
+    const { bodies, executed } = await runOpenAi([
+      replyOf(
+        1,
+        computerCall("call_c", [{ type: "click", x: 10, y: 10 }]),
+        fnCall("call_w", '{"minutes":1}'),
+      ),
+      doneReply(2),
+      closingReply(3, IMPRESSIONS),
+    ]);
+    const waited = executed.flatMap((action) => (action.kind === "wait" ? [action.ms] : []));
+    expect(waited.reduce((sum, ms) => sum! + ms!, 0)).toBe(60_000);
+    expect(bodies[1]?.input[1]).toEqual({
+      type: "function_call_output",
+      call_id: "call_w",
+      output: "The wait ran for its length with your other actions.",
+    });
   });
 });
 
