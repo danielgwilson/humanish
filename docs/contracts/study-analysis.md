@@ -285,9 +285,9 @@ value inside a bracketed span, such as `[REDACTED_373433393231]`, is found too: 
 humanish writes (`[REDACTED_SECRET]`, `[REDACTED_LOCAL_PATH]`, `[REDACTED_RUNTIME_PATH]`,
 `[REDACTED_PROMPT_TEXT]`, `[REDACTED_LOBBY_CODE]`) are left as they are. If another reading of
 the stored field still holds a value (decoded once more, with percent escapes as UTF-8, with
-transfer escapes expanded, or with Latin-1 characters read as UTF-8 bytes), as for a value encoded
-twice, the whole field becomes `[REDACTED_SECRET]`. A known value in any of
-these forms in an ID, enum or reference refuses the response.
+transfer escapes expanded, with Latin-1 characters read as UTF-8 bytes, or with HTML references
+left as written), as for a value encoded twice, the whole field becomes `[REDACTED_SECRET]`. A
+known value in any of these forms in an ID, enum or reference refuses the response.
 
 When a reviewer amends a finding, its headline and experience describe the replaced claim.
 Text output, the Observer and feedback drafts show the reviewer's claim in their place and say the
