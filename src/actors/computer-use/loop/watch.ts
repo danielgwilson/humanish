@@ -140,10 +140,17 @@ export class IdleWatcher {
    * no-progress limit (repeatsPastLimit), as after a wait with no length, before its next request.
    * The run goes on, so a participant that reloads an unchanged page turn after turn waits as long
    * as one that only waits. `reference` is the observation the participant acted on, so a change
-   * its action made wakes it.
+   * its action made wakes it. Undefined, with nothing run, when no action of the turn reached the
+   * desktop (`sent`, ActionBatch.sent): such a repeat is not how the participant waits, and
+   * noProgressSteps of them end its session (backstop.ts consecutiveUnsent).
    */
-  async watchAfterRepeat(turnNumber: number, reference: CuaObservation): Promise<Watched> {
+  async watchAfterRepeat(
+    turnNumber: number,
+    reference: CuaObservation,
+    sent: boolean,
+  ): Promise<Watched | undefined> {
     this.quiet = false;
+    if (!sent) return undefined;
     return this.run(turnNumber, reference, {
       lengths: [],
       askedMs: 0,

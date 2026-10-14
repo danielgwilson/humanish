@@ -132,6 +132,42 @@ describe("a held participant whose reload brings a new issue", () => {
   });
 });
 
+describe("a held participant whose reloads do not reach the desktop", () => {
+  it("is ended as gave_up after 20 reloads in a row whose commands fail", async () => {
+    // Reloads 21 to 30 are watched as above, so request 31 comes at 2,435 s. From turn 31 every
+    // reload's command fails. A reload that never reached the desktop is not how the participant
+    // waits, so reloads 31 to 50 are sent with no watch, and the 20th of them ends the session.
+    let turn = 0;
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => {
+        turn = n;
+        return turnOf([RELOAD]);
+      },
+      fails: () => turn > 30,
+      loop: HELD,
+    });
+    expect(run.requests).toHaveLength(50);
+    expect(run.requests.slice(30).map((request) => request.at)).toEqual(Array(20).fill(2_435_000));
+    expect(run.result.completionReason).toBe("gave_up");
+  });
+
+  it("keeps its session when one reload's command fails in a long streak", async () => {
+    let turn = 0;
+    const run = await runWatching({
+      screen: () => QUIET,
+      turn: (_request, n) => {
+        turn = n;
+        return turnOf([RELOAD]);
+      },
+      fails: () => turn === 25,
+      loop: HELD,
+    });
+    expect(run.result.status).toBe("passed");
+    expect(run.result.trace.stopCause).toBe("scheduled_end");
+  });
+});
+
 describe("a participant with no scheduled end that reloads an unchanged page", () => {
   it.each([
     { end: "no end", loop: {} },

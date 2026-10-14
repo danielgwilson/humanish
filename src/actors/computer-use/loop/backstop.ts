@@ -121,6 +121,12 @@ export interface Backstop {
   // reason all read this counter, so alternating idle and no-progress turns cannot slip past both
   // backstops.
   readonly consecutiveNoProgress: number;
+  /**
+   * No-progress turns in a row whose actions all failed or were refused before reaching the
+   * desktop. They end a held participant's session at noProgressSteps, since a reload that never
+   * reached the desktop is not how it waits; one such turn in a longer streak does not.
+   */
+  readonly consecutiveUnsent: number;
   readonly idleProgressForgivenessUsed: number;
   /** A no-progress streak in this session reached noProgressSteps. */
   readonly reachedLimit: boolean;
@@ -132,6 +138,7 @@ export function startBackstop(observation: CuaObservation): Backstop {
     recentFingerprints: [],
     consecutiveIdle: 0,
     consecutiveNoProgress: 0,
+    consecutiveUnsent: 0,
     idleProgressForgivenessUsed: 0,
     reachedLimit: false,
   };
@@ -196,6 +203,8 @@ export function advanceBackstop(
     heardNewSpeech: boolean;
     waitingIsTheTask?: boolean;
     screenChanged?: boolean;
+    /** An action of the turn may have reached the desktop (ActionBatch.sent). */
+    sent: boolean;
   },
   limits: BackstopLimits,
 ): BackstopStep {
@@ -249,6 +258,7 @@ export function advanceBackstop(
     consecutiveIdle += 1;
   }
   const consecutiveNoProgress = progressed ? 0 : previous.consecutiveNoProgress + 1;
+  const consecutiveUnsent = progressed || turn.sent ? 0 : previous.consecutiveUnsent + 1;
 
   // An unchanged screen can be legitimate waiting (for example, a shared-world lobby).
   // Recovery may suggest another approach, but must not instruct early abandonment while
@@ -277,12 +287,14 @@ export function advanceBackstop(
   }
 
   // A held participant past the no-progress limit keeps its session: on a page that shows new items
-  // only after a reload, reloading an unchanged screen is how it waits.
+  // only after a reload, reloading an unchanged screen is how it waits. Repeats that never reached
+  // the desktop still end it.
+  const stuckTurns = turn.waitingIsTheTask === true ? consecutiveUnsent : consecutiveNoProgress;
   const tripReason =
     consecutiveIdle >= limits.idleSteps
       ? `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`
-      : consecutiveNoProgress >= limits.noProgressSteps && turn.waitingIsTheTask !== true
-        ? `gave up: ${consecutiveNoProgress} consecutive turns that repeated a recent action on an unchanged UI state`
+      : stuckTurns >= limits.noProgressSteps
+        ? `gave up: ${stuckTurns} consecutive turns that repeated a recent action on an unchanged UI state`
         : undefined;
   return {
     backstop: {
@@ -290,6 +302,7 @@ export function advanceBackstop(
       recentFingerprints,
       consecutiveIdle,
       consecutiveNoProgress,
+      consecutiveUnsent,
       idleProgressForgivenessUsed,
       reachedLimit: previous.reachedLimit || consecutiveNoProgress >= limits.noProgressSteps,
     },

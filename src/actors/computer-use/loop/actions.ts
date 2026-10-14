@@ -139,6 +139,8 @@ export interface ActionBatch {
    * stopped the batch.
    */
   readonly hint: string | undefined;
+  /** An action of the batch other than a wait or screenshot may have reached the desktop. */
+  readonly sent: boolean;
 }
 
 /**
@@ -194,6 +196,12 @@ export async function runActionBatch(
   const { actionHistory, trace } = session;
   const notes: string[] = [];
   const hint = (): string | undefined => (notes.length === 0 ? undefined : notes.join(" "));
+  const attemptsBefore = trace.counts.materialActions;
+  const done = (): ActionBatch => ({
+    execution,
+    hint: hint(),
+    sent: trace.counts.materialActions > attemptsBefore,
+  });
   const idleTurn = isIdleTurn(actions);
   let waits = 0;
   for (const [index, requested] of actions.entries()) {
@@ -262,12 +270,12 @@ export async function runActionBatch(
           ),
         );
         notes.push(rejectedActionHint(title, reason));
-        return { execution, hint: hint() };
+        return done();
       }
       if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;
-      // A skipped action changes nothing on screen, so a persistently-failing run makes no
-      // progress and still terminates via the idle/no-progress backstop (gave_up),
-      // never a silent actor_error and never an infinite loop.
+      // A skipped action changes nothing on screen, so a run that repeats a failing action makes
+      // no progress and ends through the no-progress backstop (gave_up), also when the
+      // participant is held to its scheduled end (backstop.ts consecutiveUnsent).
       recordCommandFailure(session, title, error);
       continue;
     }
@@ -286,7 +294,7 @@ export async function runActionBatch(
       ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));
   }
-  return { execution, hint: hint() };
+  return done();
 }
 
 function countAttempt(

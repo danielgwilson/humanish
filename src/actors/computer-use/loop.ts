@@ -215,7 +215,9 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const repeat = repeatsPastLimit(backstop, turn.actions, limits) && heldToScheduledEnd(session);
     const waited = repeat ? undefined : await watcher.watch(turnNumber, observation, turn.actions);
     const batch = await runActionBatch(session, turn.actions, waited?.waits);
-    const watched = repeat ? await watcher.watchAfterRepeat(turnNumber, observation) : waited;
+    const watched = repeat
+      ? await watcher.watchAfterRepeat(turnNumber, observation, batch.sent)
+      : waited;
     conversation.previousExecution = batch.execution;
     // An earlier reply's unknown usage still stops the session before its closing request.
     if (watched?.stop !== undefined) {
@@ -233,6 +235,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         actions: turn.actions,
         observation,
         heardNewSpeech: observer.heardNewSpeech,
+        sent: batch.sent,
         waitingIsTheTask: heldToScheduledEnd(session),
         screenChanged:
           watched?.wake === "changed" ||
@@ -277,7 +280,7 @@ function keepWorking(
   conversation.previousExecution = undefined;
   const step = advanceBackstop(
     backstop,
-    { actions: [], observation, heardNewSpeech: false },
+    { actions: [], observation, heardNewSpeech: false, sent: false },
     { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
   );
   const stalled = applyBackstop(session, conversation, step, []);
