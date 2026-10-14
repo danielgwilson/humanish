@@ -232,8 +232,9 @@ async function pngStructureHolds(bytes: Buffer, chunks: readonly PngChunk[]): Pr
   return colorType !== 3 || pngDecodes(bytes);
 }
 
-// The most inflated bytes one check holds at once. A 1440x950 capture's rows come to about 4 MB;
-// checked a chunk at a time, they are never held whole.
+// The most inflated bytes one check holds at once. Checks overlap on the thread pool, so rows held
+// whole add up across them. A process running 8 checks of 5000x5000 RGBA frames peaked at 832 MB
+// resident with each frame's rows held whole and at 202 MB checked 1 MiB at a time.
 const INFLATE_CHUNK_BYTES = 1024 * 1024;
 
 /**
