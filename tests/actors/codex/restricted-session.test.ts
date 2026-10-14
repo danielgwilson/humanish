@@ -1760,10 +1760,10 @@ describe("restricted Codex notifications outside a turn", () => {
     const f = await fixture("close-item"),
       session = createRestrictedCodexSession(f.options);
     const pending = session.run(request);
-    await vi.waitFor(
-      async () => expect((await f.entries()).some((e) => e.method === "turn/start")).toBe(true),
-      AFTER_SPAWN,
-    );
+    // Close interrupts the turn only once the session holds the turn id from the turn/start reply.
+    // Before that it stops the process with no interrupt, and the fake never writes the item. The
+    // fake logs turn/start before it replies, so that log alone does not mean the reply arrived.
+    await untilDelivered(f.delivered, "turn/start reply");
     // Close waits at most 1 s for the interrupt's reply before it stops the process, and the fake
     // writes the item just before that reply. A fake starved past 1 s dies before writing it. With
     // setTimeout frozen, close waits for the reply itself, so the item arrives under any load.
