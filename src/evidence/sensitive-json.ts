@@ -22,7 +22,7 @@
 // or the text's end before the cut, so neither text exempts the URL. The scan holds one piece at a
 // time.
 
-import { isRecord } from "../run/type-guards.js";
+import { splitAtArray } from "./json-split.js";
 import { containsSandboxUrl, containsSensitive } from "./redaction.js";
 
 // The sandbox URL's scheme, `https://` or `https:\/\/` as JSON may escape it, at a text's end.
@@ -38,17 +38,10 @@ const SLASH_OR_SPACE = /[/\s]/;
  * them.
  */
 export function containsSensitiveJson(value: unknown, key: string): boolean {
-  // JSON.stringify writes only own enumerable keys, and `around` cuts the text at this one.
-  const elements =
-    isPlainRecord(value) && Object.keys(value).includes(key) ? value[key] : undefined;
-  // Array.from reads a hole as undefined, where every would skip it.
-  if (
-    !isPlainRecord(value) ||
-    !isPlainArray(elements) ||
-    !Array.from(elements).every(isPlainRecord)
-  )
-    return wholeTextSensitive(value);
-  const [prefix, suffix] = around(value, key);
+  const split = splitAtArray(value, key);
+  if (split === undefined) return wholeTextSensitive(value);
+  const { elements } = split;
+  const [prefix, suffix] = [split.before(), split.after()];
   if (elements.length === 0) return containsSensitive(prefix + suffix);
   // The scheme of a URL no slash or whitespace has followed, from an earlier piece.
   let scheme: string | undefined;
@@ -64,32 +57,6 @@ export function containsSensitiveJson(value: unknown, key: string): boolean {
 
 const wholeTextSensitive = (value: unknown): boolean =>
   containsSensitive(JSON.stringify(value) ?? "");
-
-// JSON.stringify calls a toJSON with the value's key in its parent, and an element serialized
-// alone gets "" in place of its index. It writes a boxed primitive as the primitive. A plain object
-// or array with no toJSON is written as its own keys or items wherever it sits.
-const hasToJson = (value: object): boolean =>
-  typeof (value as { toJSON?: unknown }).toJSON === "function";
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (!isRecord(value) || hasToJson(value)) return false;
-  const prototype: unknown = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-}
-
-const isPlainArray = (value: unknown): value is unknown[] =>
-  Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype && !hasToJson(value);
-
-/** The document's text before the first element of `value[key]` and after its last. */
-function around(value: Record<string, unknown>, key: string): [string, string] {
-  const keys = Object.keys(value);
-  const at = keys.indexOf(key);
-  const entries = (from: number, to?: number) =>
-    Object.fromEntries(keys.slice(from, to).map((name) => [name, value[name]]));
-  const before = JSON.stringify({ ...entries(0, at), [key]: [] });
-  const after = JSON.stringify(entries(at + 1));
-  return [before.slice(0, -"]}".length), after === "{}" ? "]}" : `],${after.slice(1)}`];
-}
 
 /** `piece` up to and including its first slash or whitespace, or all of it when it has none. */
 function head(piece: string): string {

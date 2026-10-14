@@ -70,6 +70,12 @@ const CASES: Array<[string, Record<string, unknown>, boolean]> = [
     false,
   ],
   ["an empty array", { url: "https://host", streams: [], contact: "ops@e2b-host" }, true],
+  // JSON.stringify reads an array by index and never calls its iterator.
+  [
+    "a key in an array whose own iterator yields nothing",
+    { streams: Object.assign([{ text: KEY }], { [Symbol.iterator]: function* () {} }) },
+    true,
+  ],
   [
     "URL user info across an element with an @ and no slash or space",
     { streams: [{ url: "https://host" }, { n: "a@b" }, { contact: "ops@e2b-host" }] },
@@ -100,6 +106,14 @@ const UNPARSED: Array<[string, Record<string, unknown>]> = [
     }),
   ],
   ["a boxed string element", { streams: [Object(KEY) as object] }],
+  // Object.keys of a boxed string lists one key per character, which no text scan reads as a key.
+  [
+    "a boxed string document",
+    Object.assign(Object(KEY) as object, { streams: [{ text: "clean" }] }) as Record<
+      string,
+      unknown
+    >,
+  ],
   // Array.prototype.every skips a hole, and JSON.stringify writes it as null.
   ["a sparse array", { persona: KEY, streams: Array<unknown>(2) }],
 ];

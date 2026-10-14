@@ -8,6 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A hosted run keeps writing run.json once its finished participants' traces together pass V8's
+  longest string, 536,870,888 characters. The sandbox id scrub serialized the whole bundle, every
+  finished trace included, into one string on each snapshot write and on the final write, so past
+  that size every write threw `RangeError: Invalid string length` before run.json, the trace files,
+  review.json or events.ndjson changed. The scrub now serializes the bundle without its traces and
+  then each participant on its own, and writes the same bytes as before. A sandbox id that holds
+  JSON punctuation, a quote or a backslash still goes through the scrub of the whole text; no E2B id
+  holds one. The timings below used synthetic bundles whose trace items repeat a recorded hosted
+  run's, about 13 bytes per JSON token. With 10 participants of 10 MiB each, a snapshot write took
+  3.8 seconds where it took 4.7, and the process peaked at 1.3 GiB where it peaked at 2.7 GiB. With
+  25 participants of 30 MiB each, the scrub took 18 seconds of a 37-second snapshot write, and the
+  process peaked at 4.4 GiB. That run still cannot finish: each 30 MiB trace is written indented as
+  a 44 MB file, past the 32 MiB humanish reads of one run file, so the sandbox id sweep at finish
+  and the export's verify both stop on it (#1877). The bundle estimate's warning for traces past 512
+  MiB no longer names the run.json writer. (#1870)
+
 ## 0.133.0: An OpenAI participant names how long it waits (2026-10-14)
 
 humanish 0.133.0 lets an OpenAI computer-use participant name how long it waits, with a

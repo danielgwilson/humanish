@@ -6,6 +6,7 @@
 import { opendir, realpath } from "node:fs/promises";
 import path from "node:path";
 
+import { splitAtArray, type ArraySplit } from "../evidence/json-split.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import {
   collectSandboxIds,
@@ -57,18 +58,83 @@ export function scrubSandboxIds(
   return unique.reduce((current, id) => current.split(id).join(label(id)), text);
 }
 
+// A run bundle holds every finished participant's trace, and its whole JSON text can pass V8's
+// longest string, 536,870,888 characters on Node 24. publicSandboxView scrubs such a bundle in
+// pieces: the shell, which is the bundle's JSON text with `streams` written as `[]`, and the JSON
+// text of each stream on its own. The pieces give what the whole text gives:
+// - An id that holds none of {}[],:"\ lies inside one token of the whole text. Each cut between
+//   pieces falls between two of the characters {}[], and the placeholder adds only [ and ], so no
+//   occurrence crosses a cut. A replacement leaves those characters in place, so the next id's
+//   occurrences cannot cross one either.
+// - A label holds no quote or backslash, so it never moves the end of a string. A label inside an
+//   escape, a number, true, false or null makes its piece fail to parse, and the whole text fails
+//   the same way.
+// - JSON.stringify writes a stream's members alone as it writes them inside the bundle, since each
+//   gets the same key for its toJSON. Only the stream itself would get "" in place of its index,
+//   and splitAtArray takes no stream with a toJSON. The members before `streams`, each stream and
+//   the members after are serialized in that order, which is the order the whole text runs each
+//   toJSON in.
+// - The parsed shell keeps its keys in the order JSON.parse gives for the whole text, and the
+//   streams go in at the place of `streams`. A key a label went into holds the label's `[`, so no
+//   other key becomes `streams`. An id inside the key `streams` itself takes the whole text.
+// - Once a label goes in, the view is parsed from the scrubbed pieces, as it was from the whole
+//   text. A piece kept as given could run a toJSON or getter again when the view is written.
+// - All of this holds for a bundle that serializing leaves unchanged, as every bundle JSON.parse
+//   returns is. splitAtArray reads the streams before any toJSON runs.
+
+/** The characters that let an id reach past one token of a JSON text or move where a string ends. */
+const CROSSES_TOKENS = /[{}[\],:"\\]/;
+
+/** Whether every occurrence of `id` in a bundle's JSON text stays inside one piece. */
+const staysInOnePiece = (id: string): boolean =>
+  id.length === 0 || (!CROSSES_TOKENS.test(id) && !"streams".includes(id));
+
 /**
  * `value` as it may be written or returned: ids at the sandbox-id keys become the marker and a
- * digest, and any raw id left in free text or a URL becomes its label.
+ * digest, and any raw id left in free text, a key or a URL becomes its label. When no label goes
+ * in, the result is the key-redacted value. Otherwise it is what JSON.parse returns for the
+ * scrubbed JSON text of that value. A run bundle is scrubbed one stream at a time, so no string
+ * holds two streams unless a member outside `streams` holds them too. An id that holds one of
+ * {}[],:"\ makes the scrub work on the whole text, which throws RangeError for a bundle past V8's
+ * longest string. No E2B id holds one.
  */
 export function publicSandboxView<T>(value: T, ids: Iterable<string>): T {
   const redacted = redactSandboxIds(value);
   const known = [...ids];
   if (known.length === 0) return redacted as T;
-  const text = JSON.stringify(redacted);
-  if (text === undefined) return redacted as T;
-  const scrubbed = scrubSandboxIds(text, known);
-  return (scrubbed === text ? redacted : JSON.parse(scrubbed)) as T;
+  const split = known.every(staysInOnePiece) ? splitAtArray(redacted, "streams") : undefined;
+  return (
+    split === undefined ? wholeTextView(redacted, known) : streamwiseView(redacted, split, known)
+  ) as T;
+}
+
+/** The scrub of `value`'s whole JSON text, parsed back when a label went in. */
+function wholeTextView(value: unknown, ids: readonly string[]): unknown {
+  const text = JSON.stringify(value);
+  if (text === undefined) return value;
+  const scrubbed = scrubSandboxIds(text, ids);
+  return scrubbed === text ? value : JSON.parse(scrubbed);
+}
+
+/** The bundle's whole-text scrub, built from its shell and each stream scrubbed on its own. */
+function streamwiseView(bundle: unknown, split: ArraySplit, ids: readonly string[]): unknown {
+  const before = split.before();
+  let changed = false;
+  // Each stream is parsed at its turn, even before any label goes in, since a later piece can still
+  // take one and by then the earlier streams' text is gone.
+  const streams = split.elements.map((stream) => {
+    const text = JSON.stringify(stream);
+    const scrubbed = scrubSandboxIds(text, ids);
+    if (scrubbed !== text) changed = true;
+    return JSON.parse(scrubbed) as unknown;
+  });
+  const shellText = before + split.after();
+  const shell = scrubSandboxIds(shellText, ids);
+  if (!changed && shell === shellText) return bundle;
+  // Assigning to `streams` keeps its place among the keys.
+  const view = JSON.parse(shell) as Record<string, unknown>;
+  view.streams = streams;
+  return view;
 }
 
 /** The raw sandbox ids a receipts journal names. */
