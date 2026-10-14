@@ -10,12 +10,15 @@ import { Comparison } from "../components/comparison";
 import type { HistoryIndex } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { feed } from "./feed";
+import { decodeInMicrotasks } from "./microtask-gunzip";
 
 const RUN = "synthetic-observer-browser-proof";
 const OTHER = "synthetic-other-study";
 /** The fixtures' run clock origin: the run starts there and capture n is n × 7 s later. */
 const START = Date.parse(fixtures.fixture().run.createdAt);
 let container: HTMLDivElement;
+
+decodeInMicrotasks();
 let root: Root;
 let data: ObserverData;
 let opened: [string, number][];

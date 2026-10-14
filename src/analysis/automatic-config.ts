@@ -9,7 +9,7 @@ import {
 import { admissionRule } from "./admission.js";
 import { analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import { plural } from "../run/text.js";
-import { containsSensitive } from "../evidence/redaction.js";
+import { scanEncodedText } from "../evidence/encoded-text.js";
 import type { AnalysisConfig } from "./types.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
@@ -45,6 +45,8 @@ const validTimeout = (value: unknown): value is number =>
 /** An absent question is valid; a present one must be a string of at most 4000 characters. */
 const validQuestion = (value: unknown): boolean =>
   value === undefined || (typeof value === "string" && value.length <= 4000);
+// The provider receives the question and analysis.json keeps it. verify reads that file as written
+// and decoded, so the question is refused when scanEncodedText reads a secret in it.
 const SENSITIVE_QUESTION = {
   ok: false,
   message: "review.analysis.question contains sensitive text and cannot be sent for analysis.",
@@ -93,7 +95,8 @@ export function resolveAutomaticAnalysis(
         message: `Codex analysis requires the qualified ${CODEX_ANALYSIS_MODEL} model and timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}. Dollar and output-token caps are unavailable; omit them. The optional question is limited to 4000 characters.`,
       };
     }
-    if (question !== null && containsSensitive(question as string)) return SENSITIVE_QUESTION;
+    if (question !== null && scanEncodedText(question as string).sensitive)
+      return SENSITIVE_QUESTION;
     return {
       ok: true,
       config: {
@@ -134,7 +137,7 @@ export function resolveAutomaticAnalysis(
       message: `review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
-  if (question !== null && containsSensitive(question as string)) return SENSITIVE_QUESTION;
+  if (question !== null && scanEncodedText(question as string).sensitive) return SENSITIVE_QUESTION;
   return {
     ok: true,
     config: {

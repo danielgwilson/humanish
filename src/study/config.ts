@@ -35,7 +35,12 @@ import {
 import { isRecord } from "../run/type-guards.js";
 import { compositionReason } from "./composition-rules.js";
 import { V2_SCHEMA, V2_UNSUPPORTED_MESSAGE, v2FieldMoves } from "./migrate/v2.js";
-import { parseActorFields, parseActorType, parseParticipantEntries } from "./parse/actors.js";
+import {
+  actorModelReason,
+  parseActorFields,
+  parseActorType,
+  parseParticipantEntries,
+} from "./parse/actors.js";
 import { parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
   parseCaps,
@@ -152,9 +157,10 @@ interface ConfigRefusal {
 
 /**
  * Why runStudy refuses a config a library caller passes, or undefined: a humanish.lab.v2 config,
- * one that still sets a StudyConfig field of humanish 0.110, one with no `actor` object, and one
- * whose `route` is not the route its subject and actor take, with parseStudy's message. A planner
- * reads only the v3 fields, so a budget left in `execution.caps` would otherwise run uncapped.
+ * one that still sets a StudyConfig field of humanish 0.110, one with no `actor` object, one
+ * whose `route` is not the route its subject and actor take, and one whose `actor.model` verify
+ * would flag, with parseStudy's message. A planner reads only the v3 fields, so a budget left in
+ * `execution.caps` would otherwise run uncapped, and passes the model on as written.
  */
 export function libraryConfigRefusal(config: StudyConfig): ConfigRefusal | undefined {
   const raw: unknown = config;
@@ -168,7 +174,10 @@ export function libraryConfigRefusal(config: StudyConfig): ConfigRefusal | undef
       message: `This StudyConfig sets fields that humanish 0.111.0 renamed: ${moves.join("; ")}. Set the humanish.study.v3 fields, or parse the study file with parseStudy. The 0.111.0 release notes list each renamed field.`,
     };
   if (!isRecord(raw.actor)) return { code: "HUMANISH_STUDY_INVALID", message: ACTOR_REQUIRED };
-  const message = routeNameReason(raw.route) ?? routeMismatchReason(config);
+  const message =
+    routeNameReason(raw.route) ??
+    routeMismatchReason(config) ??
+    actorModelReason(raw.actor.model, "actor");
   return message === undefined ? undefined : { code: "HUMANISH_STUDY_INVALID", message };
 }
 

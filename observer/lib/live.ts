@@ -40,7 +40,7 @@ export async function fetchObserverData(
   try {
     const response = await fetchImpl(url, { cache: "no-store", signal: signal ?? null });
     if (!response.ok) return null;
-    return observerDataFromFeed(await response.json());
+    return await observerDataFromFeed(await response.json());
   } catch {
     return null;
   }
@@ -75,7 +75,7 @@ export async function fetchObserverFeed(
   } catch {
     return { status: "failed" };
   }
-  const feed = observerFeedFrom(body, held);
+  const feed = await observerFeedFrom(body, held);
   return feed === null ? { status: "unjoined" } : { status: "joined", feed };
 }
 
