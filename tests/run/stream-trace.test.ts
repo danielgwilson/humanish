@@ -310,6 +310,37 @@ describe("run bundle v4's per-request lists", () => {
       /stream-001.*conversation.*requests/,
     );
   });
+
+  it("refuses a trace file without the conversation run.json records", async () => {
+    const stored = await writeV2({ ...v1, streams: [withLists(v1.streams[0]!)] });
+    const stream = stored.streams[0]!;
+    const filePath = path.join(runRoot, stream.trace!.path);
+    const { conversation: _conversation, ...trace } = JSON.parse(await readFile(filePath, "utf8"));
+    const bytes = Buffer.from(`${JSON.stringify(trace)}\n`);
+    await writeFile(filePath, bytes);
+    // An index that matches the file, so only the missing conversation can refuse it.
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const indexed = { ...stream, trace: { ...stream.trace!, bytes: bytes.length, sha256 } };
+    await expect(loadStreamTrace(runPaths, indexed)).rejects.toThrow(
+      /stream-001.*conversation.*requests/,
+    );
+  });
+
+  it("refuses a run.json conversation without a requests list, with or without a trace file", async () => {
+    const listed = withLists(v1.streams[0]!);
+    const { requests: _requests, ...conversation } = listed.actor!.conversation!;
+    // A v1 run.json holds the actor inline, so no trace file supplies the list.
+    const inline = { ...listed, actor: { ...listed.actor!, conversation } };
+    await expect(loadStreamTrace(runPaths, inline)).rejects.toThrow(
+      /stream-001.*conversation.*requests/,
+    );
+    // The trace file holds the list, and the join puts it only into a conversation object.
+    const stored = (await writeV2({ ...v1, streams: [listed] })).streams[0]!;
+    const text: unknown = { ...stored, actor: { ...stored.actor!, conversation: "threaded" } };
+    await expect(loadStreamTrace(runPaths, text as StoredRunStream)).rejects.toThrow(
+      /stream-001.*conversation.*requests/,
+    );
+  });
 });
 
 describe("the rules each run bundle version is read under", () => {

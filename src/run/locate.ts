@@ -19,7 +19,12 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
 import type { RunPointer } from "./results.js";
-import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
+import {
+  type DisplayedRunBundle,
+  RUN_BUNDLE_FILE,
+  type RunBundle,
+  type StoredRunBundle,
+} from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
 import { displayedTraces, loadRunTraces, loadStreamTraces } from "./stream-trace.js";
 import { readUnchangedFile, type BoundedFileResult } from "./evidence-files.js";
@@ -186,35 +191,47 @@ export async function loadRunBundle(
   return loadRunBundlePrepared(cwd, runPaths);
 }
 
-/**
- * loadRunBundle for a caller that already holds prepared paths. Revalidates them first. With
- * `display`, a participant whose trace the loader refuses, such as one past the read limit, is
- * kept as displayedTraces shows it, for a page that shows the run.
- */
+/** A run's bundle, run.json's path relative to the working directory, and the run folder. */
+type LoadedRun<T> = { bundle: T; bundlePath: string; runDir: string };
+
+/** loadRunBundle for a caller that already holds prepared paths. Revalidates them first. */
 export async function loadRunBundlePrepared(
   cwdInput: string,
   runPaths: PreparedRunArtifactPaths,
-  options: { display?: boolean } = {},
-): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+): Promise<LoadedRun<RunBundle> | null> {
+  const run = await readPreparedRunJson(cwdInput, runPaths);
+  // A trace that does not match its index throws StreamTraceRefusedError, naming the participant.
+  return run === null ? null : { ...run, bundle: await loadRunTraces(runPaths, run.bundle) };
+}
+
+/**
+ * loadRunBundlePrepared for a page that shows the run: a participant whose trace the loader
+ * refuses, such as one past the read limit, is kept as displayedTraces shows it.
+ */
+export async function loadDisplayedRunBundle(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths,
+): Promise<LoadedRun<DisplayedRunBundle> | null> {
+  const run = await readPreparedRunJson(cwdInput, runPaths);
+  if (run === null) return null;
+  return { ...run, bundle: displayedTraces(await loadStreamTraces(runPaths, run.bundle)) };
+}
+
+/** The prepared run's run.json when it is a run bundle, after revalidating the paths; else null. */
+async function readPreparedRunJson(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths,
+): Promise<LoadedRun<StoredRunBundle> | null> {
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
-  const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
   const read = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
   // A run.json it refuses is no reason to call the run absent: the caller reports why.
   if (read.status === "refused") throw new ContainedReadRefusedError(RUN_BUNDLE_FILE, read);
   const bundle = read.status === "read" ? read.value : null;
-
-  if (!isRunBundle(bundle)) {
-    return null;
-  }
-
+  if (!isRunBundle(bundle)) return null;
   return {
-    // A trace that does not match its index throws StreamTraceRefusedError, naming the participant.
-    bundle:
-      options.display === true
-        ? displayedTraces(await loadStreamTraces(runPaths, bundle))
-        : await loadRunTraces(runPaths, bundle),
-    bundlePath: path.relative(cwd, bundlePath),
+    bundle,
+    bundlePath: path.relative(cwd, path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE)),
     runDir: runPaths.absoluteRunRoot,
   };
 }

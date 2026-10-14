@@ -1,11 +1,12 @@
-// What a reader of run.json or of the Observer's data can read of a participant's per-request lists
-// (tokenUsage.turns, conversation.requests, providerRequests). From run bundle v4 only the trace
-// file holds them, so the types refuse each read before the loader joins them. Each
-// `@ts-expect-error` fails typecheck if the line below it compiles, so `pnpm typecheck` is the
-// assertion. The runtime test only checks these types against the bytes: each refused read finds
-// nothing there and each read of the loader's bundle finds a list. It passes without the types, so
-// it was never red. The writer and loader are tested in tests/run/stream-trace.test.ts ("run bundle
-// v4's per-request lists") and the Observer's data in tests/observer/data-contract.test.ts.
+// What a reader of run.json or of the Observer's data can read of a participant's items and
+// per-request lists (tokenUsage.turns, conversation.requests, providerRequests). From run bundle v2
+// a file holds an actor's items, from v3 a live actor's, and from v4 only the trace file holds the
+// lists, so the types refuse each read before the loader joins them. Each `@ts-expect-error` fails
+// typecheck if the line below it compiles, so `pnpm typecheck` is the assertion. The runtime test
+// only checks these types against the bytes: each refused read finds nothing there and each read of
+// the loader's bundle finds a list. It passes without the types, so it was never red. The writer
+// and loader are tested in tests/run/stream-trace.test.ts ("run bundle v4's per-request lists") and
+// the Observer's data in tests/observer/data-contract.test.ts.
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,6 +17,7 @@ import { buildObserverData, type ObserverData } from "../../src/observer/data.js
 import type { RunBundle } from "../../src/run/bundle.js";
 import { isRunBundle } from "../../src/run/bundle-shape.js";
 import {
+  displayedTraces,
   loadStreamTraces,
   splitStreamTraces,
   type TraceFileReader,
@@ -23,6 +25,28 @@ import {
 } from "../../src/run/stream-trace.js";
 
 const FIXTURE = path.resolve("tests/fixtures/runs-0107/source-convention-only/run.json");
+
+/** `list` as it is: a read passed here compiles only when its type says the list is there. */
+const listed = (list: readonly unknown[]): unknown => list;
+
+/** The items of run.json as parsed, read as lists: none compiles, since from v2 a file holds them. */
+function runJsonItems(value: unknown): unknown[] {
+  if (!isRunBundle(value)) throw new Error("not a run bundle");
+  return value.streams.flatMap((stream) => [
+    // @ts-expect-error a v2 or later run.json's actor has no items
+    stream.actor && listed(stream.actor.items),
+    // @ts-expect-error a v3 or later run.json's live actor has no items
+    stream.liveActor && listed(stream.liveActor.items),
+  ]);
+}
+
+/** The items of the Observer's data, read as lists: each compiles. */
+function observerItems(data: ObserverData): unknown[] {
+  return data.streams.flatMap((stream) => [
+    stream.actor && listed(stream.actor.items),
+    stream.liveActor && listed(stream.liveActor.items),
+  ]);
+}
 
 /** The lists of run.json as parsed: none compiles. */
 function runJsonReads(value: unknown): unknown[] {
@@ -52,6 +76,18 @@ function observerReads(data: ObserverData): unknown[] {
     stream.actor?.providerRequests,
     // @ts-expect-error the Observer's live actor has no tokenUsage.turns
     stream.liveActor?.tokenUsage?.turns,
+  ]);
+}
+
+/** The lists of a run's participants as a reader that shows the run has them: none compiles. */
+function displayedReads(bundle: ReturnType<typeof displayedTraces>): unknown[] {
+  return bundle.streams.flatMap(({ actor }) => [
+    // @ts-expect-error a refused participant's actor has no conversation.requests
+    actor?.conversation?.requests,
+    // @ts-expect-error a refused participant's actor has no tokenUsage.turns
+    actor?.tokenUsage?.turns,
+    // @ts-expect-error a refused participant's actor has no providerRequests
+    actor?.providerRequests,
   ]);
 }
 
@@ -97,6 +133,7 @@ describe("run.json's per-request lists", () => {
     const split = splitStreamTraces(written);
     const runJson: unknown = JSON.parse(JSON.stringify(split.bundle));
     expect(runJsonReads(runJson).filter((list) => list !== undefined)).toEqual([]);
+    expect(runJsonItems(runJson).filter((list) => list !== undefined)).toEqual([]);
 
     const files = new Map(split.files.map((file) => [file.path, file.bytes]));
     const read: TraceFileReader = async (relativePath) => {
@@ -114,6 +151,23 @@ describe("run.json's per-request lists", () => {
 
     const data = buildObserverData(bundle, "2026-10-13T00:00:00.000Z");
     expect(observerReads(data).filter((list) => list !== undefined)).toEqual([]);
+    expect(observerItems(data).filter((list) => list !== undefined)).toEqual(
+      bundle.streams.map((stream) => stream.actor!.items),
+    );
     expect(summaryReads(written.streams[0]!.actor!)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("are absent from a participant whose trace the loader refused, as a reader shows it", async () => {
+    const split = splitStreamTraces(await bundleWithLists());
+    const runJson: unknown = JSON.parse(JSON.stringify(split.bundle));
+    if (!isRunBundle(runJson)) throw new Error("not a run bundle");
+    const missing: TraceFileReader = async (relativePath) => ({
+      refused: `${relativePath} is missing`,
+    });
+    const loaded = await loadStreamTraces(missing, runJson);
+    expect(loaded.refused).toHaveLength(runJson.streams.length);
+    const shown = displayedTraces(loaded);
+    expect(shown.streams[0]!.actor?.conversation).toEqual({ mode: "threaded", summarizedTurns: 0 });
+    expect(displayedReads(shown).filter((list) => list !== undefined)).toEqual([]);
   });
 });
