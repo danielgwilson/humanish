@@ -18,8 +18,9 @@ import type { ReviewSummary } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { lab } from "../../admission/fixtures.js";
+import { streakGaps } from "../../../src/routes/computer-use/bundle-parts.js";
 import { makeFanoutModule } from "../../helpers/fanout-desktop.js";
-import { QUIET } from "../../helpers/watching-loop.js";
+import { MINUTE, NEW_ROW, QUIET, runWatching, turnOf } from "../../helpers/watching-loop.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -115,5 +116,32 @@ describe("a held participant that reloads an unchanged page for its whole sessio
         gap.includes("repeated a recent action on an unchanged screen"),
     );
     expect(streakGaps).toHaveLength(1);
+  });
+});
+
+describe("the review's gap for a held participant with several streaks", () => {
+  it("is one line: the first streak and how many followed", async () => {
+    // A reload shows a new row in odd minutes and none in even ones, and watches last 1 s, so each
+    // minute holds a streak of 60 reloads on an unchanged screen and the 3 minutes hold 3 streaks.
+    let seenAt = 0;
+    let reloadedAt = 0;
+    const run = await runWatching({
+      screen: (atMs) => {
+        seenAt = atMs;
+        return Math.floor(reloadedAt / MINUTE) % 2 === 1 ? NEW_ROW : QUIET;
+      },
+      turn: () => {
+        reloadedAt = seenAt;
+        return turnOf([{ kind: "keypress", keys: ["ctrl", "r"] }]);
+      },
+      loop: {
+        clock: { end: { atMs: 3 * MINUTE, windDownMs: MINUTE } },
+        idleWaitMs: 1_000,
+        maxWaitMs: 1_000,
+      },
+    });
+    expect(streakGaps("watcher", run.result)).toEqual([
+      "watcher: 79 turns in a row repeated a recent action on an unchanged screen, from 0:00 to 1:00 into the session. The participant is held to its scheduled end, so 20 such turns did not end its session, and from then on the screen was watched after each one before the next request. It had 2 more such streaks after that; its trace records each.",
+    ]);
   });
 });

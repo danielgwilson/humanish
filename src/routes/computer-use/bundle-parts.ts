@@ -14,16 +14,25 @@ import { type ParticipantRunOutcome } from "./types.js";
 import { plural } from "../../run/text.js";
 
 /**
- * The review's gap for each streak a participant's trace records: turns that repeated a recent
+ * The review's gap for the streaks a participant's trace records: turns that repeated a recent
  * action on an unchanged screen past noProgressSteps, which did not end the session of a
- * participant held to its scheduled end. Its session passes, so no other gap names the streak.
+ * participant held to its scheduled end. Its session passes, so no other gap names them. One line
+ * names the first streak and counts the rest: a page that changes every minute, watched 1 s at a
+ * time, records a streak a minute, and a fan-out would list each.
  */
 export function streakGaps(participantId: string, session: CuaLoopResult | undefined): string[] {
-  return (session?.trace.items ?? []).flatMap((item) =>
+  const texts = (session?.trace.items ?? []).flatMap((item) =>
     item.kind === "notice" && item.title === STREAK_TITLE && item.text !== undefined
-      ? [`${participantId}: ${item.text}`]
+      ? [item.text]
       : [],
   );
+  const [first] = texts;
+  if (first === undefined) return [];
+  const more =
+    texts.length > 1
+      ? ` It had ${plural(texts.length - 1, "more such streak")} after that; its trace records each.`
+      : "";
+  return [`${participantId}: ${first}${more}`];
 }
 
 /** The human-readable state story appended to the provenance event (and review.md via it). */

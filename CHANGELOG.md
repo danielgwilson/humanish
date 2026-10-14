@@ -28,7 +28,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   a 9-second model reply, one that reloads a page gaining an item every 8 minutes made 82 requests
   in the hour, and 92 when it also opened each item. When the streak ends, or the session ends in
   it, the trace records a notice titled `repeated an action on an unchanged screen` with the
-  streak's turn count and time span, and review.json lists it in its gaps. (#1873)
+  streak's turn count and time span. The gaps in review.json name the first streak and the number
+  of later ones, in one line per participant. (#1873)
 - A participant held to a scheduled end no longer sends model requests back to back with turns of
   only screenshots or only 0 ms waits. Such a turn asked for no wait time, so the loop ran no watch
   for it. Such a turn that follows another turn of only waits or screenshots is now watched as a

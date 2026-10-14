@@ -102,7 +102,7 @@ function fanoutSummary(
 
 /**
  * The review's gaps: one line for the participants a host suspension likely failed, then a line
- * for each other participant that did not pass, then a line for each held participant's streak.
+ * for each other participant that did not pass, then a line for each held participant's streaks.
  */
 function fanoutGaps(
   args: CuaFanoutBundleArgs,
