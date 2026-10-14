@@ -86,8 +86,9 @@ function listed(paths: readonly string[]): string {
 
 /**
  * Why each local evidence path the bundle requires is missing or unusable. A path in
- * `pastReadLimit` is a trace verify found larger than it reads: it exists, and the run grades
- * local_only because verify lists it as unscanned.
+ * `pastReadLimit` is a trace verify found larger than it reads, which verify lists as unscanned so
+ * the run grades local_only. It meets a requirement only while it is still past the limit when
+ * this check reads it, and never a screenshot or recording requirement.
  */
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -182,10 +183,15 @@ export async function missingLocalEvidenceArtifacts(
 
   // Reads overlap, so one frame's file system calls run while another frame's PNG is checked.
   const found = await mapWithConcurrency(
-    [...requiredPaths].filter(([artifactPath]) => !pastReadLimit.has(artifactPath)),
+    [...requiredPaths],
     EVIDENCE_READ_CONCURRENCY,
     ([artifactPath, requirements]) =>
-      missingArtifact(runPaths, artifactPath, requirements, recordings.get(artifactPath)),
+      missingArtifact(
+        runPaths,
+        artifactPath,
+        { ...requirements, pastReadLimit: pastReadLimit.has(artifactPath) },
+        recordings.get(artifactPath),
+      ),
   );
   return found.filter((entry) => entry !== null);
 }
@@ -193,11 +199,14 @@ export async function missingLocalEvidenceArtifacts(
 // Evidence files verify reads at once. Each read holds at most RUN_ARTIFACT_MAX_BYTES.
 const EVIDENCE_READ_CONCURRENCY = 8;
 
-/** Why one required path fails its requirements, or null when it meets them. */
+/**
+ * Why one required path fails its requirements, or null when it meets them. `pastReadLimit` says
+ * verify listed the path as a trace past the read limit, so a file still past it is present.
+ */
 async function missingArtifact(
   runPaths: PreparedRunArtifactPaths,
   artifactPath: string,
-  requirements: { screenshot: boolean; allowEmpty: boolean },
+  requirements: { screenshot: boolean; allowEmpty: boolean; pastReadLimit: boolean },
   recording: { bytes: number } | undefined,
 ): Promise<string | null> {
   if (recording) {
@@ -217,7 +226,9 @@ async function missingArtifact(
     ? await readScreenshot(runPaths, artifactPath)
     : await readSafeRunArtifact(runPaths, artifactPath);
   if (read.state === "limit")
-    return `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`;
+    return requirements.pastReadLimit && !requirements.screenshot
+      ? null
+      : `${artifactPath} (larger than the ${RUN_ARTIFACT_MAX_BYTES} bytes verify reads)`;
   if (
     read.state === "unavailable" ||
     (("size" in read ? read.size : read.bytes.length) === 0 && !requirements.allowEmpty)

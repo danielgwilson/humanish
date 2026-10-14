@@ -3,7 +3,7 @@
 // no file but the receipts names the sandbox, verify grades the run local_only with the trace named
 // as unscanned, and the Observer shows the participant without its items.
 
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -12,8 +12,11 @@ import type { RunBundle, StoredRunBundle } from "../../src/run/bundle.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../../src/run/contained-output.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { resolveRunPath } from "../../src/run/locate.js";
 import { runScope } from "../../src/run/run.js";
 import { appendSandboxReceipt, SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
+import { loadStreamTraces } from "../../src/run/stream-trace.js";
+import { missingLocalEvidenceArtifacts } from "../../src/verify/artifacts.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import { syntheticActor } from "../helpers/run-traces.js";
@@ -186,4 +189,37 @@ it("fails verify for a trace whose index records more bytes than the limit and i
       message: expect.stringContaining(`${RUN_ARTIFACT_MAX_BYTES + 1} bytes`),
     }),
   );
+});
+
+it("fails verify for a trace past the read limit that the stream also names as its screenshot", async () => {
+  await finishLiveRun(`${RAW} ${"x".repeat(RUN_ARTIFACT_MAX_BYTES)}`);
+  const file = path.join(cwd, ".humanish", "runs", RUN, "run.json");
+  const written = JSON.parse(await readFile(file, "utf8")) as StoredRunBundle;
+  const stream = written.streams[0]!;
+  stream.ui = { ...stream.ui, screenshotUrl: stream.trace!.path };
+  await writeFile(file, JSON.stringify(written));
+
+  const verified = await verifyRun(cwd, RUN);
+  expect(verified.ok).toBe(false);
+  expect(verified.shareSafety.status).toBe("blocked");
+  expect(verified.checks).toContainEqual(
+    expect.objectContaining({
+      name: "local evidence artifacts exist",
+      ok: false,
+      message: expect.stringContaining(stream.trace!.path),
+    }),
+  );
+}, 120_000);
+
+it("counts a trace verify found past the read limit as missing once the file is emptied", async () => {
+  await finishLiveRun("a short message");
+  const runPaths = await resolveRunPath(cwd, RUN);
+  const stored = JSON.parse(
+    await readFile(path.join(cwd, ".humanish", "runs", RUN, "run.json"), "utf8"),
+  ) as StoredRunBundle;
+  const { bundle } = await loadStreamTraces(runPaths!, stored);
+  // Verify measured the trace past the limit, and the file was emptied before its evidence check.
+  await truncate(path.join(cwd, ".humanish", "runs", RUN, TRACE), 0);
+
+  expect(await missingLocalEvidenceArtifacts(runPaths!, bundle, new Set([TRACE]))).toContain(TRACE);
 });
