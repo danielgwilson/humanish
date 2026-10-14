@@ -136,7 +136,7 @@ describe("analyze --json on a run whose source analysis refuses", () => {
           ok: false,
           error: {
             code: "ANALYSIS_SOURCE_INVALID",
-            message: `Analysis did not read run.json: events ${bundle.events.length + 1} and ${bundle.events.length + 2} are participant ${stream.id}'s and share the id "note-1", and analysis cites each of a participant's run events by its id. No request was sent.`,
+            message: `Analysis did not read run.json: events ${bundle.events.length + 1} and ${bundle.events.length + 2} are participant ${stream.id}'s and share the id "note-1", and analysis cites each of a participant's run events by its id. Give one of them another id in run.json; if run.json was not edited, please report this as a bug. No request was sent.`,
           },
         }),
       });

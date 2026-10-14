@@ -123,7 +123,7 @@ export function parseAnalysisSource(
       const first = firstPlace.get(event.id);
       if (first !== undefined)
         throw runFileInvalid(
-          `events ${first + 1} and ${index + 1} are participant ${stream.id}'s and share the id ${JSON.stringify(event.id)}, and analysis cites each of a participant's run events by its id.`,
+          `events ${first + 1} and ${index + 1} are participant ${stream.id}'s and share the id ${JSON.stringify(event.id)}, and analysis cites each of a participant's run events by its id. Give one of them another id in run.json; if run.json was not edited, please report this as a bug.`,
         );
       firstPlace.set(event.id, index);
     }
