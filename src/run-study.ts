@@ -63,9 +63,9 @@ export async function runStudyWith(
 /**
  * The package's study runner (`src/index.ts`): runStudyWith with the public options only. A
  * config that skipped parseStudy is checked first (libraryConfigRefusal): a humanish.lab.v2 config
- * or one with a humanish 0.110 field, no `actor`, or a `route` the config does not take. That, or a
- * field RunStudyOptions no longer has, is refused in the route's own result envelope before
- * anything runs.
+ * or one with a humanish 0.110 field, no `actor`, a `route` the config does not take, or an
+ * `actor.model` verify would flag. That, or a field RunStudyOptions no longer has, is refused in the
+ * route's own result envelope before anything runs.
  */
 export async function runStudy(
   config: StudyConfig,

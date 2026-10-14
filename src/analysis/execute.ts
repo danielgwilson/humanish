@@ -4,6 +4,7 @@ import { estimateAnalysisCost } from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
 import { MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
+import { scanEncodedText } from "../evidence/encoded-text.js";
 import {
   ANALYSIS_ID_PATTERN,
   ANALYSIS_SCHEMA,
@@ -278,7 +279,7 @@ export function estimateAnalysisAdmission(
   ) {
     return denied("analysis_config_invalid");
   }
-  if (config.question !== null && containsSensitive(config.question))
+  if (config.question !== null && scanEncodedText(config.question).sensitive)
     return denied("analysis_question_sensitive");
   const badInput = inputError(input);
   if (badInput) return denied(badInput);

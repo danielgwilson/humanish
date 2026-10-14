@@ -86,6 +86,16 @@ describe("subject.envValues", () => {
     expect(parsed.error.message.toLowerCase()).toContain("secret");
   });
 
+  it.each([
+    ["base64", (text: string) => Buffer.from(text).toString("base64")],
+    ["percent-encoded", (text: string) => text.replaceAll("_", "%5F")],
+  ])("refuses a %s secret, which verify decodes", (_encoding, encode) => {
+    const secretShaped = ["sk", "live", "51H8xQ2eZvKYlo2C0abcdefghijklmnop"].join("_");
+    const parsed = cloneLab({ envValues: { STRIPE_KEY: encode(secretShaped) } });
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.error.message).toContain("subject.env");
+  });
+
   it("refuses keys that are not env var names", () => {
     const parsed = cloneLab({ envValues: { "not a var": "x" } });
     expect(parsed.ok).toBe(false);

@@ -27,6 +27,27 @@ The Unreleased section holds the full notes for the next version until it is tag
   percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
   Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
   3% of its earlier time. (#1872)
+- A key written in base64 or percent-encoded in a study's title, mission, task goals, participant
+  instructions or persona file stays out of the run's files. The run redacted that text for keys as
+  written, and verify also decodes base64, percent-encoding and other escapes, so verify found the
+  key, graded the run `blocked`, and a hosted run failed its own verification. In that text and in
+  the study warnings that quote it, the run now also replaces each word that verify's scan reads as
+  a secret with `[REDACTED_SECRET]`. When the words read clean one at a time and only together hold
+  a secret, as `Bearer` before a percent-encoded token does, the whole text becomes
+  `[REDACTED_SECRET]`.
+- A key as written or encoded in a scripted scenario's title, goal or step labels, or in a
+  persona's accessibility need, stays out of the run's files. The scripted route removed only the
+  run's known values from that scenario text, and a live participant's trace recorded the
+  accessibility need as written. A step renamed by its position for a key or known value in its
+  label or id no longer takes a numbered id that holds one of the run's known values, such as a
+  subject env value spelled `step-01`. The run is refused when every id its position gives holds
+  one.
+- `subject.envValues`, `actor.model` and the analysis question (`review.analysis.question` or
+  `humanish analyze --question`) refuse a value that verify would read as a secret or local path,
+  as written or in base64, percent-encoding or another escape. envValues and the question were
+  refused only when they held one as written, and `actor.model` was not checked. The model is
+  refused because the provider is asked for it by name. `runStudy` refuses such a model in a
+  StudyConfig built without `parseStudy` too.
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 
