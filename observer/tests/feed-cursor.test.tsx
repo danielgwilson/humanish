@@ -7,11 +7,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { observerDataFromFeed } from "../lib/data";
 import type { ObserverData } from "../lib/observer-data";
 import { useObserverFeed } from "../lib/use-observer-feed";
+import { packed } from "./feed";
+import { decodeInMicrotasks } from "./microtask-gunzip";
 
 // A served page polls observer-feed.json and sends back the live cursors of the last body it
 // joined; a body then carries only each running participant's items past its cursor. The bodies
 // are the ones the real server answered over one run (tests/observer/feed-cursor.test.ts writes
 // tests/golden/observer-feed/sequence.json): a full body, tails, a new generation, the finished run.
+// The goldens hold each participant's entry decoded; the page gets them packed, as the server sends.
 interface FeedEntry {
   live?: string;
   liveAfter?: string;
@@ -28,6 +31,8 @@ const sequence = JSON.parse(
   ),
 ) as { after: string | null; body: FeedBody }[];
 const body = (index: number): FeedBody => structuredClone(sequence[index]!.body);
+
+decodeInMicrotasks();
 
 let container: HTMLDivElement, root: Root;
 /** The bodies the next feed polls get, in order; null answers 404. The last one repeats. */
@@ -70,7 +75,7 @@ beforeEach(() => {
     if (url.pathname !== "/observer/observer-feed.json") return new Response(null, { status: 404 });
     sent.push(url.searchParams.get("after"));
     const next = answers.length > 1 ? answers.shift()! : answers[0]!;
-    return next === null ? new Response(null, { status: 404 }) : new Response(JSON.stringify(next));
+    return next === null ? new Response(null, { status: 404 }) : new Response(packed(next));
   });
 });
 afterEach(async () => {
@@ -84,7 +89,7 @@ afterEach(async () => {
 
 /** Mount the page on the first body's data, as its inline snapshot gives it, and let it poll once. */
 async function mount() {
-  const initial = observerDataFromFeed(body(0))!;
+  const initial = (await observerDataFromFeed(JSON.parse(packed(body(0)))))!;
   expect(initial).not.toBeNull();
   await act(async () => {
     root.render(<Probe initial={initial} />);
@@ -199,7 +204,7 @@ function WarningProbe({ initial }: { initial: ObserverData }) {
 describe("the page's live feed past the read limit", () => {
   it("keeps the items it holds, shows the warning, and sends the same cursor again", async () => {
     answers = pastLimit.map((entry) => structuredClone(entry.body));
-    const initial = observerDataFromFeed(structuredClone(pastLimit[0]!.body))!;
+    const initial = (await observerDataFromFeed(JSON.parse(packed(pastLimit[0]!.body))))!;
     await act(async () => {
       root.render(<WarningProbe initial={initial} />);
     });

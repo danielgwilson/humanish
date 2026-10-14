@@ -18,8 +18,7 @@ import {
 } from "./observer-browser-fixtures.mjs";
 
 import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
-import { observerDataElements } from "../dist/observer/page-data.js";
-import { splitObserverData } from "../dist/observer/participant-items.js";
+import { observerDataElements, observerFeedBody } from "../dist/observer/page-data.js";
 import { bounded, closeWhenOverdue } from "./observer-proof-wait.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -77,10 +76,6 @@ const escape = (value) =>
   );
 // The page and the poll carry the data the way the CLI does; `pnpm build` writes these modules.
 const inject = (data) => html.replace(slot, () => observerDataElements(data));
-const feed = (data) => {
-  const { shell, items } = splitObserverData(data);
-  return JSON.stringify({ data: shell, items });
-};
 const analysisSlot = `<script id="study-analysis" type="application/json">__HUMANISH_STUDY_ANALYSIS__</script>`;
 let analysis = null;
 let analysisMode = "ok";
@@ -155,7 +150,7 @@ const server = createServer((request, response) => {
       response.end('{"error":"Controlled transient snapshot failure"}');
     } else if (responseMode === "invalid") {
       response.end('{"data":{"schema":"humanish.observer-data.v3","streams":"malformed"}}');
-    } else response.end(feed(data));
+    } else void observerFeedBody(data).then((body) => response.end(body));
   } else if (url.pathname === "/_humanish/history.json") {
     response.setHeader("content-type", "application/json");
     response.end(
@@ -177,7 +172,7 @@ const server = createServer((request, response) => {
     url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/observer-feed.json`
   ) {
     response.setHeader("content-type", "application/json");
-    response.end(feed(otherData));
+    void observerFeedBody(otherData).then((body) => response.end(body));
   } else if (
     otherData &&
     url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/index.html`

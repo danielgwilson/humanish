@@ -48,6 +48,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   refused only when they held one as written, and `actor.model` was not checked. The model is
   refused because the provider is asked for it by name. `runStudy` refuses such a model in a
   StudyConfig built without `parseStudy` too.
+- `humanish observe` writes the Observer page of a run whose participants' traces together pass
+  V8's longest string, 536,870,888 characters. The page, `observer-feed.json` and the page's decode
+  in the browser each held every participant's items in one string, so past that size `observe`
+  exited 2 with `RangeError: Invalid string length` and the feed answered 500. The page and the
+  feed now carry each participant's items gzip-compressed on their own
+  (`humanish.observer-items.v2`), and the browser decodes one participant at a time. The feed
+  compresses on the thread pool at gzip level 1, so the server answers other requests while it
+  builds a poll. On a synthetic finished run of 25 participants with 30 MiB traces, `observe`
+  exits 0 after 128 seconds at a peak of 3.8 GiB and writes a 137.7 MiB page, where it exited 2
+  after 114 seconds. Served, headless Chrome shows the 25 participants 51 seconds after asking for
+  the page, but each feed poll takes 17 to 20 seconds, past the 15 seconds the page waits, so the
+  page does not update and after 3 polls says the server stopped answering (#1887). With 16 such
+  participants a poll takes 11.5 to 12.4 seconds and sends 102 MB, where it took 9.2 to 10.1
+  seconds and sent 503 MB. Larger runs have not been measured. The page of the recorded
+  8-participant run in `site/public/runs/lobby-0927` grows by 2,425 bytes, 0.2 percent. The study
+  plan no longer warns about traces past 512 MiB, and its warning for an Observer page past 32 MiB
+  now says that verify grades the run `local_only`, that `humanish export` refuses it without
+  `--local-only`, and that a bundle export fails (#1871).
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 

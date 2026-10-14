@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { gzipSync } from "node:zlib";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ObserverData } from "../../src/observer/data";
 import { readInlineObserverData } from "../lib/data";
@@ -29,11 +30,24 @@ describe("the page's run data", () => {
     expect(await readInlineObserverData(doc)).toEqual(data);
   });
 
+  it("decodes each participant's items on its own, so no string holds two participants' items", async () => {
+    const data = await twoParticipants();
+    const doc = page(injectObserverData(SLOT, data));
+    const parse = vi.spyOn(JSON, "parse");
+    const read = await readInlineObserverData(doc);
+    const parsed = parse.mock.calls.map(([text]) => String(text));
+    parse.mockRestore();
+    expect(read).toEqual(data);
+    expect(
+      parsed.filter((text) => text.includes('"id":"one-') && text.includes('"id":"two-')),
+    ).toEqual([]);
+  });
+
   it("reads no run from a page whose items are unreadable, rather than participants with no steps", async () => {
     const data = await live();
     const filled = injectObserverData(SLOT, data).replace(
       /(<script id="observer-items"[^>]*>)[^<]*/,
-      "$1bm90IGd6aXA=",
+      `$1${JSON.stringify({ schema: "humanish.observer-items.v2", runId: data.run.runId, streams: ["bm90IGd6aXA="] })}`,
     );
     expect(await readInlineObserverData(page(filled))).toBeNull();
     const missing = injectObserverData(SLOT, data).replace(
@@ -54,12 +68,31 @@ describe("the page's run data", () => {
     expect(asked).toBe("observer-feed.json");
   });
 
-  it("refuses a feed whose items are another run's or leave a participant out", async () => {
+  it("refuses a feed whose items are another run's, leave a participant out or repeat one", async () => {
     const data = await live();
-    const body = JSON.parse(feed(data)) as { data: unknown; items: { runId: string } };
+    const body = JSON.parse(feed(data)) as {
+      data: unknown;
+      items: { runId: string; streams: string[] };
+    };
+    const [packed] = body.items.streams as [string];
+    const id = data.streams[0]!.id;
     for (const items of [
       { ...body.items, runId: "another-run" },
-      { ...body.items, streams: {} },
+      { ...body.items, streams: [] },
+      // Entries as a page before per-participant packing carried them.
+      { ...body.items, streams: { [id]: { actor: [] } } },
+      { ...body.items, streams: { [id]: packed } },
+      // An entry that does not name its stream.
+      { ...body.items, streams: [gzipSync(JSON.stringify({ actor: [] })).toString("base64")] },
+      // Two entries for one stream: the second would replace the first's items.
+      { ...body.items, streams: [...body.items.streams, packed] },
+      {
+        ...body.items,
+        streams: [
+          gzipSync(JSON.stringify({ id, actor: "malformed" })).toString("base64"),
+          ...body.items.streams,
+        ],
+      },
     ]) {
       const served = (async () => ({
         ok: true,
@@ -69,3 +102,18 @@ describe("the page's run data", () => {
     }
   });
 });
+
+/** The live run with a second participant, each participant's item ids marked as its own. */
+async function twoParticipants(): Promise<ObserverData> {
+  const data = await live();
+  const [stream] = data.streams;
+  const marked = (id: string, prefix: string) => ({
+    ...stream!,
+    id,
+    actor: {
+      ...stream!.actor!,
+      items: stream!.actor!.items.map((item) => ({ ...item, id: `${prefix}-${item.id}` })),
+    },
+  });
+  return { ...data, streams: [marked("stream-001", "one"), marked("stream-002", "two")] };
+}

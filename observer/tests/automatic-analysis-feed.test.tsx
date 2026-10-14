@@ -14,10 +14,13 @@ import type { AutomaticAnalysisView } from "../lib/automatic-analysis";
 import { useObserverFeed } from "../lib/use-observer-feed";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 import { feed } from "./feed";
+import { decodeInMicrotasks } from "./microtask-gunzip";
 
 // UI/transport fixtures only. These tests do not claim an automatic provider dispatch.
 const data = fixtures.fixture();
 let container: HTMLDivElement, root: Root, remote: LoadedAnalysis;
+
+decodeInMicrotasks();
 const job = (state: AutomaticAnalysisView["state"]): AutomaticAnalysisView => ({
   state,
   analysisId: null,
