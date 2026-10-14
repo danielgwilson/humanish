@@ -38,7 +38,7 @@ const server = createServer((request, response) => {
     response.end(artifact);
   } else if (url.pathname === "/observer/observer-feed.json") {
     response.setHeader("content-type", "application/json");
-    response.end(observerFeedBody(data));
+    void observerFeedBody(data).then((body) => response.end(body));
   } else if (url.pathname === "/observer/study-analysis.json") {
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify(analysis));

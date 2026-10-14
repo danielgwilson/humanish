@@ -11,6 +11,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { buildObserverData } from "../../src/observer/data.js";
+import { observerFeedBody } from "../../src/observer/page-data.js";
 import type { PackedObserverItems } from "../../src/observer/participant-items.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
@@ -19,7 +20,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
 import type { RunStream } from "../../src/run/streams.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
-import { unpackItems } from "../helpers/observer-page.js";
+import { readFeedBody, unpackItems } from "../helpers/observer-page.js";
 
 const RUN = "synthetic-feed-cursor";
 const item = (n: number): ActorTraceItem => ({
@@ -187,6 +188,22 @@ describe("the Observer feed's items", () => {
         `2.1.1.${bytes(c)}`,
       ]);
     });
+  });
+
+  it("lets the server's event loop turn while it compresses a poll's entries", async () => {
+    const data = buildObserverData(inProgress([item(1), item(2)], [item(3)]));
+    let turned = false;
+    const body = observerFeedBody(data);
+    // A check-phase callback runs only after the event loop turns.
+    setImmediate(() => {
+      turned = true;
+    });
+    const { items } = readFeedBody(await body);
+    expect(turned).toBe(true);
+    expect(data.streams.map((stream) => ids(items.streams[stream.id]?.liveActor))).toEqual([
+      ["reasoning-001", "reasoning-002"],
+      ["reasoning-003"],
+    ]);
   });
 });
 

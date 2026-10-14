@@ -56,7 +56,7 @@ const handleRequest = async (req, res) => {
   }
   if (pathname === "/observer/observer-feed.json") {
     res.setHeader("content-type", "application/json");
-    res.end(observerFeedBody(data));
+    void observerFeedBody(data).then((body) => res.end(body));
     return;
   }
   if (pathname === "/observer/study-analysis.json") {

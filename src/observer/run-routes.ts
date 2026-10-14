@@ -226,7 +226,7 @@ export async function serveRunPath(
       200,
       cleanedRelativePath === "observer/observer-data.json"
         ? JSON.stringify(splitObserverData(observed.data).shell, null, 2)
-        : observerFeedBody(observed.data, observed.live),
+        : await observerFeedBody(observed.data, observed.live),
       "application/json; charset=utf-8",
     );
     return;

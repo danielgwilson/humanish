@@ -4,7 +4,8 @@
 // times. Packing one participant at a time keeps every string under V8's longest string
 // (536,870,888 characters) while each participant's trace stays under the 32 MiB read limit.
 
-import { gzipSync } from "node:zlib";
+import { promisify } from "node:util";
+import { constants, gzip, gzipSync } from "node:zlib";
 
 import type { LiveItemsRead } from "../run/stream-trace.js";
 import type { ObserverData } from "./data.js";
@@ -24,13 +25,28 @@ export function observerDataElements(data: ObserverData): string {
   );
 }
 
+const gzipOnThreadPool = promisify(gzip);
+
 /**
  * observer-feed.json's body: observer-data.json's content and the items packed as the page packs
  * them, with each running participant's cursor from `live` on its entry.
  */
-export function observerFeedBody(data: ObserverData, live: readonly LiveItemsRead[] = []): string {
+export async function observerFeedBody(
+  data: ObserverData,
+  live: readonly LiveItemsRead[] = [],
+): Promise<string> {
   const { shell, items } = splitObserverData(data);
-  return JSON.stringify({ data: shell, items: packObserverItems(withFeedCursors(items, live)) });
+  const cursored = withFeedCursors(items, live);
+  // Each open page polls every 5 seconds and gets every finished participant's items again, so the
+  // server compresses them on the thread pool and answers other requests meanwhile. Level 1 took
+  // half the time of the default on 30 MiB of items, for 13 percent more bytes. One participant
+  // at a time, so a poll holds one participant's JSON text at once.
+  const streams: PackedObserverItems["streams"] = [];
+  for (const [id, entry] of Object.entries(cursored.streams)) {
+    const packed = await gzipOnThreadPool(JSON.stringify(entry), { level: constants.Z_BEST_SPEED });
+    streams.push([id, packed.toString("base64")]);
+  }
+  return JSON.stringify({ data: shell, items: { ...cursored, streams } });
 }
 
 function packObserverItems(items: ObserverItems): PackedObserverItems {

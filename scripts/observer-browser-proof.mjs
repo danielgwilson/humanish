@@ -150,7 +150,7 @@ const server = createServer((request, response) => {
       response.end('{"error":"Controlled transient snapshot failure"}');
     } else if (responseMode === "invalid") {
       response.end('{"data":{"schema":"humanish.observer-data.v3","streams":"malformed"}}');
-    } else response.end(observerFeedBody(data));
+    } else void observerFeedBody(data).then((body) => response.end(body));
   } else if (url.pathname === "/_humanish/history.json") {
     response.setHeader("content-type", "application/json");
     response.end(
@@ -172,7 +172,7 @@ const server = createServer((request, response) => {
     url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/observer-feed.json`
   ) {
     response.setHeader("content-type", "application/json");
-    response.end(observerFeedBody(otherData));
+    void observerFeedBody(otherData).then((body) => response.end(body));
   } else if (
     otherData &&
     url.pathname === `/_humanish/runs/${otherData.run.runId}/observer/index.html`
