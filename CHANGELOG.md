@@ -10,10 +10,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- Reading a run refuses a participant whose trace file leaves out the conversation that run.json
-  records for it, and names the participant. The loader accepted such a file when its size and
-  sha256 matched the index, and a reader that counted the conversation's requests then threw a
-  TypeError. The writer never writes such a file. (#1850)
+- Reading a run refuses a participant whose actor records a conversation without its requests
+  list, and names the participant. Three shapes loaded before: a trace file that leaves out the
+  conversation run.json records, a v1 run.json conversation without the list, and a conversation
+  that is not an object. A reader that counted the conversation's requests then threw a TypeError.
+  The writer never writes any of them. (#1850)
 - verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
   as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
   pattern's word boundary fails, so a text file other than run.json passed with the key in it. The

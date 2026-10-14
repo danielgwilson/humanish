@@ -299,8 +299,6 @@ function joinTrace(
  * run.json's actor with each per-request list its trace file holds, whatever the bundle's
  * version: before v4 the writer wrote run.json's lists and the file's from one actor, so they are
  * equal. A nested list goes into run.json's `tokenUsage` or `conversation` when run.json has it.
- * A conversation left without a requests list is refused: ActorTrace types the list as present,
- * so a reader that counts it would throw.
  */
 function joinRequestLists(
   summary: RunJsonSummary,
@@ -320,8 +318,6 @@ function joinRequestLists(
     if (second === undefined) joined[first] = value;
     else if (isRecord(parent)) joined[first] = { ...parent, [second]: value };
   }
-  if (isRecord(joined.conversation) && !Array.isArray(joined.conversation.requests))
-    refuse(`run.json records a conversation and ${filePath} holds no requests list for it`);
   return joined as unknown as ActorTrace;
 }
 
@@ -343,13 +339,24 @@ function assertIndex(stream: StoredRunStream): asserts stream is StoredRunStream
 }
 
 /**
- * A stream of run.json typed as a loaded one. The loader joins each file run.json indexes, and
- * takes what run.json holds inline as it is: a v1 actor's items and lists, and the items of a live
- * actor of humanish.live-actor.v1. It also types each refused stream this way, kept as run.json
- * holds it: from v2 its actor has no items, from v4 none of the lists, and the loader's `refused`
- * names it.
+ * The joined stream as a loaded one, once its actor's conversation, if any, holds the requests
+ * list ActorTrace types as present. The writer writes the list with every conversation, in
+ * run.json before v4 and in the trace file from v4, so a stream without it was edited, and a reader
+ * that counts the requests would throw. Items a v1 run.json or a humanish.live-actor.v1 live actor
+ * holds inline are taken as they are.
  */
-const asLoaded = (stream: StoredRunStream): RunStream => stream as RunStream;
+function asLoaded(stream: StoredRunStream): RunStream {
+  const conversation: unknown = stream.actor?.conversation;
+  if (
+    conversation !== undefined &&
+    !(isRecord(conversation) && Array.isArray(conversation.requests))
+  )
+    throw new StreamTraceRefusedError(
+      stream.id,
+      "its actor records a conversation without the requests list",
+    );
+  return stream as RunStream;
+}
 
 /** A live actor whose items run.json holds inline: humanish.live-actor.v1, or one with no schema. */
 const isInlineLiveActor = (live: Pick<LiveActor, "schema">): boolean =>
@@ -669,7 +676,9 @@ async function loadEveryStream(
     } catch (error) {
       if (!(error instanceof StreamTraceRefusedError)) throw error;
       refused.push(error);
-      streams.push(asLoaded(stream));
+      // Kept as run.json holds it, typed as loaded: from v2 its actor has no items, and from v4
+      // none of the lists. The loader's `refused` names it, and displayedTraces shows it so.
+      streams.push(stream as RunStream);
     }
   }
   return { bundle: { ...bundle, streams }, refused, files, live };
