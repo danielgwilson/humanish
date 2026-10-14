@@ -155,6 +155,9 @@ function heldRequestList(trace: object): RequestList | undefined {
 
 type LiveActor = NonNullable<RunStream["liveActor"]>;
 
+/** An indexed actor as run.json holds it: its items and per-request lists are in its trace file. */
+type RunJsonSummary = WithoutRequestLists<Omit<ActorTrace, "items">>;
+
 /**
  * run.json's live actor: without the per-request lists, and with the estimate priced from the
  * rows it leaves out. Long-context pricing needs each request's input size, so a figure priced
@@ -211,7 +214,7 @@ export function splitStreamTraces(bundle: RunBundle): {
     return {
       ...rest,
       // run.json's actor is the summary: every field of the trace except its items and lists.
-      actor: withoutRequestLists(summary) as WithoutRequestLists<ActorTrace>,
+      actor: withoutRequestLists(summary),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       trace: {
         path: filePath,
@@ -257,7 +260,7 @@ function containedReader(runPaths: PreparedOutputRoot): TraceFileReader {
  * followed by the file's screenshot entries, without the index. Its live actor is as it was.
  */
 function joinTrace(
-  stream: StoredRunStream & { trace: StreamTraceIndex; actor: WithoutRequestLists<ActorTrace> },
+  stream: StoredRunStream & { trace: StreamTraceIndex; actor: RunJsonSummary },
   bytes: Buffer,
 ): StoredRunStream {
   const index = stream.trace;
@@ -300,7 +303,7 @@ function joinTrace(
  * so a reader that counts it would throw.
  */
 function joinRequestLists(
-  summary: WithoutRequestLists<ActorTrace>,
+  summary: RunJsonSummary,
   file: Record<string, unknown>,
   filePath: string,
   refuse: (detail: string) => never,
@@ -325,7 +328,7 @@ function joinRequestLists(
 /** Refuses an index the shape check would refuse, naming a file that is not a trace file name. */
 function assertIndex(stream: StoredRunStream): asserts stream is StoredRunStream & {
   trace: StreamTraceIndex;
-  actor: WithoutRequestLists<ActorTrace>;
+  actor: RunJsonSummary;
 } {
   const index = stream.trace;
   if (isRecord(index) && typeof index.path === "string" && !isStreamTracePath(index.path))
