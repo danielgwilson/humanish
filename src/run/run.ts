@@ -365,6 +365,15 @@ async function writeRunJson(
   return { ...publicBundle, streams };
 }
 
+/** The warn event that names the files the final sandbox id sweep could not read. */
+const unsweptEvent = (message: string, at: number): RunEvent => ({
+  id: "event-sandbox-ids-unresolved",
+  at: new Date(at).toISOString(),
+  level: "warn",
+  type: "sandbox-ids.unresolved",
+  message,
+});
+
 /** The writes of one run, queued in order: its snapshots, its final publication and its interrupt. */
 interface RunPublisher {
   snapshot(bundle: RunBundle): Promise<void>;
@@ -400,11 +409,14 @@ function runPublisher(args: {
     type: "study.warning",
     message: redactText(message),
   }));
-  // So do the host suspensions the heartbeat has seen by the time of the write.
+  // So do the host suspensions the heartbeat has seen by the time of the write, and the files the
+  // final sandbox id sweep could not read.
+  let unswept: RunEvent[] = [];
   const withRunEvents = (events: readonly RunEvent[]): RunEvent[] => {
     const owned = [
       ...studyWarnings,
       ...hostSuspensionEvents(runStatus.suspensions(), Date.parse(createdAt)),
+      ...unswept,
     ];
     return [...events.filter((event) => !owned.some((mine) => mine.id === event.id)), ...owned];
   };
@@ -493,7 +505,12 @@ function runPublisher(args: {
     );
     // The final run.json indexes each finished trace, so the live files are journal no reader needs.
     await liveItems.remove();
-    await scrubRunSandboxIds(paths);
+    const unread = await scrubRunSandboxIds(paths);
+    if (unread !== undefined) {
+      unswept = [unsweptEvent(unread, now())];
+      // The sweep reads the files the final write left, so run.json is written again to record it.
+      await writeBundleFiles(bundle, finishedOutcome(outcome), async () => {});
+    }
     await writePointer();
     let current: RecordedOutcome = { ok: outcome.ok, execution: outcome.execution };
     // An Observer that did not render, judged under the route's policy and written to run.json

@@ -7,11 +7,11 @@
 // created, and runs.
 //
 // The worked examples use the rates in src/study/bundle-estimate.ts: a model turn every 10 s that
-// adds 4,700 bytes to its participant's trace (the busiest participant measured) and none to
-// run.json, which keeps the per-request lists in the traces, 16,500 bytes of run.json for each
-// participant and 4,400 for the run, 5,400 for each trace, 500 for each dwell frame, 110,000 for
+// adds 3,500 bytes to its participant's compact trace (the busiest participant measured) and none
+// to run.json, which keeps the per-request lists in the traces, 16,500 bytes of run.json for each
+// participant and 4,400 for the run, 4,000 for each trace, 400 for each dwell frame, 110,000 for
 // each screenshot, and 3 minutes for a participant with no declared end. The Observer page is
-// 1,200,000 bytes of app, 0.85 of run.json and 0.12 of all the traces. run.json also holds the
+// 1,200,000 bytes of app, 0.85 of run.json and 0.16 of all the traces. run.json also holds the
 // mission once for the run and once in each participant's stream, and the estimate counts one more
 // copy for each participant, in case it reports friction or stops. The page holds the mission once
 // for the run and once for each participant, outside its share of run.json. The fixture's
@@ -26,7 +26,7 @@ import { stringify } from "yaml";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { participantSchedule } from "../../src/study/arrivals.js";
-import { estimateBundle } from "../../src/study/bundle-estimate.js";
+import { bundleLimitReason, estimateBundle } from "../../src/study/bundle-estimate.js";
 import { parseStudy } from "../../src/study/config.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { lab, type Patch } from "../admission/fixtures.js";
@@ -40,8 +40,8 @@ const ENV = {
   HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "100",
 };
 const COUNTED =
-  "at a model turn every 10s that adds up to 4.7 KB to the participant's trace. The run goes ahead.";
-const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 48.0 MiB, past the 32 MiB verify reads in one file. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
+  "at a model turn every 10s that adds up to 3.5 KB to the participant's trace. The run goes ahead.";
+const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 47.7 MiB, past the 32 MiB verify reads in one file. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
 
 /** An event day: `hosts` hosts working `hours` from the start, and `guests` arriving a minute apart. */
 function eventDay(hosts: number, hours: number, guests = 0): Patch {
@@ -79,63 +79,63 @@ describe("study check's bundle estimate", () => {
   it("passes 5 hosts working 8 hours beside 25 guests with no warning", async () => {
     // Turns: 5 x 2,880 for the hosts and 25 x 18 for the guests, 14,850.
     // run.json: 4,400 + 30 x 16,500 = 499,400 bytes.
-    // A host's trace: 5,400 + 2,880 x 4,700 = 13,541,400 bytes.
-    // A guest's trace: 5,400 + 18 x 4,700 = 90,000. All traces: 5 x 13,541,400 + 25 x 90,000
-    // = 69,957,000. Page: 1,200,000 + 0.85 x 499,400 + 0.12 x 69,957,000 = 10,019,330.
+    // A host's trace: 4,000 + 2,880 x 3,500 = 10,084,000 bytes.
+    // A guest's trace: 4,000 + 18 x 3,500 = 67,000. All traces: 5 x 10,084,000 + 25 x 67,000
+    // = 52,095,000. Page: 1,200,000 + 0.85 x 499,400 + 0.16 x 52,095,000 = 9,959,690.
     // Entries: 20 + 30 x 3 + 14,850 = 14,960, of 10,000 + 30 x 5,000.
-    // In all: 10,019,330 + (30 + 14,850) screenshots x 110,000 + 69,957,000 + 2 x 499,400
-    // = 1,717,775,130 bytes.
+    // In all: 9,959,690 + (30 + 14,850) screenshots x 110,000 + 52,095,000 + 2 x 499,400
+    // = 1,699,853,490 bytes.
     expect(await check(eventDay(5, 8, 25))).toEqual({
       ok: true,
-      row: "run.json about 0.5 MiB of the 16 MiB analysis reads; largest trace about 12.9 MiB of the 32 MiB humanish reads of each; Observer page about 9.6 MiB of the 32 MiB verify reads; about 14,960 files and folders of the 160,000 the public-safety scan reads; about 1638 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 0.5 MiB of the 16 MiB analysis reads; largest trace about 9.6 MiB of the 32 MiB humanish reads of each; Observer page about 9.5 MiB of the 32 MiB verify reads; about 14,960 files and folders of the 160,000 the public-safety scan reads; about 1621 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [],
     });
   });
 
   it("passes 19 hosts working 8 hours, near the verify limit on the Observer page", async () => {
     // run.json: 4,400 + 19 x 16,500 = 317,900 bytes. Page: 1,200,000 + 0.85 x 317,900
-    // + 0.12 x 19 x 13,541,400 = 32,344,607, under 33,554,432.
-    // In all: 32,344,607 + 54,739 x 110,000 + 19 x 13,541,400 + 2 x 317,900 = 6,311,557,007.
+    // + 0.16 x 19 x 10,084,000 = 32,125,575, under 33,554,432.
+    // In all: 32,125,575 + 54,739 x 110,000 + 19 x 10,084,000 + 2 x 317,900 = 6,245,647,375.
     expect(await check(eventDay(19, 8))).toEqual({
       ok: true,
-      row: "run.json about 0.3 MiB of the 16 MiB analysis reads; largest trace about 12.9 MiB of the 32 MiB humanish reads of each; Observer page about 30.8 MiB of the 32 MiB verify reads; about 54,797 files and folders of the 105,000 the public-safety scan reads; about 6019 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 0.3 MiB of the 16 MiB analysis reads; largest trace about 9.6 MiB of the 32 MiB humanish reads of each; Observer page about 30.6 MiB of the 32 MiB verify reads; about 54,797 files and folders of the 105,000 the public-safety scan reads; about 5956 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [],
     });
   });
 
   it("warns that 20 hosts working 8 hours pass the verify limit on the Observer page", async () => {
     // run.json: 4,400 + 20 x 16,500 = 334,400 bytes, under the analysis limit. Page: 1,200,000
-    // + 0.85 x 334,400 + 0.12 x 20 x 13,541,400 = 33,983,600. The busiest participant measured
-    // added about 475 gzipped bytes a turn to the page. In all: 33,983,600 + 57,620 x 110,000
-    // + 20 x 13,541,400 + 2 x 334,400 = 6,643,680,400.
+    // + 0.85 x 334,400 + 0.16 x 20 x 10,084,000 = 33,753,040. The busiest participant measured
+    // added about 475 gzipped bytes a turn to the page. In all: 33,753,040 + 57,620 x 110,000
+    // + 20 x 10,084,000 + 2 x 334,400 = 6,574,301,840.
     expect(await check(eventDay(20, 8))).toEqual({
       ok: true,
-      row: "run.json about 0.3 MiB of the 16 MiB analysis reads; largest trace about 12.9 MiB of the 32 MiB humanish reads of each; Observer page about 32.4 MiB of the 32 MiB verify reads; about 57,680 files and folders of the 110,000 the public-safety scan reads; about 6336 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 0.3 MiB of the 16 MiB analysis reads; largest trace about 9.6 MiB of the 32 MiB humanish reads of each; Observer page about 32.2 MiB of the 32 MiB verify reads; about 57,680 files and folders of the 110,000 the public-safety scan reads; about 6270 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [
-        `The Observer page, observer/index.html, may grow to about 32.4 MiB, past the 32 MiB verify reads in one file. The estimate counts 20 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+        `The Observer page, observer/index.html, may grow to about 32.2 MiB, past the 32 MiB verify reads in one file. The estimate counts 20 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
       ],
     });
   });
 
   it("warns that 30 hosts working 8 hours pass the verify limit on the Observer page only", async () => {
     // run.json: 4,400 + 30 x 16,500 = 499,400 bytes. Page: 1,200,000 + 0.85 x 499,400
-    // + 0.12 x 30 x 13,541,400 = 50,373,530.
-    // In all: 50,373,530 + 86,430 x 110,000 + 30 x 13,541,400 + 2 x 499,400 = 9,964,914,330.
+    // + 0.16 x 30 x 10,084,000 = 50,027,690.
+    // In all: 50,027,690 + 86,430 x 110,000 + 30 x 10,084,000 + 2 x 499,400 = 9,860,846,490.
     expect(await check(eventDay(30, 8))).toEqual({
       ok: true,
-      row: "run.json about 0.5 MiB of the 16 MiB analysis reads; largest trace about 12.9 MiB of the 32 MiB humanish reads of each; Observer page about 48.0 MiB of the 32 MiB verify reads; about 86,510 files and folders of the 160,000 the public-safety scan reads; about 9503 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 0.5 MiB of the 16 MiB analysis reads; largest trace about 9.6 MiB of the 32 MiB humanish reads of each; Observer page about 47.7 MiB of the 32 MiB verify reads; about 86,510 files and folders of the 160,000 the public-safety scan reads; about 9404 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [WARN_30_HOSTS],
     });
   });
 
-  it("warns that 40 hosts working 8 hours pass the longest string on all their traces", async () => {
-    // All traces: 40 x 13,541,400 = 541,656,000 bytes, past V8's 536,870,888 characters, which
-    // the Observer page, and a bundle export that renders it, need in one string. run.json: 4,400 +
-    // 40 x 16,500 = 664,400.
-    // Page: 1,200,000 + 0.85 x 664,400 + 0.12 x 541,656,000 = 66,763,460. Entries: 20 + 40 x 3
-    // + 40 x 2,880 = 115,340, of 10,000 + 40 x 5,000.
-    expect((await check(eventDay(40, 8))).warnings).toEqual([
-      `The Observer page, observer/index.html, may grow to about 63.7 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 516.6 MiB, past the 512.0 MiB that fits in one string. The Observer page puts all their items in one string, so the page would not build. A bundle export allowed past its 25 MiB default renders that page, so it would fail too. The estimate counts 40 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
+  it("warns that 54 hosts working 8 hours pass the longest string on all their traces", async () => {
+    // All traces: 54 x 10,084,000 = 544,536,000 bytes, past V8's 536,870,888 characters, which
+    // the Observer page, and a bundle export that renders it, need in one string; 53 hosts' are
+    // 534,452,000. run.json: 4,400 + 54 x 16,500 = 895,400.
+    // Page: 1,200,000 + 0.85 x 895,400 + 0.16 x 544,536,000 = 89,086,850. Entries: 20 + 54 x 3
+    // + 54 x 2,880 = 155,702, of 10,000 + 54 x 5,000.
+    expect((await check(eventDay(54, 8))).warnings).toEqual([
+      `The Observer page, observer/index.html, may grow to about 85.0 MiB, past the 32 MiB verify reads in one file. All participants' traces together may grow to about 519.3 MiB, past the 512.0 MiB that fits in one string. The Observer page puts all their items in one string, so the page would not build. A bundle export allowed past its 25 MiB default renders that page, so it would fail too. The estimate counts 54 participants working declared windows of up to 8h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`,
     ]);
   });
 
@@ -159,8 +159,8 @@ describe("study check's bundle estimate", () => {
     // its full size, as run.json grew, and a live run of 2 participants whose 2 feedback candidates
     // put 5 copies in run.json put 3 on the page. Four participants with a 10,000-byte mission, each
     // counted for 3 minutes, 18 turns. run.json: 4,400 + 10,000 + 4 x (16,500 + 2 x 10,000)
-    // = 160,400. Page: 1,200,000 + 0.85 x (4,400 + 4 x 16,500) + 5 x 10,000 + 0.12 x 4 x 90,000
-    // = 1,353,040.
+    // = 160,400. Page: 1,200,000 + 0.85 x (4,400 + 4 x 16,500) + 5 x 10,000 + 0.16 x 4 x 67,000
+    // = 1,352,720.
     const visitor = {
       schedule: participantSchedule({}),
       limits: {},
@@ -168,7 +168,7 @@ describe("study check's bundle estimate", () => {
     };
     expect(estimateBundle(Array(4).fill(visitor), HOURS)).toMatchObject({
       runFileBytes: 160_400,
-      observerPageBytes: 1_353_040,
+      observerPageBytes: 1_352_720,
     });
   });
 
@@ -185,33 +185,46 @@ describe("study check's bundle estimate", () => {
     expect(estimateBundle([visitor, visitor], HOURS).runFileBytes).toBe(37_510);
   });
 
-  it("warns that one participant working 20 hours passes the limit on its trace", async () => {
-    // 7,200 turns. Trace: 5,400 + 7,200 x 4,700 = 33,845,400 bytes, over 33,554,432. The measured
-    // busiest participant, 4,532 bytes a turn, passes it at about 20.6 hours. run.json: 4,400
-    // + 16,500 = 20,900. Page: 1,200,000 + 0.85 x 20,900 + 0.12 x 33,845,400 = 5,279,213.
-    // In all: 5,279,213 + 7,201 x 110,000 + 33,845,400 + 2 x 20,900 = 831,276,413.
+  it("keeps one participant in the longest window and densest dwell a study allows under the limit on its trace", async () => {
+    // A 23h 45m window, the longest a 24-hour sandbox holds with 15 minutes for the closing report
+    // and set-up, is 8,550 turns, and an hour's dwell at a frame a second is 3,601 frames. Trace:
+    // 4,000 + 8,550 x 3,500 + 3,601 x 400 = 31,369,400 bytes, under 33,554,432. Entries: 20 + 3
+    // + 8,550 + 3,601 = 12,174, of 10,000 + 5,000. run.json: 4,400 + 16,500 = 20,900. Page:
+    // 1,200,000 + 0.85 x 20,900 + 0.16 x 31,369,400 = 6,236,869. In all: 6,236,869
+    // + 12,152 x 110,000 + 31,369,400 + 2 x 20,900 = 1,374,368,069.
     const result = await check({
       mode: "live",
-      participants: [{ id: "host", endAfterMs: 20 * HOURS }],
+      participants: [{ id: "host", endAfterMs: 23.75 * HOURS }],
+      actor: { dwell: { ms: HOURS, everyMs: 1_000, then: "continue" } },
     });
 
     expect(result).toEqual({
       ok: true,
-      row: "run.json about 0.02 MiB of the 16 MiB analysis reads; largest trace about 32.3 MiB of the 32 MiB humanish reads of each; Observer page about 5.0 MiB of the 32 MiB verify reads; about 7,223 files and folders of the 15,000 the public-safety scan reads; about 793 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
-      warnings: [
-        `One participant's trace may grow to about 32.3 MiB, past the 32 MiB humanish reads of each trace. The estimate counts 1 participant working a declared window of up to 20h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs).`,
-      ],
+      row: "run.json about 0.02 MiB of the 16 MiB analysis reads; largest trace about 29.9 MiB of the 32 MiB humanish reads of each; Observer page about 5.9 MiB of the 32 MiB verify reads; about 12,174 files and folders of the 15,000 the public-safety scan reads; about 1311 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
+      warnings: [],
     });
+  });
+
+  it("warns about a trace counted past the limit, for a window longer than a study allows", () => {
+    // 27 hours, 9,720 turns. Trace: 4,000 + 9,720 x 3,500 = 34,024,000 bytes, over 33,554,432.
+    // The busiest participant measured passes it at about 26.6 hours.
+    const host = {
+      schedule: participantSchedule({ endAfterMs: 27 * HOURS }),
+      limits: {},
+      assignment: {},
+    };
+    expect(bundleLimitReason(estimateBundle([host], HOURS))).toBe(
+      `One participant's trace may grow to about 32.4 MiB, past the 32 MiB humanish reads of each trace. The estimate counts 1 participant working a declared window of up to 27h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs).`,
+    );
   });
 
   it("counts dwell frames in each trace and in the files the scan reads", async () => {
     // Six watchers in 19-hour windows, each with an hour's dwell window at a frame a second: 6,840
-    // turns and 3,601 frames each. Trace: 5,400 + 6,840 x 4,700 = 32,153,400 bytes without the
-    // frames, under 33,554,432, and 32,153,400 + 3,601 x 500 = 33,953,900 with them. Entries:
-    // 20 + 6 x (3 + 6,840 + 3,601) = 62,684, past 10,000 + 6 x 5,000. run.json: 4,400 + 6 x 16,500
-    // = 103,400. Page: 1,200,000 + 0.85 x 103,400 + 0.12 x 6 x 33,953,900 = 25,734,698.
-    // In all: 25,734,698 + (6 + 41,040 + 21,606) x 110,000 + 6 x 33,953,900 + 2 x 103,400
-    // = 7,121,384,898.
+    // turns and 3,601 frames each. Trace: 4,000 + 6,840 x 3,500 = 23,944,000 bytes without the
+    // frames and 23,944,000 + 3,601 x 400 = 25,384,400 with them. Entries: 20 + 6 x (3 + 6,840
+    // + 3,601) = 62,684, past 10,000 + 6 x 5,000. run.json: 4,400 + 6 x 16,500 = 103,400. Page:
+    // 1,200,000 + 0.85 x 103,400 + 0.16 x 6 x 25,384,400 = 25,656,914. In all: 25,656,914
+    // + (6 + 41,040 + 21,606) x 110,000 + 6 x 25,384,400 + 2 x 103,400 = 7,069,890,114.
     const result = await check({
       mode: "live",
       participants: [{ id: "watcher", count: 6, endAfterMs: 19 * HOURS }],
@@ -220,18 +233,18 @@ describe("study check's bundle estimate", () => {
 
     expect(result).toEqual({
       ok: true,
-      row: "run.json about 0.10 MiB of the 16 MiB analysis reads; largest trace about 32.4 MiB of the 32 MiB humanish reads of each; Observer page about 24.5 MiB of the 32 MiB verify reads; about 62,684 files and folders of the 40,000 the public-safety scan reads; about 6791 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
+      row: "run.json about 0.10 MiB of the 16 MiB analysis reads; largest trace about 24.2 MiB of the 32 MiB humanish reads of each; Observer page about 24.5 MiB of the 32 MiB verify reads; about 62,684 files and folders of the 40,000 the public-safety scan reads; about 6742 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
       warnings: [
-        `One participant's trace may grow to about 32.4 MiB, past the 32 MiB humanish reads of each trace. The run may hold about 62,684 files and folders, past the 40,000 the public-safety scan reads in a run of 6 participants. The estimate counts 6 participants working declared windows of up to 19h, ${COUNTED} To stay under the limits, shorten the longest windows (participants[].endAfterMs), shorten the dwell window (dwell.ms) or capture less often (dwell.everyMs), or split the participants across studies.`,
+        `The run may hold about 62,684 files and folders, past the 40,000 the public-safety scan reads in a run of 6 participants. The estimate counts 6 participants working declared windows of up to 19h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), shorten the dwell window (dwell.ms) or capture less often (dwell.everyMs), or split the participants across studies.`,
       ],
     });
   });
 
   it("passes 100 participants with no declared end, whatever their session budget", async () => {
     // Each is counted for 3 minutes, 18 turns. run.json: 4,400 + 100 x 16,500 = 1,654,400 bytes.
-    // Trace: 5,400 + 18 x 4,700 = 90,000. Page: 1,200,000 + 0.85 x 1,654,400 + 0.12 x 100 x 90,000
-    // = 3,686,240. In all: 3,686,240 + 1,900 x 110,000 + 100 x 90,000 + 2 x 1,654,400
-    // = 224,995,040.
+    // Trace: 4,000 + 18 x 3,500 = 67,000. Page: 1,200,000 + 0.85 x 1,654,400 + 0.16 x 100 x 67,000
+    // = 3,678,240. In all: 3,678,240 + 1,900 x 110,000 + 100 x 67,000 + 2 x 1,654,400
+    // = 222,687,040.
     const result = await check({
       mode: "live",
       participants: [{ id: "visitor", count: 100 }],
@@ -240,7 +253,7 @@ describe("study check's bundle estimate", () => {
 
     expect(result).toEqual({
       ok: true,
-      row: "run.json about 1.6 MiB of the 16 MiB analysis reads; largest trace about 0.09 MiB of the 32 MiB humanish reads of each; Observer page about 3.5 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 215 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 1.6 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 3.5 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 212 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [],
     });
   });
@@ -249,11 +262,11 @@ describe("study check's bundle estimate", () => {
     // run.json holds the mission once for the run, once in each participant's stream and once more
     // in the feedback candidate of a participant that reports friction or stops, which the estimate
     // counts for every participant. run.json: 4,400 + 80,000 + 100 x (16,500 + 2 x 80,000)
-    // = 17,734,400 bytes, over 16,777,216. Each is counted for 3 minutes, 18 turns. Trace: 5,400
-    // + 18 x 4,700 = 90,000. The page holds the mission once for the run and once for each
-    // participant. Page: 1,200,000 + 0.85 x (4,400 + 100 x 16,500) + 101 x 80,000 + 0.12 x 100
-    // x 90,000 = 11,766,240. Entries: 20 + 100 x (3 + 18) = 2,120. In all: 11,766,240 + 1,900
-    // x 110,000 + 100 x 90,000 + 2 x 17,734,400 = 265,235,040.
+    // = 17,734,400 bytes, over 16,777,216. Each is counted for 3 minutes, 18 turns. Trace: 4,000
+    // + 18 x 3,500 = 67,000. The page holds the mission once for the run and once for each
+    // participant. Page: 1,200,000 + 0.85 x (4,400 + 100 x 16,500) + 101 x 80,000 + 0.16 x 100
+    // x 67,000 = 11,758,240. Entries: 20 + 100 x (3 + 18) = 2,120. In all: 11,758,240 + 1,900
+    // x 110,000 + 100 x 67,000 + 2 x 17,734,400 = 262,927,040.
     const result = await check({
       mode: "live",
       participants: [{ id: "visitor", count: 100 }],
@@ -263,7 +276,7 @@ describe("study check's bundle estimate", () => {
 
     expect(result).toEqual({
       ok: true,
-      row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.09 MiB of the 32 MiB humanish reads of each; Observer page about 11.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 253 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 11.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 251 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
       warnings: [
         `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant. The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
       ],
@@ -272,10 +285,10 @@ describe("study check's bundle estimate", () => {
 
   it("counts a short session budget in place of the 3 minutes, with its dwell frames", async () => {
     // One participant for its 1-minute budget, 6 turns, which cuts the 10-minute dwell window to
-    // 12 frames and the frame after it. run.json: 4,400 + 16,500 = 20,900 bytes. Trace: 5,400
-    // + 6 x 4,700 + 13 x 500 = 40,100. Entries: 20 + 3 + 6 + 13. Page: 1,200,000 + 0.85 x 20,900
-    // + 0.12 x 40,100 = 1,222,577. In all: 1,222,577 + 20 x 110,000 + 40,100 + 2 x 20,900
-    // = 3,504,477.
+    // 12 frames and the frame after it. run.json: 4,400 + 16,500 = 20,900 bytes. Trace: 4,000
+    // + 6 x 3,500 + 13 x 400 = 30,200. Entries: 20 + 3 + 6 + 13. Page: 1,200,000 + 0.85 x 20,900
+    // + 0.16 x 30,200 = 1,222,597. In all: 1,222,597 + 20 x 110,000 + 30,200 + 2 x 20,900
+    // = 3,494,597.
     const result = await check({
       mode: "live",
       actor: { dwell: { ms: 600_000, everyMs: 5_000, then: "continue" } },
@@ -283,7 +296,7 @@ describe("study check's bundle estimate", () => {
 
     expect(result).toEqual({
       ok: true,
-      row: "run.json about 0.02 MiB of the 16 MiB analysis reads; largest trace about 0.04 MiB of the 32 MiB humanish reads of each; Observer page about 1.2 MiB of the 32 MiB verify reads; about 42 files and folders of the 15,000 the public-safety scan reads; about 3 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
+      row: "run.json about 0.02 MiB of the 16 MiB analysis reads; largest trace about 0.03 MiB of the 32 MiB humanish reads of each; Observer page about 1.2 MiB of the 32 MiB verify reads; about 42 files and folders of the 15,000 the public-safety scan reads; about 3 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 1m, at a model turn every 10s.",
       warnings: [],
     });
   });

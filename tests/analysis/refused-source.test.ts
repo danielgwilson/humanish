@@ -1,7 +1,7 @@
 // `humanish analyze --json` on a run that verifies but whose recorded source analysis refuses: the
 // result's error names the file that was refused and why, for each refusal code. A trace the loader
-// refuses fails verify before analysis reads it, so captureEvidence's refusal of one is pinned on
-// captureEvidence.
+// refuses fails verify before analysis reads it, unless it is past the read limit, so
+// captureEvidence's refusal of a mismatched one is pinned on captureEvidence.
 
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -95,6 +95,37 @@ describe("analyze --json on a run whose source analysis refuses", () => {
       }),
     });
   });
+
+  it("names the participant, its trace file and the limit when the trace is larger than analysis reads", async () => {
+    const [stream] = bundle.streams;
+    // The stream registers its trace as the computer-use route does, so verify requires the file.
+    const written = await writeRunBundle(runRoot, {
+      ...bundle,
+      streams: [
+        {
+          ...stream!,
+          actor: syntheticActor("x".repeat(32 * 1024 * 1024)),
+          artifacts: [
+            ...stream!.artifacts,
+            { label: "actor trace", path: "actor.json", kind: "trace" },
+          ],
+        },
+      ],
+    });
+    const trace = written.streams[0]!.trace!;
+    expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("local_only");
+
+    expect(await analyzeJson()).toEqual({
+      exit: 2,
+      result: expect.objectContaining({
+        ok: false,
+        error: {
+          code: "ANALYSIS_SOURCE_TOO_LARGE",
+          message: `Participant ${bundle.streams[0]!.id}'s trace was not read: run.json records ${trace.path} at ${trace.bytes} bytes, more than the 33554432 bytes humanish reads of one file. Restoring a copy does not help; open the file with another tool, such as jq, to read its items. No request was sent.`,
+        },
+      }),
+    });
+  }, 60_000);
 
   describe("captureEvidence on a participant trace the loader refuses", () => {
     /** What captureEvidence throws once `edit` changes run.json's index of the participant's trace. */

@@ -8,6 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A run whose participant's trace passes 32 MiB, the most humanish reads of one file, now finishes.
+  The sandbox id sweep at the end of the run threw when it could not read the trace. It now records
+  each file it could not read in a `sandbox-ids.unresolved` warn event in run.json, and the run goes
+  on. `humanish verify` lists such a trace under `UNSCANNED_ARTIFACT`, grades the run `local_only`
+  and names the trace in its warnings, where it reported the run invalid and exited 2. The Observer
+  shows that participant without its items, and `humanish analyze` refuses the run as
+  `ANALYSIS_SOURCE_TOO_LARGE`, naming the participant and the file (#1877).
+
+### Changed
+
+- Trace files are written as one line of compact JSON. Indented, a trace was 1.36 times its compact
+  size over 236 kept computer-use traces, so a participant now reaches the 32 MiB read limit about
+  1.36 times later. A synthetic participant with 30 MiB of items, repeated from a recorded
+  participant of 78 turns, wrote a 47,068,524-byte trace before and a 34,552,066-byte trace now.
+  run.json stays indented. The bundle estimate counts 3.5 KB of trace a turn where it counted 4.7
+  KB, so a participant at the busiest measured rate passes the trace limit only after about 27
+  hours, longer than a window may last (#1877).
+
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
 humanish 0.133.1 keeps a hosted run writing run.json once its finished participants' traces
