@@ -8,64 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 
-- verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
-  as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
-  pattern's word boundary fails, so a text file other than run.json passed with the key in it. The
-  scan now also reads the text with its JSON, JS and percent escapes decoded and its references left
-  as written, that reading with transfer escapes expanded, and the text with only its references
-  decoded. The second finds a key behind a letter reference when a quoted-printable soft break
-  splits it. The third finds a key of fixed length, such as `npm_` and 36 characters, whose last
-  character is a reference followed by an escaped letter. The scan also decodes the base64 or hex
-  run that starts right after a reference, as in `&#65;dG9r...`, where decoding the reference adds a
-  letter to the run and shifts it out of alignment. The redacted export's text check, the trace page
-  path check and the known-value scrubs read the same readings, so they gain all three. A scrub
-  whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
-  after two layers of encoding, now replaces the whole text with the marker as it does for other
-  values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
-  percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
-  Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
-  3% of its earlier time. (#1872)
-- A key written in base64 or percent-encoded in a study's title, mission, task goals, participant
-  instructions or persona file stays out of the run's files. The run redacted that text for keys as
-  written, and verify also decodes base64, percent-encoding and other escapes, so verify found the
-  key, graded the run `blocked`, and a hosted run failed its own verification. In that text and in
-  the study warnings that quote it, the run now also replaces each word that verify's scan reads as
-  a secret with `[REDACTED_SECRET]`. When the words read clean one at a time and only together hold
-  a secret, as `Bearer` before a percent-encoded token does, the whole text becomes
-  `[REDACTED_SECRET]`.
-- A key as written or encoded in a scripted scenario's title, goal or step labels, or in a
-  persona's accessibility need, stays out of the run's files. The scripted route removed only the
-  run's known values from that scenario text, and a live participant's trace recorded the
-  accessibility need as written. A step renamed by its position for a key or known value in its
-  label or id no longer takes a numbered id that holds one of the run's known values, such as a
-  subject env value spelled `step-01`. The run is refused when every id its position gives holds
-  one.
-- `subject.envValues`, `actor.model` and the analysis question (`review.analysis.question` or
-  `humanish analyze --question`) refuse a value that verify would read as a secret or local path,
-  as written or in base64, percent-encoding or another escape. envValues and the question were
-  refused only when they held one as written, and `actor.model` was not checked. The model is
-  refused because the provider is asked for it by name. `runStudy` refuses such a model in a
-  StudyConfig built without `parseStudy` too.
-- `humanish observe` writes the Observer page of a run whose participants' traces together pass
-  V8's longest string, 536,870,888 characters. The page, `observer-feed.json` and the page's decode
-  in the browser each held every participant's items in one string, so past that size `observe`
-  exited 2 with `RangeError: Invalid string length` and the feed answered 500. The page and the
-  feed now carry each participant's items gzip-compressed on their own
-  (`humanish.observer-items.v2`), and the browser decodes one participant at a time. The feed
-  compresses on the thread pool at gzip level 1, so the server answers other requests while it
-  builds a poll. On a synthetic finished run of 25 participants with 30 MiB traces, `observe`
-  exits 0 after 128 seconds at a peak of 3.8 GiB and writes a 137.7 MiB page, where it exited 2
-  after 114 seconds. Served, headless Chrome shows the 25 participants 51 seconds after asking for
-  the page, but each feed poll takes 17 to 20 seconds, past the 15 seconds the page waits, so the
-  page does not update and after 3 polls says the server stopped answering (#1887). With 16 such
-  participants a poll takes 11.5 to 12.4 seconds and sends 102 MB, where it took 9.2 to 10.1
-  seconds and sent 503 MB. Larger runs have not been measured. The page of the recorded
-  8-participant run in `site/public/runs/lobby-0927` grows by 2,425 bytes, 0.2 percent. The study
-  plan no longer warns about traces past 512 MiB, and its warning for an Observer page past 32 MiB
-  now says that verify grades the run `local_only`, that `humanish export` refuses it without
-  `--local-only`, and that a bundle export fails (#1871).
+humanish 0.135.0 keeps a base64- or percent-encoded key in a study's own text out of the copies of
+that text the run records. The run redacted keys as written, and verify also decodes those
+encodings, so a study whose title, mission, instructions, persona or scripted scenario held an
+encoded key produced a run graded `blocked`. A participant that repeats such a key in its own words
+still does (#1892). `actor.model`, `subject.envValues` and the analysis question now refuse such a
+value before anything runs, which a study that ran before may now meet. verify's per-file scan also
+finds a key behind an HTML reference and a JSON escape. The Observer page and its live feed carry
+each participant's items on their own, so `humanish observe` writes the page of a run whose traces
+together pass V8's longest string: on a synthetic run of 25 participants with 30 MiB traces it
+exits 0 where it exited 2.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.135.0)
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 
