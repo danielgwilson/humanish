@@ -1,6 +1,6 @@
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redaction.js";
 import { EventEmitter } from "node:events";
-import { appendFile, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { appendFile, link, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -255,6 +255,20 @@ describe("the run command's signal handler", () => {
     expect(receipt.outcomes.filter((outcome) => outcome.state === "pending")).toEqual([
       expect.objectContaining({ sandboxIdDigest: sandboxIdDigest("fake-sb-12") }),
     ]);
+  });
+
+  it("names a run file the sandbox id sweep could not read and still exits", async () => {
+    const run = await setup({});
+    const notes = path.join(cwd, ".humanish", "runs", RUN, "notes.txt");
+    await writeFile(notes, "fake-sb-1\n");
+    // A second link makes the sweep refuse the file, which may still name the sandbox.
+    await link(notes, path.join(cwd, "notes-elsewhere.txt"));
+    target.emit("SIGINT");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(130));
+    expect(run.stderr().split("\n")).toContain(
+      "humanish: SIGINT: The sandbox id sweep could not read every run file, so these may still name a sandbox: notes.txt is not a single-link regular file.",
+    );
+    expect(await readFile(notes, "utf8")).toBe("fake-sb-1\n");
   });
 
   it("leaves a run that had already finished to its route", async () => {

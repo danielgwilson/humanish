@@ -1,9 +1,9 @@
 // A participant's trace the run writer wrote past RUN_ARTIFACT_MAX_BYTES, the most any reader reads
 // of one file. The run still finishes, the sandbox id sweep records the trace it could not read,
-// verify grades the run local_only with the trace named as unscanned, and the Observer shows the
-// participant without its items.
+// no file but the receipts names the sandbox, verify grades the run local_only with the trace named
+// as unscanned, and the Observer shows the participant without its items.
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -13,7 +13,7 @@ import { renderObserver } from "../../src/observer/render.js";
 import { RUN_ARTIFACT_MAX_BYTES } from "../../src/run/contained-output.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope } from "../../src/run/run.js";
-import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import { appendSandboxReceipt, SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { PASSING_OUTCOME } from "../helpers/finished-run.js";
 import { syntheticActor } from "../helpers/run-traces.js";
@@ -34,10 +34,23 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
+/** Every run file, by path relative to the run folder, that holds `text`. */
+async function filesHolding(text: string): Promise<string[]> {
+  const runRoot = path.join(cwd, ".humanish", "runs", RUN);
+  const holding: string[] = [];
+  for (const entry of await readdir(runRoot, { recursive: true, withFileTypes: true })) {
+    const file = path.join(entry.parentPath, entry.name);
+    if (entry.isFile() && (await readFile(file)).includes(text))
+      holding.push(path.relative(runRoot, file));
+  }
+  return holding.sort();
+}
+
 /**
  * A live run of one participant whose one message is `text`, finished through the run scope. Like
  * a computer-use participant, the stream registers its trace as actor.json and a feedback
- * candidate cites that trace, so verify requires the file as evidence.
+ * candidate cites that trace, so verify requires the file as evidence. An event, the review and a
+ * route log quote the sandbox's raw id, as a startup error can.
  */
 async function finishLiveRun(text: string) {
   await runDryRun({ cwd, dryRun: true, runId: "template" });
@@ -50,6 +63,16 @@ async function finishLiveRun(text: string) {
     runId: RUN,
     mode: "live",
     artifactRoot: path.join(".humanish", "runs", RUN),
+    events: [
+      ...template.events,
+      {
+        id: "event-startup",
+        at: template.createdAt,
+        level: "error",
+        type: "desktop.startup",
+        message: `sandbox ${RAW} ended`,
+      },
+    ],
     streams: [
       {
         ...stream!,
@@ -89,18 +112,25 @@ async function finishLiveRun(text: string) {
       runId: RUN,
       mintRunId: () => RUN,
       mode: "live",
-      renderReview: (published) => `# Review ${published.runId}\n`,
+      renderReview: (published) =>
+        `# Review ${published.runId}\n\n${published.events.map((event) => event.message).join("\n")}\n`,
     });
     if (!started.ok) throw new Error(started.message);
     started.run.participantStarted();
     await appendSandboxReceipt(started.run.paths, { at: "t", laneId: "lane-01", sandboxId: RAW });
+    const logs = path.join(started.run.paths.absoluteRunRoot, "logs");
+    await mkdir(logs, { recursive: true });
+    await writeFile(path.join(logs, "route.log"), `connection to ${RAW} closed\n`);
     await started.run.finish(bundle, PASSING_OUTCOME);
   });
 }
 
 it("finishes a run whose trace passes the read limit, and verify grades it local_only naming the trace", async () => {
-  const { finished } = await finishLiveRun("x".repeat(RUN_ARTIFACT_MAX_BYTES));
+  const { finished } = await finishLiveRun(`${RAW} ${"x".repeat(RUN_ARTIFACT_MAX_BYTES)}`);
   expect(finished).toBeDefined();
+  // The sweep could not read the trace, and run.json was written again after it: still only the
+  // receipts name the sandbox.
+  expect(await filesHolding(RAW)).toEqual([SANDBOX_RECEIPTS_ARTIFACT]);
   const written = JSON.parse(
     await readFile(path.join(cwd, ".humanish", "runs", RUN, "run.json"), "utf8"),
   ) as StoredRunBundle;
