@@ -14,6 +14,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   RUN_BUNDLE_V2_SCHEMA,
   RUN_BUNDLE_V3_SCHEMA,
+  type DisplayedRunBundle,
   type RunBundle,
   type StoredRunBundle,
 } from "./bundle.js";
@@ -36,6 +37,7 @@ import {
 import { estimateActorCostForExecution } from "./pricing.js";
 import { isRunStreamArtifact, isStreamTraceIndex, isStreamTracePath } from "./stream-shape.js";
 import type {
+  DisplayedRunStream,
   LiveItemsIndex,
   RunStream,
   StoredRunStream,
@@ -153,6 +155,9 @@ function heldRequestList(trace: object): RequestList | undefined {
 
 type LiveActor = NonNullable<RunStream["liveActor"]>;
 
+/** An indexed actor as run.json holds it: its items and per-request lists are in its trace file. */
+type RunJsonSummary = WithoutRequestLists<Omit<ActorTrace, "items">>;
+
 /**
  * run.json's live actor: without the per-request lists, and with the estimate priced from the
  * rows it leaves out. Long-context pricing needs each request's input size, so a figure priced
@@ -209,7 +214,7 @@ export function splitStreamTraces(bundle: RunBundle): {
     return {
       ...rest,
       // run.json's actor is the summary: every field of the trace except its items and lists.
-      actor: withoutRequestLists(summary) as WithoutRequestLists<ActorTrace>,
+      actor: withoutRequestLists(summary),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       trace: {
         path: filePath,
@@ -252,12 +257,12 @@ function containedReader(runPaths: PreparedOutputRoot): TraceFileReader {
 
 /**
  * The stream from the bytes of its trace file: its actor with the file's items, and its artifacts
- * followed by the file's screenshot entries, without the index.
+ * followed by the file's screenshot entries, without the index. Its live actor is as it was.
  */
 function joinTrace(
-  stream: StoredRunStream & { trace: StreamTraceIndex; actor: WithoutRequestLists<ActorTrace> },
+  stream: StoredRunStream & { trace: StreamTraceIndex; actor: RunJsonSummary },
   bytes: Buffer,
-): RunStream {
+): StoredRunStream {
   const index = stream.trace;
   const refuse = (detail: string): never => {
     throw new StreamTraceRefusedError(stream.id, detail);
@@ -296,7 +301,7 @@ function joinTrace(
  * equal. A nested list goes into run.json's `tokenUsage` or `conversation` when run.json has it.
  */
 function joinRequestLists(
-  summary: WithoutRequestLists<ActorTrace>,
+  summary: RunJsonSummary,
   file: Record<string, unknown>,
   filePath: string,
   refuse: (detail: string) => never,
@@ -319,7 +324,7 @@ function joinRequestLists(
 /** Refuses an index the shape check would refuse, naming a file that is not a trace file name. */
 function assertIndex(stream: StoredRunStream): asserts stream is StoredRunStream & {
   trace: StreamTraceIndex;
-  actor: WithoutRequestLists<ActorTrace>;
+  actor: RunJsonSummary;
 } {
   const index = stream.trace;
   if (isRecord(index) && typeof index.path === "string" && !isStreamTracePath(index.path))
@@ -334,15 +339,27 @@ function assertIndex(stream: StoredRunStream): asserts stream is StoredRunStream
 }
 
 /**
- * A stream of run.json typed as a loaded one, for the streams the loader joins no trace into: one
- * without an index, which v1 wrote with its actor's lists, and a refused one, kept as run.json
- * holds it. From v4 a refused stream's actor has none of the lists, and its `conversation` lacks
- * the `requests` ActorTrace declares; the loader's `refused` names each such stream.
+ * The joined stream as a loaded one, once its actor's conversation, if any, holds the requests
+ * list ActorTrace types as present. The writer writes the list with every conversation, in
+ * run.json before v4 and in the trace file from v4, so a stream without it was edited, and a reader
+ * that counts the requests would throw. Items a v1 run.json or a humanish.live-actor.v1 live actor
+ * holds inline are taken as they are.
  */
-const unjoined = (stream: StoredRunStream): RunStream => stream as RunStream;
+function asLoaded(stream: StoredRunStream): RunStream {
+  const conversation: unknown = stream.actor?.conversation;
+  if (
+    conversation !== undefined &&
+    !(isRecord(conversation) && Array.isArray(conversation.requests))
+  )
+    throw new StreamTraceRefusedError(
+      stream.id,
+      "its actor records a conversation without the requests list",
+    );
+  return stream as RunStream;
+}
 
 /** A live actor whose items run.json holds inline: humanish.live-actor.v1, or one with no schema. */
-const isInlineLiveActor = (live: LiveActor): boolean =>
+const isInlineLiveActor = (live: Pick<LiveActor, "schema">): boolean =>
   live.schema === LIVE_ACTOR_V1_SCHEMA || (live.schema as unknown) === undefined;
 
 /** A live file that could not be read, which a writer that moved on may have removed. */
@@ -364,7 +381,7 @@ type LiveAfter = (index: LiveItemsIndex) => LiveItemsCursor | undefined;
 
 /** A stream with its live items joined, the file bytes they came from, and what was read. */
 interface JoinedLiveItems {
-  stream: RunStream;
+  stream: StoredRunStream;
   file?: { path: string; bytes: Buffer };
   read?: LiveItemsRead;
 }
@@ -376,7 +393,7 @@ interface JoinedLiveItems {
  */
 async function readLiveItems(
   read: TraceFileReader,
-  stream: RunStream,
+  stream: StoredRunStream,
   maxBytes: number,
   liveAfter: LiveAfter | undefined,
 ): Promise<JoinedLiveItems> {
@@ -446,7 +463,7 @@ const cursorFits = (index: LiveItemsIndex, after: LiveItemsCursor): boolean =>
  */
 async function readLiveTail(
   read: TraceFileReader,
-  stream: RunStream,
+  stream: StoredRunStream,
   index: LiveItemsIndex,
   after: LiveItemsCursor,
 ): Promise<{ items: ActorTrace["items"]; bytes: Buffer } | undefined> {
@@ -470,7 +487,7 @@ async function readStreamTrace(
   liveAfter?: LiveAfter,
 ): Promise<{ stream: RunStream; files: { path: string; bytes: Buffer }[]; live?: LiveItemsRead }> {
   const files: { path: string; bytes: Buffer }[] = [];
-  let joined = unjoined(stream);
+  let joined = stream;
   if (stream.trace !== undefined) {
     assertIndex(stream);
     if (stream.trace.bytes > maxBytes)
@@ -482,7 +499,11 @@ async function readStreamTrace(
   }
   const live = await readLiveItems(read, joined, maxBytes, liveAfter);
   if (live.file !== undefined) files.push(live.file);
-  return { stream: live.stream, files, ...(live.read === undefined ? {} : { live: live.read }) };
+  return {
+    stream: asLoaded(live.stream),
+    files,
+    ...(live.read === undefined ? {} : { live: live.read }),
+  };
 }
 
 /**
@@ -655,7 +676,9 @@ async function loadEveryStream(
     } catch (error) {
       if (!(error instanceof StreamTraceRefusedError)) throw error;
       refused.push(error);
-      streams.push(unjoined(stream));
+      // Kept as run.json holds it, typed as loaded: from v2 its actor has no items, and from v4
+      // none of the lists. The loader's `refused` names it, and displayedTraces shows it so.
+      streams.push(stream as RunStream);
     }
   }
   return { bundle: { ...bundle, streams }, refused, files, live };
@@ -673,20 +696,20 @@ export function displayedTraces(loaded: {
   bundle: RunBundle;
   refused: readonly StreamTraceRefusedError[];
   live?: readonly LiveItemsRead[];
-}): RunBundle {
+}): DisplayedRunBundle {
   const reasons = new Map(loaded.refused.map((error) => [error.streamId, error.message]));
   const stopped = (loaded.live ?? []).filter((read) => read.stopped !== undefined);
   if (reasons.size === 0 && stopped.length === 0) return loaded.bundle;
-  const streams = loaded.bundle.streams.map((stream): RunStream => {
+  const streams = loaded.bundle.streams.map((stream): DisplayedRunStream => {
     const reason = reasons.get(stream.id);
     if (reason === undefined) return stream;
     const { liveActor: _live, trace: _index, actor, ...rest } = stream;
-    return unjoined({
+    return {
       ...rest,
       ...(actor === undefined ? {} : { actor: { ...withoutRequestLists(actor), items: [] } }),
       artifacts: stream.artifacts.filter((artifact) => !isScreenshot(artifact)),
       traceUnavailable: reason,
-    });
+    };
   });
   const events = loaded.bundle.streams
     .filter((stream) => reasons.has(stream.id))

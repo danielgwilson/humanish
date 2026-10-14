@@ -16,6 +16,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   where it printed 25. In a project that had only a package.json, a second run counts 11 existing
   paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
   each directory. (#1882)
+- Reading a run refuses a participant whose actor records a conversation without its requests
+  list, and names the participant. Three shapes loaded before: a trace file that leaves out the
+  conversation run.json records, a v1 run.json conversation without the list, and a conversation
+  that is not an object. A reader that counted the conversation's requests then threw a TypeError.
+  The writer never writes any of them. (#1850)
 
 ## 0.135.0: Encoded keys in a study's own text stay out of the run (2026-10-14)
 

@@ -19,7 +19,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
-import { loadRunBundlePrepared, readRunJsonIfExists, runJsonValue } from "../run/locate.js";
+import { loadDisplayedRunBundle, readRunJsonIfExists, runJsonValue } from "../run/locate.js";
 import { readRunNotes } from "../run/note-files.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { verifyRunPrepared } from "../verify/verify.js";
@@ -191,9 +191,7 @@ export async function renderObserver(
   }
 
   // Verify passes a trace past the read limit, so its participant shows without its items.
-  const loaded = await loadRunBundlePrepared(selectedPhysicalCwd, preparedRunPaths, {
-    display: true,
-  });
+  const loaded = await loadDisplayedRunBundle(selectedPhysicalCwd, preparedRunPaths);
   await validatePreparedRunArtifactPaths(preparedRunPaths);
   if (!loaded) return runNotFound(cwd, runInput);
 
