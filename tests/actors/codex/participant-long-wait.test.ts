@@ -99,15 +99,21 @@ const NEW_ROW = frame(true);
  */
 async function waitInCall(
   waitMs: number,
-  options: { maxWaitMs?: number; speechEnabled?: boolean; changesAtMs?: number } = {},
+  options: {
+    maxWaitMs?: number;
+    idleWaitMs?: number;
+    speechEnabled?: boolean;
+    changesAtMs?: number;
+  } = {},
 ): Promise<{ result: CuaLoopResult; executed: CuaAction[]; firstReply: Record<string, unknown> }> {
-  const { maxWaitMs, speechEnabled = false, changesAtMs = Infinity } = options;
+  const { maxWaitMs, idleWaitMs, speechEnabled = false, changesAtMs = Infinity } = options;
   native.waitMs = waitMs;
   native.replies.length = 0;
   native.descriptions.length = 0;
   // As the routes build it: the participant and the loop read speech from the same desktop.
   const participant = createRestrictedCodexParticipant({
     ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+    ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     ...(speechEnabled ? { speechEnabled: true } : {}),
   });
   const executed: CuaAction[] = [];
@@ -135,6 +141,7 @@ async function waitInCall(
     },
     writeScreenshot: async (name: string) => `screenshots/${name}`,
     ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+    ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
   });
   await participant.close();
   return {
@@ -167,29 +174,33 @@ describe("a Codex participant that asks for a long wait", () => {
     );
   });
 
-  it("is told its wait ended at its limit, and that the next one in a row can last longer", async () => {
+  it("is told its wait ended at its limit", async () => {
     const { result, firstReply } = await waitInCall(60_000);
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(waitTitles(result)).toEqual([["wait 60000ms", "limit"]]);
     expect(firstReply.contextHint).toBe(
-      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it.",
     );
   });
 
   it.each([
-    { options: {}, perWait: 120_000, watched: 600_000 },
-    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000 },
-    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000 },
+    { options: {}, perWait: 120_000, watched: 600_000, shortest: 5_000 },
+    { options: { maxWaitMs: 90_000 }, perWait: 90_000, watched: 90_000, shortest: 5_000 },
+    { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000, shortest: 5_000 },
+    { options: { idleWaitMs: 60_000 }, perWait: 120_000, watched: 600_000, shortest: 60_000 },
   ])(
-    "is told the longest a call of only waits and a wait among other actions last: $watched and $perWait ms",
-    async ({ options, perWait, watched }) => {
+    "is told a call of only waits lasts $shortest to $watched ms, with nothing about the screen, and a wait among other actions at most $perWait ms",
+    async ({ options, perWait, watched, shortest }) => {
       await waitInCall(1_000, options);
 
       expect(native.descriptions[0]).toContain(
-        `after its waits' ms, together at most ${watched} ms`,
+        `A call whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask under ${shortest} ms counts as ${shortest} ms, and named ms count up to ${watched} ms`,
       );
-      expect(native.descriptions[0]).toContain(`up to ${watched} ms`);
+      expect(native.descriptions[0]).toContain(
+        "contextHint says how long it waited and why it returned.",
+      );
+      expect(native.descriptions[0]).not.toMatch(/screen changes|reload|longer than/);
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },
   );

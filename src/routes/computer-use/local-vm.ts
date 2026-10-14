@@ -3,6 +3,7 @@ import path from "node:path";
 import type { InternalRunStudyOptions } from "../../run-study.js";
 import type { StudyConfig } from "../../study/types.js";
 import type { ProviderFactory } from "../../study/run-study-homes.js";
+import { participantList } from "../../study/study-fields.js";
 import {
   inboxRecipientFor,
   type ParticipantDesktop,
@@ -202,11 +203,16 @@ function createLocalParticipantDesktop(
 }
 
 /** The Codex account participant, whose unconfirmed cleanup blocks the study's analysis. */
-function accountProvider(state: LocalVmRunState, maxWaitMs: number | undefined): ProviderFactory {
-  return async ({ executor }) => {
+function accountProvider(state: LocalVmRunState, config: StudyConfig): ProviderFactory {
+  return async ({ executor, participant: { index } }) => {
+    // The wait settings the participant's loop runs with (plan-participants.ts), so its tool
+    // description states them.
+    const maxWaitMs = config.actor?.maxWaitMs;
+    const idleWaitMs = participantList(config)?.[index]?.idleWaitMs ?? config.actor?.idleWaitMs;
     const participant = createRestrictedCodexParticipant({
       speechEnabled: executor.speechEnabled === true,
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+      ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
     });
     state.participants.push(participant);
     const provider = Object.assign(participant.provider, {
@@ -257,7 +263,7 @@ export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
   return {
     options: account
-      ? { ...runOptions, createProvider: accountProvider(state, config.actor?.maxWaitMs) }
+      ? { ...runOptions, createProvider: accountProvider(state, config) }
       : runOptions,
     localVm: {
       desktop: (run, warnings, artifactRoot) =>

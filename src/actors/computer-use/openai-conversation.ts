@@ -6,17 +6,21 @@ import {
   strictOutputSchema,
 } from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
+import { isIdleTurn } from "./loop/actions.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   asArray,
   asRecord,
   buildCallOutput,
   buildContinuationRequest,
+  buildFunctionOutput,
   buildInitialRequest,
   hintItems,
   inputMessage,
   openingMessage,
   parseOpenAiResponse,
+  type FunctionCall,
+  WAIT_TOOL_NAME,
   type OpenAiCuContext,
   type OpenAiReasoningSummary,
   type ParsedOpenAiResponse,
@@ -89,6 +93,10 @@ export class OpenAiConversation {
   private lastResponseId: string | undefined;
   /** computer_call ids the next request owes an output for. */
   private pendingCallIds: readonly string[] = [];
+  /** The function calls the next request owes an output for. */
+  private pendingFunctionCalls: readonly FunctionCall[] = [];
+  /** Whether the latest reply acted, so its waits went to the desktop and were not watched. */
+  private pendingActed = false;
   /** Accepted replies so far; the next request is number `replies + 1`. */
   private replies = 0;
   /** The whole conversation, which explicit-context requests carry within its token budget. */
@@ -108,7 +116,7 @@ export class OpenAiConversation {
 
   /**
    * The next participant turn's request, carrying `req`'s screen: the opening request, or the
-   * outputs the latest reply's computer calls are owed.
+   * outputs the latest reply's computer and function calls are owed.
    */
   request(req: CuaTurnRequest): ConversationRequest {
     const sent = this.newItems(req);
@@ -133,7 +141,7 @@ export class OpenAiConversation {
     const strict = this.openClosing !== undefined;
     // Before any accepted reply the request is the opening one, which carries no hint of its own.
     const ask = this.replies === 0 ? hintItems(req.contextHint) : [];
-    const sent = this.openClosing ?? [...this.newItems(req), ...ask, replyForm(closing)];
+    const sent = this.openClosing ?? [...this.newItems(req, closing), ...ask, replyForm(closing)];
     this.openClosing = undefined;
     const reply = await send(this.closingBody(req, sent, closing, strict));
     // Recorded before the reply is accepted, as a participant turn is.
@@ -179,16 +187,44 @@ export class OpenAiConversation {
 
   /**
    * The items a request adds to the conversation: the opening message with the first screen, or
-   * an output for each pending computer_call with the latest screenshot and any hint.
+   * an output for each pending call with the latest screenshot, and any hint. Each computer_call
+   * output carries the screenshot. Function call outputs follow in reply order: with no
+   * computer_call the first carries the screenshot, and every other one carries text only, so the
+   * screenshot is sent once. A turn's hint goes into the first function call output, so it reads
+   * as how the wait ended; a closing request's hint asks for the closing account and stays a user
+   * message. A call to a tool that does not exist gets an output that says so (callNote).
    */
-  private newItems(req: CuaTurnRequest): readonly unknown[] {
+  private newItems(req: CuaTurnRequest, closing?: ClosingRequest): readonly unknown[] {
     if (this.replies === 0) return [openingMessage(req.instructions, req.observation.screenshot)];
+    const { screenshot } = req.observation;
+    const calls = this.pendingFunctionCalls;
+    const hintInCall = closing === undefined && calls.length > 0;
     return [
       ...this.pendingCallIds.map((id) =>
-        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),
+        buildCallOutput(id, screenshot, req.acknowledgedSafetyChecks),
       ),
-      ...hintItems(req.contextHint),
+      ...calls.map((call, index) => {
+        const withScreen = index === 0 && this.pendingCallIds.length === 0;
+        const text = [callNote(call), index === 0 && hintInCall ? req.contextHint : undefined]
+          .filter((part) => part !== undefined && part !== "")
+          .join(" ");
+        return withScreen
+          ? buildFunctionOutput(call.callId, text, screenshot)
+          : buildFunctionOutput(call.callId, text || this.waitOutcome(), null);
+      }),
+      ...(hintInCall ? [] : hintItems(req.contextHint)),
     ];
+  }
+
+  /**
+   * What a call's output says when no note does, so every reply says how the wait went: a wait
+   * among actions ran for its length (a shortened or unsent one has a note), and a further call in
+   * a reply of only waits was part of the one watch the first call's output reports.
+   */
+  private waitOutcome(): string {
+    return this.pendingActed
+      ? "The wait ran for its length with your other actions."
+      : "This wait was watched together with the first one in the reply.";
   }
 
   private context(instructions: string): OpenAiCuContext {
@@ -266,9 +302,18 @@ export class OpenAiConversation {
   private moveOn(parsed: ParsedOpenAiResponse, sent: readonly unknown[]): void {
     if (parsed.turn.responseId !== undefined) this.lastResponseId = parsed.turn.responseId;
     this.pendingCallIds = parsed.callIds;
+    this.pendingFunctionCalls = parsed.functionCalls;
+    this.pendingActed = !isIdleTurn(parsed.turn.actions);
     this.replies += 1;
     this.carried.accept(this.replies, sent, parsed.outputItems);
   }
+}
+
+/** What a function call's output says about the call itself: that no such tool exists. */
+function callNote(call: FunctionCall): string | undefined {
+  return call.name === WAIT_TOOL_NAME
+    ? undefined
+    : `There is no tool named ${JSON.stringify(call.name)}.`;
 }
 
 /**

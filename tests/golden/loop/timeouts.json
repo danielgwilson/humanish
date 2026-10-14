@@ -189,11 +189,12 @@
             "lifecycle": "completed",
             "title": "wait 0ms",
             "watch": {
-              "limitMs": 10,
+              "limitMs": 5000,
               "askedMs": 10,
               "wake": "stopped",
               "looks": 0
             },
+            "namedMs": 10,
             "at": "1970-01-01T00:00:01.000Z"
           }
         ],

@@ -49,8 +49,9 @@ describe("a watch and the participant's clock", () => {
       ]);
       expect(watches[10]).toEqual([5_000, "limit"]);
       const atWindDown = run.requests.find((request) => request.at === 50 * MINUTE);
+      // The wait's length comes first, then the clock text that says why it ended.
       expect(atWindDown?.hint).toBe(
-        "Your session ends at 01:00 UTC, in 10 minutes. Keep working until then. The session ends by itself at that time, and you will then be asked for your closing account.",
+        "Your wait lasted 7 minutes. Your session ends at 01:00 UTC, in 10 minutes. Keep working until then. The session ends by itself at that time, and you will then be asked for your closing account.",
       );
       expect(Math.max(...run.observes)).toBeLessThan(60 * MINUTE);
       expect(run.result.trace.stopCause).toBe("scheduled_end");
