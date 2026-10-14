@@ -31,6 +31,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   in run.json share an id, as in `events 4 and 5 are participant p01's and share the id
   "note-1"`. It refused such a run with "Analysis could not be completed safely." The run still
   passes verify. (#1849)
+- The bundle estimate behind the size warning of `study check` and `humanish run` counts each
+  participant's instruction (`participants[].instruction`) and the task goals (`actor.tasks[].goal`)
+  with the mission. run.json copies all three into each participant's stream and feedback candidate.
+  A study of 100 participants with a 90,000-byte instruction and a short mission now gets the
+  warning that run.json may grow to about 18.8 MiB, past the 16 MiB analysis reads; it got none. The
+  advice names the field with the most bytes. (#1852)
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
 

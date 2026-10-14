@@ -11,12 +11,12 @@
 // to run.json, which keeps the per-request lists in the traces, 16,500 bytes of run.json for each
 // participant and 4,400 for the run, 4,000 for each trace, 400 for each dwell frame, 110,000 for
 // each screenshot, and 3 minutes for a participant with no declared end. The Observer page is
-// 1,200,000 bytes of app, 0.85 of run.json and 0.16 of all the traces. run.json also holds the
-// mission once for the run and once in each participant's stream, and the estimate counts one more
-// copy for each participant, in case it reports friction or stops. The page holds the mission once
-// for the run and once for each participant, outside its share of run.json. The fixture's
-// mission, "Try it.", adds 7 bytes and 14 a participant, which moves no printed figure, so the
-// examples leave it out.
+// 1,200,000 bytes of app, 0.85 of run.json and 0.16 of all the traces. run.json also holds each
+// participant's text, its mission, instruction and task goals, in its stream and the first
+// participant's once more for the run, and the estimate counts one more copy for each participant,
+// in case it reports friction or stops. The page holds each participant's text once and the first
+// participant's once more, outside its share of run.json. The fixture's mission, "Try it.", adds
+// 7 bytes and 14 a participant, which moves no printed figure, so the examples leave it out.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -41,6 +41,9 @@ const ENV = {
 };
 const COUNTED =
   "at a model turn every 10s that adds up to 3.5 KB to the participant's trace. The run goes ahead.";
+/** What the run.json warning says the file holds of each participant's text. */
+const COPIES =
+  "It holds the mission, the task goals and its instruction in each participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's once more for the run, and the estimate counts a feedback candidate for every participant.";
 const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 47.7 MiB, past the 32 MiB verify reads in one file. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
 
 /** An event day: `hosts` hosts working `hours` from the start, and `guests` arriving a minute apart. */
@@ -185,6 +188,26 @@ describe("study check's bundle estimate", () => {
     expect(estimateBundle([visitor, visitor], HOURS).runFileBytes).toBe(37_510);
   });
 
+  it("counts the task goals with the mission and the instruction, and names the field with the most bytes", () => {
+    // The synthetic fan-out that held 3, 2 and 2 copies of its participants' instructions held
+    // each of its 2 task goals 7 times, as it held the mission: once for the run and twice for
+    // each participant. Each participant's text: 7 + 20,000 + 47,500 + 42,500 = 110,007 bytes, of which
+    // the task goals are 90,000. run.json: 4,400 + 110,007 + 100 x (16,500 + 2 x 110,007)
+    // = 23,765,807.
+    const visitor = {
+      schedule: participantSchedule({}),
+      limits: {},
+      assignment: { mission: "Try it.", focus: "Check the menu. ".repeat(1_250) },
+      tasks: [
+        { id: "settings", goal: "Open the settings. ".repeat(2_500) },
+        { id: "rename", goal: "Change the name. ".repeat(2_500) },
+      ],
+    };
+    expect(bundleLimitReason(estimateBundle(Array(100).fill(visitor), HOURS))).toBe(
+      `This study's run.json may grow to about 22.7 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the task goals (actor.tasks[].goal), or split the participants across studies.`,
+    );
+  });
+
   it("keeps one participant in the longest window and densest dwell a study allows under the limit on its trace", async () => {
     // A 23h 45m window, the longest a 24-hour sandbox holds with 15 minutes for the closing report
     // and set-up, is 8,550 turns, and an hour's dwell at a frame a second is 3,601 frames. Trace:
@@ -258,31 +281,6 @@ describe("study check's bundle estimate", () => {
     });
   });
 
-  it("warns that 100 participants with an 80,000-byte mission pass the analysis limit on run.json", async () => {
-    // run.json holds the mission once for the run, once in each participant's stream and once more
-    // in the feedback candidate of a participant that reports friction or stops, which the estimate
-    // counts for every participant. run.json: 4,400 + 80,000 + 100 x (16,500 + 2 x 80,000)
-    // = 17,734,400 bytes, over 16,777,216. Each is counted for 3 minutes, 18 turns. Trace: 4,000
-    // + 18 x 3,500 = 67,000. The page holds the mission once for the run and once for each
-    // participant. Page: 1,200,000 + 0.85 x (4,400 + 100 x 16,500) + 101 x 80,000 + 0.16 x 100
-    // x 67,000 = 11,758,240. Entries: 20 + 100 x (3 + 18) = 2,120. In all: 11,758,240 + 1,900
-    // x 110,000 + 100 x 67,000 + 2 x 17,734,400 = 262,927,040.
-    const result = await check({
-      mode: "live",
-      participants: [{ id: "visitor", count: 100 }],
-      actor: { mission: "Rename the project. ".repeat(4_000) },
-      execution: { target: "e2b-desktop", timeoutMs: 2 * HOURS },
-    });
-
-    expect(result).toEqual({
-      ok: true,
-      row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 11.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 251 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
-      warnings: [
-        `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. It holds the mission once for the run, once in each participant's stream and once more for each participant that reports friction or stops, and the estimate counts the last copy for every participant. The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
-      ],
-    });
-  });
-
   it("counts a short session budget in place of the 3 minutes, with its dwell frames", async () => {
     // One participant for its 1-minute budget, 6 turns, which cuts the 10-minute dwell window to
     // 12 frames and the frame after it. run.json: 4,400 + 16,500 = 20,900 bytes. Trace: 4,000
@@ -306,6 +304,58 @@ describe("study check's bundle estimate", () => {
 
     expect(result.ok).toBe(true);
     expect(result.warnings).toEqual([]);
+  });
+});
+
+describe("study check's warning on run.json", () => {
+  it("warns that 100 participants with an 80,000-byte mission pass the analysis limit on run.json", async () => {
+    // run.json holds the mission once for the run, once in each participant's stream and once more
+    // in the feedback candidate of a participant that reports friction or stops, which the estimate
+    // counts for every participant. run.json: 4,400 + 80,000 + 100 x (16,500 + 2 x 80,000)
+    // = 17,734,400 bytes, over 16,777,216. Each is counted for 3 minutes, 18 turns. Trace: 4,000
+    // + 18 x 3,500 = 67,000. The page holds the mission once for the run and once for each
+    // participant. Page: 1,200,000 + 0.85 x (4,400 + 100 x 16,500) + 101 x 80,000 + 0.16 x 100
+    // x 67,000 = 11,758,240. Entries: 20 + 100 x (3 + 18) = 2,120. In all: 11,758,240 + 1,900
+    // x 110,000 + 100 x 67,000 + 2 x 17,734,400 = 262,927,040.
+    const result = await check({
+      mode: "live",
+      participants: [{ id: "visitor", count: 100 }],
+      actor: { mission: "Rename the project. ".repeat(4_000) },
+      execution: { target: "e2b-desktop", timeoutMs: 2 * HOURS },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      row: "run.json about 16.9 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 11.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 251 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      warnings: [
+        `This study's run.json may grow to about 16.9 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the mission (actor.mission), or split the participants across studies.`,
+      ],
+    });
+  });
+
+  it("warns that 100 participants with a 90,000-byte instruction pass the analysis limit on run.json under a short mission", async () => {
+    // A synthetic live fan-out of 3 participants that all reported friction held each one's
+    // instruction in its stream and its feedback candidate, and the first one's in the scenario
+    // goal too: 3, 2 and 2 copies in run.json. The page held 2, 1 and 1. Each participant's text is its mission,
+    // 7 bytes, and its instruction, 90,000. run.json: 4,400 + 90,007 + 100 x (16,500 + 2 x
+    // 90,007) = 19,745,807 bytes. Page: 1,200,000 + 0.85 x (4,400 + 100 x 16,500) + 101 x 90,007
+    // + 0.16 x 100 x 67,000 = 12,768,947. In all: 12,768,947 + 1,900 x 110,000 + 100 x 67,000
+    // + 2 x 19,745,807 = 267,960,561.
+    const result = await check({
+      mode: "live",
+      participants: [
+        { id: "visitor", count: 100, instruction: "Rename the project. ".repeat(4_500) },
+      ],
+      execution: { target: "e2b-desktop", timeoutMs: 2 * HOURS },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      row: "run.json about 18.8 MiB of the 16 MiB analysis reads; largest trace about 0.06 MiB of the 32 MiB humanish reads of each; Observer page about 12.2 MiB of the 32 MiB verify reads; about 2,120 files and folders of the 510,000 the public-safety scan reads; about 256 MiB in all. Participants with a declared end are counted for their whole window and the others for up to 3m, at a model turn every 10s.",
+      warnings: [
+        `This study's run.json may grow to about 18.8 MiB, past the 16 MiB analysis reads. ${COPIES} The estimate counts 100 participants for up to 3m each, ${COUNTED} To stay under the limit, shorten the participants' instructions (participants[].instruction), or split the participants across studies.`,
+      ],
+    });
   });
 });
 
