@@ -513,6 +513,23 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
+  it("counts as unchanged on a second run the paths the first run named", async () => {
+    await asFirstTimeUser(() =>
+      withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }) }, async (cwd) => {
+        const first = (await runCli(["init", "--yes", "--cwd", cwd])).stdout.split("\n");
+        const named = first
+          .slice(first.indexOf("created:"), first.indexOf("next:"))
+          .filter((line) => /^ {2}\S/.test(line));
+        expect(named).toContain("  AGENTS.md");
+        const second = await runCli(["init", "--yes", "--cwd", cwd]);
+        expect(second.exitCode).toBe(0);
+        expect(second.stdout).toContain(
+          `no files changed\n${named.length} existing paths unchanged\n`,
+        );
+      }),
+    );
+  });
+
   it("names the hosted live study next when the E2B and OpenAI keys are set", async () => {
     await asFirstTimeUser(async () => {
       vi.stubEnv("OPENAI_API_KEY", "test-openai-key");

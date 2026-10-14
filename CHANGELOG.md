@@ -27,9 +27,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
   Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
   3% of its earlier time. (#1872)
-- `humanish init --yes` no longer prints a count of the empty runtime directories it makes under
-  `.humanish/`. A first setup that lists three next steps (`run first-run`, `run try-live` and
-  `doctor --study local-browser`) now prints 24 lines where it printed 25. `init --json` still lists
+- `humanish init --yes` no longer counts the empty runtime directories it makes under `.humanish/`.
+  A first run no longer prints `7 ignored directories prepared`, so a first setup that lists three
+  next steps (`run first-run`, `run try-live` and `doctor --study local-browser`) prints 24 lines
+  where it printed 25. In a project that had only a package.json, a second run counts 11 existing
+  paths unchanged, the files the first run named, where it counted 18. `init --json` still lists
   each directory. (#1882)
 
 ## 0.134.0: Participants held to an end keep reloading until it (2026-10-14)
