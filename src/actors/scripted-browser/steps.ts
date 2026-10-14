@@ -126,7 +126,7 @@ export async function executeBrowserPersonaStep(args: {
   const screenshotPath = screenshotPathForBrowserStep(args.surface, args.step);
   await prepareContainedOutputFile(args.absoluteArtifactRoot, screenshotPath);
   const screenshotBytes = await captureScriptedPageScreenshot(args.page);
-  assertScreenshotEvidence(screenshotPath, screenshotBytes);
+  await assertScreenshotEvidence(screenshotPath, screenshotBytes);
   await writeContainedOutputFile(args.absoluteArtifactRoot, screenshotPath, screenshotBytes);
   const assertions = await evaluateBrowserStepExpectations({
     afterState,
@@ -312,7 +312,7 @@ export async function captureBlockedStepScreenshot(
   }
   try {
     const screenshotBytes = await captureScriptedPageScreenshot(page);
-    assertScreenshotEvidence(screenshotPath, screenshotBytes);
+    await assertScreenshotEvidence(screenshotPath, screenshotBytes);
     await writeContainedOutputFile(artifactRoot, screenshotPath, screenshotBytes);
     return { screenshotPath, written: true };
   } catch {
