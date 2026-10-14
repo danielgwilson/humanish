@@ -7,7 +7,7 @@ import {
 import { plural } from "../../../run/text.js";
 import { isIdleTurn, type WatchedWaits } from "./actions.js";
 import { progressKeyOf } from "./backstop.js";
-import { clockEndStop } from "./clock.js";
+import { clockEndStop, heldToScheduledEnd } from "./clock.js";
 import { timeLimit, type Stop } from "./ending.js";
 import type { DesktopObserver, Look } from "./observation.js";
 import { CuaAbortError, CuaStallError, raceSessionDeadline } from "./race.js";
@@ -20,16 +20,22 @@ import type { CuaAction, CuaObservation } from "./types.js";
 // when a change holds still (evidence/frame-change.ts), speech arrives, a study condition matches,
 // the participant's wind-down or end arrives, or the watch's time passes.
 //
+// A participant held to its scheduled end waits for that end as its task, so two more of its turns
+// are watched as a wait with no length: a turn of only screenshots or 0 ms waits after another turn
+// that only waited or took screenshots, and, after the action is sent, a turn that repeats a recent
+// action on an unchanged screen past the no-progress limit (backstop.ts repeatsPastLimit). Without
+// these watches it would send requests back to back until its end.
+//
 // A watch first lasts the turn's planned length: its waits' named lengths, together up to
 // watchMaxMs, and idleWaitMs for each wait that names none, and at least idleWaitMs. Each further
-// idle turn in a row whose watch ended at its limit, or was woken by a small change (at most 24
+// watched turn in a row whose watch ended at its limit, or was woken by a small change (at most 24
 // tiles) that held still, watches twice as long, up to the longer of its planned length and
-// watchMaxMs. Any other ending, or a turn with another action, starts again from its first
-// length. A participant waiting on a static screen settles at one request per watchMaxMs: at the
-// default 10 minutes, one naming 1 minute each turn waits 60, 120, 240 and 480 s, then 10 minutes
-// at a time.
+// watchMaxMs. Any other ending, or a turn with another action that is not watched, starts again
+// from its first length. A participant waiting on a static screen settles at one request per
+// watchMaxMs: at the default 10 minutes, one naming 1 minute each turn waits 60, 120, 240 and
+// 480 s, then 10 minutes at a time.
 
-/** A watch that ran for one idle turn: how it ended, and what the loop does next. */
+/** A watch that ran for one turn: how it ended, and what the loop does next. */
 export interface Watched {
   readonly wake: ActorWatch["wake"];
   /**
@@ -62,13 +68,15 @@ interface Ending {
 }
 
 /**
- * The watches of one participant's idle turns. Between turns it keeps the run of idle turns the
+ * The watches of one participant's turns. Between turns it keeps the run of watched turns the
  * doubling counts: a watch that ended at its limit or on a small change makes the next one in the
- * run longer, and a turn with another action ends the run.
+ * run longer, and a turn with another action that is not watched ends the run.
  */
 export class IdleWatcher {
   /** The limit of the run's last watch, while that watch ended at its limit or on a small change. */
   private grownFromMs: number | undefined;
+  /** The last turn only waited or took screenshots. */
+  private quiet = false;
 
   constructor(
     private readonly session: LoopSession,
@@ -78,7 +86,12 @@ export class IdleWatcher {
   /**
    * Watch the screen in place of this turn's waits. Undefined, with nothing run, for a turn with
    * another action, which ends the run, or with no wait time (screenshots only, or waits of 0 ms),
-   * which leaves the run as it is. `reference` is the observation the participant chose to wait on.
+   * which leaves the run as it is. A participant held to its scheduled end is watched for a turn
+   * with no wait time after another turn that only waited or took screenshots, as for a wait with
+   * no length: it waits for its end, and without the watch it would send its requests back to back.
+   * The first such turn, at the start or after an action, is sent at once, so a participant that
+   * looks again after acting does not wait idleWaitMs for it. `reference` is the observation the
+   * participant chose to wait on.
    */
   async watch(
     turnNumber: number,
@@ -86,7 +99,9 @@ export class IdleWatcher {
     actions: readonly CuaAction[],
   ): Promise<Watched | undefined> {
     const { session } = this;
-    if (!isIdleTurn(actions)) {
+    const quietBefore = this.quiet;
+    this.quiet = isIdleTurn(actions);
+    if (!this.quiet) {
       this.grownFromMs = undefined;
       return undefined;
     }
@@ -105,8 +120,62 @@ export class IdleWatcher {
       namedMs += ms;
       return [ms];
     });
+    if (lengths.every((ms) => ms === 0) && !(quietBefore && heldToScheduledEnd(session)))
+      return undefined;
+    return this.run(turnNumber, reference, {
+      lengths,
+      askedMs: asked.reduce((sum, ms) => sum + ms, 0),
+      ...(lengths.length > 0
+        ? { lead: "Your wait" }
+        : {
+            lead: "The wait before your screenshot",
+            unasked:
+              "The turn took only screenshots after a turn of only waits or screenshots, and the participant is held to its scheduled end, so the screen was watched as for a wait with no length.",
+          }),
+    });
+  }
+
+  /**
+   * Watch the screen after a held participant's turn that repeated a recent action past its
+   * no-progress limit (repeatsPastLimit), as after a wait with no length, before its next request.
+   * The run goes on, so a participant that reloads an unchanged page turn after turn waits as long
+   * as one that only waits. `reference` is the observation the participant acted on, so a change
+   * its action made wakes it. Undefined, with nothing run, when no action of the turn reached the
+   * desktop (`sent`, ActionBatch.sent): such a repeat is not how the participant waits, and
+   * noProgressSteps of them end its session (backstop.ts consecutiveUnsent).
+   */
+  async watchAfterRepeat(
+    turnNumber: number,
+    reference: CuaObservation,
+    sent: boolean,
+  ): Promise<Watched | undefined> {
+    this.quiet = false;
+    if (!sent) return undefined;
+    return this.run(turnNumber, reference, {
+      lengths: [],
+      askedMs: 0,
+      lead: "The wait after your last action",
+      unasked:
+        "The turn repeated a recent action on an unchanged screen past the no-progress limit and the participant is held to its scheduled end, so the screen was watched before the next request.",
+    });
+  }
+
+  private async run(
+    turnNumber: number,
+    reference: CuaObservation,
+    asked: {
+      /** The planned length of each of the turn's waits. */
+      readonly lengths: readonly number[];
+      readonly askedMs: number;
+      /** How the next request's note names the wait. */
+      readonly lead: string;
+      /** Why a watch no wait carries ran; the trace records it with the watch. */
+      readonly unasked?: string;
+    },
+  ): Promise<Watched> {
+    const { session } = this;
+    const { lengths, unasked } = asked;
     const plannedMs = lengths.reduce((sum, ms) => sum + ms, 0);
-    if (plannedMs === 0) return undefined;
     const capMs = Math.max(plannedMs, session.waits.watchMaxMs);
     // Never shorter than idleWaitMs, so a participant naming a few milliseconds on a static screen
     // does not send requests back to back, and never shorter than the turn's own planned length, so
@@ -123,21 +192,29 @@ export class IdleWatcher {
     const grows =
       ending.wake === "limit" || (ending.seen?.verdict === "settled" && ending.seen.small);
     this.grownFromMs = grows ? limitMs : undefined;
+    const watch: ActorWatch = {
+      limitMs,
+      askedMs: asked.askedMs,
+      wake: ending.wake,
+      looks: ending.looks,
+      ...(ending.area === undefined ? {} : { area: { ...ending.area } }),
+    };
+    if (unasked !== undefined)
+      session.trace.record("notice", () => ({
+        lifecycle: "completed",
+        title: "watched the screen",
+        text: unasked,
+        watch: { ...watch },
+      }));
     return {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending),
+      hint: hintFor(ending, asked.lead),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,
-        watch: {
-          limitMs,
-          askedMs: asked.reduce((sum, ms) => sum + ms, 0),
-          wake: ending.wake,
-          looks: ending.looks,
-          ...(ending.area === undefined ? {} : { area: { ...ending.area } }),
-        },
+        watch,
       },
     };
   }
@@ -274,21 +351,25 @@ function compareLook(
 
 /**
  * Each wait's part of a watch that lasted `ms`: the limit is shared among the waits in proportion
- * to their planned lengths, and the watch covers them in order. Later waits get 0.
+ * to their planned lengths, and the watch covers them in order. Later waits get 0. Waits that all
+ * planned 0 ms (a held participant's, watched as a wait with no length) give the first all of it.
  */
 function splitWatch(
-  lengths: readonly number[],
+  planned: readonly number[],
   limitMs: number,
   ms: number,
 ): { ms: number[]; endedOn: number } {
+  const lengths = planned.every((length) => length === 0)
+    ? planned.map((_, index) => (index === 0 ? 1 : 0))
+    : planned;
   const plannedMs = lengths.reduce((sum, length) => sum + length, 0);
   const starts: number[] = [];
   const ends: number[] = [];
-  let planned = 0;
+  let sharedMs = 0;
   for (const length of lengths) {
-    starts.push(Math.floor((limitMs * planned) / plannedMs));
-    planned += length;
-    ends.push(Math.floor((limitMs * planned) / plannedMs));
+    starts.push(Math.floor((limitMs * sharedMs) / plannedMs));
+    sharedMs += length;
+    ends.push(Math.floor((limitMs * sharedMs) / plannedMs));
   }
   const found = ends.findIndex((shareEnd, index) => shareEnd > starts[index]! && ms <= shareEnd);
   const endedOn = found === -1 ? lengths.length - 1 : found;
@@ -301,13 +382,14 @@ function splitWatch(
 }
 
 /**
- * The next request's note. A clock ending says only how long the wait lasted. A
- * small change is named by its place, so a participant is not told the screen changed when what
- * changed was a counter or a timestamp. The note says nothing of the next wait's length: a
- * participant told it names that length and keeps waiting.
+ * The next request's note, its subject `lead` naming the wait ("Your wait", or for a watch no wait
+ * asked for, the wait before the screenshot or after the action). A clock ending says only how
+ * long the wait lasted. A small change is named by its place, so a participant is not told the
+ * screen changed when what changed was a counter or a timestamp. The note says nothing of the next
+ * wait's length: a participant told it names that length and keeps waiting.
  */
-function hintFor(ending: Ending): string | undefined {
-  const lasted = `Your wait lasted ${duration(ending.ms)}`;
+function hintFor(ending: Ending, lead: string): string | undefined {
+  const lasted = `${lead} lasted ${duration(ending.ms)}`;
   const { seen } = ending;
   switch (ending.wake) {
     case "changed":

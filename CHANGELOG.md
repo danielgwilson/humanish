@@ -10,6 +10,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A participant held to a scheduled end (`endAfterMs`) is no longer ended as `gave_up` for reloading
+  a page that changes only on reload. 20 repeats in a row of a recent action on an unchanged screen
+  ended its session: in one of 72 live 60-minute runs on 0.132.0, a participant that reloaded an
+  issue list every 9 seconds was ended at minute 13. Such a streak now ends only a participant
+  without a scheduled end, and a held one whose 20 repeats never reached the desktop, as when each
+  reload's desktop command fails. From the 20th repeat on, humanish watches a held participant's
+  screen after each further repeat before its next request, as after a wait with no length: 5, 10
+  and 20 seconds, doubling up to `actor.maxWaitMs`. The trace records the streak in a `repeated an
+  action on an unchanged screen` notice with its turn count and time span, and review.json lists it
+  in its gaps. In 60-minute live runs with a persona that refreshes every few seconds, 0.133.1
+  ended 3 of 4 as `gave_up` within 7 minutes; this release ran all 4 to their end at a median $3.23
+  an hour (#1873).
+- A participant held to a scheduled end no longer sends model requests back to back with turns of
+  only screenshots or only 0 ms waits. Such a turn after another turn of only waits or screenshots is
+  watched as a wait with no length, `idleWaitMs` and doubling, and its 0 ms waits are not sent to the
+  desktop. The first such turn, at the start or after an action, goes out at once. A watch that no
+  wait carries is recorded on a `watched the screen` notice with the usual `watch` field. Participants
+  without a scheduled end keep their behavior (#1868).
 - A run whose participant's trace passes 32 MiB, the most humanish reads of one file, now finishes.
   The sandbox id sweep at the end of the run threw when it could not read the trace. It now records
   each file it could not read in a `sandbox-ids.unresolved` warn event in run.json, and the run goes

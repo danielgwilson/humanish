@@ -3,6 +3,7 @@ import { ComputerUseProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
 import {
   advanceBackstop,
+  repeatsPastLimit,
   startBackstop,
   type Backstop,
   type BackstopStep,
@@ -57,7 +58,8 @@ export { IMPRESSIONS_ASK } from "./loop/impressions.js";
 // Stopping follows the abandonment decision in docs/architecture/actor-contract.md. The
 // participant decides when it is done, and returning no further action ends the session. A harness
 // backstop force-ends only an idle streak (turns with no material action) or a no-progress streak
-// (turns that repeat a recent action on an unchanged screen). There is no turn cap. The hard stops
+// (turns that repeat a recent action on an unchanged screen); the no-progress streak does not end
+// a participant held to its scheduled end (loop/backstop.ts). There is no turn cap. The hard stops
 // are the wall-clock timeoutMs and any declared spend, adapter or token limit (loop/ending.ts).
 // Every provider and desktop call is raced against the deadline (loop/race.ts), and the abort
 // signal is checked before each action, so a hung port cannot stall the loop and a cancel cannot
@@ -128,6 +130,7 @@ export async function runComputerUseLoopWithTaps(options: LoopRunOptions): Promi
   } catch (error) {
     stop = session.conclude(stops.stopForError(session, error));
   }
+  session.streak.close();
   // A structured stop earns the debrief even if recording its evidence then failed.
   const debrief =
     session.debriefTrigger === undefined
@@ -208,11 +211,20 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         : ended;
     }
 
-    const watched = await watcher.watch(turnNumber, observation, turn.actions);
-    const batch = await runActionBatch(session, turn.actions, watched?.waits);
+    const limits = { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps };
+    const repeat = repeatsPastLimit(backstop, turn.actions, limits) && heldToScheduledEnd(session);
+    const waited = repeat ? undefined : await watcher.watch(turnNumber, observation, turn.actions);
+    const batch = await runActionBatch(session, turn.actions, waited?.waits);
+    const watched = repeat
+      ? await watcher.watchAfterRepeat(turnNumber, observation, batch.sent)
+      : waited;
     conversation.previousExecution = batch.execution;
     // An earlier reply's unknown usage still stops the session before its closing request.
-    if (watched?.stop !== undefined) return unknownSpendStop(session) ?? watched.stop;
+    if (watched?.stop !== undefined) {
+      // The repeat was sent before its watch ended the session, so its streak counts it.
+      if (repeat) session.streak.fold(backstop.consecutiveNoProgress + 1);
+      return unknownSpendStop(session) ?? watched.stop;
+    }
     const checkpoint = await observer.checkpoint(turnNumber, watched?.observation);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
@@ -223,13 +235,14 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
         actions: turn.actions,
         observation,
         heardNewSpeech: observer.heardNewSpeech,
+        sent: batch.sent,
         waitingIsTheTask: heldToScheduledEnd(session),
         screenChanged:
           watched?.wake === "changed" ||
           watched?.wake === "speech" ||
           watched?.wake === "condition",
       },
-      { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
+      limits,
     );
     backstop = step.backstop;
     const stalled = applyBackstop(session, conversation, step, [
@@ -267,7 +280,7 @@ function keepWorking(
   conversation.previousExecution = undefined;
   const step = advanceBackstop(
     backstop,
-    { actions: [], observation, heardNewSpeech: false },
+    { actions: [], observation, heardNewSpeech: false, sent: false },
     { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
   );
   const stalled = applyBackstop(session, conversation, step, []);
@@ -287,6 +300,7 @@ function applyBackstop(
 ): Stop | undefined {
   if (step.idle) session.trace.bump("idleTurns");
   if (!step.progressed) session.trace.bump("noProgressTurns");
+  session.streak.fold(step.backstop.consecutiveNoProgress);
   const hints = [...turnHints.filter((hint): hint is string => hint !== undefined), ...step.hints];
   if (hints.length > 0) conversation.contextHint = hints.join(" ");
   return step.tripReason === undefined ? undefined : stops.gaveUp(session, step.tripReason);

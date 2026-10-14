@@ -168,7 +168,9 @@ export interface ActorTraceItem {
   screenshotRef?: { path: string; redaction: "blurred" | "ocr_scrubbed" | "none" };
   text?: string; // redacted
   page?: { origin: string; path: string }; // computer-use screenshot items; redacted, no query
-  // computer-use: the wait ui_action during which a watch of a turn that only waited ended
+  // computer-use: the wait ui_action during which a watch of a turn that only waited ended, or a
+  // "watched the screen" notice for a watch no wait carries (a held participant's turn of only
+  // screenshots, or the watch after its repeated action past the no-progress limit)
   watch?: {
     limitMs: number;
     askedMs: number; // what the turn's waits asked for; above limitMs past the watch's growth cap
