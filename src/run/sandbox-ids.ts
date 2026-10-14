@@ -236,17 +236,20 @@ const MAX_SWEPT_ENTRIES = 10_000;
  * receipts, with the label in place of the id. Writers such as a participant's actor.json can
  * quote an SDK error that names the sandbox. Run.finish calls it before analysis reads the run.
  * Best effort for writes and listings: verify grades a file this misses. A text file it refuses
- * to read, or a journal it refuses, throws once the sweep ends, naming each, since such a file
- * may still hold an id.
+ * to read, such as a trace past RUN_ARTIFACT_MAX_BYTES, may still hold an id, so the sweep
+ * returns a warning that names each such file and why, for the caller to record; the run goes
+ * on. A journal it refuses throws, since without its ids no file can be swept.
  */
-export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promise<void> {
+export async function scrubRunSandboxIds(
+  paths: PreparedRunArtifactPaths,
+): Promise<string | undefined> {
   const ids = await readRunSandboxIds(paths);
-  if (ids.length === 0) return;
+  if (ids.length === 0) return undefined;
   const valid = await validatePreparedRunRootIdentity(paths).then(
     () => true,
     () => false,
   );
-  if (!valid) return;
+  if (!valid) return undefined;
   const refused: string[] = [];
   const scrub = async (file: string): Promise<void> => {
     const read = await readContainedRegularFile(paths, file, RUN_ARTIFACT_MAX_BYTES);
@@ -275,10 +278,9 @@ export async function scrubRunSandboxIds(paths: PreparedRunArtifactPaths): Promi
   await walk("").catch(() => {
     // A directory that changed while it was listed ends the sweep; verify names what it missed.
   });
-  if (refused.length > 0)
-    throw new Error(
-      `The sandbox id sweep could not read every run file, so these may still name a sandbox: ${refused.join("; ")}.`,
-    );
+  return refused.length === 0
+    ? undefined
+    : `The sandbox id sweep could not read every run file, so these may still name a sandbox: ${refused.join("; ")}.`;
 }
 
 /**

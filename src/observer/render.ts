@@ -190,11 +190,12 @@ export async function renderObserver(
     );
   }
 
-  const loaded = await loadRunBundlePrepared(selectedPhysicalCwd, preparedRunPaths);
+  // Verify passes a trace past the read limit, so its participant shows without its items.
+  const loaded = await loadRunBundlePrepared(selectedPhysicalCwd, preparedRunPaths, {
+    display: true,
+  });
   await validatePreparedRunArtifactPaths(preparedRunPaths);
-  if (!loaded) {
-    return runNotFound(cwd, runInput);
-  }
+  if (!loaded) return runNotFound(cwd, runInput);
 
   if (
     loaded.bundle.runId !== selection.runId ||

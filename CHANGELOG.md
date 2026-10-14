@@ -11,34 +11,38 @@ The Unreleased section holds the full notes for the next version until it is tag
 ### Fixed
 
 - A participant held to a scheduled end (`endAfterMs`) is no longer ended as `gave_up` for reloading
-  a page that changes only on reload. 20 turns in a row that repeated a recent action on an
-  unchanged screen ended its session, and waits between its reloads left that count as it was. In
-  one of 72 live 60-minute runs on 0.132.0, a participant that reloaded an issue list about every 9
-  seconds was ended at minute 13 as abandoned. Such a streak now ends only a participant without a
-  scheduled end, at 20 turns as before, and a held one whose 20 repeats in a row never reached the
-  desktop, as when each reload's desktop command fails. From the 20th repeat, humanish watches a
-  held participant's screen after each further one before its next request, as after a wait with no
-  length: by default the watches last 5, 10 and 20 seconds and keep doubling up to
-  `actor.maxWaitMs`, or 10 minutes when the study does not set it. After that streak, a repeat is
-  watched whenever the turn before it also repeated an action on an unchanged screen, so a new item
-  that a reload shows, or one the participant opens, costs one request with no watch. The note on
-  the next request says how long the wait after the last action lasted and why it ended. In a
-  fake-loop test, a held participant that reloads an unchanged page every turn for an hour makes its
-  requests from its 20th repeat on at the times one that only waits makes them. In a fake loop with
-  a 9-second model reply, one that reloads a page gaining an item every 8 minutes made 82 requests
-  in the hour, and 92 when it also opened each item. When the streak ends, or the session ends in
-  it, the trace records a notice titled `repeated an action on an unchanged screen` with the
-  streak's turn count and time span. The gaps in review.json name the first streak and the number
-  of later ones, in one line per participant. (#1873)
+  a page that changes only on reload. 20 repeats in a row of a recent action on an unchanged screen
+  ended its session: in one of 72 live 60-minute runs on 0.132.0, a participant that reloaded an
+  issue list every 9 seconds was ended at minute 13. Such a streak now ends only a participant
+  without a scheduled end, and a held one whose 20 repeats never reached the desktop, as when each
+  reload's desktop command fails. From the 20th repeat on, humanish watches a held participant's
+  screen after each further repeat before its next request, as after a wait with no length: 5, 10
+  and 20 seconds, doubling up to `actor.maxWaitMs`. The trace records the streak in a `repeated an
+  action on an unchanged screen` notice with its turn count and time span, and review.json lists it
+  in its gaps (#1873).
 - A participant held to a scheduled end no longer sends model requests back to back with turns of
-  only screenshots or only 0 ms waits. Such a turn asked for no wait time, so the loop ran no watch
-  for it. Such a turn that follows another turn of only waits or screenshots is now watched as a
-  wait with no length: `idleWaitMs`, 5 seconds by default, doubling on each further quiet turn in a
-  row, and its 0 ms waits are not sent to the desktop. The first such turn, at the start or after an
-  action, is sent at once, so a participant that looks again after acting does not wait for it. A
-  watch that no wait carries, such as one for a turn of only screenshots, is recorded on a `notice`
-  titled `watched the screen`, with the same `watch` field a wait's `ui_action` carries.
-  Participants without a scheduled end keep their behavior. (#1868)
+  only screenshots or only 0 ms waits. Such a turn after another turn of only waits or screenshots is
+  watched as a wait with no length, `idleWaitMs` and doubling, and its 0 ms waits are not sent to the
+  desktop. The first such turn, at the start or after an action, goes out at once. A watch that no
+  wait carries is recorded on a `watched the screen` notice with the usual `watch` field. Participants
+  without a scheduled end keep their behavior (#1868).
+- A run whose participant's trace passes 32 MiB, the most humanish reads of one file, now finishes.
+  The sandbox id sweep at the end of the run threw when it could not read the trace. It now records
+  each file it could not read in a `sandbox-ids.unresolved` warn event in run.json, and the run goes
+  on. `humanish verify` lists such a trace under `UNSCANNED_ARTIFACT`, grades the run `local_only`
+  and names the trace in its warnings, where it reported the run invalid and exited 2. The Observer
+  shows that participant without its items, and `humanish analyze` refuses the run as
+  `ANALYSIS_SOURCE_TOO_LARGE`, naming the participant and the file (#1877).
+
+### Changed
+
+- Trace files are written as one line of compact JSON. Indented, a trace was 1.36 times its compact
+  size over 236 kept computer-use traces, so a participant now reaches the 32 MiB read limit about
+  1.36 times later. A synthetic participant with 30 MiB of items, repeated from a recorded
+  participant of 78 turns, wrote a 47,068,524-byte trace before and a 34,552,066-byte trace now.
+  run.json stays indented. The bundle estimate counts 3.5 KB of trace a turn where it counted 4.7
+  KB, so a participant at the busiest measured rate passes the trace limit only after about 27
+  hours, longer than a window may last (#1877).
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 

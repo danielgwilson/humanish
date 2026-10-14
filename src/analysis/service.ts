@@ -21,7 +21,7 @@ import {
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
-import { AnalysisSourceRefusedError, runFileTooLarge } from "./source.js";
+import { AnalysisSourceRefusedError, runFileTooLarge, throwAsAnalysisRefusal } from "./source.js";
 import { pathMissing, readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 import {
   estimateAnalysisAdmission,
@@ -266,7 +266,8 @@ export async function readCompletedAnalysisSource(
   const bytes = read.bytes;
   const verified = await verifyRunPrepared(cwd, runIdOf(prepared), prepared);
   if (!verified.ok && verified.recordingOk !== true) throw new Error("ANALYSIS_VERIFY_FAILED");
-  const loaded = await loadRunBundlePrepared(cwd, prepared);
+  // Verify passes a run whose trace is past the read limit, which analysis does not read.
+  const loaded = await loadRunBundlePrepared(cwd, prepared).catch(throwAsAnalysisRefusal);
   if (!loaded || loaded.bundle.streams.length === 0) throw new Error("ANALYSIS_NO_PARTICIPANTS");
   if (loaded.bundle.mode !== "live") throw new Error("ANALYSIS_REQUIRES_LIVE_RUN");
   const statusBytes = await readBoundedFile(prepared, RUN_STATUS_FILE, MAX_STATUS_BYTES);

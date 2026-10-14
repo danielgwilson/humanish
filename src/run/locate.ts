@@ -21,7 +21,7 @@ import {
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./bundle-shape.js";
-import { loadRunTraces } from "./stream-trace.js";
+import { displayedTraces, loadRunTraces, loadStreamTraces } from "./stream-trace.js";
 import { readUnchangedFile, type BoundedFileResult } from "./evidence-files.js";
 
 /** The run input that resolves through latest.json rather than naming a run directory. */
@@ -186,10 +186,15 @@ export async function loadRunBundle(
   return loadRunBundlePrepared(cwd, runPaths);
 }
 
-/** loadRunBundle for a caller that already holds prepared paths. Revalidates them first. */
+/**
+ * loadRunBundle for a caller that already holds prepared paths. Revalidates them first. With
+ * `display`, a participant whose trace the loader refuses, such as one past the read limit, is
+ * kept as displayedTraces shows it, for a page that shows the run.
+ */
 export async function loadRunBundlePrepared(
   cwdInput: string,
   runPaths: PreparedRunArtifactPaths,
+  options: { display?: boolean } = {},
 ): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
@@ -205,7 +210,10 @@ export async function loadRunBundlePrepared(
 
   return {
     // A trace that does not match its index throws StreamTraceRefusedError, naming the participant.
-    bundle: await loadRunTraces(runPaths, bundle),
+    bundle:
+      options.display === true
+        ? displayedTraces(await loadStreamTraces(runPaths, bundle))
+        : await loadRunTraces(runPaths, bundle),
     bundlePath: path.relative(cwd, bundlePath),
     runDir: runPaths.absoluteRunRoot,
   };
