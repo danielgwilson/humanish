@@ -19,7 +19,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   screen after each further repeat before its next request, as after a wait with no length: 5, 10
   and 20 seconds, doubling up to `actor.maxWaitMs`. The trace records the streak in a `repeated an
   action on an unchanged screen` notice with its turn count and time span, and review.json lists it
-  in its gaps (#1873).
+  in its gaps. In 60-minute live runs with a persona that refreshes every few seconds, 0.133.1
+  ended 3 of 4 as `gave_up` within 7 minutes; this release ran all 4 to their end at a median $3.23
+  an hour (#1873).
 - A participant held to a scheduled end no longer sends model requests back to back with turns of
   only screenshots or only 0 ms waits. Such a turn after another turn of only waits or screenshots is
   watched as a wait with no length, `idleWaitMs` and doubling, and its 0 ms waits are not sent to the
