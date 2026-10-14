@@ -182,6 +182,15 @@ export const SECRET_FORMATS: readonly SecretFormat[] = [
   },
 ];
 
+/** Encodings verify's scan reads a secret through, each applied to a whole line. */
+export const SECRET_ENCODINGS: Readonly<Record<string, (text: string) => string>> = {
+  "as written": (text) => text,
+  "percent-encoded": (text) => encodeURIComponent(text),
+  base64: (text) => Buffer.from(text).toString("base64"),
+  // A quoted-printable `=XX` reading of the first hex pair must not hide the rest.
+  "hex-encoded in a parameter": (text) => `state=${Buffer.from(text).toString("hex")}`,
+};
+
 /** Values a run file holds in normal use. None may make verify grade a run blocked. */
 export const ORDINARY_VALUES: readonly SecretFormat[] = [
   { name: "git sha", text: `commit ${synthetic(HEX, 40, 101)}` },

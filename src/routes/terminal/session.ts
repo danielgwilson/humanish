@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { keysCheck } from "../../study/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
 import { RunSecrets } from "../../run/secrets.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
@@ -101,7 +102,8 @@ export async function runLiveTerminalSession(
   const runtime = declaredRuntimeProvenance({
     doNotTrack: plan.runtime.doNotTrack,
     ...(version === undefined ? {} : { version }),
-    model: sanitize(model),
+    // The study names the model, so it is study text.
+    model: redactEncodedText(sanitize(model)),
     modelSource,
     ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
   });

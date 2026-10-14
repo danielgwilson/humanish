@@ -3,7 +3,8 @@
 // grade the run blocked, so a hosted run fails its own verification, or the secret is shared with
 // the bundle. This file plants secret-shaped values in every field that keeps free text and compares
 // each dry-run bundle with a control run that holds plain markers in the same fields. Each shape of
-// secret gets its own run, so a field's length cap cannot cut one shape off behind another.
+// secret gets its own run, so a field's length cap cannot cut one shape off behind another. A key is
+// also planted in base64 and percent-encoded, two encodings verify's scan decodes.
 //
 // The fields come from the study key table (src/study/keys.ts) and the persona file fields
 // (src/study/persona.ts). A field keeps free text on a route when the parser keeps a probe sentence
@@ -267,23 +268,43 @@ interface Shape {
   readonly text: FieldText;
   /** The literals that value holds. */
   readonly literals: readonly Literal[];
+  /** How the value writes each literal. */
+  readonly encode: (literal: string) => string;
 }
+
+const asWritten = (literal: string): string => literal;
+const base64 = (literal: string): string => Buffer.from(literal).toString("base64");
+// encodeURIComponent keeps `-`, so each one is escaped here. verify's scan reads `%2D` as `-`.
+const percentEncoded = (literal: string): string => literal.replaceAll("-", "%2D");
 
 // Each shape is a numbered step, so the mission and instruction checks quote it in a "reads like a
 // script" warning. One shape per value keeps the longest within the 80 characters a persona trait
-// keeps, so every planted literal reaches the run whole.
+// keeps, so every planted literal reaches the run whole. The encoded keys are ones verify decodes.
 const SHAPES: Readonly<Record<string, Shape>> = {
   "sandbox URL": {
     text: (field) => `1. Open ${plantedLiterals(field).url}`,
     literals: ["url", "host", "token"],
+    encode: asWritten,
   },
   "API key": {
     text: (field) => `1. Sign in with ${plantedLiterals(field).key}`,
     literals: ["key"],
+    encode: asWritten,
   },
   "bearer header": {
     text: (field) => `1. Send Authorization: Bearer ${plantedLiterals(field).bearer}`,
     literals: ["bearer"],
+    encode: asWritten,
+  },
+  "base64 API key": {
+    text: (field) => `1. Sign in with ${base64(plantedLiterals(field).key)}`,
+    literals: ["key"],
+    encode: base64,
+  },
+  "percent-encoded API key": {
+    text: (field) => `1. Sign in with ${percentEncoded(plantedLiterals(field).key)}`,
+    literals: ["key"],
+    encode: percentEncoded,
   },
 };
 
@@ -439,23 +460,25 @@ const verdict = (run: DryRun) => ({ ok: run.ok, grade: run.grade });
 function cutShort(kept: string, fields: readonly string[], shape: Shape): string[] {
   return fields.flatMap((field) =>
     shape.literals
-      .filter((literal) => !kept.includes(plantedLiterals(field)[literal]))
+      .filter((literal) => !kept.includes(shape.encode(plantedLiterals(field)[literal])))
       .map((literal) => `${field}: ${literal}`),
   );
 }
 
 // A literal cut short after parsing still leaks, so a file leaks a field when it holds the first
-// 22 characters of any of the field's literals. The shortest literal has 22, and up to field f999
-// no field's first 22 characters appear in another field's literals. At 20, f10's URL would match
-// f100's.
-const FRAGMENT = 22;
+// 21 characters of any of the field's literals, as written or as the shape encodes them. Base64
+// writes three characters as four, so the base64 of 21 characters starts the base64 of the whole
+// literal. The shortest literal has 22, and up to field f999 no field's first 21 characters appear
+// in another field's literals. At 20, f10's URL would match f100's.
+const FRAGMENT = 21;
 
 /** `<field> in <file>` for each field whose planted value a file of the run holds. */
-function leaks(run: DryRun, fields: readonly string[]): string[] {
+function leaks(run: DryRun, fields: readonly string[], shape: Shape): string[] {
   return fields.flatMap((field) => {
-    const fragments = Object.values(plantedLiterals(field)).map((value) =>
+    const fragments = Object.values(plantedLiterals(field)).flatMap((value) => [
       value.slice(0, FRAGMENT),
-    );
+      shape.encode(value.slice(0, FRAGMENT)),
+    ]);
     return [...run.files]
       .filter(([, text]) => fragments.some((fragment) => text.includes(fragment)))
       .map(([file]) => `${field} in ${file}`);
@@ -564,7 +587,9 @@ describe("secrets planted in the text of a study", () => {
           shape.text,
         );
         const run = await dryRun(plantedStudy, personaIds, shape.text);
-        expect(leaks(run, [...planted.map(({ field }) => field.field), ...persona])).toEqual([]);
+        expect(leaks(run, [...planted.map(({ field }) => field.field), ...persona], shape)).toEqual(
+          [],
+        );
         expect(verdict(run)).toEqual(verdict(control));
       },
     );

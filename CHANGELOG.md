@@ -8,6 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A key written in base64 or percent-encoded in a study's title, mission, task goals, participant
+  instructions, `actor.model` or persona file stays out of the run's files. The run redacted that
+  text for keys as written, and verify also decodes base64, percent-encoding and other escapes, so
+  verify found the key, graded the run `blocked`, and a hosted run failed its own verification. Each
+  writer of study text into the run, and the study warnings that quote it, now also replaces each
+  word that verify's scan reads as a secret with `[REDACTED_SECRET]`. When the words read clean one
+  at a time and only together hold a secret, as `Bearer` before a percent-encoded token does, the
+  whole text becomes `[REDACTED_SECRET]`.
+- `subject.envValues` refuses a value that verify would read as a secret or local path in base64,
+  percent-encoding or another escape. It refused only values that held one as written.
+
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
 humanish 0.133.1 keeps a hosted run writing run.json once its finished participants' traces

@@ -1,3 +1,4 @@
+import { redactEncodedText } from "../evidence/encoded-text.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
 import { isRecord } from "../run/type-guards.js";
@@ -225,7 +226,7 @@ export function personaBrief(
   scrub: (text: string) => string = (text) => text,
 ): NonNullable<ActorPersonaRef["brief"]> {
   const original = renderPersonaPromptSection(persona),
-    text = redactText(scrub(original));
+    text = redactEncodedText(scrub(original));
   return {
     compilerVersion: PERSONA_COMPILER_VERSION,
     text,
@@ -240,7 +241,7 @@ export function scrubPersonaBrief(
   scrub: (text: string) => string,
 ): ActorPersonaRef {
   if (!persona.brief) return persona;
-  const text = redactText(scrub(persona.brief.text));
+  const text = redactEncodedText(scrub(persona.brief.text));
   return {
     ...persona,
     brief: {

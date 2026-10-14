@@ -4,6 +4,7 @@
 // is closed on every exit.
 
 import { randomBytes } from "node:crypto";
+import { redactEncodedText } from "../evidence/encoded-text.js";
 import { redactText } from "../evidence/redaction.js";
 import { buildObserverData } from "../observer/data.js";
 import { splitObserverData } from "../observer/participant-items.js";
@@ -391,14 +392,14 @@ function runPublisher(args: {
   const { options, runId, createdAt, paths, runStatus, now, admit, participantsRan } = args;
   const observer = observerTarget(options);
   // The study's warnings join whatever events the route wrote, once, in every write. A warning can
-  // quote the study file, which may name a sandbox URL a participant needs, so each goes through
-  // the redaction a run failure gets.
+  // quote the study file, which may name a sandbox URL a participant needs or hold an encoded key,
+  // so each goes through the redaction study text gets.
   const studyWarnings: RunEvent[] = (options.warnings ?? []).map((message, index) => ({
     id: `event-study-warning-${String(index + 1).padStart(3, "0")}`,
     at: createdAt,
     level: "warn",
     type: "study.warning",
-    message: redactText(message),
+    message: redactEncodedText(message),
   }));
   // So do the host suspensions the heartbeat has seen by the time of the write.
   const withRunEvents = (events: readonly RunEvent[]): RunEvent[] => {
