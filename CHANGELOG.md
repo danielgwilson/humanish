@@ -37,9 +37,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   that holds JSON punctuation, a quote or a backslash still goes through the scrub of the whole
   text; no E2B id holds one. The timings below used synthetic bundles whose trace items repeat a
   recorded hosted run's, about 13 bytes per JSON token. With 10 participants of 10 MiB each, a
-  snapshot write took 4.4 seconds where it took 6.1, and the process peaked at 1.3 GiB where it
-  peaked at 2.7 GiB. With 25 participants of 30 MiB each, the scrub took 21 seconds of a
-  47-second snapshot write, and the process peaked at 4.4 GiB. (#1870)
+  snapshot write took 3.8 seconds where it took 4.7, and the process peaked at 1.3 GiB where it
+  peaked at 2.7 GiB. With 25 participants of 30 MiB each, the scrub took 18 seconds of a
+  37-second snapshot write, and the process peaked at 4.4 GiB. That run still cannot finish: each
+  30 MiB trace is written indented as a 44 MB file, past the 32 MiB humanish reads of one run
+  file, so the sandbox id sweep at finish and the export's verify both stop on it. (#1870)
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

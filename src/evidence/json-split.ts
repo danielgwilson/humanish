@@ -9,25 +9,52 @@
 
 import { isRecord } from "../run/type-guards.js";
 
+/** The JSON text of a value cut around the elements of one of its arrays. */
+export interface ArraySplit {
+  /** The array's elements, read as JSON.stringify reads them. */
+  readonly elements: readonly Record<string, unknown>[];
+  /** The value's JSON text up to and including the array's `[`. */
+  before(): string;
+  /** The value's JSON text from the array's `]` on. */
+  after(): string;
+}
+
 /**
- * `value` and the elements of its array `value[key]`, when JSON.stringify(value) holds each
- * element's text as JSON.stringify(element) writes it: `value` is a plain object that has `key`
- * among its own enumerable keys, `value[key]` is a plain array with no holes, and each element is
- * a plain object. A plain object has Object.prototype or null as its prototype, a plain array
- * Array.prototype, and neither has a toJSON. Otherwise undefined: the caller needs the whole text.
- * Getters and proxies are not detected.
+ * The cut of JSON.stringify(value) around the elements of its array `value[key]`, when that text
+ * holds each element's text as JSON.stringify(element) writes it: `value` is a plain object that
+ * has `key` among its own enumerable keys, `value[key]` is a plain array with no holes, and each
+ * element is a plain object. A plain object has Object.prototype or null as its prototype, a plain
+ * array Array.prototype, and neither has a toJSON. Otherwise undefined: the caller needs the whole
+ * text. Getters, proxies and a toJSON that changes `value` while it is serialized are not detected:
+ * the elements are read before anything is serialized. before() and after() serialize the members
+ * on their side of the array when called, so a caller that calls before(), serializes each element
+ * and then calls after() runs every toJSON in the order JSON.stringify(value) runs them.
  */
-export function splitAtArray(
-  value: unknown,
-  key: string,
-): { value: Record<string, unknown>; elements: Record<string, unknown>[] } | undefined {
+export function splitAtArray(value: unknown, key: string): ArraySplit | undefined {
   // JSON.stringify writes only own enumerable keys.
-  if (!isPlainRecord(value) || !Object.keys(value).includes(key)) return undefined;
+  if (!isPlainRecord(value)) return undefined;
+  const keys = Object.keys(value);
+  const at = keys.indexOf(key);
+  if (at === -1) return undefined;
   const array = value[key];
   if (!isPlainArray(array)) return undefined;
-  // Array.from reads a hole as undefined, where every would skip it.
-  const elements = Array.from(array);
-  return elements.every(isPlainRecord) ? { value, elements } : undefined;
+  // JSON.stringify reads the length once and then each index, so a hole reads as undefined and an
+  // own iterator is never called. Array.from would call that iterator, and every skips holes.
+  const elements: unknown[] = [];
+  for (let index = 0, length = array.length; index < length; index += 1)
+    elements.push(array[index]);
+  if (!elements.every(isPlainRecord)) return undefined;
+  // fromEntries keeps a key such as __proto__ an own property.
+  const members = (from: number, to?: number) =>
+    Object.fromEntries(keys.slice(from, to).map((name) => [name, value[name]]));
+  return {
+    elements,
+    before: () => JSON.stringify({ ...members(0, at), [key]: [] }).slice(0, -"]}".length),
+    after: () => {
+      const text = JSON.stringify(members(at + 1));
+      return text === "{}" ? "]}" : `],${text.slice(1)}`;
+    },
+  };
 }
 
 const hasToJson = (value: object): boolean =>

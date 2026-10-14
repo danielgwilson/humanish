@@ -41,7 +41,7 @@ export function containsSensitiveJson(value: unknown, key: string): boolean {
   const split = splitAtArray(value, key);
   if (split === undefined) return wholeTextSensitive(value);
   const { elements } = split;
-  const [prefix, suffix] = around(split.value, key);
+  const [prefix, suffix] = [split.before(), split.after()];
   if (elements.length === 0) return containsSensitive(prefix + suffix);
   // The scheme of a URL no slash or whitespace has followed, from an earlier piece.
   let scheme: string | undefined;
@@ -57,17 +57,6 @@ export function containsSensitiveJson(value: unknown, key: string): boolean {
 
 const wholeTextSensitive = (value: unknown): boolean =>
   containsSensitive(JSON.stringify(value) ?? "");
-
-/** The document's text before the first element of `value[key]` and after its last. */
-function around(value: Record<string, unknown>, key: string): [string, string] {
-  const keys = Object.keys(value);
-  const at = keys.indexOf(key);
-  const entries = (from: number, to?: number) =>
-    Object.fromEntries(keys.slice(from, to).map((name) => [name, value[name]]));
-  const before = JSON.stringify({ ...entries(0, at), [key]: [] });
-  const after = JSON.stringify(entries(at + 1));
-  return [before.slice(0, -"]}".length), after === "{}" ? "]}" : `],${after.slice(1)}`];
-}
 
 /** `piece` up to and including its first slash or whitespace, or all of it when it has none. */
 function head(piece: string): string {

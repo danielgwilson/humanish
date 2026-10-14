@@ -70,6 +70,11 @@ function afterHole(item: unknown): unknown[] {
   return items;
 }
 
+/** `items` with an own iterator that yields nothing, which JSON.stringify never calls. */
+function emptyIterator(items: unknown[]): unknown[] {
+  return Object.assign(items, { [Symbol.iterator]: function* () {} });
+}
+
 describe("publicSandboxView on a run bundle", () => {
   it("serializes no two participants' items in one string", () => {
     const bundle = {
@@ -188,6 +193,18 @@ describe("publicSandboxView on a run bundle", () => {
       ids: [HOST_ID],
       expected: { streams: [null, { url: label(HOST_ID) }] },
     },
+    {
+      name: "a bundle that is a boxed string, which JSON.stringify writes as its text",
+      value: Object.assign(Object(`seen ${HOST_ID}`) as object, { streams: [{ url: HOST_ID }] }),
+      ids: [HOST_ID],
+      expected: `seen ${label(HOST_ID)}`,
+    },
+    {
+      name: "streams whose own iterator yields nothing, which JSON.stringify reads by index",
+      value: { streams: emptyIterator([{ url: `https://6080-${HOST_ID}.e2b.app` }]) },
+      ids: [HOST_ID],
+      expected: { streams: [{ url: `https://6080-${label(HOST_ID)}.e2b.app` }] },
+    },
   ])("rewrites $name as the whole text did", ({ value, ids, expected }) => {
     expect(publicSandboxView(value, ids)).toStrictEqual(expected);
     expect(wholeTextView(value, ids)).toStrictEqual(expected);
@@ -196,14 +213,6 @@ describe("publicSandboxView on a run bundle", () => {
   it("returns the bundle itself when no stream and no shell member names an id", () => {
     const value = { runId: "r", streams: [{ at: new Date(0) }, { gone: undefined }] };
     expect(publicSandboxView(value, [HOST_ID])).toBe(value);
-  });
-
-  it("keeps a stream that names no id as given, with the JSON text of the whole-text scrub", () => {
-    const quiet = { at: new Date("2026-10-14T00:00:00.000Z"), gone: undefined };
-    const value = { streams: [quiet, { url: HOST_ID }] };
-    const view = publicSandboxView(value, [HOST_ID]);
-    expect(view.streams[0]).toBe(quiet);
-    expect(JSON.stringify(view)).toBe(JSON.stringify(wholeTextView(value, [HOST_ID])));
   });
 
   it("leaves out a streams member that JSON.stringify leaves out", () => {
@@ -217,6 +226,52 @@ describe("publicSandboxView on a run bundle", () => {
     const value = { streams: [{ text: "safe" }, { at: 1424242424242 }] };
     expect(() => wholeTextView(value, ["4242424242"])).toThrow(SyntaxError);
     expect(() => publicSandboxView(value, ["4242424242"])).toThrow(SyntaxError);
+  });
+});
+
+describe("publicSandboxView on a run bundle once a label goes in", () => {
+  it("reads a stream that names no id back as JSON once another stream names one", () => {
+    const quiet = { at: new Date("2026-10-14T00:00:00.000Z"), gone: undefined };
+    const value = { streams: [quiet, { url: HOST_ID }] };
+    const expected = { streams: [{ at: "2026-10-14T00:00:00.000Z" }, { url: label(HOST_ID) }] };
+    expect(publicSandboxView(value, [HOST_ID])).toStrictEqual(expected);
+    expect(wholeTextView(value, [HOST_ID])).toStrictEqual(expected);
+  });
+
+  it("returns a view that reads nothing of the input", () => {
+    // A getter and a toJSON that name the sandbox once the view has been returned.
+    let returned = false;
+    const late = (): string => (returned ? HOST_ID : "safe");
+    const value = {
+      get note() {
+        return late();
+      },
+      streams: [{ value: { toJSON: late } }, { url: HOST_ID }],
+    };
+    const view = publicSandboxView(value, [HOST_ID]);
+    returned = true;
+    expect(view).toStrictEqual({
+      note: "safe",
+      streams: [{ value: "safe" }, { url: label(HOST_ID) }],
+    });
+  });
+
+  it("calls each toJSON in the order the whole text does", () => {
+    // A toJSON can read state an earlier one set, so the order shows in the output.
+    const called: string[] = [];
+    const mark = (name: string) => ({
+      toJSON: () => {
+        called.push(name);
+        return name;
+      },
+    });
+    const value = {
+      first: mark("first"),
+      streams: [{ a: mark("a") }, { b: mark("b"), url: HOST_ID }],
+      last: mark("last"),
+    };
+    publicSandboxView(value, [HOST_ID]);
+    expect(called).toEqual(["first", "a", "b", "last"]);
   });
 });
 
@@ -305,15 +360,10 @@ describe("publicSandboxView against the whole-text scrub", () => {
       fc.property(viewCases(), ({ value, ids }) => {
         const expected = outcome(() => wholeTextView(value, ids));
         const actual = outcome(() => publicSandboxView(value, ids));
-        if (typeof expected === "string" || typeof actual === "string") {
-          expect(actual).toStrictEqual(expected);
-        } else {
-          // A stream that names no id comes back as given, where the whole-text scrub returned
-          // JSON.parse's copy of it once anything else changed, so the JSON texts are compared.
-          expect(actual.text).toBe(expected.text);
-          // Both return the value itself when nothing in it changed.
+        expect(actual).toStrictEqual(expected);
+        // Both return the value itself when nothing in it changed.
+        if (typeof expected !== "string" && typeof actual !== "string")
           expect(actual.value === value).toBe(expected.value === value);
-        }
         if (typeof expected === "string") seen.threw += 1;
         else if (expected.text !== JSON.stringify(redactSandboxIds(value))) {
           seen.changed += 1;
@@ -343,8 +393,8 @@ const ALPHANUMERIC = range("abcdefghijklmnopqrstuvwxyz0123456789");
 
 /**
  * Ids drawn from E2B's shape, short ids that start like an escape's tail or hold characters JSON
- * or a RegExp escapes, ids holding `{}[],:` that can span two tokens of the whole text, digit ids
- * a number can hold, and parts of the key `streams`.
+ * escapes, ids holding `{}[],:` that can span two tokens of the whole text, digit ids a number can
+ * hold, and parts of the key `streams`.
  */
 function sandboxIds(): fc.Arbitrary<string[]> {
   const e2b = fc
@@ -352,7 +402,7 @@ function sandboxIds(): fc.Arbitrary<string[]> {
     .map((rest) => `i${rest}`);
   const escaping = fc.string({
     unit: fc.constantFrom(
-      ...range("nrtbfu0123abcdef-./*+?^$()| é😀{}[],:"),
+      ...range("nrtbfu0123abcdef-./ é😀{}[],:"),
       '"',
       "\\",
       "\n",
@@ -382,8 +432,8 @@ function sandboxIds(): fc.Arbitrary<string[]> {
 /**
  * A value whose strings, keys and numbers hold the ids whole, cut, split at JSON punctuation, next
  * to escapes and as labels, or a bundle of such members around a `streams` array. Most streams
- * are plain objects; a hole, a stream that is not one, or a stream with a toJSON that reads its
- * index is mixed in.
+ * are plain objects; a hole, a stream that is not one, a stream with a toJSON that reads its index,
+ * or streams with an own iterator is mixed in.
  */
 function viewCases(): fc.Arbitrary<{ value: unknown; ids: string[] }> {
   return sandboxIds().chain((ids) => {
@@ -444,6 +494,7 @@ function viewCases(): fc.Arbitrary<{ value: unknown; ids: string[] }> {
           }, []),
         ),
       },
+      { weight: 1, arbitrary: fc.array(stream, { minLength: 1, maxLength: 4 }).map(emptyIterator) },
     );
     const members = fc.array(fc.tuple(key, value), { maxLength: 3 });
     const bundle = fc
