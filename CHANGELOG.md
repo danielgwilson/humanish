@@ -10,17 +10,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
-- `humanish verify` checks a run folder for links and special files twice where it checked four
-  times: once when it binds the run and once after the public-safety scan. The check looks at 32
-  entries at a time where it looked at one. The check after the scan still refuses a run whose file
-  was swapped for a link or a FIFO while the scan read it. On a run folder of 15,000 entries on a
-  16-core host at load 1, verify took 2.6 s where it took 7.5 s (median of 5). With 16 busy
-  processes it took 6.0 s where it took 13.6 s (median of 3). Rendering the Observer, analysis,
-  feedback and export run the same check and gain the concurrency. (#1796)
+- `humanish verify` checks a run folder for links and special files 32 entries at a time where it
+  checked one at a time. It still runs the check 4 times per verify. On a run folder of 15,000
+  entries on a 16-core host at load 3 to 5, verify took 3.3 s where it took 7.7 s (median of 5).
+  With 16 busy processes it took 7.8 s where it took 14.0 s (median of 3). Rendering the Observer,
+  analysis, feedback and export run the same check and gain the concurrency. (#1796)
 - The screenshot check inflates frames on libuv's thread pool where it inflated them one at a time
   on the main thread. Up to 4 frames inflate at once on Node's default pool of 4 threads. It reads a
   frame's rows 1 MiB at a time where it held them whole, about 4 MB for a 1440x950 capture. On a
-  run of 3 participants with 3,000 real 147 KB screenshots, verify took 4.4 s where it took 10.4 s
+  run of 3 participants with 3,000 real 147 KB screenshots, verify took 4.2 s where it took 10.3 s
   (median of 5, with the change above). Capture and analysis run the same check. (#1780)
 
 ### Fixed

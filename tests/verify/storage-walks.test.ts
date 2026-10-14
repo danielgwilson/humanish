@@ -12,7 +12,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { verifyRun } from "../../src/verify/verify.js";
 
-type Moment = "runRootRealpath";
+type Moment = "runRootRealpath" | "runJsonOpen" | "scanListing";
 
 const watch = vi.hoisted(() => ({
   runRoot: "",
@@ -38,6 +38,20 @@ vi.mock("node:fs/promises", async (importOriginal) => {
         await change("runRootRealpath");
       return result;
     }) as typeof actual.realpath,
+    // verify's first read after binding opens run.json.
+    open: (async (...args: Parameters<typeof actual.open>) => {
+      const handle = await actual.open(...args);
+      if (watch.runRoot !== "" && String(args[0]) === `${watch.runRoot}/run.json`)
+        await change("runJsonOpen");
+      return handle;
+    }) as typeof actual.open,
+    // The storage check lists a folder with options; the public-safety scan lists it without.
+    readdir: (async (...args: Parameters<typeof actual.readdir>) => {
+      const [directory, options] = args;
+      if (watch.runRoot !== "" && options === undefined && String(directory) === watch.runRoot)
+        await change("scanListing");
+      return actual.readdir(...args);
+    }) as typeof actual.readdir,
     // Each lstat under many/ takes at least 1 ms, so calls a walk overlaps are in flight together.
     lstat: (async (...args: Parameters<typeof actual.lstat>) => {
       if (watch.runRoot === "" || !String(args[0]).startsWith(`${watch.runRoot}/many/`))
@@ -96,6 +110,18 @@ describe("the run storage check", () => {
   it("refuses to prepare a run folder whose file has a second name, even if the name goes", async () => {
     await secondNameGoneWhileBinding();
     await expect(prepareRunArtifactPaths(cwd, runId)).rejects.toThrow(
+      "humanish run leaves must be single-link regular files",
+    );
+  });
+
+  // verify reads run.json, the reviews and the receipts between binding and the scan. The check
+  // before the scan sees a second name made during those reads, though the scan itself would not.
+  it("refuses a run whose file gains a second name after binding and loses it before the scan", async () => {
+    const secondName = path.join(cwd, "second-name.txt");
+    watch.changes.runJsonOpen = () =>
+      link(path.join(watch.runRoot, "many", "note-0.txt"), secondName);
+    watch.changes.scanListing = () => unlink(secondName);
+    await expect(verifyRun(cwd, runId)).rejects.toThrow(
       "humanish run leaves must be single-link regular files",
     );
   });
