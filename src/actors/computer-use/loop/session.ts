@@ -6,6 +6,7 @@ import type {
   TracePage,
 } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
+import { redactEncodedText } from "../../../evidence/encoded-text.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
 import { StreakRecord } from "./streak.js";
@@ -211,9 +212,15 @@ export class LoopSession {
 
   // Model-authored narration: literal-scrub known provisioned values, then pattern-redact.
   // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
-  // alone cannot catch it; the run's scrubKnownValues, injected as scrubText, closes that.
+  // alone cannot catch it; the run's scrubKnownValues, injected as scrubText, closes that. The
+  // participant receives its instructions as written, so it can repeat a key the study wrote
+  // base64- or percent-encoded, which verify decodes; redactEncodedText removes that one too.
+  // The known values are scrubbed again last: a marker written before other text can spell one,
+  // as `[REDACTED_SECRET] and` spells `SECRET] and`.
   redactNarration(text: string): string {
-    return this.settings.redaction.redactText(this.scrubText(text));
+    return this.scrubText(
+      redactEncodedText(this.settings.redaction.redactText(this.scrubText(text))),
+    );
   }
 
   /** Hand a watcher the trace so far with the running usage, without waiting on it. */

@@ -233,7 +233,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
   try {
     browser = await launch({ browserCommand, timeoutMs: options.timeoutMs });
   } catch (error) {
-    const reason = `Scripted browser launch failed: ${compactBrowserError(error)}`;
+    const reason = `Scripted browser launch failed: ${compactBrowserError(error, scrub)}`;
     const capture = await persistScriptedFailureCapture({
       appUrl: options.appUrl,
       artifactRoot: preparedArtifactRoot,
@@ -320,7 +320,7 @@ async function runScriptedJourney(args: {
   const started = Date.now();
   const deadline = started + args.timeoutMs;
   const tracePath = tracePathForBrowserSurface(args.surface);
-  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
+  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000), args.scrub);
   let page: ScriptedPageLike | null = null;
   const steps: BrowserPersonaStepCapture[] = [];
   let executedSteps = 0;
@@ -361,7 +361,7 @@ async function runScriptedJourney(args: {
     await assertScriptedOutputRoot(args.artifactRoot);
     timedOut = error instanceof ScriptedJourneyTimeoutError;
     const now = new Date().toISOString();
-    const reason = compactBrowserError(error);
+    const reason = compactBrowserError(error, args.scrub);
     if (steps.length === 0) {
       steps.push(
         ...buildBlockedBrowserPersonaSteps({
