@@ -10,6 +10,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- verify's per-file scan finds a key written with a JSON escape right after a letter HTML reference,
+  as in `&#65;\u0073k-proj-...`. The scan decoded both in one reading, `Ask-proj-...`, where the key
+  pattern's word boundary fails, so a text file other than run.json passed with the key in it. The
+  scan now also reads the text with its JSON, JS and percent escapes decoded and its references left
+  as written, that reading with transfer escapes expanded, and the text with only its references
+  decoded. The second finds a key behind a letter reference when a quoted-printable soft break
+  splits it. The third finds a key of fixed length, such as `npm_` and 36 characters, whose last
+  character is a reference followed by an escaped letter. The scan also decodes the base64 or hex
+  run that starts right after a reference, as in `&#65;dG9r...`, where decoding the reference adds a
+  letter to the run and shifts it out of alignment. The redacted export's text check, the trace page
+  path check and the known-value scrubs read the same readings, so they gain all three. A scrub
+  whose output still holds a value in one of them, as a value with `&amp;` or `&#65;` in it can
+  after two layers of encoding, now replaces the whole text with the marker as it does for other
+  values encoded twice. On a 4 MiB synthetic page of references, inline JSON escapes and
+  percent-encoded links, the scan took 1130 ms where it took 767 ms (median of 15). On a real 2 MiB
+  Observer page and a 1.1 MiB run.json, where the new readings match existing ones, it took within
+  3% of its earlier time. (#1872)
 - `humanish observe` writes the Observer page of a run whose participants' traces together pass
   V8's longest string, 536,870,888 characters. The page, `observer-feed.json` and the page's decode
   in the browser each held every participant's items in one string, so past that size `observe`
