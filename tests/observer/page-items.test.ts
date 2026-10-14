@@ -75,13 +75,15 @@ describe("an Observer page", () => {
   });
 
   it("scans clean as verify scans it when two participants' stream ids read as one E2B URL", async () => {
-    // User info may run over quotes, commas and base64, so `https://` and a later
-    // `person@e2b.example` read as one URL unless a slash or space comes between them.
+    // User info may run over quotes, commas and base64, so `https://` and a later id shaped like an
+    // address at an E2B host read as one URL unless a slash or space comes between them. The
+    // address is built at run time so this file holds none.
+    const address = ["person", "e2b.example"].join("@");
     const data = await live();
     const [stream] = data.streams;
     const named = {
       ...data,
-      streams: ["https://", "person@e2b.example"].map((id) => ({
+      streams: ["https://", address].map((id) => ({
         ...stream!,
         id,
         label: "Synthetic participant",

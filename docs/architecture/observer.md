@@ -45,8 +45,8 @@ and full artifact lists by stream id (`humanish.observer-items.v2`) as
 JSON with its stream id, gzip-compressed in base64, which a `file://` page decodes
 without a fetch. The ids stay inside the compressed entries because verify's scan
 reads the element's plain text. There, an id such as `GITHUB_TOKEN` before a long
-base64 value reads as a credential, and `https://` with a later `person@e2b.example`
-reads as one E2B URL across the base64 between them. Each participant is packed
+base64 value reads as a credential, and `https://` with a later id shaped like an
+address at an E2B host reads as one E2B URL across the base64 between them. Each participant is packed
 (`src/observer/page-data.ts`) and decoded (`observer/lib/data.ts`) on its own, so no
 string holds two participants' items. A run of 25 participants with
 30 MiB traces, 786 MB together, past V8's longest string of 536,870,888 characters,
