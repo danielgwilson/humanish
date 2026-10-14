@@ -127,7 +127,7 @@ export class IdleWatcher {
       wake: ending.wake,
       ...(ending.observation === undefined ? {} : { observation: ending.observation }),
       ...(ending.stop === undefined ? {} : { stop: ending.stop }),
-      hint: hintFor(ending, grows && limitMs < capMs ? capMs : undefined),
+      hint: hintFor(ending),
       waits: {
         ...splitWatch(lengths, limitMs, ending.ms),
         sessionEnded: ending.stop !== undefined,
@@ -303,20 +303,16 @@ function splitWatch(
 /**
  * The next request's note. A clock ending says nothing: the clock text that follows says it. A
  * small change is named by its place, so a participant is not told the screen changed when what
- * changed was a counter or a timestamp. `growsToMs` adds the growth sentence when the next watch
- * doubles.
+ * changed was a counter or a timestamp. The note says nothing of the next wait's length: a
+ * participant told it names that length and keeps waiting.
  */
-function hintFor(ending: Ending, growsToMs: number | undefined): string | undefined {
+function hintFor(ending: Ending): string | undefined {
   const lasted = `Your wait lasted ${duration(ending.ms)}`;
-  const grows =
-    growsToMs === undefined
-      ? ""
-      : ` A wait right after it can last twice as long, at most ${duration(growsToMs)}.`;
   const { seen } = ending;
   switch (ending.wake) {
     case "changed":
       return seen?.verdict === "settled" && seen.small
-        ? `${lasted} and ended when a small part of the screen changed and then stayed the same for over a minute, ${place(seen.area)}.${grows}`
+        ? `${lasted} and ended when a small part of the screen changed and then stayed the same for over a minute, ${place(seen.area)}.`
         : `${lasted} and ended when the screen changed.`;
     case "speech":
       return `${lasted} and ended when you heard speech.`;
@@ -326,10 +322,10 @@ function hintFor(ending: Ending, growsToMs: number | undefined): string | undefi
     // never says the screen stayed the same.
     case "limit":
       if (seen?.verdict === "changing" && seen.lookSoon)
-        return `${lasted}; a large part of the screen was changing at its last check.${grows}`;
+        return `${lasted}; a large part of the screen was changing at its last check.`;
       if (seen?.verdict !== "settled" && seen?.held !== undefined)
-        return `${lasted}; a small part of the screen changed and stayed the same, ${place(seen.held)}. A small change does not end a wait.${grows}`;
-      return `${lasted}; no change on the screen held still long enough to end it.${grows}`;
+        return `${lasted}; a small part of the screen changed and stayed the same, ${place(seen.held)}. A small change does not end a wait.`;
+      return `${lasted}; no change on the screen held still long enough to end it.`;
     case "stalled":
       return `${lasted}; the screen could not be checked during it.`;
     case "clock":

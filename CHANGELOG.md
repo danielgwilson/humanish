@@ -17,11 +17,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   lasts at most `actor.maxWaitMs`, or 10 minutes when the study does not set it. The named minutes
   set where the doubling of quiet turns in a row starts: a participant that names 1 minute on each
   turn of a quiet screen waits 60, 120, 240 and 480 seconds, then 10 minutes at a time, and starts
-  again from 1 minute after a large change on the screen. The tool's description says that while
-  nothing changes, each further wait in a row lasts at least twice as long, up to a limit. Minutes that are
-  not a finite number above zero make a wait with no length, which lasts `idleWaitMs`. A call to a
-  function the participant does not have is answered that there is no such tool and is a wait with
-  no length, so a reply of only such a call does not end the session. A call sent with other actions
+  again from 1 minute after a large change on the screen. The tool's description says the wait ends
+  early when something on the screen changes, that it does not reload anything, and that a later
+  wait in a row can last longer than asked; it states no schedule, for the reason under Changed.
+  Minutes that are not a finite number above zero make a wait with no length, which lasts
+  `idleWaitMs`. A call to a function the participant does not have is answered that there is no
+  such tool and is a wait with no length, so a reply of only such a call does not end the session.
+  A call sent with other actions
   goes to the desktop for at most `actor.maxWaitMs`, as any such wait does, and its output says such
   a wait does not end early. In a prototype probe of three 15-minute runs, `gpt-5.6-sol` called the
   tool on 22 of 25 idle turns and named 1 to 15 minutes: the session time left on two
@@ -37,6 +39,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   20 seconds by default. Before, a turn whose named waits came to 1 ms lasted 1 ms, then 2 ms, and
   sent its requests nearly back to back. The Codex tool description and the Claude Code prompt state
   the floor (#1862).
+- The note after a wait no longer says how long the next wait can last. In live hours on an issue
+  list that gains an issue only on reload, OpenAI participants whose tool description and notes
+  said each wait in a row lasts twice as long named 1, 2, 4, 8 and 10 minutes in turn. One of three
+  never reloaded and reported that no new issue appeared when four had; the other two first
+  reloaded after 18 and 26 minutes. The note still says how long the wait lasted and why it ended.
+  This also removes the note's misleading length after a small change ended a wait early (#1869).
 
 ## 0.132.0: An OpenAI participant's closing report reads the prompt cache (2026-10-13)
 

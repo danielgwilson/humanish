@@ -174,13 +174,13 @@ describe("a Codex participant that asks for a long wait", () => {
     );
   });
 
-  it("is told its wait ended at its limit, and that the next one in a row can last longer", async () => {
+  it("is told its wait ended at its limit", async () => {
     const { result, firstReply } = await waitInCall(60_000);
 
     expect(result.completionReason).toBe("goal_satisfied");
     expect(waitTitles(result)).toEqual([["wait 60000ms", "limit"]]);
     expect(firstReply.contextHint).toBe(
-      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it.",
     );
   });
 
@@ -190,7 +190,7 @@ describe("a Codex participant that asks for a long wait", () => {
     { options: { speechEnabled: true }, perWait: 30_000, watched: 600_000, shortest: 5_000 },
     { options: { idleWaitMs: 60_000 }, perWait: 120_000, watched: 600_000, shortest: 60_000 },
   ])(
-    "is told a call of only waits lasts $shortest to $watched ms and doubles, and a wait among other actions at most $perWait ms",
+    "is told a call of only waits lasts $shortest to $watched ms, can last longer in a row, and a wait among other actions at most $perWait ms",
     async ({ options, perWait, watched, shortest }) => {
       await waitInCall(1_000, options);
 
@@ -200,8 +200,9 @@ describe("a Codex participant that asks for a long wait", () => {
       expect(native.descriptions[0]).toContain(
         `after its waits' ms, together at least ${shortest} ms and at most ${watched} ms.`,
       );
+      expect(native.descriptions[0]).toContain("It does not reload anything.");
       expect(native.descriptions[0]).toContain(
-        `each further such call in a row waits at least twice as long as the one before, up to ${watched} ms`,
+        `When such calls come one after another, a later one can wait longer than its ms, up to ${watched} ms`,
       );
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);
     },

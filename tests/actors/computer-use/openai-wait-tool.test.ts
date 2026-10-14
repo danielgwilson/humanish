@@ -203,7 +203,7 @@ describe("the wait_for_change tool", () => {
     ]);
   });
 
-  it("doubles from the minutes it names on each quiet turn in a row, as its description says", async () => {
+  it("doubles from the minutes it names on each quiet turn in a row, and says only that a later wait can last longer", async () => {
     const { result, bodies, sentAt } = await runOpenAi([
       waitForChangeReply(1, '{"minutes":3}'),
       waitForChangeReply(2, '{"minutes":3}'),
@@ -217,7 +217,7 @@ describe("the wait_for_change tool", () => {
         call_id: "call_1",
         output: [
           {
-            text: "Your wait lasted 3 minutes; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+            text: "Your wait lasted 3 minutes; no change on the screen held still long enough to end it.",
           },
           { type: "input_image" },
         ],
@@ -227,9 +227,8 @@ describe("the wait_for_change tool", () => {
       { type: "computer" },
       {
         name: "wait_for_change",
-        description: expect.stringContaining(
-          "each further wait in a row lasts at least twice as long as the one before, up to a limit.",
-        ),
+        description:
+          "Wait, then look at the screen again. The wait ends early when something on the screen changes; it does not reload anything. When waits come one after another, a later one can last longer than asked, up to a limit.",
       },
     ]);
   });

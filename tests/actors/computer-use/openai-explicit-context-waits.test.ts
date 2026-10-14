@@ -19,7 +19,7 @@ function png(width: number, height: number): Buffer {
 
 const SCREEN = png(1280, 800);
 const HINT =
-  "Your wait lasted 3 minutes; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.";
+  "Your wait lasted 3 minutes; no change on the screen held still long enough to end it.";
 
 function request(contextHint?: string): CuaTurnRequest {
   return {

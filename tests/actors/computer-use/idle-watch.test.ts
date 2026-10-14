@@ -135,7 +135,7 @@ describe("the watch length over idle turns in a row", () => {
     ]);
     expect(watchesOf(run.result)[5]?.area).toEqual(LABEL);
     expect(run.requests[6]?.hint).toBe(
-      "Your wait lasted 75 seconds and ended when a small part of the screen changed and then stayed the same for over a minute, at x 16, y 16 (48 x 16 pixels). A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 75 seconds and ended when a small part of the screen changed and then stayed the same for over a minute, at x 16, y 16 (48 x 16 pixels).",
     );
   });
 
@@ -218,7 +218,7 @@ describe("a named wait", () => {
       0, 60_000, 180_000, 420_000, 900_000, 1_500_000, 2_100_000,
     ]);
     expect(run.requests[1]?.hint).toBe(
-      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 60 seconds; no change on the screen held still long enough to end it.",
     );
   });
 
@@ -304,7 +304,7 @@ describe("the turn a watch ends", () => {
     ]);
     expect(run.requests[2]?.observation.screenshot).toBe(label);
     expect(run.requests[2]?.hint).toBe(
-      "Your wait lasted 10 seconds; no change on the screen held still long enough to end it. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 10 seconds; no change on the screen held still long enough to end it.",
     );
   });
 
@@ -318,7 +318,7 @@ describe("the turn a watch ends", () => {
     expect(watchesOf(run.result).map((watch) => watch.wake)).toEqual(["limit"]);
     expect(run.requests[1]?.observation.screenshot).toBe(NEW_ROW);
     expect(run.requests[1]?.hint).toBe(
-      "Your wait lasted 5 seconds; a large part of the screen was changing at its last check. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 5 seconds; a large part of the screen was changing at its last check.",
     );
   });
 
@@ -339,7 +339,7 @@ describe("the turn a watch ends", () => {
       [120_000, "limit"],
     ]);
     expect(run.requests[1]?.hint).toBe(
-      "Your wait lasted 2 minutes; a small part of the screen changed and stayed the same, at x 32, y 0 (48 x 16 pixels). A small change does not end a wait. A wait right after it can last twice as long, at most 10 minutes.",
+      "Your wait lasted 2 minutes; a small part of the screen changed and stayed the same, at x 32, y 0 (48 x 16 pixels). A small change does not end a wait.",
     );
   });
 
