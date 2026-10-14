@@ -194,10 +194,11 @@ const recoverLatin1 = (text: string): string =>
 /**
  * The text as written, decoded with percent escapes as bytes and as UTF-8, expanded, the text as
  * written and decoded with Latin-1 runs read as UTF-8, decoded with HTML references left as
- * written, and with only HTML references decoded.
+ * written and that expanded, and with only HTML references decoded.
  */
 export function modelReadings(text: string): string[] {
   const decoded = modelDecode(text);
+  const unescaped = decodeCodeEscapes(text, percentAsBytes);
   return [
     ...new Set([
       text,
@@ -206,7 +207,8 @@ export function modelReadings(text: string): string[] {
       expandTransfer(decoded),
       recoverLatin1(text),
       recoverLatin1(decoded),
-      decodeCodeEscapes(text, percentAsBytes),
+      unescaped,
+      expandTransfer(unescaped),
       decodeReferences(text),
     ]),
   ];

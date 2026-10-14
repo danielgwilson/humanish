@@ -135,6 +135,14 @@ describe("scanEncodedText", () => {
     expect(scanEncodedText(text).sensitive).toBe(true);
   });
 
+  it("finds a key behind a letter reference that a quoted-printable soft break splits", () => {
+    const key = "sk-" + "proj-" + "syntheticvalue1234567890abcdefghijklmn";
+    // The soft break is `=` and a JSON-escaped newline. Expanding it joins the key, and decoding
+    // the reference as well joins `A` to it.
+    const text = `{"t":"&#65;${key.slice(0, 15)}=\\n${key.slice(15)}"}`;
+    expect(scanEncodedText(text).sensitive).toBe(true);
+  });
+
   it("calls an encoded archive or a long encoded binary run opaque", () => {
     expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
     expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);

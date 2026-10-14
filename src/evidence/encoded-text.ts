@@ -111,6 +111,8 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
   // it, `&#65;\u0073k-` to `Ask-`, where a pattern's word boundary fails. With references left as
   // written, the `;` before the key keeps that boundary. A key that ends in a reference before an
   // escaped letter, `&#108;\u0041`, keeps the boundary after it when only references are decoded.
+  // The reading with references left as written is also read with transfer escapes expanded, as
+  // the decoded one is, for a key that a quoted-printable soft break splits.
   const unescaped = decodeCodeEscapes(text, decodePercentBytes);
   const decoded = decodeReferences(unescaped);
   // The UTF-8 reading differs only where a percent escape holds a byte of 0x80 or more, which
@@ -130,6 +132,7 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
         expanded,
         ...recovered.map(latin1RunsAsUtf8),
         unescaped,
+        decodeTransferEscapes(unescaped),
         decodeReferences(text),
       ]),
     ],
@@ -141,7 +144,8 @@ function readings(text: string): { decoded: string; expanded: string; all: strin
  * escapes read as UTF-8, decodeEscapes with transfer escapes expanded, the text as written and
  * decoded with each run of U+0080 to U+00FF characters read as UTF-8 bytes, which undoes text that
  * a reader already decoded one byte per character, decodeEscapes with HTML references left as
- * written, and the text with only HTML references decoded. Either percent reading can split a value that the other keeps whole, as `%E2%80%80`
+ * written and that reading with transfer escapes expanded, and the text with only HTML references
+ * decoded. Either percent reading can split a value that the other keeps whole, as `%E2%80%80`
  * (U+2000, a space, in UTF-8) does.
  */
 export function readingsOf(text: string): string[] {
