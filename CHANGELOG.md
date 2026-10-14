@@ -26,7 +26,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish analyze --question`) refuse a value that verify would read as a secret or local path,
   as written or in base64, percent-encoding or another escape. envValues and the question were
   refused only when they held one as written, and `actor.model` was not checked. The model is
-  refused because the provider is asked for it by name.
+  refused because the provider is asked for it by name. `runStudy` refuses such a model in a
+  StudyConfig built without `parseStudy` too.
 
 ## 0.133.1: Hosted runs keep writing run.json past 512 MiB of traces (2026-10-14)
 
