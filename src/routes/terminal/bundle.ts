@@ -1,6 +1,6 @@
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { StudyCaps, StudyRuntimeAuth } from "../../study/types.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import {
   REVIEW_SCHEMA,
@@ -382,7 +382,7 @@ function terminalRunBundle(
       // The author mission is public-safe committed study text. It is recorded plaintext as the goal,
       // redacted defensively before persisting (it never carries a secret, but the harness never
       // trusts that). The full composed prompt is bound by digest, not text.
-      goal: redactText(args.mission),
+      goal: redactEncodedText(args.mission),
       source: `study:${args.studyId}`,
       sourceDigest: args.persona.promptDigest,
     },

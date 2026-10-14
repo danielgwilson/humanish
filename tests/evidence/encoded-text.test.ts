@@ -5,12 +5,20 @@ import { describe, expect, it } from "vitest";
 import {
   decodeEscapes,
   readingsOf,
+  redactEncodedText,
   scanEncodedText,
   scanEncodedTextCached,
 } from "../../src/evidence/encoded-text.js";
-import { sensitivePatterns } from "../../src/evidence/redaction.js";
+import { REDACTION_MARKERS, redactText, sensitivePatterns } from "../../src/evidence/redaction.js";
 import { propertyParameters, scrubInputs } from "../helpers/scrub-arbitraries.js";
 import { modelReadings } from "../helpers/scrub-model.js";
+import {
+  ALNUM,
+  ORDINARY_VALUES,
+  SECRET_ENCODINGS,
+  SECRET_FORMATS,
+  synthetic,
+} from "../helpers/secret-formats.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the scan detects it.
 const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -241,5 +249,34 @@ describe("scanEncodedTextCached", () => {
       });
     }
     expect(scanEncodedTextCached(secret).sensitive).toBe(true);
+  });
+});
+
+describe("redactEncodedText", () => {
+  const percentEveryByte = (text: string): string =>
+    [...Buffer.from(text)].map((byte) => `%${byte.toString(16).padStart(2, "0")}`).join("");
+
+  it.each(
+    Object.entries(SECRET_ENCODINGS).flatMap(([encoding, encode]) =>
+      SECRET_FORMATS.map((format) => [format.name, encoding, encode(format.text)] as const),
+    ),
+  )("redacts %s %s where it stands", (_name, _encoding, secret) => {
+    const redacted = redactEncodedText(`1. Sign in with ${secret} today.`);
+    expect(scanEncodedText(redacted).sensitive).toBe(false);
+    expect(redacted).toMatch(/^1\. Sign in with .* today\.$/);
+  });
+
+  it.each(ORDINARY_VALUES.map((value) => [value.name, value.text] as const))(
+    "leaves %s as written",
+    (_name, text) => {
+      expect(redactEncodedText(text)).toBe(text);
+    },
+  );
+
+  it("replaces the whole text when only its pieces read together hold a secret", () => {
+    // Neither `Bearer` nor the percent-encoded token is a secret alone; decoded together they are.
+    const text = `Send Authorization: Bearer ${percentEveryByte(synthetic(ALNUM, 32, 7))}`;
+    expect(scanEncodedText(redactText(text)).sensitive).toBe(true);
+    expect(redactEncodedText(text)).toBe(REDACTION_MARKERS.secret);
   });
 });

@@ -308,6 +308,92 @@ describe("scripted scrubs its known values from the step trace", () => {
   });
 });
 
+// A step whose label holds a key is renamed by its position: step-01 for the first step, with -2,
+// -3 and on when another step has that id. A known value can be one of those ids.
+describe("scripted gives a renamed step no id that holds a known value", () => {
+  const key = ["sk", "proj", "planted-label-api-key-value"].join("-");
+  const firstStep = [
+    "    - id: open-catalog",
+    `      label: Open the catalog ${Buffer.from(key).toString("base64")}`,
+    "      action: goto",
+    "      path: /",
+  ];
+
+  /** A live scripted run of `steps` with `e2b` as the E2B key. */
+  async function runSteps(e2b: string, steps: readonly string[]) {
+    await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+    const scenario = ["schema: humanish.scenario.v1", "id: renamed-steps", "title: Renamed steps"];
+    const browser = ["goal: Open the catalog.", "browser:", "  startPath: /", "  steps:"];
+    await writeFile(
+      path.join(cwd, "humanish", "scenarios", "renamed-steps.yaml"),
+      [...scenario, ...browser, ...steps, ""].join("\n"),
+      "utf8",
+    );
+    return withLoopbackApp((appUrl) =>
+      runScripted({
+        cwd,
+        config: parsed({
+          schema: STUDY_SCHEMA,
+          id: "known-secrets-renamed-steps",
+          route: "scripted",
+          mode: "live",
+          subject: { source: "app-url", appUrl },
+          actor: { type: "scripted-browser", persona: "synthetic-new-user" },
+          scenario: "renamed-steps",
+          execution: { target: "local", timeoutMs: 30_000 },
+          review: { analysis: false },
+        }),
+        dryRun: false,
+        env: { E2B_API_KEY: e2b },
+        deps: { launchBrowser: async () => urlRecordingBrowser() },
+      }),
+    );
+  }
+
+  it("passes over a numbered id that holds one", async () => {
+    const e2b = ["step", "01", "2"].join("-");
+    const secondStep = ["    - id: step-01", "      label: Open the landing page"];
+    const result = await runSteps(e2b, [
+      ...firstStep,
+      ...secondStep,
+      "      action: goto",
+      "      path: /",
+    ]);
+    expect(result.error).toBeUndefined();
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    expect((await runFiles(runDir)).filter((file) => file.includes(e2b))).toEqual([]);
+    expect(await filesHolding(runDir, [e2b])).toEqual([]);
+    const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
+    expect(trace.steps.map((step: { id: string }) => step.id)).toEqual(["step-01-3", "step-01"]);
+  });
+
+  it("passes over a numbered id that holds one when the step's own id is its position id", async () => {
+    const e2b = ["step", "01", "2"].join("-");
+    const result = await runSteps(e2b, ["    - id: step-01", ...firstStep.slice(1)]);
+    expect(result.error).toBeUndefined();
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    expect(await filesHolding(runDir, [e2b])).toEqual([]);
+    const trace = JSON.parse(await readFile(path.join(runDir, "traces", "desktop.json"), "utf8"));
+    expect(trace.steps.map((step: { id: string }) => step.id)).toEqual(["step-01-3"]);
+  });
+
+  it("refuses the run when its own id takes the position id and every numbered id holds one", async () => {
+    const e2b = ["", "01", ""].join("-");
+    const result = await runSteps(e2b, ["    - id: step-01", ...firstStep.slice(1)]);
+    expect(result.runId).toBe("not-created");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
+  });
+
+  it("refuses the run when the id its position gives holds one", async () => {
+    const e2b = ["step", "01"].join("-");
+    const result = await runSteps(e2b, firstStep);
+    expect(result.runId).toBe("not-created");
+    expect(result.error?.code).toBe("HUMANISH_SCRIPTED_SCENARIO_INVALID");
+    expect(result.error?.message).not.toContain(e2b);
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow(/ENOENT/);
+  });
+});
+
 describe("computer use and terminal scrub their known values from every run file", () => {
   it("computer use: a participant that narrates both keys, one percent-encoded, leaves no copy in any run file", async () => {
     const openai = opaque("openai");

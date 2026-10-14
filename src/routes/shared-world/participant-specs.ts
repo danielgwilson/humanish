@@ -18,7 +18,7 @@ import {
 import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
 
 // prose-check: model prompt (the participant model reads this, not a person)
@@ -224,7 +224,7 @@ export async function buildParticipantSpecs(
   for (const spec of actorSpecs) {
     if (spec.evidenceAssignment)
       spec.evidenceAssignment = participantAssignment(spec.evidenceAssignment, scrubKnownValues);
-    spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+    spec.evidenceInstructions = redactEncodedText(scrubKnownValues(spec.instructions));
     spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
   }
   return actorSpecs;

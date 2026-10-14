@@ -6,9 +6,12 @@ import { App } from "../app";
 import type { ObserverData } from "../lib/observer-data";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 import { feed } from "./feed";
+import { decodeInMicrotasks } from "./microtask-gunzip";
 
 // A served page whose server process exits: the feed poll gets no response at all.
 let container: HTMLDivElement, root: Root, serving: boolean, data: ObserverData;
+
+decodeInMicrotasks();
 
 const advance = async (ms: number) => {
   await act(async () => {

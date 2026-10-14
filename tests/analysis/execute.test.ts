@@ -14,6 +14,7 @@ import {
   validateAnalysisArtifact,
 } from "../../src/analysis/validation.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
+import { SECRET_ENCODINGS, SECRET_FORMATS } from "../helpers/secret-formats.js";
 
 // Only the synthetic JSON answer is replaced. The transport envelope and token/cache fields
 // come from a captured live response; provenance: fixtures/openai-closing-report/README.md.
@@ -349,29 +350,32 @@ describe("bounded study analysis run", () => {
     },
   );
 
-  it("refuses a sensitive researcher question from a direct runAnalysis caller before progress or transport", async () => {
-    const question = "Review " + "sk-" + "syntheticvalue1234567890abcdef";
-    const unsafeConfig = { ...config, question };
-    const packet = input();
-    const admission = estimateAnalysisAdmission(packet, unsafeConfig);
-    expect(admission).toMatchObject({
-      allowed: false,
-      error: "analysis_question_sensitive",
-      estimatedCostUsd: null,
-    });
-    expect(JSON.stringify(admission)).not.toContain(question);
-    const h = transport();
-    const onProgress = vi.fn();
-    await expect(
-      runAnalysis(packet, unsafeConfig, {
-        apiKey: "synthetic-key",
-        fetch: h.fetchFn,
-        onProgress,
-      }),
-    ).rejects.toThrow(/^ANALYSIS_QUESTION_SENSITIVE$/);
-    expect(onProgress).not.toHaveBeenCalled();
-    expect(h.fetchFn).not.toHaveBeenCalled();
-  });
+  it.each(Object.entries(SECRET_ENCODINGS))(
+    "refuses a researcher question holding a key %s from a direct runAnalysis caller before progress or transport",
+    async (_name, encode) => {
+      const question = encode(SECRET_FORMATS[0]!.text);
+      const unsafeConfig = { ...config, question };
+      const packet = input();
+      const admission = estimateAnalysisAdmission(packet, unsafeConfig);
+      expect(admission).toMatchObject({
+        allowed: false,
+        error: "analysis_question_sensitive",
+        estimatedCostUsd: null,
+      });
+      expect(JSON.stringify(admission)).not.toContain(question);
+      const h = transport();
+      const onProgress = vi.fn();
+      await expect(
+        runAnalysis(packet, unsafeConfig, {
+          apiKey: "synthetic-key",
+          fetch: h.fetchFn,
+          onProgress,
+        }),
+      ).rejects.toThrow(/^ANALYSIS_QUESTION_SENSITIVE$/);
+      expect(onProgress).not.toHaveBeenCalled();
+      expect(h.fetchFn).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["unknown-evidence", "analysis_validation_failed_observation_reference_invalid"],

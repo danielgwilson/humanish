@@ -9,6 +9,7 @@ import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../evidence/redaction.js";
+import { scanEncodedText } from "../evidence/encoded-text.js";
 import { transientCommsKnownValueScrub } from "../run/transient-comms-secrets.js";
 import { verifyRunPrepared } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
@@ -309,7 +310,7 @@ function analyzeConfigRefusal(config: AnalysisConfig): string | null {
       : !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
   )
     return "ANALYSIS_CONFIG_INVALID";
-  if (config.question !== null && containsSensitive(config.question))
+  if (config.question !== null && scanEncodedText(config.question).sensitive)
     return "ANALYSIS_QUESTION_UNSAFE";
   return null;
 }

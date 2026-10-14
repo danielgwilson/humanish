@@ -241,7 +241,7 @@
         }
       },
       "items": {
-        "schema": "humanish.observer-items.v1",
+        "schema": "humanish.observer-items.v2",
         "runId": "synthetic-feed-cursor",
         "streams": {
           "sim-01-ui": {
@@ -527,7 +527,7 @@
         }
       },
       "items": {
-        "schema": "humanish.observer-items.v1",
+        "schema": "humanish.observer-items.v2",
         "runId": "synthetic-feed-cursor",
         "streams": {
           "sim-01-ui": {

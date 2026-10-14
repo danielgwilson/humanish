@@ -2,7 +2,7 @@
 // events, the sharedWorld evidence block and the review summary.
 
 import { receivingPublication } from "../../comms/receiving-runtime.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactEncodedText } from "../../evidence/encoded-text.js";
 import type { StudySubjectState } from "../../study/types.js";
 import { planeStateOf } from "./plan.js";
 import {
@@ -498,7 +498,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     scenario: {
       id: `concurrent-shared-world-${plan.studyId}`,
       title: plan.title ?? `Concurrent shared-world: ${plan.studyId}`,
-      goal: redactText(
+      goal: redactEncodedText(
         actorSpecs[0]?.evidenceInstructions ??
           actorSpecs[0]?.instructions ??
           "Concurrent shared-world interaction.",
@@ -561,7 +561,7 @@ function sharedWorldFeedbackCandidates(args: ConcurrentBundleArgs): RunFeedbackC
         participantId: spec.planned.id,
         streamId: spec.streamId,
         personaId: spec.persona.id,
-        goal: redactText(spec.evidenceInstructions ?? spec.instructions),
+        goal: redactEncodedText(spec.evidenceInstructions ?? spec.instructions),
         ...(outcome?.session === undefined
           ? {}
           : { session: outcome.session, traceArtifactPath: spec.traceArtifactPath }),
