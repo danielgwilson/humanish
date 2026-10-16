@@ -1,8 +1,10 @@
 // Chromium DevTools on a hosted E2B desktop, reached from inside the sandbox: browser state reads
 // and mobile emulation.
+import type { ChromeNetworkCaptureRequest } from "./cdp-network-capture.js";
 import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
+  type ChromeCdpProbeResult,
   type ChromeMobileEmulationRequest,
 } from "./cdp-probe.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
@@ -167,21 +169,28 @@ export const DEFAULT_MOBILE_USER_AGENT =
  * Apply mobile emulation to the participant's launch page and read back what the page reports.
  * Fails closed: a request that cannot be applied throws, because a desktop run labelled mobile is
  * the over-trust this feature exists to prevent. A read-back that cannot be taken is a warning
- * (the emulation was applied; only the proof is missing).
+ * (the emulation was applied; only the proof is missing). With `network`, the same holder also
+ * captures requests, and a capture that could not start is reported in `network` without failing
+ * the emulation.
  */
 export async function applyMobileEmulation(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
   request: ChromeMobileEmulationRequest,
-  options: { targetId?: string | undefined } = {},
+  options: {
+    targetId?: string | undefined;
+    network?: ChromeNetworkCaptureRequest | undefined;
+  } = {},
 ): Promise<{
   fidelity: NonNullable<RunDesktopGeometry["fidelity"]>;
   warnings: string[];
   targetId?: string;
   holderName: string;
+  /** The holder's capture status, when `network` was passed and the holder said. */
+  network?: ChromeCdpProbeResult["network"];
 }> {
-  const { targetId } = options;
+  const { targetId, network } = options;
   const command = (mode: "hold" | "fidelity") =>
     chromeCdpProbeCommand({
       ...endpoint,
@@ -189,6 +198,7 @@ export async function applyMobileEmulation(
       prefer: "pinned",
       mode,
       emulation: request,
+      ...(mode === "hold" && network !== undefined ? { network } : {}),
     });
   const shell = e2bShell(desktop);
   const read = async () => {
@@ -261,6 +271,7 @@ export async function applyMobileEmulation(
     userAgent: request.userAgent,
   };
   const emulatedTargetId = applied.targetId ?? fidelityRead.targetId;
+  const capture = applied.network === undefined ? {} : { network: applied.network };
   if (fidelityRead.fidelity === undefined) {
     warnings.push(
       `Mobile emulation was applied but the page's own report could not be read (${fidelityRead.unavailable ?? "no fidelity read"}); desktopGeometry.fidelity carries the request without a resolved block.`,
@@ -270,6 +281,7 @@ export async function applyMobileEmulation(
       warnings,
       holderName,
       ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }),
+      ...capture,
     };
   }
   const resolved = { ...fidelityRead.fidelity, source: "cdp" as const };
@@ -300,5 +312,6 @@ export async function applyMobileEmulation(
     warnings,
     holderName,
     ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }),
+    ...capture,
   };
 }

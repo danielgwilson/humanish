@@ -1,0 +1,37 @@
+# Captured holder network events
+
+`holder-events.ndjson` is the events file the in-sandbox holder wrote during one run of the test
+"writes each request case" in `tests/substrates/e2b/cdp-network-capture.test.ts`, on 2026-10-16,
+under python3 3.12.3 and headless Google Chrome 149.0.7827.114. The holder ran with `network` and
+no emulation. Its allowed origins were the test's synthetic site and the closed port. The site's
+second origin, `http://localhost:<port>`, was not allowed.
+
+The run's random ports were rewritten: the site is `http://127.0.0.1:3000` and the closed port is
+`http://127.0.0.1:3999`. Nothing else was changed. Request ids, the renderer process ids inside
+them, both clocks and the line order are as the holder wrote them.
+
+The file holds, in order:
+- the `start` line;
+- `/flow` (document, 200) and `/img.png` (image, 200);
+- `/ok` 200, `/err` 500, and `/slow`, finished about 300 ms after it started;
+- `/redirect`, then a second request line on the same id with `redirectResponse.status` 302 and
+  the address `/ok`, its query cut off, then 200;
+- `POST /submit` 200. Chrome sent a body and an Authorization header; neither is in the file;
+- `/drop`, failed with `net::ERR_EMPTY_RESPONSE` and no response;
+- the fetch to the second origin: one request line with no address, method or type;
+- `127.0.0.1:3999/closed`, failed with `net::ERR_CONNECTION_REFUSED`;
+- `/next` (document), with `/img.png` again from the disk cache;
+- `/hang`, a request line with nothing after it, still open when Chrome stopped;
+- `backForward` for `/flow`, after `/next` called `history.back()`;
+- session `1`, a tab opened after the holder attached. Its first document request is missing; its
+  `/from-later-tab` fetch is there;
+- `exit`, with the reason the holder saw when Chrome stopped.
+
+Chrome's own `/favicon.ico` requests appear with type `Other`.
+
+To capture it again:
+
+```bash
+HUMANISH_NETWORK_FIXTURE_OUT=$PWD/tests/fixtures/browser-network/holder-events.ndjson \
+  pnpm vitest run tests/substrates/e2b/cdp-network-capture.test.ts
+```
