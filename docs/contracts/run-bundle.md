@@ -588,7 +588,8 @@ and stops before 8 MiB.
 Chrome or Chromium, or a holder that could not start it), `not-collected` (the file could not be
 read at teardown), `capped` (records past the file's caps, counted in `omitted.overCap`; or the
 holder's events file reached 32 MiB, after which requests are absent and counted nowhere) or
-`holder-stopped` (the in-sandbox holder stopped during the session). A stream with no `network`
+`holder-stopped` (the in-sandbox holder stopped during the session: it wrote its exit line, or
+its process had exited by teardown, as a holder killed by a signal has). A stream with no `network`
 field had capture off, or its participant never started: a dry run, or one skipped before its
 desktop was created. Example: `jq -c 'select(.turn==7 and (.failed or .pending or
 .status>=400))' network/p1.ndjson` lists what failed in turn 7.

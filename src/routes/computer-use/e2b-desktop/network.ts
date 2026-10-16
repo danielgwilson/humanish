@@ -25,6 +25,8 @@ import {
   startNetworkCapture,
 } from "../../../substrates/e2b/desktop-cdp.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
+import { e2bShell } from "../../../substrates/e2b/shell.js";
+import { detachedProcessExited } from "../../../substrates/detached.js";
 import type { E2BDesktopDeps } from "../types.js";
 import { cdpEndpoint } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
@@ -192,6 +194,14 @@ export async function collectParticipantNetwork(
     );
     network.index = networkIndexWithoutEvents(capture, "not-collected");
   };
+  // Asked before the read, so an exited holder's file is already whole. A failed check leaves the
+  // log as complete as its own lines say.
+  const holderName = network.holderName ?? state.fidelity.holderName;
+  const holderExited =
+    holderName !== undefined &&
+    (await detachedProcessExited(e2bShell(desktop), holderName, deps.requestTimeoutMs).catch(
+      () => false,
+    ));
   let events: string;
   try {
     events = await readNetworkEvents(desktop, NETWORK_EVENTS_PATH, deps.requestTimeoutMs);
@@ -199,7 +209,7 @@ export async function collectParticipantNetwork(
     notCollected(error);
     return;
   }
-  const log = await reduceBrowserNetwork({ ...capture, events });
+  const log = await reduceBrowserNetwork({ ...capture, events, holderExited });
   try {
     if (log.text !== undefined && log.index.path !== undefined)
       await writeContainedOutputFile(deps.artifactRoot, log.index.path, log.text, "utf8");

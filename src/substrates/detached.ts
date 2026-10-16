@@ -126,6 +126,24 @@ export async function readDetachedLog(
 }
 
 /**
+ * Whether a process started by startDetachedProcess or runDetachedStep has exited. Its wrapper
+ * writes a status file however the command ended, a signal included.
+ */
+export async function detachedProcessExited(
+  shell: Shell,
+  name: string,
+  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+): Promise<boolean> {
+  assertName(name);
+  const result = await runOrThrow(
+    shell,
+    `test -e ${shellQuote(`${stepDir(name)}/status`)} && echo exited || true`,
+    { requestTimeoutMs },
+  );
+  return result.stdout.trim() === "exited";
+}
+
+/**
  * Run a bounded step (install/build) detached, polling its atomic status file until it
  * exits or the budget runs out. On timeout the process group is killed and the log tail is
  * still captured so failures stay diagnosable.

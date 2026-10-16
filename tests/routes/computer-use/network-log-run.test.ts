@@ -113,6 +113,8 @@ function capturingDesktop(options: {
   launched?: string;
   geometry?: () => never;
   mobile?: boolean;
+  /** The holder's process had exited by teardown: its wrapper wrote an exit status. */
+  exited?: boolean;
 }): FanoutModuleOptions {
   let reads = 0;
   const holder = options.mobile === true ? "/mobile-emulation-" : "/network-capture-";
@@ -136,6 +138,8 @@ function capturingDesktop(options: {
         options.geometry();
       if (command.includes("tail -c 8192") && command.includes(holder))
         return { stdout: options.holderLog ?? "" };
+      if (options.exited === true && command.includes("/status") && command.includes(holder))
+        return { stdout: "exited\n" };
       if (options.launched !== undefined && command.includes("browser_preference="))
         return { stdout: options.launched };
       return undefined;
@@ -443,6 +447,33 @@ describe("a hosted participant whose capture fails", () => {
         `network/${stream.laneId}.ndjson`,
       );
       await expect(readdir(path.join(runDir, "network"))).rejects.toThrow(/ENOENT/);
+    },
+  );
+
+  it.each([false, true])(
+    "records a holder that was killed before teardown as stopped (phone participant: %s)",
+    async (mobile) => {
+      // A holder killed by a signal writes no exit line, so the file alone reads as complete.
+      const { stream } = await runWithCapture(
+        capturingDesktop({
+          holderLog: mobile
+            ? line({ applied: [], held: true, targetId: "page-1", network: { startedAt: T - 5 } })
+            : announce({ startedAt: T - 5 }),
+          events: EVENTS,
+          exited: true,
+          mobile,
+        }),
+        mobile
+          ? {
+              desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } },
+            }
+          : {},
+      );
+      expect(stream.network).toMatchObject({
+        records: 4,
+        complete: false,
+        reason: "holder-stopped",
+      });
     },
   );
 

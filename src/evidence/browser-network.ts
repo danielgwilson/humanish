@@ -86,6 +86,11 @@ export interface BrowserNetworkCapture {
   /** The trace redaction the participant's pages went through (traceRedaction). */
   redact: (text: string) => string;
   /**
+   * The holder had exited before `events` was read. A holder killed by a signal writes no exit
+   * line, so without this the file reads as complete.
+   */
+  holderExited?: boolean;
+  /**
    * The participant's own sandbox id. Run.finish rewrites a journaled id in every run file after
    * run.json indexes them, so the writer replaces it first, with the same label.
    */
@@ -349,7 +354,11 @@ export async function reduceBrowserNetwork(
   }
 
   const reason: BrowserNetworkGap | undefined =
-    read.capped || omitted.overCap > 0 ? "capped" : read.stopped ? "holder-stopped" : undefined;
+    read.capped || omitted.overCap > 0
+      ? "capped"
+      : read.stopped || capture.holderExited === true
+        ? "holder-stopped"
+        : undefined;
   const gap = { complete: reason === undefined, ...(reason === undefined ? {} : { reason }) };
   if (lines.length === 0)
     return {
