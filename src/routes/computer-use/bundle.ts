@@ -151,6 +151,7 @@ function singleParticipantArgs(
           : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+    ...(outcome?.networkLog === undefined ? {} : { network: outcome.networkLog }),
     ...(outcome?.desktopFiles === undefined ? {} : { desktopFiles: outcome.desktopFiles }),
     ...(spec.planned.limits.timeZone === undefined
       ? {}

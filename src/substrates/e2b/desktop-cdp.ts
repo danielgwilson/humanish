@@ -1,5 +1,5 @@
-// Chromium DevTools on a hosted E2B desktop, reached from inside the sandbox: browser state reads
-// and mobile emulation.
+// Chromium DevTools on a hosted E2B desktop, reached from inside the sandbox: browser state reads,
+// mobile emulation and request capture.
 import type { ChromeNetworkCaptureRequest } from "./cdp-network-capture.js";
 import {
   chromeCdpProbeCommand,
@@ -71,9 +71,15 @@ export function makeChromeBrowserStateObserver(
     /** Called once, with the reason, on the first probe that could not read the page. */
     onUnavailable?: (reason: string) => void;
     drift?: ChromeEmulationDrift | undefined;
+    /**
+     * Called with undefined when a probe starts, then with the sandbox clock the probe printed
+     * (ChromeCdpProbeResult.now), so the caller holds the time of the latest read and never a
+     * stale one from a probe that failed.
+     */
+    onClock?: (now: number | undefined) => void;
   } = {},
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
-  const { targetId, onUnavailable, drift } = options;
+  const { targetId, onUnavailable, drift, onClock } = options;
   let reported = false;
   let drifted = false;
   const checkedTargets = new Set<string>(drift === undefined ? [] : [drift.emulatedTargetId]);
@@ -129,6 +135,7 @@ export function makeChromeBrowserStateObserver(
     );
   };
   return async () => {
+    onClock?.(undefined);
     let result: ShellResult;
     try {
       result = await shell.run(
@@ -150,6 +157,7 @@ export function makeChromeBrowserStateObserver(
       );
     }
     const parsed = parseChromeCdpProbeOutput(result.stdout);
+    onClock?.(parsed.now);
     if (parsed.unavailable !== undefined) return unavailable(parsed.unavailable);
     if (parsed.targetId !== undefined) await checkLaterTarget(parsed.targetId);
     return {
@@ -314,4 +322,95 @@ export async function applyMobileEmulation(
     ...(emulatedTargetId === undefined ? {} : { targetId: emulatedTargetId }),
     ...capture,
   };
+}
+
+/** The holder stops writing its events file at 32 MiB, so a read stops there too. */
+const NETWORK_EVENTS_MAX_BYTES = 32 * 1024 * 1024;
+/** How many times the capture holder's log is read for its announce, and how far apart. */
+const NETWORK_ANNOUNCE_READS = 6;
+const NETWORK_ANNOUNCE_EVERY_MS = 500;
+
+/**
+ * Start a holder that records the launch page's requests, and every later tab's, to
+ * `network.eventsPath`, for a participant without mobile emulation; applyMobileEmulation passes
+ * the request to the holder it starts. Sends no Emulation command and no reload. Returns the
+ * holder's process name, which readNetworkCaptureStart reads.
+ */
+export async function startNetworkCapture(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  endpoint: ChromeCdpEndpoint,
+  network: ChromeNetworkCaptureRequest,
+): Promise<string> {
+  const holderName = `network-capture-${Date.now().toString(36)}`;
+  await startDetachedProcess(e2bShell(desktop), {
+    name: holderName,
+    command: chromeCdpProbeCommand({ ...endpoint, prefer: "pinned", mode: "hold", network }),
+    requestTimeoutMs,
+  });
+  return holderName;
+}
+
+/**
+ * What the capture holder announced: when capture started on the launch page, on the sandbox
+ * clock, or why it did not. Reads the holder's log up to 6 times, half a second apart by
+ * `desktop.wait`, and reports a holder that printed nothing as unavailable.
+ */
+export async function readNetworkCaptureStart(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  holderName: string,
+): Promise<NonNullable<ChromeCdpProbeResult["network"]>> {
+  const shell = e2bShell(desktop);
+  for (let attempt = 0; attempt < NETWORK_ANNOUNCE_READS; attempt += 1) {
+    if (attempt > 0) await desktop.wait(NETWORK_ANNOUNCE_EVERY_MS).catch(() => undefined);
+    const log = await readDetachedLog(shell, holderName, requestTimeoutMs).catch(() => "");
+    const line = log.split("\n").find((candidate) => candidate.trim().startsWith("{"));
+    if (line === undefined) continue;
+    const announced = parseChromeCdpProbeOutput(line);
+    return (
+      announced.network ?? {
+        unavailable: announced.unavailable ?? "the holder announced without starting capture",
+      }
+    );
+  }
+  return {
+    unavailable: `the in-sandbox holder printed nothing within ${(NETWORK_ANNOUNCE_READS * NETWORK_ANNOUNCE_EVERY_MS) / 1000} s of the desktop settling`,
+  };
+}
+
+/**
+ * The capture holder's events file as text: whole lines only, from at most the first 32 MiB.
+ * Throws when the sandbox cannot stream files or the file cannot be read.
+ */
+export async function readNetworkEvents(
+  desktop: E2BDesktopSandbox,
+  eventsPath: string,
+  requestTimeoutMs: number,
+): Promise<string> {
+  if (desktop.files.read === undefined)
+    throw new Error("this E2B SDK cannot stream a sandbox file to the host");
+  const stream = await desktop.files.read(eventsPath, {
+    format: "stream",
+    requestTimeoutMs,
+    streamIdleTimeoutMs: requestTimeoutMs,
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  });
+  const reader = stream.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    while (total < NETWORK_EVENTS_MAX_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = Buffer.from(value.subarray(0, NETWORK_EVENTS_MAX_BYTES - total));
+      chunks.push(chunk);
+      total += chunk.length;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const bytes = Buffer.concat(chunks);
+  // A line still being written, or one the cap cut, is dropped.
+  return bytes.subarray(0, bytes.lastIndexOf(0x0a) + 1).toString("utf8");
 }

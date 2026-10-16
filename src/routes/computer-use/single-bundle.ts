@@ -1,3 +1,4 @@
+import type { BrowserNetworkIndex } from "../../evidence/browser-network.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
@@ -213,6 +214,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
       ...(args.desktopFiles === undefined ? {} : { desktopFiles: args.desktopFiles }),
       ...(args.timeZone === undefined ? {} : { timeZone: args.timeZone }),
       ...(args.recording === undefined ? {} : { recording: args.recording }),
+      ...(args.network === undefined ? {} : { network: args.network }),
       ui: {
         route: publicAppUrl,
         intent: `Watch the computer-use actor drive the subject app ${browserPlace(args)}.`,
@@ -235,6 +237,9 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
         ...(args.recording
           ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }]
           : []),
+        ...(args.network?.path === undefined
+          ? []
+          : [{ label: "network log", path: args.network.path, kind: "log" as const }]),
         ...args.screenshots.map((screenshot, index) => ({
           label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,
@@ -473,6 +478,8 @@ export function buildSingleParticipantBundle(args: {
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
   recording?: RunDesktopRecording;
+  /** The participant's browser network log index, when its study set execution.network. */
+  network?: BrowserNetworkIndex;
   /** participants[].files confirmed on the participant's desktop. */
   desktopFiles?: RunDesktopFile[];
   /** The participant's time zone, which its turns and its hosted browser used. */

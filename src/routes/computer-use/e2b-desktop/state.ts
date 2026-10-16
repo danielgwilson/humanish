@@ -22,6 +22,7 @@ import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import type { ParticipantDesktopEvidence } from "../participant-desktop.js";
 import type { ParticipantComms, RunningCommsCatch } from "./comms.js";
 import type { ParticipantFidelity } from "./fidelity.js";
+import type { ParticipantNetwork } from "./network.js";
 import type {
   CuaActorStudyErrorCode,
   E2BDesktopDeps,
@@ -79,6 +80,8 @@ export interface E2BParticipantState {
   browserTargetId: string | undefined;
   desktopGeometry: RunDesktopGeometry;
   streamUrl: string | undefined;
+  /** The browser network log, when the study set execution.network. */
+  network: ParticipantNetwork | undefined;
 }
 
 export function newParticipantState(spec: DesktopParticipantRun): E2BParticipantState {
@@ -126,6 +129,7 @@ export function newParticipantState(spec: DesktopParticipantRun): E2BParticipant
       },
     },
     streamUrl: undefined,
+    network: undefined,
   };
 }
 
@@ -156,5 +160,6 @@ export function desktopEvidenceOf(state: E2BParticipantState): ParticipantDeskto
     ...(state.commsArtifactPath === undefined
       ? {}
       : { commsArtifactPath: state.commsArtifactPath }),
+    ...(state.network === undefined ? {} : { networkLog: state.network.index }),
   };
 }

@@ -1,6 +1,7 @@
 import type { Verdict } from "../../run/judge.js";
 import type { HostSuspensionReading } from "../../run/host-suspension.js";
 import type { LocalCapacity } from "../../substrates/local/capacity.js";
+import type { BrowserNetworkIndex } from "../../evidence/browser-network.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type {
   CuaExecutor,
@@ -621,6 +622,12 @@ export interface ParticipantRunOutcome {
    *  (humanish.comms-thread.v1), when a comms study captured mail into its in-sandbox catch. Registered
    *  in the participant's stream artifacts. Absent when no comms study ran or nothing was captured. */
   commsArtifactPath?: string;
+  /**
+   * The participant's browser network log index (humanish.browser-network.v1), when its study set
+   * execution.network: the stream's `network` field. Its `path`, when present, is registered as a
+   * log artifact.
+   */
+  networkLog?: BrowserNetworkIndex;
 }
 
 /** What buildCuaFanoutBundle projects into a fan-out run bundle. */

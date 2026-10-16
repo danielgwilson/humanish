@@ -21,6 +21,11 @@ import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-record
 import { turnOffScreenSaver } from "../../../substrates/e2b/desktop-screen.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
+import {
+  noteNetworkStart,
+  readParticipantNetworkStart,
+  startParticipantNetwork,
+} from "./network.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 
 /** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
@@ -129,8 +134,14 @@ export async function openParticipantSurface(
   state.launchedBrowserFamily = browserLaunch.family;
   state.browserLaunchIdentity = browserLaunch.identity;
   state.browserLaunched = true;
-  noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
+  const emulated = emulationFlags.length > 0;
+  noteDevToolsReadiness(ctx, browserLaunch.devTools, emulated);
+  // A mobile-emulated participant's holder captures too; any other gets a capture-only holder,
+  // started here so the settle wait covers its start.
+  if (!emulated) await startParticipantNetwork(ctx, state, desktop);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
+  if (!emulated) await readParticipantNetworkStart(ctx, state, desktop);
+  const network = state.network;
   // Mobile fidelity is applied outside startParticipantStream's best-effort catch, so a request
   // that cannot be applied fails the participant closed.
   state.fidelity = await applyParticipantMobileFidelity({
@@ -142,6 +153,14 @@ export async function openParticipantSurface(
     launchIdentity: state.browserLaunchIdentity,
     targetId: state.browserTargetId,
     warnings,
+    ...(network === undefined || !emulated
+      ? {}
+      : {
+          network: {
+            request: network.request,
+            onStart: (status) => noteNetworkStart(ctx, network, status),
+          },
+        }),
   });
 }
 

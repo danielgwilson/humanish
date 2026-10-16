@@ -1,3 +1,4 @@
+import { ReadableStream } from "node:stream/web";
 import { PNG } from "pngjs";
 
 import type { FetchLike } from "../../src/actors/computer-use/openai-provider.js";
@@ -71,6 +72,11 @@ export interface FanoutModuleOptions {
   onFileWrite?: (sandboxId: string, path: string) => void;
   /** Called on each desktop.wait with the participant's index and the time asked, in order. */
   onWait?: (laneIndex: number, ms: number) => void;
+  /**
+   * The bytes files.read streams for a sandbox path, in two chunks; undefined reads as a missing
+   * file. Without it the sandbox has no files.read.
+   */
+  readFile?: (laneIndex: number, path: string) => string | undefined;
 }
 
 export interface FanoutModuleHandle {
@@ -145,6 +151,23 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
           files.set(id, written);
           written.set(path, Buffer.from(typeof data === "string" ? data : new Uint8Array(data)));
         },
+        ...(options.readFile === undefined
+          ? {}
+          : {
+              read: async (path: string) => {
+                const text = options.readFile?.(laneIndex, path);
+                if (text === undefined) throw new Error(`path '${path}' does not exist`);
+                const bytes = Buffer.from(text, "utf8");
+                const half = Math.floor(bytes.length / 2);
+                return new ReadableStream<Uint8Array>({
+                  start(controller) {
+                    controller.enqueue(bytes.subarray(0, half));
+                    controller.enqueue(bytes.subarray(half));
+                    controller.close();
+                  },
+                });
+              },
+            }),
         // EntryInfo.size is the one getInfo field humanish reads.
         getInfo: async (path: string) => {
           const bytes = files.get(id)?.get(path);

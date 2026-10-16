@@ -42,6 +42,7 @@ export type ParticipantDesktopEvidence = {
   | "commsArtifactPath"
   | "recording"
   | "desktopFiles"
+  | "networkLog"
 >;
 
 /**
