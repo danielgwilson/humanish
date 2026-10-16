@@ -258,6 +258,68 @@ describe("the inspector", () => {
   });
 });
 
+describe("the inspector's network row", () => {
+  it("shows the participant's network log in Details as its counts, linking the file", async () => {
+    stream = {
+      ...stream,
+      network: {
+        schema: "humanish.browser-network.v1",
+        path: "network/p1.ndjson",
+        records: 412,
+        failed: 3,
+        pending: 2,
+        bytes: 66104,
+        sha256: "0".repeat(64),
+        startedAt: "2026-10-16T10:00:07.812Z",
+        origins: ["https://shop.example"],
+        complete: true,
+        omitted: { otherOrigin: 1203, overCap: 0, invalid: 0 },
+      },
+    };
+    await render({ initialFrame: 0 });
+    await click("details");
+    expect(kv()).toContainEqual(["Network", "412 requests, 3 failed, 2 pending"]);
+    const link = [...container.querySelectorAll<HTMLAnchorElement>(".kv a")].find(
+      (anchor) => anchor.textContent === "412 requests, 3 failed, 2 pending",
+    );
+    expect(link?.getAttribute("href")).toBe("../network/p1.ndjson");
+  });
+
+  it("says in Details why a participant's network log is missing or cut short", async () => {
+    const network = {
+      schema: "humanish.browser-network.v1" as const,
+      origins: ["https://shop.example"],
+      omitted: { otherOrigin: 0, overCap: 0, invalid: 0 },
+    };
+    stream = { ...stream, network: { ...network, complete: false, reason: "no-capture" } };
+    await render({ initialFrame: 0 });
+    await click("details");
+    expect(kv()).toContainEqual(["Network", "Not recorded: capture did not start"]);
+    expect(container.querySelector(".kv a")).toBeNull();
+
+    stream = {
+      ...stream,
+      network: {
+        ...network,
+        path: "network/p1.ndjson",
+        records: 20_000,
+        failed: 0,
+        pending: 1,
+        bytes: 3_200_000,
+        sha256: "0".repeat(64),
+        complete: false,
+        reason: "capped",
+        omitted: { ...network.omitted, overCap: 31 },
+      },
+    };
+    await render({ initialFrame: 0 });
+    expect(kv()).toContainEqual([
+      "Network",
+      "20000 requests, 0 failed, 1 pending · cut at the size cap",
+    ]);
+  });
+});
+
 describe("the transport", () => {
   it("cycles playback speed through 1, 2, 4, 8 and 16", async () => {
     await render({ initialFrame: 0 });
