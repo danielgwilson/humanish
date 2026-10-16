@@ -241,6 +241,67 @@ describe("verify on a browser network log record's values", () => {
     expect(timed.message).toContain("network/p1.ndjson line 4");
   });
 
+  /** A log of `records`, indexed with their own failed and pending counts and `origins`. */
+  const gradeLog = (records: object[], origins: string[] = [ORIGIN]) => {
+    const text = ndjson(records);
+    const count = (key: string) => records.filter((record) => key in record).length;
+    return grade(
+      text,
+      async (runDir) => {
+        const file = path.join(runDir, "run.json");
+        const bundle = JSON.parse(await readFile(file, "utf8")) as RunBundle;
+        Object.assign(bundle.streams[0]!.network!, { origins });
+        await writeFile(file, `${JSON.stringify(bundle, null, 2)}\n`);
+      },
+      text,
+      { failed: count("failed"), pending: count("pending") },
+    );
+  };
+
+  it("blocks a token-shaped host label in a record's origin and its index", async () => {
+    const host = "https://abc123def4567890.example.test";
+    const clean = await grade(ndjson(CLEAN));
+    const token = await gradeLog(
+      CLEAN.map((record) => ({ ...record, origin: host })),
+      [host],
+    );
+    expect(token.status).toBe("blocked");
+    expect(token.message).not.toContain("abc123def4567890");
+    const behindMarker = "https://[REDACTED_URL_PART].abc123def4567890.example.test";
+    const hidden = await gradeLog(
+      CLEAN.map((record) => ({ ...record, origin: behindMarker })),
+      [behindMarker],
+    );
+    expect(hidden.status).toBe("blocked");
+    // Regression guard: the label tracePage writes in its place grades as the clean log.
+    const withheld = "https://[REDACTED_URL_PART].example.test";
+    const marked = await gradeLog(
+      CLEAN.map((record) => ({ ...record, origin: withheld })),
+      [withheld],
+    );
+    expect({ status: marked.status, codes: marked.codes }).toEqual({
+      status: clean.status,
+      codes: clean.codes,
+    });
+  });
+
+  it("blocks a record that is pending and failed, and a back-forward restore that is either", async () => {
+    const restored = {
+      at: "2026-10-16T10:00:07.812Z",
+      turn: 0,
+      origin: ORIGIN,
+      path: "/",
+      type: "document",
+      cache: "back-forward",
+    };
+    const both = await gradeLog([{ ...CLEAN[3]!, failed: "ERR_FAILED" }]);
+    expect(both.status).toBe("blocked");
+    for (const extra of [{ pending: true }, { failed: "ERR_FAILED" }, { redirect: true }]) {
+      const result = await gradeLog([{ ...restored, ...extra }]);
+      expect(result.status, JSON.stringify(extra)).toBe("blocked");
+    }
+  });
+
   it("blocks a record whose origin is not one its index lists, naming the line and not the origin", async () => {
     const result = await withRecord(2, (record) => ({
       ...record,

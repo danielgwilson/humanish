@@ -10,7 +10,7 @@ import {
   type BrowserNetworkIndex,
 } from "../evidence/browser-network.js";
 import { REDACTION_MARKERS } from "../evidence/redaction.js";
-import { pageProblem } from "../evidence/trace-page.js";
+import { originKeepsNoWithheldLabel, pageProblem } from "../evidence/trace-page.js";
 import type { RunBundle } from "../run/bundle.js";
 import {
   readContainedRegularFile,
@@ -73,9 +73,13 @@ function networkIndexProblem(index: unknown): string | undefined {
     return "has a start time that is not an ISO time";
   if (
     !Array.isArray(index.origins) ||
-    index.origins.some((origin) => pageProblem({ origin, path: "" }) !== undefined)
+    index.origins.some(
+      (origin) =>
+        pageProblem({ origin, path: "" }) !== undefined ||
+        !originKeepsNoWithheldLabel(String(origin)),
+    )
   )
-    return "has an origin that is not an origin alone";
+    return "has an origin that is not an origin alone, or a host label the trace page rule withholds";
   if (typeof index.complete !== "boolean") return "does not say whether it is complete";
   if (index.complete ? index.reason !== undefined : !REASONS.has(index.reason))
     return "has a reason that does not match whether it is complete";

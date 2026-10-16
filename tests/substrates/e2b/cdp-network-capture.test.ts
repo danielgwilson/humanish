@@ -50,11 +50,9 @@ function page(body: string): string {
 }
 
 // The page under capture. It fetches every case, waits for each body so each request finishes,
-// follows a link, and is restored from the back-forward cache by /next's history.back(). The
-// restore then opens one request the server never answers.
+// then follows a link.
 function flowPage(otherOrigin: string, closedPort: number): string {
   return page(`<img src="/img.png"><a id="next" href="/next">next</a><script>
-    window.addEventListener("pageshow", (event) => { if (event.persisted) fetch("/hang"); });
     const read = (input, init) => fetch(input, init).then((response) => response.text());
     Promise.allSettled([
       read("/ok"),
@@ -86,11 +84,25 @@ function route(site: FixtureSite, request: IncomingMessage, response: ServerResp
       response.setHeader("set-cookie", `s=${COOKIE}; Path=/`);
       return html(flowPage(site.otherOrigin, site.closedPort));
     case "/next":
-      return html(
-        page(`<img src="/img.png">next<script>setTimeout(() => history.back(), 500);</script>`),
-      );
+      return html(page(`<img src="/img.png">next`));
     case "/later-tab":
-      return html(page(`later<script>setTimeout(() => fetch("/from-later-tab"), 500);</script>`));
+      // The second fetch is never answered, so it is still open when Chrome stops.
+      return html(
+        page(
+          `later<script>setTimeout(() => { fetch("/from-later-tab"); fetch("/hang"); }, 500);</script>`,
+        ),
+      );
+    // A page the restore test leaves by a link and comes back to with history.back(). Each tab's
+    // session storage starts empty, so a fresh tab follows the link once.
+    case "/bf-a":
+      return html(
+        page(`<a id="go" href="/bf-b">go</a><script>
+          window.addEventListener("pageshow", (event) => { if (event.persisted) fetch("/bf-restored"); });
+          if (!sessionStorage.getItem("went")) { sessionStorage.setItem("went", "1"); setTimeout(() => document.getElementById("go").click(), 200); }
+        </script>`),
+      );
+    case "/bf-b":
+      return html(page(`b<script>setTimeout(() => history.back(), 500);</script>`));
     case "/img.png":
       response.setHeader("content-type", "image/gif");
       response.setHeader("cache-control", "max-age=3600");
@@ -263,8 +275,6 @@ function expectNavigationAndOriginCases(lines: CaptureLine[], origin: string): v
   expect(lines.find((l) => l.e === "request" && l.url === `${origin}/next`)).toMatchObject({
     type: "Document",
   });
-  const restored = lines.filter((l) => l.e === "backForward");
-  expect(restored).toEqual([expect.objectContaining({ url: `${origin}/flow` })]);
   // A tab opened after the holder attached is captured on its own session.
   const later = lines.find((l) => l.e === "request" && l.url === `${origin}/from-later-tab`);
   expect(later, "the later tab's fetch").toBeDefined();
@@ -463,6 +473,61 @@ describe("holder network capture against a real headless Chrome", () => {
     45_000,
   );
 
+  // Chrome decides per navigation whether a page goes into the back-forward cache, and on a loaded
+  // runner it sometimes does not, so this case retries, each time in a fresh tab. It runs before
+  // the request cases, which stop Chrome.
+  let restoreAttempt = 0;
+  it.skipIf(!live)(
+    "writes a page restored from the back-forward cache as one backForward line with its address",
+    { retry: 2, timeout: 45_000 },
+    async (ctx) => {
+      const fixture = site!;
+      restoreAttempt += 1;
+      const start = `${fixture.origin}/start?restore=${restoreAttempt}`;
+      const opened = await fetch(`http://127.0.0.1:${cdpPort}/json/new?${start}`, {
+        method: "PUT",
+      });
+      const tab = (await opened.json()) as { id: string };
+      const eventsPath = path.join(workDir, `restore-${restoreAttempt}.ndjson`);
+      const restoring = spawnHolder({
+        prefer: "pinned",
+        cdpPort,
+        targetUrl: start,
+        targetId: tab.id,
+        network: { eventsPath, origins: [fixture.origin] },
+      });
+      try {
+        const announceLine = await announceOf(restoring);
+        if (announceLine === undefined)
+          return ctx.skip(`the holder did not come up on this runner: ${restoring.stderrTail()}`);
+        const seenBefore = fixture.seen.length;
+        await navigate(cdpPort, tab.id, `${fixture.origin}/bf-a`);
+        await until(
+          () => fixture.seen.slice(seenBefore).includes("/bf-restored"),
+          "the back-forward restore",
+        );
+        await until(
+          async () => (await readLines(eventsPath)).some((line) => line.e === "backForward"),
+          "the restore reaching the events file",
+        );
+        const lines = await readLines(eventsPath);
+        expect(lines.filter((line) => line.e === "backForward")).toEqual([
+          { e: "backForward", wallTime: expect.any(Number), url: `${fixture.origin}/bf-a` },
+        ]);
+        const out = process.env.HUMANISH_NETWORK_FIXTURE_DIR;
+        if (out)
+          await writeFile(
+            path.join(out, "holder-back-forward.ndjson"),
+            normalizedFixture(await readFile(eventsPath, "utf8"), fixture),
+            "utf8",
+          );
+      } finally {
+        restoring.kill();
+        await fetch(`http://127.0.0.1:${cdpPort}/json/close/${tab.id}`).catch(() => undefined);
+      }
+    },
+  );
+
   it.skipIf(!live)(
     "writes each request case, trimmed to ids, clocks, status, cache, failure and allowed addresses",
     async (ctx) => {
@@ -486,7 +551,7 @@ describe("holder network capture against a real headless Chrome", () => {
       expect(announced.network, announceLine).toEqual({ startedAt: expect.any(Number) });
 
       await navigate(cdpPort, announced.targetId!, `${fixture.origin}/flow`);
-      await until(() => fixture.seen.includes("/hang"), "the back-forward restore");
+      await until(() => fixture.seen.includes("/next"), "the link to /next");
       await fetch(`http://127.0.0.1:${cdpPort}/json/new?${fixture.origin}/later-tab`, {
         method: "PUT",
       });
@@ -507,9 +572,14 @@ describe("holder network capture against a real headless Chrome", () => {
       expectRequestCases(lines, fixture.origin, fixture.closedPort);
       expectNavigationAndOriginCases(lines, fixture.origin);
       expectNothingSensitive(text, lines, fixture);
-      // Set to rewrite the committed wire fixture (tests/fixtures/browser-network/README.md).
-      const out = process.env.HUMANISH_NETWORK_FIXTURE_OUT;
-      if (out) await writeFile(out, normalizedFixture(text, fixture), "utf8");
+      // Set to rewrite the committed wire fixtures (tests/fixtures/browser-network/README.md).
+      const out = process.env.HUMANISH_NETWORK_FIXTURE_DIR;
+      if (out)
+        await writeFile(
+          path.join(out, "holder-events.ndjson"),
+          normalizedFixture(text, fixture),
+          "utf8",
+        );
     },
     90_000,
   );

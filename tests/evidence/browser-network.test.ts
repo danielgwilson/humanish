@@ -16,6 +16,7 @@ import { redactText, scrubLiterals } from "../../src/evidence/redaction.js";
 import { traceRedaction } from "../../src/evidence/trace-page.js";
 
 const FIXTURE = path.resolve("tests/fixtures/browser-network/holder-events.ndjson");
+const RESTORE_FIXTURE = path.resolve("tests/fixtures/browser-network/holder-back-forward.ndjson");
 const SITE = "http://127.0.0.1:3000";
 const CLOSED = "http://127.0.0.1:3999";
 const MIB = 1024 * 1024;
@@ -59,81 +60,112 @@ function reduce(events: string, marks: TurnMark[] = [], origins = [SITE, CLOSED]
 describe("the network log of the captured fixture", () => {
   it("writes one record per request hop, sorted by start, with each case the holder saw", async () => {
     const events = await readFile(FIXTURE, "utf8");
-    // Turn 0's screenshot read came after the first page load, turn 1's after the link, turn 2's
-    // after the back press; the later tab's requests came after the last read.
+    // Turn 0's screenshot read came after the first page load and turn 1's after the link; the
+    // later tab's requests came after the last read.
     const marks = [
-      { wallTime: 1792116685.6, turn: 0 },
-      { wallTime: 1792116686.0, turn: 1 },
-      { wallTime: 1792116686.4, turn: 2 },
+      { wallTime: 1792125927.4, turn: 0 },
+      { wallTime: 1792125927.6, turn: 1 },
     ];
     const log = await reduce(events, marks);
     const page = (at: string, turn: number, pathname: string, origin = SITE) => ({
-      at: `2026-10-16T02:11:${at}Z`,
+      at: `2026-10-16T04:45:${at}Z`,
       turn,
       origin,
       path: pathname,
     });
+    const favicon = (at: string, turn: number, ms: number) => ({
+      ...page(at, turn, "/favicon.ico"),
+      method: "GET",
+      type: "other",
+      status: 200,
+      ms,
+    });
     expect(lines(log.text)).toEqual([
-      { ...page("25.530", 0, "/flow"), method: "GET", type: "document", status: 200, ms: 2 },
-      { ...page("25.536", 0, "/img.png"), method: "GET", type: "image", status: 200, ms: 2 },
-      { ...page("25.538", 0, "/ok"), method: "GET", type: "fetch", status: 200, ms: 4 },
-      { ...page("25.538", 0, "/err"), method: "GET", type: "fetch", status: 500, ms: 5 },
-      { ...page("25.538", 0, "/slow"), method: "GET", type: "fetch", status: 200, ms: 307 },
+      { ...page("27.162", 0, "/flow"), method: "GET", type: "document", status: 200, ms: 3 },
+      { ...page("27.167", 0, "/img.png"), method: "GET", type: "image", status: 200, ms: 12 },
+      { ...page("27.169", 0, "/ok"), method: "GET", type: "fetch", status: 200, ms: 10 },
+      { ...page("27.170", 0, "/err"), method: "GET", type: "fetch", status: 500, ms: 10 },
+      { ...page("27.170", 0, "/slow"), method: "GET", type: "fetch", status: 200, ms: 309 },
       // The 302 is its own hop, closed when the next one started on the same request id.
-      { ...page("25.538", 0, "/redirect"), method: "GET", type: "fetch", status: 302, ms: 7 },
-      { ...page("25.539", 0, "/submit"), method: "POST", type: "fetch", status: 200, ms: 8 },
+      { ...page("27.170", 0, "/redirect"), method: "GET", type: "fetch", status: 302, ms: 9 },
+      { ...page("27.170", 0, "/submit"), method: "POST", type: "fetch", status: 200, ms: 6 },
       {
-        ...page("25.539", 0, "/drop"),
+        ...page("27.170", 0, "/drop"),
         method: "GET",
         type: "fetch",
         failed: "ERR_EMPTY_RESPONSE",
-        ms: 6,
+        ms: 15,
       },
       {
-        ...page("25.539", 0, "/closed", CLOSED),
+        ...page("27.170", 0, "/closed", CLOSED),
         method: "GET",
         type: "fetch",
         failed: "ERR_CONNECTION_REFUSED",
         ms: 4,
       },
       {
-        ...page("25.545", 0, "/ok"),
+        ...page("27.179", 0, "/ok"),
         method: "GET",
         type: "fetch",
         status: 200,
-        ms: 4,
+        ms: 3,
         redirect: true,
       },
-      { ...page("25.546", 0, "/favicon.ico"), method: "GET", type: "other", status: 200, ms: 3 },
-      { ...page("25.849", 1, "/next"), method: "GET", type: "document", status: 200, ms: 2 },
+      favicon("27.184", 0, 2),
+      { ...page("27.483", 1, "/next"), method: "GET", type: "document", status: 200, ms: 2 },
       {
-        ...page("25.854", 1, "/img.png"),
+        ...page("27.488", 1, "/img.png"),
         method: "GET",
         type: "image",
         status: 200,
-        ms: 2,
+        ms: 4,
         cache: "disk",
       },
-      { ...page("25.860", 1, "/favicon.ico"), method: "GET", type: "other", status: 200, ms: 2 },
-      { ...page("26.361", 2, "/hang"), method: "GET", type: "fetch", pending: true },
-      { ...page("26.363", 2, "/flow"), type: "document", cache: "back-forward" },
-      { ...page("26.363", 2, "/favicon.ico"), method: "GET", type: "other", status: 200, ms: 2 },
-      { ...page("26.557", 3, "/favicon.ico"), method: "GET", type: "other", status: 200, ms: 2 },
-      { ...page("27.055", 3, "/from-later-tab"), method: "GET", type: "fetch", status: 200, ms: 2 },
+      favicon("27.494", 1, 2),
+      // Session 1, the later tab: its first document request is missing.
+      favicon("27.687", 2, 2),
+      { ...page("28.185", 2, "/from-later-tab"), method: "GET", type: "fetch", status: 200, ms: 2 },
+      { ...page("28.185", 2, "/hang"), method: "GET", type: "fetch", pending: true },
     ]);
     // The fetch to http://localhost:<port>, an origin the study did not allow, is one count.
     expect(log.text).not.toContain("localhost");
     expect(log.index).toMatchObject({
       schema: "humanish.browser-network.v1",
       path: "network/p1.ndjson",
-      records: 19,
+      records: 17,
       failed: 2,
       pending: 1,
-      startedAt: "2026-10-16T02:11:25.370Z",
+      startedAt: "2026-10-16T04:45:27.004Z",
       origins: [SITE, CLOSED],
       omitted: { otherOrigin: 1, overCap: 0, invalid: 0 },
     });
     expect(log.warnings).toEqual([]);
+  });
+
+  it("writes a page restored from the back-forward cache as a document with no method, status or duration", async () => {
+    const events = await readFile(RESTORE_FIXTURE, "utf8");
+    const log = await reduce(events, [
+      { wallTime: 1792125926.3, turn: 0 },
+      { wallTime: 1792125926.8, turn: 1 },
+    ]);
+    const records = lines(log.text);
+    expect(records.map((record) => record.path)).toEqual([
+      "/bf-a",
+      "/favicon.ico",
+      "/bf-b",
+      "/favicon.ico",
+      "/bf-restored",
+      "/bf-a",
+      "/favicon.ico",
+    ]);
+    expect(records[5]).toEqual({
+      at: "2026-10-16T04:45:26.869Z",
+      turn: 2,
+      origin: SITE,
+      path: "/bf-a",
+      type: "document",
+      cache: "back-forward",
+    });
   });
 
   it("binds the file by its byte count, sha256 and record count", async () => {
@@ -161,9 +193,9 @@ describe("the network log of the captured fixture", () => {
     const events = (await readFile(FIXTURE, "utf8")).replace(/^\{"e":"exit".*\n/m, "");
     const cut = events.slice(0, events.lastIndexOf('"url"'));
     const log = await reduce(cut);
-    // The cut line was the later tab's fetch; the lines before it reduce as they did.
-    expect(lines(log.text).map((record) => record.path)).not.toContain("/from-later-tab");
-    expect(log.index).toMatchObject({ records: 18, omitted: { invalid: 0 } });
+    // The cut line was the later tab's unanswered fetch; the lines before it reduce as they did.
+    expect(lines(log.text).map((record) => record.path)).not.toContain("/hang");
+    expect(log.index).toMatchObject({ records: 16, omitted: { invalid: 0 } });
   });
 });
 

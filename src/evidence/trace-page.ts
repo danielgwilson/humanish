@@ -131,6 +131,28 @@ export function pathKeepsNoWithheldSegment(path: string): boolean {
     );
 }
 
+// Text redaction writes into a host: a marker, or a sandbox id's label with its digest.
+const WRITTEN_BY_REDACTION = new RegExp(
+  [
+    ...Object.values(REDACTION_MARKERS).map((marker) => marker.replace(/[[\]]/g, "\\$&")),
+    "\\[redacted-sandbox-id [0-9a-f]{16}\\]",
+  ].join("|"),
+  "g",
+);
+
+/**
+ * Whether no host label of a recorded origin is one tracePage withholds: a token-shaped label,
+ * apart from the text redaction itself writes. verify holds each network log origin to it, as the
+ * writer does.
+ */
+export function originKeepsNoWithheldLabel(origin: string): boolean {
+  // An IPv6 literal is kept as the URL wrote it, and a marker origin or a scheme alone has no host.
+  if (/^[a-z][a-z0-9+.-]*:\/\/\[[0-9a-f:.]*\](?::\d+)?$/i.test(origin)) return true;
+  const host = /^[a-z][a-z0-9+.-]*:\/\/([^/:]*)/i.exec(origin)?.[1];
+  if (host === undefined) return true;
+  return host.split(".").every((label) => !tokenShaped(label.replace(WRITTEN_BY_REDACTION, ".")));
+}
+
 // The markers that can stand for a whole origin, such as a withheld sandbox host.
 const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
 // `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host. The URL

@@ -5,7 +5,12 @@ import type { TracePage } from "../actors/contract.js";
 import { assertSafeOutputPathSegment } from "../run/contained-output.js";
 import { scrubSandboxIds } from "../run/sandbox-ids.js";
 import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
-import { pageProblem, pathKeepsNoWithheldSegment, tracePage } from "./trace-page.js";
+import {
+  originKeepsNoWithheldLabel,
+  pageProblem,
+  pathKeepsNoWithheldSegment,
+  tracePage,
+} from "./trace-page.js";
 
 // A participant's browser network log: the requests its browser made, one record per request hop,
 // each tagged with the turn it happened in. The in-sandbox holder appends a short line per
@@ -238,6 +243,8 @@ export function networkRecordProblem(record: unknown): string | undefined {
   if (page !== undefined) return page;
   if (!pathKeepsNoWithheldSegment(String(record.path)))
     return "has a path segment the trace page rule withholds";
+  if (!originKeepsNoWithheldLabel(String(record.origin)))
+    return "has a host label the trace page rule withholds";
   if (typeof record.type !== "string" || !RESOURCE_TYPES.has(record.type))
     return "has a resource type outside the list";
   if (
@@ -257,16 +264,14 @@ export function networkRecordProblem(record: unknown): string | undefined {
     return "has a redirect flag other than true";
   if (!optional(record.pending, (flag) => flag === true))
     return "has a pending flag other than true";
-  if (record.pending === true && record.ms !== undefined)
-    return "has a duration on a request with no recorded end";
+  if (record.pending === true && (record.ms !== undefined || record.failed !== undefined))
+    return "has a duration or a failure on a request with no recorded end";
   if (
     record.cache === "back-forward" &&
     (record.type !== "document" ||
-      record.method !== undefined ||
-      record.status !== undefined ||
-      record.ms !== undefined)
+      ["method", "status", "ms", "failed", "pending", "redirect"].some((key) => key in record))
   )
-    return "is a back-forward restore with a method, status, duration or type other than document";
+    return "is a back-forward restore, which sends no request, with request fields or a type other than document";
   return undefined;
 }
 
