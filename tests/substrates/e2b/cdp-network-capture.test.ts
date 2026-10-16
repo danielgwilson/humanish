@@ -558,6 +558,29 @@ describe("the holder's address for a path past 4,096 characters", () => {
   );
 });
 
+describe("the holder after its events file reached the cap", () => {
+  it.skipIf(!python3)(
+    "tracks no more requests, so its memory stays flat once it writes nothing",
+    async () => {
+      const dir = await mkdtemp(path.join(tmpdir(), "humanish-network-cap-"));
+      const script = [
+        "import json, os, re, sys, time",
+        NETWORK_CAPTURE_PY,
+        'log = NetworkLog({"eventsPath": sys.argv[1], "origins": ["https://app.example.test"]})',
+        "log.capped = True",
+        "for n in range(1000):",
+        '    log.event("Network.requestWillBeSent", {"requestId": str(n), "wallTime": 1.0, "timestamp": 1.0, "request": {"url": "https://app.example.test/x", "method": "GET"}}, None)',
+        "print(len(log.open))",
+      ].join("\n");
+      const open = execFileSync("python3", ["-I", "-c", script, path.join(dir, "events.ndjson")], {
+        encoding: "utf8",
+      });
+      await rm(dir, { recursive: true, force: true });
+      expect(open.trim()).toBe("0");
+    },
+  );
+});
+
 describe("applyMobileEmulation with network capture", () => {
   it("hands the capture request to the holder only and returns the holder's capture status", async () => {
     const userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148";

@@ -210,19 +210,45 @@ describe("a record's origin and path", () => {
     expect(log.index.omitted).toEqual({ otherOrigin: 1, overCap: 0, invalid: 0 });
   });
 
-  it("have the participant's own sandbox id scrubbed where tracePage keeps it", async () => {
-    // An id with no digit is not token-shaped, so tracePage keeps it; about 1 in 700 E2B ids is.
-    const sandboxId = "qwertyuiopasdfghjklz";
+  it("withhold a segment naming a sandbox id the run journaled, before any cut", async () => {
+    // Ids with no digit are not token-shaped, so only the scrub finds them; about 1 in 700 E2B ids
+    // is. The third path is long enough that the 1,024-character cut falls inside the id.
+    const own = "qwertyuiopasdfghjklz";
+    const other = "zxcvbnmasdfghjklpoiu";
     const log = await reduceBrowserNetwork({
       participantId: "p1",
       origins: [SITE],
-      events: eventsFile(answered("0:1", 101, `${SITE}/sandboxes/${sandboxId}`)),
+      events: eventsFile([
+        ...answered("0:1", 101, `${SITE}/sandboxes/${own}`),
+        ...answered("0:2", 102, `${SITE}/peers/${other}`),
+        ...answered("0:3", 103, `${SITE}${"/a.".repeat(335)}/${own}`),
+      ]),
       marks: [],
       redact,
-      sandboxId,
+      sandboxIds: [own, other],
     });
-    expect(log.text).not.toContain(sandboxId);
-    expect(lines(log.text)[0]?.path).toMatch(/^\/sandboxes\/\[redacted-sandbox-id [0-9a-f]{16}\]$/);
+    expect(
+      lines(log.text)
+        .slice(0, 2)
+        .map((record) => record.path),
+    ).toEqual(["/sandboxes/[REDACTED_URL_PART]", "/peers/[REDACTED_URL_PART]"]);
+    for (const id of [own, other]) expect(log.text).not.toContain(id.slice(0, 7));
+  });
+});
+
+describe("a record's method", () => {
+  it("is one of the HTTP methods, or `OTHER` for any other word a page sends", async () => {
+    const sent = (id: string, wallTime: number, method: string) => ({
+      e: "request",
+      id,
+      wallTime,
+      timestamp: wallTime,
+      url: `${SITE}/${id}`,
+      method,
+      type: "Fetch",
+    });
+    const log = await reduce(eventsFile([sent("a", 101, "PATCH"), sent("b", 102, "SWORDISH")]));
+    expect(lines(log.text).map((record) => record.method)).toEqual(["PATCH", "OTHER"]);
   });
 });
 

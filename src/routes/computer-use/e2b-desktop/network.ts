@@ -16,6 +16,7 @@ import {
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import { traceRedaction } from "../../../evidence/trace-page.js";
 import { writeContainedOutputFile } from "../../../run/contained-output.js";
+import { readRunSandboxIds } from "../../../run/sandbox-ids.js";
 import { networkCaptureOrigins } from "../../../study/study-fields.js";
 import type { ChromeNetworkCaptureRequest } from "../../../substrates/e2b/cdp-network-capture.js";
 import type { ChromeCdpProbeResult } from "../../../substrates/e2b/cdp-probe.js";
@@ -181,12 +182,15 @@ export async function collectParticipantNetwork(
   const network = state.network;
   if (network === undefined || !network.started) return;
   const { spec, deps } = ctx;
+  // Another participant's id the run journaled is swept from every run file at finish, so a log
+  // that named one would no longer match its index. An unreadable journal leaves the own id.
+  const journaled = await readRunSandboxIds(deps.artifactRoot).catch((): string[] => []);
   const capture = {
     participantId: spec.planned.id,
     origins: network.request.origins,
     marks: network.marks,
     redact: networkRedaction(deps),
-    sandboxId: desktop.sandboxId,
+    sandboxIds: [desktop.sandboxId, ...journaled],
   };
   const notCollected = (error: unknown): void => {
     ctx.warnings.push(

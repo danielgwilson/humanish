@@ -61,78 +61,78 @@ const CLEAN = [
 const ndjson = (records: object[]): string =>
   records.map((record) => `${JSON.stringify(record)}\n`).join("");
 
-describe("verify on a browser network log", () => {
-  let cwd: string;
-  let runs = 0;
+let cwd: string;
+let runs = 0;
 
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-network-log-"));
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-network-log-"));
+});
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true });
+});
 
-  /**
-   * A dry run whose participant p1 carries a network log holding `text`, indexed by the bytes the
-   * index records (`text`'s own unless `indexed` says otherwise) and the failed and pending counts
-   * `counts` gives (the clean log's unless it says otherwise), then edited by `edit`. Returns the
-   * grade, its reason codes and the public-safety scan's message.
-   */
-  const grade = async (
-    text: string | undefined,
-    edit: (runDir: string) => Promise<void> = async () => {},
-    indexed: string | undefined = text,
-    counts: { failed: number; pending: number } = { failed: 1, pending: 1 },
-  ) => {
-    const runId = `synthetic-network-log-${(runs += 1)}`;
-    await runDryRun({ cwd, dryRun: true, runId });
-    const runDir = path.join(cwd, ".humanish", "runs", runId);
-    const file = path.join(runDir, "run.json");
-    const bundle = JSON.parse(await readFile(file, "utf8")) as RunBundle;
-    const [stream] = bundle.streams;
-    if (stream === undefined) throw new Error("the dry run wrote no participant");
-    stream.laneId = "p1";
-    if (text !== undefined && indexed !== undefined) {
-      const bytes = Buffer.from(indexed, "utf8");
-      Object.assign(stream, {
-        network: {
-          schema: "humanish.browser-network.v1",
-          path: "network/p1.ndjson",
-          records: indexed.split("\n").length - 1,
-          ...counts,
-          bytes: bytes.length,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-          startedAt: "2026-10-16T10:00:07.500Z",
-          origins: [ORIGIN],
-          complete: true,
-          omitted: { otherOrigin: 2, overCap: 0, invalid: 0 },
-        },
-      });
-      stream.artifacts.push({
-        label: "participant p1 network log",
+/**
+ * A dry run whose participant p1 carries a network log holding `text`, indexed by the bytes the
+ * index records (`text`'s own unless `indexed` says otherwise) and the failed and pending counts
+ * `counts` gives (the clean log's unless it says otherwise), then edited by `edit`. Returns the
+ * grade, its reason codes and the public-safety scan's message.
+ */
+const grade = async (
+  text: string | undefined,
+  edit: (runDir: string) => Promise<void> = async () => {},
+  indexed: string | undefined = text,
+  counts: { failed: number; pending: number } = { failed: 1, pending: 1 },
+) => {
+  const runId = `synthetic-network-log-${(runs += 1)}`;
+  await runDryRun({ cwd, dryRun: true, runId });
+  const runDir = path.join(cwd, ".humanish", "runs", runId);
+  const file = path.join(runDir, "run.json");
+  const bundle = JSON.parse(await readFile(file, "utf8")) as RunBundle;
+  const [stream] = bundle.streams;
+  if (stream === undefined) throw new Error("the dry run wrote no participant");
+  stream.laneId = "p1";
+  if (text !== undefined && indexed !== undefined) {
+    const bytes = Buffer.from(indexed, "utf8");
+    Object.assign(stream, {
+      network: {
+        schema: "humanish.browser-network.v1",
         path: "network/p1.ndjson",
-        kind: "log",
-      });
-      await mkdir(path.join(runDir, "network"), { recursive: true });
-      await writeFile(path.join(runDir, "network", "p1.ndjson"), text);
-    }
-    await writeFile(file, `${JSON.stringify(bundle, null, 2)}\n`);
-    await edit(runDir);
-    const verified = await verifyRun(cwd, runId);
-    const scan = verified.checks.find((check) => check.name === "public-safety scan");
-    return {
-      status: verified.shareSafety.status,
-      codes: verified.shareSafety.reasons.map((reason) => reason.code),
-      message: scan?.message ?? "",
-    };
+        records: indexed.split("\n").length - 1,
+        ...counts,
+        bytes: bytes.length,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        startedAt: "2026-10-16T10:00:07.500Z",
+        origins: [ORIGIN],
+        complete: true,
+        omitted: { otherOrigin: 2, overCap: 0, invalid: 0 },
+      },
+    });
+    stream.artifacts.push({
+      label: "participant p1 network log",
+      path: "network/p1.ndjson",
+      kind: "log",
+    });
+    await mkdir(path.join(runDir, "network"), { recursive: true });
+    await writeFile(path.join(runDir, "network", "p1.ndjson"), text);
+  }
+  await writeFile(file, `${JSON.stringify(bundle, null, 2)}\n`);
+  await edit(runDir);
+  const verified = await verifyRun(cwd, runId);
+  const scan = verified.checks.find((check) => check.name === "public-safety scan");
+  return {
+    status: verified.shareSafety.status,
+    codes: verified.shareSafety.reasons.map((reason) => reason.code),
+    message: scan?.message ?? "",
   };
+};
 
-  /** The clean log with record `line` (from 1) changed by `change`, indexed as written. */
-  const withRecord = (line: number, change: (record: Record<string, unknown>) => object) =>
-    grade(
-      ndjson(CLEAN.map((record, index) => (index === line - 1 ? change({ ...record }) : record))),
-    );
+/** The clean log with record `line` (from 1) changed by `change`, indexed as written. */
+const withRecord = (line: number, change: (record: Record<string, unknown>) => object) =>
+  grade(
+    ndjson(CLEAN.map((record, index) => (index === line - 1 ? change({ ...record }) : record))),
+  );
 
+describe("verify on a browser network log", () => {
   it("grades a run with a clean network log as it grades the run without one", async () => {
     const clean = await grade(ndjson(CLEAN));
     const without = await grade(undefined);
@@ -197,6 +197,48 @@ describe("verify on a browser network log", () => {
     const lowercase = await withRecord(1, (record) => ({ ...record, method: "get" }));
     expect(lowercase.status).toBe("blocked");
     expect(lowercase.message).toContain("network/p1.ndjson line 1");
+  });
+});
+
+describe("verify on a browser network log record's values", () => {
+  it("blocks a path segment the trace page rule withholds: a token, or an address", async () => {
+    const token = await withRecord(2, (record) => ({ ...record, path: "/abc123def456ghi789" }));
+    expect(token.status).toBe("blocked");
+    expect(token.message).toContain("network/p1.ndjson line 2");
+    expect(token.message).not.toContain("abc123def456ghi789");
+
+    const address = await withRecord(2, (record) => ({ ...record, path: "/user@example.com" }));
+    expect(address.status).toBe("blocked");
+  });
+
+  it("blocks a method outside the HTTP methods, which a page can spell as it likes", async () => {
+    const result = await withRecord(1, (record) => ({ ...record, method: "SWORDISH" }));
+    expect(result.status).toBe("blocked");
+    expect(result.message).toContain("network/p1.ndjson line 1");
+  });
+
+  it("blocks a back-forward record that names a method, status or duration, and a pending record with a duration", async () => {
+    const restored = {
+      at: "2026-10-16T10:00:07.812Z",
+      turn: 0,
+      origin: ORIGIN,
+      path: "/",
+      type: "document",
+      cache: "back-forward",
+    };
+    const clean = await grade(ndjson(CLEAN));
+    const plain = await withRecord(1, () => restored);
+    expect({ status: plain.status, codes: plain.codes }).toEqual({
+      status: clean.status,
+      codes: clean.codes,
+    });
+    for (const extra of [{ method: "GET" }, { status: 200 }, { ms: 10 }, { type: "fetch" }]) {
+      const result = await withRecord(1, () => ({ ...restored, ...extra }));
+      expect(result.status, JSON.stringify(extra)).toBe("blocked");
+    }
+    const timed = await withRecord(4, (record) => ({ ...record, ms: 10 }));
+    expect(timed.status).toBe("blocked");
+    expect(timed.message).toContain("network/p1.ndjson line 4");
   });
 
   it("blocks a record whose origin is not one its index lists, naming the line and not the origin", async () => {

@@ -21,8 +21,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   cookies, header names or values, query strings, fragments or user info, and its paths are
   redacted as trace pages are, so a short code, an all-digit id or an all-letter token in a path
   stays. The stream's `network` index binds the file by records, bytes and sha256, verify blocks a
-  run whose file holds any other key, a record on an origin the index does not list, or bytes that
-  do not match, and the Observer's participant inspector shows "412 requests, 3 failed, 2 pending"
+  run whose file holds any other key, a method outside the HTTP methods, a path segment that rule
+  withholds, a record on an origin the index does not list, or bytes that do not match, and the
+  Observer's participant inspector shows "412 requests, 3 failed, 2 pending"
   linking the file. Capture starts when the browser's DevTools answer, so a desktop participant's
   log misses most of its first page load; `network.startedAt` says when it began. The terminal,
   scripted, shared-world and local browser routes, a `desktop-cli` subject and Firefox refuse the

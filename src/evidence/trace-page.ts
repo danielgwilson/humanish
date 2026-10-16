@@ -117,6 +117,20 @@ export function tracePage(
   return { origin, path };
 }
 
+/**
+ * Whether no segment of a recorded path is one tracePage withholds by its shape alone: an encoding
+ * that hides text, an address or a token. A segment the run's redaction changed is the marker
+ * already, and the text scan finds secret shapes. verify holds each network log record's path to
+ * it, as the writer does.
+ */
+export function pathKeepsNoWithheldSegment(path: string): boolean {
+  return path
+    .split("/")
+    .every(
+      (segment) => segment === REDACTION_MARKERS.urlPart || !withheld(segment, (text) => text),
+    );
+}
+
 // The markers that can stand for a whole origin, such as a withheld sandbox host.
 const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
 // `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host. The URL

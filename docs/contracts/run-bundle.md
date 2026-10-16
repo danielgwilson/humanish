@@ -551,7 +551,7 @@ Each line of the file is one request hop as a JSON object, sorted by `at`:
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `at`             | When the request started, as an ISO time on the desktop's clock                                                                                                                                            |
 | `turn`           | The turn the request fell in, by the rule below. Absent when no checkpoint screenshot recorded a browser-state read                                                                                        |
-| `method`         | 1 to 16 capital letters; any other method is `OTHER`. Absent on a back-forward record                                                                                                                      |
+| `method`         | `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH`, `CONNECT` or `TRACE`; any other method is `OTHER`. Absent on a back-forward record                                                             |
 | `origin`, `path` | The address as `items[].page` records it: no query, fragment or user info, and token-shaped or secret-bearing path segments become `[REDACTED_URL_PART]`                                                   |
 | `type`           | The lowercase CDP resource type: `document`, `fetch`, `xhr`, `prefetch`, `script`, `image` and the rest of the documented list. Any other value is `other`                                                 |
 | `status`         | 100 to 599. Absent when no response arrived                                                                                                                                                                |
@@ -579,10 +579,13 @@ written. Absent from the file:
 
 Path segments are redacted as `items[].page` redacts them. A run of 16 or more characters is
 withheld only when a piece of it mixes letters and digits, so a short code, a long all-digit
-invite code or a long all-letter token in a path stays in the file. A path longer than 4,096
-characters ends at its last whole segment within them, then `/[TRUNCATED]`. The file keeps the
-first 20,000 records, then up to 5,000 more that failed, are pending or have status 400 or above,
-and stops before 8 MiB.
+invite code or a long all-letter token in a path stays in the file. A segment that names a
+sandbox id the run journaled is withheld too, and verify reports a record whose path keeps a
+segment these rules withhold. The in-sandbox holder cuts a path longer than 4,096 characters at
+its last whole segment within them, and the file keeps at most 1,024 characters of the redacted
+path, as `items[].page` does, ending in `[TRUNCATED]` when cut. The file keeps the first 20,000
+records, then up to 5,000 more that failed, are pending or have status 400 or above, and stops
+before 8 MiB.
 
 `complete: false` comes with `reason`: `no-capture` (capture did not start: a browser other than
 Chrome or Chromium, or a holder that could not start it), `not-collected` (the file could not be

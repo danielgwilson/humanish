@@ -413,6 +413,42 @@ describe("a hosted participant's network log through the run's sandbox id sweep"
   });
 });
 
+describe("a fan-out participant's network log naming another participant's sandbox", () => {
+  it("withholds every journaled id, so each finished file still matches its index", async () => {
+    // Both fake desktops' ids, in paths each participant's app put them in: one is its own, the
+    // other its peer's, which the run journaled when that desktop was created.
+    const peers = [1, 2].map((serial, index) =>
+      line({
+        e: "request",
+        id: `0:${6 + index}`,
+        wallTime: T + 16 + index,
+        timestamp: 66 + index,
+        url: `${SITE}/peers/fake-sandbox-0${serial}`,
+        method: "GET",
+        type: "Fetch",
+      }),
+    );
+    const { streams, runDir, cwd, result } = await runWithCapture(
+      capturingDesktop({
+        holderLog: announce({ startedAt: T - 5 }),
+        events: `${EVENTS}${peers.join("")}`,
+      }),
+      { participants: [{ id: "first" }, { id: "second" }] },
+    );
+    for (const participant of streams) {
+      const bytes = await readFile(path.join(runDir, `network/${participant.laneId}.ndjson`));
+      expect(bytes.toString("utf8")).not.toContain("fake-sandbox-0");
+      expect(participant.network).toMatchObject({
+        records: 6,
+        bytes: bytes.length,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      });
+    }
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.ok).toBe(true);
+  });
+});
+
 describe("a hosted participant whose capture fails", () => {
   it.each([
     ["a holder that never announces", capturingDesktop({ events: EVENTS })],

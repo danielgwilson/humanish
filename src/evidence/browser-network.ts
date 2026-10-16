@@ -5,7 +5,7 @@ import type { TracePage } from "../actors/contract.js";
 import { assertSafeOutputPathSegment } from "../run/contained-output.js";
 import { scrubSandboxIds } from "../run/sandbox-ids.js";
 import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
-import { pageProblem, tracePage } from "./trace-page.js";
+import { pageProblem, pathKeepsNoWithheldSegment, tracePage } from "./trace-page.js";
 
 // A participant's browser network log: the requests its browser made, one record per request hop,
 // each tagged with the turn it happened in. The in-sandbox holder appends a short line per
@@ -91,10 +91,11 @@ export interface BrowserNetworkCapture {
    */
   holderExited?: boolean;
   /**
-   * The participant's own sandbox id. Run.finish rewrites a journaled id in every run file after
-   * run.json indexes them, so the writer replaces it first, with the same label.
+   * The participant's own sandbox id and those the run journaled. Run.finish rewrites a journaled
+   * id in every run file after run.json indexes them, so the writer withholds each path segment
+   * that names one, before any cut, and the sweep finds nothing to change.
    */
-  sandboxId?: string;
+  sandboxIds?: readonly string[];
 }
 
 export interface BrowserNetworkLog {
@@ -153,7 +154,19 @@ const RECORD_KEYS: ReadonlySet<string> = new Set([
   "failed",
   "pending",
 ]);
-const METHOD = /^[A-Z]{1,16}$/;
+/** The HTTP methods a record names; a page can send any token as a method, written as `OTHER`. */
+const METHODS: ReadonlySet<string> = new Set([
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "DELETE",
+  "OPTIONS",
+  "PATCH",
+  "CONNECT",
+  "TRACE",
+  "OTHER",
+]);
 const FAILED = /^ERR_[A-Z0-9_]{1,64}$/;
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
@@ -219,10 +232,12 @@ export function networkRecordProblem(record: unknown): string | undefined {
   if (!isIsoTime(record.at)) return "has a start time that is not an ISO time";
   if (!optional(record.turn, isNonNegativeSafeInteger))
     return "has a turn that is not a whole number from 0";
-  if (!optional(record.method, (method) => typeof method === "string" && METHOD.test(method)))
-    return "has a method that is not 1 to 16 capital letters";
+  if (!optional(record.method, (method) => typeof method === "string" && METHODS.has(method)))
+    return "has a method outside the HTTP methods and `OTHER`";
   const page = pageProblem({ origin: record.origin, path: record.path });
   if (page !== undefined) return page;
+  if (!pathKeepsNoWithheldSegment(String(record.path)))
+    return "has a path segment the trace page rule withholds";
   if (typeof record.type !== "string" || !RESOURCE_TYPES.has(record.type))
     return "has a resource type outside the list";
   if (
@@ -242,6 +257,16 @@ export function networkRecordProblem(record: unknown): string | undefined {
     return "has a redirect flag other than true";
   if (!optional(record.pending, (flag) => flag === true))
     return "has a pending flag other than true";
+  if (record.pending === true && record.ms !== undefined)
+    return "has a duration on a request with no recorded end";
+  if (
+    record.cache === "back-forward" &&
+    (record.type !== "document" ||
+      record.method !== undefined ||
+      record.status !== undefined ||
+      record.ms !== undefined)
+  )
+    return "is a back-forward restore with a method, status, duration or type other than document";
   return undefined;
 }
 
@@ -253,35 +278,33 @@ const SLICE_MS = 20;
  * could not be read at teardown. No file goes with it.
  */
 export function networkIndexWithoutEvents(
-  capture: Pick<BrowserNetworkCapture, "origins" | "redact" | "sandboxId">,
+  capture: Pick<BrowserNetworkCapture, "origins" | "redact" | "sandboxIds">,
   reason: "no-capture" | "not-collected",
 ): BrowserNetworkIndex {
   return {
     schema: BROWSER_NETWORK_SCHEMA,
-    origins: indexOrigins(capture.origins, capture.redact, scrubOf(capture.sandboxId)),
+    origins: indexOrigins(capture.origins, withSandboxScrub(capture)),
     complete: false,
     reason,
     omitted: { otherOrigin: 0, overCap: 0, invalid: 0 },
   };
 }
 
-function scrubOf(sandboxId: string | undefined): (text: string) => string {
-  return sandboxId === undefined || sandboxId === ""
-    ? (text) => text
-    : (text) => scrubSandboxIds(text, [sandboxId]);
+/** The capture's redaction, then the sandbox id scrub, so tracePage withholds a segment naming one. */
+function withSandboxScrub(
+  capture: Pick<BrowserNetworkCapture, "redact" | "sandboxIds">,
+): (text: string) => string {
+  const ids = (capture.sandboxIds ?? []).filter((id) => id !== "");
+  return ids.length === 0 ? capture.redact : (text) => scrubSandboxIds(capture.redact(text), ids);
 }
 
 /** The allowed origins as the index lists them: each redacted as a trace page's origin is. */
-function indexOrigins(
-  origins: readonly string[],
-  redact: (text: string) => string,
-  scrub: (text: string) => string,
-): string[] {
+function indexOrigins(origins: readonly string[], redact: (text: string) => string): string[] {
   return [
     ...new Set(
       origins.flatMap((origin) => {
         const page = tracePage(origin, redact);
-        return page === undefined ? [] : [scrub(page.origin)];
+        return page === undefined ? [] : [page.origin];
       }),
     ),
   ];
@@ -300,10 +323,10 @@ function indexOrigins(
 export async function reduceBrowserNetwork(
   capture: BrowserNetworkCapture,
 ): Promise<BrowserNetworkLog> {
-  const { participantId, redact } = capture;
+  const { participantId } = capture;
   assertSafeOutputPathSegment(participantId, "Network log participant");
-  const scrub = scrubOf(capture.sandboxId);
-  const origins = indexOrigins(capture.origins, redact, scrub);
+  const redact = withSandboxScrub(capture);
+  const origins = indexOrigins(capture.origins, redact);
   let sliceStart = performance.now();
   const pause = async (): Promise<void> => {
     if (performance.now() - sliceStart < SLICE_MS) return;
@@ -318,7 +341,7 @@ export async function reduceBrowserNetwork(
       warnings: [],
     };
 
-  const pageOf = cachedPages(redact, scrub);
+  const pageOf = cachedPages(redact);
   const turnOf = turnRule(capture.marks);
   const lines: string[] = [];
   const kept = { failed: 0, pending: 0 };
@@ -401,17 +424,12 @@ export async function reduceBrowserNetwork(
  * which is a raw origin and path: a page polling one endpoint repeats the same address thousands
  * of times, and an uncached call costs a few hundred microseconds.
  */
-function cachedPages(
-  redact: (text: string) => string,
-  scrub: (text: string) => string,
-): (url: string) => TracePage | undefined {
+function cachedPages(redact: (text: string) => string): (url: string) => TracePage | undefined {
   const pages = new Map<string, TracePage | null>();
   return (url) => {
     let page = pages.get(url);
     if (page === undefined) {
-      const traced = tracePage(url, redact);
-      page =
-        traced === undefined ? null : { origin: scrub(traced.origin), path: scrub(traced.path) };
+      page = tracePage(url, redact) ?? null;
       pages.set(url, page);
     }
     return page ?? undefined;
@@ -617,7 +635,7 @@ function recordOf(
     ...(turn === undefined ? {} : { turn }),
     ...(hop.cache === "back-forward"
       ? {}
-      : { method: hop.method !== undefined && METHOD.test(hop.method) ? hop.method : "OTHER" }),
+      : { method: hop.method !== undefined && METHODS.has(hop.method) ? hop.method : "OTHER" }),
     origin: page?.origin ?? "",
     path: page?.path ?? "",
     type: RESOURCE_TYPES.has(type) ? type : "other",

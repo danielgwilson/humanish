@@ -122,6 +122,9 @@ class NetworkLog:
             self.faults += 1
 
     def record(self, method, params, session):
+        # Past the cap nothing more is written, so nothing more is tracked.
+        if self.capped:
+            return
         if method == "Page.frameNavigated":
             frame = params.get("frame") or {}
             if params.get("type") == "BackForwardCacheRestore" and not frame.get("parentId"):
@@ -179,6 +182,8 @@ def start_capture(ws, session_id, network):
         log = NetworkLog(network)
     except Exception as error:
         return None, {"unavailable": "the events file could not be opened (%s)" % type(error).__name__}
+    # Read before the call, so a request whose events queued behind the reply started after it.
+    started = time.time()
     try:
         reply = ws.call("Network.enable", NETWORK_ENABLE, session_id)
     except Exception as error:
@@ -187,7 +192,6 @@ def start_capture(ws, session_id, network):
         detail = str(((reply or {}).get("error") or {}).get("message")) if isinstance(reply, dict) else "no reply"
         log.close("Network.enable failed: %s" % detail)
         return None, {"unavailable": "Network.enable failed on the launch page: %s" % detail}
-    started = time.time()
     try:
         log.session(session_id)
         log.write({"e": "start", "wallTime": started})
