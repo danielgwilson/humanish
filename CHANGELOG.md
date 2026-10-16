@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A mobile-emulated participant's emulation log in run.json no longer holds the addresses of the
+  tabs it reloaded or attached to. The holder logged each address in full, query string and
+  fragment included, and run.json keeps up to 50 of those lines as
+  `desktopGeometry.fidelity.holderLog`, scrubbed for the run's known values only. A one-time code
+  or token in a URL the participant opened could reach a `share_ready` bundle, since verify's text
+  scan does not read a short query value as a secret. The holder now logs the target id and the
+  commands it sent. (#1904)
+
 ## 0.136.0: verify takes less than half the time on large runs (2026-10-14)
 
 humanish 0.136.0 makes `humanish verify` take less than half the time on large runs. It checks a

@@ -493,9 +493,13 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         }
         expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
         // A second tab, opened the way a target=_blank link opens one, after the holder attached.
-        // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry.
+        // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry. Its query
+        // and fragment stand in for a token an app puts in a URL.
         const created = (await (
-          await fetch(`http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?second`, { method: "PUT" })
+          await fetch(
+            `http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?token=QUERYVALUE456%23frag`,
+            { method: "PUT" },
+          )
         ).json()) as { id?: string };
         expect(typeof created.id, JSON.stringify(created)).toBe("string");
         const secondId = created.id as string;
@@ -537,7 +541,6 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           attached: string;
           sent: string[];
           reloadAfterNavigation?: boolean;
-          url?: string;
         };
         expect(attached.sent.slice(0, 4)).toEqual([
           "Emulation.setDeviceMetricsOverride",
@@ -554,6 +557,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           true,
         );
         expect(lines().filter((line) => line.includes("replyError"))).toEqual([]);
+        // run.json keeps these lines, so none of them names a page address.
+        expect(
+          lines().filter((line) => "url" in JSON.parse(line) || line.includes("QUERYVALUE456")),
+        ).toEqual([]);
       } finally {
         holder.kill("SIGKILL");
         if (openedTab !== undefined) tabClosed = await closeTarget(openedTab);
