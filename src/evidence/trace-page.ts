@@ -141,8 +141,8 @@ const WRITTEN_BY_REDACTION = new RegExp(
 );
 
 /**
- * Whether no host label of a recorded origin is one tracePage withholds: a token-shaped label,
- * apart from the text redaction itself writes. verify holds each network log origin to it, as the
+ * Whether no host label of a recorded origin is one tracePage withholds: a token-shaped label in
+ * any reading, apart from the text redaction itself writes. verify holds each network log origin to it, as the
  * writer does.
  */
 export function originKeepsNoWithheldLabel(origin: string): boolean {
@@ -150,7 +150,10 @@ export function originKeepsNoWithheldLabel(origin: string): boolean {
   if (/^[a-z][a-z0-9+.-]*:\/\/\[[0-9a-f:.]*\](?::\d+)?$/i.test(origin)) return true;
   const host = /^[a-z][a-z0-9+.-]*:\/\/([^/:]*)/i.exec(origin)?.[1];
   if (host === undefined) return true;
-  return host.split(".").every((label) => !tokenShaped(label.replace(WRITTEN_BY_REDACTION, ".")));
+  // Each reading, as for a path segment: an escape can split a token below the length matched.
+  return host
+    .split(".")
+    .every((label) => !readingsOf(label.replace(WRITTEN_BY_REDACTION, ".")).some(tokenShaped));
 }
 
 // The markers that can stand for a whole origin, such as a withheld sandbox host.

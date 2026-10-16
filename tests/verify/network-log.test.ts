@@ -267,12 +267,16 @@ describe("verify on a browser network log record's values", () => {
     );
     expect(token.status).toBe("blocked");
     expect(token.message).not.toContain("abc123def4567890");
-    const behindMarker = "https://[REDACTED_URL_PART].abc123def4567890.example.test";
-    const hidden = await gradeLog(
-      CLEAN.map((record) => ({ ...record, origin: behindMarker })),
-      [behindMarker],
-    );
-    expect(hidden.status).toBe("blocked");
+    for (const hiding of [
+      "https://[REDACTED_URL_PART].abc123def4567890.example.test",
+      "https://abc123de%664567890.example.test",
+    ]) {
+      const hidden = await gradeLog(
+        CLEAN.map((record) => ({ ...record, origin: hiding })),
+        [hiding],
+      );
+      expect(hidden.status, hiding).toBe("blocked");
+    }
     // Regression guard: the label tracePage writes in its place grades as the clean log.
     const withheld = "https://[REDACTED_URL_PART].example.test";
     const marked = await gradeLog(
