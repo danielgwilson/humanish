@@ -1,46 +1,40 @@
-// A finished run whose participant carries a browser network log, built on a dry run: the log the
-// reducer writes for a page load and a failed add to cart, indexed on the stream and registered as
-// a log, as a hosted participant's teardown leaves it.
+// A finished run whose participant carries a browser network log, built on a dry run: a page load
+// and a failed add to cart written as the log's records, indexed on the stream and registered as a
+// log, as a hosted participant's teardown leaves them. The records and index are literals, so a
+// test using this helper exercises the reader and never the writer.
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  reduceBrowserNetwork,
-  type BrowserNetworkIndex,
-} from "../../src/evidence/browser-network.js";
-import { redactText } from "../../src/evidence/redaction.js";
-import { traceRedaction } from "../../src/evidence/trace-page.js";
+import type { BrowserNetworkIndex } from "../../src/evidence/browser-network.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 
 const NETWORK_SITE = "https://app.example.test";
+const NETWORK_PATH = "network/p1.ndjson";
 
-/** A page load and a failed add to cart, as the holder writes them. */
-const EVENTS = [
-  { e: "start", wallTime: 1_792_116_000 },
+const TEXT = [
   {
-    e: "request",
-    id: "0:1",
-    wallTime: 1_792_116_001,
-    timestamp: 1,
-    url: `${NETWORK_SITE}/`,
+    at: "2026-10-16T02:00:01.000Z",
+    turn: 0,
     method: "GET",
-    type: "Document",
+    origin: NETWORK_SITE,
+    path: "/",
+    type: "document",
+    status: 200,
+    ms: 30,
   },
-  { e: "response", id: "0:1", timestamp: 1.02, status: 200 },
-  { e: "finished", id: "0:1", timestamp: 1.03 },
   {
-    e: "request",
-    id: "0:2",
-    wallTime: 1_792_116_002,
-    timestamp: 2,
-    url: `${NETWORK_SITE}/api/cart`,
+    at: "2026-10-16T02:00:02.000Z",
+    turn: 0,
     method: "POST",
-    type: "Fetch",
+    origin: NETWORK_SITE,
+    path: "/api/cart",
+    type: "fetch",
+    status: 500,
+    ms: 60,
   },
-  { e: "response", id: "0:2", timestamp: 2.05, status: 500 },
-  { e: "finished", id: "0:2", timestamp: 2.06 },
 ]
-  .map((line) => `${JSON.stringify(line)}\n`)
+  .map((record) => `${JSON.stringify(record)}\n`)
   .join("");
 
 /**
@@ -51,24 +45,29 @@ export async function addNetworkLog(
   runDir: string,
   edit: (text: string) => string = (text) => text,
 ): Promise<{ text: string; index: BrowserNetworkIndex }> {
-  const log = reduceBrowserNetwork({
-    participantId: "p1",
+  const bytes = Buffer.from(TEXT, "utf8");
+  const index: BrowserNetworkIndex = {
+    schema: "humanish.browser-network.v1",
+    path: NETWORK_PATH,
+    records: 2,
+    failed: 0,
+    pending: 0,
+    bytes: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    startedAt: "2026-10-16T02:00:00.000Z",
     origins: [NETWORK_SITE],
-    events: EVENTS,
-    marks: [{ wallTime: 1_792_116_010, turn: 0 }],
-    redact: traceRedaction((text) => text, redactText),
-  });
-  const { text, index } = log;
-  if (text === undefined || index.path === undefined) throw new Error("no log written");
+    complete: true,
+    omitted: { otherOrigin: 0, overCap: 0, invalid: 0 },
+  };
   const file = path.join(runDir, "run.json");
   const bundle = JSON.parse(await readFile(file, "utf8")) as RunBundle;
   const [stream] = bundle.streams;
   if (stream === undefined) throw new Error("the run has no participant");
   stream.laneId = "p1";
   stream.network = index;
-  stream.artifacts.push({ label: "network log", path: index.path, kind: "log" });
+  stream.artifacts.push({ label: "network log", path: NETWORK_PATH, kind: "log" });
   await writeFile(file, `${JSON.stringify(bundle, null, 2)}\n`);
   await mkdir(path.join(runDir, "network"), { recursive: true });
-  await writeFile(path.join(runDir, index.path), edit(text));
-  return { text, index };
+  await writeFile(path.join(runDir, NETWORK_PATH), edit(TEXT));
+  return { text: TEXT, index };
 }

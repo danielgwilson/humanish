@@ -1,7 +1,9 @@
 // humanish observe serves a participant's network log at /_humanish/runs/<id>/network/<id>.ndjson
 // as NDJSON through the generic run file route. Under --safe it is served only while the run's
 // verification is share_ready, as every other run file is, and observer-data.json carries the
-// log's index and none of its records.
+// log's index and none of its records. The share_ready cases are regression guards: the generic
+// route and the stream projection served them before the log existed. The mismatch case checks
+// verify's binding of the file to its index.
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
