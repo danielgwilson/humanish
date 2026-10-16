@@ -56,7 +56,10 @@ export type Requirement =
  * fields at run time.
  */
 export type ResidualConfig = Pick<StudyConfig, "comms" | "policies" | "defaults" | "review"> & {
-  readonly execution?: Pick<NonNullable<StudyConfig["execution"]>, "desktop" | "target">;
+  readonly execution?: Pick<
+    NonNullable<StudyConfig["execution"]>,
+    "desktop" | "target" | "network"
+  >;
   readonly subject: Pick<StudyConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
 };
 

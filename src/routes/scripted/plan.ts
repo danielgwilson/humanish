@@ -18,6 +18,7 @@ import type { StudyConfig } from "../../study/types.js";
 import {
   cloneTargetValidationReason,
   desktopMediaValidationReason,
+  networkCaptureValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { sandboxDeadlineRefusal, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
@@ -97,7 +98,8 @@ export function planScriptedStudy(
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason, beforeScope);
 
-  const mediaReason = desktopMediaValidationReason(config);
+  const mediaReason =
+    desktopMediaValidationReason(config) ?? networkCaptureValidationReason(config, "scripted");
   if (mediaReason) return refuse("HUMANISH_SCRIPTED_SCENARIO_INVALID", mediaReason);
   const cloneTargetReason = cloneTargetValidationReason(config);
   if (cloneTargetReason) return refuse("HUMANISH_SCRIPTED_SUBJECT_UNSAFE", cloneTargetReason);

@@ -3,7 +3,7 @@
 // read each form. tests/surface/study-config-reads.test.ts refuses a direct read of a humanish.lab.v2
 // field anywhere outside migrate.
 
-import type { StudyConfig, StudyParticipantEntry } from "./types.js";
+import type { StudyConfig, StudyNetworkCapture, StudyParticipantEntry } from "./types.js";
 
 /** The participants listed one by one: a `participants` list. Undefined when none is listed. */
 export function participantList(config: StudyConfig): readonly StudyParticipantEntry[] | undefined {
@@ -20,6 +20,18 @@ export function declaredParticipantCount(config: StudyConfig): number | undefine
 /** The steer each of a counted group of participants gets: `participants.instruction`. */
 export function participantInstruction(config: StudyConfig): string | undefined {
   return isGroup(config.participants) ? config.participants.instruction : undefined;
+}
+
+/**
+ * The origins each participant's network log keeps beside its target's
+ * (`execution.network.origins`), or undefined when capture is off: `execution.network` absent or
+ * false.
+ */
+export function networkCaptureOrigins(
+  network: StudyNetworkCapture | undefined,
+): readonly string[] | undefined {
+  if (network === undefined || network === false) return undefined;
+  return network === true ? [] : (network.origins ?? []);
 }
 
 function isGroup(

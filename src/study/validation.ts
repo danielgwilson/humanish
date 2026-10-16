@@ -14,9 +14,11 @@ import {
   isScriptedBrowserComposition,
   isSharedWorldComposition,
   isTerminalProductComposition,
+  routeOf,
+  type StudyRoute,
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
-import { participantList } from "./study-fields.js";
+import { networkCaptureOrigins, participantList } from "./study-fields.js";
 import { isStartAfterMs, rosterStartsReason, startAfterMessage, windowReason } from "./arrivals.js";
 
 /**
@@ -232,6 +234,39 @@ export function desktopMediaValidationReason(
       return "Hosted synthetic cameras replace Chromium's microphone and cannot be combined with speech. Use a local media desktop for camera and speech together, or omit the hosted camera.";
     }
   }
+  return undefined;
+}
+
+/**
+ * Why a study's `execution.network` cannot run where it is going, or undefined. Only a
+ * computer-use participant in hosted Chrome or Chromium has the in-sandbox DevTools client that
+ * records requests. Enforced at parse and again by each route's planner, which passes its own
+ * route, for a library caller's config.
+ */
+export function networkCaptureValidationReason(
+  config: StudyConfig,
+  route: StudyRoute = routeOf(config),
+): string | undefined {
+  if (networkCaptureOrigins(config.execution?.network) === undefined) return undefined;
+  const hosted =
+    "only computer-use participants in hosted Chrome or Chromium on `execution.target: e2b-desktop` record their requests";
+  if (route === "terminal")
+    return "`execution.network` records each browser participant's requests, and route: terminal launches no browser: its participant works in a shell. Remove `execution.network`.";
+  if (route === "shared-world")
+    return "`execution.network` is not supported on route: shared-world yet: a shared world's lobby code sits in a page address the network log would keep, and that route keeps observed addresses only as digests. Remove `execution.network`, or run independent participants on route: computer-use.";
+  if (route === "scripted")
+    return `\`execution.network\` is not supported on route: scripted yet: ${hosted}. Remove \`execution.network\`.`;
+  if (route !== "computer-use")
+    return `\`execution.network\` is not read on route: ${route}: ${hosted}. Remove \`execution.network\`.`;
+  if (config.subject.source === "desktop-cli")
+    return "`execution.network` records each browser participant's requests, and a desktop-cli subject opens a terminal, not a browser, so there are none to record. Remove `execution.network`.";
+  if (config.subject.source === "local-app")
+    return `\`execution.network\` is not supported for a local-app subject: humanish does not launch that participant's browser, and ${hosted}. Remove \`execution.network\`.`;
+  const target = config.execution?.target;
+  if (target !== "e2b-desktop")
+    return `\`execution.network\` is not supported with \`execution.target: ${target ?? "(absent)"}\` yet: ${hosted}. Set \`execution.target: e2b-desktop\`, or remove \`execution.network\`.`;
+  if (config.execution?.desktop?.browser === "firefox")
+    return "`execution.network` needs Chrome or Chromium, and `execution.desktop.browser: firefox` launches Firefox with no DevTools port to record requests through. Set `execution.desktop.browser` to chrome, chromium or default, or remove `execution.network`.";
   return undefined;
 }
 

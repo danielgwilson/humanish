@@ -46,7 +46,9 @@ function residualOf(config: StudyConfig): Readonly<ResidualConfig> {
       ...(policies === undefined ? {} : { policies }),
       ...(defaults === undefined ? {} : { defaults }),
       ...(review === undefined ? {} : { review }),
-      ...(config.execution?.desktop === undefined && config.execution?.target === undefined
+      ...(config.execution?.desktop === undefined &&
+      config.execution?.target === undefined &&
+      config.execution?.network === undefined
         ? {}
         : {
             execution: {
@@ -56,6 +58,9 @@ function residualOf(config: StudyConfig): Readonly<ResidualConfig> {
               ...(config.execution?.target === undefined
                 ? {}
                 : { target: config.execution.target }),
+              ...(config.execution?.network === undefined
+                ? {}
+                : { network: config.execution.network }),
             },
           }),
       subject: {

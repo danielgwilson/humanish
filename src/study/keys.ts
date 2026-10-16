@@ -153,6 +153,8 @@ export const EXECUTION = {
   terminal: { stdin: true, transport: true, doNotTrack: true } satisfies Keys<
     Field<Execution, "terminal">
   >,
+  // true or false, or a mapping whose keys are checked here.
+  network: { origins: true } satisfies Keys<Exclude<Field<Execution, "network">, boolean>>,
   desktop: {
     template: true,
     browser: true,

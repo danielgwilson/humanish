@@ -33,6 +33,7 @@ import type { StudyConfig, StudySubjectState } from "../../study/types.js";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
+  networkCaptureValidationReason,
   externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
@@ -103,7 +104,9 @@ export function planSharedWorldStudy(
   });
   const invalid = "HUMANISH_SHARED_WORLD_INVALID";
 
-  const mediaReason = desktopMediaValidationReason(config, false);
+  const mediaReason =
+    desktopMediaValidationReason(config, false) ??
+    networkCaptureValidationReason(config, "shared-world");
   if (mediaReason) return refuse(invalid, mediaReason);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
