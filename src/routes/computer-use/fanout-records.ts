@@ -175,6 +175,7 @@ function fanoutParticipantStream(
         ? {}
         : { timeZone: spec.planned.limits.timeZone }),
       ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+      ...(outcome?.networkLog === undefined ? {} : { network: outcome.networkLog }),
       ui: {
         route: publicTargetUrl,
         intent: `Watch participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
@@ -214,6 +215,15 @@ function fanoutParticipantStream(
               },
             ]
           : []),
+        ...(outcome?.networkLog?.path === undefined
+          ? []
+          : [
+              {
+                label: `participant ${spec.planned.id} network log`,
+                path: outcome.networkLog.path,
+                kind: "log" as const,
+              },
+            ]),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `participant ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,

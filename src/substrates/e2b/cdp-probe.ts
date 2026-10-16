@@ -16,6 +16,7 @@
 // consequence ("url/text criteria will read as never measured").
 
 import { shellQuote } from "../shell.js";
+import { NETWORK_CAPTURE_PY, type ChromeNetworkCaptureRequest } from "./cdp-network-capture.js";
 
 /** Which target to attribute when the endpoint lists several pages. */
 export type ChromeCdpPagePreference = "pinned" | "active";
@@ -43,15 +44,17 @@ export interface ChromeCdpProbeArgs {
   /**
    * "state": url/title/text/scrollY. "geometry": outer window + CSS viewport. "port": resolution
    * only. "emulate": apply mobile emulation to the selected page and exit (the overrides that
-   * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": the same over a browser-level
-   * socket, then stay attached until killed (how a participant keeps them for its whole life) and attach
-   * to every page target Chrome opens later, sending it the same overrides and a reload the moment
-   * it exists, never pausing it. "fidelity": read
+   * are session-scoped, UA / touch / DPR, lapse when the socket closes). "hold": stay attached over
+   * a browser-level socket until killed and attach to every page target Chrome opens later, never
+   * pausing it; it applies `emulation` (how a participant keeps the overrides for its whole life,
+   * with a reload on each page) and `network` capture, either or both. "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
    */
   mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
-  /** For "emulate": what to apply. */
+  /** For "emulate" and "hold": what to apply. */
   emulation?: ChromeMobileEmulationRequest;
+  /** For "hold": capture each held page's requests to a sandbox file. */
+  network?: ChromeNetworkCaptureRequest;
 }
 
 /** Mobile emulation request: the CDP Emulation domain applied to one page target. */
@@ -89,6 +92,14 @@ export interface ChromeCdpProbeResult {
   applied?: string[];
   /** "fidelity": the read-back. */
   fidelity?: ChromeFidelityRead;
+  /** "hold" with `network`: when capture started on the launch page, or why it could not. */
+  network?: { startedAt: number } | { unavailable: string };
+  /**
+   * Seconds since the epoch on the sandbox clock when the probe printed, on every answer including
+   * an unavailable one. It is the clock CDP `wallTime` uses, so a turn mark compares with request
+   * times without host clock skew.
+   */
+  now?: number;
 }
 
 /**
@@ -348,17 +359,20 @@ def browser_ws_url(port):
         info = json.loads(response.read().decode("utf-8"))
     return str(info.get("webSocketDebuggerUrl") or "")
 
-def hold(port, page, request):
-    """Emulate the launch page and then every page target Chrome opens later, for as long as this
-    process lives. One browser-level socket with flattened sessions: the launch page is
-    attached by id and reloaded so scripts that read the UA at load see it; a target that appears
-    later is attached the moment it exists, sent the same overrides, and reloaded once after its
-    first real navigation commits (touch emulation reaches a document only when it loads under it).
+${NETWORK_CAPTURE_PY}
+def hold(port, page, request, network):
+    """Hold the launch page and every page target Chrome opens later, for as long as this process
+    lives, over one browser-level socket with flattened sessions. With an emulation request, the
+    launch page is attached by id and reloaded so scripts that read the UA at load see it; a target
+    that appears later is attached the moment it exists, sent the same overrides, and reloaded once
+    after its first real navigation commits (touch emulation reaches a document only when it loads
+    under it). Without one, nothing is emulated and nothing reloads. With a network request, every
+    held page also reports its traffic to the events file (NETWORK_CAPTURE_PY).
     Two things this loop must never do (measured on a real desktop, 2026-09-04): pause new targets
     (waitForDebuggerOnStart) and wait for their replies. A popup a participant taps open shares its
     opener's renderer, answers Emulation commands only once it runs, and a loop blocked on that
-    reply never resumed the tab (it loaded forever) and never reached the next one. Overrides are
-    sent without waiting; replies, errors included, are logged as they arrive.
+    reply never resumed the tab (it loaded forever) and never reached the next one. Commands to a
+    later target are sent without waiting; replies, errors included, are logged as they arrive.
     Prints one JSON line per attached target; the first line is the announce the lane reads."""
     launch_id = str(page.get("id") or "")
     try:
@@ -371,15 +385,36 @@ def hold(port, page, request):
     if not session_id:
         print(json.dumps({"unavailable": "Target.attachToTarget failed for the launch page"}), flush=True)
         return
-    covered = {launch_id}
-    applied, failure = apply_over(ws, request, session_id, reload=True)
-    print(json.dumps({"applied": applied, "held": failure is None, "targetId": launch_id, **({"unavailable": failure} if failure else {})}), flush=True)
-    if failure:
-        return
+    log, capture = start_capture(ws, session_id, network) if network is not None else (None, None)
+    reason = "the holder stopped"
+    try:
+        applied, failure = apply_over(ws, request, session_id, reload=True) if request else ([], None)
+        held = failure is None and (bool(request) or log is not None)
+        announce = {"applied": applied, "held": held, "targetId": launch_id}
+        if capture is not None:
+            announce["network"] = capture
+        if failure:
+            announce["unavailable"] = failure
+        print(json.dumps(announce), flush=True)
+        if not held:
+            reason = failure or "nothing to hold"
+            return
+        reason = follow_targets(ws, launch_id, request, log)
+    except Exception as error:
+        reason = "%s: %s" % (type(error).__name__, error)
+        raise
+    finally:
+        if log is not None:
+            log.close(reason)
+
+def follow_targets(ws, launch_id, request, log):
+    """The holder's loop: attach every later page target, log replies and hand each event to the
+    capture log. Returns why it ended."""
     auto = ws.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": False, "flatten": True})
     if not isinstance(auto, dict) or "error" in auto:
-        print(json.dumps({"autoAttach": False, "unavailable": "Target.setAutoAttach failed; later tabs are not emulated"}), flush=True)
+        print(json.dumps({"autoAttach": False, "unavailable": "Target.setAutoAttach failed; the holder does not reach later tabs"}), flush=True)
     ws.sock.settimeout(None)
+    covered = {launch_id}
     pending = {}
     # Sessions of later targets that still owe one reload: touch emulation reaches a document only
     # when it loads under the override (measured: a popup's first document reported
@@ -390,11 +425,12 @@ def hold(port, page, request):
         try:
             message = ws.events.pop(0) if ws.events else ws.recv()
         except Exception as error:
-            print(json.dumps({"holderExit": "%s: %s" % (type(error).__name__, error)}), flush=True)
-            return
+            reason = "%s: %s" % (type(error).__name__, error)
+            print(json.dumps({"holderExit": reason}), flush=True)
+            return reason
         if message is None:
             print(json.dumps({"holderExit": "browser socket closed"}), flush=True)
-            return
+            return "browser socket closed"
         reply_id = message.get("id")
         session = message.get("sessionId")
         if reply_id in pending:
@@ -412,6 +448,8 @@ def hold(port, page, request):
             continue
         method = message.get("method")
         params = message.get("params") or {}
+        if log is not None and method:
+            log.event(method, params, session)
         if method == "Page.frameNavigated" and session in reload_owed:
             frame = params.get("frame") or {}
             url = str(frame.get("url") or "")
@@ -427,35 +465,50 @@ def hold(port, page, request):
         target_id = str(info.get("targetId") or "")
         if info.get("type") == "page" and target_id and target_id not in covered:
             covered.add(target_id)
-            messages = emulation_messages(request, reload=False)
+            messages = emulation_messages(request, reload=False) if request else []
             for m in messages:
                 pending[ws.send(m["method"], m.get("params"), new_session)] = m["method"]
+            sent = [m["method"] for m in messages]
+            # After the overrides, so a later tab's emulation timing is what it was without capture.
+            if log is not None:
+                log.session(new_session)
+                pending[ws.send("Network.enable", NETWORK_ENABLE, new_session)] = "Network.enable"
+                sent.append("Network.enable")
             pending[ws.send("Page.enable", {}, new_session)] = "Page.enable"
             url = str(info.get("url") or "")
-            if url and not url.startswith("about:"):
+            if not request:
+                print(json.dumps({"attached": target_id, "sent": sent}), flush=True)
+            elif url and not url.startswith("about:"):
                 pending[ws.send("Page.reload", {}, new_session)] = "Page.reload"
-                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages] + ["Page.reload"]}), flush=True)
+                print(json.dumps({"attached": target_id, "sent": sent + ["Page.reload"]}), flush=True)
             else:
                 reload_owed[new_session] = target_id
                 # Two ways to learn the first real navigation committed, whichever answers first:
                 # Page.frameNavigated (if Page.enable landed before the commit) or the page's own
                 # location.href (if it did not).
                 pending[ws.send("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, new_session)] = "href"
-                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages], "reloadAfterNavigation": True}), flush=True)
+                print(json.dumps({"attached": target_id, "sent": sent, "reloadAfterNavigation": True}), flush=True)
         if params.get("waitingForDebugger"):
             ws.send("Runtime.runIfWaitingForDebugger", {}, new_session)
+
+def emit(answer):
+    """Print one answer line stamped with this sandbox's clock. CDP wallTime uses the same clock, so
+    a turn mark taken from it compares with request times without host skew, and the reading needs
+    nothing from the page, so a page too busy to answer still leaves a mark."""
+    answer["now"] = time.time()
+    print(json.dumps(answer))
 
 def main():
     args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
     mode = args.get("mode") or "state"
     port = resolve_port(args)
     if mode == "port":
-        print(json.dumps({"cdpPort": port}))
+        emit({"cdpPort": port})
         return
     try:
         pages = list_pages(port)
     except Exception as error:
-        print(json.dumps({"unavailable": "CDP endpoint 127.0.0.1:%d/json unreachable (%s)" % (port, type(error).__name__)}))
+        emit({"unavailable": "CDP endpoint 127.0.0.1:%d/json unreachable (%s)" % (port, type(error).__name__)})
         return
     page = select_page(pages, args)
     # A listing with targets but no http page is usually an instant: a reload in flight, a tab
@@ -472,7 +525,7 @@ def main():
             break
         page = select_page(pages, args)
     if page is None:
-        print(json.dumps({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)}))
+        emit({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)})
         return
     # Chrome omits webSocketDebuggerUrl from /json while another DevTools client is attached to the
     # page, or for a moment after one detaches; the page socket URL is still /devtools/page/<id>.
@@ -482,29 +535,29 @@ def main():
     if mode == "emulate":
         applied, failure = emulate(ws_url, args.get("emulation") or {}) if ws_url else (None, "the page has no socket")
         if failure is not None:
-            print(json.dumps({"unavailable": failure, "applied": applied or []}))
+            emit({"unavailable": failure, "applied": applied or []})
             return
-        print(json.dumps({"applied": applied, "targetId": str(page.get("id") or "")}))
+        emit({"applied": applied, "targetId": str(page.get("id") or "")})
         return
     if mode == "hold":
         # Prints its announce line, then stays attached (and attaches to every later page target)
         # until killed.
-        hold(port, page, args.get("emulation") or {})
+        hold(port, page, args.get("emulation") or None, args.get("network"))
         return
     if mode == "fidelity":
         result = evaluate(ws_url, FIDELITY_EXPRESSION) if ws_url else None
         if not isinstance(result, dict):
-            print(json.dumps({"unavailable": "Runtime.evaluate over the page socket returned nothing"}))
+            emit({"unavailable": "Runtime.evaluate over the page socket returned nothing"})
             return
-        print(json.dumps({"fidelity": result, "targetId": str(page.get("id") or "")}))
+        emit({"fidelity": result, "targetId": str(page.get("id") or "")})
         return
     if mode == "geometry":
         result = evaluate(ws_url, GEOMETRY_EXPRESSION) if ws_url else None
         if not isinstance(result, dict):
-            print(json.dumps({"unavailable": "Runtime.evaluate over the page socket returned nothing"}))
+            emit({"unavailable": "Runtime.evaluate over the page socket returned nothing"})
             return
         result["targetId"] = str(page.get("id") or "")
-        print(json.dumps(result))
+        emit(result)
         return
     url = str(page.get("url") or "")
     title = str(page.get("title") or "")
@@ -516,7 +569,7 @@ def main():
         title = result["title"] if isinstance(result.get("title"), str) else title
         text = result["text"] if isinstance(result.get("text"), str) else ""
         scroll_y = result["scrollY"] if isinstance(result.get("scrollY"), (int, float)) else None
-    print(json.dumps({"url": url, "title": title, "text": text, "scrollY": scroll_y, "targetId": str(page.get("id") or "")}))
+    emit({"url": url, "title": title, "text": text, "scrollY": scroll_y, "targetId": str(page.get("id") or "")})
 
 main()
 `;
@@ -529,6 +582,7 @@ export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
   if (args.targetId !== undefined) payload.targetId = args.targetId;
   if (args.prefer !== undefined) payload.prefer = args.prefer;
   if (args.emulation !== undefined) payload.emulation = args.emulation;
+  if (args.network !== undefined) payload.network = args.network;
   return `python3 -c ${shellQuote(CHROME_CDP_PROBE_PY)} ${shellQuote(JSON.stringify(payload))}`;
 }
 
@@ -552,11 +606,18 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
   const applied = Array.isArray(record.applied)
     ? record.applied.filter((item): item is string => typeof item === "string")
     : undefined;
-  if (typeof record.unavailable === "string") {
-    return { unavailable: record.unavailable, ...(applied === undefined ? {} : { applied }) };
-  }
   const numberOr = (value: unknown): number | undefined =>
     typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  const now = numberOr(record.now);
+  const network = networkOf(record.network);
+  if (typeof record.unavailable === "string") {
+    return {
+      unavailable: record.unavailable,
+      ...(applied === undefined ? {} : { applied }),
+      ...(network === undefined ? {} : { network }),
+      ...(now === undefined ? {} : { now }),
+    };
+  }
   const box = (value: unknown, keys: string[]): Record<string, number> | undefined => {
     if (!value || typeof value !== "object") return undefined;
     const source = value as Record<string, unknown>;
@@ -620,5 +681,16 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
       : {}),
     ...(browserWindow === undefined ? {} : { browserWindow }),
     ...(viewport === undefined ? {} : { viewport }),
+    ...(network === undefined ? {} : { network }),
+    ...(now === undefined ? {} : { now }),
   };
+}
+
+function networkOf(value: unknown): ChromeCdpProbeResult["network"] {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Record<string, unknown>;
+  if (typeof source.startedAt === "number" && Number.isFinite(source.startedAt))
+    return { startedAt: source.startedAt };
+  if (typeof source.unavailable === "string") return { unavailable: source.unavailable };
+  return undefined;
 }

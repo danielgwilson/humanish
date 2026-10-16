@@ -274,6 +274,41 @@ browser-state probe as URL stop conditions: a Firefox participant, or one whose 
 unavailable, has screenshots without pages. Shared-world studies and the local browser route
 record no pages.
 
+## Requests a participant's browser made
+
+With `execution.network: true`, each hosted computer-use participant in Chrome or Chromium records
+the requests its browser makes to `network/<participant id>.ndjson` in the run folder: one JSON
+line per request hop, each with the turn it happened in.
+
+```yaml
+execution:
+  target: e2b-desktop
+  network:
+    origins: [https://api.shop.example] # optional, at most 16
+```
+
+The participant's target origin is always kept, and `origins` adds the API or asset hosts to keep
+beside it. Requests to any other origin are counted in the stream's `network.omitted.otherOrigin`
+and not written. A line holds the start time, the turn, the method, the origin and path, the
+resource type, the status and the duration, and says whether the request redirected, came from a
+cache, failed or was still open. It holds no bodies, cookies, headers, query strings or
+fragments. Paths are redacted as pages are (above), so a short code, an all-digit id or an
+all-letter token in a path stays.
+
+```bash
+jq -c 'select(.failed or .pending or .status >= 400)' \
+  .humanish/runs/<run-id>/network/<participant id>.ndjson
+```
+
+Capture starts when the browser's DevTools answer, a few seconds after launch, so a desktop
+participant's log misses most of its first page load; `streams[].network.startedAt` says when it
+began. Requests from workers, service workers and cross-site iframes are not recorded. A browser
+other than Chrome or Chromium records one warning and no file. The participant inspector in the
+Observer shows the counts and links the file, and `humanish observe` serves it with the run. The
+terminal, scripted, shared-world and local browser routes, a `desktop-cli` subject and
+`execution.desktop.browser: firefox` refuse the field. The
+[run bundle contract](repo:docs/contracts/run-bundle.md#browser-network-log) lists each key.
+
 ## Closing reports after an automatic stop
 
 **From humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports

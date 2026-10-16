@@ -4,7 +4,6 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { accessSync, constants } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -20,7 +19,12 @@ import {
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
-import { launchReadableChrome, stopChrome } from "../../helpers/readable-chrome.js";
+import {
+  findChrome,
+  hasPython3,
+  launchReadableChrome,
+  stopChrome,
+} from "../../helpers/readable-chrome.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,50 +35,6 @@ async function runProbe(args: ChromeCdpProbeArgs): Promise<ChromeCdpProbeResult>
     JSON.stringify(args),
   ]);
   return parseChromeCdpProbeOutput(stdout);
-}
-
-function findChrome(): string | undefined {
-  const fromEnv = [
-    process.env.HUMANISH_TEST_CHROME,
-    process.env.CHROME_BIN,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-  ];
-  const onPath = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
-  const dirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
-  for (const candidate of fromEnv) {
-    if (candidate) {
-      try {
-        accessSync(candidate, constants.X_OK);
-        return candidate;
-      } catch {
-        // try the next one
-      }
-    }
-  }
-  for (const name of onPath) {
-    for (const dir of dirs) {
-      const full = path.join(dir, name);
-      try {
-        accessSync(full, constants.X_OK);
-        return full;
-      } catch {
-        // keep looking
-      }
-    }
-  }
-  return undefined;
-}
-
-function hasPython3(): boolean {
-  for (const dir of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
-    try {
-      accessSync(path.join(dir, "python3"), constants.X_OK);
-      return true;
-    } catch {
-      // keep looking
-    }
-  }
-  return false;
 }
 
 const python3 = hasPython3();
@@ -157,6 +117,22 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
       expect(result.url).toBeUndefined();
     },
   );
+
+  it.skipIf(!python3)(
+    "an unreachable endpoint still reports the sandbox clock reading, for the turn mark",
+    async () => {
+      const before = Date.now() / 1000;
+      const result = await runProbe({
+        mode: "state",
+        cdpPort: 1,
+        targetUrl: "http://127.0.0.1:3000/",
+      });
+      const after = Date.now() / 1000;
+      expect(result.unavailable).toMatch(/unreachable/);
+      expect(result.now).toBeGreaterThanOrEqual(before);
+      expect(result.now).toBeLessThanOrEqual(after);
+    },
+  );
 });
 
 describe("chrome-cdp-probe: against a real headless Chrome", () => {
@@ -168,9 +144,11 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   // Why a first launch was replaced, for the first case to annotate. A Chrome that never reads
   // back fails the hook with one reason per launch instead.
   let launchFailures: string[] = [];
+  let eventsDir = "";
 
   beforeAll(async () => {
     if (!python3 || chrome === undefined) return;
+    eventsDir = await mkdtemp(path.join(tmpdir(), "humanish-cdp-network-"));
     server = createServer((_request, response) => {
       response.setHeader("content-type", "text/html; charset=utf-8");
       // A viewport meta, as real apps carry: without it a mobile-emulated page lays out at 980 px,
@@ -195,6 +173,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
   afterAll(async () => {
     await stopChrome(browser, profileDir);
     await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
+    if (eventsDir) await rm(eventsDir, { recursive: true, force: true });
   }, 20_000);
 
   const live = python3 && chrome !== undefined;
@@ -216,6 +195,33 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       expect(state.text).toContain("second line");
       expect(state.scrollY).toBe(0);
       expect(state.targetId).toMatch(/^[0-9A-F]+$/i);
+    },
+  );
+
+  it.skipIf(!live)(
+    "state answers and the no-http-page answer carry the sandbox clock reading at print time",
+    async () => {
+      const before = Date.now() / 1000;
+      const state = await runProbe({
+        mode: "state",
+        prefer: "active",
+        cdpPort,
+        targetUrl: pageUrl,
+      });
+      const missing = await runProbe({
+        mode: "state",
+        prefer: "pinned",
+        cdpPort,
+        targetUrl: pageUrl,
+        targetId: "NO-SUCH-TARGET",
+      });
+      const after = Date.now() / 1000;
+      expect(state.url).toBe(pageUrl);
+      expect(missing.unavailable).toMatch(/^no http page among \d+ CDP targets/);
+      // The second read finished after the first, on the same clock.
+      expect(state.now).toBeGreaterThanOrEqual(before);
+      expect(missing.now).toBeGreaterThan(state.now!);
+      expect(missing.now).toBeLessThanOrEqual(after);
     },
   );
 
@@ -297,9 +303,36 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     }
   };
 
-  it.skipIf(!live)(
-    "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page",
-    async (ctx) => {
+  // The holder cases run with network capture off and on: capture must leave emulation as it was.
+  const captureFor = (capture: "off" | "on", name: string) =>
+    capture === "off"
+      ? {}
+      : {
+          network: {
+            eventsPath: path.join(eventsDir, `${name}.ndjson`),
+            origins: [new URL(pageUrl).origin],
+          },
+        };
+  const captureModes = [{ capture: "off" as const }, { capture: "on" as const }];
+  // The holder cases whose capture-off run announced. On this runner a capture-on holder that does
+  // not announce is a fault in the capture code, so that case fails where it would skip.
+  const cameUp = new Set<string>();
+  const noAnnounce = (
+    name: string,
+    capture: "off" | "on",
+    exitCode: number | null,
+    stderr: string,
+  ) => {
+    const detail = `the hold-mode applier never announced (exit ${exitCode}); stderr: ${stderr.slice(-300)}`;
+    if (capture === "on" && cameUp.has(name))
+      throw new Error(`${detail}, where the same case without network capture announced`);
+    console.warn(`chrome-cdp-probe: ${detail}`);
+  };
+
+  it.skipIf(!live).for(captureModes)(
+    "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page (network capture $capture)",
+    { timeout: 45_000 },
+    async ({ capture }, ctx) => {
       await settleLaunchPage();
       const emulation = {
         width: 414,
@@ -355,6 +388,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
             cdpPort,
             targetUrl: pageUrl,
             emulation,
+            ...captureFor(capture, "launch"),
           }),
         ],
         { stdio: ["ignore", "pipe", "pipe"] },
@@ -381,11 +415,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         };
         const line = await announceLine();
         if (line === undefined) {
-          console.warn(
-            `chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`,
-          );
+          noAnnounce("emulate", capture, holder.exitCode, holderErrors);
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
+        if (capture === "off") cameUp.add("emulate");
         // Name the announce on failure: "Target cannot be null" said nothing on the node-22 runner.
         const announcedResult = parseChromeCdpProbeOutput(line);
         expect(announcedResult.unavailable, line).toBeUndefined();
@@ -435,12 +468,12 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       }
       expect(after.fidelity?.userAgent).not.toContain("iPhone");
     },
-    45_000,
   );
 
-  it.skipIf(!live)(
-    "hold mode emulates a page target opened after it attached, without pausing it",
-    async (ctx) => {
+  it.skipIf(!live).for(captureModes)(
+    "hold mode emulates a page target opened after it attached, without pausing it (network capture $capture)",
+    { timeout: 45_000 },
+    async ({ capture }, ctx) => {
       await settleLaunchPage();
       const emulation = {
         width: 414,
@@ -461,6 +494,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
             cdpPort,
             targetUrl: pageUrl,
             emulation,
+            ...captureFor(capture, "later-tab"),
           }),
         ],
         { stdio: ["ignore", "pipe", "pipe"] },
@@ -486,11 +520,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         }
         const announce = lines()[0];
         if (announce === undefined) {
-          console.warn(
-            `chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`,
-          );
+          noAnnounce("later-tab", capture, holder.exitCode, holderErrors);
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
+        if (capture === "off") cameUp.add("later-tab");
         expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
         // A second tab, opened the way a target=_blank link opens one, after the holder attached.
         // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry. Its query
@@ -561,13 +594,27 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         expect(
           lines().filter((line) => "url" in JSON.parse(line) || line.includes("QUERYVALUE456")),
         ).toEqual([]);
+        if (capture === "on") {
+          // The reload the holder sends the later tab follows Network on that tab, so it is
+          // captured on a session of its own, with the query cut off.
+          const events = await readFile(path.join(eventsDir, "later-tab.ndjson"), "utf8");
+          expect(events).not.toContain("QUERYVALUE456");
+          const reloads = events
+            .split("\n")
+            .filter((line) => line.length > 0)
+            .map((line) => JSON.parse(line) as { e: string; id?: string; url?: string })
+            .filter((line) => line.e === "request" && line.url === pageUrl);
+          expect(
+            reloads.some((line) => !line.id?.startsWith("0:")),
+            events,
+          ).toBe(true);
+        }
       } finally {
         holder.kill("SIGKILL");
         if (openedTab !== undefined) tabClosed = await closeTarget(openedTab);
       }
       expect(tabClosed, `tab ${openedTab} still listed 5 s after /json/close`).toBe(true);
     },
-    45_000,
   );
 
   it.skipIf(!live)(

@@ -489,7 +489,10 @@ export interface LoopTaps {
   onScreenshot?: (frame: Buffer) => void;
 }
 
-/** The loop's options inside humanish: the public ones, the handoff's taps and the page switch. */
+/**
+ * The loop's options inside humanish: the public ones, the handoff's taps, the page switch and the
+ * checkpoint tap.
+ */
 export type LoopRunOptions = CuaLoopOptions &
   LoopTaps & {
     /**
@@ -498,6 +501,16 @@ export type LoopRunOptions = CuaLoopOptions &
      * as digests (docs/architecture/external-public-shared-world.md).
      */
     recordPages?: boolean;
+    /**
+     * Runtime-only checkpoint tap: called with the turn's number after its checkpoint screenshot
+     * item (turn-03) is recorded, and again after its after-dwell item (turn-03-after-dwell),
+     * before the turn's stop checks. A held turn and a reply cut off by the output limit take no
+     * checkpoint, so they never reach it. Default: no-op.
+     *
+     * Built-in caller: the hosted E2B desktop pairs the number with the time of the browser-state
+     * read that screenshot came after, and its network log numbers requests by those pairs.
+     */
+    onCheckpoint?: (turnNumber: number) => void;
   };
 
 export type CuaLiveMetadata = Pick<

@@ -4,10 +4,15 @@ import type { StudyCommsEmail, StudyCommsRecipient } from "../../study/types.js"
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import { recipientParticipantId } from "../../study/parse/comms.js";
 
-/** A prepared desktop supplies only participant input/observation and its inbox location. */
+/**
+ * A prepared desktop supplies participant input and observation, its inbox location, and a
+ * checkpoint callback when it keeps something per turn (the hosted desktop's network log marks).
+ */
 export interface ReadyParticipantDesktop {
   executor: CuaExecutor;
   inbox?: { url: string; address?: string; receiving?: boolean };
+  /** Called with the turn's number after each checkpoint screenshot; see LoopRunOptions. */
+  onCheckpoint?: (turnNumber: number) => void;
 }
 
 /** Existing bundle fields. Provider-specific facts remain optional and must be measured. */
@@ -37,6 +42,7 @@ export type ParticipantDesktopEvidence = {
   | "commsArtifactPath"
   | "recording"
   | "desktopFiles"
+  | "networkLog"
 >;
 
 /**

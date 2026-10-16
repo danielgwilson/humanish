@@ -1,6 +1,6 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { useRef, useState } from "react";
-import { formatDuration } from "@/lib/artifact-href";
+import { formatDuration, runArtifactHref } from "@/lib/artifact-href";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { PlayerModel } from "@/lib/player-model";
 import { completionLabel } from "@/lib/signal";
@@ -212,11 +212,53 @@ function ParticipantDetails({
           <span className="v">screenshots {actor.redaction.screenshots}</span>
         </>
       ) : null}
+      {stream.network ? (
+        <>
+          <span className="k">Network</span>
+          <span className="v">
+            <NetworkLog network={stream.network} />
+          </span>
+        </>
+      ) : null}
       <span className="k">Artifacts</span>
       <span className="v">
         {(stream.artifacts ?? []).length + data.artifactLinks.length} linked files
       </span>
     </div>
+  );
+}
+
+type NetworkIndex = NonNullable<ObserverStream["network"]>;
+
+/** Why records are missing from a participant's network log, in the words the row shows. */
+const NETWORK_GAP: Record<NonNullable<NetworkIndex["reason"]>, string> = {
+  "no-capture": "capture did not start",
+  "not-collected": "the file was not collected from the desktop",
+  capped: "cut at the size cap",
+  "holder-stopped": "capture stopped before the session ended",
+};
+
+/**
+ * The participant's network log in one line, from its index alone: the counts, linking the file,
+ * then why records are missing when some are. Capture that started and kept no request has a
+ * start time and no file. The page never loads the records.
+ */
+function NetworkLog({ network }: { network: NetworkIndex }) {
+  const gap = network.reason === undefined ? undefined : NETWORK_GAP[network.reason];
+  if (network.path === undefined)
+    return network.startedAt === undefined ? (
+      <>Not recorded{gap === undefined ? "" : `: ${gap}`}</>
+    ) : (
+      <>0 requests{gap === undefined ? "" : ` · ${gap}`}</>
+    );
+  const records = network.records ?? 0;
+  const counts = `${records} ${records === 1 ? "request" : "requests"}, ${network.failed ?? 0} failed, ${network.pending ?? 0} pending`;
+  const href = runArtifactHref(network.path);
+  return (
+    <>
+      {href === null ? counts : <a href={href}>{counts}</a>}
+      {gap === undefined ? "" : ` · ${gap}`}
+    </>
   );
 }
 

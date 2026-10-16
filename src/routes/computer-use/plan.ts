@@ -40,6 +40,7 @@ import {
   cloneTargetValidationReason,
   computerUseValidationReason,
   desktopMediaValidationReason,
+  networkCaptureValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
@@ -201,6 +202,7 @@ function unsupportedDeclarationReason(
 ): Rejection {
   const reason =
     desktopMediaValidationReason(config) ||
+    networkCaptureValidationReason(config, "computer-use") ||
     outputTokenLimitValidationReason(config) ||
     waitLimitValidationReason(config);
   if (reason) return invalid(reason);

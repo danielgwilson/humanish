@@ -1,4 +1,4 @@
-import { invalid, posInt, str } from "./values.js";
+import { exactOrigin, invalid, posInt, str } from "./values.js";
 import type {
   StudyComms,
   StudyCommsEmail,
@@ -132,24 +132,6 @@ function parseEmailConnection(
     value.allowedOrigins = [...new Set(origins as string[])];
   }
   return { ok: true, value };
-}
-
-/** The origin of an http(s) URL with no credentials, path, query or fragment, else undefined. */
-function exactOrigin(input: unknown): string | undefined {
-  if (typeof input !== "string") return undefined;
-  try {
-    const url = new URL(input);
-    return ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      url.pathname === "/" &&
-      !url.search &&
-      !url.hash
-      ? url.origin
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /** `comms.email.external`: the catch the adopter runs, its inbox and the env var holding its token. */

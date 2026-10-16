@@ -1,7 +1,7 @@
 import { resolveAutomaticAnalysis, type StudyAnalysis } from "../../analysis/automatic-config.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import { isExactRuntimeVersion } from "../../routes/terminal/runtime.js";
-import { invalid, nonNegNumber, posInt, str } from "./values.js";
+import { exactOrigin, invalid, nonNegNumber, posInt, str } from "./values.js";
 import type {
   StudyCaps,
   StudyParseFailure,
@@ -11,6 +11,7 @@ import type {
   StudyExecution,
   StudyExecutionDesktop,
   StudyExecutionTerminal,
+  StudyNetworkCapture,
   StudyPolicies,
   StudyReview,
 } from "../types.js";
@@ -45,6 +46,9 @@ export function parseExecution(
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
+  const network = parseNetwork(raw.network);
+  if (!network.ok) return network;
+  if (network.value !== undefined) execution.network = network.value;
   const terminalResult = parseTerminal(raw.terminal);
   if (!terminalResult.ok) {
     return terminalResult;
@@ -88,6 +92,38 @@ export function parseExecution(
     execution.egressAllow = hosts;
   }
   return { ok: true, value: Object.keys(execution).length > 0 ? execution : undefined };
+}
+
+/** `execution.network`: true, false, or `{ origins }`. False reads as absent. */
+function parseNetwork(
+  raw: unknown,
+): { ok: true; value: StudyNetworkCapture | undefined } | StudyParseFailure {
+  if (raw === undefined || raw === false) return { ok: true, value: undefined };
+  if (raw === true) return { ok: true, value: true };
+  if (!isRecord(raw))
+    return invalid(
+      "`execution.network` must be true, false, or a mapping with `origins`: the origins whose requests are kept beside the target's.",
+    );
+  if (raw.origins === undefined) return { ok: true, value: {} };
+  if (!Array.isArray(raw.origins) || raw.origins.length > 16)
+    return invalid(
+      "`execution.network.origins` must list at most 16 exact http(s) origins, such as https://api.example.com.",
+    );
+  const origins: string[] = [];
+  for (const entry of raw.origins) {
+    const origin = exactOrigin(entry);
+    if (origin === undefined)
+      return invalid(
+        "`execution.network.origins` accepts exact http(s) origins without credentials, path, query or fragment, such as https://api.example.com.",
+      );
+    // The network log's index records each origin, so one verify would flag is refused here.
+    if (scanEncodedText(origin).sensitive)
+      return invalid(
+        "`execution.network.origins` has an origin that looks like a secret or a local path, and the run records each origin in its network log index. List the origin of the API or asset host only.",
+      );
+    origins.push(origin);
+  }
+  return { ok: true, value: { origins: [...new Set(origins)] } };
 }
 
 function parseTerminal(

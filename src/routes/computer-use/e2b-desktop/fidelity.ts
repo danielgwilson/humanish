@@ -15,6 +15,8 @@ import {
   makeChromeBrowserStateObserver,
   type ChromeCdpEndpoint,
 } from "../../../substrates/e2b/desktop-cdp.js";
+import type { ChromeNetworkCaptureRequest } from "../../../substrates/e2b/cdp-network-capture.js";
+import type { ChromeCdpProbeResult } from "../../../substrates/e2b/cdp-probe.js";
 import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../../substrates/e2b/shell.js";
@@ -43,7 +45,7 @@ export function mobileLaunchFlags(
 }
 
 /** The launched browser's DevTools address, as far as the launch recorded it. */
-function cdpEndpoint(
+export function cdpEndpoint(
   identity: DesktopBrowserLaunchIdentity | undefined,
   targetUrl: string,
 ): ChromeCdpEndpoint {
@@ -71,6 +73,11 @@ export async function applyParticipantMobileFidelity(args: {
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
   targetId: string | undefined;
   warnings: string[];
+  /** Request capture for the holder to start beside emulation, and where its status goes. */
+  network?: {
+    request: ChromeNetworkCaptureRequest;
+    onStart: (status: ChromeCdpProbeResult["network"]) => void;
+  };
 }): Promise<ParticipantFidelity> {
   const { spec, deps } = args;
   const request = deps.residual.execution?.desktop?.fidelity;
@@ -96,9 +103,13 @@ export async function applyParticipantMobileFidelity(args: {
       touch: request.touch ?? true,
       userAgent: request.userAgent ?? DEFAULT_MOBILE_USER_AGENT,
     },
-    { targetId: args.targetId },
+    {
+      targetId: args.targetId,
+      ...(args.network === undefined ? {} : { network: args.network.request }),
+    },
   );
   args.warnings.push(...applied.warnings);
+  args.network?.onStart(applied.network);
   return {
     applied: applied.fidelity,
     emulatedTargetId: applied.targetId,
@@ -116,6 +127,8 @@ export function participantBrowserStateObserver(args: {
   targetId: string | undefined;
   fidelity: ParticipantFidelity;
   warnings: string[];
+  /** Receives the sandbox clock of each read; see makeChromeBrowserStateObserver's onClock. */
+  onClock?: (now: number | undefined) => void;
 }): ReturnType<typeof makeChromeBrowserStateObserver> {
   const { spec, deps, fidelity, warnings } = args;
   return makeChromeBrowserStateObserver(
@@ -124,6 +137,7 @@ export function participantBrowserStateObserver(args: {
     cdpEndpoint(args.launchIdentity, args.targetUrl),
     {
       targetId: args.targetId,
+      ...(args.onClock === undefined ? {} : { onClock: args.onClock }),
       // Once per participant: a dark observation channel is a gap in the instrument, and the
       // funnel's "never measured" count needs this line to explain itself.
       onUnavailable: (reason) => {

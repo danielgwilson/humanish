@@ -54,6 +54,7 @@ import {
   type UnscannedArtifacts,
 } from "./artifacts.js";
 import { flatContextWarnings } from "./context-growth.js";
+import { networkFindings } from "./network.js";
 import { pageFindings } from "./pages.js";
 import { runNotFinished, type UnfinishedRun } from "./liveness.js";
 import { costAndReceiptFindings } from "./costs.js";
@@ -355,6 +356,7 @@ async function loadTraces(
   sensitive: string[];
   opaque: string[];
   pages: string[];
+  network: string[];
 }> {
   const scanned = { sensitive: [] as string[], opaque: [] as string[] };
   if (!isRunBundle(stored))
@@ -367,6 +369,7 @@ async function loadTraces(
       pastReadLimit: new Set(),
       ...scanned,
       pages: [],
+      network: [],
     };
   // Each trace is source evidence: scanned by the bytes it was joined from, apart from the
   // directory walk and any path exemption the walk makes.
@@ -395,6 +398,7 @@ async function loadTraces(
     pastReadLimit: new Set(unread.map((error) => error.file)),
     ...scanned,
     pages: pageFindings(bundle),
+    network: await networkFindings(bundle, runPaths),
   };
 }
 
@@ -410,16 +414,19 @@ const recordingPaths = (bundle: RunBundle | undefined): Set<string> =>
     bundle?.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : [])) ?? [],
   );
 
-/** The trace scan's results, beside the walk's: each file named once, then each page finding. */
+/**
+ * The trace scan's results, beside the walk's: each file named once, then each page finding and
+ * each network log finding.
+ */
 function addTraceScan(
-  traces: { sensitive: string[]; opaque: string[]; pages: string[] },
+  traces: { sensitive: string[]; opaque: string[]; pages: string[]; network: string[] },
   findings: string[],
   unscanned: UnscannedArtifacts,
 ): void {
   for (const file of traces.sensitive)
     if (!findings.includes(`sensitive text ${file}`)) findings.push(`sensitive text ${file}`);
   for (const file of traces.opaque) if (!unscanned.files.includes(file)) unscanned.files.push(file);
-  findings.push(...traces.pages);
+  findings.push(...traces.pages, ...traces.network);
 }
 
 /** The top-level run.json sections the shape guard requires. */

@@ -1,6 +1,6 @@
-// Teardown for one E2B desktop participant: its final geometry and comms evidence are collected, then the
-// recording and speech worker, then the sandbox is released by id (or kept for debugging), with a
-// warning for every outcome that is not a confirmed release.
+// Teardown for one E2B desktop participant: its network log, final geometry and comms evidence are
+// collected, then the recording and speech worker, then the sandbox is released by id (or kept for
+// debugging), with a warning for every outcome that is not a confirmed release.
 
 import { collectDesktopRecording } from "../../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../../evidence/desktop-recording-types.js";
@@ -12,6 +12,7 @@ import { readE2BRelease } from "../../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./comms.js";
 import { finalParticipantGeometry } from "./fidelity.js";
+import { collectParticipantNetwork } from "./network.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import type { E2BDesktopDeps, DesktopParticipantRun, SandboxReleaseFact } from "../types.js";
 
@@ -111,6 +112,8 @@ export async function finishE2BDesktop(
   await state.commsCatch?.stopSurface();
   const { desktop, allocation } = state;
   if (!desktop || !allocation) return;
+  // First and on its own: a throw from a later step cannot skip it.
+  await collectParticipantNetwork(ctx, state, desktop);
   try {
     if (state.browserLaunched) {
       state.desktopGeometry = await finalParticipantGeometry({

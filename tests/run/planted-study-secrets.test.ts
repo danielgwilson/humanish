@@ -155,6 +155,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "comms.email.linkOrigin",
     "execution.desktop.media.camera.source",
     "execution.desktop.media.microphone.source",
+    "execution.network.origins",
     "participants.dwell.when.any.urlPathEquals",
     "participants.stopWhen.any.urlPathEquals",
     "participants.target",

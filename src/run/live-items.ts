@@ -51,22 +51,47 @@ export interface LiveItemsCursor {
   bytes: number;
 }
 
+/** How run.json binds a file of JSON lines: its byte count, its sha256 and its number of lines. */
+export interface JsonLinesIndex {
+  path: string;
+  bytes: number;
+  sha256: string;
+  lines: number;
+}
+
+/** What a refusal calls one line of a file and several: `an item` and `items` for a live file. */
+export interface LineNoun {
+  one: string;
+  many: string;
+}
+
+const ITEM: LineNoun = { one: "an item", many: "items" };
+
 /**
- * The items the indexed prefix of a live file holds, or why the bytes do not match the index:
+ * The JSON object on each line of a file run.json binds, or why the bytes do not match the index:
  * `bytes` must be exactly the indexed byte count, hash to the indexed sha256, and hold the indexed
- * number of lines, each a JSON object.
+ * number of lines, each a JSON object. A refusal names the file and counts, never what it holds.
  */
-export function liveItemsFromBytes(
+export function boundJsonLines(
   bytes: Buffer,
-  index: LiveItemsIndex,
-): { items: ActorTraceItem[] } | { refused: string } {
+  index: JsonLinesIndex,
+  noun: LineNoun,
+): { lines: Record<string, unknown>[] } | { refused: string } {
   if (bytes.length !== index.bytes)
     return {
       refused: `${index.path} holds ${bytes.length} bytes and run.json records ${index.bytes}`,
     };
   if (createHash("sha256").update(bytes).digest("hex") !== index.sha256)
     return { refused: `${index.path} does not match the sha256 run.json records for it` };
-  return itemLinesOf(bytes, index.items, index.path);
+  return objectLinesOf(bytes, index.lines, index.path, noun);
+}
+
+/** The items the indexed prefix of a live file holds, or why the bytes do not match the index. */
+export function liveItemsFromBytes(
+  bytes: Buffer,
+  index: LiveItemsIndex,
+): { items: ActorTraceItem[] } | { refused: string } {
+  return asItems(boundJsonLines(bytes, { ...index, lines: index.items }, ITEM));
 }
 
 /**
@@ -89,15 +114,23 @@ export function liveItemsAfter(
     };
   if (bytes[0] !== 0x0a)
     return { refused: `${index.path} has no line end before byte ${after.bytes}` };
-  return itemLinesOf(bytes.subarray(1), index.items - after.items, index.path);
+  return asItems(objectLinesOf(bytes.subarray(1), index.items - after.items, index.path, ITEM));
+}
+
+/** A live file's lines as trace items. */
+function asItems(
+  read: { lines: Record<string, unknown>[] } | { refused: string },
+): { items: ActorTraceItem[] } | { refused: string } {
+  return "refused" in read ? read : { items: read.lines as unknown as ActorTraceItem[] };
 }
 
 /** The JSON object on each of `count` lines in `bytes`, which must be UTF-8 and end a line. */
-function itemLinesOf(
+function objectLinesOf(
   bytes: Buffer,
   count: number,
   file: string,
-): { items: ActorTraceItem[] } | { refused: string } {
+  noun: LineNoun,
+): { lines: Record<string, unknown>[] } | { refused: string } {
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -108,19 +141,19 @@ function itemLinesOf(
   if (lines.length > 0 && lines.pop() !== "")
     return { refused: `${file} does not end its indexed bytes at a line end` };
   if (lines.length !== count)
-    return { refused: `${file} holds ${lines.length} items and run.json records ${count}` };
-  const items: ActorTraceItem[] = [];
+    return { refused: `${file} holds ${lines.length} ${noun.many} and run.json records ${count}` };
+  const objects: Record<string, unknown>[] = [];
   for (const line of lines) {
-    let item: unknown;
+    let value: unknown;
     try {
-      item = JSON.parse(line);
+      value = JSON.parse(line);
     } catch {
       return { refused: `${file} holds a line that is not JSON` };
     }
-    if (!isRecord(item)) return { refused: `${file} holds a line that is not an item` };
-    items.push(item as unknown as ActorTraceItem);
+    if (!isRecord(value)) return { refused: `${file} holds a line that is not ${noun.one}` };
+    objects.push(value);
   }
-  return { items };
+  return { lines: objects };
 }
 
 /** One run's live files: what each stream position's current generation holds. */

@@ -3,6 +3,7 @@
 
 import type { CodexAppServerTrace } from "../actors/codex/app-server-trace.js";
 import type { ActorStatus, ActorTrace, ActorTraceItem } from "../actors/contract.js";
+import type { BrowserNetworkIndex } from "../evidence/browser-network.js";
 import type { RunDesktopRecording } from "../evidence/desktop-recording-types.js";
 
 export type RunStreamKind =
@@ -363,6 +364,12 @@ export interface RunStream {
   };
   completion?: RunStreamCompletion;
   recording?: RunDesktopRecording;
+  /**
+   * The participant's browser network log, when its study set `execution.network`: where the
+   * file is, what binds it, and why records are missing. The shape guard does not read it; verify
+   * checks it with the file (src/verify/network.ts).
+   */
+  network?: BrowserNetworkIndex;
   artifacts: Array<{
     label: string;
     path: string;

@@ -70,6 +70,7 @@ import {
 import {
   automaticAnalysisRouteReason,
   desktopMediaValidationReason,
+  networkCaptureValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   smtpValidationReason,
@@ -286,6 +287,9 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return invalid(mediaReason);
+
+  const networkReason = networkCaptureValidationReason(config);
+  if (networkReason) return invalid(networkReason);
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);

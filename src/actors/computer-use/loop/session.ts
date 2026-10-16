@@ -6,7 +6,7 @@ import type {
   TracePage,
 } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
-import { redactEncodedText } from "../../../evidence/encoded-text.js";
+import { traceRedaction } from "../../../evidence/trace-page.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
 import { StreakRecord } from "./streak.js";
@@ -52,6 +52,7 @@ export type LoopSettings = {
       | "onScreenshot"
       | "onTrace"
       | "recordPages"
+      | "onCheckpoint"
   ]: LoopRunOptions[K];
 };
 
@@ -126,7 +127,7 @@ export class LoopSession {
   /** Set by the participant's own final account or by its closing report. */
   impressions: ParticipantImpressions | undefined;
   private stopCause: ActorStopCause | undefined;
-  private readonly scrubText: (text: string) => string;
+  private readonly redactTrace: (text: string) => string;
 
   constructor(options: LoopRunOptions) {
     // Read once, in this order: a caller mutating its options object mid-run changes nothing.
@@ -161,6 +162,7 @@ export class LoopSession {
       onScreenshot,
       onTrace,
       recordPages,
+      onCheckpoint,
     } = options;
     this.settings = {
       instructions,
@@ -178,6 +180,7 @@ export class LoopSession {
       onScreenshot,
       onTrace,
       recordPages,
+      onCheckpoint,
     };
     this.provider = provider;
     this.executor = executor;
@@ -193,7 +196,11 @@ export class LoopSession {
     this.redactScreenshots = redactScreenshots;
     this.now = () => now();
     this.acknowledgeSafetyChecks = (checks) => acknowledgeSafetyChecks(checks);
-    this.scrubText = (text) => scrubText(text);
+    // The run's scrubKnownValues comes in as scrubText.
+    this.redactTrace = traceRedaction(
+      (text) => scrubText(text),
+      (text) => redaction.redactText(text),
+    );
     this.writeScreenshot = (name, bytes) => writeScreenshot(name, bytes);
     this.sleep = (ms) => sleep(ms);
     this.capDeclared = maxUsd !== undefined || overRunBudget !== undefined;
@@ -210,17 +217,9 @@ export class LoopSession {
     return this.timeoutMs - (this.now() - this.startedAtMs);
   }
 
-  // Model-authored narration: literal-scrub known provisioned values, then pattern-redact.
-  // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
-  // alone cannot catch it; the run's scrubKnownValues, injected as scrubText, closes that. The
-  // participant receives its instructions as written, so it can repeat a key the study wrote
-  // base64- or percent-encoded, which verify decodes; redactEncodedText removes that one too.
-  // The known values are scrubbed again last: a marker written before other text can spell one,
-  // as `[REDACTED_SECRET] and` spells `SECRET] and`.
+  /** Model-authored narration and recorded pages, through traceRedaction. */
   redactNarration(text: string): string {
-    return this.scrubText(
-      redactEncodedText(this.settings.redaction.redactText(this.scrubText(text))),
-    );
+    return this.redactTrace(text);
   }
 
   /** Hand a watcher the trace so far with the running usage, without waiting on it. */

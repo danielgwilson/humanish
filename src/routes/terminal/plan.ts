@@ -12,6 +12,7 @@ import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import type { StudyConfig } from "../../study/types.js";
 import {
   desktopMediaValidationReason,
+  networkCaptureValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { ceilingAdvice, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
@@ -62,7 +63,8 @@ export function planTerminalStudy(
       "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study.",
     );
-  const mediaReason = desktopMediaValidationReason(config);
+  const mediaReason =
+    desktopMediaValidationReason(config) ?? networkCaptureValidationReason(config, "terminal");
   if (mediaReason) return refuse("HUMANISH_TERMINAL_SUBJECT_INVALID", mediaReason);
   // A library caller's config skips the parser, which refuses these first.
   const credential = studyUrlCredentialReason(config);

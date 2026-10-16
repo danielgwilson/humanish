@@ -1,4 +1,5 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -201,4 +202,50 @@ export async function launchReadableChrome(
     if (Date.now() >= end) break;
   }
   return { failures };
+}
+
+/** A Chrome binary named by a test environment variable or found on the search path, if any. */
+export function findChrome(): string | undefined {
+  const fromEnv = [
+    process.env.HUMANISH_TEST_CHROME,
+    process.env.CHROME_BIN,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+  ];
+  const onPath = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+  const dirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
+  for (const candidate of fromEnv) {
+    if (candidate) {
+      try {
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        // try the next one
+      }
+    }
+  }
+  for (const name of onPath) {
+    for (const dir of dirs) {
+      const full = path.join(dir, name);
+      try {
+        accessSync(full, constants.X_OK);
+        return full;
+      } catch {
+        // keep looking
+      }
+    }
+  }
+  return undefined;
+}
+
+/** True when python3 is on the search path: the probe runs under it, as it does in a sandbox. */
+export function hasPython3(): boolean {
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+    try {
+      accessSync(path.join(dir, "python3"), constants.X_OK);
+      return true;
+    } catch {
+      // keep looking
+    }
+  }
+  return false;
 }

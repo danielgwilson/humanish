@@ -1,5 +1,6 @@
 import type { TracePage } from "../actors/contract.js";
-import { readingsOf, scanEncodedText } from "./encoded-text.js";
+import { isRecord } from "../run/type-guards.js";
+import { readingsOf, redactEncodedText, scanEncodedText } from "./encoded-text.js";
 import { REDACTION_MARKERS } from "./redaction.js";
 
 // The page a computer-use observation was on, as a trace records it: the URL's origin and path,
@@ -78,8 +79,25 @@ function redactOrigin(url: URL, redact: (text: string) => string): string {
 }
 
 /**
+ * A computer-use trace's text redaction, which its narration and its pages go through: the run's
+ * known-value scrub, then `redactText`, then `redactEncodedText`, then the scrub again.
+ * - A value the model transcribes (a DB password it read on screen) has no shape, so `redactText`
+ *   alone cannot catch it; the scrub closes that.
+ * - The participant receives its instructions as written, so it can repeat a key the study wrote
+ *   base64- or percent-encoded, which verify decodes; `redactEncodedText` removes that one too.
+ * - The scrub runs again last: a marker written before other text can spell a known value, as
+ *   `[REDACTED_SECRET] and` spells `SECRET] and`.
+ */
+export function traceRedaction(
+  scrubText: (text: string) => string,
+  redactText: (text: string) => string,
+): (text: string) => string {
+  return (text) => scrubText(redactEncodedText(redactText(scrubText(text))));
+}
+
+/**
  * The page of an observed URL, or undefined when there is none or the URL parser rejects it.
- * `redact` is the trace's text redaction (the run's known-value scrub, then redactText).
+ * `redact` is the trace's text redaction (traceRedaction).
  */
 export function tracePage(
   url: string | undefined,
@@ -97,4 +115,63 @@ export function tracePage(
   if (redact(joined) !== joined)
     return { origin: REDACTION_MARKERS.urlPart, path: REDACTION_MARKERS.urlPart };
   return { origin, path };
+}
+
+/**
+ * Whether no segment of a recorded path is one tracePage withholds by its shape alone: an encoding
+ * that hides text, an address or a token. A segment the run's redaction changed is the marker
+ * already, and the text scan finds secret shapes. verify holds each network log record's path to
+ * it, as the writer does.
+ */
+export function pathKeepsNoWithheldSegment(path: string): boolean {
+  return path
+    .split("/")
+    .every(
+      (segment) => segment === REDACTION_MARKERS.urlPart || !withheld(segment, (text) => text),
+    );
+}
+
+// Text redaction writes into a host: a marker, or a sandbox id's label with its digest.
+const WRITTEN_BY_REDACTION = new RegExp(
+  [
+    ...Object.values(REDACTION_MARKERS).map((marker) => marker.replace(/[[\]]/g, "\\$&")),
+    "\\[redacted-sandbox-id [0-9a-f]{16}\\]",
+  ].join("|"),
+  "g",
+);
+
+/**
+ * Whether no host label of a recorded origin is one tracePage withholds: a token-shaped label in
+ * any reading, apart from the text redaction itself writes. verify holds each network log origin to it, as the
+ * writer does.
+ */
+export function originKeepsNoWithheldLabel(origin: string): boolean {
+  // An IPv6 literal is kept as the URL wrote it, and a marker origin or a scheme alone has no host.
+  if (/^[a-z][a-z0-9+.-]*:\/\/\[[0-9a-f:.]*\](?::\d+)?$/i.test(origin)) return true;
+  const host = /^[a-z][a-z0-9+.-]*:\/\/([^/:]*)/i.exec(origin)?.[1];
+  if (host === undefined) return true;
+  // Each reading, as for a path segment: an escape can split a token below the length matched.
+  return host
+    .split(".")
+    .every((label) => !readingsOf(label.replace(WRITTEN_BY_REDACTION, ".")).some(tokenShaped));
+}
+
+// The markers that can stand for a whole origin, such as a withheld sandbox host.
+const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
+// `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host. The URL
+// parser reads a backslash there as a slash, so a backslash counts as a path too.
+const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/\\?#@]*)?$/i;
+
+/**
+ * What is wrong with a recorded page, or undefined when it holds an origin and a path only, as
+ * tracePage writes one. verify applies it to each recorded page and the browser network log's
+ * record check to each record's origin and path.
+ */
+export function pageProblem(page: unknown): string | undefined {
+  if (!isRecord(page) || typeof page.origin !== "string" || typeof page.path !== "string")
+    return "is not an origin and a path";
+  if (/[?#]/.test(page.path)) return "has a query string or fragment in its path";
+  if (!MARKERS.has(page.origin) && !ORIGIN.test(page.origin))
+    return "has an origin with user info, a path, a query string or a fragment";
+  return undefined;
 }

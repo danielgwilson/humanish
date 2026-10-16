@@ -591,6 +591,14 @@ export interface StudyDesktopFidelity {
   userAgent?: string;
 }
 
+/**
+ * `execution.network`: record each browser participant's requests to `network/<id>.ndjson`.
+ * `true` keeps the requests to the participant's target origin; `origins` adds up to 16 more exact
+ * http(s) origins. Only computer-use participants in hosted Chrome or Chromium on
+ * `execution.target: e2b-desktop` read it; every other route refuses it.
+ */
+export type StudyNetworkCapture = boolean | { origins?: string[] };
+
 export interface StudyExecution {
   target?: StudyExecutionTarget;
   /** Actor session wall-clock budget. Consumed on the app-url route. */
@@ -603,6 +611,8 @@ export interface StudyExecution {
    */
   concurrency?: number;
   desktop?: StudyExecutionDesktop;
+  /** Each browser participant's network log; see StudyNetworkCapture. Absent or false: off. */
+  network?: StudyNetworkCapture;
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: StudyExecutionTerminal;
   /** `terminal-product` route: runtime key placement, defaulting to openai-egress, an external
