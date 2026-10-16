@@ -8,6 +8,7 @@
 // participant runs: each failure is one warning, and the index says why records are missing.
 
 import {
+  networkIndexWithoutEvents,
   reduceBrowserNetwork,
   type BrowserNetworkIndex,
   type TurnMark,
@@ -24,7 +25,7 @@ import {
   startNetworkCapture,
 } from "../../../substrates/e2b/desktop-cdp.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
-import type { DesktopParticipantRun, E2BDesktopDeps } from "../types.js";
+import type { E2BDesktopDeps } from "../types.js";
 import { cdpEndpoint } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 
@@ -55,7 +56,6 @@ function networkRedaction(deps: E2BDesktopDeps): (text: string) => string {
  * holder keeps the participant's target origin and `execution.network.origins`.
  */
 export function planParticipantNetwork(
-  spec: DesktopParticipantRun,
   deps: E2BDesktopDeps,
   targetUrl: string,
 ): ParticipantNetwork | undefined {
@@ -71,13 +71,7 @@ export function planParticipantNetwork(
     started: false,
     latestRead: undefined,
     marks: [],
-    index: reduceBrowserNetwork({
-      participantId: spec.planned.id,
-      origins,
-      events: { missing: "no-capture" },
-      marks: [],
-      redact: networkRedaction(deps),
-    }).index,
+    index: networkIndexWithoutEvents({ origins, redact: networkRedaction(deps) }, "no-capture"),
   };
 }
 
@@ -150,13 +144,25 @@ export function noteNetworkStart(
 }
 
 /**
- * The checkpoint callback the participant's session runs with: each checkpoint screenshot is paired
- * with the sandbox time of the browser-state read before it. A read that failed leaves no mark.
+ * The callbacks a participant whose capture started runs with, or undefined when capture did not
+ * start: the browser-state observer reports each read's sandbox clock, and each checkpoint
+ * screenshot is paired with the read before it. A read that failed leaves no mark.
  */
-export function networkCheckpoint(network: ParticipantNetwork): (turnNumber: number) => void {
-  return (turnNumber) => {
-    if (network.latestRead !== undefined)
-      network.marks.push({ wallTime: network.latestRead, turn: turnNumber });
+export function networkHooks(network: ParticipantNetwork | undefined):
+  | {
+      onClock: (now: number | undefined) => void;
+      onCheckpoint: (turnNumber: number) => void;
+    }
+  | undefined {
+  if (network?.started !== true) return undefined;
+  return {
+    onClock: (now) => {
+      network.latestRead = now;
+    },
+    onCheckpoint: (turnNumber) => {
+      if (network.latestRead !== undefined)
+        network.marks.push({ wallTime: network.latestRead, turn: turnNumber });
+    },
   };
 }
 
@@ -173,33 +179,27 @@ export async function collectParticipantNetwork(
   const network = state.network;
   if (network === undefined || !network.started) return;
   const { spec, deps } = ctx;
-  const reduce = (events: string | { missing: "not-collected" }) =>
-    reduceBrowserNetwork({
-      participantId: spec.planned.id,
-      origins: network.request.origins,
-      events,
-      marks: network.marks,
-      redact: networkRedaction(deps),
-      sandboxId: desktop.sandboxId,
-    });
+  const capture = {
+    participantId: spec.planned.id,
+    origins: network.request.origins,
+    marks: network.marks,
+    redact: networkRedaction(deps),
+    sandboxId: desktop.sandboxId,
+  };
   const notCollected = (error: unknown): void => {
     ctx.warnings.push(
       `Participant ${spec.planned.id}'s network log could not be collected: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}. Its index records it as not collected.`,
     );
-    network.index = reduce({ missing: "not-collected" }).index;
+    network.index = networkIndexWithoutEvents(capture, "not-collected");
   };
   let events: string;
   try {
-    events = await readNetworkEvents(
-      desktop,
-      network.request.eventsPath ?? NETWORK_EVENTS_PATH,
-      deps.requestTimeoutMs,
-    );
+    events = await readNetworkEvents(desktop, NETWORK_EVENTS_PATH, deps.requestTimeoutMs);
   } catch (error) {
     notCollected(error);
     return;
   }
-  const log = reduce(events);
+  const log = await reduceBrowserNetwork({ ...capture, events });
   try {
     if (log.text !== undefined && log.index.path !== undefined)
       await writeContainedOutputFile(deps.artifactRoot, log.index.path, log.text, "utf8");

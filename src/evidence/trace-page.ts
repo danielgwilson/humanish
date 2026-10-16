@@ -1,4 +1,5 @@
 import type { TracePage } from "../actors/contract.js";
+import { isRecord } from "../run/type-guards.js";
 import { readingsOf, redactEncodedText, scanEncodedText } from "./encoded-text.js";
 import { REDACTION_MARKERS } from "./redaction.js";
 
@@ -114,4 +115,24 @@ export function tracePage(
   if (redact(joined) !== joined)
     return { origin: REDACTION_MARKERS.urlPart, path: REDACTION_MARKERS.urlPart };
   return { origin, path };
+}
+
+// The markers that can stand for a whole origin, such as a withheld sandbox host.
+const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
+// `scheme:` alone (a non-web URL) or `scheme://host[:port]`, with nothing after the host. The URL
+// parser reads a backslash there as a slash, so a backslash counts as a path too.
+const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/\\?#@]*)?$/i;
+
+/**
+ * What is wrong with a recorded page, or undefined when it holds an origin and a path only, as
+ * tracePage writes one. verify applies it to each recorded page and the browser network log's
+ * record check to each record's origin and path.
+ */
+export function pageProblem(page: unknown): string | undefined {
+  if (!isRecord(page) || typeof page.origin !== "string" || typeof page.path !== "string")
+    return "is not an origin and a path";
+  if (/[?#]/.test(page.path)) return "has a query string or fragment in its path";
+  if (!MARKERS.has(page.origin) && !ORIGIN.test(page.origin))
+    return "has an origin with user info, a path, a query string or a fragment";
+  return undefined;
 }

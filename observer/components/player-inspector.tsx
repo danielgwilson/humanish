@@ -240,11 +240,17 @@ const NETWORK_GAP: Record<NonNullable<NetworkIndex["reason"]>, string> = {
 
 /**
  * The participant's network log in one line, from its index alone: the counts, linking the file,
- * then why records are missing when some are. The page never loads the records.
+ * then why records are missing when some are. Capture that started and kept no request has a
+ * start time and no file. The page never loads the records.
  */
 function NetworkLog({ network }: { network: NetworkIndex }) {
   const gap = network.reason === undefined ? undefined : NETWORK_GAP[network.reason];
-  if (network.path === undefined) return <>Not recorded{gap === undefined ? "" : `: ${gap}`}</>;
+  if (network.path === undefined)
+    return network.startedAt === undefined ? (
+      <>Not recorded{gap === undefined ? "" : `: ${gap}`}</>
+    ) : (
+      <>0 requests{gap === undefined ? "" : ` · ${gap}`}</>
+    );
   const records = network.records ?? 0;
   const counts = `${records} ${records === 1 ? "request" : "requests"}, ${network.failed ?? 0} failed, ${network.pending ?? 0} pending`;
   const href = runArtifactHref(network.path);

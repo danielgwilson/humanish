@@ -6,7 +6,7 @@ import { createE2BDesktopExecutor } from "../../../substrates/e2b/desktop-execut
 import type { ParticipantDesktop, ReadyParticipantDesktop } from "../participant-desktop.js";
 import { participantInbox, planParticipantComms } from "./comms.js";
 import { participantBrowserStateObserver } from "./fidelity.js";
-import { networkCheckpoint, planParticipantNetwork } from "./network.js";
+import { networkHooks, planParticipantNetwork } from "./network.js";
 import {
   acquireParticipantDesktop,
   placeParticipantFiles,
@@ -30,7 +30,7 @@ export function createE2BParticipantDesktop(
 ): ParticipantDesktop {
   const targetUrl = spec.planned.targetUrl ?? deps.appUrl;
   const state = newParticipantState(spec);
-  state.network = planParticipantNetwork(spec, deps, targetUrl);
+  state.network = planParticipantNetwork(deps, targetUrl);
   const ctx: E2BParticipantContext = {
     spec,
     deps,
@@ -91,7 +91,7 @@ export function createE2BParticipantDesktop(
       catchReady: state.commsCatch?.deployed.ready === true,
     });
     // Capture that started pairs each checkpoint with the time of the read before it.
-    const network = state.network?.started === true ? state.network : undefined;
+    const network = networkHooks(state.network);
     const executor = createE2BDesktopExecutor(
       desktop,
       state.launchedBrowserFamily === "chromium"
@@ -105,13 +105,7 @@ export function createE2BParticipantDesktop(
               targetId: state.browserTargetId,
               fidelity: state.fidelity,
               warnings,
-              ...(network === undefined
-                ? {}
-                : {
-                    onClock: (now: number | undefined) => {
-                      network.latestRead = now;
-                    },
-                  }),
+              ...(network === undefined ? {} : { onClock: network.onClock }),
             }),
           }
         : {},
@@ -119,7 +113,7 @@ export function createE2BParticipantDesktop(
     return {
       executor: allocation.open(state.speech?.wrap(executor) ?? executor).executor,
       ...(inbox === undefined ? {} : { inbox }),
-      ...(network === undefined ? {} : { onCheckpoint: networkCheckpoint(network) }),
+      ...(network === undefined ? {} : { onCheckpoint: network.onCheckpoint }),
     };
   }
 

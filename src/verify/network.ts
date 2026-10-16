@@ -2,11 +2,15 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  BROWSER_NETWORK_GAPS,
   BROWSER_NETWORK_SCHEMA,
   isIsoTime,
   networkLogPath,
   networkRecordProblem,
+  type BrowserNetworkIndex,
 } from "../evidence/browser-network.js";
+import { REDACTION_MARKERS } from "../evidence/redaction.js";
+import { pageProblem } from "../evidence/trace-page.js";
 import type { RunBundle } from "../run/bundle.js";
 import {
   readContainedRegularFile,
@@ -17,7 +21,6 @@ import { boundJsonLines } from "../run/live-items.js";
 import { streamParticipantIdOf } from "../run/participant-records.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
-import { pageProblem } from "./pages.js";
 
 // A participant's browser network log is a public-safety surface: a header, a cookie or a query
 // string in it would have no shape the text scan matches. So verify reads each log a stream index
@@ -25,29 +28,28 @@ import { pageProblem } from "./pages.js";
 // writer holds it to. A file under network/ that no index names was not written by humanish.
 
 const NETWORK_FOLDER = "network";
-const INDEX_KEYS: ReadonlySet<string> = new Set([
-  "schema",
-  "path",
-  "records",
-  "failed",
-  "pending",
-  "bytes",
-  "sha256",
-  "startedAt",
-  "origins",
-  "complete",
-  "reason",
-  "omitted",
-]);
-const GAPS: ReadonlySet<unknown> = new Set([
-  "no-capture",
-  "holder-stopped",
-  "capped",
-  "not-collected",
-]);
 const RECORD = { one: "a record", many: "records" };
 /** The record findings one file reports by line; the rest are counted in one more finding. */
 const LINE_FINDINGS = 10;
+
+/** Every key of the index type, so a key added to the type is one verify admits. */
+const INDEX_KEYS: ReadonlySet<string> = new Set(
+  Object.keys({
+    schema: true,
+    path: true,
+    records: true,
+    failed: true,
+    pending: true,
+    bytes: true,
+    sha256: true,
+    startedAt: true,
+    origins: true,
+    complete: true,
+    reason: true,
+    omitted: true,
+  } satisfies Record<keyof BrowserNetworkIndex, true>),
+);
+const REASONS: ReadonlySet<unknown> = new Set(BROWSER_NETWORK_GAPS);
 
 /** What is wrong with a stream's network index, or undefined when it has the schema's shape. */
 function networkIndexProblem(index: unknown): string | undefined {
@@ -75,7 +77,7 @@ function networkIndexProblem(index: unknown): string | undefined {
   )
     return "has an origin that is not an origin alone";
   if (typeof index.complete !== "boolean") return "does not say whether it is complete";
-  if (index.complete ? index.reason !== undefined : !GAPS.has(index.reason))
+  if (index.complete ? index.reason !== undefined : !REASONS.has(index.reason))
     return "has a reason that does not match whether it is complete";
   const { omitted } = index;
   if (
@@ -93,8 +95,8 @@ function networkIndexProblem(index: unknown): string | undefined {
  * One finding per problem with the run's browser network logs: a stream index without the
  * schema's shape or naming a file other than network/<its participant id>.ndjson, a file that is
  * missing, unreadable or does not match its index's byte count, sha256 and record count, a record
- * outside the schema, and a file under network/ that no index names. Each finding names the file
- * and the line, never what the line holds.
+ * outside the schema or on an origin its index does not list, and a file under network/ that no
+ * index names. Each finding names the file and the line, never what the line holds.
  */
 export async function networkFindings(
   bundle: RunBundle,
@@ -120,6 +122,7 @@ export async function networkFindings(
     findings.push(
       ...(await fileFindings(runPaths, {
         path: index.path,
+        origins: new Set(Array.isArray(index.origins) ? index.origins : []),
         lines: Number(index.records),
         failed: Number(index.failed),
         pending: Number(index.pending),
@@ -140,13 +143,16 @@ export async function networkFindings(
 }
 
 /**
- * The findings for one indexed log: its read and binding, its records by line, then its failed
- * and pending counts against the index's, which a reader such as the Observer shows unchecked.
+ * The findings for one indexed log: its read and binding, its records by line, each record's
+ * origin against the index's, then its failed and pending counts against the index's, which a
+ * reader such as the Observer shows unchecked. A record's origin can also be the marker tracePage
+ * writes for a page withheld whole.
  */
 async function fileFindings(
   runPaths: PreparedRunArtifactPaths,
   index: {
     path: string;
+    origins: ReadonlySet<unknown>;
     lines: number;
     failed: number;
     pending: number;
@@ -165,7 +171,13 @@ async function fileFindings(
   bound.lines.forEach((record, at) => {
     if (isRecord(record) && record.failed !== undefined) counted.failed += 1;
     if (isRecord(record) && record.pending !== undefined) counted.pending += 1;
-    const problem = networkRecordProblem(record);
+    const problem =
+      networkRecordProblem(record) ??
+      (isRecord(record) &&
+      !index.origins.has(record.origin) &&
+      record.origin !== REDACTION_MARKERS.urlPart
+        ? "has an origin its index does not list"
+        : undefined);
     if (problem === undefined) return;
     if (findings.length < LINE_FINDINGS) findings.push(`${index.path} line ${at + 1} ${problem}`);
     else more += 1;

@@ -146,11 +146,16 @@ function capturingDesktop(options: {
 
 /**
  * Runs an app-url study with `execution.network` on fake desktops built with `fakes`: one
- * participant unless `participants` lists them, its desktop set up by `desktop`.
+ * participant unless `participants` lists them, its desktop set up by `desktop`, and capture as
+ * `network` sets it.
  */
 async function runWithCapture(
   fakes: FanoutModuleOptions,
-  study: { desktop?: Record<string, unknown>; participants?: unknown[] } = {},
+  study: {
+    desktop?: Record<string, unknown>;
+    participants?: unknown[];
+    network?: false | { origins: string[] };
+  } = {},
 ) {
   const parsed = parseStudy(
     lab("cuAppUrl", {
@@ -158,7 +163,7 @@ async function runWithCapture(
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
-        network: { origins: [API] },
+        network: study.network ?? { origins: [API] },
         ...(study.desktop === undefined ? {} : { desktop: study.desktop }),
       },
       ...(study.participants === undefined ? {} : { participants: study.participants }),
@@ -335,6 +340,42 @@ describe("a hosted participant's network log", () => {
     );
     expect(stream.network).toMatchObject({ records: 4, complete: true });
     expect(await readdir(path.join(runDir, "network"))).toEqual([`${stream.laneId}.ndjson`]);
+  });
+});
+
+describe("a hosted participant whose capture kept no request", () => {
+  it("writes no file, and the run keeps the grade of the same run without capture", async () => {
+    // Capture started, then the only request went to an origin outside the list.
+    const events = [
+      { e: "start", wallTime: T - 5 },
+      { e: "request", id: "0:1", wallTime: T + 1, timestamp: 51 },
+    ]
+      .map(line)
+      .join("");
+    const fakes = (): FanoutModuleOptions =>
+      capturingDesktop({ holderLog: announce({ startedAt: T - 5 }), events });
+    const grade = async (run: { cwd: string; result: { runId: string } }) => {
+      const verified = await verifyRun(run.cwd, run.result.runId);
+      return {
+        status: verified.shareSafety.status,
+        codes: verified.shareSafety.reasons.map((reason) => reason.code),
+      };
+    };
+    const control = await runWithCapture(fakes(), { network: false });
+    const capture = await runWithCapture(fakes());
+    expect(capture.result.ok).toBe(control.result.ok);
+    expect(await grade(capture)).toEqual(await grade(control));
+    expect(capture.stream.network).toEqual({
+      schema: "humanish.browser-network.v1",
+      startedAt: "2026-10-16T01:59:55.000Z",
+      origins: [SITE, API],
+      complete: true,
+      omitted: { otherOrigin: 1, overCap: 0, invalid: 0 },
+    });
+    expect(capture.stream.artifacts.map((artifact) => artifact.path)).not.toContain(
+      `network/${capture.stream.laneId}.ndjson`,
+    );
+    await expect(readdir(path.join(capture.runDir, "network"))).rejects.toThrow(/ENOENT/);
   });
 });
 

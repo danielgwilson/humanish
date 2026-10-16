@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
+import { setImmediate as nextTurn } from "node:timers/promises";
 
+import type { TracePage } from "../actors/contract.js";
 import { assertSafeOutputPathSegment } from "../run/contained-output.js";
 import { scrubSandboxIds } from "../run/sandbox-ids.js";
 import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
-import { pageProblem } from "../verify/pages.js";
-import { tracePage } from "./trace-page.js";
+import { pageProblem, tracePage } from "./trace-page.js";
 
 // A participant's browser network log: the requests its browser made, one record per request hop,
 // each tagged with the turn it happened in. The in-sandbox holder appends a short line per
@@ -15,22 +16,32 @@ import { tracePage } from "./trace-page.js";
 
 export const BROWSER_NETWORK_SCHEMA = "humanish.browser-network.v1";
 
-/** Why records are missing from a participant's network log. */
-type BrowserNetworkGap = "no-capture" | "holder-stopped" | "capped" | "not-collected";
+/** Why records are missing from a participant's network log, as the index's `reason` says. */
+export const BROWSER_NETWORK_GAPS = [
+  "no-capture",
+  "holder-stopped",
+  "capped",
+  "not-collected",
+] as const;
+type BrowserNetworkGap = (typeof BROWSER_NETWORK_GAPS)[number];
 
 /** A stream's `network` field in run.json. */
 export interface BrowserNetworkIndex {
   schema: typeof BROWSER_NETWORK_SCHEMA;
   /**
    * network/<participant id>.ndjson, with the file's record count, byte count and sha256, and how
-   * many of its records failed and are pending. All six are absent when no file was written
-   * (`no-capture`, `not-collected`).
+   * many of its records failed and are pending. All six are absent when no file was written:
+   * capture did not start (`no-capture`), the events were not read (`not-collected`), or capture
+   * started and kept no record, which `startedAt` tells apart.
    */
   path?: string;
   records?: number;
   /** Records with `failed`: requests that got no response or broke off. */
   failed?: number;
-  /** Records with `pending`: requests still open when the file was read. */
+  /**
+   * Records with `pending`: requests with no recorded end, still open when the file was read or
+   * when capture stopped (`capped`, `holder-stopped`).
+   */
   pending?: number;
   bytes?: number;
   sha256?: string;
@@ -44,7 +55,10 @@ export interface BrowserNetworkIndex {
   omitted: {
     /** Requests to an origin outside `origins`. */
     otherOrigin: number;
-    /** Records past the caps. */
+    /**
+     * Records past the writer's caps, which are not checked. Requests after the holder's own cap
+     * (`capped` with no overCap) are not counted anywhere.
+     */
     overCap: number;
     /** Records that failed the record check. */
     invalid: number;
@@ -65,11 +79,8 @@ export interface BrowserNetworkCapture {
   participantId: string;
   /** The origins whose requests are kept, as `new URL(url).origin` writes them. */
   origins: readonly string[];
-  /**
-   * The holder's events file as the host read it, whole lines and possibly a last partial one, or
-   * why nothing was read.
-   */
-  events: string | { missing: "no-capture" | "not-collected" };
+  /** The holder's events file as the host read it, whole lines and possibly a last partial one. */
+  events: string;
   /** The participant's checkpoint marks, in the order they were taken. */
   marks: readonly TurnMark[];
   /** The trace redaction the participant's pages went through (traceRedaction). */
@@ -163,7 +174,8 @@ interface NetworkRecord {
 interface Hop {
   wallTime: number | undefined;
   timestamp: number | undefined;
-  page: { origin: string; path: string };
+  /** The address the holder wrote, on an allowed origin; traced only when the hop is written. */
+  url: string;
   method: string | undefined;
   type: string;
   redirect: boolean;
@@ -228,74 +240,106 @@ export function networkRecordProblem(record: unknown): string | undefined {
   return undefined;
 }
 
+/** The longest the reduction runs before it lets other work on the event loop go first. */
+const SLICE_MS = 20;
+
 /**
- * The network log of one participant: the records the holder's events give, joined by request id
- * into one per hop, redacted, tagged with turns, checked and capped, then the index that binds
- * them. A redirect gives the 3xx hop's record, then one with `redirect: true`. A request's turn is
- * the N of the first mark at or after its start, or the last mark's N plus 1 after every mark.
- * Throws only for a participant id that is not one path segment.
+ * The index of a participant whose events were never read: capture did not start, or the file
+ * could not be read at teardown. No file goes with it.
  */
-export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNetworkLog {
-  const { participantId, redact, sandboxId } = capture;
-  assertSafeOutputPathSegment(participantId, "Network log participant");
-  const scrub =
-    sandboxId === undefined || sandboxId === ""
-      ? (text: string) => text
-      : (text: string) => scrubSandboxIds(text, [sandboxId]);
-  const origins = [
+export function networkIndexWithoutEvents(
+  capture: Pick<BrowserNetworkCapture, "origins" | "redact" | "sandboxId">,
+  reason: "no-capture" | "not-collected",
+): BrowserNetworkIndex {
+  return {
+    schema: BROWSER_NETWORK_SCHEMA,
+    origins: indexOrigins(capture.origins, capture.redact, scrubOf(capture.sandboxId)),
+    complete: false,
+    reason,
+    omitted: { otherOrigin: 0, overCap: 0, invalid: 0 },
+  };
+}
+
+function scrubOf(sandboxId: string | undefined): (text: string) => string {
+  return sandboxId === undefined || sandboxId === ""
+    ? (text) => text
+    : (text) => scrubSandboxIds(text, [sandboxId]);
+}
+
+/** The allowed origins as the index lists them: each redacted as a trace page's origin is. */
+function indexOrigins(
+  origins: readonly string[],
+  redact: (text: string) => string,
+  scrub: (text: string) => string,
+): string[] {
+  return [
     ...new Set(
-      capture.origins.flatMap((origin) => {
+      origins.flatMap((origin) => {
         const page = tracePage(origin, redact);
         return page === undefined ? [] : [scrub(page.origin)];
       }),
     ),
   ];
-  const omitted = { otherOrigin: 0, overCap: 0, invalid: 0 };
-  const { events } = capture;
-  if (typeof events !== "string")
-    return {
-      index: {
-        schema: BROWSER_NETWORK_SCHEMA,
-        origins,
-        complete: false,
-        reason: events.missing,
-        omitted,
-      },
-      warnings: [],
-    };
+}
 
-  const pageOf = cachedPages(capture.origins, redact, scrub);
-  const read = joinHops(events, pageOf);
-  omitted.otherOrigin = read.otherOrigin;
+/**
+ * The network log of one participant: the records the holder's events give, joined by request id
+ * into one per hop, redacted, tagged with turns, checked and capped, then the index that binds
+ * them. A redirect gives the 3xx hop's record, then one with `redirect: true`. A request's turn is
+ * the N of the first mark at or after its start, or the last mark's N plus 1 after every mark.
+ * Capture that started and kept no record writes no file. Only a hop the caps still take is
+ * redacted, and the work yields to the event loop every 20 ms, so the other participants of a
+ * fan-out keep running while a 32 MiB events file is reduced. Throws only for a participant id
+ * that is not one path segment.
+ */
+export async function reduceBrowserNetwork(
+  capture: BrowserNetworkCapture,
+): Promise<BrowserNetworkLog> {
+  const { participantId, redact } = capture;
+  assertSafeOutputPathSegment(participantId, "Network log participant");
+  const scrub = scrubOf(capture.sandboxId);
+  const origins = indexOrigins(capture.origins, redact, scrub);
+  let sliceStart = performance.now();
+  const pause = async (): Promise<void> => {
+    if (performance.now() - sliceStart < SLICE_MS) return;
+    await nextTurn();
+    sliceStart = performance.now();
+  };
+  const read = await joinHops(capture.events, capture.origins, pause);
+  const omitted = { otherOrigin: read.otherOrigin, overCap: 0, invalid: 0 };
   if (read.startedAt === undefined)
     return {
-      index: {
-        schema: BROWSER_NETWORK_SCHEMA,
-        origins,
-        complete: false,
-        reason: "no-capture",
-        omitted,
-      },
+      index: { ...networkIndexWithoutEvents(capture, "no-capture"), omitted },
       warnings: [],
     };
 
+  const pageOf = cachedPages(redact, scrub);
   const turnOf = turnRule(capture.marks);
   const lines: string[] = [];
   const kept = { failed: 0, pending: 0 };
-  const room = {
+  const room: Room = {
     first: FIRST_RECORDS,
     notable: NOTABLE_RECORDS,
     bytes: MAX_FILE_BYTES,
     full: false,
   };
   for (const hop of read.hops) {
-    const record = recordOf(hop, turnOf);
+    await pause();
+    if (isoOf(hop.wallTime) === undefined) {
+      omitted.invalid += 1;
+      continue;
+    }
+    if (slotFor(hop, room) === undefined) {
+      omitted.overCap += 1;
+      continue;
+    }
+    const record = recordOf(hop, pageOf(hop.url), turnOf);
     if (networkRecordProblem(record) !== undefined) {
       omitted.invalid += 1;
       continue;
     }
     const line = `${JSON.stringify(record)}\n`;
-    if (!fits(record, Buffer.byteLength(line, "utf8"), room)) {
+    if (!fits(hop, Buffer.byteLength(line, "utf8"), room)) {
       omitted.overCap += 1;
       continue;
     }
@@ -304,10 +348,22 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
     if (record.pending === true) kept.pending += 1;
   }
 
-  const text = lines.join("");
-  const bytes = Buffer.from(text, "utf8");
   const reason: BrowserNetworkGap | undefined =
     read.capped || omitted.overCap > 0 ? "capped" : read.stopped ? "holder-stopped" : undefined;
+  const gap = { complete: reason === undefined, ...(reason === undefined ? {} : { reason }) };
+  if (lines.length === 0)
+    return {
+      index: {
+        schema: BROWSER_NETWORK_SCHEMA,
+        startedAt: read.startedAt,
+        origins,
+        ...gap,
+        omitted,
+      },
+      warnings: [],
+    };
+  const text = lines.join("");
+  const bytes = Buffer.from(text, "utf8");
   return {
     index: {
       schema: BROWSER_NETWORK_SCHEMA,
@@ -318,13 +374,12 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
       sha256: createHash("sha256").update(bytes).digest("hex"),
       startedAt: read.startedAt,
       origins,
-      complete: reason === undefined,
-      ...(reason === undefined ? {} : { reason }),
+      ...gap,
       omitted,
     },
     text,
     warnings:
-      capture.marks.length === 0 && lines.length > 0
+      capture.marks.length === 0
         ? [
             `Participant ${participantId}'s network log has no turn numbers: no checkpoint screenshot recorded a browser-state read, so its requests could not be matched to turns. Each record's time (at) still places it.`,
           ]
@@ -333,26 +388,19 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
 }
 
 /**
- * The page a request address is written as, or undefined for an origin outside `origins` or an
- * address the URL parser rejects. tracePage runs once per address the holder wrote, which is a raw
- * origin and path: a page polling one endpoint repeats the same address thousands of times, and an
- * uncached call costs a few hundred microseconds.
+ * The page a request address is written as. tracePage runs once per address the holder wrote,
+ * which is a raw origin and path: a page polling one endpoint repeats the same address thousands
+ * of times, and an uncached call costs a few hundred microseconds.
  */
 function cachedPages(
-  allowedOrigins: readonly string[],
   redact: (text: string) => string,
   scrub: (text: string) => string,
-): (url: unknown) => Hop["page"] | undefined {
-  const allowed = new Set(allowedOrigins.flatMap((origin) => URL.parse(origin)?.origin ?? []));
-  const pages = new Map<string, Hop["page"] | null>();
+): (url: string) => TracePage | undefined {
+  const pages = new Map<string, TracePage | null>();
   return (url) => {
-    if (typeof url !== "string") return undefined;
     let page = pages.get(url);
     if (page === undefined) {
-      const parsed = URL.parse(url);
-      // The holder writes only allowed addresses; the host decides what is written.
-      const traced =
-        parsed !== null && allowed.has(parsed.origin) ? tracePage(url, redact) : undefined;
+      const traced = tracePage(url, redact);
       page =
         traced === undefined ? null : { origin: scrub(traced.origin), path: scrub(traced.path) };
       pages.set(url, page);
@@ -373,8 +421,19 @@ interface JoinedEvents {
 const finite = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
-/** The holder's lines joined by request id. A last line with no line end is still being written. */
-function joinHops(events: string, pageOf: (url: unknown) => Hop["page"] | undefined): JoinedEvents {
+/**
+ * The holder's lines joined by request id, each hop kept only when its address is on one of
+ * `allowedOrigins`. A last line with no line end is still being written.
+ */
+async function joinHops(
+  events: string,
+  allowedOrigins: readonly string[],
+  pause: () => Promise<void>,
+): Promise<JoinedEvents> {
+  const allowed = new Set(allowedOrigins.flatMap((origin) => URL.parse(origin)?.origin ?? []));
+  // The holder writes only allowed addresses; the host decides what is written.
+  const allowedUrl = (url: unknown): string | undefined =>
+    typeof url === "string" && allowed.has(URL.parse(url)?.origin ?? "") ? url : undefined;
   const joined: JoinedEvents = {
     hops: [],
     startedAt: undefined,
@@ -385,6 +444,7 @@ function joinHops(events: string, pageOf: (url: unknown) => Hop["page"] | undefi
   const open = new Map<string, Hop>();
   const whole = events.slice(0, events.lastIndexOf("\n") + 1);
   for (const text of whole.split("\n")) {
+    await pause();
     if (text === "") continue;
     let line: unknown;
     try {
@@ -412,15 +472,15 @@ function joinHops(events: string, pageOf: (url: unknown) => Hop["page"] | undefi
           close(hop, line.timestamp);
         }
         open.delete(id);
-        const page = pageOf(line.url);
-        if (page === undefined) {
+        const url = allowedUrl(line.url);
+        if (url === undefined) {
           joined.otherOrigin += 1;
           break;
         }
         const next: Hop = {
           wallTime: finite(line.wallTime),
           timestamp: finite(line.timestamp),
-          page,
+          url,
           method: typeof line.method === "string" ? line.method : undefined,
           type: typeof line.type === "string" ? line.type : "",
           redirect: redirected,
@@ -445,13 +505,13 @@ function joinHops(events: string, pageOf: (url: unknown) => Hop["page"] | undefi
         break;
       case "backForward": {
         // A restore from the back-forward cache sends no request.
-        const page = pageOf(line.url);
-        if (page === undefined) joined.otherOrigin += 1;
+        const url = allowedUrl(line.url);
+        if (url === undefined) joined.otherOrigin += 1;
         else
           joined.hops.push({
             wallTime: finite(line.wallTime),
             timestamp: undefined,
-            page,
+            url,
             method: undefined,
             type: "document",
             redirect: false,
@@ -464,7 +524,7 @@ function joinHops(events: string, pageOf: (url: unknown) => Hop["page"] | undefi
         break;
     }
   }
-  // Sorted by start; a hop with no start time sorts last and fails the record check.
+  // Sorted by start; a hop with no start time sorts last and is counted invalid.
   joined.hops.sort(
     (left, right) =>
       (left.wallTime ?? Number.POSITIVE_INFINITY) - (right.wallTime ?? Number.POSITIVE_INFINITY),
@@ -527,15 +587,21 @@ function turnRule(
   };
 }
 
+/**
+ * The record of a hop whose address traced to `page`; an address tracePage gave no page for gets
+ * an origin and path the record check refuses. A hop whose events say it ended before it started,
+ * as a cross-origin preflight's do, gets no `ms`.
+ */
 function recordOf(
   hop: Hop,
+  page: TracePage | undefined,
   turnOf: (wallTime: number | undefined) => number | undefined,
 ): NetworkRecord {
   const turn = turnOf(hop.wallTime);
   const type = hop.type.toLowerCase();
   const ms =
-    hop.end !== undefined && hop.timestamp !== undefined
-      ? Math.max(0, Math.round((hop.end - hop.timestamp) * 1000))
+    hop.end !== undefined && hop.timestamp !== undefined && hop.end >= hop.timestamp
+      ? Math.round((hop.end - hop.timestamp) * 1000)
       : undefined;
   return {
     at: isoOf(hop.wallTime),
@@ -543,8 +609,8 @@ function recordOf(
     ...(hop.cache === "back-forward"
       ? {}
       : { method: hop.method !== undefined && METHOD.test(hop.method) ? hop.method : "OTHER" }),
-    origin: hop.page.origin,
-    path: hop.page.path,
+    origin: page?.origin ?? "",
+    path: page?.path ?? "",
     type: RESOURCE_TYPES.has(type) ? type : "other",
     ...(hop.status === undefined ? {} : { status: hop.status }),
     ...(ms === undefined ? {} : { ms }),
@@ -555,20 +621,34 @@ function recordOf(
   };
 }
 
+/** What the caps have left: first records, notable records past them, and bytes. */
+interface Room {
+  first: number;
+  notable: number;
+  bytes: number;
+  /** A line passed the byte cap, so no later line is written. */
+  full: boolean;
+}
+
 /**
- * Whether a record of `size` bytes still fits: one of the first records, or a failed, pending or
- * 400-or-above one past them, and never past the byte cap. After the first line that would pass
- * the byte cap, no later line is written, so a reader knows the file ends where the cap fell.
+ * The slot a hop's record would take: one of the first records, or a notable one past them when
+ * it failed, is pending or has status 400 or above. Undefined when the caps take no more.
  */
-function fits(
-  record: NetworkRecord,
-  size: number,
-  room: { first: number; notable: number; bytes: number; full: boolean },
-): boolean {
-  const notable =
-    record.failed !== undefined || record.pending === true || (record.status ?? 0) >= 400;
-  const slot = room.first > 0 ? "first" : notable && room.notable > 0 ? "notable" : undefined;
-  if (slot === undefined || room.full) return false;
+function slotFor(hop: Hop, room: Room): "first" | "notable" | undefined {
+  if (room.full) return undefined;
+  if (room.first > 0) return "first";
+  const notable = hop.failed !== undefined || !hop.done || (hop.status ?? 0) >= 400;
+  return notable && room.notable > 0 ? "notable" : undefined;
+}
+
+/**
+ * Whether a hop's record of `size` bytes still fits: a slot is free and the byte cap is not
+ * passed. After the first line that would pass the byte cap, no later line is written, so a reader
+ * knows the file ends where the cap fell.
+ */
+function fits(hop: Hop, size: number, room: Room): boolean {
+  const slot = slotFor(hop, room);
+  if (slot === undefined) return false;
   if (size > room.bytes) {
     room.full = true;
     return false;

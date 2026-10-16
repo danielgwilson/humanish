@@ -198,4 +198,29 @@ describe("verify on a browser network log", () => {
     expect(lowercase.status).toBe("blocked");
     expect(lowercase.message).toContain("network/p1.ndjson line 1");
   });
+
+  it("blocks a record whose origin is not one its index lists, naming the line and not the origin", async () => {
+    const result = await withRecord(2, (record) => ({
+      ...record,
+      origin: "https://accounts.google.com",
+    }));
+    expect(result.status).toBe("blocked");
+    expect(result.message).toContain("network/p1.ndjson line 2");
+    expect(result.message).not.toContain("accounts.google.com");
+  });
+
+  // Regression guard: tracePage withholds a whole page whose address holds a study secret, so a
+  // record's origin can be the marker its index never lists.
+  it("grades a record whose origin and path are withheld whole as it grades the clean log", async () => {
+    const clean = await grade(ndjson(CLEAN));
+    const withheld = await withRecord(1, (record) => ({
+      ...record,
+      origin: "[REDACTED_URL_PART]",
+      path: "[REDACTED_URL_PART]",
+    }));
+    expect({ status: withheld.status, codes: withheld.codes }).toEqual({
+      status: clean.status,
+      codes: clean.codes,
+    });
+  });
 });

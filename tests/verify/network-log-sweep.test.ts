@@ -57,7 +57,7 @@ describe("a finished run's network log", () => {
     ]
       .map((line) => `${JSON.stringify(line)}\n`)
       .join("");
-    const log = reduceBrowserNetwork({
+    const log = await reduceBrowserNetwork({
       participantId: "lane-01",
       origins: [SITE],
       events,

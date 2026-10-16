@@ -318,6 +318,23 @@ describe("the inspector's network row", () => {
       "20000 requests, 0 failed, 1 pending · cut at the size cap",
     ]);
   });
+
+  it("says in Details that capture kept no request, with no link, when it started and wrote no file", async () => {
+    stream = {
+      ...stream,
+      network: {
+        schema: "humanish.browser-network.v1",
+        startedAt: "2026-10-16T10:00:07.812Z",
+        origins: ["https://shop.example"],
+        complete: true,
+        omitted: { otherOrigin: 14, overCap: 0, invalid: 0 },
+      },
+    };
+    await render({ initialFrame: 0 });
+    await click("details");
+    expect(kv()).toContainEqual(["Network", "0 requests"]);
+    expect(container.querySelector(".kv a")).toBeNull();
+  });
 });
 
 describe("the transport", () => {
