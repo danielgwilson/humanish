@@ -22,6 +22,9 @@ export interface ChromeNetworkCaptureRequest {
   origins: string[];
 }
 
+/** The segment a path the holder cut ends with: the marker tracePage ends a cut path with. */
+const PATH_CUT = "[TRUNCATED]";
+
 /**
  * The capture half of the holder, spliced into CHROME_CDP_PROBE_PY so the shipped script stays one
  * string. Line kinds: `start` (Network answered on the launch page), `request`, `response`,
@@ -30,7 +33,9 @@ export interface ChromeNetworkCaptureRequest {
  * and `exit` (the holder stopped; written in a finally). Ids are `<session>:<requestId>`, the
  * session numbered in attach order from 0 for the launch page, because request ids repeat across
  * renderers. `wallTime` is seconds since the epoch on the sandbox clock; `timestamp` is CDP's
- * monotonic clock, for durations. A path longer than 4,096 characters is cut there.
+ * monotonic clock, for durations. A path longer than 4,096 characters ends at its last whole
+ * segment within them, then `/[TRUNCATED]`: the host redacts each segment, and a token cut in two
+ * can fall below the length its rules withhold.
  */
 export const NETWORK_CAPTURE_PY = String.raw`
 NETWORK_ENABLE = {"maxTotalBufferSize": 0, "maxResourceBufferSize": 0, "maxPostDataSize": 0}
@@ -50,7 +55,10 @@ def allowed_address(url, origins):
     origin = ("%s://%s" % (match.group(1), match.group(2))).lower()
     if origin not in origins:
         return None
-    return origin + (match.group(3)[:NETWORK_PATH_LIMIT] or "/")
+    path = match.group(3) or "/"
+    if len(path) > NETWORK_PATH_LIMIT:
+        path = path[:path.rfind("/", 0, NETWORK_PATH_LIMIT + 1)] + "/${PATH_CUT}"
+    return origin + path
 
 def network_word(value, fallback):
     text = str(value or "")
@@ -180,8 +188,12 @@ def start_capture(ws, session_id, network):
         log.close("Network.enable failed: %s" % detail)
         return None, {"unavailable": "Network.enable failed on the launch page: %s" % detail}
     started = time.time()
-    log.session(session_id)
-    log.write({"e": "start", "wallTime": started})
+    try:
+        log.session(session_id)
+        log.write({"e": "start", "wallTime": started})
+    except Exception as error:
+        log.close("the start line could not be written: %s" % type(error).__name__)
+        return None, {"unavailable": "the events file could not be written (%s)" % type(error).__name__}
     # Page events report back-forward restores; without them only those lines are missing.
     try:
         ws.call("Page.enable", {}, session_id)

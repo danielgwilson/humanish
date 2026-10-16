@@ -2,12 +2,18 @@
 // real headless Chrome. One synthetic site produces every case the host reduces, with a sentinel in
 // each place a secret travels (cookie, POST body, Authorization header, query string), and the
 // events file the holder writes must carry each case and none of the sentinels.
+import { execFileSync } from "node:child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { existsSync } from "node:fs";
 import { mkdtemp, open, readFile, rm, stat, truncate, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { reduceBrowserNetwork } from "../../../src/evidence/browser-network.js";
+import { redactText } from "../../../src/evidence/redaction.js";
+import { traceRedaction } from "../../../src/evidence/trace-page.js";
+import { NETWORK_CAPTURE_PY } from "../../../src/substrates/e2b/cdp-network-capture.js";
 import { parseChromeCdpProbeOutput } from "../../../src/substrates/e2b/cdp-probe.js";
 import { applyMobileEmulation } from "../../../src/substrates/e2b/desktop-cdp.js";
 import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
@@ -312,6 +318,9 @@ describe("holder network capture against a real headless Chrome", () => {
   let cdpPort = 0;
   let workDir = "";
   let holder: SpawnedHolder | undefined;
+  // A holder without capture announced on this runner, so one with capture that does not is a
+  // fault in the capture code, not the runner's Chrome.
+  let holderComesUp = false;
 
   beforeAll(async () => {
     if (!live) return;
@@ -321,7 +330,23 @@ describe("holder network capture against a real headless Chrome", () => {
     if (!launch.chrome)
       throw new Error(`headless Chrome never read back: ${launch.failures.join("; ")}`);
     ({ browser, profileDir, cdpPort } = launch.chrome);
+    const control = spawnHolder({ prefer: "pinned", cdpPort, targetUrl: `${site.origin}/start` });
+    holderComesUp = (await control.announce()) !== undefined;
+    control.kill();
   }, 120_000);
+
+  /**
+   * The holder's announce, or undefined when no holder comes up on this runner. A capture holder
+   * that prints none where a holder without capture did fails the case with its stderr.
+   */
+  const announceOf = async (spawned: SpawnedHolder): Promise<string | undefined> => {
+    const line = await spawned.announce();
+    if (line === undefined && holderComesUp)
+      throw new Error(
+        `the holder printed no announce where one without capture did: ${spawned.stderrTail()}`,
+      );
+    return line;
+  };
 
   afterAll(async () => {
     holder?.kill();
@@ -345,7 +370,7 @@ describe("holder network capture against a real headless Chrome", () => {
         },
       });
       try {
-        const announce = await captureOnly.announce();
+        const announce = await announceOf(captureOnly);
         if (announce === undefined)
           return ctx.skip(`the holder did not come up on this runner: ${captureOnly.stderrTail()}`);
         expect(JSON.parse(announce), announce).toMatchObject({ applied: [], held: true });
@@ -377,7 +402,7 @@ describe("holder network capture against a real headless Chrome", () => {
       });
       let tab: string | undefined;
       try {
-        if ((await capped.announce()) === undefined)
+        if ((await announceOf(capped)) === undefined)
           return ctx.skip(`the holder did not come up on this runner: ${capped.stderrTail()}`);
         tab = (
           (await (
@@ -411,6 +436,33 @@ describe("holder network capture against a real headless Chrome", () => {
     60_000,
   );
 
+  it.skipIf(!live || !existsSync("/dev/full"))(
+    "emulates the page and announces capture as unavailable when the events file cannot be written",
+    async (ctx) => {
+      const fixture = site!;
+      // Opening /dev/full succeeds and every write to it fails with ENOSPC.
+      const full = spawnHolder({
+        prefer: "pinned",
+        cdpPort,
+        targetUrl: `${fixture.origin}/start`,
+        emulation: { width: 414, height: 896, deviceScaleFactor: 3, touch: true, userAgent: "x" },
+        network: { eventsPath: "/dev/full", origins: [fixture.origin] },
+      });
+      try {
+        const announce = await announceOf(full);
+        if (announce === undefined)
+          return ctx.skip(`the holder did not come up on this runner: ${full.stderrTail()}`);
+        const result = parseChromeCdpProbeOutput(announce);
+        expect(result.applied, announce).toContain("Emulation.setDeviceMetricsOverride");
+        expect(result.unavailable, announce).toBeUndefined();
+        expect(result.network, announce).toEqual({ unavailable: expect.any(String) });
+      } finally {
+        full.kill();
+      }
+    },
+    45_000,
+  );
+
   it.skipIf(!live)(
     "writes each request case, trimmed to ids, clocks, status, cache, failure and allowed addresses",
     async (ctx) => {
@@ -426,7 +478,7 @@ describe("holder network capture against a real headless Chrome", () => {
           origins: [fixture.origin, `http://127.0.0.1:${fixture.closedPort}`],
         },
       });
-      const announceLine = await holder.announce();
+      const announceLine = await announceOf(holder);
       if (announceLine === undefined)
         return ctx.skip(`the holder did not come up on this runner: ${holder.stderrTail()}`);
       const announced = parseChromeCdpProbeOutput(announceLine);
@@ -460,6 +512,49 @@ describe("holder network capture against a real headless Chrome", () => {
       if (out) await writeFile(out, normalizedFixture(text, fixture), "utf8");
     },
     90_000,
+  );
+});
+
+describe("the holder's address for a path past 4,096 characters", () => {
+  /** The address the shipped holder writes for `url` when `origin` is allowed. */
+  const holderAddress = (url: string, origin: string): string =>
+    execFileSync(
+      "python3",
+      [
+        "-I",
+        "-c",
+        `import json, os, re, sys, time\n${NETWORK_CAPTURE_PY}\nprint(allowed_address(sys.argv[1], {sys.argv[2]}))`,
+        url,
+        origin,
+      ],
+      { encoding: "utf8" },
+    ).trimEnd();
+
+  it.skipIf(!python3)(
+    "ends at a whole segment, so the host never sees a token cut below the length it withholds",
+    async () => {
+      const origin = "https://app.example.test";
+      // The reset token starts at character 4,081 of the path and crosses 4,096.
+      const reset = "k3j9x8m2q7w4e5r6t1y0u3i8o2p5a7s9";
+      const url = `${origin}/img/${"a1b2c3d4".repeat(509).slice(0, 4_069)}/reset/${reset}`;
+      const address = holderAddress(url, origin);
+      const log = await reduceBrowserNetwork({
+        participantId: "p1",
+        origins: [origin],
+        events: [
+          { e: "start", wallTime: 100 },
+          { e: "request", id: "0:1", wallTime: 101, timestamp: 1, url: address, type: "Fetch" },
+        ]
+          .map((line) => `${JSON.stringify(line)}\n`)
+          .join(""),
+        marks: [],
+        redact: traceRedaction((text) => text, redactText),
+      });
+      expect(log.text).not.toContain(reset.slice(0, 8));
+      expect(JSON.parse(log.text ?? "{}")).toMatchObject({
+        path: "/img/[REDACTED_URL_PART]/reset/[TRUNCATED]",
+      });
+    },
   );
 });
 

@@ -314,6 +314,20 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           },
         };
   const captureModes = [{ capture: "off" as const }, { capture: "on" as const }];
+  // The holder cases whose capture-off run announced. On this runner a capture-on holder that does
+  // not announce is a fault in the capture code, so that case fails where it would skip.
+  const cameUp = new Set<string>();
+  const noAnnounce = (
+    name: string,
+    capture: "off" | "on",
+    exitCode: number | null,
+    stderr: string,
+  ) => {
+    const detail = `the hold-mode applier never announced (exit ${exitCode}); stderr: ${stderr.slice(-300)}`;
+    if (capture === "on" && cameUp.has(name))
+      throw new Error(`${detail}, where the same case without network capture announced`);
+    console.warn(`chrome-cdp-probe: ${detail}`);
+  };
 
   it.skipIf(!live).for(captureModes)(
     "emulate mode applies mobile metrics, touch and a mobile UA; fidelity mode reads them back from the page (network capture $capture)",
@@ -401,11 +415,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         };
         const line = await announceLine();
         if (line === undefined) {
-          console.warn(
-            `chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`,
-          );
+          noAnnounce("emulate", capture, holder.exitCode, holderErrors);
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
+        if (capture === "off") cameUp.add("emulate");
         // Name the announce on failure: "Target cannot be null" said nothing on the node-22 runner.
         const announcedResult = parseChromeCdpProbeOutput(line);
         expect(announcedResult.unavailable, line).toBeUndefined();
@@ -507,11 +520,10 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         }
         const announce = lines()[0];
         if (announce === undefined) {
-          console.warn(
-            `chrome-cdp-probe: the hold-mode applier never announced (exit ${holder.exitCode}); stderr: ${holderErrors.slice(-300)}`,
-          );
+          noAnnounce("later-tab", capture, holder.exitCode, holderErrors);
           return ctx.skip("the hold-mode applier did not come up on this runner");
         }
+        if (capture === "off") cameUp.add("later-tab");
         expect(parseChromeCdpProbeOutput(announce).unavailable, announce).toBeUndefined();
         // A second tab, opened the way a target=_blank link opens one, after the holder attached.
         // Chrome's legacy endpoint needs PUT; the reply is the new target's /json entry. Its query
