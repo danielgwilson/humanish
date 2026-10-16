@@ -408,7 +408,7 @@ def hold(port, page, request):
                 if href and not href.startswith("about:"):
                     target_id = reload_owed.pop(session)
                     pending[ws.send("Page.reload", {}, session)] = "Page.reload"
-                    print(json.dumps({"reloaded": target_id, "url": href, "by": "href"}), flush=True)
+                    print(json.dumps({"reloaded": target_id, "by": "href"}), flush=True)
             continue
         method = message.get("method")
         params = message.get("params") or {}
@@ -418,7 +418,7 @@ def hold(port, page, request):
             if not frame.get("parentId") and url and not url.startswith("about:"):
                 target_id = reload_owed.pop(session)
                 pending[ws.send("Page.reload", {}, session)] = "Page.reload"
-                print(json.dumps({"reloaded": target_id, "url": url}), flush=True)
+                print(json.dumps({"reloaded": target_id}), flush=True)
             continue
         if method != "Target.attachedToTarget":
             continue
@@ -434,7 +434,7 @@ def hold(port, page, request):
             url = str(info.get("url") or "")
             if url and not url.startswith("about:"):
                 pending[ws.send("Page.reload", {}, new_session)] = "Page.reload"
-                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages] + ["Page.reload"], "url": url}), flush=True)
+                print(json.dumps({"attached": target_id, "sent": [m["method"] for m in messages] + ["Page.reload"]}), flush=True)
             else:
                 reload_owed[new_session] = target_id
                 # Two ways to learn the first real navigation committed, whichever answers first:
