@@ -5,6 +5,7 @@
 // network/<participant id>.ndjson, indexed on the stream as `network` and registered as a log. A
 // capture that fails is a warning and an index that says why; the participant runs as it would.
 
+import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,6 +14,7 @@ import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { loadRunBundle } from "../../../src/run/locate.js";
 import { parseStudy } from "../../../src/study/config.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import { lab } from "../../admission/fixtures.js";
 import {
   makeFanoutModule,
@@ -333,6 +335,36 @@ describe("a hosted participant's network log", () => {
     );
     expect(stream.network).toMatchObject({ records: 4, complete: true });
     expect(await readdir(path.join(runDir, "network"))).toEqual([`${stream.laneId}.ndjson`]);
+  });
+});
+
+describe("a hosted participant's network log through the run's sandbox id sweep", () => {
+  it("holds no raw sandbox id, so the finished run's file still matches its index", async () => {
+    // The fake desktop's sandbox id, in a path the participant's app put it in.
+    const events = `${EVENTS}${line({
+      e: "request",
+      id: "0:6",
+      wallTime: T + 16,
+      timestamp: 66,
+      url: `${SITE}/sandboxes/fake-sandbox-01`,
+      method: "GET",
+      type: "Fetch",
+    })}`;
+    const { result, stream, runDir, cwd } = await runWithCapture(
+      capturingDesktop({ holderLog: announce({ startedAt: T - 5 }), events }),
+    );
+    const bytes = await readFile(path.join(runDir, `network/${stream.laneId}.ndjson`));
+    expect(bytes.toString("utf8")).not.toContain("fake-sandbox-01");
+    expect(stream.network).toMatchObject({
+      records: 5,
+      bytes: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    });
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.ok).toBe(true);
+    expect(verified.shareSafety.reasons.map((reason) => reason.code)).not.toContain(
+      "RAW_SANDBOX_ID",
+    );
   });
 });
 
