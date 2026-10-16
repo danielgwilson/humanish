@@ -8,26 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.137.0: Each browser participant can record its requests (2026-10-16)
 
-- A study can record the requests each browser participant makes. With `execution.network: true`,
-  a hosted computer-use participant in Chrome or Chromium writes `network/<participant id>.ndjson`:
-  one JSON line per request hop with its start time, the turn it happened in, the method, origin
-  and path, the resource type, the status, the duration, and whether it redirected, came from a
-  cache, failed (`failed: "ERR_CONNECTION_REFUSED"`) or was still open (`pending: true`). A 500 on
-  add-to-cart or a list call that never returns now shows next to the turn that started it. The
-  participant's target origin is kept, and `execution.network.origins` adds up to 16 more exact
-  http(s) origins; requests to any other origin are only counted. The file holds no bodies,
-  cookies, header names or values, query strings, fragments or user info, and its paths are
-  redacted as trace pages are, so a short code, an all-digit id or an all-letter token in a path
-  stays. The stream's `network` index binds the file by records, bytes and sha256, verify blocks a
-  run whose file holds any other key, a method outside the HTTP methods, a path segment that rule
-  withholds, a record on an origin the index does not list, or bytes that do not match, and the
-  Observer's participant inspector shows "412 requests, 3 failed, 2 pending"
-  linking the file. Capture starts when the browser's DevTools answer, so a desktop participant's
-  log misses most of its first page load; `network.startedAt` says when it began. The terminal,
-  scripted, shared-world and local browser routes, a `desktop-cli` subject and Firefox refuse the
-  field, and a browser that falls back to Firefox records a warning and no file (#1903).
+humanish 0.137.0 can record the requests each hosted browser participant makes. With
+`execution.network: true`, a computer-use participant in Chrome or Chromium writes
+`network/<participant id>.ndjson`: one line per request hop with its turn, method, origin and
+path, status, duration, and whether it failed or was still open. A 500 on add-to-cart or a list
+call that never returns now sits next to the turn that started it. The file holds no headers,
+cookies, bodies or query strings, verify checks every record against the contract, and capture is
+off unless a study turns it on.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.137.0)
 
 ## 0.136.1: The emulation log no longer holds page addresses (2026-10-16)
 
