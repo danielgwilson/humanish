@@ -292,7 +292,8 @@ beside it. Requests to any other origin are counted in the stream's `network.omi
 and not written. A line holds the start time, the turn, the method, the origin and path, the
 resource type, the status and the duration, and says whether the request redirected, came from a
 cache, failed or was still open. It holds no bodies, cookies, headers, query strings or
-fragments. Paths are redacted as pages are (above), so a short code in a path stays.
+fragments. Paths are redacted as pages are (above), so a short code, an all-digit id or an
+all-letter token in a path stays.
 
 ```bash
 jq -c 'select(.failed or .pending or .status >= 400)' \

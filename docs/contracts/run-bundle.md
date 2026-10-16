@@ -535,28 +535,31 @@ network:
   omitted: { otherOrigin: 1203, overCap: 0, invalid: 0 }
 ```
 
-When anything was collected the stream also has `network/<participantId>.ndjson`, registered in
-`streams[].artifacts` with kind `log`. The folder is `network/` because "request" in this
-contract already means a model request. `path`, `records`, `failed`, `pending`, `bytes` and
-`sha256` are absent when no file was written. They bind the file as a trace index binds its
-trace, and verify checks each one. `origins` are redacted as `items[].page` origins are.
-`startedAt` is when capture answered on the launch page, on the desktop's clock.
+When capture kept at least one request the stream also has `network/<participantId>.ndjson`,
+registered in `streams[].artifacts` with kind `log`. The folder is `network/` because "request"
+in this contract already means a model request. `path`, `records`, `failed`, `pending`, `bytes`
+and `sha256` are absent when no file was written: capture did not start, the file could not be
+read, or capture started and kept no request, which is the case with `startedAt` present. They
+bind the file as a trace index binds its trace, and verify checks each one. `origins` are
+redacted as `items[].page` origins are, and verify reports a record whose origin is not one of
+them or the `[REDACTED_URL_PART]` marker. `startedAt` is when capture answered on the launch
+page, on the desktop's clock.
 
 Each line of the file is one request hop as a JSON object, sorted by `at`:
 
-| Key              | Meaning                                                                                                                                                                                               |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `at`             | When the request started, as an ISO time on the desktop's clock                                                                                                                                       |
-| `turn`           | The turn the request fell in, by the rule below. Absent when no checkpoint screenshot recorded a browser-state read                                                                                   |
-| `method`         | 1 to 16 capital letters; any other method is `OTHER`. Absent on a back-forward record                                                                                                                 |
-| `origin`, `path` | The address as `items[].page` records it: no query, fragment or user info, and token-shaped or secret-bearing path segments become `[REDACTED_URL_PART]`                                              |
-| `type`           | The lowercase CDP resource type: `document`, `fetch`, `xhr`, `prefetch`, `script`, `image` and the rest of the documented list. Any other value is `other`                                            |
-| `status`         | 100 to 599. Absent when no response arrived                                                                                                                                                           |
-| `ms`             | Start to finish, failure or the next hop, in whole milliseconds. Absent when `pending` and on a back-forward record                                                                                   |
-| `redirect`       | `true`: a 3xx response started this hop. The 3xx itself is the hop before it                                                                                                                          |
-| `cache`          | `memory`, `disk`, `prefetch`, `service-worker` or `back-forward`. A `back-forward` record is a page restored from the back-forward cache: `type: document` and no `status`, since no request was sent |
-| `failed`         | The load's error text without its `net::` prefix, such as `ERR_CONNECTION_REFUSED`. `failed` with no `status` means the request failed before any response                                            |
-| `pending`        | `true`: the request was still open when the file was read                                                                                                                                             |
+| Key              | Meaning                                                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `at`             | When the request started, as an ISO time on the desktop's clock                                                                                                                                            |
+| `turn`           | The turn the request fell in, by the rule below. Absent when no checkpoint screenshot recorded a browser-state read                                                                                        |
+| `method`         | 1 to 16 capital letters; any other method is `OTHER`. Absent on a back-forward record                                                                                                                      |
+| `origin`, `path` | The address as `items[].page` records it: no query, fragment or user info, and token-shaped or secret-bearing path segments become `[REDACTED_URL_PART]`                                                   |
+| `type`           | The lowercase CDP resource type: `document`, `fetch`, `xhr`, `prefetch`, `script`, `image` and the rest of the documented list. Any other value is `other`                                                 |
+| `status`         | 100 to 599. Absent when no response arrived                                                                                                                                                                |
+| `ms`             | Start to finish, failure or the next hop, in whole milliseconds. Absent when `pending`, on a back-forward record, and when the events arrived after the request finished, as a cross-origin preflight's do |
+| `redirect`       | `true`: a 3xx response started this hop. The 3xx itself is the hop before it                                                                                                                               |
+| `cache`          | `memory`, `disk`, `prefetch`, `service-worker` or `back-forward`. A `back-forward` record is a page restored from the back-forward cache: `type: document` and no `status`, since no request was sent      |
+| `failed`         | The load's error text without its `net::` prefix, such as `ERR_CONNECTION_REFUSED`. `failed` with no `status` means the request failed before any response                                                 |
+| `pending`        | `true`: no end was recorded. The request was still open when the file was read, or capture stopped first (`reason: capped` or `holder-stopped`)                                                            |
 
 A request's `turn` is the N of the first `turn-NN` or `turn-NN-after-dwell` screenshot whose
 browser-state read came after the request started; requests after the last screenshot carry the
@@ -574,13 +577,17 @@ written. Absent from the file:
 - requests from workers, service workers and cross-site iframes, and WebSocket frames;
 - a new tab's first request, which can be missing.
 
-Path segments shorter than 16 characters are kept as `items[].page` keeps them, so a short
-numeric code in a path stays in the file. The file keeps the first 20,000 records, then up to
-5,000 more that failed, are pending or have status 400 or above, and stops before 8 MiB.
+Path segments are redacted as `items[].page` redacts them. A run of 16 or more characters is
+withheld only when a piece of it mixes letters and digits, so a short code, a long all-digit
+invite code or a long all-letter token in a path stays in the file. A path longer than 4,096
+characters ends at its last whole segment within them, then `/[TRUNCATED]`. The file keeps the
+first 20,000 records, then up to 5,000 more that failed, are pending or have status 400 or above,
+and stops before 8 MiB.
 
 `complete: false` comes with `reason`: `no-capture` (capture did not start: a browser other than
 Chrome or Chromium, or a holder that could not start it), `not-collected` (the file could not be
-read at teardown), `capped` (records past the caps, counted in `omitted.overCap`) or
+read at teardown), `capped` (records past the file's caps, counted in `omitted.overCap`; or the
+holder's events file reached 32 MiB, after which requests are absent and counted nowhere) or
 `holder-stopped` (the in-sandbox holder stopped during the session). A stream with no `network`
 field had capture off, or its participant never started: a dry run, or one skipped before its
 desktop was created. Example: `jq -c 'select(.turn==7 and (.failed or .pending or
