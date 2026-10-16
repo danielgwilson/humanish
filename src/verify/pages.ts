@@ -12,8 +12,11 @@ const MARKERS: ReadonlySet<string> = new Set(Object.values(REDACTION_MARKERS));
 // parser reads a backslash there as a slash, so a backslash counts as a path too.
 const ORIGIN = /^[a-z][a-z0-9+.-]*:(?:\/\/[^/\\?#@]*)?$/i;
 
-/** What is wrong with a recorded page, or undefined when it holds an origin and a path only. */
-function pageProblem(page: unknown): string | undefined {
+/**
+ * What is wrong with a recorded page, or undefined when it holds an origin and a path only. The
+ * browser network log's record check applies it to each record's origin and path.
+ */
+export function pageProblem(page: unknown): string | undefined {
   if (!isRecord(page) || typeof page.origin !== "string" || typeof page.path !== "string")
     return "is not an origin and a path";
   if (/[?#]/.test(page.path)) return "has a query string or fragment in its path";

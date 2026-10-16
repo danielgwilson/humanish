@@ -1,5 +1,5 @@
 import type { TracePage } from "../actors/contract.js";
-import { readingsOf, scanEncodedText } from "./encoded-text.js";
+import { readingsOf, redactEncodedText, scanEncodedText } from "./encoded-text.js";
 import { REDACTION_MARKERS } from "./redaction.js";
 
 // The page a computer-use observation was on, as a trace records it: the URL's origin and path,
@@ -78,8 +78,25 @@ function redactOrigin(url: URL, redact: (text: string) => string): string {
 }
 
 /**
+ * A computer-use trace's text redaction, which its narration and its pages go through: the run's
+ * known-value scrub, then `redactText`, then `redactEncodedText`, then the scrub again.
+ * - A value the model transcribes (a DB password it read on screen) has no shape, so `redactText`
+ *   alone cannot catch it; the scrub closes that.
+ * - The participant receives its instructions as written, so it can repeat a key the study wrote
+ *   base64- or percent-encoded, which verify decodes; `redactEncodedText` removes that one too.
+ * - The scrub runs again last: a marker written before other text can spell a known value, as
+ *   `[REDACTED_SECRET] and` spells `SECRET] and`.
+ */
+export function traceRedaction(
+  scrubText: (text: string) => string,
+  redactText: (text: string) => string,
+): (text: string) => string {
+  return (text) => scrubText(redactEncodedText(redactText(scrubText(text))));
+}
+
+/**
  * The page of an observed URL, or undefined when there is none or the URL parser rejects it.
- * `redact` is the trace's text redaction (the run's known-value scrub, then redactText).
+ * `redact` is the trace's text redaction (traceRedaction).
  */
 export function tracePage(
   url: string | undefined,
