@@ -259,7 +259,7 @@ export function networkCaptureValidationReason(
   if (route !== "computer-use")
     return `\`execution.network\` is not read on route: ${route}: ${hosted}. Remove \`execution.network\`.`;
   if (config.subject.source === "desktop-cli")
-    return "`execution.network` records each browser participant's requests, and a desktop-cli subject opens a terminal, not a browser, so there are none to record. Remove `execution.network`.";
+    return "`execution.network` records each browser participant's requests, and a desktop-cli subject opens a terminal window and no browser, so there are none to record. Remove `execution.network`.";
   if (config.subject.source === "local-app")
     return `\`execution.network\` is not supported for a local-app subject: humanish does not launch that participant's browser, and ${hosted}. Remove \`execution.network\`.`;
   const target = config.execution?.target;
