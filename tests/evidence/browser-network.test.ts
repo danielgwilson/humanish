@@ -205,7 +205,7 @@ describe("a record's origin and path", () => {
       eventsFile([
         ...answered("0:1", 101, `${SITE}/invite/invite-code-7`),
         ...answered("0:2", 102, `${SITE}/orders/9f8e7d6c5b4a39281706`),
-        ...answered("0:3", 103, `${SITE}/home/someone/notes`),
+        ...answered("0:3", 103, `${SITE}/home/user/notes`),
       ]),
     );
     expect(lines(log.text).map((record) => record.path)).toEqual([

@@ -145,7 +145,7 @@ describe("execution.network in a study file", () => {
   it.each([
     ["a path", "https://api.example.com/v1"],
     ["a query", "https://api.example.com/?key=1"],
-    ["user info", "https://user:pass@api.example.com"],
+    ["user info", "https://user:pass@example.com"],
     ["the ftp scheme", "ftp://files.example.com"],
   ])("refuses an origin with %s", (_label, origin) => {
     const message = refusal(
