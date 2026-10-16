@@ -81,6 +81,7 @@ export class DesktopObserver {
     const frameless = missingFrame(session.provider, observation);
     if (frameless !== undefined) return { stop: frameless };
     await this.recordScreenshot(observation, opening ? "turn-00-start" : `turn-${pad(turnNumber)}`);
+    session.settings.onCheckpoint?.(turnNumber);
     session.flush();
     this.observeTasks(observation, turnNumber);
     const dwell = await this.dwellIfDue(observation, turnNumber);
@@ -90,6 +91,7 @@ export class DesktopObserver {
         this.withHeardSpeech(await this.observeBounded("after dwell")),
       );
       await this.recordScreenshot(observation, `turn-${pad(turnNumber)}-after-dwell`);
+      session.settings.onCheckpoint?.(turnNumber);
       this.observeTasks(observation, turnNumber);
       if (dwell.next === "stop") {
         const when = opening ? "at the start" : `after turn ${turnNumber}`;

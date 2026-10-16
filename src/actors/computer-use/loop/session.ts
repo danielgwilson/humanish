@@ -52,6 +52,7 @@ export type LoopSettings = {
       | "onScreenshot"
       | "onTrace"
       | "recordPages"
+      | "onCheckpoint"
   ]: LoopRunOptions[K];
 };
 
@@ -161,6 +162,7 @@ export class LoopSession {
       onScreenshot,
       onTrace,
       recordPages,
+      onCheckpoint,
     } = options;
     this.settings = {
       instructions,
@@ -178,6 +180,7 @@ export class LoopSession {
       onScreenshot,
       onTrace,
       recordPages,
+      onCheckpoint,
     };
     this.provider = provider;
     this.executor = executor;

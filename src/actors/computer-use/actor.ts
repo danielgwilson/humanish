@@ -108,6 +108,8 @@ export interface CuaActorSessionOptions {
   onScreenshot?: (frame: Buffer) => void;
   /** Whether the trace carries the observed page, threaded to the loop; see LoopRunOptions.recordPages. */
   recordPages?: boolean;
+  /** Runtime-only checkpoint callback threaded to the loop; see LoopRunOptions.onCheckpoint. */
+  onCheckpoint?: (turnNumber: number) => void;
   /** Per-turn trace snapshot callback threaded to the loop; see CuaLoopOptions.onTrace. */
   onTrace?: (
     items: readonly ActorTraceItem[],
@@ -164,6 +166,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot }),
     ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace }),
     ...(options.recordPages === undefined ? {} : { recordPages: options.recordPages }),
+    ...(options.onCheckpoint === undefined ? {} : { onCheckpoint: options.onCheckpoint }),
   };
 
   const result = await runComputerUseLoopWithTaps(loopOptions);

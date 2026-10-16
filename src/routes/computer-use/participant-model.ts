@@ -132,7 +132,7 @@ export function participantSessionOptions(
   provider: CuaProvider | undefined,
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
 ): CuaActorSessionOptions {
-  const { executor, inbox } = ready;
+  const { executor, inbox, onCheckpoint } = ready;
   // The fail-closed spend cap (caps.maxUsd) is wired into the loop as maxUsd + an
   // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
   // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
@@ -211,6 +211,7 @@ export function participantSessionOptions(
               : `study budget reached: ${crossed}; the study's participants stop before their next model request`;
           },
         }),
+    ...(onCheckpoint === undefined ? {} : { onCheckpoint }),
     ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
     ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
     ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot }),
