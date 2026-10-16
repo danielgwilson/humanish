@@ -123,6 +123,8 @@ describe("the network log of the captured fixture", () => {
       schema: "humanish.browser-network.v1",
       path: "network/p1.ndjson",
       records: 19,
+      failed: 2,
+      pending: 1,
       startedAt: "2026-10-16T02:11:25.370Z",
       origins: [SITE, CLOSED],
       omitted: { otherOrigin: 1, overCap: 0, invalid: 0 },

@@ -74,13 +74,15 @@ describe("verify on a browser network log", () => {
 
   /**
    * A dry run whose participant p1 carries a network log holding `text`, indexed by the bytes the
-   * index records (`text`'s own unless `indexed` says otherwise), then edited by `edit`. Returns
-   * the grade, its reason codes and the public-safety scan's message.
+   * index records (`text`'s own unless `indexed` says otherwise) and the failed and pending counts
+   * `counts` gives (the clean log's unless it says otherwise), then edited by `edit`. Returns the
+   * grade, its reason codes and the public-safety scan's message.
    */
   const grade = async (
     text: string | undefined,
     edit: (runDir: string) => Promise<void> = async () => {},
     indexed: string | undefined = text,
+    counts: { failed: number; pending: number } = { failed: 1, pending: 1 },
   ) => {
     const runId = `synthetic-network-log-${(runs += 1)}`;
     await runDryRun({ cwd, dryRun: true, runId });
@@ -97,6 +99,7 @@ describe("verify on a browser network log", () => {
           schema: "humanish.browser-network.v1",
           path: "network/p1.ndjson",
           records: indexed.split("\n").length - 1,
+          ...counts,
           bytes: bytes.length,
           sha256: createHash("sha256").update(bytes).digest("hex"),
           startedAt: "2026-10-16T10:00:07.500Z",
@@ -175,6 +178,15 @@ describe("verify on a browser network log", () => {
       await writeFile(file, `${JSON.stringify(bundle, null, 2)}\n`);
     });
     expect(elsewhere.status).toBe("blocked");
+  });
+
+  it("blocks an index whose failed or pending count does not match its file", async () => {
+    const text = ndjson(CLEAN);
+    const failed = await grade(text, async () => {}, text, { failed: 0, pending: 1 });
+    expect(failed.status).toBe("blocked");
+    expect(failed.message).toContain("network/p1.ndjson");
+    const pending = await grade(text, async () => {}, text, { failed: 1, pending: 2 });
+    expect(pending.status).toBe("blocked");
   });
 
   it("blocks error text with its net:: prefix and a method in lowercase", async () => {

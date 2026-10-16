@@ -29,6 +29,8 @@ const INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "path",
   "records",
+  "failed",
+  "pending",
   "bytes",
   "sha256",
   "startedAt",
@@ -52,17 +54,19 @@ function networkIndexProblem(index: unknown): string | undefined {
   if (!isRecord(index)) return "is not an object";
   if (Object.keys(index).some((key) => !INDEX_KEYS.has(key))) return "has a key outside the schema";
   if (index.schema !== BROWSER_NETWORK_SCHEMA) return `is not ${BROWSER_NETWORK_SCHEMA}`;
-  const file = [index.records, index.bytes, index.sha256];
+  const file = [index.records, index.failed, index.pending, index.bytes, index.sha256];
   if (index.path === undefined) {
     if (file.some((value) => value !== undefined)) return "binds a file it gives no path for";
   } else if (
     typeof index.path !== "string" ||
     !isNonNegativeSafeInteger(index.records) ||
+    !isNonNegativeSafeInteger(index.failed) ||
+    !isNonNegativeSafeInteger(index.pending) ||
     !isNonNegativeSafeInteger(index.bytes) ||
     typeof index.sha256 !== "string" ||
     !/^[0-9a-f]{64}$/.test(index.sha256)
   )
-    return "names a file without its record count, byte count and sha256";
+    return "names a file without its record, failed and pending counts, byte count and sha256";
   if (index.startedAt !== undefined && !isIsoTime(index.startedAt))
     return "has a start time that is not an ISO time";
   if (
@@ -117,6 +121,8 @@ export async function networkFindings(
       ...(await fileFindings(runPaths, {
         path: index.path,
         lines: Number(index.records),
+        failed: Number(index.failed),
+        pending: Number(index.pending),
         bytes: Number(index.bytes),
         sha256: String(index.sha256),
       })),
@@ -133,10 +139,20 @@ export async function networkFindings(
   return findings;
 }
 
-/** The findings for one indexed log: its read and binding, then its records by line. */
+/**
+ * The findings for one indexed log: its read and binding, its records by line, then its failed
+ * and pending counts against the index's, which a reader such as the Observer shows unchecked.
+ */
 async function fileFindings(
   runPaths: PreparedRunArtifactPaths,
-  index: { path: string; lines: number; bytes: number; sha256: string },
+  index: {
+    path: string;
+    lines: number;
+    failed: number;
+    pending: number;
+    bytes: number;
+    sha256: string;
+  },
 ): Promise<string[]> {
   const read = await readContainedRegularFile(runPaths, index.path, RUN_ARTIFACT_MAX_BYTES);
   if (read.status === "missing") return [`${index.path} is missing`];
@@ -145,12 +161,20 @@ async function fileFindings(
   if ("refused" in bound) return [bound.refused];
   const findings: string[] = [];
   let more = 0;
+  const counted = { failed: 0, pending: 0 };
   bound.lines.forEach((record, at) => {
+    if (isRecord(record) && record.failed !== undefined) counted.failed += 1;
+    if (isRecord(record) && record.pending !== undefined) counted.pending += 1;
     const problem = networkRecordProblem(record);
     if (problem === undefined) return;
     if (findings.length < LINE_FINDINGS) findings.push(`${index.path} line ${at + 1} ${problem}`);
     else more += 1;
   });
   if (more > 0) findings.push(`${index.path} has ${more} more lines outside the schema`);
+  for (const key of ["failed", "pending"] as const)
+    if (counted[key] !== index[key])
+      findings.push(
+        `${index.path} holds ${counted[key]} ${key} records where its index says ${index[key]}`,
+      );
   return findings;
 }

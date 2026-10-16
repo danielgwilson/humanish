@@ -22,11 +22,16 @@ type BrowserNetworkGap = "no-capture" | "holder-stopped" | "capped" | "not-colle
 export interface BrowserNetworkIndex {
   schema: typeof BROWSER_NETWORK_SCHEMA;
   /**
-   * network/<participant id>.ndjson, with the file's record count, byte count and sha256. All four
-   * are absent when no file was written (`no-capture`, `not-collected`).
+   * network/<participant id>.ndjson, with the file's record count, byte count and sha256, and how
+   * many of its records failed and are pending. All six are absent when no file was written
+   * (`no-capture`, `not-collected`).
    */
   path?: string;
   records?: number;
+  /** Records with `failed`: requests that got no response or broke off. */
+  failed?: number;
+  /** Records with `pending`: requests still open when the file was read. */
+  pending?: number;
   bytes?: number;
   sha256?: string;
   /** When the launch page's Network domain answered, on the desktop's clock. */
@@ -276,6 +281,7 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
 
   const turnOf = turnRule(capture.marks);
   const lines: string[] = [];
+  const kept = { failed: 0, pending: 0 };
   const room = {
     first: FIRST_RECORDS,
     notable: NOTABLE_RECORDS,
@@ -289,8 +295,13 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
       continue;
     }
     const line = `${JSON.stringify(record)}\n`;
-    if (fits(record, Buffer.byteLength(line, "utf8"), room)) lines.push(line);
-    else omitted.overCap += 1;
+    if (!fits(record, Buffer.byteLength(line, "utf8"), room)) {
+      omitted.overCap += 1;
+      continue;
+    }
+    lines.push(line);
+    if (record.failed !== undefined) kept.failed += 1;
+    if (record.pending === true) kept.pending += 1;
   }
 
   const text = lines.join("");
@@ -302,6 +313,7 @@ export function reduceBrowserNetwork(capture: BrowserNetworkCapture): BrowserNet
       schema: BROWSER_NETWORK_SCHEMA,
       path: networkLogPath(participantId),
       records: lines.length,
+      ...kept,
       bytes: bytes.length,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       startedAt: read.startedAt,
