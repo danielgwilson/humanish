@@ -89,6 +89,12 @@ export interface ChromeCdpProbeResult {
   applied?: string[];
   /** "fidelity": the read-back. */
   fidelity?: ChromeFidelityRead;
+  /**
+   * Seconds since the epoch on the sandbox clock when the probe printed, on every answer including
+   * an unavailable one. It is the clock CDP `wallTime` uses, so a turn mark compares with request
+   * times without host clock skew.
+   */
+  now?: number;
 }
 
 /**
@@ -445,17 +451,24 @@ def hold(port, page, request):
         if params.get("waitingForDebugger"):
             ws.send("Runtime.runIfWaitingForDebugger", {}, new_session)
 
+def emit(answer):
+    """Print one answer line stamped with this sandbox's clock. CDP wallTime uses the same clock, so
+    a turn mark taken from it compares with request times without host skew, and the reading needs
+    nothing from the page, so a page too busy to answer still leaves a mark."""
+    answer["now"] = time.time()
+    print(json.dumps(answer))
+
 def main():
     args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
     mode = args.get("mode") or "state"
     port = resolve_port(args)
     if mode == "port":
-        print(json.dumps({"cdpPort": port}))
+        emit({"cdpPort": port})
         return
     try:
         pages = list_pages(port)
     except Exception as error:
-        print(json.dumps({"unavailable": "CDP endpoint 127.0.0.1:%d/json unreachable (%s)" % (port, type(error).__name__)}))
+        emit({"unavailable": "CDP endpoint 127.0.0.1:%d/json unreachable (%s)" % (port, type(error).__name__)})
         return
     page = select_page(pages, args)
     # A listing with targets but no http page is usually an instant: a reload in flight, a tab
@@ -472,7 +485,7 @@ def main():
             break
         page = select_page(pages, args)
     if page is None:
-        print(json.dumps({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)}))
+        emit({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)})
         return
     # Chrome omits webSocketDebuggerUrl from /json while another DevTools client is attached to the
     # page, or for a moment after one detaches; the page socket URL is still /devtools/page/<id>.
@@ -482,9 +495,9 @@ def main():
     if mode == "emulate":
         applied, failure = emulate(ws_url, args.get("emulation") or {}) if ws_url else (None, "the page has no socket")
         if failure is not None:
-            print(json.dumps({"unavailable": failure, "applied": applied or []}))
+            emit({"unavailable": failure, "applied": applied or []})
             return
-        print(json.dumps({"applied": applied, "targetId": str(page.get("id") or "")}))
+        emit({"applied": applied, "targetId": str(page.get("id") or "")})
         return
     if mode == "hold":
         # Prints its announce line, then stays attached (and attaches to every later page target)
@@ -494,17 +507,17 @@ def main():
     if mode == "fidelity":
         result = evaluate(ws_url, FIDELITY_EXPRESSION) if ws_url else None
         if not isinstance(result, dict):
-            print(json.dumps({"unavailable": "Runtime.evaluate over the page socket returned nothing"}))
+            emit({"unavailable": "Runtime.evaluate over the page socket returned nothing"})
             return
-        print(json.dumps({"fidelity": result, "targetId": str(page.get("id") or "")}))
+        emit({"fidelity": result, "targetId": str(page.get("id") or "")})
         return
     if mode == "geometry":
         result = evaluate(ws_url, GEOMETRY_EXPRESSION) if ws_url else None
         if not isinstance(result, dict):
-            print(json.dumps({"unavailable": "Runtime.evaluate over the page socket returned nothing"}))
+            emit({"unavailable": "Runtime.evaluate over the page socket returned nothing"})
             return
         result["targetId"] = str(page.get("id") or "")
-        print(json.dumps(result))
+        emit(result)
         return
     url = str(page.get("url") or "")
     title = str(page.get("title") or "")
@@ -516,7 +529,7 @@ def main():
         title = result["title"] if isinstance(result.get("title"), str) else title
         text = result["text"] if isinstance(result.get("text"), str) else ""
         scroll_y = result["scrollY"] if isinstance(result.get("scrollY"), (int, float)) else None
-    print(json.dumps({"url": url, "title": title, "text": text, "scrollY": scroll_y, "targetId": str(page.get("id") or "")}))
+    emit({"url": url, "title": title, "text": text, "scrollY": scroll_y, "targetId": str(page.get("id") or "")})
 
 main()
 `;
@@ -552,11 +565,16 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
   const applied = Array.isArray(record.applied)
     ? record.applied.filter((item): item is string => typeof item === "string")
     : undefined;
-  if (typeof record.unavailable === "string") {
-    return { unavailable: record.unavailable, ...(applied === undefined ? {} : { applied }) };
-  }
   const numberOr = (value: unknown): number | undefined =>
     typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  const now = numberOr(record.now);
+  if (typeof record.unavailable === "string") {
+    return {
+      unavailable: record.unavailable,
+      ...(applied === undefined ? {} : { applied }),
+      ...(now === undefined ? {} : { now }),
+    };
+  }
   const box = (value: unknown, keys: string[]): Record<string, number> | undefined => {
     if (!value || typeof value !== "object") return undefined;
     const source = value as Record<string, unknown>;
@@ -620,5 +638,6 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
       : {}),
     ...(browserWindow === undefined ? {} : { browserWindow }),
     ...(viewport === undefined ? {} : { viewport }),
+    ...(now === undefined ? {} : { now }),
   };
 }

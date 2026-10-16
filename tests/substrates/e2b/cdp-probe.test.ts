@@ -157,6 +157,22 @@ describe("chrome-cdp-probe: port resolution under the real python3", () => {
       expect(result.url).toBeUndefined();
     },
   );
+
+  it.skipIf(!python3)(
+    "an unreachable endpoint still reports the sandbox clock reading, for the turn mark",
+    async () => {
+      const before = Date.now() / 1000;
+      const result = await runProbe({
+        mode: "state",
+        cdpPort: 1,
+        targetUrl: "http://127.0.0.1:3000/",
+      });
+      const after = Date.now() / 1000;
+      expect(result.unavailable).toMatch(/unreachable/);
+      expect(result.now).toBeGreaterThanOrEqual(before);
+      expect(result.now).toBeLessThanOrEqual(after);
+    },
+  );
 });
 
 describe("chrome-cdp-probe: against a real headless Chrome", () => {
@@ -216,6 +232,33 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
       expect(state.text).toContain("second line");
       expect(state.scrollY).toBe(0);
       expect(state.targetId).toMatch(/^[0-9A-F]+$/i);
+    },
+  );
+
+  it.skipIf(!live)(
+    "state answers and the no-http-page answer carry the sandbox clock reading at print time",
+    async () => {
+      const before = Date.now() / 1000;
+      const state = await runProbe({
+        mode: "state",
+        prefer: "active",
+        cdpPort,
+        targetUrl: pageUrl,
+      });
+      const missing = await runProbe({
+        mode: "state",
+        prefer: "pinned",
+        cdpPort,
+        targetUrl: pageUrl,
+        targetId: "NO-SUCH-TARGET",
+      });
+      const after = Date.now() / 1000;
+      expect(state.url).toBe(pageUrl);
+      expect(missing.unavailable).toMatch(/^no http page among \d+ CDP targets/);
+      // The second read finished after the first, on the same clock.
+      expect(state.now).toBeGreaterThanOrEqual(before);
+      expect(missing.now).toBeGreaterThan(state.now!);
+      expect(missing.now).toBeLessThanOrEqual(after);
     },
   );
 
