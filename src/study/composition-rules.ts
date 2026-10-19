@@ -134,8 +134,9 @@ function appUrlValidationReason(config: StudyConfig): string | null {
         return "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.";
       }
     } else {
-      if (config.execution?.target !== "e2b-desktop" && config.execution?.target !== "local") {
-        return "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.";
+      const target = config.execution?.target;
+      if (target !== "e2b-desktop" && target !== "modal-desktop" && target !== "local") {
+        return "app-url computer-use subjects require `execution.target: local`, `e2b-desktop` or `modal-desktop`.";
       }
       if (!actorResolvesToComputerUse(type)) {
         return `actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;

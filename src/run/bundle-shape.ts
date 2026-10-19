@@ -132,7 +132,7 @@ function isRunProviderResource(value: unknown): value is RunProviderResource {
   return (
     isRecord(value) &&
     value.schema === "humanish.provider-resource.v1" &&
-    value.provider === "e2b-desktop" &&
+    (value.provider === "e2b-desktop" || value.provider === "modal-desktop") &&
     value.kind === "sandbox" &&
     typeof value.id === "string" &&
     value.id.trim().length > 0 &&

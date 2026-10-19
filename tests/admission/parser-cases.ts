@@ -180,7 +180,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "cu app-url without target",
     raw: lab("cuAppUrl", { execution: { target: undefined } }),
-    parser: "require `execution.target: local` or `e2b-desktop`",
+    parser: "require `execution.target: local`, `e2b-desktop` or `modal-desktop`",
   },
   {
     name: "cu app-url unknown actor",

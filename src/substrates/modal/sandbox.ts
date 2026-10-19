@@ -6,8 +6,8 @@
 // sandbox user here, the account E2B runs commands as. Sandboxes use Modal's VM runtime: its
 // default gVisor runtime sets no_new_privs on every process, so the user's sudo, which the Node
 // bootstrap and product installs run, cannot work there.
+import { E2BDesktopStartupError, reportDesktopAllocation } from "../e2b/sdk.js";
 import type {
-  E2BCommandResult,
   E2BCommandRunOptions,
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -16,7 +16,21 @@ import type {
   E2BNetworkOptions,
 } from "../e2b/sdk.js";
 import type { E2BAccount } from "../e2b/connection.js";
-import { MODAL_SANDBOX_USER, modalShellImage } from "./image.js";
+import {
+  readBytes,
+  readFile,
+  runCommand,
+  sandboxPath,
+  wholeSeconds,
+  writeFile,
+} from "./commands.js";
+import {
+  MODAL_DESKTOP_DISPLAY,
+  MODAL_STREAM_PORT,
+  modalDesktopSurface,
+  startModalDesktop,
+} from "./desktop.js";
+import { MODAL_SANDBOX_USER, modalDesktopImage, modalShellImage } from "./image.js";
 import {
   isModalNotFoundError,
   loadModalModule,
@@ -38,9 +52,6 @@ const MODAL_APP_NAME = "humanish";
 /** How long a release waits for Modal to report a terminated sandbox finished; about 130 ms seen. */
 const TERMINATE_WAIT_MS = 30_000;
 
-/** Modal takes sandbox and command timeouts in whole seconds; a shorter one is rounded up. */
-const wholeSeconds = (ms: number): number => Math.ceil(ms / 1000) * 1000;
-
 /** `fn`, with any error it throws stripped of the connection's tokens. */
 function hidingTokens<A extends unknown[], R>(
   connection: ModalConnection,
@@ -55,8 +66,6 @@ function hidingTokens<A extends unknown[], R>(
   };
 }
 
-/** E2B's commands.run default, kept so a caller that sets no timeout gets the same bound. */
-const DEFAULT_COMMAND_TIMEOUT_MS = 60_000;
 /** Modal's own default sandbox lifetime is 5 minutes, as E2B's is. */
 const DEFAULT_SANDBOX_TIMEOUT_MS = 5 * 60_000;
 
@@ -66,6 +75,8 @@ export interface ModalSandboxProfile {
   /** Physical cores; Modal counts one core as two vCPU. */
   cpu: number;
   memoryMiB: number;
+  /** Start an X desktop after create and tunnel its stream, as @e2b/desktop's create does. */
+  desktop?: true;
 }
 
 /** A Modal sandbox was asked for something only an E2B sandbox has. */
@@ -94,14 +105,17 @@ export function modalSandboxModule(
     if (typeof templateOrOptions === "string")
       throw new ModalUnsupportedError("A desktop template");
     const options = templateOrOptions;
+    const desktop = profile.desktop === true;
+    const env = { ...options.envs, ...(desktop ? { DISPLAY: MODAL_DESKTOP_DISPLAY } : {}) };
     const params: ModalSandboxCreateParams = {
       cpu: profile.cpu,
       memoryMiB: profile.memoryMiB,
       timeoutMs: wholeSeconds(options.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS),
       runtime: "vm",
       workdir: MODAL_SANDBOX_USER.home,
-      ...(options.envs === undefined ? {} : { env: { ...options.envs } }),
+      ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(options.metadata === undefined ? {} : { tags: { ...options.metadata } }),
+      ...(desktop ? { encryptedPorts: [MODAL_STREAM_PORT] } : {}),
       ...modalNetwork(options.network),
     };
     const sandbox = await client.sandboxes.create(
@@ -109,7 +123,28 @@ export function modalSandboxModule(
       profile.image(client),
       params,
     );
-    return modalSandboxHandle(sandbox, profile, connection);
+    if (!desktop) return modalSandboxHandle(sandbox, profile, connection, new Map());
+    // The id reaches the run's journal before the desktop starts, as E2B's create guard reports it.
+    reportDesktopAllocation(options, sandbox.sandboxId);
+    try {
+      const run = (command: string, runOptions?: E2BCommandRunOptions) =>
+        runCommand(sandbox, command, runOptions);
+      await startModalDesktop(run, {
+        ...(options.resolution === undefined ? {} : { resolution: options.resolution }),
+        ...(options.dpi === undefined ? {} : { dpi: options.dpi }),
+      });
+      const tunnels = await sandbox.tunnels(30_000);
+      const hosts = new Map(
+        Object.entries(tunnels).map(([port, tunnel]) => [Number(port), new URL(tunnel.url).host]),
+      );
+      return modalSandboxHandle(sandbox, profile, connection, hosts);
+    } catch (error) {
+      const gone = await modalSandboxes(client, connection)
+        .kill(sandbox.sandboxId)
+        .then(() => "killed" as const)
+        .catch(() => "unconfirmed" as const);
+      throw new E2BDesktopStartupError(error, gone);
+    }
   }
 
   return {
@@ -289,143 +324,46 @@ function modalNetwork(
   };
 }
 
-/** The argv that runs `command` in a login shell as the sandbox user, in their home. */
-function asSandboxUser(command: string): string[] {
-  const { uid } = MODAL_SANDBOX_USER;
-  return [
-    "setpriv",
-    `--reuid=${uid}`,
-    `--regid=${uid}`,
-    "--init-groups",
-    "--",
-    "bash",
-    "-lc",
-    command,
-  ];
-}
-
-const USER_ENV = {
-  HOME: MODAL_SANDBOX_USER.home,
-  USER: MODAL_SANDBOX_USER.name,
-  LOGNAME: MODAL_SANDBOX_USER.name,
-};
-
-/** The E2B SDK throws this shape on a non-zero exit; src/substrates/command-failure.ts reads it. */
-class ModalCommandExitError extends Error {
-  constructor(
-    readonly exitCode: number,
-    readonly stdout: string,
-    readonly stderr: string,
-  ) {
-    super(`Command exited with code ${exitCode}${stderr ? ` and error:\n${stderr}` : ""}`);
-    this.name = "CommandExitError";
-  }
-  get error(): string {
-    return this.stderr;
-  }
-}
-
-async function collect(
-  stream: AsyncIterable<string | Uint8Array>,
-  onData: ((data: string) => void | Promise<void>) | undefined,
-): Promise<string> {
-  const decoder = new TextDecoder();
-  let text = "";
-  for await (const chunk of stream) {
-    const data = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-    text += data;
-    if (onData !== undefined && data !== "") await onData(data);
-  }
-  return text;
-}
-
-async function run(
-  sandbox: ModalSandbox,
-  command: string,
-  options: E2BCommandRunOptions = {},
-): Promise<E2BCommandResult> {
-  if (options.background === true || options.stdin === true)
-    throw new ModalUnsupportedError("A background command");
-  const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
-  let stdout: string;
-  let stderr: string;
-  let exitCode: number;
-  try {
-    const child = await sandbox.exec(asSandboxUser(command), {
-      env: { ...USER_ENV, ...options.envs },
-      ...(options.cwd === undefined ? {} : { workdir: options.cwd }),
-      ...(timeoutMs > 0 ? { timeoutMs: wholeSeconds(timeoutMs) } : {}),
-    });
-    // E2B starts a command with no stdin; a Modal exec keeps the pipe open, and a reader such as
-    // codex exec would wait on it until its timeout.
-    await child.closeStdin();
-    [stdout, stderr, exitCode] = await Promise.all([
-      collect(child.stdout, options.onStdout),
-      collect(child.stderr, options.onStderr),
-      child.wait(),
-    ]);
-  } catch (error) {
-    // Modal ends a command at its timeout and reports it as a deadline; E2B names it TimeoutError.
-    if (error instanceof Error && /deadline exceeded/i.test(error.message)) {
-      const timeout = new Error(`Command did not finish within ${timeoutMs} ms.`, { cause: error });
-      timeout.name = "TimeoutError";
-      throw timeout;
-    }
-    throw error;
-  }
-  if (exitCode !== 0) throw new ModalCommandExitError(exitCode, stdout, stderr);
-  return { exitCode, stdout, stderr };
-}
-
-/** Relative paths are under the sandbox user's home, as on E2B. */
-function sandboxPath(path: string): string {
-  return path.startsWith("/") ? path : `${MODAL_SANDBOX_USER.home}/${path}`;
-}
-
-async function writeFile(sandbox: ModalSandbox, path: string, data: string | ArrayBuffer) {
-  const target = sandboxPath(path);
-  const child = await sandbox.exec(
-    asSandboxUser('mkdir -p -- "$(dirname -- "$0")" && cat > "$0"').concat(target),
-    { mode: "binary", env: USER_ENV },
-  );
-  await child.stdin.writeBytes(
-    typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data),
-  );
-  // closeStdin ends input at offset 0, which Modal ignores once bytes were written.
-  await child.stdin.close();
-  const [stderr, exitCode] = await Promise.all([child.stderr.readBytes(), child.wait()]);
-  if (exitCode !== 0)
-    throw new ModalCommandExitError(exitCode, "", new TextDecoder().decode(stderr));
-  return { path: target };
-}
-
 function modalSandboxHandle(
   sandbox: ModalSandbox,
   profile: ModalSandboxProfile,
   connection: ModalConnection,
+  hosts: ReadonlyMap<number, string>,
 ): E2BDesktopSandbox {
-  const desktopOnly = (what: string) => () => Promise.reject(new ModalUnsupportedError(what));
-  return {
+  const run = hidingTokens(connection, (command: string, options?: E2BCommandRunOptions) =>
+    runCommand(sandbox, command, options),
+  );
+  const shell = {
     sandboxId: sandbox.sandboxId,
     // Modal reports no allocation for a sandbox; the create's request is what it bills.
     getInfo: () => Promise.resolve({ cpuCount: profile.cpu * 2, memoryMB: profile.memoryMiB }),
-    commands: {
-      run: hidingTokens(connection, (command: string, options?: E2BCommandRunOptions) =>
-        run(sandbox, command, options),
-      ),
-    },
+    commands: { run },
     files: {
       write: hidingTokens(connection, (path: string, data: string | ArrayBuffer) =>
         writeFile(sandbox, path, data),
       ),
+      read: hidingTokens(connection, (path: string) => readFile(sandbox, path)),
       getInfo: hidingTokens(connection, async (path: string) => {
-        const result = await run(
+        const result = await runCommand(
           sandbox,
           `stat -c %s -- '${sandboxPath(path).replaceAll("'", "'\\''")}'`,
         );
         return { size: Number(result.stdout?.trim()) };
       }),
     },
+  };
+  if (profile.desktop === true)
+    return {
+      ...shell,
+      ...modalDesktopSurface(
+        run,
+        hidingTokens(connection, (path: string) => readBytes(sandbox, path)),
+        hosts,
+      ),
+    };
+  const desktopOnly = (what: string) => () => Promise.reject(new ModalUnsupportedError(what));
+  return {
+    ...shell,
     wait: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
     launch: desktopOnly("A desktop application launch"),
     screenshot: desktopOnly("A desktop screenshot"),
@@ -466,6 +404,27 @@ const MODAL_SHELL_PROFILE: ModalSandboxProfile = {
   cpu: 2,
   memoryMiB: 4096,
 };
+
+/**
+ * The computer-use route's desktop: 4 vCPU and 8 GiB, under E2B's 8 vCPU stock desktop, since a
+ * participant's browser and XFCE use little CPU between actions.
+ */
+const MODAL_DESKTOP_PROFILE: ModalSandboxProfile = {
+  image: modalDesktopImage,
+  cpu: 2,
+  memoryMiB: 8192,
+  desktop: true,
+};
+
+/** A sandbox port that creates the computer-use route's desktops on the Modal account `env` names. */
+export async function loadModalDesktopModule(
+  env: Readonly<Record<string, string | undefined>>,
+  load: () => Promise<ModalModule> = loadModalModule,
+): Promise<E2BDesktopModule> {
+  const connection = requireModalConnection(env);
+  const { ModalClient: Client } = await load();
+  return modalSandboxModule(new Client(connection), connection, MODAL_DESKTOP_PROFILE);
+}
 
 /** A sandbox port that creates the terminal route's shell sandboxes on the Modal account `env` names. */
 export async function loadModalShellModule(

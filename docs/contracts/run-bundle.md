@@ -706,7 +706,8 @@ a provisioned clone records the clone's desktop as a `laneId: subject` line. A l
 without `cost` has an unmeasured spend. A live terminal run's `cost` prices its shell sandbox
 as a `desktop-minutes` line from its acquired-to-cleanup span and size: E2B's report
 (`resourceSource: e2b.getInfo`), or the size humanish asked Modal for (`modal.create`), priced at
-Modal's sandbox rate.
+Modal's sandbox rate. A computer-use run on `execution.target: modal-desktop` records each
+desktop's `providerResources[].provider` as `modal-desktop` and prices it the same way.
 Its Codex `model-tokens` line prices the agent's tokens from the model passed as `--model`
 (`actor.model`, else `gpt-5.6-sol`). Codex reports usage per turn, summed over the turn's
 requests, so the line prices every token at the base tier and carries

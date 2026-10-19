@@ -726,7 +726,7 @@
   "cu app-url without target": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`."
+      "message": "app-url computer-use subjects require `execution.target: local`, `e2b-desktop` or `modal-desktop`."
     },
     "runStudy": {
       "runs": true,

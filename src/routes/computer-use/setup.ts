@@ -232,13 +232,8 @@ export async function admitCuaRun(
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
-  // Literal scrubber for every known provisioned value (no secret "shape" to pattern-match).
-  // Dry and in-process runs scrub both keys too: a mission or persona can still quote them.
-  const secrets = new RunSecrets([
-    openaiApiKey,
-    e2bApiKey,
-    ...subjectEnvNames.map((name) => env[name] ?? ""),
-  ]);
+  // Every known key and subject value, scrubbed literally, in dry and in-process runs too.
+  const secrets = new RunSecrets([openaiApiKey, e2bApiKey, ...otherValues(env, subjectEnvNames)]);
   sanitizeParticipantRuns(participantRuns, secrets.scrub);
   const desktopFiles = await readStudyDesktopFiles(input.cwd, plan, participantRuns, secrets.scrub);
   if (!desktopFiles.ok)
@@ -502,6 +497,7 @@ function cuaParticipantDeps(
     },
     {
       createDesktop: input.localVm?.desktop,
+      sandboxProvider: plan.runner.desktop === "e2b-desktop" ? plan.runner.provider : undefined,
       ...callerDriving(input, config),
       localTreeArchiveBuffer: admitted.localTreeArchiveBuffer,
       desktopFiles: admitted.desktopFiles.size === 0 ? undefined : admitted.desktopFiles,
@@ -542,4 +538,16 @@ function subjectPhaseReporter(
     sink(event, participant);
     input.emit?.(phaseEvent(event, { kind: "participant", participant }));
   };
+}
+
+/**
+ * The Modal token pair's values, which a provider error can quote into run warnings, and the
+ * subject env values the study names.
+ */
+function otherValues(env: Readonly<Record<string, string | undefined>>, subjectEnv: string[]) {
+  return [
+    env.MODAL_TOKEN_ID?.trim() ?? "",
+    env.MODAL_TOKEN_SECRET?.trim() ?? "",
+    ...subjectEnv.map((name) => env[name] ?? ""),
+  ];
 }

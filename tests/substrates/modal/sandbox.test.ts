@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { constants as osConstants, tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 
@@ -74,7 +74,10 @@ function localModalSandbox(sandboxId = "fake-sb-local"): ModalSandbox & { execs:
         stdio: ["pipe", "pipe", "pipe"],
       });
       const exited = new Promise<number>((resolve) =>
-        child.on("close", (code) => resolve(code ?? 1)),
+        // A process killed by a signal exits 128 + its number, as Modal reports it (137 for a kill).
+        child.on("close", (code, signal) =>
+          resolve(code ?? 128 + (signal === null ? 0 : osConstants.signals[signal])),
+        ),
       );
       const deadline =
         params.timeoutMs === undefined
@@ -258,6 +261,52 @@ describe("Modal sandbox commands", () => {
         cwd: scratch,
       }),
     ).resolves.toMatchObject({ stdout: `hello ${scratch}` });
+  });
+});
+describe("Modal background commands and file reads", () => {
+  async function sandbox() {
+    const { client } = fakeClient();
+    return modalSandboxModule(client, connection, profile).Sandbox.create({ apiKey: "" });
+  }
+
+  it("returns a handle at once, and its kill ends the command, which then exits 137", async () => {
+    const desktop = await sandbox();
+    const handle = await desktop.commands.run("sleep 30", { background: true, timeoutMs: 0 });
+    // The recorder refuses a handle without the process's pid.
+    expect(handle.pid).toBeGreaterThan(0);
+    await expect(handle.kill!()).resolves.toBe(true);
+    await expect(handle.wait!()).rejects.toMatchObject({ name: "CommandExitError", exitCode: 137 });
+  });
+
+  it("feeds a background command's stdin until it is closed", async () => {
+    const desktop = await sandbox();
+    const seen: string[] = [];
+    const handle = await desktop.commands.run("cat", {
+      background: true,
+      stdin: true,
+      timeoutMs: 0,
+      onStdout: (data) => void seen.push(data),
+    });
+    await handle.sendStdin!("first line\n");
+    await handle.closeStdin!();
+    await expect(handle.wait!()).resolves.toMatchObject({ exitCode: 0, stdout: "first line\n" });
+    expect(seen.join("")).toBe("first line\n");
+  });
+
+  it("streams a file's bytes, and a missing file fails the stream", async () => {
+    const desktop = await sandbox();
+    const file = path.join(scratch, "read-me.bin");
+    await desktop.files.write(file, Uint8Array.from([1, 2, 3]).buffer);
+    const chunks: number[] = [];
+    for await (const chunk of await desktop.files.read!(file, { format: "stream" }))
+      chunks.push(...chunk);
+    expect(chunks).toEqual([1, 2, 3]);
+    const missing = await desktop.files.read!(path.join(scratch, "absent"), { format: "stream" });
+    await expect(
+      (async () => {
+        for await (const _chunk of missing);
+      })(),
+    ).rejects.toMatchObject({ name: "CommandExitError" });
   });
 });
 

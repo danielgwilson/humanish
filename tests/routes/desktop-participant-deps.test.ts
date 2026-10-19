@@ -337,7 +337,9 @@ describe("computer use hands each participant the run's deps", () => {
     const byId = participantDeps();
     expect([...byId.keys()].sort()).toEqual(["first", "second"]);
     const shared = onlyDeps(byId);
-    expect(keysOf(shared)).toEqual([...SHARED_KEYS, "appUrl", "runBudget", "signalReady"].sort());
+    expect(keysOf(shared)).toEqual(
+      [...SHARED_KEYS, "appUrl", "runBudget", "sandboxProvider", "signalReady"].sort(),
+    );
     expect(shared.brain).toEqual({ kind: "openai", model: expect.any(String) });
     expect(shared.openaiApiKey).toBe(ENV.OPENAI_API_KEY);
     expect(shared.e2bApiKey).toBe(ENV.E2B_API_KEY);
@@ -385,7 +387,9 @@ describe("computer use hands each participant the run's deps", () => {
     const shared = onlyDeps(participantDeps());
     expect(shared.runBudget).toBeUndefined();
     expect(keysOf(shared)).toEqual(
-      [...SHARED_KEYS, "appUrl", "signalReady"].filter((key) => key !== "prepareDesktop").sort(),
+      [...SHARED_KEYS, "appUrl", "sandboxProvider", "signalReady"]
+        .filter((key) => key !== "prepareDesktop")
+        .sort(),
     );
   });
 

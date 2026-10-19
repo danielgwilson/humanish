@@ -58,6 +58,7 @@ type DesktopRouteOverrides = {
       | "externalComms"
       | "receiving"
       | "screenMismatchPolicy"
+      | "sandboxProvider"
   ]?: CuaParticipantDeps[K] | undefined;
 };
 

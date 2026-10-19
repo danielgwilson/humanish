@@ -129,7 +129,7 @@
     "name": "rejects invalid config: bad execution target",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: bad execution target",
     "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"execution":{"target":"vm"}},
-    "refused": "it does not parse: `execution.target` must be local, e2b-desktop, e2b-terminal, or modal-terminal."
+    "refused": "it does not parse: `execution.target` must be local, e2b-desktop, e2b-terminal, modal-desktop, or modal-terminal."
   },
   {
     "name": "rejects invalid config: non-positive resolution",
@@ -291,7 +291,7 @@
     "name": "fails closed on cua mis-config: missing e2b-desktop target",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: missing e2b-desktop target",
     "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","persona":"first-time-visitor","mission":"Explore the app.","laneFocus":{"instruction":"Focus on onboarding."},"model":"gpt-5.5"}],"execution":{"timeoutMs":1000},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: app-url computer-use subjects require `execution.target: local` or `e2b-desktop`."
+    "refused": "it does not parse: app-url computer-use subjects require `execution.target: local`, `e2b-desktop` or `modal-desktop`."
   },
   {
     "name": "fails closed on cua mis-config: unregistered actor type",

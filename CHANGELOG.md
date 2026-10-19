@@ -8,6 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- A computer-use study on an `app-url` subject can run its participants' desktops on Modal:
+  `execution.target: modal-desktop`. Each participant gets its own Modal sandbox running the
+  desktop the E2B route uses: Xvfb at the participant's screen size, an XFCE session, xdotool
+  input, scrot screenshots and a noVNC live stream through a Modal tunnel, so the computer-use
+  loop, the screen and geometry checks, network logs and recordings work as on E2B. The browser
+  is Chromium. The run needs the Modal token pair, as `modal-terminal` does, and allows Modal's
+  24-hour lifetime; it is journaled and reclaimed by id, records `modal-desktop` in the bundle and
+  is priced at Modal's sandbox rate. Clone, local-tree, desktop-cli and shared-world subjects,
+  E2B desktop templates, camera and speech media, and Chrome or Firefox stay on
+  `e2b-desktop` (#1788).
+
 ## 0.138.0: A terminal study can run on Modal (2026-10-19)
 
 humanish 0.138.0 can run a terminal study's shell on Modal as well as E2B. Set

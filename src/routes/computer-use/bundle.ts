@@ -16,7 +16,7 @@ import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run
 import { renderReviewMarkdown } from "../../run/review-markdown.js";
 import { desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
-import { providerResourcesForOutcome } from "./bundle-parts.js";
+import { desktopSubstrate, providerResourcesForOutcome } from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
@@ -146,9 +146,7 @@ function singleParticipantArgs(
     substrate:
       base.plan.runner.desktop === "in-process"
         ? "local-filesystem"
-        : plan.residual.execution?.target === "local"
-          ? "local-desktop"
-          : "e2b-desktop",
+        : desktopSubstrate(plan.residual.execution?.target),
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     ...(outcome?.networkLog === undefined ? {} : { network: outcome.networkLog }),
@@ -177,6 +175,8 @@ function singleParticipantArgs(
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     providerResources: providerResourcesForOutcome({
+      provider:
+        base.plan.residual.execution?.target === "modal-desktop" ? "modal-desktop" : "e2b-desktop",
       outcome,
       createdAt: base.run.createdAt,
       ids: spec,

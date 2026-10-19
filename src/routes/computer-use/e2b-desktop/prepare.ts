@@ -16,6 +16,7 @@ import {
 } from "../../../substrates/e2b/sandbox.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../../substrates/e2b/shell.js";
+import { loadModalDesktopModule } from "../../../substrates/modal/sandbox.js";
 import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./comms.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import { participantSubjectEnv } from "../types.js";
@@ -41,11 +42,16 @@ export async function acquireParticipantDesktop(
   // Off-app comms: the base-URL env is injected at sandbox create, so the app reads it at
   // boot; the catch starts right after create.
   const commsEnv = participantCommsEnv(ctx.comms);
-  const desktopModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
+  const provider = deps.sandboxProvider ?? "e2b";
+  const desktopModule = await (
+    deps.desktopModule ??
+    (provider === "modal" ? () => loadModalDesktopModule(env) : loadE2BDesktopModule)
+  )();
   // An explicit template wins. Speech gets the versioned media image; ordinary
-  // browser studies retain the SDK default desktop.
+  // browser studies retain the SDK default desktop. A Modal desktop has one image.
   const acquired = await acquireE2BDesktopSandbox({
     module: desktopModule,
+    provider,
     options: {
       apiKey: deps.e2bApiKey,
       requestTimeoutMs: deps.requestTimeoutMs,
@@ -78,7 +84,7 @@ export async function acquireParticipantDesktop(
       dpi: 96,
       lifecycle: { onTimeout: "kill" },
     },
-    template: e2bDesktopTemplate(residual),
+    template: provider === "modal" ? undefined : e2bDesktopTemplate(residual),
     retry: {
       // The default loader reclaims an acquired handle before retrying failed desktop startup.
       // Its error names the cleanup outcome; pre-construction allocation failures remain unowned.
@@ -105,7 +111,11 @@ export async function acquireParticipantDesktop(
   state.sandboxId = acquired.allocation.resourceId;
   // The billed span starts the instant the sandbox exists.
   state.sandboxCreatedAtMs = deps.now();
-  const desktopResources = await observeDesktopResources(desktop);
+  const desktopResources = await observeDesktopResources(
+    desktop,
+    undefined,
+    provider === "modal" ? "modal.create" : "e2b.getInfo",
+  );
   state.desktopResources = desktopResources;
   if ("reason" in desktopResources) {
     warnings.push(

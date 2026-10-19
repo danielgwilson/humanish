@@ -334,7 +334,10 @@ function routesOf(config: StudyConfig): Routes {
     terminal: isTerminalProductComposition(config),
     shared,
     externalPublic: shared && config.subject.source === "app-url",
-    hostedCuaBrowser: config.execution?.target === "e2b-desktop" && cua,
+    hostedCuaBrowser:
+      (config.execution?.target === "e2b-desktop" ||
+        config.execution?.target === "modal-desktop") &&
+      cua,
     createsE2BDesktop:
       (cua || (scripted && config.subject.source === "clone")) &&
       config.execution?.target === "e2b-desktop",

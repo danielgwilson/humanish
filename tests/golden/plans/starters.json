@@ -37,6 +37,7 @@
         "actor": "openai-computer-use",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "openai",
             "model": "gpt-5.6-sol"
@@ -296,6 +297,7 @@
         "actor": "openai-computer-use",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "openai",
             "model": "gpt-5.6-sol"
@@ -409,6 +411,7 @@
         "actor": "openai-computer-use",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "openai",
             "model": "gpt-5.6-sol"
@@ -668,6 +671,7 @@
         "actor": "local-agent",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "local-agent",
             "agent": "codex"
@@ -777,6 +781,7 @@
         "actor": "openai-computer-use",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "openai",
             "model": "gpt-5.6-sol"
@@ -1036,6 +1041,7 @@
         "actor": "local-agent",
         "runner": {
           "desktop": "e2b-desktop",
+          "provider": "e2b",
           "brain": {
             "kind": "local-agent",
             "agent": "claude"
