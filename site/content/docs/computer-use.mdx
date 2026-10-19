@@ -359,6 +359,28 @@ selected participant ids, and previous participant statuses; the source run's ve
 This is intentionally not automatic retry; a passing rerun is evidence of a
 nondeterminism candidate and does not license erasing the original red participant.
 
+## Keep the machine awake for a long study
+
+Each participant's desktop runs on E2B or Modal, but its decisions (the screenshot, the model
+call, the next action) run in the `humanish` process on your machine. If that machine sleeps,
+the participants stop deciding and the run fails; its bundle records a `host.suspended` event
+with when and how long. The sandboxes keep running until their lifetime ends or
+`humanish reclaim` stops them.
+
+For a study that outlasts how long you can keep a laptop awake, run it on a machine that stays
+on, such as a cloud VM with Node and your provider keys, inside `tmux`:
+
+```bash
+tmux new -s study
+npx humanish run humanish/studies/YOUR_STUDY.yaml
+```
+
+Detach with Ctrl-b then d, and reattach later with `tmux attach -t study`. On that machine,
+`npx humanish observe --run latest --serve --port 8732` serves the Observer on 127.0.0.1:8732;
+`ssh -L 8732:127.0.0.1:8732 YOUR_VM` lets you watch it from your laptop. On a Mac
+that stays plugged in, `caffeinate -i npx humanish run humanish/studies/YOUR_STUDY.yaml` keeps
+it awake for the run.
+
 ## Run-owned cleanup
 
 `npx humanish reclaim --check --run latest` asks E2B whether each desktop the run created still
