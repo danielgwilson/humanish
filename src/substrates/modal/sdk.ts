@@ -40,7 +40,13 @@ export interface ModalReadStream extends AsyncIterable<string | Uint8Array> {
 export interface ModalProcess {
   stdout: ModalReadStream;
   stderr: ModalReadStream;
-  stdin: { writeText(text: string): Promise<void>; writeBytes(bytes: Uint8Array): Promise<void> };
+  stdin: {
+    writeText(text: string): Promise<void>;
+    writeBytes(bytes: Uint8Array): Promise<void>;
+    /** End of input after what was written. */
+    close(): Promise<void>;
+  };
+  /** End of input at offset 0: it ends input only before anything was written. */
   closeStdin(): Promise<void>;
   wait(): Promise<number>;
 }
