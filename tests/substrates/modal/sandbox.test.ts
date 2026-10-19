@@ -24,7 +24,8 @@ import type {
 import { hasSetsid, shellContract } from "../../helpers/shell-contract.js";
 
 // Modal's observed behavior (spike, modal 0.11.1, 2026-10-19): every exec runs as root with its
-// stdin pipe open until closed, a timeout rejects with "Deadline exceeded", `poll` is null while
+// stdin pipe open until closed, `closeStdin` sends end of input at offset 0 and so ends nothing once
+// bytes were written (`stdin.close` does), a timeout rejects with "Deadline exceeded", `poll` is null while
 // the sandbox runs and its exit code after, and the first call on an unknown id rejects with
 // gRPC NOT_FOUND (code 5).
 
@@ -85,14 +86,16 @@ function localModalSandbox(sandboxId = "fake-sb-local"): ModalSandbox & { execs:
               }, params.timeoutMs).unref(),
             );
       const binary = params.mode === "binary";
+      let written = false;
       return {
         stdout: readStream(child.stdout, binary),
         stderr: readStream(child.stderr, binary),
         stdin: {
-          writeText: async (text) => void child.stdin.write(text),
-          writeBytes: async (bytes) => void child.stdin.write(bytes),
+          writeText: async (text) => void ((written = true), child.stdin.write(text)),
+          writeBytes: async (bytes) => void ((written = true), child.stdin.write(bytes)),
+          close: async () => void child.stdin.end(),
         },
-        closeStdin: async () => void child.stdin.end(),
+        closeStdin: async () => void (written || child.stdin.end()),
         wait: () => (deadline === undefined ? exited : Promise.race([exited, deadline])),
       };
     },

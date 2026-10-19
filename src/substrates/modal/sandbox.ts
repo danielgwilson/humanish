@@ -391,7 +391,8 @@ async function writeFile(sandbox: ModalSandbox, path: string, data: string | Arr
   await child.stdin.writeBytes(
     typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data),
   );
-  await child.closeStdin();
+  // closeStdin ends input at offset 0, which Modal ignores once bytes were written.
+  await child.stdin.close();
   const [stderr, exitCode] = await Promise.all([child.stderr.readBytes(), child.wait()]);
   if (exitCode !== 0)
     throw new ModalCommandExitError(exitCode, "", new TextDecoder().decode(stderr));
