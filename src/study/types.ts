@@ -485,7 +485,7 @@ export interface StudyActor {
   dwell?: DwellWindow;
 }
 
-type StudyExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
+type StudyExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal" | "modal-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). It is not an
  *  interactive duplex PTY; labeling captured exec output "pty" would be a claim/mechanism

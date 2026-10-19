@@ -34,9 +34,9 @@ function root(name: string, ino: number): PreparedOutputRoot {
 describe("the sandbox create registry", () => {
   it("keeps a directory with a create in flight while a hundred others come and go", () => {
     const active = root("active-run", 1);
-    const ticket = beginSandboxCreate(active, "p1");
+    const ticket = beginSandboxCreate(active, "p1", "e2b");
     for (let index = 0; index < 100; index += 1) {
-      const other = beginSandboxCreate(root(`other-${index}`, 1_000 + index), "p1");
+      const other = beginSandboxCreate(root(`other-${index}`, 1_000 + index), "p1", "e2b");
       other.created(`fake-sb-other-${index}`);
       other.released(`fake-sb-other-${index}`);
       other.settled();
@@ -51,7 +51,7 @@ describe("the sandbox create registry", () => {
     expect(stopped.inFlight()).toBe(1);
     ticket.settled();
     expect(stopped.inFlight()).toBe(0);
-    expect(() => beginSandboxCreate(active, "p2")).toThrow("The run is stopping");
+    expect(() => beginSandboxCreate(active, "p2", "e2b")).toThrow("The run is stopping");
   });
 
   it("names a directory by its basename and keys it by inode and creation time", () => {
@@ -73,13 +73,13 @@ describe("the sandbox create registry", () => {
     };
     // Two creates that start together share one write.
     await Promise.all([
-      recordSandboxOwnerOnce(directory, write),
-      recordSandboxOwnerOnce(directory, write),
+      recordSandboxOwnerOnce(directory, "e2b", write),
+      recordSandboxOwnerOnce(directory, "e2b", write),
     ]);
     expect(writes).toBe(1);
     // It failed, so the next create writes again; once it lands, no create writes it again.
-    await recordSandboxOwnerOnce(directory, write);
-    await recordSandboxOwnerOnce(directory, write);
+    await recordSandboxOwnerOnce(directory, "e2b", write);
+    await recordSandboxOwnerOnce(directory, "e2b", write);
     expect(writes).toBe(2);
   });
 
@@ -91,8 +91,10 @@ describe("the sandbox create registry", () => {
       // A write that failed partway through, with no newline after it.
       await writeFile(journal, '{"at":"2026-10-04T00:00:00.000Z","provider":"e2b","owner":{"too');
       const owner = sandboxOwnerTags(prepared);
-      expect(await appendSandboxOwner(prepared, owner)).toBe(true);
-      expect(parseSandboxOwners(await readFile(journal, "utf8"), owner.runId)).toEqual([owner]);
+      expect(await appendSandboxOwner(prepared, owner, "e2b")).toBe(true);
+      expect(parseSandboxOwners(await readFile(journal, "utf8"), owner.runId)).toEqual([
+        { provider: "e2b", tags: owner },
+      ]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

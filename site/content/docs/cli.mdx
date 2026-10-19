@@ -719,7 +719,7 @@ humanish runtime setup [options]
 
 ## humanish reclaim
 
-Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.
+Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox the run's provider lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks the provider whether each still exists and kills nothing. Needs E2B_API_KEY, or MODAL_TOKEN_ID and MODAL_TOKEN_SECRET for a run on Modal, in the environment or in --dotenv.
 
 ```text
 humanish reclaim [options]
@@ -730,7 +730,7 @@ humanish reclaim [options]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--preflight` | Reclaim sandboxes left by interrupted `humanish study check` probes (journaled in .humanish/preflight) instead of a run's. |
-| `--check` | Ask E2B whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone. |
+| `--check` | Ask the provider whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone. |
 | `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
@@ -770,7 +770,7 @@ humanish keys set [options] [vendor-or-name]
 
 | Argument | Description |
 | --- | --- |
-| `vendor-or-name` | A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn. |
+| `vendor-or-name` | A vendor alias (openai, e2b, modal, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn. |
 
 | Option | Description |
 | --- | --- |

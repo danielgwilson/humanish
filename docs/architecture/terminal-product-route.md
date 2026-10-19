@@ -28,7 +28,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `subject.source`                  | `terminal-product`                                                                                                                                    |
 | `subject.product`                 | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                              |
-| `execution.target`                | `e2b-terminal` (or absent → implied)                                                                                                                  |
+| `execution.target`                | `e2b-terminal` (or absent → implied), or `modal-terminal` for a Modal sandbox                                                                         |
 | `execution.terminal`              | `{ transport: exec-stream, stdin: disabled }`                                                                                                         |
 | `execution.runtimeAuth`           | `openai-egress` (default) or opt-in `openai-env`; names-only durable evidence                                                                         |
 | `execution.runtime.version`       | Optional exact `@openai/codex` version; observed before keyed execution                                                                               |

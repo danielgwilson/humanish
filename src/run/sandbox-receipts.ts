@@ -10,7 +10,14 @@ import { prepareContainedOutputFile, type PreparedOutputRoot } from "./contained
 export const SANDBOX_RECEIPTS_ARTIFACT = "sandbox-receipts.ndjson";
 
 /** The providers humanish allocates sandboxes from. Reclaim dispatches on this id. */
-export type SandboxProviderId = "e2b";
+export type SandboxProviderId = "e2b" | "modal";
+
+const SANDBOX_PROVIDERS: ReadonlySet<string> = new Set<SandboxProviderId>(["e2b", "modal"]);
+
+/** Whether this humanish can act on sandboxes from `provider`. */
+export function isSandboxProviderId(provider: string): provider is SandboxProviderId {
+  return SANDBOX_PROVIDERS.has(provider);
+}
 
 export interface SandboxReceipt {
   at: string;
@@ -85,7 +92,7 @@ export async function appendSandboxReceipt(
 /**
  * A line written before each create: the owner tags the sandbox is created with. It names no
  * sandbox, so parseSandboxReceipts, and every version before it existed, skip it. Reclaim searches
- * E2B with these tags, so a run directory that was copied or moved still finds its sandboxes, and
+ * the line's provider with these tags, so a run directory that was copied or moved still finds its sandboxes, and
  * an empty search counts as clean only when the run recorded the tags it used.
  */
 interface SandboxOwnerLine {
@@ -98,9 +105,10 @@ interface SandboxOwnerLine {
 export async function appendSandboxOwner(
   root: PreparedOutputRoot,
   owner: SandboxOwnerTags,
+  provider: SandboxProviderId,
 ): Promise<boolean> {
   try {
-    const line: SandboxOwnerLine = { at: new Date().toISOString(), provider: "e2b", owner };
+    const line: SandboxOwnerLine = { at: new Date().toISOString(), provider, owner };
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     // The leading newline ends a line an earlier append left torn, so this record parses.
     await appendFile(filePath, `\n${JSON.stringify(line)}\n`, "utf8");
@@ -122,24 +130,36 @@ export type SandboxOwnerTags = {
 
 const RUN_KEY = /^[0-9a-f]{16}$/;
 
+/** One owner line: the provider searched and the tags searched for. */
+export interface SandboxOwner {
+  provider: SandboxProviderId;
+  tags: SandboxOwnerTags;
+}
+
 /**
  * The owner tag sets a journal's owner lines record for the run named `runId`. Only a complete
- * tuple counts: provider e2b, `tool: humanish`, this run's id and a well-formed key, and nothing
- * else. A partial or foreign line would widen reclaim's search past this run, so it is skipped.
+ * tuple counts: a provider this version knows, `tool: humanish`, this run's id and a well-formed
+ * key, and nothing else. A partial or foreign line would widen reclaim's search past this run, so
+ * it is skipped.
  */
-export function parseSandboxOwners(text: string, runId: string): SandboxOwnerTags[] {
-  const owners = new Map<string, SandboxOwnerTags>();
+export function parseSandboxOwners(text: string, runId: string): SandboxOwner[] {
+  const owners = new Map<string, SandboxOwner>();
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
       const parsed = JSON.parse(trimmed) as { provider?: unknown; owner?: unknown };
       const owner = parsed.owner as Partial<Record<keyof SandboxOwnerTags, unknown>> | null;
-      if (parsed.provider !== "e2b" || owner === null || typeof owner !== "object") continue;
+      const provider = parsed.provider;
+      if (typeof provider !== "string" || !isSandboxProviderId(provider)) continue;
+      if (owner === null || typeof owner !== "object") continue;
       if (Object.keys(owner).length !== 3 || owner.tool !== "humanish" || owner.runId !== runId)
         continue;
       if (typeof owner.runKey !== "string" || !RUN_KEY.test(owner.runKey)) continue;
-      owners.set(owner.runKey, { tool: "humanish", runId, runKey: owner.runKey });
+      owners.set(JSON.stringify([provider, owner.runKey]), {
+        provider,
+        tags: { tool: "humanish", runId, runKey: owner.runKey },
+      });
     } catch {
       // A torn line: skip it.
     }

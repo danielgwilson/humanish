@@ -101,7 +101,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish runtime`: Prepare or inspect the local browser runtime.
 - `humanish runtime status`: Check local Docker, virtualization and the cached browser image without downloads, and how many participant desktops fit.
 - `humanish runtime setup`: Download and install the local browser image. Does not start a study or use model quota.
-- `humanish reclaim`: Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.
+- `humanish reclaim`: Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox the run's provider lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks the provider whether each still exists and kills nothing. Needs E2B_API_KEY, or MODAL_TOKEN_ID and MODAL_TOKEN_SECRET for a run on Modal, in the environment or in --dotenv.
 - `humanish keys`: Show which provider keys are set and where each comes from, and manage the humanish user key store that provider-key discovery reads.
 - `humanish keys status`: Show each provider key humanish uses: where it comes from, or the command that adds it. Values are never printed.
 - `humanish keys set`: Store one provider key in the user store (0600), prompted with hidden input. With no key named, ask for each missing key in turn.

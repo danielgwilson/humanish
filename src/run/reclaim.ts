@@ -1,14 +1,16 @@
 // `humanish reclaim`: stop an interrupted run's sandboxes and report what happened to each. It
 // finds them three ways: the exact ids the run journaled at create time (sandbox-receipts.ndjson),
 // the ids a create in this process reported before its receipt landed (the signal handler only),
-// and E2B's list of sandboxes tagged with the run's owner tags (sandboxOwnerTags), which covers a
-// sandbox whose id never reached the run. The list is filtered server-side by the run's tags and
+// and each provider's list of sandboxes tagged with the run's owner tags (sandboxOwnerTags), which
+// covers a sandbox whose id never reached the run. Every sandbox is acted on through the provider
+// its receipt or owner line names: E2B, or Modal (src/substrates/modal/sandbox.ts). The list is filtered server-side by the run's tags and
 // each result is checked against every tag again, so it can only return this run's sandboxes; an
 // account-wide operation once destroyed unrelated infrastructure. Kills run concurrently, and
 // reclaim-receipt.json is written before the first kill and after each one, so an exit at any
-// point leaves a record of every sandbox not yet confirmed gone. `--check` asks E2B the same
-// questions and kills nothing.
+// point leaves a record of every sandbox not yet confirmed gone. `--check` asks the providers the
+// same questions and kills nothing.
 import { e2bAccount, e2bConnection, type E2BAccount } from "../substrates/e2b/connection.js";
+import { modalAccount } from "../substrates/modal/sandbox.js";
 import {
   E2B_DEBUG_ENV,
   e2bDebugMode,
@@ -36,6 +38,8 @@ import {
   parseSandboxOwners,
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
+  type SandboxOwnerTags,
+  type SandboxProviderId,
 } from "./sandbox-receipts.js";
 import {
   sandboxOwnerTags,
@@ -52,6 +56,7 @@ import {
   searchTagSets,
   settledWithin,
   targetSet,
+  type ProviderAccounts,
   type ReclaimOutcome,
   type ReclaimState,
   type ReclaimTagSearch,
@@ -97,13 +102,15 @@ export interface ReclaimResult {
 export interface ReclaimHooks {
   /** Tests inject a fake @e2b/desktop module; default loads the real one. */
   loadModule?: () => Promise<E2BDesktopModule>;
+  /** Tests inject a fake Modal account; default reads the Modal credentials from `env`. */
+  loadModalAccount?: (env: Readonly<Record<string, string | undefined>>) => Promise<E2BAccount>;
   /**
    * The env whose E2B_API_KEY and E2B_DOMAIN every E2B call carries. Defaults to process.env, where
    * the CLI put the run's key before the run started.
    */
   env?: Readonly<Record<string, string | undefined>>;
   requestTimeoutMs?: number;
-  /** Ask E2B whether each sandbox still exists, and kill nothing. */
+  /** Ask the provider whether each sandbox still exists, and kill nothing. */
   check?: boolean;
   /** The signal handler's view of this run's creates: the ids they reported, and those still
    *  in flight, whose sandboxes are killed as their ids arrive. */
@@ -388,6 +395,46 @@ function unreadableMessage(file: string, refusal: ContainedRefusal): string {
   return `${refusalText(file, refusal)}. Nothing was killed and ${kept}; check the file, then run reclaim again.`;
 }
 
+/**
+ * The account for each provider the run's journal names, or the message that stops reclaim when
+ * one it needs cannot be reached. A run with no record and creates in flight is an E2B run unless
+ * its owner line says otherwise, as every run was before Modal.
+ */
+async function reachProviders(
+  receipts: readonly { provider: string }[],
+  owners: readonly { provider: SandboxProviderId }[],
+  hooks: ReclaimHooks,
+) {
+  const env = hooks.env ?? process.env;
+  const recorded = new Set<string>([
+    ...receipts.map((receipt) => receipt.provider),
+    ...owners.map((owner) => owner.provider),
+  ]);
+  // A create this process began counts too: its receipt and owner line may not have landed.
+  for (const provider of hooks.creates?.providers() ?? []) recorded.add(provider);
+  const needsE2B = recorded.has("e2b") || (hooks.creates !== undefined && !recorded.has("modal"));
+  // E2B's SDK lists by tag as well as killing by id, so it is needed even with no receipt. Without
+  // it, an E2B receipt cannot be acted on; with no E2B receipt, only the tag search is lost.
+  const accounts: ProviderAccounts = {};
+  const unavailable: Partial<Record<SandboxProviderId, string>> = {};
+  try {
+    const module = await (hooks.loadModule ?? loadE2BDesktopModule)();
+    accounts.e2b = e2bAccount(module, e2bConnection(env));
+  } catch (error) {
+    unavailable.e2b = `Cannot load @e2b/desktop to reach E2B: ${redactText(toErrorMessage(error))}`;
+    if (needsE2B) return unavailable.e2b;
+  }
+  // Modal is reached only for a run that recorded a Modal sandbox or owner line.
+  if (recorded.has("modal")) {
+    try {
+      accounts.modal = await (hooks.loadModalAccount ?? modalAccount)(env);
+    } catch (error) {
+      return `Cannot reach Modal: ${redactText(toErrorMessage(error))}`;
+    }
+  }
+  return { accounts, unavailable, recorded, needsE2B };
+}
+
 type RootReclaim =
   | { kind: "unreadable"; message: string }
   | { kind: "module-unavailable"; receiptCount: number; message: string }
@@ -429,18 +476,10 @@ async function reclaimRoot(
   const check = hooks.check === true;
   const requestTimeoutMs = hooks.requestTimeoutMs ?? 60_000;
 
-  // The SDK lists by tag as well as killing by id, so it is needed even with no receipt. Without
-  // it, an E2B receipt cannot be acted on; with no E2B receipt, only the tag search is lost.
-  let e2b: E2BAccount | undefined;
-  let moduleError: string | undefined;
-  try {
-    const module = await (hooks.loadModule ?? loadE2BDesktopModule)();
-    e2b = e2bAccount(module, e2bConnection(hooks.env ?? process.env));
-  } catch (error) {
-    moduleError = `Cannot load @e2b/desktop to reach E2B: ${redactText(toErrorMessage(error))}`;
-    if (receipts.some((receipt) => receipt.provider === "e2b") || hooks.creates !== undefined)
-      return { kind: "module-unavailable", receiptCount: receipts.length, message: moduleError };
-  }
+  const reached = await reachProviders(receipts, owners, hooks);
+  if (typeof reached === "string")
+    return { kind: "module-unavailable", receiptCount: receipts.length, message: reached };
+  const { accounts, unavailable, recorded, needsE2B } = reached;
   // An earlier reclaim may have killed a sandbox no receipt names (the signal handler's creates
   // and tag finds). Its outcome is carried forward, so a later reclaim never erases that record.
   const earlier = check ? [] : await earlierOutcomes(root, label);
@@ -448,7 +487,7 @@ async function reclaimRoot(
   if (!Array.isArray(earlier))
     return { kind: "unreadable", message: unreadableMessage(RECLAIM_RECEIPT_ARTIFACT, earlier) };
   const set = targetSet({
-    e2b,
+    accounts,
     check,
     requestTimeoutMs,
     earlier,
@@ -462,30 +501,55 @@ async function reclaimRoot(
   let replaying = true;
   const unwatch = hooks.creates?.watch((sandbox) => {
     if (replaying) replayed.set(sandbox.sandboxId, sandbox);
-    else set.add("e2b", sandbox.sandboxId, sandbox.participantId, "create", sandbox.released);
+    else
+      set.add(
+        sandbox.provider,
+        sandbox.sandboxId,
+        sandbox.participantId,
+        "create",
+        sandbox.released,
+      );
   });
   replaying = false;
   for (const receipt of receipts) {
-    const released = receipt.provider === "e2b" && replayed.get(receipt.sandboxId)?.released;
+    const create = replayed.get(receipt.sandboxId);
+    const released = create?.provider === receipt.provider && create.released;
     set.add(receipt.provider, receipt.sandboxId, receipt.laneId, "receipt", released === true);
   }
   for (const sandbox of replayed.values())
-    set.add("e2b", sandbox.sandboxId, sandbox.participantId, "create", sandbox.released);
+    set.add(sandbox.provider, sandbox.sandboxId, sandbox.participantId, "create", sandbox.released);
   await set.start();
 
   if (hooks.creates !== undefined) await settledWithin(hooks.creates.settled, hooks.createsWaitMs);
-  // The tags the run recorded before each create, and this directory's own: a copied or moved
-  // run directory computes other tags than the ones its sandboxes carry.
-  const search = await searchTagSets(e2b, [...owners, sandboxOwnerTags(root)], {
-    requestTimeoutMs,
-    unavailable: moduleError ?? "no E2B SDK",
-  });
+  // Each provider is searched with the tags the run recorded for it before each create, and with
+  // this directory's own: a copied or moved run directory computes other tags than the ones its
+  // sandboxes carry. E2B is searched unless the journal names only Modal, as before Modal existed.
+  const providers: SandboxProviderId[] = [
+    ...(needsE2B || !recorded.has("modal") ? (["e2b"] as const) : []),
+    ...(accounts.modal === undefined ? [] : (["modal"] as const)),
+  ];
+  const searches = await Promise.all(
+    providers.map(async (provider) => {
+      const tagSets: SandboxOwnerTags[] = [
+        ...owners.filter((owner) => owner.provider === provider).map((owner) => owner.tags),
+        sandboxOwnerTags(root),
+      ];
+      const result = await searchTagSets(accounts[provider], tagSets, {
+        requestTimeoutMs,
+        unavailable: unavailable[provider] ?? `no ${provider} account`,
+      });
+      return { provider, result };
+    }),
+  );
   let found = 0;
-  for (const listed of search.sandboxes) {
-    const metadata = listed.metadata ?? {};
-    const participant = metadata.participantId ?? metadata.kind ?? "unknown";
-    if (set.add("e2b", listed.sandboxId, participant, "tag")) found += 1;
-  }
+  for (const { provider, result } of searches)
+    for (const listed of result.sandboxes) {
+      const metadata = listed.metadata ?? {};
+      const participant = metadata.participantId ?? metadata.kind ?? "unknown";
+      if (set.add(provider, listed.sandboxId, participant, "tag")) found += 1;
+    }
+  const search =
+    searches.find(({ result }) => result.status !== "done")?.result ?? searches[0]!.result;
   const tagSearch: ReclaimTagSearch = {
     status: search.status,
     found,
@@ -493,7 +557,7 @@ async function reclaimRoot(
   };
   if (search.status !== "done")
     warnings.push(
-      `Could not search E2B for sandboxes tagged with ${label}: ${search.detail ?? search.status}. A sandbox whose id never reached a receipt would not be found.`,
+      `Could not search for sandboxes tagged with ${label}: ${search.detail ?? search.status}. A sandbox whose id never reached a receipt would not be found.`,
     );
   // A create that reports its id while the search or a kill is still running is killed too.
   await set.drain();

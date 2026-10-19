@@ -239,7 +239,10 @@ describe("lab preflight receipts", () => {
     ]);
     // The owner line went first, naming the tags the probe sandbox was created with.
     expect(parseSandboxOwners(journalAtFirstCommand, journalId)).toEqual([
-      expect.objectContaining({ tool: "humanish", runId: journalId }),
+      {
+        provider: "e2b",
+        tags: expect.objectContaining({ tool: "humanish", runId: journalId }),
+      },
     ]);
     expect(provider.killed).toEqual(["fake-sb-preflight-1"]);
     expect(await journals(cwd)).toEqual([]);

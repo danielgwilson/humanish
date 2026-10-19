@@ -4,6 +4,7 @@ import {
   estimateActorCostForExecution,
   estimateAllocatedDesktopCost,
   estimateDesktopCost,
+  MODAL_SANDBOX_RESOURCE_RATE,
   round6,
 } from "./pricing.js";
 import { type RunCostLine, type RunCostSummary } from "./bundle.js";
@@ -114,8 +115,12 @@ function desktopCostLines(args: Pick<CostArgs, "desktopMinutes" | "desktops">): 
   const breakdown: RunCostLine[] = [];
   for (const usage of args.desktops ?? []) {
     const observation = usage.observation;
-    const resources = observation && "resources" in observation ? observation.resources : undefined;
-    const estimate = estimateAllocatedDesktopCost(usage.minutes, resources);
+    const observed = observation && "resources" in observation ? observation : undefined;
+    const resources = observed?.resources;
+    const estimate =
+      observed?.source === "modal.create"
+        ? estimateAllocatedDesktopCost(usage.minutes, resources, MODAL_SANDBOX_RESOURCE_RATE)
+        : estimateAllocatedDesktopCost(usage.minutes, resources);
     breakdown.push({
       kind: "desktop-minutes",
       ...(usage.participantId === undefined ? {} : { laneId: usage.participantId }),
@@ -126,7 +131,9 @@ function desktopCostLines(args: Pick<CostArgs, "desktopMinutes" | "desktops">): 
       desktop: {
         minutes: estimate.minutes,
         durationBasis: "host-acquired-to-cleanup",
-        ...(resources === undefined ? {} : { resources, resourceSource: "e2b.getInfo" }),
+        ...(observed === undefined
+          ? {}
+          : { resources: observed.resources, resourceSource: observed.source }),
         ...(observation && "reason" in observation
           ? { resourceUnavailableReason: observation.reason }
           : {}),

@@ -119,7 +119,7 @@ async function dryRun(cwd: string) {
   expect(run.ok).toBe(true);
   const runPaths = await resolveRunPath(cwd, "latest");
   if (runPaths === null) throw new Error("dry run left no run");
-  await appendSandboxOwner(runPaths, sandboxOwnerTags(runPaths));
+  await appendSandboxOwner(runPaths, sandboxOwnerTags(runPaths), "e2b");
   return runPaths;
 }
 
@@ -479,7 +479,7 @@ describe("humanish reclaim after a reclaim, and --check", () => {
     const runPaths = await dryRun(cwd);
     // The directory the sandbox was created from had another inode, so another runKey.
     const original = { ...sandboxOwnerTags(runPaths), runKey: "1".repeat(16) };
-    await appendSandboxOwner(runPaths, original);
+    await appendSandboxOwner(runPaths, original, "e2b");
     const queries: unknown[] = [];
     const killedIds: string[] = [];
     const module = fakeModule({ "fake-sb-copied": "ok" }, killedIds, { queries });

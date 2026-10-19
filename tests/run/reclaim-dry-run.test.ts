@@ -84,7 +84,7 @@ describe("humanish reclaim on a dry run", () => {
       "its journal records owner tags",
       async () => {
         const paths = await resolveRunPath(cwd, RUN);
-        await appendSandboxOwner(paths!, sandboxOwnerTags(paths!));
+        await appendSandboxOwner(paths!, sandboxOwnerTags(paths!), "e2b");
       },
     ],
     [

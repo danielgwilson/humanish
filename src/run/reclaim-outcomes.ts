@@ -15,6 +15,10 @@ import {
   type E2BTagSearch,
 } from "../substrates/e2b/sandbox.js";
 import type { E2BAccount } from "../substrates/e2b/connection.js";
+import { isSandboxProviderId, type SandboxProviderId } from "./sandbox-receipts.js";
+
+/** The account reclaim reaches each provider through; absent when it could not be set up. */
+export type ProviderAccounts = Partial<Record<SandboxProviderId, E2BAccount>>;
 import {
   readContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
@@ -87,13 +91,13 @@ export interface Target {
  * kills leaves a record of each one not yet confirmed gone.
  */
 export function targetSet(options: {
-  e2b: E2BAccount | undefined;
+  accounts: ProviderAccounts;
   check: boolean;
   requestTimeoutMs: number;
   earlier: ReclaimOutcome[];
   persist: ReturnType<typeof receiptWriter>;
 }) {
-  const { e2b, check, requestTimeoutMs, earlier, persist } = options;
+  const { accounts, check, requestTimeoutMs, earlier, persist } = options;
   const targets = new Map<string, Target>();
   const work: Promise<void>[] = [];
   const queued: Target[] = [];
@@ -104,7 +108,7 @@ export function targetSet(options: {
     return [...current, ...carried.filter((outcome) => !seen.has(outcome.sandboxIdDigest))];
   };
   const act = (target: Target): Promise<void> =>
-    actOn(e2b, target, { check, requestTimeoutMs }).then((settled) => {
+    actOn(accounts, target, { check, requestTimeoutMs }).then((settled) => {
       target.outcome = settled;
       void persist.write(snapshot(), "unknown");
     });
@@ -190,20 +194,21 @@ export async function searchTagSets(
 
 /** Kill (or look up) one sandbox, and say what happened in reclaim's vocabulary. */
 async function actOn(
-  e2b: E2BAccount | undefined,
+  accounts: ProviderAccounts,
   target: Target,
   options: { check: boolean; requestTimeoutMs: number },
 ): Promise<ReclaimOutcome> {
   const { outcome, provider, rawId } = target;
-  if (provider !== "e2b" || e2b === undefined)
+  const account = isSandboxProviderId(provider) ? accounts[provider] : undefined;
+  if (account === undefined)
     return {
       ...outcome,
       state: "unsupported-provider",
       detail: `provider ${JSON.stringify(provider)} is not supported by this humanish version; nothing was attempted, and that provider's own timeout is the backstop`,
     };
   const attempt = options.check
-    ? await inspectE2BSandbox(e2b, rawId, options)
-    : await destroyE2BSandbox(e2b, rawId, options);
+    ? await inspectE2BSandbox(account, rawId, options)
+    : await destroyE2BSandbox(account, rawId, options);
   const { detail: _previous, ...rest } = outcome;
   // A provider error that quotes the id is scrubbed; the raw id stays in sandbox-receipts.ndjson.
   return "detail" in attempt

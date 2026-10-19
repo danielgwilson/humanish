@@ -703,8 +703,10 @@ Dry runs omit `cost`. A live run that spends nothing records an explicit zero: n
 `breakdown` lines, `estimatedTotalUsd: 0`, `ratesAsOf: null` and `fullyEstimated: true`.
 A local scripted run (no model request, no hosted desktop) is such a run; a scripted run on
 a provisioned clone records the clone's desktop as a `laneId: subject` line. A live bundle
-without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
-sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
+without `cost` has an unmeasured spend. A live terminal run's `cost` prices its shell sandbox
+as a `desktop-minutes` line from its acquired-to-cleanup span and size: E2B's report
+(`resourceSource: e2b.getInfo`), or the size humanish asked Modal for (`modal.create`), priced at
+Modal's sandbox rate.
 Its Codex `model-tokens` line prices the agent's tokens from the model passed as `--model`
 (`actor.model`, else `gpt-5.6-sol`). Codex reports usage per turn, summed over the turn's
 requests, so the line prices every token at the base tier and carries

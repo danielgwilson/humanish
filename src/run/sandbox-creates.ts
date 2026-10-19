@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 import type { PreparedOutputRoot } from "./contained-output.js";
-import type { SandboxOwnerTags } from "./sandbox-receipts.js";
+import type { SandboxOwnerTags, SandboxProviderId } from "./sandbox-receipts.js";
 
 /** Refuses a sandbox create for a run directory whose process is stopping. */
 export class SandboxCreateRefusedError extends Error {
@@ -24,6 +24,7 @@ export class SandboxCreateRefusedError extends Error {
 /** One sandbox a create in this process reported, and what its route did with it. */
 export interface CreatedSandbox {
   sandboxId: string;
+  provider: SandboxProviderId;
   /** The participant or subject label the receipt also records. */
   participantId: string;
   /** True once the route's own release confirmed the sandbox gone. */
@@ -32,8 +33,10 @@ export interface CreatedSandbox {
 
 interface DirectoryCreates {
   stopping: boolean;
-  /** The one write of this directory's owner line; every create awaits the same promise. */
-  ownerLine?: Promise<void>;
+  /** The one write of this directory's owner line per provider; creates await the same promise. */
+  ownerLines: Map<SandboxProviderId, Promise<void>>;
+  /** Every provider a create began on, recorded before any id exists. */
+  providers: Set<SandboxProviderId>;
   created: Map<string, CreatedSandbox>;
   inFlight: Set<Promise<void>>;
   listeners: Set<(sandbox: CreatedSandbox) => void>;
@@ -61,6 +64,8 @@ function directoryFor(root: PreparedOutputRoot): DirectoryCreates {
   if (existing !== undefined) return existing;
   const created: DirectoryCreates = {
     stopping: false,
+    ownerLines: new Map(),
+    providers: new Set(),
     created: new Map(),
     inFlight: new Set(),
     listeners: new Set(),
@@ -116,9 +121,11 @@ export interface SandboxCreateTicket {
 export function beginSandboxCreate(
   root: PreparedOutputRoot,
   participantId: string,
+  provider: SandboxProviderId,
 ): SandboxCreateTicket {
   const directory = directoryFor(root);
   if (directory.stopping) throw new SandboxCreateRefusedError();
+  directory.providers.add(provider);
   let settle!: () => void;
   const done = new Promise<void>((resolve) => {
     settle = resolve;
@@ -128,7 +135,7 @@ export function beginSandboxCreate(
     stopping: () => directory.stopping,
     created(sandboxId) {
       if (directory.created.has(sandboxId)) return;
-      const sandbox = { sandboxId, participantId, released: false };
+      const sandbox = { sandboxId, provider, participantId, released: false };
       directory.created.set(sandboxId, sandbox);
       for (const listener of directory.listeners) listener(sandbox);
     },
@@ -144,19 +151,23 @@ export function beginSandboxCreate(
 }
 
 /**
- * Run `write` once per directory and return its promise to every caller. Creates that start
+ * Run `write` once per directory and provider and return its promise to every caller. Creates that start
  * together then resume in the order they called, so the order they reach the provider does not
  * depend on which file append finishes first. A write that reports failure is forgotten, so the
  * next create tries again.
  */
 export function recordSandboxOwnerOnce(
   root: PreparedOutputRoot,
+  provider: SandboxProviderId,
   write: () => Promise<boolean>,
 ): Promise<void> {
-  const directory = directoryFor(root);
-  const pending = (directory.ownerLine ??= write().then((written) => {
-    if (!written && directory.ownerLine === pending) delete directory.ownerLine;
-  }));
+  const { ownerLines } = directoryFor(root);
+  const existing = ownerLines.get(provider);
+  if (existing !== undefined) return existing;
+  const pending = write().then((written) => {
+    if (!written && ownerLines.get(provider) === pending) ownerLines.delete(provider);
+  });
+  ownerLines.set(provider, pending);
   return pending;
 }
 
@@ -171,6 +182,8 @@ export interface StoppedSandboxCreates {
   settled: Promise<void>;
   /** How many of those creates have not settled yet. */
   inFlight(): number;
+  /** The providers creates began on, including those whose id has not arrived. */
+  providers(): ReadonlySet<SandboxProviderId>;
 }
 
 /**
@@ -191,5 +204,6 @@ export function stopSandboxCreates(root: PreparedOutputRoot): StoppedSandboxCrea
     },
     settled: Promise.all(pending).then(() => undefined),
     inFlight: () => pending.filter((create) => directory.inFlight.has(create)).length,
+    providers: () => directory.providers,
   };
 }

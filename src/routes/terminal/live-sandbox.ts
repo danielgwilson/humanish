@@ -21,6 +21,7 @@ import {
   type DesktopResourceObservation,
 } from "../../substrates/e2b/desktop-resources.js";
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
+import { loadModalShellModule } from "../../substrates/modal/sandbox.js";
 import { e2bAccount, type E2BAccount } from "../../substrates/e2b/connection.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import {
@@ -70,6 +71,8 @@ export interface LiveSandboxInputs {
   verdictNonce: string;
   maxMinutes: number;
   e2bApiKey: string;
+  /** The run's env; a Modal run reads its Modal credentials from it. */
+  env: Readonly<Record<string, string | undefined>>;
   runPaths: StartedRun["paths"];
   metadata: ReturnType<typeof buildSandboxMetadata>;
   /** The run's warnings. Steps append to them. */
@@ -119,7 +122,12 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs, sandboxTimeoutMs } = this;
     // Declared egress allowlist, or undefined for the historical unrestricted default.
     const egressAllow = plan.egressAllow;
-    const sandboxModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
+    const provider = plan.sandboxProvider;
+    const providerName = provider === "modal" ? "Modal" : "E2B";
+    const sandboxModule = await (
+      deps.desktopModule ??
+      (provider === "modal" ? () => loadModalShellModule(this.inputs.env) : loadE2BDesktopModule)
+    )();
     await validatePreparedRunArtifactPaths(runPaths);
     // No sandbox-global env in either mode. In openai-egress, only this host-side SDK request
     // carries the real runtime key; participant commands receive an inert placeholder. The proxy
@@ -144,6 +152,7 @@ export class LiveTerminalSandbox {
     this.account = e2bAccount(sandboxModule, options);
     const acquired = await acquireE2BShellSandbox({
       module: sandboxModule,
+      provider,
       options,
       retry: {
         // A failed first attempt may have allocated a sandbox whose id never reached this run;
@@ -171,9 +180,13 @@ export class LiveTerminalSandbox {
     await validatePreparedRunArtifactPaths(runPaths);
     recordLifecycle(
       "terminal-lab.sandbox.created",
-      `E2B shell sandbox ${sandboxId} created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.`,
+      `${providerName} shell sandbox ${sandboxId} created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.`,
     );
-    const sandboxResources = await observeDesktopResources(sandbox);
+    const sandboxResources = await observeDesktopResources(
+      sandbox,
+      undefined,
+      provider === "modal" ? "modal.create" : "e2b.getInfo",
+    );
     this.resources = sandboxResources;
     if ("reason" in sandboxResources) {
       warnings.push(

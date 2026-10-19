@@ -224,6 +224,38 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(loadModule).not.toHaveBeenCalled();
   });
 
+  it("a run on Modal journals its owner line and receipt as Modal's", async () => {
+    const provider = fakeProvider({});
+    const parsed = parseStudy({
+      ...labInput,
+      execution: { ...labInput.execution, target: "modal-terminal" },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+
+    await runTerminal({
+      cwd,
+      config: parsed.config,
+      dryRun: false,
+      open: false,
+      runId: RUN_ID,
+      env: {
+        OPENAI_API_KEY: env.OPENAI_API_KEY,
+        MODAL_TOKEN_ID: "ak-x",
+        MODAL_TOKEN_SECRET: "as-x",
+      },
+      deps: { desktopModule: async () => provider.module },
+    });
+
+    const journal = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8");
+    expect(parseSandboxOwners(journal, RUN_ID)).toEqual([
+      { provider: "modal", tags: expect.objectContaining({ runId: RUN_ID }) },
+    ]);
+    expect(parseSandboxReceipts(journal)).toEqual([
+      expect.objectContaining({ provider: "modal", sandboxId: "fake-sb-boundary-1" }),
+    ]);
+    expect(provider.killed).toEqual(["fake-sb-boundary-1"]);
+  });
+
   it("tears down the id captured at create, not whatever the handle says later", async () => {
     const provider = fakeProvider({ rewriteHandleId: true });
 
@@ -286,13 +318,13 @@ describe("terminal sandbox acquisition boundary", () => {
     const journal = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8");
     expect(parseSandboxReceipts(journal)).toEqual([]);
     const [owner] = parseSandboxOwners(journal, RUN_ID);
-    expect(owner).toMatchObject({ tool: "humanish", runId: RUN_ID });
+    expect(owner).toMatchObject({ provider: "e2b", tags: { tool: "humanish", runId: RUN_ID } });
     const reclaim = await reclaimRunSandboxes(cwd, RUN_ID, {
       loadModule: async () => provider.module,
     });
     expect(reclaim.receiptCount).toBe(0);
     // The tags it was created with are the ones reclaim searches E2B for.
-    expect(provider.allocated[0]?.options.metadata).toMatchObject(owner!);
+    expect(provider.allocated[0]?.options.metadata).toMatchObject(owner!.tags);
     // The provider-side backstop: the sandbox kills itself when its create-time timeout ends.
     const [created] = provider.allocated;
     expect(created?.options.timeoutMs).toBeGreaterThan(0);

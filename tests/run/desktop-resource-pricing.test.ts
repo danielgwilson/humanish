@@ -176,3 +176,31 @@ describe("observed desktop resources", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("Modal sandbox cost", () => {
+  it("prices the requested size at Modal's sandbox rate, at any size", async () => {
+    const observation = await observeDesktopResources(
+      { getInfo: async () => ({ cpuCount: 4, memoryMB: 4096 }) },
+      undefined,
+      "modal.create",
+    );
+    const desktops = [12, 4].map((cpuCount) => ({
+      minutes: 10,
+      observation:
+        cpuCount === 4
+          ? observation
+          : { resources: { cpuCount, memoryMiB: 16384 }, source: "modal.create" as const },
+      lifetimeComplete: true,
+    }));
+    const cost = buildRunCostSummary({ participants: [], desktops })!;
+    // 2 cores ($0.00003942/s each) + 4 GiB ($0.00000667/s each) for 600 s = $0.063312.
+    expect(cost.breakdown[1]).toMatchObject({
+      estimatedCostUsd: 0.063312,
+      ratesAsOf: "2026-10-19",
+      source: "modal.com/pricing",
+      desktop: { resources: { cpuCount: 4, memoryMiB: 4096 }, resourceSource: "modal.create" },
+    });
+    // 6 cores + 16 GiB, past E2B's sheet: 600 s x (6 x 0.00003942 + 16 x 0.00000667) = $0.205944.
+    expect(cost.breakdown[0]).toMatchObject({ estimatedCostUsd: 0.205944 });
+  });
+});

@@ -104,7 +104,7 @@ describe("humanish reclaim --dotenv", () => {
     expect(run.ok).toBe(true);
     const runPaths = await resolveRunPath(cwd, "latest");
     // A run from this version records its owner tags before the create.
-    await appendSandboxOwner(runPaths!, sandboxOwnerTags(runPaths!));
+    await appendSandboxOwner(runPaths!, sandboxOwnerTags(runPaths!), "e2b");
     await appendSandboxReceipt(runPaths!, {
       at: "t1",
       laneId: "lane-01",

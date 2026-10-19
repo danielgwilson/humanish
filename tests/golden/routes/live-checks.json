@@ -3,7 +3,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      "message": "Live computer-use studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live computer-use studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     }
   },
   "computer use: the local agent before subject env": {
@@ -31,14 +31,14 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
+      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
     }
   },
   "computer use: a missing OpenAI key with two signed-in agents": {
     "ok": false,
     "error": {
       "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
-      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex and Claude Code report authenticated on this machine. Set actor.type: local-agent to use one instead of a key."
+      "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex and Claude Code report authenticated on this machine. Set actor.type: local-agent to use one instead of a key."
     }
   },
   "shared world: an unpriced cap before keys": {
@@ -52,7 +52,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live concurrent shared-world studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     }
   },
   "shared world: the local agent before subject env": {
@@ -66,7 +66,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     }
   },
   "shared world: subject env": {
@@ -80,14 +80,14 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex reports authenticated on this machine. Set actor.type: local-agent to use it instead of a key."
     }
   },
   "shared world external plane: a missing OpenAI key with a signed-in agent": {
     "ok": false,
     "error": {
       "code": "HUMANISH_SHARED_WORLD_KEYS_MISSING",
-      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`."
+      "message": "Live concurrent shared-world studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`."
     }
   },
   "scripted: the scenario before keys": {
@@ -101,7 +101,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
-      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     }
   },
   "scripted: subject env": {
@@ -122,7 +122,7 @@
     "ok": false,
     "error": {
       "code": "HUMANISH_TERMINAL_KEYS_MISSING",
-      "message": "Live terminal-product studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live terminal-product studies need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     }
   }
 }

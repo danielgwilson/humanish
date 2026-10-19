@@ -7,15 +7,26 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
 import { isNonEmpty, planBase } from "../../study/plan-base.js";
-import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../study/plan-types.js";
+import type {
+  Requirement,
+  RoutePlanResult,
+  RouteRefusal,
+  TerminalPlan,
+} from "../../study/plan-types.js";
 import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import type { StudyConfig } from "../../study/types.js";
+import type { SandboxProviderId } from "../../run/sandbox-receipts.js";
 import {
   desktopMediaValidationReason,
   networkCaptureValidationReason,
   taskProtocolValidationReason,
 } from "../../study/validation.js";
 import { ceilingAdvice, type SandboxCeiling } from "../../substrates/e2b/lifetime.js";
+import {
+  MODAL_MAX_SANDBOX_MS,
+  MODAL_TOKEN_ID_ENV,
+  MODAL_TOKEN_SECRET_ENV,
+} from "../../substrates/modal/sdk.js";
 import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
 import { isExactRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./runtime.js";
@@ -75,6 +86,10 @@ export function planTerminalStudy(
       "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
       "`execution.runtimeAuth` must be openai-egress or openai-env. Leave it out for openai-egress, which keeps the OpenAI key outside the sandbox.",
     );
+  const sandboxProvider: SandboxProviderId =
+    config.execution?.target === "modal-terminal" ? "modal" : "e2b";
+  const modal = sandboxProvider === "modal" ? modalRefusal(config) : undefined;
+  if (modal !== undefined) return refuse(modal.code, modal.message);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
@@ -119,6 +134,7 @@ export function planTerminalStudy(
   const shared = {
     ...base,
     route: "terminal" as const,
+    sandboxProvider,
     actor: descriptor.id,
     product: { ...product, publicSurfaces: surfaces },
     ...(actor?.persona === undefined ? {} : { personaId: actor.persona }),
@@ -175,7 +191,10 @@ export function planTerminalStudy(
   // The sandbox's timeout covers the steps before the codex command, maxMinutes and the teardown
   // buffer, and E2B refuses a sandbox past the plan's ceiling. Refuse here, with the arithmetic,
   // rather than after the plan prints, from a provider 400 that names neither knob.
-  const ceiling = input.sandboxCeiling;
+  const ceiling: SandboxCeiling =
+    sandboxProvider === "modal"
+      ? { ok: true, ms: MODAL_MAX_SANDBOX_MS, source: "default" }
+      : input.sandboxCeiling;
   if (!ceiling.ok) return refuse("HUMANISH_TERMINAL_CAPS_INVALID", ceiling.message, descriptor.id);
   const productInstall = shared.product.install !== undefined;
   const sandboxTimeoutMs = terminalSandboxTimeoutMs({ maxMinutes, productInstall });
@@ -183,7 +202,7 @@ export function planTerminalStudy(
     const headroomMinutes = (sandboxTimeoutMs - maxMinutes * 60_000) / 60_000;
     return refuse(
       "HUMANISH_TERMINAL_CAPS_INVALID",
-      `caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${ceiling.ms / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower caps.maxMinutes to at most ${ceiling.ms / 60_000 - headroomMinutes}.${ceilingAdvice(sandboxTimeoutMs)} No sandbox was created and the runtime key was not used.`,
+      `caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${ceiling.ms / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower caps.maxMinutes to at most ${ceiling.ms / 60_000 - headroomMinutes}.${sandboxProvider === "modal" ? " Modal ends every sandbox after 24 hours." : ceilingAdvice(sandboxTimeoutMs)} No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
   }
@@ -193,10 +212,55 @@ export function planTerminalStudy(
       ...shared,
       dryRun: false,
       caps: { ...caps, maxUsd, maxMinutes },
-      requirements: [
-        { kind: "key", name: "E2B_API_KEY" },
-        { kind: "key-one-of", names: ["CODEX_API_KEY", "OPENAI_API_KEY"] },
-      ],
+      requirements: liveRequirements(sandboxProvider),
     },
   };
+}
+
+/** The sandbox provider's keys, then the runtime key the agent's command gets. */
+function liveRequirements(provider: SandboxProviderId): Requirement[] {
+  return [
+    ...(provider === "modal"
+      ? ([
+          { kind: "key", name: MODAL_TOKEN_ID_ENV },
+          { kind: "key", name: MODAL_TOKEN_SECRET_ENV },
+        ] as const)
+      : ([{ kind: "key", name: "E2B_API_KEY" }] as const)),
+    { kind: "key-one-of", names: ["CODEX_API_KEY", "OPENAI_API_KEY"] },
+  ];
+}
+
+/** What a terminal study on Modal cannot have that one on E2B can. */
+function modalRefusal(
+  config: StudyConfig,
+): { code: TerminalRefusal["code"]; message: string } | undefined {
+  // E2B adds the key to requests at its egress proxy for each sandbox. Modal does that only from a
+  // Secret stored in the operator's workspace, so humanish does not place the key there itself.
+  if (config.execution?.runtimeAuth !== "openai-env")
+    return {
+      code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
+      message:
+        "On Modal, humanish cannot keep the OpenAI key outside the sandbox: Modal adds a key to outbound requests only from a Secret stored in your Modal workspace. Set `execution.runtimeAuth: openai-env`, which passes the key to the codex command only, or use `execution.target: e2b-terminal`.",
+    };
+  const egress = modalEgressReason(config.execution?.egressAllow);
+  return egress === undefined
+    ? undefined
+    : { code: "HUMANISH_TERMINAL_SUBJECT_INVALID", message: egress };
+}
+
+const CIDR = /^[0-9a-f:.]+\/\d{1,3}$/i;
+
+/**
+ * Why a declared egress allowlist cannot run on Modal, or undefined when it can. Modal limits
+ * egress to listed domains or CIDR ranges; an entry that is neither, such as a bare IP address,
+ * has no Modal form.
+ */
+function modalEgressReason(egressAllow: readonly string[] | undefined): string | undefined {
+  const unsupported = (egressAllow ?? []).filter(
+    (entry) =>
+      !CIDR.test(entry) && !/^(\*\.)?([a-z0-9-]+\.)+[a-z0-9-]*[a-z][a-z0-9-]*$/i.test(entry),
+  );
+  return unsupported.length === 0
+    ? undefined
+    : `Modal limits egress to domain names and CIDR ranges, and \`execution.egressAllow\` lists ${unsupported.map((entry) => `"${entry}"`).join(", ")}. Write a bare address as a /32 range, or use \`execution.target: e2b-terminal\`.`;
 }

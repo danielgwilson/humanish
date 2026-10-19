@@ -408,7 +408,7 @@ async function participantChecks(
   checkAccount: AccountReadiness,
 ): Promise<Check[]> {
   if (route === "terminal") {
-    const key = keys.find((name) => name !== "E2B_API_KEY")!;
+    const key = keys.find((name) => name === "CODEX_API_KEY" || name === "OPENAI_API_KEY")!;
     return [
       {
         name: "terminal model authentication",

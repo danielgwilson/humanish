@@ -7,6 +7,7 @@
 //      examples document;
 //   3. the owning vendor's native store, where one exists:
 //        E2B_API_KEY  <- ~/.e2b/config.json (written by `e2b auth login`);
+//        MODAL_TOKEN_ID, MODAL_TOKEN_SECRET <- ~/.modal.toml (written by `modal token new`);
 //        GH_TOKEN     <- `gh auth token` (the gh CLI's credential chain);
 //   4. the humanish user-level store `$XDG_CONFIG_HOME/humanish/keys.env`, written only by
 //      `humanish keys set` (0600, prompted or --stdin), the fallback for vendors that ship
@@ -32,6 +33,8 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+
+import { parse as parseToml } from "smol-toml";
 
 import { loadEnvFile } from "./env-file.js";
 import { cli } from "../cli/invocation.js";
@@ -77,6 +80,14 @@ const PROVIDER_KEYS: readonly ProviderKey[] = [
     listed: { order: 1, use: "hosted desktops" },
     doctor: true,
   },
+  {
+    name: "MODAL_TOKEN_ID",
+    vendor: "modal",
+    login: "modal token new",
+  },
+  { name: "MODAL_TOKEN_SECRET", login: "modal token new" },
+  // Which Modal environment sandboxes are created in; not a secret, but it names the account.
+  { name: "MODAL_ENVIRONMENT" },
   { name: "ANTHROPIC_API_KEY", vendor: "anthropic" },
   {
     name: "GH_TOKEN",
@@ -139,6 +150,39 @@ export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps
 
 function e2bConfigPath(deps: KeyResolutionDeps): string {
   return path.join(deps.homeDir ?? homedir(), ".e2b", "config.json");
+}
+
+/**
+ * The token pair and environment of the Modal CLI's profile, as Modal picks it: MODAL_PROFILE
+ * when set, else the profile marked `active`, else the only profile. Null when there is none.
+ */
+function readModalProfile(
+  env: NodeJS.ProcessEnv,
+  deps: KeyResolutionDeps,
+): { tokenId: string; tokenSecret: string; environment?: string } | null {
+  try {
+    const file =
+      env.MODAL_CONFIG_PATH?.trim() || path.join(deps.homeDir ?? homedir(), ".modal.toml");
+    if (!isRegularFile(file)) return null;
+    const profiles: [string, Record<string, unknown>][] = [];
+    for (const [name, values] of Object.entries(parseToml(readFileSync(file, "utf8")) as object))
+      if (values !== null && typeof values === "object" && !Array.isArray(values))
+        profiles.push([name, values as Record<string, unknown>]);
+    const named = env.MODAL_PROFILE?.trim();
+    const profile = named
+      ? profiles.find(([name]) => name === named)?.[1]
+      : (profiles.find(([, values]) => values.active === true)?.[1] ??
+        (profiles.length === 1 ? profiles[0]?.[1] : undefined));
+    const text = (value: unknown): string | undefined =>
+      typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+    const tokenId = text(profile?.token_id);
+    const tokenSecret = text(profile?.token_secret);
+    if (tokenId === undefined || tokenSecret === undefined) return null;
+    const environment = text(profile?.environment);
+    return { tokenId, tokenSecret, ...(environment === undefined ? {} : { environment }) };
+  } catch {
+    return null;
+  }
 }
 
 /** Default exec: bounded, quiet, stdin closed; null on any failure. Never throws. */
@@ -273,7 +317,19 @@ export async function discoverProviderKeys(args: {
     if (teamKey !== null) fill("E2B_API_KEY", teamKey, "~/.e2b/config.json (e2b auth login)");
   }
 
-  // Rung 3b: the gh CLI's credential chain. Only consulted when neither GitHub env name is
+  // Rung 3b: the modal CLI's profile. Both tokens come from the same profile or neither does.
+  if (fillable("MODAL_TOKEN_ID") && fillable("MODAL_TOKEN_SECRET")) {
+    const profile = readModalProfile(env, deps);
+    if (profile !== null) {
+      const source = "~/.modal.toml (modal token new)";
+      fill("MODAL_TOKEN_ID", profile.tokenId, source);
+      fill("MODAL_TOKEN_SECRET", profile.tokenSecret, source);
+      if (profile.environment !== undefined && fillable("MODAL_ENVIRONMENT"))
+        fill("MODAL_ENVIRONMENT", profile.environment, source);
+    }
+  }
+
+  // Rung 3c: the gh CLI's credential chain. Only consulted when neither GitHub env name is
   // present; fills GH_TOKEN (the name humanish reads first). gh runs without any provider key in
   // its environment, so the keys the rungs above just filled stay in this process.
   if (fillable("GH_TOKEN") && fillable("GITHUB_TOKEN")) {
@@ -355,7 +411,7 @@ export function describeMissingKeys(names: string[], env: NodeJS.ProcessEnv): st
   const strict = env.HUMANISH_STRICT_KEYS?.trim() === "1";
   const chain = strict
     ? "key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --dotenv are read"
-    : `also checked ${PROJECT_OVERLAY_RELATIVE}, ~/.e2b/config.json, gh auth token, and ${path.join("~", ".config", "humanish", "keys.env")}`;
+    : `also checked ${PROJECT_OVERLAY_RELATIVE}, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ${path.join("~", ".config", "humanish", "keys.env")}`;
   return `${chain}. Fill: ${hints}.`;
 }
 

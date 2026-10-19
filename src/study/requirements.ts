@@ -11,12 +11,17 @@ import { MODEL_RATES, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
-const KEY_ORDER = ["OPENAI_API_KEY", "E2B_API_KEY"] as const;
+const KEY_ORDER = [
+  "OPENAI_API_KEY",
+  "E2B_API_KEY",
+  "MODAL_TOKEN_ID",
+  "MODAL_TOKEN_SECRET",
+] as const;
 
 const present = (env: Record<string, string | undefined>, name: string): boolean =>
   (env[name]?.trim() ?? "") !== "";
 
-/** The `key` requirements whose value `env` lacks, OPENAI_API_KEY before E2B_API_KEY. */
+/** The `key` requirements whose value `env` lacks, in KEY_ORDER. */
 function missingKeys(
   requirements: readonly Requirement[],
   env: Record<string, string | undefined>,

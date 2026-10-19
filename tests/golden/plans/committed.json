@@ -949,6 +949,7 @@
       "dryRun": true,
       "requirements": [],
       "route": "terminal",
+      "sandboxProvider": "e2b",
       "actor": "codex-exec",
       "product": {
         "name": "humanish",
@@ -1052,6 +1053,7 @@
       },
       "requirements": [],
       "route": "terminal",
+      "sandboxProvider": "e2b",
       "actor": "codex-exec",
       "product": {
         "name": "humanish",
@@ -1114,6 +1116,7 @@
       "dryRun": true,
       "requirements": [],
       "route": "terminal",
+      "sandboxProvider": "e2b",
       "actor": "codex-exec",
       "product": {
         "name": "humanish",
@@ -2429,6 +2432,7 @@
       },
       "requirements": [],
       "route": "terminal",
+      "sandboxProvider": "e2b",
       "actor": "codex-exec",
       "product": {
         "name": "widgetsmith-cli",
