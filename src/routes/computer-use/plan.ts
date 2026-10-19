@@ -3,6 +3,8 @@
 // external state: committed personas, a rerun's source run, keys, the local agent, subject env
 // values, spend-cap prices and the comms catch.
 
+import type { SandboxProviderId } from "../../run/sandbox-receipts.js";
+import { MODAL_MAX_SANDBOX_MS } from "../../substrates/modal/sdk.js";
 import { DESKTOP_FILES_ROUTE_REASON } from "../../study/desktop-files.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import {
@@ -361,6 +363,8 @@ function startsOf(
   const declared = config.execution?.concurrency;
   const n = runner.participants.length;
   const hosted = runner.desktop === "e2b-desktop";
+  // The E2B plan's limit binds only E2B desktops; Modal's container limit is far above a study's.
+  const e2bHosted = hosted && runner.provider === "e2b";
   const atOnce = participantsAtOnce(
     {
       concurrency: boundedConcurrency(declared, n),
@@ -368,7 +372,7 @@ function startsOf(
       participants: n,
     },
     {
-      ...(hosted ? { sandboxes: limits.concurrentSandboxes } : {}),
+      ...(e2bHosted ? { sandboxes: limits.concurrentSandboxes } : {}),
       cap: limits.concurrencyCap,
     },
   );
@@ -440,6 +444,61 @@ function timeZoneRunnerReason(
     : `${declared} This study drives your own browser through RunStudyOptions.inProcess. Remove actor.clock and participants[].clock, and set the zone in that browser yourself, or run on a hosted desktop.`;
 }
 
+/** Who hosts the study's desktops and the longest sandbox they allow, or why it cannot run. */
+function hostingOf(
+  config: StudyConfig,
+  e2bCeiling: SandboxCeiling,
+): { provider: SandboxProviderId; ceiling: { ms: number } } | { refusal: string } {
+  if (config.execution?.target !== "modal-desktop")
+    return e2bCeiling.ok
+      ? { provider: "e2b", ceiling: e2bCeiling }
+      : { refusal: e2bCeiling.message };
+  const refusal = modalDesktopRefusal(config);
+  return refusal === undefined
+    ? { provider: "modal", ceiling: { ms: MODAL_MAX_SANDBOX_MS } }
+    : { refusal };
+}
+
+/** The app-url subject the study names, and the subject a hosted desktop provisions. */
+function subjectsOf(config: StudyConfig) {
+  const appUrl = config.subject.appUrl ?? "";
+  const declaredServeUrl = config.subject.serve?.url;
+  const serveUrl = declaredServeUrl === undefined ? {} : { serveUrl: declaredServeUrl };
+  const appUrlSubject: AppUrlSubject = {
+    kind: "app-url",
+    appUrl,
+    publicTargets: config.policies?.allowPublicTargets === true,
+    ...serveUrl,
+  };
+  const product = config.subject.product;
+  const hosted =
+    config.subject.source === "desktop-cli" && product !== undefined
+      ? ({ kind: "desktop-cli", product, ...serveUrl } as const)
+      : (provisionedSubject(config) ?? appUrlSubject);
+  return { appUrl, appUrlSubject, hosted };
+}
+
+/**
+ * What a study on a Modal desktop cannot have that one on an E2B desktop can, or undefined. The
+ * Modal desktop runs an app-url subject in Chromium; provisioned subjects, a terminal subject,
+ * E2B templates and the speech template are E2B's.
+ */
+function modalDesktopRefusal(config: StudyConfig): string | undefined {
+  const desktop = config.execution?.desktop;
+  if (config.subject.source !== "app-url")
+    return `A Modal desktop runs app-url subjects only, and this study's subject is ${config.subject.source}. Set execution.target: e2b-desktop.`;
+  if (config.route === "shared-world")
+    return "A shared-world study runs on E2B desktops only. Set execution.target: e2b-desktop.";
+  if (desktop?.template !== undefined)
+    return "execution.desktop.template names an E2B template, which a Modal desktop cannot use. Remove it, or set execution.target: e2b-desktop.";
+  if (desktop?.media !== undefined)
+    return "execution.desktop.media needs the E2B speech or camera template, which a Modal desktop does not have. Remove it, or set execution.target: e2b-desktop.";
+  const browser = desktop?.browser;
+  if (browser !== undefined && browser !== "default" && browser !== "chromium")
+    return `A Modal desktop has Chromium only, and execution.desktop.browser is ${browser}. Set it to chromium or default, or set execution.target: e2b-desktop.`;
+  return undefined;
+}
+
 /** What the participants declare that this runner cannot do, with its code, or undefined. */
 function runnerRefusal(
   desktop: ComputerUseRunner["desktop"],
@@ -508,9 +567,10 @@ export function planComputerUseStudy(
       `actor.type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const ceiling = input.sandboxCeiling;
-  if (!ceiling.ok)
-    return refuse("in-scope", "HUMANISH_COMPUTER_USE_SUBJECT_INVALID", ceiling.message, actor);
+  const hosting = hostingOf(config, input.sandboxCeiling);
+  if ("refusal" in hosting)
+    return refuse("in-scope", "HUMANISH_COMPUTER_USE_SUBJECT_INVALID", hosting.refusal, actor);
+  const { provider, ceiling } = hosting;
   const rejection = cuaStudyRejection(
     config,
     hasRunSession,
@@ -564,20 +624,7 @@ export function planComputerUseStudy(
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
 
-  const appUrl = config.subject.appUrl ?? "";
-  const declaredServeUrl = config.subject.serve?.url;
-  const serveUrl = declaredServeUrl === undefined ? {} : { serveUrl: declaredServeUrl };
-  const appUrlSubject: AppUrlSubject = {
-    kind: "app-url",
-    appUrl,
-    publicTargets: config.policies?.allowPublicTargets === true,
-    ...serveUrl,
-  };
-  const product = config.subject.product;
-  const hosted =
-    source === "desktop-cli" && product !== undefined
-      ? ({ kind: "desktop-cli", product, ...serveUrl } as const)
-      : (provisionedSubject(config) ?? appUrlSubject);
+  const { appUrl, appUrlSubject, hosted } = subjectsOf(config);
   const brain = brainOf(config, driving.createProvider);
   const runner: ComputerUseRunner = driving.inProcess
     ? {
@@ -588,7 +635,13 @@ export function planComputerUseStudy(
       }
     : isLocalBrowserStudy(config)
       ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }
-      : { desktop: "e2b-desktop", brain, participants: [first, ...rest], subject: hosted };
+      : {
+          desktop: "e2b-desktop",
+          provider,
+          brain,
+          participants: [first, ...rest],
+          subject: hosted,
+        };
   const unsupported = runnerRefusal(runner.desktop, participants);
   if (unsupported) return refuse("in-scope", unsupported.code, unsupported.message, actor);
   const starts = startsOf(config, runner, input, ceiling.ms);
@@ -612,7 +665,8 @@ export function planComputerUseStudy(
         base.dryRun || runner.desktop === "in-process"
           ? []
           : desktopRequirements(config, {
-              e2b: runner.desktop === "e2b-desktop",
+              e2b: runner.desktop === "e2b-desktop" && runner.provider === "e2b",
+              modal: runner.desktop === "e2b-desktop" && runner.provider === "modal",
               brain,
               localVm: runner.desktop === "local-vm",
               externalCatch: !provisioned,

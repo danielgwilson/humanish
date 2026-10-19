@@ -146,6 +146,8 @@ export interface AppUrlSubject {
 export type ComputerUseRunner =
   | {
       readonly desktop: "e2b-desktop";
+      /** Who hosts the desktop: E2B, or Modal for `execution.target: modal-desktop`. */
+      readonly provider: SandboxProviderId;
       readonly brain: Brain;
       readonly participants: NonEmpty<ComputerUseParticipant>;
       readonly subject:

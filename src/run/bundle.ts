@@ -82,6 +82,7 @@ export interface RunFeedbackCandidate {
   // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate.
   substrate:
     | "e2b-desktop"
+    | "modal-desktop"
     | "local-desktop"
     | "e2b-terminal"
     | "local-filesystem"
@@ -521,7 +522,8 @@ export interface RunCostSummary {
 
 export interface RunProviderResource {
   schema: "humanish.provider-resource.v1";
-  provider: "e2b-desktop";
+  /** The hosted desktop's provider: E2B, or Modal for `execution.target: modal-desktop`. */
+  provider: "e2b-desktop" | "modal-desktop";
   kind: "sandbox";
   /**
    * "[redacted-sandbox-id]" in runs from 0.110 on; earlier runs recorded the raw id here. The raw id

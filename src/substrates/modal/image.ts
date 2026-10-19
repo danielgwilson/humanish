@@ -33,15 +33,53 @@ const SHELL_PACKAGES = [
   "xz-utils",
 ];
 
+// What the e2b-desktop modules call in a desktop, beside the shell's packages: Xvfb and an XFCE
+// session as @e2b/desktop starts them, xdotool and scrot for input and screenshots, x11vnc and
+// noVNC for the stream, the X utilities the geometry and screen probes run, wmctrl, ffmpeg and
+// PulseAudio for recordings, Chromium, and fonts for Latin, Chinese, Japanese, Korean and emoji
+// text.
+const DESKTOP_PACKAGES = [
+  "chromium",
+  "dbus-x11",
+  "ffmpeg",
+  "fonts-dejavu",
+  "fonts-noto-cjk",
+  "fonts-noto-color-emoji",
+  "net-tools",
+  "novnc",
+  "pulseaudio",
+  "pulseaudio-utils",
+  "scrot",
+  "websockify",
+  "wmctrl",
+  "x11-utils",
+  "x11-xserver-utils",
+  "x11vnc",
+  "xdg-utils",
+  "xdotool",
+  "xfce4",
+  "xfce4-terminal",
+  "xvfb",
+];
+
 /** The terminal route's image: a Debian shell with a passwordless-sudo `user`, as on E2B. */
 export function modalShellImage(client: ModalClient): ModalImage {
+  return debianImage(client, SHELL_PACKAGES);
+}
+
+/** The computer-use route's image: the shell's packages and an XFCE desktop with Chromium. */
+export function modalDesktopImage(client: ModalClient): ModalImage {
+  return debianImage(client, [...SHELL_PACKAGES, ...DESKTOP_PACKAGES]);
+}
+
+function debianImage(client: ModalClient, packages: readonly string[]): ModalImage {
   const { name, uid, home } = MODAL_SANDBOX_USER;
   // prose-check: script
   return client.images
     .fromRegistry(DEBIAN_BASE)
     .dockerfileCommands([
       "ENV DEBIAN_FRONTEND=noninteractive",
-      `RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* && ${SNAPSHOT_SOURCES} && apt-get update && apt-get install -y --no-install-recommends ${SHELL_PACKAGES.join(" ")} && rm -rf /var/lib/apt/lists/*`,
+      `RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* && ${SNAPSHOT_SOURCES} && apt-get update && apt-get install -y --no-install-recommends ${packages.join(" ")} && rm -rf /var/lib/apt/lists/*`,
       `RUN useradd --uid ${uid} --create-home --home-dir ${home} --shell /bin/bash ${name} && printf '${name} ALL=(ALL) NOPASSWD:ALL\\n' > /etc/sudoers.d/${name} && chmod 0440 /etc/sudoers.d/${name}`,
       `WORKDIR ${home}`,
     ]);

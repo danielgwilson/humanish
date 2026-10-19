@@ -100,10 +100,15 @@ export function provisionedSubject(config: StudyConfig): ProvisionedSubject | un
 /** Keys, env and local tools a live run checks right before it acquires anything. */
 export function desktopRequirements(
   config: StudyConfig,
-  args: { e2b: boolean; brain: Brain; localVm: boolean; externalCatch: boolean },
+  args: { e2b: boolean; modal?: boolean; brain: Brain; localVm: boolean; externalCatch: boolean },
 ): Requirement[] {
   const requirements: Requirement[] = [];
   if (args.e2b) requirements.push({ kind: "key", name: "E2B_API_KEY" });
+  if (args.modal === true)
+    requirements.push(
+      { kind: "key", name: "MODAL_TOKEN_ID" },
+      { kind: "key", name: "MODAL_TOKEN_SECRET" },
+    );
   if (args.localVm) requirements.push({ kind: "local-vm" });
   if (args.brain.kind === "openai") requirements.push({ kind: "key", name: "OPENAI_API_KEY" });
   if (args.brain.kind === "local-agent")

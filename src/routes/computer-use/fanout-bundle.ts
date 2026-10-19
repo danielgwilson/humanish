@@ -23,7 +23,12 @@ import {
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../study/tasks.js";
-import { providerResourcesForOutcome, publicSafeAppUrlLabel, streakGaps } from "./bundle-parts.js";
+import {
+  desktopSubstrate,
+  providerResourcesForOutcome,
+  publicSafeAppUrlLabel,
+  streakGaps,
+} from "./bundle-parts.js";
 import { subjectName } from "../../run/subject-name.js";
 import { participantFeedbackCandidates } from "./participant-feedback.js";
 import { participantFactsOf } from "./participant-facts.js";
@@ -241,7 +246,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
         runId: args.run.runId,
         scenarioId: `cua-${plan.studyId}`,
         adapterId: plan.studyId,
-        substrate: plan.residual.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
+        substrate: desktopSubstrate(plan.residual.execution?.target),
         participants: specs.map((spec, index) => {
           const outcome = outcomes?.[index];
           return {
@@ -323,6 +328,8 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const desktopBrowser = fanoutDesktopBrowser(args);
   const providerResources = (outcomes ?? []).flatMap((outcome) =>
     providerResourcesForOutcome({
+      provider:
+        plan.residual.execution?.target === "modal-desktop" ? "modal-desktop" : "e2b-desktop",
       outcome,
       createdAt: args.run.createdAt,
       ids: outcome.spec,

@@ -1,3 +1,4 @@
+import type { SandboxProviderId } from "../../run/sandbox-receipts.js";
 import type { Verdict } from "../../run/judge.js";
 import type { HostSuspensionReading } from "../../run/host-suspension.js";
 import type { LocalCapacity } from "../../substrates/local/capacity.js";
@@ -470,6 +471,8 @@ export interface E2BDesktopDeps {
   now: () => number;
   /** Loads the E2B SDK for the participant's desktop. Defaults to loadE2BDesktopModule. */
   desktopModule?: () => Promise<E2BDesktopModule>;
+  /** Who hosts the participant's desktop; E2B when unset. */
+  sandboxProvider?: SandboxProviderId;
   /** The caller's prepareDesktop, called with the participant as its target. */
   prepareDesktop?: NonNullable<RunStudyHomes["prepareDesktop"]>;
   /** Clock and sleep for detached provisioning steps. */

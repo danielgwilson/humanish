@@ -90,7 +90,19 @@ export function subjectProvenanceMessage(
   return "Subject local-tree packing attempted; archive digest unresolved (provisioning failed before resolution)";
 }
 
+/** The label a run records for the desktop `execution.target` names. */
+export function desktopSubstrate(
+  target: string | undefined,
+): "local-desktop" | "modal-desktop" | "e2b-desktop" {
+  return target === "local"
+    ? "local-desktop"
+    : target === "modal-desktop"
+      ? "modal-desktop"
+      : "e2b-desktop";
+}
+
 export function providerResourcesForOutcome(args: {
+  provider: "e2b-desktop" | "modal-desktop";
   outcome: ParticipantRunOutcome | undefined;
   createdAt: string;
   ids: ParticipantIds;
@@ -103,7 +115,7 @@ export function providerResourcesForOutcome(args: {
   return [
     {
       schema: "humanish.provider-resource.v1",
-      provider: "e2b-desktop",
+      provider: args.provider,
       kind: "sandbox",
       id: args.outcome.sandboxId,
       owner: "humanish",

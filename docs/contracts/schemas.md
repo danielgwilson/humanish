@@ -336,9 +336,9 @@ The rest of this section names keys by their v3 spelling:
 - `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, or (on the
   external-public shared-world route) the non-loopback public deployment used as the
   shared plane (with `publicTarget` + `allowPublicTargets`);
-- `execution`: where it runs (`local`, `e2b-desktop`, `e2b-terminal` or `modal-terminal`), plus
-  desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
-  or `local` with a computer-use actor, or `local` (or absent) with a
+- `execution`: where it runs (`local`, `e2b-desktop`, `e2b-terminal`, `modal-desktop` or
+  `modal-terminal`), plus desktop device/resolution and timeouts. app-url subjects pair
+  `e2b-desktop`, `modal-desktop` or `local` with a computer-use actor, or `local` (or absent) with a
   scripted-browser actor; terminal-product subjects pair `e2b-terminal` or `modal-terminal` (or absent → `e2b-terminal`)
   with a registered terminal actor. clone and local-tree subjects require an
   explicit `e2b-desktop`: any other target, or none, fails to parse, and the
@@ -1297,7 +1297,7 @@ items: []
 Reserved: `humanish.substrate.v1` is named here for layering intent but has
 never shipped; no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and study execution config
-(`execution.target: local | e2b-desktop | e2b-terminal | modal-terminal`). Do not emit this schema.
+(`execution.target: local | e2b-desktop | e2b-terminal | modal-desktop | modal-terminal`). Do not emit this schema.
 
 ## Serve Result And Reserved Control-Plane Namespace
 

@@ -24,11 +24,16 @@ const live = { mode: "live" };
 const localAgent = { type: "local-agent", localAgent: "codex" };
 const shapes: Record<string, RawLab> = {
   "computer-use app-url": lab("cuAppUrl", live),
+  "computer-use app-url on Modal": lab("cuAppUrl", {
+    ...live,
+    execution: { target: "modal-desktop" },
+  }),
   "computer-use clone": lab("cuClone", live),
   "computer-use local-tree": lab("cuLocalTree", live),
   "computer-use desktop-cli": lab("cuDesktopCli", live),
   "scripted clone": lab("scriptedClone", live),
   terminal: lab("terminal", live),
+  "terminal on Modal": lab("terminal", { ...live, execution: { target: "modal-terminal" } }),
   "shared-world provisioned": lab("sharedProvisioned", live),
   "shared-world external": lab("sharedExternal", live),
   "shared-world provisioned local-agent": lab("sharedProvisioned", live, localAgent),
@@ -39,6 +44,8 @@ const ALL_KEYS = {
   OPENAI_API_KEY: "test-openai-value",
   CODEX_API_KEY: "test-codex-value",
   E2B_API_KEY: "test-e2b-value",
+  MODAL_TOKEN_ID: "test-modal-id-value",
+  MODAL_TOKEN_SECRET: "test-modal-secret-value",
   DATABASE_URL: "test-database-value",
 };
 
@@ -160,6 +167,11 @@ const obligations: Record<
     keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
     subjectEnv: [],
   },
+  "computer-use app-url on Modal": {
+    raw: lab("cuAppUrl", { ...live, execution: { target: "modal-desktop" } }),
+    keys: [["OPENAI_API_KEY"], ["MODAL_TOKEN_ID"], ["MODAL_TOKEN_SECRET"]],
+    subjectEnv: [],
+  },
   "computer-use clone": {
     raw: lab("cuClone", { ...live, ...withEnv }),
     keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
@@ -189,6 +201,11 @@ const obligations: Record<
   terminal: {
     raw: lab("terminal", live),
     keys: [["CODEX_API_KEY", "OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+  },
+  "terminal on Modal": {
+    raw: lab("terminal", { ...live, execution: { target: "modal-terminal" } }),
+    keys: [["CODEX_API_KEY", "OPENAI_API_KEY"], ["MODAL_TOKEN_ID"], ["MODAL_TOKEN_SECRET"]],
     subjectEnv: [],
   },
   "shared-world provisioned": {

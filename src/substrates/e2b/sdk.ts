@@ -243,6 +243,18 @@ export function observeDesktopAllocation(
   allocationObservers.set(options, observer);
 }
 
+/**
+ * Tell the observer registered for `options` that its sandbox exists, for a module that starts its
+ * own desktop after create, as the Modal one does. An observer that throws does not fail the create.
+ */
+export function reportDesktopAllocation(options: E2BDesktopCreateOptions, sandboxId: string): void {
+  try {
+    allocationObservers.get(options)?.(sandboxId);
+  } catch {
+    // The resolved handle reports the id as well.
+  }
+}
+
 type DesktopCreateCleanup = "killed" | "already_gone" | "unconfirmed";
 interface DesktopCreateCleanupResult {
   cleanup: DesktopCreateCleanup;

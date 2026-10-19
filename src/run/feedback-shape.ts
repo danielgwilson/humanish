@@ -84,6 +84,7 @@ function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"]
 function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
   return (
     value === "e2b-desktop" ||
+    value === "modal-desktop" ||
     value === "local-desktop" ||
     value === "e2b-terminal" ||
     value === "local-filesystem" ||

@@ -34,10 +34,11 @@ export function parseExecution(
       target !== "local" &&
       target !== "e2b-desktop" &&
       target !== "e2b-terminal" &&
+      target !== "modal-desktop" &&
       target !== "modal-terminal"
     ) {
       return invalid(
-        "`execution.target` must be local, e2b-desktop, e2b-terminal, or modal-terminal.",
+        "`execution.target` must be local, e2b-desktop, e2b-terminal, modal-desktop, or modal-terminal.",
       );
     }
     execution.target = target;
