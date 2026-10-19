@@ -196,7 +196,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_KEYS_MISSING",
-      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      "message": "Live clone scripted-browser studies require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

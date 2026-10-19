@@ -30,8 +30,15 @@ export function parseExecution(
   const execution: StudyExecution = {};
   if (raw.target !== undefined) {
     const target = str(raw.target);
-    if (target !== "local" && target !== "e2b-desktop" && target !== "e2b-terminal") {
-      return invalid("`execution.target` must be local, e2b-desktop, or e2b-terminal.");
+    if (
+      target !== "local" &&
+      target !== "e2b-desktop" &&
+      target !== "e2b-terminal" &&
+      target !== "modal-terminal"
+    ) {
+      return invalid(
+        "`execution.target` must be local, e2b-desktop, e2b-terminal, or modal-terminal.",
+      );
     }
     execution.target = target;
   }

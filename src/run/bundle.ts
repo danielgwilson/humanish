@@ -485,7 +485,8 @@ export interface RunCostLine {
     minutes: number | null;
     durationBasis: "host-acquired-to-cleanup";
     resources?: { cpuCount: number; memoryMiB: number };
-    resourceSource?: "e2b.getInfo";
+    /** E2B's report of the allocation, or the size humanish asked Modal for. */
+    resourceSource?: "e2b.getInfo" | "modal.create";
     resourceUnavailableReason?: "metadata_unavailable" | "metadata_invalid" | "metadata_timeout";
     usdPerSecond?: number;
   };

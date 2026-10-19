@@ -70,6 +70,8 @@ export interface DesktopResourceRate {
   usdPerGiBSecond: number;
   asOf: string;
   source: string;
+  /** The sizes the public sheet prices; a size outside them stays unpriced. Absent: any size. */
+  sheet?: { cpuCounts: readonly number[]; minMemoryMiB: number; maxMemoryMiB: number };
 }
 
 /**
@@ -217,6 +219,20 @@ const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
   asOf: "2026-09-05",
   // A source label rather than an executable URL; runtime URL redaction protects E2B streams.
   source: "e2b.dev/pricing",
+  // The public Hobby/Pro sheet stops at 8 CPU / 8 GiB; larger allocations may have negotiated
+  // prices, so their resource evidence is kept without extrapolating a standard rate to them.
+  sheet: { cpuCounts: [1, 2, 4, 6, 8], minMemoryMiB: 512, maxMemoryMiB: 8192 },
+};
+
+/**
+ * Modal's Sandbox rate, per vCPU: Modal prices a physical core, $0.00003942 a second, and counts
+ * it as two vCPU. Modal prices every size the same way.
+ */
+export const MODAL_SANDBOX_RESOURCE_RATE: DesktopResourceRate = {
+  usdPerCpuSecond: 0.00003942 / 2,
+  usdPerGiBSecond: 0.00000667,
+  asOf: "2026-10-19",
+  source: "modal.com/pricing",
 };
 
 // Planning assumption behind the public estimateDesktopCost helper: stock desktops observed on
@@ -266,12 +282,12 @@ export function estimateAllocatedDesktopCost(
       minutes: round6(minutes),
     };
   }
-  // The public Hobby/Pro sheet stops at 8 CPU / 8 GiB; larger allocations may have negotiated
-  // prices. Retain the resource evidence without extrapolating a standard rate to them.
+  const { sheet } = rate;
   if (
-    ![1, 2, 4, 6, 8].includes(resources.cpuCount) ||
-    resources.memoryMiB < 512 ||
-    resources.memoryMiB > 8192 ||
+    (sheet !== undefined &&
+      (!sheet.cpuCounts.includes(resources.cpuCount) ||
+        resources.memoryMiB < sheet.minMemoryMiB ||
+        resources.memoryMiB > sheet.maxMemoryMiB)) ||
     !Number.isFinite(rate.usdPerCpuSecond) ||
     rate.usdPerCpuSecond < 0 ||
     !Number.isFinite(rate.usdPerGiBSecond) ||

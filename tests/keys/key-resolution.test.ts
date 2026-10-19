@@ -143,6 +143,36 @@ describe("provider-key discovery", () => {
     expect(env3.E2B_API_KEY).toBeUndefined();
   });
 
+  it("reads the Modal CLI's profile for the token pair: MODAL_PROFILE, else the active one, else the only one", async () => {
+    const discover = async (toml: string, env: NodeJS.ProcessEnv = {}) => {
+      await writeFile(path.join(home, ".modal.toml"), toml, "utf8");
+      await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+      return env;
+    };
+    const profiles = [
+      '[first]\ntoken_id = "ak-first"\ntoken_secret = "as-first"\n',
+      '[second]\ntoken_id = "ak-second"\ntoken_secret = "as-second"\nenvironment = "studies"\nactive = true\n',
+    ];
+    expect(await discover(profiles[0]!)).toMatchObject({
+      MODAL_TOKEN_ID: "ak-first",
+      MODAL_TOKEN_SECRET: "as-first",
+    });
+    expect(await discover(profiles.join("\n"))).toMatchObject({
+      MODAL_TOKEN_ID: "ak-second",
+      MODAL_TOKEN_SECRET: "as-second",
+      MODAL_ENVIRONMENT: "studies",
+    });
+    expect(await discover(profiles.join("\n"), { MODAL_PROFILE: "first" })).toMatchObject({
+      MODAL_TOKEN_ID: "ak-first",
+    });
+    // A pair is never mixed: a token already set leaves both alone.
+    expect(await discover(profiles[0]!, { MODAL_TOKEN_ID: "ak-env" })).toEqual({
+      MODAL_TOKEN_ID: "ak-env",
+    });
+    // Two profiles and none active: Modal would not know which, so neither does discovery.
+    expect(await discover(profiles[0]! + profiles[1]!.replace("active = true\n", ""))).toEqual({});
+  });
+
   it("consults gh auth token only when neither GitHub env name is set", async () => {
     const calls: string[][] = [];
     const gh = async (cmd: string, args: string[]): Promise<string | null> => {
@@ -422,7 +452,7 @@ describe("the user key store (`humanish keys`)", () => {
       /provider keys only/,
     );
     expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(
-      "The store holds provider keys only (OPENAI_API_KEY, E2B_API_KEY, ANTHROPIC_API_KEY, GH_TOKEN, GITHUB_TOKEN, CODEX_API_KEY, AGENTMAIL_API_KEY). For anything else, use an explicit --dotenv.",
+      "The store holds provider keys only (OPENAI_API_KEY, E2B_API_KEY, MODAL_TOKEN_ID, MODAL_TOKEN_SECRET, MODAL_ENVIRONMENT, ANTHROPIC_API_KEY, GH_TOKEN, GITHUB_TOKEN, CODEX_API_KEY, AGENTMAIL_API_KEY). For anything else, use an explicit --dotenv.",
     );
   });
 

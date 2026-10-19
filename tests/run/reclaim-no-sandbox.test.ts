@@ -156,7 +156,7 @@ describe("humanish reclaim on a scripted app-url run", () => {
       "its journal records owner tags",
       async ({ cwd }) => {
         const paths = await resolveRunPath(cwd, RUN);
-        await appendSandboxOwner(paths!, sandboxOwnerTags(paths!));
+        await appendSandboxOwner(paths!, sandboxOwnerTags(paths!), "e2b");
       },
     ],
     [

@@ -140,20 +140,20 @@ browser row. Accepted rows have further required fields, such as `subject.serve`
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.
 
-| Route          | `subject.source`                              | `execution.target`       | `actor.type`                           | Result                                                                              |
-| -------------- | --------------------------------------------- | ------------------------ | -------------------------------------- | ----------------------------------------------------------------------------------- |
-| `computer-use` | `app-url`                                     | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
-| `computer-use` | `app-url`                                     | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                      |
-| `computer-use` | `clone`, `local-tree`                         | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
-| `computer-use` | `desktop-cli`                                 | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                           |
-| `computer-use` | `local-app`                                   | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR` |
-| `shared-world` | `clone`, `local-tree` + `route: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                           |
-| `shared-world` | `app-url` + `route: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                                  |
-| `scripted`     | `app-url` with a loopback URL                 | `local` or absent        | `scripted-browser`                     | Supported                                                                           |
-| `scripted`     | `clone`                                       | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                           |
-| `terminal`     | `terminal-product`                            | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                           |
-| `preview`      | `this-repo`                                   | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                        |
-| none           | any other pairing                             | any                      | any                                    | Refused at parse with `HUMANISH_STUDY_INVALID`                                      |
+| Route          | `subject.source`                              | `execution.target`                         | `actor.type`                           | Result                                                                              |
+| -------------- | --------------------------------------------- | ------------------------------------------ | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `computer-use` | `app-url`                                     | `e2b-desktop`                              | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `app-url`                                     | `local`                                    | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                      |
+| `computer-use` | `clone`, `local-tree`                         | `e2b-desktop`                              | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `desktop-cli`                                 | `e2b-desktop` or absent                    | a computer-use actor                   | Supported                                                                           |
+| `computer-use` | `local-app`                                   | `local` or absent                          | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` | `clone`, `local-tree` + `route: shared-world` | `e2b-desktop`                              | a computer-use actor                   | Supported                                                                           |
+| `shared-world` | `app-url` + `route: shared-world`             | `e2b-desktop`                              | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                                  |
+| `scripted`     | `app-url` with a loopback URL                 | `local` or absent                          | `scripted-browser`                     | Supported                                                                           |
+| `scripted`     | `clone`                                       | `e2b-desktop`                              | `scripted-browser`                     | Supported                                                                           |
+| `terminal`     | `terminal-product`                            | `e2b-terminal`, `modal-terminal` or absent | `codex-exec`                           | Supported                                                                           |
+| `preview`      | `this-repo`                                   | absent                                     | not `scripted-browser` or `codex-exec` | Dry run only                                                                        |
+| none           | any other pairing                             | any                                        | any                                    | Refused at parse with `HUMANISH_STUDY_INVALID`                                      |
 
 The fixture's `supported` field records which routes accept declared `actor.tasks`. The
 computer-use studies in the fixture accept them. The other routes refuse them at parse.

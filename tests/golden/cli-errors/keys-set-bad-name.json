@@ -7,5 +7,5 @@
   "action": "set",
   "store": "[cwd]/user-config/humanish/keys.env",
   "names": [],
-  "message": "Not a vendor alias or valid env name: bad-name. Vendors: openai, e2b, anthropic, github, agentmail."
+  "message": "Not a vendor alias or valid env name: bad-name. Vendors: openai, e2b, modal, anthropic, github, agentmail."
 }

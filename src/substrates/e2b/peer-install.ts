@@ -178,7 +178,7 @@ export function desktopPeerAdvice(
         where: ", and humanish is running from a source checkout",
         command: "pnpm install",
         advice:
-          spec === "@e2b/desktop"
+          spec === "@e2b/desktop" || spec === "modal"
             ? "Run `pnpm install` in the humanish checkout, which installs it as a dev dependency."
             : `Set ${spec} in the humanish checkout's package.json, then run \`pnpm install\` there.`,
       };

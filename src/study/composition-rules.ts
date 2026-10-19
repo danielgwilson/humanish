@@ -292,15 +292,15 @@ function desktopCliValidationReason(config: StudyConfig): string | null {
 }
 
 // terminal-product route: a real autonomous agent studies a CLI/product from public surfaces inside
-// an E2B shell. Fail-closed (claims match mechanism: a field that cannot act on this route is a
-// parse error): a registered terminal actor only, execution.target e2b-terminal or absent (absent
-// defaults to e2b-terminal, the only target where an in-sandbox agent runs), one participant until
-// fan-out lands.
+// a hosted shell. Fail-closed (claims match mechanism: a field that cannot act on this route is a
+// parse error): a registered terminal actor only, execution.target e2b-terminal, modal-terminal or
+// absent (absent defaults to e2b-terminal), one participant until fan-out lands.
 function terminalValidationReason(config: StudyConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = config.actor?.type ?? "";
-    if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
-      return "A terminal-product subject runs its agent in an E2B shell. Set `execution.target: e2b-terminal` or omit it; `local` and `e2b-desktop` are not supported.";
+    const target = config.execution?.target;
+    if (target !== undefined && target !== "e2b-terminal" && target !== "modal-terminal") {
+      return "A terminal-product subject runs its agent in a hosted shell. Set `execution.target` to e2b-terminal or modal-terminal, or omit it for e2b-terminal; `local` and `e2b-desktop` are not supported.";
     }
     if (!actorResolvesToTerminal(type)) {
       return `actor.type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
@@ -308,10 +308,13 @@ function terminalValidationReason(config: StudyConfig): string | null {
     if ((participantOrSurfaceCount(config) ?? 1) > 1) {
       return "Terminal fan-out to more than one participant is not supported yet; set participants to 1.";
     }
-  } else if (config.execution?.target === "e2b-terminal") {
-    // e2b-terminal is the terminal-product substrate only. Any other source declaring it is a
-    // mis-config: reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
-    return "`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.";
+  } else if (
+    config.execution?.target === "e2b-terminal" ||
+    config.execution?.target === "modal-terminal"
+  ) {
+    // The terminal targets are the terminal-product substrates only. Any other source declaring one
+    // is a mis-config: reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
+    return `\`execution.target: ${config.execution.target}\` requires \`subject.source: terminal-product\` with a registered terminal actor.`;
   } else if (actorResolvesToTerminal(config.actor?.type)) {
     // A registered terminal actor on a non-terminal-product subject: rejected, never ignored (the
     // terminal agent only studies a declared terminal-product from public surfaces).

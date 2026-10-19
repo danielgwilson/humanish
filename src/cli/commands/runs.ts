@@ -304,7 +304,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox E2B lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks E2B whether each still exists and kills nothing. Needs E2B_API_KEY in the environment or in --dotenv.",
+      "Kill an interrupted run's sandboxes: the exact ids journaled in its sandbox-receipts.ndjson, and any sandbox the run's provider lists with this run's owner tags (a sandbox whose id never reached a receipt). It lists only sandboxes that match every tag of this run. --check asks the provider whether each still exists and kills nothing. Needs E2B_API_KEY, or MODAL_TOKEN_ID and MODAL_TOKEN_SECRET for a run on Modal, in the environment or in --dotenv.",
     )
     .summary("Stop or check an interrupted run's sandboxes.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
@@ -317,7 +317,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--check",
-      "Ask E2B whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone.",
+      "Ask the provider whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone.",
     )
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
     .addOption(envFileAliasOption())

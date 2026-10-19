@@ -129,7 +129,7 @@
     "name": "rejects invalid config: bad execution target",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects invalid config: bad execution target",
     "v2": {"schema":"humanish.lab.v2","id":"x","subject":{"source":"this-repo"},"actors":[{"type":"a"}],"execution":{"target":"vm"}},
-    "refused": "it does not parse: `execution.target` must be local, e2b-desktop, or e2b-terminal."
+    "refused": "it does not parse: `execution.target` must be local, e2b-desktop, e2b-terminal, or modal-terminal."
   },
   {
     "name": "rejects invalid config: non-positive resolution",

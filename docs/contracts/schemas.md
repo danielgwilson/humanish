@@ -336,10 +336,10 @@ The rest of this section names keys by their v3 spelling:
 - `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, or (on the
   external-public shared-world route) the non-loopback public deployment used as the
   shared plane (with `publicTarget` + `allowPublicTargets`);
-- `execution`: where it runs (`local`, `e2b-desktop`, or `e2b-terminal`), plus
+- `execution`: where it runs (`local`, `e2b-desktop`, `e2b-terminal` or `modal-terminal`), plus
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
   or `local` with a computer-use actor, or `local` (or absent) with a
-  scripted-browser actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
+  scripted-browser actor; terminal-product subjects pair `e2b-terminal` or `modal-terminal` (or absent → `e2b-terminal`)
   with a registered terminal actor. clone and local-tree subjects require an
   explicit `e2b-desktop`: any other target, or none, fails to parse, and the
   computer-use and scripted-browser routes refuse it when a library caller skips
@@ -1297,7 +1297,7 @@ items: []
 Reserved: `humanish.substrate.v1` is named here for layering intent but has
 never shipped; no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and study execution config
-(`execution.target: local | e2b-desktop | e2b-terminal`). Do not emit this schema.
+(`execution.target: local | e2b-desktop | e2b-terminal | modal-terminal`). Do not emit this schema.
 
 ## Serve Result And Reserved Control-Plane Namespace
 
@@ -1578,12 +1578,13 @@ Three new `.v1` schema tags ship, all additive and optional so
   lines remain readable.
   A desktop line's optional `desktop` object records `minutes`,
   `durationBasis: host-acquired-to-cleanup`, observed `resources` (`cpuCount`,
-  `memoryMiB`), `resourceSource: e2b.getInfo`, and `usdPerSecond` when priceable.
+  `memoryMiB`), `resourceSource` (`e2b.getInfo`, or `modal.create` for the size humanish asked
+  Modal for), and `usdPerSecond` when priceable.
   Failed metadata reads record `resourceUnavailableReason`; no resource guess is used.
   Resource metadata and missing/unsupported rates produce a null line. A kept or
   unconfirmed allocation adds `desktop_lifetime_incomplete` as a second null line.
   Live terminal-product runs emit the same summary: one `desktop-minutes` line for
-  the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
+  the shell sandbox (its acquired-to-cleanup span and its `e2b.getInfo` or `modal.create` size) and
   one `model-tokens` line for the Codex participant, priced from the model the route passed
   to Codex (`gpt-5.6-sol` unless the study declares one) with `basis:
   aggregated_turns_base_rate`, or `null` with `no_token_usage`. Older terminal bundles record

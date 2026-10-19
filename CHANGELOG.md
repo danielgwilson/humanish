@@ -8,6 +8,23 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- A terminal study can run its shell on Modal. `execution.target: modal-terminal` creates the
+  sandbox with Modal's JavaScript SDK (`modal`, a new optional peer, like `@e2b/desktop`) in an app
+  named `humanish`, in the environment `MODAL_ENVIRONMENT` or the Modal profile names. It runs
+  Modal's VM runtime with 2 cores (4 vCPU) and 4 GiB, from a Debian image Modal builds in your
+  workspace on first use from the same pinned base and package snapshot as the local guest recipe,
+  and lives up to Modal's 24 hours instead of the E2B plan's ceiling. Commands run as `user` with
+  passwordless sudo, as on E2B. The run needs `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`, which key
+  discovery reads from `~/.modal.toml` after `modal token new`, and `execution.runtimeAuth:
+  openai-env`: Modal can add a key to outbound requests only from a Secret stored in your
+  workspace, so the default `openai-egress` is refused on Modal. An `egressAllow` list becomes
+  Modal's domain and CIDR allowlists. Receipts and owner lines name `modal`, `humanish reclaim`
+  kills and searches by tag through Modal, and the cost line prices the requested size at Modal's
+  sandbox rate (`resourceSource: modal.create`). Desktop studies still run on E2B or a local VM
+  (#1788).
+
 ## 0.137.0: Each browser participant can record its requests (2026-10-16)
 
 humanish 0.137.0 can record the requests each hosted browser participant makes. With

@@ -226,7 +226,7 @@ export function isProvisionedScriptedBrowserComposition(config: StudyConfig): bo
 
 /**
  * True when this config routes to the terminal-product backend: a terminal-product subject whose
- * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent;
+ * first actor resolves to a registered terminal actor (execution.target e2b-terminal, modal-terminal or absent;
  * the parse layer enforces that pairing). Mirror of isComputerUseComposition/isScriptedBrowserComposition;
  * the single source of truth for routeOf and the warning logic.
  */

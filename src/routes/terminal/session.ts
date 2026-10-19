@@ -124,6 +124,7 @@ export async function runLiveTerminalSession(
     verdictNonce,
     maxMinutes,
     e2bApiKey,
+    env,
     runPaths,
     metadata: buildSandboxMetadata({ studyId: plan.studyId, recordId: "sim-001", runId }),
     warnings,
@@ -198,7 +199,13 @@ async function prepareLivePrompt(args: {
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
   // the second pass for secret-shaped content. Applied pre-truncation so a cut can never split a
   // value past the scrubber.
-  const secrets = new RunSecrets([runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""]);
+  // The sandbox provider's credentials too: a provider error that quotes one reaches the run.
+  const secrets = new RunSecrets([
+    runtimeEnv.keyValue,
+    env.E2B_API_KEY?.trim() ?? "",
+    env.MODAL_TOKEN_ID?.trim() ?? "",
+    env.MODAL_TOKEN_SECRET?.trim() ?? "",
+  ]);
   const sanitize = (text: string): string => redactText(secrets.scrub(text));
   const persona = terminalPersonaRef(terminalPersona, promptDigest, secrets.scrub);
   return {

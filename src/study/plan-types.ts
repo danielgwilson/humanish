@@ -9,6 +9,7 @@ import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";
 import type { ScriptedRefusal } from "../routes/scripted/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
+import type { SandboxProviderId } from "../run/sandbox-receipts.js";
 import type { RunStudyProvenance } from "../run/study-provenance.js";
 import type { ArrivalPlan } from "./arrivals.js";
 import type { BundleEstimate } from "./bundle-estimate.js";
@@ -38,7 +39,10 @@ type AtLeastTwo<T> = readonly [T, T, ...T[]];
  * report, the keys and subject env listed here, through src/study/requirements.ts.
  */
 export type Requirement =
-  | { readonly kind: "key"; readonly name: "OPENAI_API_KEY" | "E2B_API_KEY" }
+  | {
+      readonly kind: "key";
+      readonly name: "OPENAI_API_KEY" | "E2B_API_KEY" | "MODAL_TOKEN_ID" | "MODAL_TOKEN_SECRET";
+    }
   /** The terminal runtime key: CODEX_API_KEY, else OPENAI_API_KEY. */
   | { readonly kind: "key-one-of"; readonly names: readonly ["CODEX_API_KEY", "OPENAI_API_KEY"] }
   /** Real receiving: the key name comes from the saved connection at check time. */
@@ -226,6 +230,8 @@ export interface SharedWorldPlan extends PlanBase {
 
 export type TerminalPlan = PlanBase & {
   readonly route: "terminal";
+  /** Where the shell sandbox runs: `execution.target` modal-terminal, else E2B. */
+  readonly sandboxProvider: SandboxProviderId;
   /** The registered terminal actor that runs. */
   readonly actor: string;
   readonly product: StudySubjectProduct & { readonly publicSurfaces: NonEmpty<string> };

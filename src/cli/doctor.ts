@@ -200,6 +200,7 @@ export async function doctor(
   const checks: DoctorCheck[] = [
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
+    ...(setup?.keys.includes("MODAL_TOKEN_ID") === true ? [await modalSdkCheck()] : []),
     sandboxCeilingCheck(env),
     concurrentSandboxesCheck(env),
     terminalSurfaceCheck(),
@@ -355,6 +356,25 @@ async function desktopSdkCheck(setup: StudySetup | undefined): Promise<DoctorChe
   };
 }
 
+/** The optional `modal` peer, reported only for a study that runs on Modal, which needs it. */
+async function modalSdkCheck(): Promise<DoctorCheck> {
+  const present = await safeCheck(async () => {
+    try {
+      await import("modal");
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  return {
+    name: "modal sdk",
+    ok: present,
+    message: present
+      ? "optional peer modal is installed; provider access is not tested"
+      : `optional peer modal is absent, and this study runs on Modal. ${desktopPeerAdvice(humanishInstall(), "modal").advice}`,
+  };
+}
+
 /**
  * The stakeholder surface. Reported as capability, never as a gate: the TUI is optional,
  * and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
@@ -411,6 +431,9 @@ async function probeDoctorKeys(
   if (study) {
     const { resolveStudyManifest } = await import("../study/discover.js");
     const resolved = await resolveStudyManifest(cwd, study);
+    // A study on Modal reads the Modal token pair, which no other study needs.
+    if (resolved.ok && resolved.config.execution?.target === "modal-terminal")
+      for (const name of ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]) keyNames.add(name);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);

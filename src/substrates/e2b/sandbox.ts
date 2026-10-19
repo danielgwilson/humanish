@@ -15,7 +15,11 @@ import {
   sandboxOwnerTags,
   type SandboxCreateTicket,
 } from "../../run/sandbox-creates.js";
-import { appendSandboxOwner, appendSandboxReceipt } from "../../run/sandbox-receipts.js";
+import {
+  appendSandboxOwner,
+  appendSandboxReceipt,
+  type SandboxProviderId,
+} from "../../run/sandbox-receipts.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import {
   ownDesktopAllocation,
@@ -47,6 +51,8 @@ interface E2BSandboxReceiptTarget {
 
 export interface E2BSandboxRequest {
   module: E2BDesktopModule;
+  /** Who `module` creates sandboxes on; receipts and owner lines name it. Defaults to e2b. */
+  provider?: SandboxProviderId;
   options: E2BDesktopCreateOptions;
   retry?: TransientRetryHooks;
   /**
@@ -80,10 +86,11 @@ async function acquire(
   template: string | undefined,
 ): Promise<E2BSandbox> {
   const { module } = request;
+  const provider = request.provider ?? "e2b";
   const target = request.receipt;
   // Refused before any provider call once the run is stopping.
   const ticket =
-    target === null ? undefined : beginSandboxCreate(target.root, target.participantId);
+    target === null ? undefined : beginSandboxCreate(target.root, target.participantId, provider);
   // The receipts written when the guard reported an id, before desktop startup. A startup error
   // can quote the id and the create may never return, so the journal holds it first.
   const reported = new Map<string, Promise<boolean>>();
@@ -93,7 +100,9 @@ async function acquire(
     // journal records them first, so reclaim knows which tags to search for.
     const owner = target === null ? undefined : sandboxOwnerTags(target.root);
     if (target !== null && owner !== undefined)
-      await recordSandboxOwnerOnce(target.root, () => appendSandboxOwner(target.root, owner));
+      await recordSandboxOwnerOnce(target.root, provider, () =>
+        appendSandboxOwner(target.root, owner, provider),
+      );
     const options: E2BDesktopCreateOptions =
       owner === undefined
         ? request.options
@@ -104,7 +113,7 @@ async function acquire(
       return appendSandboxReceipt(root, {
         at: new Date(now()).toISOString(),
         laneId: participantId,
-        provider: "e2b",
+        provider,
         sandboxId,
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       });

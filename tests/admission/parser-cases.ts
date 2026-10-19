@@ -471,7 +471,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "terminal on e2b-desktop",
     raw: lab("terminal", { execution: { target: "e2b-desktop" } }),
-    parser: "runs its agent in an E2B shell",
+    parser: "runs its agent in a hosted shell",
   },
   {
     name: "terminal computer-use actor",
