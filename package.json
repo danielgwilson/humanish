@@ -120,7 +120,7 @@
     "@types/pngjs": "^6.0.5",
     "axe-core": "4.14.0",
     "fast-check": "catalog:",
-    "knip": "6.41.0",
+    "knip": "6.42.0",
     "modal": "^0.11.1",
     "oxc-parser": "catalog:",
     "oxfmt": "0.73.0",
