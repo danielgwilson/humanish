@@ -163,3 +163,12 @@ export function localGuestDisplay(
     return undefined;
   return { width, height, ...(mobileEmulation === undefined ? {} : { mobileEmulation }) };
 }
+
+/** Whether any participant of a local study needs a screen other than the guest's default. */
+export function localStudySetsScreens(config: StudyConfig): boolean {
+  const study = localBrowserDefaults(config);
+  return (participantList(study) ?? [{}]).some(
+    (entry) =>
+      localGuestDisplay(study, resolveParticipantDevice(study, entry.device)) !== undefined,
+  );
+}
