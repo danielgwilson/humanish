@@ -298,6 +298,63 @@ fails with `HUMANISH_STUDY_RETIRED_DIRECTORY`; move it to the matching `studies/
   run looks like idle tiles — another reason to leave the cap out unless you
   need it.
 
+### Phone, tablet and desktop in one study
+
+When the user asks to test several screen sizes, write one study with one
+`participants` entry per size and set `device` on each entry. The participants run
+at once, the Observer shows them side by side, and the findings compare them.
+
+```yaml
+schema: humanish.study.v3
+id: devices
+title: Phone, tablet and desktop
+route: computer-use
+mode: live
+subject:
+  source: app-url
+  appUrl: "http://127.0.0.1:3000"
+actor:
+  type: local-agent
+  localAgent: codex
+  persona: synthetic-new-user
+  mission: "Sign up and create your first project. Say what was hard to read or reach."
+participants:
+  - id: phone
+    device: mobile
+  - id: tablet
+    device: tablet
+  - id: desktop
+    device: desktop
+execution:
+  target: local
+  timeoutMs: 600000
+  desktop:
+    fidelity:
+      mobileEmulation: true
+```
+
+This runs on the local browser runtime with the user's Codex login. For a deployed
+app, set `execution.target: e2b-desktop`, put the public URL in `subject.appUrl`,
+add `policies.allowPublicTargets: true`, and give each entry a `target` (below).
+
+- `device` takes a preset: `mobile` (414×896), `small-mobile`, `narrow-mobile`,
+  `tablet` (820×1180), `desktop` (1440×950) or `wide` (1920×1080). The preset
+  sizes the participant's screen and browser window.
+- `fidelity.mobileEmulation: true` gives the phone participants a mobile viewport,
+  device pixel ratio, touch and a mobile user agent in Chromium. Tablet and
+  desktop participants are left as they are.
+- Do not run one study per size, draw a device frame inside the page, or resize
+  the browser from the mission. Those produce desktop-ratio evidence labelled as
+  a phone, and three runs the Observer cannot compare.
+- Participants on one public app (`policies.allowPublicTargets: true`) share its
+  data, so more than one is refused unless each entry sets `target`: a separate
+  test account, tenant or seeded URL per participant, or the same URL when the
+  task has each participant create its own account. A loopback or clone subject
+  needs no `target`.
+- On a local study, `doctor --study` fails its runtime row when the installed
+  local runtime predates per-participant screens; `humanish runtime setup`
+  installs the pinned one. Do not move the study to E2B without asking the user.
+
 Use committed `humanish/studies/*.yaml` for public-safe, reproducible studies. Use
 ignored `.humanish/studies/*.yaml` or `.humanish/local/studies/*.yaml` for private repo
 targets, local-only dogfood, or machine-specific settings. Never commit private
@@ -481,12 +538,18 @@ when the user explicitly wants live E2B execution:
 npm i -D @e2b/desktop
 ```
 
-Then confirm env var names are documented without values:
+Then confirm env var names are documented without values. Which keys a hosted
+study needs depends on its participant and analyst:
 
-```bash
-E2B_API_KEY
-OPENAI_API_KEY
-```
+| Participant and analyst                                            | Keys                                                                                                    |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `openai-computer-use` participant                                  | `E2B_API_KEY`, `OPENAI_API_KEY`                                                                         |
+| `local-agent` Codex participant, `review.analysis.provider: codex` | `E2B_API_KEY` and `codex login`                                                                         |
+| `local-agent` Codex participant, default analysis                  | `E2B_API_KEY`, `codex login`; without `OPENAI_API_KEY` the run works and automatic findings are skipped |
+
+A hosted Codex participant does not need `OPENAI_API_KEY`. Do not report a missing
+`OPENAI_API_KEY` as the reason a Codex study on E2B fails; read the
+`doctor --study` row instead.
 
 Do not paste values into files, prompts, run bundles, issue drafts, or logs.
 Load local values only at invocation time:
@@ -501,6 +564,25 @@ frameworks, starters, or infrastructure packages as default targets unless the
 declared scenario is developer-experience testing. Private repos are allowed
 only as explicit maintainer-authorized runs with repo redaction left on; never
 publish their names, screenshots, logs, source snippets, or operational details.
+
+## Setup errors and what they mean
+
+Run `npx humanish doctor --study <id>` before the first live run and read every
+`missing` row. The common ones:
+
+- `codex_unsafe_configuration` on a hosted Codex participant: the row names the
+  setting humanish refused. Report it to the user; never edit, move or rename
+  their Codex, agent or skill config to make a run pass. An `AGENTS.md` in the
+  Codex home is admitted, and doctor notes that the participant also receives it.
+- `subject.appUrl` must be loopback: a non-loopback URL needs
+  `policies.allowPublicTargets: true`, and with more than one participant, a
+  `target` on each entry.
+- "Will be skipped: OPENAI_API_KEY is missing" on `post-run analysis`: the run
+  works without findings. Set `review.analysis.provider: codex` to use the Codex
+  account, or `review.analysis: false` to opt out.
+- A local browser study refuses a non-loopback URL, a port below 1024, hosted
+  templates and `sandboxTimeoutMs`. The message names the setting; do not switch the
+  study to a hosted target unless the user agrees to E2B usage.
 
 ## Reporting Back
 
