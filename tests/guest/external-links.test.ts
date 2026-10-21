@@ -2,7 +2,7 @@
 // xdg-email, run under the real sh, writes the link to the runtime directory, and each observation
 // the guest executor returns carries the links written since the previous one.
 import { execFile } from "node:child_process";
-import { chmod, copyFile, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { chmod, copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -17,9 +17,9 @@ import {
 import { externalLinkStandIn } from "../../src/substrates/e2b/desktop-handoff.js";
 
 const execFileAsync = promisify(execFile);
-const IMAGE_STAND_IN = path.resolve(
-  "runtime/browser-guest/control/root/opt/humanish/control/bin/xdg-open",
-);
+// Regular files, one per command: the guest proofs refuse a link in the controller's payload.
+const IMAGE_BIN = path.resolve("runtime/browser-guest/control/root/opt/humanish/control/bin");
+const COMMANDS = ["xdg-open", "xdg-email"];
 
 describe("the local guest's stand-in for a link's app", () => {
   let dir: string;
@@ -30,18 +30,22 @@ describe("the local guest's stand-in for a link's app", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("is the script the hosted desktop installs, with the guest's paths", async () => {
-    expect(await readFile(IMAGE_STAND_IN, "utf8")).toBe(
-      externalLinkStandIn(GUEST_EXTERNAL_LINK_BIN, '"$XDG_RUNTIME_DIR/humanish-links.log"'),
-    );
-  });
+  it.each(COMMANDS)(
+    "ships %s as the script the hosted desktop installs, with the guest's paths",
+    async (command) => {
+      expect(await readFile(path.join(IMAGE_BIN, command), "utf8")).toBe(
+        externalLinkStandIn(GUEST_EXTERNAL_LINK_BIN, '"$XDG_RUNTIME_DIR/humanish-links.log"'),
+      );
+    },
+  );
 
   it("hands each link the browser could not open to the next observation, once", async () => {
     const bin = path.join(dir, "bin");
     await execFileAsync("mkdir", [bin]);
-    await copyFile(IMAGE_STAND_IN, path.join(bin, "xdg-open"));
-    await chmod(path.join(bin, "xdg-open"), 0o755);
-    await symlink("xdg-open", path.join(bin, "xdg-email"));
+    for (const command of COMMANDS) {
+      await copyFile(path.join(IMAGE_BIN, command), path.join(bin, command));
+      await chmod(path.join(bin, command), 0o755);
+    }
     const env = { PATH: `${bin}:/usr/bin:/bin`, XDG_RUNTIME_DIR: dir };
     let looks = 0;
     const executor: CuaExecutor = {

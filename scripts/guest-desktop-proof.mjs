@@ -41,6 +41,7 @@ const driverModules = [
   "actors/computer-use/wait",
   "actors/computer-use/executor-diagnostic",
   "actors/computer-use/speech",
+  "actors/computer-use/external-handoff",
   "evidence/frame-signature",
 ];
 for (const name of driverModules) {
