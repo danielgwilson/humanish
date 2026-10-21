@@ -219,7 +219,7 @@ humanish analyze [options] [command]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
 | `--max-cost <usd>` | Required for OpenAI, also with --dry-run: an analysis is refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this. It does not limit billing. Unsupported for Codex. |
-| `--model <id>` | Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort. (default: "gpt-6-astra") |
+| `--model <id>` | OpenAI analysis model, at high effort: gpt-6-astra, gpt-6.1-sol, gpt-6-luna, gpt-5.5, gpt-5.6, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna. Codex account analysis runs gpt-6-astra at low effort. (default: "gpt-6-astra") |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
 | `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
 | `--max-output-tokens <n>` | OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |

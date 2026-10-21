@@ -218,6 +218,35 @@ describe("bounded study analysis run", () => {
     },
   );
 
+  // Expected costs are worked from the model pages' standard rates (read 2026-10-21): Luna $0.10
+  // input, $0.01 cached, $0.125 write, $0.50 output; 6.1 Sol $2, $0.10, $2.50, $10 per 1M.
+  it.each([
+    { model: "gpt-6-luna", cached: 0, writes: 13468, usd: 0.0018015 },
+    { model: "gpt-6.1-sol", cached: 0, writes: 13468, usd: 0.03603 },
+    // 6.1 Sol bills cache reads at 5% of input; the other models bill 10%.
+    { model: "gpt-6.1-sol", cached: 13000, writes: 0, usd: 0.004596 },
+  ])(
+    "admits $model analysis and prices $cached cached and $writes written input tokens at its rates",
+    async ({ model, cached, writes, usd }) => {
+      const selectedConfig = { ...config, model };
+      expect(estimateAnalysisAdmission(input(), selectedConfig)).toMatchObject({
+        allowed: true,
+        error: null,
+      });
+      const h = transport();
+      h.wire.usage.input_tokens_details = { cached_tokens: cached, cache_write_tokens: writes };
+      const artifact = await runAnalysis(input(), selectedConfig, {
+        apiKey: "synthetic-key",
+        fetch: h.fetchFn,
+      });
+      expect(artifact).toMatchObject({
+        status: "complete",
+        usage: { inputTokens: 13543, outputTokens: 221, usageComplete: true },
+      });
+      expect(artifact.usage.estimatedCostUsd).toBeCloseTo(usd, 5);
+    },
+  );
+
   it("records incomplete input coverage as partial, including valid empty findings", async () => {
     const packet = input();
     packet.coverage.complete = false;

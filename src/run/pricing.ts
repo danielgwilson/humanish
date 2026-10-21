@@ -138,8 +138,10 @@ const LONG_CONTEXT_TIER_272K = {
 
 const GPT56_SOURCE = "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)";
 const GPT6_ASTRA_SOURCE = "developers.openai.com/api/docs/pricing (gpt-6-astra, standard tier)";
+const GPT6_SOL_LUNA_SOURCE =
+  "developers.openai.com/api/docs/pricing (gpt-6.1-sol and gpt-6-luna, standard tier)";
 
-// One entry for a model on the gpt-5.6 pricing mechanics (the 5.6 family and gpt-6-astra): rates
+// One entry for a model on the gpt-5.6 pricing mechanics (the 5.6 and 6 families): rates
 // in USD-per-1M for legibility, converted once. Cache writes bill at 1.25x the uncached input rate
 // (`cache_write_tokens`, prompt-caching guide), and the 272K long-context tier applies. The
 // built-in `computer` tool has no per-call fee on the live sheet.
@@ -166,6 +168,7 @@ function rateWithLongContextTier(
 // "available at least through November 21, 2026"). Re-verify against the sheet after Nov 21.
 const GPT56_SOL_PROMO_AS_OF = "2026-09-03";
 const GPT6_ASTRA_AS_OF = "2026-09-03";
+const GPT6_SOL_LUNA_AS_OF = "2026-10-21";
 
 // Per-model rates, keyed on the model id that lands in trace.ids.model (lookup is
 // case-insensitive on a trimmed id). An id missing here is declared absent, never guessed.
@@ -209,6 +212,24 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit study
   // model choices and the study-analysis default; the computer-use default is separate.
   "gpt-6-astra": rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF, GPT6_ASTRA_SOURCE),
+  // gpt-6.1-sol and gpt-6-luna: the same write and long-context mechanics on the sheet and each
+  // model page. 6.1 Sol bills cache reads at 5% of input ($0.10), where the others bill 10%.
+  "gpt-6.1-sol": rateWithLongContextTier(
+    2,
+    0.1,
+    2.5,
+    10,
+    GPT6_SOL_LUNA_AS_OF,
+    GPT6_SOL_LUNA_SOURCE,
+  ),
+  "gpt-6-luna": rateWithLongContextTier(
+    0.1,
+    0.01,
+    0.125,
+    0.5,
+    GPT6_SOL_LUNA_AS_OF,
+    GPT6_SOL_LUNA_SOURCE,
+  ),
 };
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated

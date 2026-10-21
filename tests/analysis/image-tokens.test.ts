@@ -26,6 +26,15 @@ describe("high-detail image tokens", () => {
     expect(highDetailImageTokens("gpt-6-astra", pngUrl(100_000, 10))).toBe(3000);
   });
 
+  it.each(["gpt-6-luna", "gpt-6.1-sol"])("sizes %s images the way OpenAI billed them", (model) => {
+    // Billed image tokens measured on 2026-10-21 were 1,229, 1,621, 2,458 and 3,001; the guide
+    // allows billing to differ from the formula by one token.
+    expect(highDetailImageTokens(model, pngUrl(1024, 1024))).toBe(1229);
+    expect(highDetailImageTokens(model, pngUrl(1440, 950))).toBe(1620);
+    expect(highDetailImageTokens(model, pngUrl(4096, 512))).toBe(2458);
+    expect(highDetailImageTokens(model, pngUrl(2048, 2048))).toBe(3000);
+  });
+
   it("falls back to the 3,000-token ceiling when the size or the model's sizing is unknown", () => {
     const jpeg = `data:image/jpeg;base64,${Buffer.alloc(40, 1).toString("base64")}`;
     const notPng = `data:image/png;base64,${Buffer.alloc(40, 1).toString("base64")}`;
