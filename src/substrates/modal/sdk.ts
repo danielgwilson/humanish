@@ -70,6 +70,8 @@ export interface ModalSandbox {
   wait(): Promise<number>;
   getTags(): Promise<Record<string, string>>;
   tunnels(timeoutMs?: number): Promise<Record<number, { url: string }>>;
+  /** A URL to `port` and a token Modal's proxy requires as `Authorization: Bearer <token>`. */
+  createConnectToken(params?: { port?: number }): Promise<{ url: string; token: string }>;
 }
 
 export interface ModalSandboxCreateParams {
