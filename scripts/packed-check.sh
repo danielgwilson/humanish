@@ -1902,12 +1902,12 @@ ksj_exit=$?
 hx keys set </dev/null >"$work/logs/keys-set.out" 2>"$work/logs/keys-set.err"
 kset_exit=$?
 ks_shape=$(json_field "$work/logs/keys-status.json" '[d.schema, d.action, (d.keys || []).map((k) => k.name + ":" + (k.source === null ? (typeof k.hint === "string" && /humanish(@[0-9.]+)? keys set /.test(k.hint) ? "hint" : "nohint") : "source")).join(",")].join(" ")')
-ks_want='humanish.keys-result.v1 status E2B_API_KEY:hint,OPENAI_API_KEY:hint,GH_TOKEN:hint,AGENTMAIL_API_KEY:hint'
+ks_want='humanish.keys-result.v1 status E2B_API_KEY:hint,OPENAI_API_KEY:hint,GH_TOKEN:hint,AGENTMAIL_API_KEY:hint,GEMINI_API_KEY:hint'
 if [ "$ks_exit" = 0 ] && [ "$ksj_exit" = 0 ] && [ "$ks_shape" = "$ks_want" ] &&
   grep -qE '^E2B_API_KEY \(hosted desktops\): missing; run `e2b auth login`, or `npx humanish(@[0-9.]+)? keys set e2b`$' "$work/logs/keys-status.out" &&
   grep -q '^Values are never printed.' "$work/logs/keys-status.out" &&
   [ "$kset_exit" = 2 ] && grep -q 'keys set e2b --stdin' "$work/logs/keys-set.err"; then
-  record "keys: status with sources or hints; keys set without a terminal names --stdin" PASS "4 keys missing with hints; set exit 2 naming --stdin" "#1660"
+  record "keys: status with sources or hints; keys set without a terminal names --stdin" PASS "5 keys missing with hints; set exit 2 naming --stdin" "#1660"
 else
   record "keys: status with sources or hints; keys set without a terminal names --stdin" FAIL "keys exit $ks_exit, --json exit $ksj_exit '${ks_shape}'; set exit $kset_exit; see logs/keys-*" "#1660"
 fi
