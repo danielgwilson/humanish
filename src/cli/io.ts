@@ -80,8 +80,14 @@ export interface StudyCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** Run the study in a runner sandbox on its participants' provider. */
+  remote?: boolean | undefined;
   /** Hidden: the run key the run's sandboxes carry, chosen by a remote run's launcher. */
   ownerKey?: string | undefined;
+  /** Hidden, watch only: bind the served Observer on every interface (a remote run's runner). */
+  allInterfaces?: boolean | undefined;
+  /** Hidden, watch only: also write the run's result and exit code to this file as JSON. */
+  resultFile?: string | undefined;
   /** watch only: serve and follow the Observer even without an interactive terminal. */
   serve?: boolean | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */

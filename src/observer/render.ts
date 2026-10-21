@@ -83,6 +83,8 @@ export interface ObserverServeOptions {
   // addPublicOrigin, 421 otherwise) plus the shared security headers on every response. Loopback
   // default (false) keeps local Host handling permissive. Frame-denial headers always apply.
   exposed?: boolean;
+  /** Bind every interface: only a remote run's runner sandbox, behind its provider's proxy. */
+  allInterfaces?: boolean;
 }
 
 export interface ObserverServer {
@@ -481,7 +483,12 @@ export async function serveObserver(
     void handleRequest(request, response);
   });
 
-  port = await listenOnLoopback(server, options.port ?? 0);
+  port = await listenOnLoopback(
+    server,
+    options.port ?? 0,
+    undefined,
+    options.allInterfaces === true,
+  );
   if (exposed) {
     hostAllowlist.add(`127.0.0.1:${port}`);
     hostAllowlist.add(`localhost:${port}`);

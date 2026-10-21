@@ -86,6 +86,7 @@ the analysis of the run:
 | `src/actors/`              | The actor contract, the registry and each actor's session code                                                                  | `src/actors/registry.ts`            |
 | `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve                                                      | `src/subject/serve.ts`              |
 | `src/substrates/`          | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`                                           | `src/substrates/desktop-session.ts` |
+| `src/remote/`              | `--remote`: plan a run for a runner sandbox, launch and follow it there, copy it back                                           | `src/remote/launch.ts`              |
 | `src/run/`                 | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim                                                    | `src/run/run.ts`                    |
 | `src/verify/`              | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks                                                  | `src/verify/verify.ts`              |
 | `src/evidence/`            | Redaction, screenshot checks and desktop recordings                                                                             | `src/evidence/redaction.ts`         |

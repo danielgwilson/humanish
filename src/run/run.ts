@@ -456,13 +456,7 @@ function runPublisher(args: {
     return written;
   };
   const writePointer = async (): Promise<void> => {
-    const pointer: RunPointer = {
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: paths.relativeRunRoot,
-      updatedAt: new Date(now()).toISOString(),
-    };
-    await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
+    await pointLatestRunAt(paths, runId, now);
     pointerWritten = true;
   };
 
@@ -741,6 +735,24 @@ export async function runScope<T>(
     }
   }
   return { result: outcome.result, finished };
+}
+
+/**
+ * Make `runId` the project's latest run. A published run does it as it finishes, and a remote run's
+ * launcher once the run is copied back; this is the only writer of the pointer.
+ */
+export async function pointLatestRunAt(
+  paths: PreparedRunArtifactPaths,
+  runId: string,
+  now: () => number = Date.now,
+): Promise<void> {
+  const pointer: RunPointer = {
+    schema: "humanish.latest-run.v1",
+    runId,
+    path: paths.relativeRunRoot,
+    updatedAt: new Date(now()).toISOString(),
+  };
+  await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
 }
 
 /** Start a recorded route's run through `start`, the scope's own form, then capture its source. */

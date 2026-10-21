@@ -23,6 +23,7 @@ import { sharedWorldRouteRun } from "./study-route-shared-world.js";
 import { previewRouteRun } from "./study-route-preview.js";
 import { terminalRouteRun } from "./study-route-terminal.js";
 import { maybeLoadAdapterScorer } from "./study-scorer.js";
+import { runRemoteStudy } from "./study-remote.js";
 import {
   type CliIo,
   discoverCliKeys,
@@ -134,6 +135,17 @@ export async function runStudyCommand(args: {
       cwd: args.options.cwd,
       ...(announced === undefined ? {} : { announced }),
     });
+  }
+
+  if (args.options.remote === true) {
+    await runRemoteStudy({
+      command: args.command,
+      io: args.io,
+      options: args.options,
+      config,
+      studyPath: resolved.path,
+    });
+    return;
   }
 
   // The route's CLI setup refuses bad options, runStudyWith's plan refuses bad labs, and the route's local

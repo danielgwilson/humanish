@@ -105,6 +105,7 @@ humanish run [options] [study]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
+| `--remote` | Run the study's own process in a sandbox on its participants' provider (E2B or Modal), so it keeps going when this machine sleeps. This machine follows it, serves its live Observer and copies the run back. Computer-use studies with hosted desktops and an app-url subject. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 
@@ -135,6 +136,7 @@ humanish watch [options] [study]
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
+| `--remote` | Run the study's own process in a sandbox on its participants' provider (E2B or Modal), so it keeps going when this machine sleeps. This machine follows it, serves its live Observer and copies the run back. Computer-use studies with hosted desktops and an app-url subject. |
 | `--json` | Print a machine-readable JSON response. |
 | `--expose` | Computer-use studies only: share the live run through an authenticated tunnel, to watch from a phone. Requires --oauth or --public-url. |
 | `--tunnel <provider>` | Spawn the external tunnel binary against the loopback port. (choices: "ngrok") |

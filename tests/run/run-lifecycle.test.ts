@@ -731,7 +731,7 @@ describe("run.json records how the run ended", () => {
 });
 
 describe("the latest-run pointer", () => {
-  it("has one writer in src: Run.finish in src/run/run.ts", async () => {
+  it("has one writer in src, in src/run/run.ts", async () => {
     const files = (await readdir("src", { recursive: true })).filter((file) =>
       file.endsWith(".ts"),
     );

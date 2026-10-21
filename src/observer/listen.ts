@@ -69,11 +69,17 @@ async function probeRoutes(port: number, fetchFn: typeof fetch): Promise<PortHol
   return "other";
 }
 
-/** Bind on loopback only; resolve the port that was actually bound; name a taken port. */
+/**
+ * Bind on loopback; resolve the port that was actually bound; name a taken port. `allInterfaces`
+ * binds every interface instead, for the Observer of a remote run's runner sandbox: Modal's proxy
+ * cannot reach a loopback-only server, and only the provider's authenticated proxy reaches the
+ * sandbox's ports.
+ */
 export function listenOnLoopback(
   server: Server,
   port: number,
   probe: (port: number) => Promise<PortHolder> = probePortHolder,
+  allInterfaces = false,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const onError = (error: NodeJS.ErrnoException): void => {
@@ -84,8 +90,9 @@ export function listenOnLoopback(
       reject(error);
     };
     server.once("error", onError);
-    // Never beyond loopback; exposure only ever happens through a tunnel or proxy forwarding here.
-    server.listen(port, "127.0.0.1", () => {
+    // Otherwise never beyond loopback; exposure only ever happens through a tunnel or proxy
+    // forwarding here.
+    server.listen(port, allInterfaces ? "0.0.0.0" : "127.0.0.1", () => {
       server.off("error", onError);
       const address = server.address();
       if (!address || typeof address === "string") {

@@ -22,6 +22,18 @@ as the same key: a project's `.humanish/local/provider.env` no longer fills `GIT
 an exported `GH_TOKEN`. An analysis that ends in an HTTP error now names
 the status code in its warnings.
 
+### Added
+
+- `humanish run <study> --remote` (and `watch --remote`) runs the study's own process in a
+  sandbox on its participants' provider, so a long study keeps going when this machine sleeps or
+  its terminal closes. The command plans the study here, installs this humanish in the runner,
+  serves the run's live Observer on 127.0.0.1 through the provider's port authentication, and
+  copies the finished run back, each file checked against its digest. Ctrl-C stops the run and
+  reclaims its sandboxes; after a closed terminal, `humanish reclaim --run <id>` stops the runner
+  and every participant, found by the run's tags. The runner receives only the keys the study's
+  plan reads. It takes computer-use studies on `e2b-desktop` or `modal-desktop` with a model API
+  key and a public `app-url` subject, and refuses others before creating anything.
+
 ### Fixed
 
 - A hosted desktop's live stream is view-only on the VNC server itself. E2B and Modal started
