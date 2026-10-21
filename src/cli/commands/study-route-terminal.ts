@@ -39,6 +39,7 @@ export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined 
       open: observerOpen(args.mode, finishedPlan, shouldOpen),
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+      ...(args.options.ownerKey === undefined ? {} : { ownerKey: args.options.ownerKey }),
     },
     present: async (outcome) => {
       if (outcome.route !== "terminal") {

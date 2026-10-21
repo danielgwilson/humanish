@@ -142,6 +142,8 @@ export interface TerminalRunInput {
   cwd: string;
   open?: boolean;
   runId?: string;
+  /** The run key its sandboxes carry; see InternalRunStudyOptions.ownerKey. */
+  ownerKey?: string;
   /**
    * The operator environment the route reads the runtime key from (and from which it asserts no
    * banned credential is requested). Defaults to process.env. The runtime key goes only

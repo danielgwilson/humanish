@@ -300,6 +300,11 @@ interface RunStudyInternals {
   scorerProvenance?: RunScorerProvenance;
   /** The local VM study's desktop, analysis gate and signal, for a local browser study. */
   localVm?: LocalVmInput;
+  /**
+   * The run key its sandboxes carry, chosen by the process that launched this run on a remote
+   * machine (the CLI's hidden `--owner-key`). Requires `runId`.
+   */
+  ownerKey?: string;
 }
 
 /** A run's result and the route it ran on. */

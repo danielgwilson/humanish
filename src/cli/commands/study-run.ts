@@ -43,6 +43,19 @@ export async function runStudyCommand(args: {
   mode: "run" | "watch";
   options: StudyCommandOptions;
 }): Promise<void> {
+  const ownerKeyRefusal = ownerKeyConflict(args.options);
+  if (ownerKeyRefusal !== undefined) {
+    const result: RunResult = {
+      schema: "humanish.run-result.v1",
+      ok: false,
+      cwd: resolve(args.options.cwd),
+      warnings: [],
+      error: { code: "HUMANISH_RUN_OPTION_CONFLICT", message: ownerKeyRefusal },
+    };
+    writeResult(args.command, args.io, result, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
   const resolved = await resolveStudyManifest(args.options.cwd, args.study);
   if (!resolved.ok) {
     writeResult(args.command, args.io, resolved, formatStudyResolveFailureHuman);
@@ -252,4 +265,13 @@ function writeUnsupportedRerunFlagsResult(
 function formatStudyResolveFailureHuman(result: StudyResolveFailure): HumanOutput {
   const warnings = result.warnings.map((warning) => `warning: ${warning}\n`).join("");
   return { ...(warnings ? { stdout: warnings } : {}), error: result.error };
+}
+
+/** Why `--owner-key` cannot be used as given, or undefined when it can. */
+function ownerKeyConflict(options: StudyCommandOptions): string | undefined {
+  if (options.ownerKey === undefined) return undefined;
+  if (options.runId === undefined) return "--owner-key needs --run-id.";
+  if (!/^[0-9a-f]{16}$/.test(options.ownerKey))
+    return "--owner-key is 16 lowercase hexadecimal characters.";
+  return undefined;
 }

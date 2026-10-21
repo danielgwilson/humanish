@@ -1270,6 +1270,37 @@ describe("runCuaActorLab", () => {
     expect(await readFile(path.join(runDir, "run.json"), "utf8")).not.toContain("stream.invalid");
   });
 
+  it("tags its sandboxes with the run key its launcher pinned", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module, created } = makeFakeModule(sandbox);
+    const outcome = await runStudyWith(
+      cuaConfig(),
+      {
+        cwd,
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        runId: "cua-launched-remotely",
+        ownerKey: "1111222233334444",
+      },
+      {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(created[0]?.metadata).toMatchObject({
+      tool: "humanish",
+      runId: "cua-launched-remotely",
+      runKey: "1111222233334444",
+    });
+    const runDir = path.join(cwd, ".humanish", "runs", "cua-launched-remotely");
+    expect(await readFile(path.join(runDir, "owner-key"), "utf8")).toBe("1111222233334444\n");
+  });
+
   it("live (with fakes): registry actor drives the real loop/provider/executor through a study run, fills stream.actor, and tears down", async () => {
     const config = cuaConfig();
     const sandbox = makeFakeSandbox();

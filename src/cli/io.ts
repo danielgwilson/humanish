@@ -80,6 +80,8 @@ export interface StudyCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** Hidden: the run key the run's sandboxes carry, chosen by a remote run's launcher. */
+  ownerKey?: string | undefined;
   /** watch only: serve and follow the Observer even without an interactive terminal. */
   serve?: boolean | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */

@@ -50,6 +50,7 @@ import {
   type HostSuspension,
 } from "./host-suspension.js";
 import type { RunStudyProvenance } from "./study-provenance.js";
+import { pinRunOwnerKey } from "./sandbox-creates.js";
 import { splitStreamTraces } from "./stream-trace.js";
 import type { RunStream } from "./streams.js";
 
@@ -58,6 +59,12 @@ interface StartRunOptions {
   cwd: string;
   /** Caller-supplied id (`--run-id`, library `runId`); `mintRunId` runs when it is absent. */
   runId?: string | undefined;
+  /**
+   * The run key every sandbox of this run carries (16 lowercase hex), in place of the one derived
+   * from the run directory. A remote run's launcher chooses it, so its own directory and the
+   * remote one name the same sandboxes.
+   */
+  ownerKey?: string | undefined;
   mintRunId: () => string;
   mode: "dry-run" | "live";
   study?: RunStudyProvenance | undefined;
@@ -91,6 +98,8 @@ interface StartRunPlan {
 interface StartRunInput {
   /** Caller-supplied id (`--run-id`, library `runId`); one is minted from the prefix when absent. */
   readonly runId?: string | undefined;
+  /** The run key its sandboxes carry; see StartRunOptions.ownerKey. */
+  readonly ownerKey?: string | undefined;
   /** Open the Observer page once it renders. */
   readonly open?: boolean | undefined;
   /**
@@ -613,6 +622,7 @@ export async function runScope<T>(
         const runId = options.runId ?? options.mintRunId();
         const created = await createRunArtifactPaths(options.cwd, runId);
         if (!created.ok) return created;
+        if (options.ownerKey !== undefined) await pinRunOwnerKey(created.paths, options.ownerKey);
         // beginRunStatus reads only the mode, the study provenance, the sandboxes field and the
         // clock from the run's options.
         const runStatus = beginRunStatus(created.paths, { ...options, runId });
@@ -743,6 +753,7 @@ async function startRecordedRun(
   const started = await start({
     cwd: route.cwd,
     runId: input.runId,
+    ownerKey: input.ownerKey,
     mintRunId: () => mintRunId(route.prefix),
     mode: plan.dryRun ? "dry-run" : "live",
     study: plan.study,
