@@ -216,7 +216,7 @@ describe("restricted launch refusal reasons", () => {
   });
 
   it("refuses a thread that loaded an instruction file and names the file without its path", () => {
-    const loaded = { ...thread, instructionSources: ["/Users/someone/.codex/AGENTS.md"] };
+    const loaded = { ...thread, instructionSources: ["/private/probe/home/AGENTS.md"] };
     expect(admitThread(loaded, threadExpected)).toEqual({
       refusal: "codex_unsafe_configuration",
       reason: "Codex loaded instructions from AGENTS.md",
