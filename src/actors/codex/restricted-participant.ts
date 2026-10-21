@@ -332,6 +332,8 @@ export interface ParticipantReadiness {
   protocolIncompatibilities?: readonly string[];
   /** Schema values beyond the baseline, recorded by a launch that passed. */
   protocolAdditions?: readonly string[];
+  /** What in the operator's Codex setup the launch refused, without paths or values. */
+  refusalReason?: string;
   /** The model thread/start resolved from the operator's configuration or the declared model. */
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
@@ -383,6 +385,7 @@ export async function checkRestrictedCodexParticipantReadiness(options: {
     ...(session.protocolAdditions === undefined || session.protocolAdditions.length === 0
       ? {}
       : { protocolAdditions: session.protocolAdditions }),
+    ...(session.refusalReason === undefined ? {} : { refusalReason: session.refusalReason }),
     ...(session.resolvedModel === undefined ? {} : { resolvedModel: session.resolvedModel }),
     ...(session.authentication === undefined ? {} : { authentication: session.authentication }),
   };
@@ -505,6 +508,9 @@ function sessionReport(
       ? undefined
       : protocolIncompatibilityMessage(session.cliVersion, session.protocolIncompatibilities),
     protocolAdditionsWarning(session.cliVersion, session.protocolAdditions),
+    session.refusalReason === undefined
+      ? undefined
+      : `humanish stopped the Codex launch because ${session.refusalReason}.`,
     unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
     truncatedFrameWarning(session.truncatedFrameBytes),
   ].filter((warning) => warning !== undefined);

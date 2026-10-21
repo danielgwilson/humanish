@@ -174,17 +174,21 @@ max_depth = 1
   return { toml, overrides };
 }
 
-/** Inspect before thread/start, which could otherwise start inherited integrations. */
-export function admitsRestrictedCodexConfig(
+/**
+ * Inspect before thread/start, which could otherwise start inherited integrations. Returns the
+ * first setting that does not match, named by its config key and never by its value, or null.
+ */
+export function restrictedCodexConfigViolation(
   raw: unknown,
   configPath: string,
   model: string | undefined,
   mode: RestrictedCodexConfigMode = {},
-): boolean {
+): string | null {
   const root = codexRecord(raw),
     config = codexRecord(root.config),
     features = codexRecord(config.features);
-  if (!Array.isArray(root.layers) || root.layers.length === 0) return false;
+  if (!Array.isArray(root.layers) || root.layers.length === 0)
+    return "config/read reported no config layers";
   if (!mode.operatorAuth) {
     let ownLayer = false;
     for (const rawLayer of root.layers) {
@@ -196,11 +200,12 @@ export function admitsRestrictedCodexConfig(
         name.profile === null &&
         (layer.disabledReason === null || layer.disabledReason === undefined)
       ) {
-        if (ownLayer) return false;
+        if (ownLayer) return "humanish's config layer appears twice";
         ownLayer = true;
-      } else if (name.type !== "system" || !empty(layer.config)) return false;
+      } else if (name.type !== "system" || !empty(layer.config))
+        return `a ${String(name.type)} config layer is active`;
     }
-    if (!ownLayer) return false;
+    if (!ownLayer) return "humanish's config layer is missing";
   }
   const reasoningEffort = mode.reasoningEffort ?? "low",
     codeMode = mode.participantCodeMode === true;
@@ -213,83 +218,91 @@ export function admitsRestrictedCodexConfig(
           inheritedModel.length > 0 &&
           inheritedModel.length <= 200)
       : inheritedModel === model;
-  if (
-    !modelAdmitted ||
-    config.model_provider !== "openai" ||
-    config.model_reasoning_effort !== reasoningEffort ||
-    (!mode.operatorAuth && config.forced_login_method !== "chatgpt") ||
-    config.sandbox_mode !== "read-only" ||
-    config.approval_policy !== "never" ||
-    config.project_doc_max_bytes !== 0 ||
-    config.web_search !== "disabled" ||
-    features.skip_host_skill_discovery !== true ||
-    codexRecord(config.history).persistence !== "none" ||
-    codexRecord(config.analytics).enabled !== false ||
-    disabledFeatures.some((name) => features[name] !== false) ||
-    codeModeFeatures.some((name) => features[name] !== codeMode)
-  )
-    return false;
   const agents = codexRecord(config.agents),
     skills = codexRecord(config.skills);
-  if (
-    agents.enabled !== false ||
-    agents.max_concurrent_threads_per_session !== 1 ||
-    agents.max_depth !== 1 ||
-    codexRecord(skills.bundled).enabled !== false ||
-    Object.keys(skills).some((key) => key !== "bundled")
-  )
-    return false;
+  const pinned: [string, boolean][] = [
+    ["model", modelAdmitted],
+    ["model_provider", config.model_provider === "openai"],
+    ["model_reasoning_effort", config.model_reasoning_effort === reasoningEffort],
+    ["forced_login_method", mode.operatorAuth === true || config.forced_login_method === "chatgpt"],
+    ["sandbox_mode", config.sandbox_mode === "read-only"],
+    ["approval_policy", config.approval_policy === "never"],
+    ["project_doc_max_bytes", config.project_doc_max_bytes === 0],
+    ["web_search", config.web_search === "disabled"],
+    ["features.skip_host_skill_discovery", features.skip_host_skill_discovery === true],
+    ["history.persistence", codexRecord(config.history).persistence === "none"],
+    ["analytics.enabled", codexRecord(config.analytics).enabled === false],
+    ...disabledFeatures.map((name): [string, boolean] => [
+      `features.${name}`,
+      features[name] === false,
+    ]),
+    ...codeModeFeatures.map((name): [string, boolean] => [
+      `features.${name}`,
+      features[name] === codeMode,
+    ]),
+    ["agents.enabled", agents.enabled === false],
+    ["agents.max_threads", agents.max_concurrent_threads_per_session === 1],
+    ["agents.max_depth", agents.max_depth === 1],
+    ["skills.bundled.enabled", codexRecord(skills.bundled).enabled === false],
+  ];
+  const mismatch = pinned.find(([, ok]) => !ok)?.[0];
+  if (mismatch !== undefined) return `${mismatch} is not the value humanish sets`;
+  const extraSkills = Object.keys(skills).find((key) => key !== "bundled");
+  if (extraSkills !== undefined) return `skills.${extraSkills} is set`;
   if (!mode.operatorAuth) {
-    for (const key of [
-      "mcp_servers",
-      "plugins",
-      "hooks",
-      "notify",
-      "instructions",
-      "developer_instructions",
-      "permissions",
-      "profiles",
-      "projects",
-      "model_providers",
-      "experimental_compact_prompt_file",
-      "experimental_model_instructions_file",
-      "model_instructions_file",
-      "model_catalog_json",
-      "openai_base_url",
-      "orchestrator",
-      "experimental_thread_store",
-      "experimental_thread_store_endpoint",
-      "experimental_realtime_ws_base_url",
-      "experimental_realtime_webrtc_call_base_url",
-      "forced_chatgpt_workspace_id",
-      "log_dir",
-      "sqlite_home",
-      "otel",
-      "marketplaces",
-      "js_repl_node_path",
-      "js_repl_node_module_dirs",
-      "responses_api_metadata",
-      "compact_prompt",
-      "profile",
-      "default_permissions",
-      "auto_review",
-      "apps",
-      "browser_use",
-      "computer_use",
-      "desktop",
-      "memories",
-      "realtime",
-    ])
-      if (!empty(config[key])) return false;
+    const inherited = isolatedUnsetKeys.find((key) => !empty(config[key]));
+    if (inherited !== undefined) return `${inherited} is set`;
     if (Object.values(codexRecord(config.shell_environment_policy)).some((value) => !empty(value)))
-      return false;
+      return "shell_environment_policy is set";
+    if (config.cli_auth_credentials_store !== "file")
+      return "cli_auth_credentials_store is not file";
+    if (config.chatgpt_base_url !== "https://chatgpt.com/backend-api/")
+      return "chatgpt_base_url is not the ChatGPT backend";
   }
-  return (
-    mode.operatorAuth ||
-    (config.cli_auth_credentials_store === "file" &&
-      config.chatgpt_base_url === "https://chatgpt.com/backend-api/")
-  );
+  return null;
 }
+
+/** Settings an isolated launch requires to be unset: each could add tools, instructions or egress. */
+const isolatedUnsetKeys = [
+  "mcp_servers",
+  "plugins",
+  "hooks",
+  "notify",
+  "instructions",
+  "developer_instructions",
+  "permissions",
+  "profiles",
+  "projects",
+  "model_providers",
+  "experimental_compact_prompt_file",
+  "experimental_model_instructions_file",
+  "model_instructions_file",
+  "model_catalog_json",
+  "openai_base_url",
+  "orchestrator",
+  "experimental_thread_store",
+  "experimental_thread_store_endpoint",
+  "experimental_realtime_ws_base_url",
+  "experimental_realtime_webrtc_call_base_url",
+  "forced_chatgpt_workspace_id",
+  "log_dir",
+  "sqlite_home",
+  "otel",
+  "marketplaces",
+  "js_repl_node_path",
+  "js_repl_node_module_dirs",
+  "responses_api_metadata",
+  "compact_prompt",
+  "profile",
+  "default_permissions",
+  "auto_review",
+  "apps",
+  "browser_use",
+  "computer_use",
+  "desktop",
+  "memories",
+  "realtime",
+] as const;
 
 export function admitsRestrictedCodexThread(
   raw: unknown,

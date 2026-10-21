@@ -132,6 +132,25 @@ describe("doctor's hosted Codex participant check", () => {
     expect(row.message).toContain("the operator's Codex configuration");
   });
 
+  it("names the refused setting and how to change it when the launch recorded one", async () => {
+    const setting = await participantRow(hostedLab(), async () => ({
+      ready: false,
+      errorCode: "codex_unsafe_configuration",
+      refusalReason: "in the effective Codex config, skills.config is set",
+    }));
+    expect(setting.message).toContain(
+      "because in the effective Codex config, skills.config is set",
+    );
+    expect(setting.message).toContain("~/.codex/config.toml");
+    const instructions = await participantRow(hostedLab(), async () => ({
+      ready: false,
+      errorCode: "codex_unsafe_configuration",
+      refusalReason: "Codex loaded instructions from AGENTS.md",
+    }));
+    expect(instructions.message).toContain("Codex loaded instructions from AGENTS.md");
+    expect(instructions.message).toContain("Rename or move that file");
+  });
+
   it("keeps the sign-in row for a signed-out Codex and skips the handshake", async () => {
     const readiness = vi.fn<NonNullable<StudySetupCheckArgs["codexParticipantReadiness"]>>();
     const row = await participantRow(hostedLab(), readiness, [codex("unauthenticated")]);

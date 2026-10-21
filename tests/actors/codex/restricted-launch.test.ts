@@ -40,14 +40,19 @@ const threadExpected = {
 };
 
 describe("restricted launch admission", () => {
-  it("unwraps an admitted value and stops on a refusal with its code", () => {
-    expect(admitted({ value: 3 })).toBe(3);
-    expect(() => admitted({ refusal: "codex_unsafe_configuration" })).toThrow(RestrictedCodexStop);
+  it("unwraps an admitted value and stops on a refusal with its code and reason", () => {
+    const state = { refusalReason: undefined as string | undefined };
+    expect(admitted({ value: 3 }, state)).toBe(3);
+    expect(() =>
+      admitted({ refusal: "codex_unsafe_configuration", reason: "a named setting" }, state),
+    ).toThrow(RestrictedCodexStop);
+    expect(state.refusalReason).toBe("a named setting");
     try {
-      admitted({ refusal: "codex_login_required" });
+      admitted({ refusal: "codex_login_required" }, state);
     } catch (error) {
       expect((error as RestrictedCodexStop).code).toBe("codex_login_required");
     }
+    expect(state.refusalReason).toBeUndefined();
   });
 
   it("admits the captured initialize reply and refuses each mismatch as an unsupported version", () => {
@@ -79,6 +84,24 @@ describe("restricted launch admission", () => {
     });
     expect(admitEffectiveConfig(effective, "/other/config.toml", "gpt-6-astra", {})).toEqual({
       refusal: "codex_unsafe_configuration",
+      reason: "in the effective Codex config, a user config layer is active",
+    });
+  });
+
+  it("names the operator setting a hosted launch refuses, never its value", () => {
+    const operator = { operatorAuth: true };
+    const value = structuredClone(effective) as { config: Record<string, Record<string, unknown>> };
+    value.config.features!.js_repl_tools = true;
+    value.config.skills = { bundled: { enabled: false }, config: [{ path: "/secret/skill" }] };
+    const refused = admitEffectiveConfig(value, "/unused", undefined, operator);
+    expect(refused).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "in the effective Codex config, skills.config is set",
+    });
+    value.config.features!.shell_tool = true;
+    expect(admitEffectiveConfig(value, "/unused", undefined, operator)).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "in the effective Codex config, features.shell_tool is not the value humanish sets",
     });
   });
 
@@ -108,12 +131,14 @@ describe("restricted launch admission", () => {
       },
     });
     expect(threadConfigFor({ config: {} }, { a: 1 })).toEqual({ value: { a: 1 } });
-    expect(threadConfigFor({ config: { mcp_servers: { "has.dot": {} } } }, {})).toEqual({
+    expect(threadConfigFor({ config: { mcp_servers: { "has.dot": {} } } }, {})).toMatchObject({
       refusal: "codex_unsafe_configuration",
+      reason: expect.stringContaining("MCP server name"),
     });
     const many = Object.fromEntries(Array.from({ length: 101 }, (_, index) => [`s${index}`, {}]));
-    expect(threadConfigFor({ config: { mcp_servers: many } }, {})).toEqual({
+    expect(threadConfigFor({ config: { mcp_servers: many } }, {})).toMatchObject({
       refusal: "codex_unsafe_configuration",
+      reason: expect.stringContaining("100 MCP servers"),
     });
     // The overrides object is copied, never mutated.
     const overrides = { a: 1 };
@@ -166,6 +191,14 @@ describe("restricted launch admission", () => {
     expect(admitThread(thread, { ...threadExpected, cwd: "/other" })).toEqual(refused);
     const noModel = { ...thread, thread: { ...(thread.thread as object), model: "" } };
     expect(admitThread(noModel, threadExpected)).toEqual(refused);
+  });
+
+  it("refuses a thread that loaded an instruction file and names the file without its path", () => {
+    const loaded = { ...thread, instructionSources: ["/Users/someone/.codex/AGENTS.md"] };
+    expect(admitThread(loaded, threadExpected)).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "Codex loaded instructions from AGENTS.md",
+    });
   });
 
   it("admits an empty MCP status page and refuses a running server or another page", () => {

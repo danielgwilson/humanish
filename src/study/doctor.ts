@@ -50,6 +50,8 @@ type CodexReadiness = {
   protocolIncompatibilities?: readonly string[];
   /** Schema values beyond the baseline, recorded by a launch that passed. */
   protocolAdditions?: readonly string[];
+  /** What in the operator's Codex setup the launch refused, without paths or values. */
+  refusalReason?: string;
 };
 
 /** A ready row's message, with the schema values the launch recorded. */
@@ -160,6 +162,8 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
       return codexVersionRecovery(readiness.detectedCliVersion, readiness.installation);
     case "codex_incompatible_release":
       return `${protocolIncompatibilityMessage(readiness.detectedCliVersion, readiness.protocolIncompatibilities ?? [])} ${codexInstallAdvice(readiness.installation)} Then sign in with a ChatGPT account (\`codex login\`).`;
+    case "codex_unsafe_configuration":
+      return unsafeConfigurationRecovery(readiness.refusalReason, fallback);
     case "codex_login_required":
       return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
     case "codex_unsupported_auth":
@@ -177,6 +181,15 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
     default:
       return fallback;
   }
+}
+
+/** What the refused setting is and how to change it; the fallback when no reason was recorded. */
+function unsafeConfigurationRecovery(reason: string | undefined, fallback: string): string {
+  if (reason === undefined) return fallback;
+  const stopped = `humanish stopped the Codex launch because ${reason}.`;
+  if (reason.startsWith("Codex loaded instructions from"))
+    return `${stopped} Codex reads AGENTS.md from its home directory (CODEX_HOME, or ~/.codex) into every thread, and a hosted participant starts from the persona's instructions only. Rename or move that file while the study runs, then rerun doctor.`;
+  return `${stopped} Remove or change that setting in the Codex config (~/.codex/config.toml, a profile, or a system config), then rerun doctor.`;
 }
 
 /** Shared read-only Codex account check for local participants in doctor and the TUI. */

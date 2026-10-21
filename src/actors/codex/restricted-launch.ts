@@ -19,7 +19,7 @@ import {
 import { checkProtocol, loadProtocolSchema } from "./protocol-compat.js";
 import { protocolContract, type ProtocolContractHost } from "./protocol-contract.js";
 import {
-  admitsRestrictedCodexConfig,
+  restrictedCodexConfigViolation,
   admitsRestrictedCodexThread,
   codexRecord,
   restrictedCodexConfig,
@@ -82,16 +82,21 @@ export interface LaunchState {
   protocolIncompatibilities: string[] | undefined;
   /** Schema values beyond the baseline, recorded at launch. */
   protocolAdditions: string[] | undefined;
+  /** What in the operator's Codex setup a refusal objects to, without paths or values. */
+  refusalReason: string | undefined;
 }
 
 /** An admitted value, or the refusal a launch stops with. */
 export type Admission<T> =
   | { readonly value: T }
-  | { readonly refusal: RestrictedCodexAnalysisErrorCode };
+  | { readonly refusal: RestrictedCodexAnalysisErrorCode; readonly reason?: string };
 
-/** The admitted value; a refusal stops the launch. */
-export function admitted<T>(admission: Admission<T>): T {
-  if ("refusal" in admission) throw new RestrictedCodexStop(admission.refusal);
+/** The admitted value; a refusal stops the launch and records its reason on the state. */
+export function admitted<T>(admission: Admission<T>, state: Pick<LaunchState, "refusalReason">): T {
+  if ("refusal" in admission) {
+    state.refusalReason = admission.reason;
+    throw new RestrictedCodexStop(admission.refusal);
+  }
   return admission.value;
 }
 
@@ -131,8 +136,12 @@ export function admitEffectiveConfig(
   requestedModel: string | undefined,
   mode: RestrictedCodexConfigMode,
 ): Admission<string | undefined> {
-  if (!admitsRestrictedCodexConfig(reply, configPath, requestedModel, mode))
-    return { refusal: "codex_unsafe_configuration" };
+  const violation = restrictedCodexConfigViolation(reply, configPath, requestedModel, mode);
+  if (violation !== null)
+    return {
+      refusal: "codex_unsafe_configuration",
+      reason: `in the effective Codex config, ${violation}`,
+    };
   const configuredModel = codexRecord(reply.config).model;
   return { value: typeof configuredModel === "string" ? configuredModel : undefined };
 }
@@ -163,8 +172,16 @@ export function threadConfigFor(
   overrides: Record<string, unknown>,
 ): Admission<Record<string, unknown>> {
   const mcpNames = Object.keys(codexRecord(codexRecord(effectiveConfig.config).mcp_servers));
-  if (mcpNames.length > 100 || mcpNames.some((name) => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
-    return { refusal: "codex_unsafe_configuration" };
+  if (mcpNames.length > 100)
+    return {
+      refusal: "codex_unsafe_configuration",
+      reason: "more than 100 MCP servers are configured",
+    };
+  if (mcpNames.some((name) => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
+    return {
+      refusal: "codex_unsafe_configuration",
+      reason: "an MCP server name uses characters other than letters, digits, _ and -",
+    };
   const threadConfig = { ...overrides };
   for (const name of mcpNames) threadConfig[`mcp_servers.${name}.enabled`] = false;
   return { value: threadConfig };
@@ -226,6 +243,16 @@ export function admitThread(
     cliVersion: string;
   },
 ): Admission<{ model: string; threadId: string }> {
+  const sources = reply.instructionSources;
+  // Codex reads AGENTS.md from the Codex home with no setting to skip it, and a participant must
+  // start from humanish's instructions only. Basenames keep the operator's paths out of the run.
+  if (Array.isArray(sources) && sources.length > 0)
+    return {
+      refusal: "codex_unsafe_configuration",
+      reason: `Codex loaded instructions from ${sources
+        .map((source) => (typeof source === "string" ? path.basename(source) : "a file"))
+        .join(", ")}`,
+    };
   const returnedModel = codexRecord(reply.thread).model;
   if (
     typeof returnedModel !== "string" ||
@@ -393,17 +420,19 @@ export async function launchAdmittedAppServer(
       operatorAuth,
       platform: settings.platform,
     }),
+    state,
   );
   launched.notify("initialized", {});
   enter("config/read");
   const effective = await launched.rpc("config/read", { includeLayers: true, cwd: state.cwd });
   const selectedModel = admitted(
     admitEffectiveConfig(effective, configPath, request.model, configMode),
+    state,
   );
   enter("account/read");
   const account = await launched.rpc("account/read", { refreshToken: false });
-  state.authentication = admitted(admitAccount(account, operatorAuth));
-  const threadConfig = admitted(threadConfigFor(effective, config.overrides));
+  state.authentication = admitted(admitAccount(account, operatorAuth), state);
+  const threadConfig = admitted(threadConfigFor(effective, config.overrides), state);
   enter("thread/start");
   const thread = await launched.rpc(
     "thread/start",
@@ -422,12 +451,13 @@ export async function launchAdmittedAppServer(
       reasoningEffort,
       cliVersion: state.cliVersion!,
     }),
+    state,
   );
   state.resolvedModel = started.model;
   state.threadId = started.threadId;
   if (!operatorAuth) {
     enter("mcpServerStatus/list");
-    admitted(admitMcpStatus(await launched.rpc("mcpServerStatus/list", { limit: 100 })));
+    admitted(admitMcpStatus(await launched.rpc("mcpServerStatus/list", { limit: 100 })), state);
   }
   state.identity = {
     requestedModel: request.model,

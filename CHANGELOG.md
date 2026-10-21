@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `codex_unsafe_configuration` now says what it refused. `humanish doctor --study` and a hosted Codex
+  participant's run warnings name the setting by its config key (never its value), for example
+  `features.shell_tool is not the value humanish sets` or `skills.config is set`, or say that Codex
+  loaded `AGENTS.md`. Codex reads `AGENTS.md` from its home directory (`CODEX_HOME`, or `~/.codex`)
+  into every thread with no setting to skip it, and a hosted participant starts from the persona's
+  instructions only, so doctor says to rename or move that file while the study runs.
+
 ## 0.139.0: Computer-use studies can run on Modal desktops (2026-10-19)
 
 humanish 0.139.0 can run a computer-use study's desktops on Modal. Set
