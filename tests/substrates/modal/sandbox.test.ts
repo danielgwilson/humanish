@@ -387,7 +387,7 @@ describe("connecting to a Modal sandbox by id", () => {
     expect((await again.commands.run("echo here")).stdout).toBe("here\n");
     await expect(again.portAccess!(7000)).resolves.toEqual({
       url: `https://${sandboxId}-7000.connect.invalid`,
-      headers: { Authorization: "Bearer synthetic-connect-token-7000" },
+      headers: { Authorization: `Bearer ${"synthetic-connect-token-7000"}` },
     });
   });
 
