@@ -1411,9 +1411,9 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 
 `humanish.run-status.v1` is `status.json`, written inside each run directory by
 every route at run start, refreshed on a fixed cadence while the run is
-alive, and finalized when it ends: `{ schema, runId, state: running |
+alive, and rewritten when the run ends: `{ schema, runId, state: running |
 finished | interrupted, mode, study?, sandboxes?, pid, startedAt, updatedAt, completedAt?,
-signal?, outcome? }`. A record written by 0.108 or earlier also has `lab`, with the same value as
+signal?, reason?, outcome?, analysis? }`. A record written by 0.108 or earlier also has `lab`, with the same value as
 `study`, and readers accept it. `sandboxes: none` is written at run start by a route that has no
 way to create a sandbox for the run: a scripted run against an `app-url` subject. A run that may
 create one has no `sandboxes` field. `humanish reclaim` reports such a run `clean` with
@@ -1452,6 +1452,24 @@ analysis. `estimatedCostComplete` is the bundle's `cost.fullyEstimated`, written
 with it at publish: false means some participant or desktop usage has no price
 and the estimate is a lower bound. A record without it, as every record before
 0.109, says nothing about completeness, and readers treat it as unknown.
+
+`finished` means the run published its bundle. A process that leaves the run without publishing
+one, as a route that throws or returns a refusal after the run started does, writes
+`interrupted` with `reason: no-publish` and no `signal`; humanish 0.139.1 and earlier wrote
+`finished` with no `outcome` there. `humanish reclaim --run <id>` (not `--check`) rewrites a
+`running` record whose heartbeat is stale as `interrupted` with `reason: reclaimed` and
+`completedAt` set to its last `updatedAt`, and reports `markedInterrupted: true`. Either way the
+run is excluded from a study's duration and cost medians, which count only finished runs. Readers
+older than `reason` read such a record as interrupted.
+
+`analysis` is added to a `finished` record when automatic analysis starts in the run's own
+process: `{ startedAt, endedAt?, state? }`. While it runs, the heartbeat refreshes `updatedAt`
+again; `completedAt` stays when the participants ended, so a run's duration excludes its
+analysis. When analysis ends, `endedAt` and `state` (the automatic analysis outcome's state:
+`complete`, `partial`, `failed`, `cancelled`, `skipped` or `unknown`) are written. An `analysis`
+without `endedAt` whose `updatedAt` is older than three touch intervals belonged to a process that
+stopped during analysis. `runAnalysisPhase` (`src/run/status.ts`) reads it as `running`,
+`stopped` or `ended`. Readers that predate the field ignore it.
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run
@@ -1496,7 +1514,10 @@ cheapest-source-first: the `status.json` record, else the bundle, else the run
 directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
 mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?, ok?,
 failure?, participants?, estimatedCostUsd?, estimatedCostComplete?,
-analysisCost?, durationMs? }`. `ok` and `failure` (the first execution failure)
+analysisCost?, durationMs?, analysis? }`. `analysis` is the status record's automatic analysis as
+`runAnalysisPhase` reads it, `{ state: running | stopped | ended, startedAt, endedAt?, outcome? }`;
+`humanish runs` and the TUI add `analyzing` or `analysis stopped` to the run's display from it, and
+`humanish runs --json` carries it on each run. `ok` and `failure` (the first execution failure)
 are the run's own outcome; `runDisplay` (`src/run/display.ts`) reads them with
 `liveness` and `verdict`, so the TUI and `humanish stats` show a run with
 `ok: false` as failed whatever its verdict. The point is cost: walking

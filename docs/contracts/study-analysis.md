@@ -424,7 +424,7 @@ It contains only the attempt/run IDs, input/config/source digests, prompt versio
 and timestamp. The live caller retains a binding to that exact directory and
 publishes the final receipt once. A start without usable final accounting means
 dispatch and spend remain unresolved; it is not proof that a provider charged.
-A cancellation before transport can finalize with `usage.dispatched: false`.
+A cancellation before transport can end with `usage.dispatched: false`.
 Admission refusals, missing credentials and rejected dispatch guards do not
 create a potentially paid attempt. Reuse does not create a new start.
 

@@ -529,6 +529,26 @@ Label the participant's own report in the review summary as the participant's ac
 place of findings; `analysis.next` is null when no command can produce them. `latest` moves with
 every run, including dry runs, so use the run id the run printed.
 
+## Long Studies: `run` Blocks Until Its Findings
+
+`humanish run <study>` returns only after every participant has ended and the automatic analysis
+has finished. A participant with `endAfterMs` can keep a study running for up to 24 hours, and
+analysis usually adds 1 to 4 minutes after the last participant ends. A shell timeout that sends
+SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
+
+- Start a study that can outlive your shell call in tmux, for example
+  `tmux new -d -s study 'npx humanish run <study> --json --no-open > run-result.json 2> run.log'`.
+  `--detach` only skips the Observer server at the end; it does not move the run to the background.
+- The first stderr line names the run: `Run <id> started. Follow it with humanish observe --run <id>`.
+  If you did not keep it, `npx humanish runs --json` lists runs newest first.
+- In `runs --json`, a run whose participants are working has `display.state: running`; once they
+  end, its `display` is their result and `analysis.state` is `running` while findings are written.
+- `npx humanish review --run <id> --json` says where the run is: participants running, analysis
+  running since a given time, or the findings.
+- If the run's process died, `npx humanish reclaim --run <id>` stops its sandboxes and marks it
+  interrupted. `npx humanish analyze --run <id>` then analyzes it if every participant had ended,
+  and otherwise names the command that runs the study again.
+
 ## Optional Live E2B Study
 
 Live headed E2B desktop participants are optional. Add the substrate dependency only

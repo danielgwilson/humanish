@@ -86,13 +86,33 @@ never enables analysis by default and rejects an explicit analysis mapping
 before execution. `false` is accepted on every route. Dry runs show analysis
 as skipped, without reading analysis credentials or making a provider request.
 
-Participant execution finishes and its recording is finalized before analysis is
-queued. A participant who was blocked or interrupted can still have useful
-retained evidence; analysis requires a verified live recording, not a successful
-participant outcome. An active, missing or invalid recording is not analyzed.
-Default analysis also skips recordings containing only setup or failure records
-with no retained participant activity. A desktop startup failure does not start
-an analysis request. The original failure remains visible.
+Automatic analysis starts when the run ends: every participant has stopped and the run has
+published its bundle (`run.json` with an outcome, and `status.json` state `finished`). It runs in
+the same process, so `humanish run` returns only after it. A participant who was blocked or
+interrupted can still have useful retained evidence; analysis requires a verified live recording
+whose participant streams all ended, not a successful participant outcome. An active, missing or
+invalid recording is not analyzed. Default analysis also skips recordings containing only setup
+or failure records with no retained participant activity. A desktop startup failure does not
+start an analysis request. The original failure remains visible.
+
+While analysis runs, the run reads as analyzing. `status.json` records `analysis.startedAt` and
+its heartbeat keeps refreshing `updatedAt`; `humanish runs` lists the run as `passed, analyzing`
+(or its other result); the TUI adds `analyzing` to the run; the served Observer shows **Writing
+findings** in its status band and the Findings tab in a pending state with how long ago analysis
+started; `humanish review` says the analysis is running and when it started. In a terminal, `run`
+prints `Participants finished. Writing findings; this usually takes 1 to 4 minutes.` to stderr,
+then `Still writing findings: <elapsed> elapsed.` every 20 seconds. With `--json` it prints only
+the first line, on stderr.
+
+A run whose process ended before it published (a crash, or a refusal after the run started) is
+recorded `interrupted` with `reason: no-publish`, and one whose process was killed is marked
+`interrupted` by `humanish reclaim`. `humanish analyze` accepts an interrupted run when every
+participant stream ended; when one was still running it refuses with
+`ANALYSIS_RUN_INCOMPLETE` and names `humanish run <study>`. It refuses a run that is still alive
+with `ANALYSIS_RUN_ACTIVE`, and a run whose heartbeat stopped while its pid is still in use with
+`ANALYSIS_RUN_UNCONFIRMED`, naming `humanish reclaim --run <id>`. When the process running an
+automatic analysis stops before it finishes, `review` says so and names the `analyze` command
+that runs it again.
 
 CLI live starts disclose the selected analyst, its expected cost range and cap, or unknown account dollars before execution.
 `humanish study check <study> --json` and the TUI study screen also expose the
@@ -187,6 +207,7 @@ JSON also has `findings`:
 | `AUTOMATIC_ANALYSIS_PUBLICATION_FAILED`       | `failed`                  | The analysis could not be published                                   |
 | `AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE` | `unknown`                 | A cancellation could not be recorded                                  |
 | `AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN`          | `unknown`                 | The outcome could not be determined                                   |
+| `AUTOMATIC_ANALYSIS_STOPPED`                  | `unknown`                 | Read only: the process running it stopped refreshing its job record   |
 
 A run refused before it was created (`run: not-created`) prints no `analysis:` line, since there
 is no run to analyze and the refusal says why. Its JSON keeps the record, with

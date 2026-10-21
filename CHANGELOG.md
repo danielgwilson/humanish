@@ -8,8 +8,43 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A run says it is analyzing while its automatic analysis runs. `status.json` gains
+  `analysis: { startedAt, endedAt?, state? }` and its heartbeat keeps running through the
+  analysis. `humanish runs` lists the run as `passed, analyzing` (or its other result), and
+  `runs --json` carries `analysis`. The TUI adds `analyzing` to the run. The served Observer's
+  status band reads **Writing findings** and the Findings tab shows a pending state with how long
+  ago analysis started, from the moment it starts. In a terminal, `run` prints `Participants
+  finished. Writing findings; this usually takes 1 to 4 minutes.` and then the elapsed time every
+  20 seconds; `--json` prints only the first line, on stderr.
+- `run` and `watch` print `Run <id> started. Follow it with humanish observe --run <id>` to stderr
+  as soon as the run exists, `--json` included. Library callers get a `run-started` event with the
+  run id through `onEvent`; a TypeScript `switch` over `StudyEvent["type"]` that must be
+  exhaustive needs a case for it.
+- The humanish skill has a section on long studies: `run` blocks until the participants and the
+  analysis finish, how to start one in tmux, and how to find and follow it with `runs --json` and
+  `review`.
+
 ### Fixed
 
+- A run whose process leaves it without publishing a bundle, as a route that throws does, is
+  recorded `interrupted` with `reason: no-publish`. Before, it was recorded `finished` with no
+  outcome, and counted in the study's duration medians.
+- `humanish reclaim --run <id>` marks a run whose status heartbeat went stale as `interrupted`
+  (`reason: reclaimed`) and says so. Before, a killed run read as running in its status record
+  forever.
+- `humanish analyze` analyzes an interrupted run whose participant streams all ended. When it
+  refuses a run, it says why and names the next command: `humanish runs` for a run still running,
+  `humanish run <study>` for one cut off mid-participant, and `humanish reclaim --run <id>` for one
+  whose heartbeat stopped while its pid is still in use. Before, every case said "Wait for the
+  study to finish."
+- `humanish review` says participants are still running, or that the analysis is running and when
+  it started, before findings exist. Before, it said "No analysis has run for this run." An
+  analysis whose process stopped before it finished gets its own message
+  (`AUTOMATIC_ANALYSIS_STOPPED`) and the `analyze` command that runs it again, instead of "records
+  could not be read or checked".
+- Email and desktop cleanup messages no longer call the step "finalization".
 - A participant on a hosted desktop (E2B or Modal) who clicks a `mailto:` link no longer gets
   XFCE's "Choose Preferred Application" dialog, and a `tel:` or `sms:` link on the study's own
   site no longer opens Chrome's "Open xdg-open?" prompt. Participants had reported both as faults
