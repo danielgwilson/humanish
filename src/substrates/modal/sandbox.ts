@@ -16,6 +16,7 @@ import type {
   E2BNetworkOptions,
 } from "../e2b/sdk.js";
 import type { E2BAccount } from "../e2b/connection.js";
+import { shellOnlySurface } from "../e2b/shell-only.js";
 import {
   readBytes,
   readFile,
@@ -133,11 +134,7 @@ export function modalSandboxModule(
         ...(options.resolution === undefined ? {} : { resolution: options.resolution }),
         ...(options.dpi === undefined ? {} : { dpi: options.dpi }),
       });
-      const tunnels = await sandbox.tunnels(30_000);
-      const hosts = new Map(
-        Object.entries(tunnels).map(([port, tunnel]) => [Number(port), new URL(tunnel.url).host]),
-      );
-      return modalSandboxHandle(sandbox, profile, connection, hosts);
+      return modalSandboxHandle(sandbox, profile, connection, await tunnelHosts(sandbox));
     } catch (error) {
       const gone = await modalSandboxes(client, connection)
         .kill(sandbox.sandboxId)
@@ -147,12 +144,38 @@ export function modalSandboxModule(
     }
   }
 
+  async function connect(
+    sandboxId: string,
+    options?: { requestTimeoutMs?: number },
+  ): Promise<E2BDesktopSandbox> {
+    const ms = options?.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    let sandbox: ModalSandbox;
+    try {
+      sandbox = await within(client.sandboxes.fromId(sandboxId), ms, "a sandbox lookup");
+      if ((await within(sandbox.poll(), ms, "a sandbox poll")) !== null)
+        throw sandboxNotFound(sandboxId);
+    } catch (error) {
+      throw isModalNotFoundError(error) ? sandboxNotFound(sandboxId) : error;
+    }
+    const hosts = profile.desktop === true ? await tunnelHosts(sandbox) : new Map<number, string>();
+    return modalSandboxHandle(sandbox, profile, connection, hosts);
+  }
+
   return {
     Sandbox: {
       create: hidingTokens(connection, create),
+      connect: hidingTokens(connection, connect),
       ...modalSandboxes(client, connection),
     },
   };
+}
+
+/** The host of each tunnel a desktop sandbox exposes, by port. */
+async function tunnelHosts(sandbox: ModalSandbox): Promise<Map<number, string>> {
+  const tunnels = await sandbox.tunnels(30_000);
+  return new Map(
+    Object.entries(tunnels).map(([port, tunnel]) => [Number(port), new URL(tunnel.url).host]),
+  );
 }
 
 /** The humanish App in the connection's environment; only a create may make it. */
@@ -335,6 +358,10 @@ function modalSandboxHandle(
   );
   const shell = {
     sandboxId: sandbox.sandboxId,
+    portAccess: hidingTokens(connection, async (port: number) => {
+      const { url, token } = await sandbox.createConnectToken({ port });
+      return { url, headers: { Authorization: `Bearer ${token}` } };
+    }),
     // Modal reports no allocation for a sandbox; the create's request is what it bills.
     getInfo: () => Promise.resolve({ cpuCount: profile.cpu * 2, memoryMB: profile.memoryMiB }),
     commands: { run },
@@ -361,31 +388,7 @@ function modalSandboxHandle(
         hosts,
       ),
     };
-  const desktopOnly = (what: string) => () => Promise.reject(new ModalUnsupportedError(what));
-  return {
-    ...shell,
-    wait: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
-    launch: desktopOnly("A desktop application launch"),
-    screenshot: desktopOnly("A desktop screenshot"),
-    leftClick: desktopOnly("Desktop input"),
-    rightClick: desktopOnly("Desktop input"),
-    middleClick: desktopOnly("Desktop input"),
-    doubleClick: desktopOnly("Desktop input"),
-    moveMouse: desktopOnly("Desktop input"),
-    scroll: desktopOnly("Desktop input"),
-    write: desktopOnly("Desktop input"),
-    press: desktopOnly("Desktop input"),
-    drag: desktopOnly("Desktop input"),
-    stream: {
-      getAuthKey: () => {
-        throw new ModalUnsupportedError("A desktop stream");
-      },
-      getUrl: () => {
-        throw new ModalUnsupportedError("A desktop stream");
-      },
-      start: desktopOnly("A desktop stream"),
-    },
-  };
+  return { ...shell, ...shellOnlySurface((what) => new ModalUnsupportedError(what)) };
 }
 
 /** The Modal account `env` names, for release by id and reclaim. Throws when it names none. */
