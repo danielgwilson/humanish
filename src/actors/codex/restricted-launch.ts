@@ -244,7 +244,7 @@ export function admitThread(
   },
 ): Admission<{ model: string; threadId: string }> {
   const sources = reply.instructionSources;
-  // Codex reads AGENTS.md from the Codex home with no setting to skip it, and a participant must
+  // Codex reads the instruction file in its home with no setting to skip it, and a participant must
   // start from humanish's instructions only. Basenames keep the operator's paths out of the run.
   if (Array.isArray(sources) && sources.length > 0)
     return {
