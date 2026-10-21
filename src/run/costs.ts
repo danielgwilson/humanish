@@ -7,6 +7,7 @@ import { readBoundedFile } from "./evidence-files.js";
 import { readAutomaticAnalysisAccounting } from "../analysis/job.js";
 import { readAnalysisAccountingRecords } from "../analysis/store-executions.js";
 import { RUN_BUNDLE_FILE, type StoredRunBundle } from "./bundle.js";
+import type { AnalysisProviderName } from "../analysis/types.js";
 
 /** Additive accounting for retained attempts. Null means no estimate, never an invented zero. */
 export interface CostTotals {
@@ -142,7 +143,7 @@ export interface AnalysisAccounting {
   /** The known estimates of the dispatched attempts; 0 when every attempt sent nothing. */
   estimatedUsd: number | null;
   /** Who billed the dispatched attempts. */
-  providers: Array<"openai" | "codex">;
+  providers: AnalysisProviderName[];
   /** History that could not be read whole; ANALYSIS_HISTORY_NOT_RECORDED when there is none. */
   warnings: string[];
 }
@@ -178,7 +179,7 @@ export async function readAnalysisAccounting(
       records.set(id, { id, receipt: null, start: null, legacy: false });
     }
   }
-  const providers = new Set<"openai" | "codex">();
+  const providers = new Set<AnalysisProviderName>();
   for (const record of records.values()) {
     accounting.attempts += 1;
     if (record.legacy) accounting.warnings.push("ANALYSIS_LEGACY_REPORT_ACCOUNTING");

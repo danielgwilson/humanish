@@ -217,12 +217,12 @@ humanish analyze [options] [command]
 | --- | --- |
 | `--run <id>` | Run id, or latest. (default: "latest") |
 | `--cwd <path>` | Project directory. (default: ".") |
-| `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
-| `--max-cost <usd>` | Required for OpenAI, also with --dry-run: an analysis is refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this. It does not limit billing. Unsupported for Codex. |
-| `--model <id>` | OpenAI analysis model, at high effort: gpt-6-astra, gpt-6.1-sol, gpt-6-luna, gpt-5.5, gpt-5.6, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna. Codex account analysis runs gpt-6-astra at low effort. (default: "gpt-6-astra") |
+| `--provider <name>` | Analyst: openai (default), gemini (sends the evidence and captures to Google), or restricted codex account. No provider fallback. |
+| `--max-cost <usd>` | Required for OpenAI and Gemini, also with --dry-run: an analysis is refused before it sends anything if both its worst case and its expected cost plus a 10% margin are over this. It does not limit billing. Unsupported for Codex. |
+| `--model <id>` | OpenAI analysis model, at high effort: gpt-6-astra, gpt-6.1-sol, gpt-6-luna, gpt-5.5, gpt-5.6, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna; gpt-6-astra when omitted. Gemini analysis model, at high thinking: gemini-3.8-flash, gemini-3.5-flash-lite, gemini-3-flash-preview, gemini-4-argon; gemini-3.8-flash when omitted. Codex account analysis runs gpt-6-astra at low effort. |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
 | `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
-| `--max-output-tokens <n>` | OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
+| `--max-output-tokens <n>` | OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
 | `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
 | `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
 | `--json` | Print a machine-readable JSON response. |
@@ -770,7 +770,7 @@ humanish keys set [options] [vendor-or-name]
 
 | Argument | Description |
 | --- | --- |
-| `vendor-or-name` | A vendor alias (openai, e2b, modal, anthropic, github, agentmail) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn. |
+| `vendor-or-name` | A vendor alias (openai, e2b, modal, anthropic, github, agentmail, gemini) or a raw ENV_NAME. Without one, a terminal asks for each missing key in turn. |
 
 | Option | Description |
 | --- | --- |

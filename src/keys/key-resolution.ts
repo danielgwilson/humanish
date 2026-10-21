@@ -11,7 +11,7 @@
 //        GH_TOKEN     <- `gh auth token` (the gh CLI's credential chain);
 //   4. the humanish user-level store `$XDG_CONFIG_HOME/humanish/keys.env`, written only by
 //      `humanish keys set` (0600, prompted or --stdin), the fallback for vendors that ship
-//      no machine chain of their own (OpenAI, Anthropic).
+//      no machine chain of their own (OpenAI, Anthropic, Gemini).
 //
 // Every fill is announced by key name + source, never by value. The subject app's own
 // `.env`/`.env.local` are never read: those hold product credentials, a different class
@@ -64,7 +64,8 @@ interface ProviderKey {
  * full-file load). ANTHROPIC_API_KEY is not listed, and doctor does not report it: a Claude Code
  * participant runs on its own login and never receives it. CODEX_API_KEY is an alternative spelling
  * of the OpenAI key for terminal studies. Doctor reports AGENTMAIL_API_KEY only under `--study`, for
- * a study whose email connection names it, since a connection may name another variable.
+ * a study whose email connection names it, since a connection may name another variable, and
+ * GEMINI_API_KEY only for a study whose analysis runs on Gemini.
  */
 const PROVIDER_KEYS: readonly ProviderKey[] = [
   {
@@ -99,6 +100,10 @@ const PROVIDER_KEYS: readonly ProviderKey[] = [
   { name: "GITHUB_TOKEN", spellingOf: "GH_TOKEN" },
   { name: "CODEX_API_KEY", doctor: true },
   { name: "AGENTMAIL_API_KEY", vendor: "agentmail", listed: { order: 4, use: "email in studies" } },
+  { name: "GEMINI_API_KEY", vendor: "gemini", listed: { order: 5, use: "analysis on Gemini" } },
+  // Google's client libraries read GOOGLE_API_KEY too, ahead of GEMINI_API_KEY when both are set,
+  // and the Gemini analyst reads them in that order (src/analysis/provider.ts).
+  { name: "GOOGLE_API_KEY", spellingOf: "GEMINI_API_KEY" },
 ];
 const PROVIDER_KEY_SET = new Set(PROVIDER_KEYS.map((key) => key.name));
 const providerKey = (name: string): ProviderKey | undefined =>

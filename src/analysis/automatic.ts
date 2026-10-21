@@ -11,6 +11,7 @@ import {
 } from "./service.js";
 import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
 import { captureEvidence } from "./evidence.js";
+import { analysisApiKey } from "./provider.js";
 import { loadRunTraces } from "../run/stream-trace.js";
 import { hashAnalysisValue } from "./validation.js";
 import { refusedCost, type RefusedAnalysisCost } from "./admission.js";
@@ -228,7 +229,14 @@ export async function runAutomaticAnalysis(
   const prepared = await resolveAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   cwd = physicalCwdOf(prepared);
-  const hasKey = Boolean((deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim());
+  const hasKey = Boolean(
+    (
+      deps.apiKey ??
+      (configInput.provider === "codex"
+        ? undefined
+        : analysisApiKey(configInput.provider ?? "openai", process.env))
+    )?.trim(),
+  );
   const source = await readAutomaticSource(
     cwd,
     prepared,

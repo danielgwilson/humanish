@@ -3,6 +3,7 @@ import {
   resolveAutomaticAnalysis,
   DEFAULT_ANALYSIS_MODEL,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
+  DEFAULT_GEMINI_ANALYSIS_MODEL,
 } from "../../analysis/automatic-config.js";
 import { Command, Option } from "commander";
 import { forTerminal } from "../../routes/terminal/encoding.js";
@@ -13,7 +14,11 @@ import {
   showAnalysis,
 } from "../../analysis/service.js";
 import { admissionRule } from "../../analysis/admission.js";
-import { SUPPORTED_ANALYSIS_MODELS, type AnalysisAdmission } from "../../analysis/execute.js";
+import {
+  GEMINI_ANALYSIS_MODELS,
+  SUPPORTED_ANALYSIS_MODELS,
+  type AnalysisAdmission,
+} from "../../analysis/execute.js";
 import { CODEX_ANALYSIS_MODEL } from "../../analysis/codex-config.js";
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
@@ -67,16 +72,15 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option(
       "--provider <name>",
-      "Analyst: openai (default) or restricted codex account. No provider fallback.",
+      "Analyst: openai (default), gemini (sends the evidence and captures to Google), or restricted codex account. No provider fallback.",
     )
     .option(
       "--max-cost <usd>",
-      `Required for OpenAI, also with --dry-run: an analysis is refused before it sends anything if ${admissionRule("this")}. It does not limit billing. Unsupported for Codex.`,
+      `Required for OpenAI and Gemini, also with --dry-run: an analysis is refused before it sends anything if ${admissionRule("this")}. It does not limit billing. Unsupported for Codex.`,
     )
     .option(
       "--model <id>",
-      `OpenAI analysis model, at high effort: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
-      DEFAULT_ANALYSIS_MODEL,
+      `OpenAI analysis model, at high effort: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_ANALYSIS_MODEL} when omitted. Gemini analysis model, at high thinking: ${GEMINI_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_GEMINI_ANALYSIS_MODEL} when omitted. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
     )
     .option(
       "--question <text>",
@@ -89,7 +93,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--max-output-tokens <n>",
-      "OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.",
+      "OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.",
     )
     .option(
       "--dry-run",
@@ -145,7 +149,7 @@ async function handleAnalyze(
     run: string;
     provider?: string;
     maxCost?: string;
-    model: string;
+    model?: string;
     question?: string;
     timeoutMs: string;
     maxOutputTokens?: string;
@@ -156,7 +160,7 @@ async function handleAnalyze(
 ): Promise<void> {
   const selected = resolveAutomaticAnalysis({
     ...(options.provider === undefined ? {} : { provider: options.provider }),
-    model: options.model,
+    ...(options.model === undefined ? {} : { model: options.model }),
     ...(options.question === undefined ? {} : { question: options.question }),
     timeoutMs: Number(options.timeoutMs),
     ...(options.provider === "codex" && options.maxCost === undefined
@@ -193,7 +197,7 @@ async function handleAnalyze(
     io.setExitCode(2);
     return;
   }
-  // Only a live OpenAI analysis sends OPENAI_API_KEY. A dry run and the Codex account analyst
+  // Only a live OpenAI or Gemini analysis sends an API key. A dry run and the Codex account analyst
   // read no provider key, so they skip discovery and its `gh auth token` spawn.
   if (options.dryRun !== true && selected.config.provider !== "codex")
     await discoverCliKeys({ io, cwd: options.cwd });

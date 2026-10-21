@@ -3,7 +3,8 @@ import {
   describeCodexCliAdmission,
 } from "../actors/codex/codex-admission.js";
 import { validCodexAnalysisConfig } from "./codex-config.js";
-import type { AnalysisFetch, AnalysisProvider } from "./provider.js";
+import { analysisApiKey, type AnalysisFetch, type AnalysisProvider } from "./provider.js";
+import { missingKeyHint } from "../keys/key-resolution.js";
 import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -138,7 +139,7 @@ const messages: Record<string, string> = {
   ANALYSIS_HISTORY_UNAVAILABLE:
     "Analysis history is unavailable or full. No request was sent. Inspect this run's analysis and analysis-attempts storage before retrying.",
   ANALYSIS_CONFIG_INVALID:
-    "OpenAI analysis needs a supported model, positive USD admission limit and 256–32768 output tokens. Codex account analysis uses its qualified model and null dollar/output-token caps. Both require timeout 1–600000 ms.",
+    "OpenAI and Gemini analysis need a supported model of that provider, a positive USD admission limit and 256–32768 output tokens. Codex account analysis uses its qualified model and null dollar/output-token caps. All require timeout 1–600000 ms.",
   ANALYSIS_QUESTION_UNSAFE:
     "The reviewer question matched a sensitive-text pattern. Remove sensitive details before retrying.",
   ANALYSIS_API_KEY_MISSING:
@@ -440,9 +441,21 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   // Check readable history capacity before any new paid attempt.
   await assertAnalysisPublicationCapacity(prepared);
   const apiKey =
-    config.provider === "codex" ? "" : (deps.apiKey ?? process.env.OPENAI_API_KEY ?? "");
+    config.provider === "codex"
+      ? ""
+      : (deps.apiKey ?? analysisApiKey(config.provider ?? "openai", process.env));
   if (config.provider !== "codex" && !apiKey.trim())
-    return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
+    return {
+      ...fail(
+        input.runId,
+        false,
+        "ANALYSIS_API_KEY_MISSING",
+        config.provider === "gemini"
+          ? `Gemini analysis needs GEMINI_API_KEY (or GOOGLE_API_KEY): ${missingKeyHint("GEMINI_API_KEY")}. --dry-run checks admission without a key or provider request.`
+          : undefined,
+      ),
+      admission,
+    };
   let finalizeExecution: ((value: AnalysisArtifact) => Promise<void>) | undefined;
   const rejection: { output?: RejectedAnalysisOutput } = {};
   const analysis = await runAnalysis(input, config, {

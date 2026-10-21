@@ -167,6 +167,8 @@ interface FindingsSource {
   liveStudy?: LiveStudy;
   /** The run's study, from its bundle. */
   study?: Pick<RunStudyProvenance, "id" | "path">;
+  /** The analyst the run's study gets, read only for an analysis skipped for a missing key. */
+  analyst?: Analyst;
   /**
    * Whether Codex is signed in with a ChatGPT account on this machine, read only for an analysis
    * skipped for a missing OpenAI key, whose next step it picks.
@@ -186,7 +188,7 @@ interface FindingsSource {
         /** status.json's last heartbeat. */
         updatedAt: string;
         /** The analyst the run's study gets, read only for an analysis whose process stopped. */
-        provider?: string;
+        analyst?: Analyst;
       };
   /** When the view was built, for how long an analysis has run. */
   nowMs?: number;
@@ -208,11 +210,21 @@ export function cwdFlag(cwd: string): string {
   return ` --cwd ${/^[\w@%+=:,./-]+$/.test(cwd) ? cwd : shellQuote(cwd)}`;
 }
 
-function analyzeCommand(source: FindingsSource, provider: string | undefined): string {
+/** An analysis provider and model, as a study or an analysis record names them. */
+interface Analyst {
+  provider?: string | undefined;
+  model?: string;
+}
+
+/** The `analyze` command that runs `analyst` on the run; undefined is the OpenAI default. */
+function analyzeCommand(source: FindingsSource, analyst: Analyst | undefined): string {
   const run = cli(`analyze --run ${source.runId}${source.cwdFlag}`);
-  return provider === "codex"
-    ? `${run} --provider codex`
-    : `${run} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
+  if (analyst?.provider === "codex") return `${run} --provider codex`;
+  const gemini =
+    analyst?.provider === "gemini"
+      ? ` --provider gemini${analyst.model === undefined ? "" : ` --model ${analyst.model}`}`
+      : "";
+  return `${run}${gemini} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
 }
 
 /** The cited items the analysis evidence resolves, each once, in citation order. */
@@ -379,6 +391,14 @@ function dryRunFindings(source: FindingsSource): AnalysisFindings {
  * the account that pays for it is the operator's choice.
  */
 function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFindings {
+  if (source.analyst?.provider === "gemini")
+    return withoutFindings(
+      source,
+      "skipped",
+      reason,
+      `The automatic analysis was skipped because GEMINI_API_KEY is not set. Set it with ${cli("keys set gemini")}, then run the next command.`,
+      analyzeCommand(source, source.analyst),
+    );
   const opening = "The automatic analysis was skipped because OPENAI_API_KEY is not set.";
   if (source.codexSignedIn !== true)
     return withoutFindings(
@@ -394,7 +414,7 @@ function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFin
     "skipped",
     reason,
     `${opening} Codex is signed in on this machine, so its ChatGPT account can analyze the run instead, sending the evidence to OpenAI under that account. The next command does it once; review.analysis.provider: codex in ${file} makes it this study's analyst.`,
-    analyzeCommand(source, "codex"),
+    analyzeCommand(source, { provider: "codex" }),
   );
 }
 
@@ -451,7 +471,7 @@ function pendingFindings(
     "failed",
     "AUTOMATIC_ANALYSIS_STOPPED",
     `The automatic analysis stopped before it wrote findings: the process running it stopped updating its record${at === undefined ? "" : ` at ${at}`}, most likely because it ended. Analyze the run again with the next command.`,
-    analyzeCommand(source, progress?.stage === "analysis" ? progress.provider : undefined),
+    analyzeCommand(source, progress?.stage === "analysis" ? progress.analyst : undefined),
   );
 }
 
@@ -480,7 +500,7 @@ function cutOff(
 async function studyAnalyst(
   cwd: string,
   study: RunStudyProvenance | undefined,
-): Promise<string | undefined> {
+): Promise<Analyst | undefined> {
   if (study?.path === undefined) return undefined;
   const resolved = await resolveStudyManifest(cwd, study.path).catch(() => null);
   if (!resolved?.ok || resolved.config.id !== study.id) return undefined;
@@ -488,7 +508,9 @@ async function studyAnalyst(
     resolved.config.review?.analysis,
     resolved.config.actor,
   );
-  return analysis.ok ? analysis.config?.provider : undefined;
+  return analysis.ok && analysis.config !== undefined
+    ? { provider: analysis.config.provider, model: analysis.config.model }
+    : undefined;
 }
 
 /** The findings view of a run's selected analysis, or why it has none. */
@@ -507,7 +529,9 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       message: stale
         ? `The run's evidence changed after analysis ${analysis.id}, so its findings may not match the run.`
         : `Analysis ${analysis.id} is ${analysis.status}, with ${plural(result.findings.length, "finding")}.`,
-      next: stale ? analyzeCommand(source, analysis.provider) : null,
+      next: stale
+        ? analyzeCommand(source, { provider: analysis.provider, model: analysis.config.model })
+        : null,
       analysisId: analysis.id,
       status: analysis.status,
       provider: analysis.provider,
@@ -542,7 +566,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       "failed",
       analysis.error,
       `Analysis attempt ${analysis.id} ${analysis.status === "cancelled" ? "was cancelled" : "failed"}${analysis.error ? ` (${analysis.error})` : ""} and left no findings.`,
-      analyzeCommand(source, analysis.provider),
+      analyzeCommand(source, { provider: analysis.provider, model: analysis.config.model }),
     );
   if (job?.state === "failed" || job?.state === "cancelled") {
     const outcome = analysisOutcomeText(job);
@@ -553,7 +577,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       `The automatic analysis ${outcome.startsWith("failed") ? "" : "was "}${outcome}.`,
       analyzeCommand(
         source,
-        job.reason === "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE" ? "codex" : undefined,
+        job.reason === "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE" ? { provider: "codex" } : undefined,
       ),
     );
   }
@@ -677,14 +701,15 @@ export async function readRunAnalysis(
   const phase = record === null ? undefined : runAnalysisPhase(record, nowMs);
   const stopped =
     phase?.state === "stopped" || loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_STOPPED";
-  const provider = stopped ? await studyAnalyst(physical, study) : undefined;
+  const keyMissing = loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING";
+  const analyst = stopped || keyMissing ? await studyAnalyst(physical, study) : undefined;
   const progress =
     phase !== undefined && record !== null
       ? {
           stage: "analysis" as const,
           phase,
           updatedAt: record.updatedAt,
-          ...(provider === undefined ? {} : { provider }),
+          ...(analyst === undefined ? {} : { analyst }),
         }
       : bundle?.bundle.outcome === undefined &&
           record !== null &&
@@ -692,7 +717,7 @@ export async function readRunAnalysis(
         ? { stage: "participants" as const }
         : cutOff(bundle?.bundle, record, nowMs);
   const codexSignedIn =
-    loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
+    keyMissing && analyst?.provider !== "gemini"
       ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)
       : undefined;
   return {
@@ -707,6 +732,7 @@ export async function readRunAnalysis(
       ? {}
       : { study: { id: study.id, ...(study.path === undefined ? {} : { path: study.path }) } }),
     ...(codexSignedIn === undefined ? {} : { codexSignedIn }),
+    ...(keyMissing && analyst !== undefined ? { analyst } : {}),
     ...(progress === undefined ? {} : { progress }),
     nowMs,
   };

@@ -516,7 +516,7 @@ function subjectEnvChecks(names: readonly string[], args: StudySetupCheckArgs): 
   }));
 }
 
-/** The post-run analysis: the Codex account, or the OpenAI key and the analysis cost limit. */
+/** The post-run analysis: the Codex account, or the OpenAI or Gemini key and the cost limit. */
 async function analysisCheck(
   analysis: AnalysisBudget,
   args: StudySetupCheckArgs,
@@ -539,6 +539,17 @@ async function analysisCheck(
             readiness,
           )
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,
+    };
+  }
+  if (analysis.provider === "gemini") {
+    const geminiKeyed = args.keyPresent("GEMINI_API_KEY") || args.keyPresent("GOOGLE_API_KEY");
+    return {
+      name: "post-run analysis",
+      ok: true,
+      ...(geminiKeyed ? {} : { status: "note" as const }),
+      message: geminiKeyed
+        ? `A Gemini API key is present for the separate automatic analysis request, which sends the evidence and captures to Google; model access and quota are not tested. The analysis is refused before it starts if ${admissionRule(`$${analysis.maxCostUsd}`)}; this is not a billing cap. Participant readiness is independent.`
+        : `Will be skipped: GEMINI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add it with ${cli("keys set gemini")}, or set review.analysis: false deliberately.`,
     };
   }
   const keyed = args.keyPresent("OPENAI_API_KEY");

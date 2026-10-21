@@ -1,5 +1,9 @@
+/** An input image the analysis providers accept; the groups are the image type and its base64 bytes. */
+export const INPUT_IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+
 /**
- * Input tokens one image costs at `detail: "high"`, which is what the provider request sends.
+ * Input tokens one image costs at the detail the provider request sends: `detail: "high"` on
+ * OpenAI, MEDIA_RESOLUTION_HIGH on Gemini.
  *
  * OpenAI's vision guide (https://developers.openai.com/api/docs/guides/images-vision, read
  * 2026-09-30) prices these patch-based models by 32 px patches: ceil(width / 32) × ceil(height /
@@ -23,7 +27,24 @@ const HIGH_DETAIL_SIZING: Readonly<
 });
 
 /** 2,500 patches × 1.2: what any image costs on these models when its size is unknown. */
-export const HIGH_DETAIL_IMAGE_TOKEN_CEILING = 3000;
+const HIGH_DETAIL_IMAGE_TOKEN_CEILING = 3000;
+
+/**
+ * Gemini bills an image by its media resolution, not its size. The provider sends every capture at
+ * MEDIA_RESOLUTION_HIGH, which the media-resolution guide
+ * (ai.google.dev/gemini-api/docs/media-resolution, read 2026-10-21) gives as at most 1,120 tokens
+ * for an image on Gemini 3 and Gemini 4 models. A 1x1 PNG at that setting was billed 1,089.
+ */
+const GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS: Readonly<Record<string, number>> = Object.freeze({
+  "gemini-3.8-flash": 1120,
+  "gemini-3.5-flash-lite": 1120,
+  "gemini-3-flash-preview": 1120,
+  "gemini-4-argon": 1120,
+});
+
+/** The most one image can cost on `model`, whatever its size. */
+export const imageTokenCeiling = (model: string): number =>
+  GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS[model] ?? HIGH_DETAIL_IMAGE_TOKEN_CEILING;
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -40,6 +61,8 @@ function pngDimensions(dataUrl: string): { width: number; height: number } | und
 }
 
 export function highDetailImageTokens(model: string, dataUrl: string): number {
+  const fixed = GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS[model];
+  if (fixed !== undefined) return fixed;
   const sizing = HIGH_DETAIL_SIZING[model];
   const size = sizing === undefined ? undefined : pngDimensions(dataUrl);
   if (sizing === undefined || size === undefined) return HIGH_DETAIL_IMAGE_TOKEN_CEILING;

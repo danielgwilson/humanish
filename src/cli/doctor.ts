@@ -423,7 +423,8 @@ function versionCheck(env: NodeJS.ProcessEnv): DoctorCheck[] {
   ];
 }
 
-/** Probes the live-run keys, plus the receiving-email key a real-comms study names. */
+/** Probes the live-run keys, plus the receiving-email key a real-comms study names and the Gemini
+ * key a study analyzed on Gemini reads. */
 async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -439,6 +440,10 @@ async function probeDoctorKeys(
     // A study on Modal reads the Modal token pair, which no other study needs.
     if (resolved.ok && resolved.config.execution?.target === "modal-terminal")
       for (const name of ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]) keyNames.add(name);
+    // A study analyzed on Gemini reads the Gemini key, which no other study needs.
+    const analysis = resolved.ok ? resolved.config.review?.analysis : undefined;
+    if (typeof analysis === "object" && analysis !== null && analysis.provider === "gemini")
+      keyNames.add("GEMINI_API_KEY");
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);

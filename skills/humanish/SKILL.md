@@ -108,6 +108,17 @@ not local inference or the participant's existing conversation. See
 [the analysis contract](../../docs/contracts/study-analysis.md) for the current
 CLI/model qualification and setup limits.
 
+To analyze on Gemini, the user stores a key with `npx humanish keys set gemini`
+(`GEMINI_API_KEY`; `GOOGLE_API_KEY` also works and wins when both are set), then
+sets `review.analysis: {provider: gemini, maxCostUsd: <n>}` or passes
+`analyze --provider gemini --max-cost <n>`. The default model is
+`gemini-3.8-flash`; `--model` takes `gemini-3.5-flash-lite`,
+`gemini-3-flash-preview` or `gemini-4-argon`. This sends the evidence packet and
+captures to Google. Admission, the cost cap and priced usage work as on OpenAI,
+and a missing Gemini key never falls back to OpenAI. On a free-tier key, Google
+may use the content to improve its products; tell the user before a study with
+private evidence runs on one.
+
 When post-run analysis is refused for its cost, the run output and `humanish
 review` give its expected cost, its worst case and the command that runs it,
 `humanish analyze --run <id> --max-cost <n>`. Show the user those costs and run

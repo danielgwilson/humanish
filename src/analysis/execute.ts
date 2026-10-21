@@ -1,8 +1,8 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
-import { HIGH_DETAIL_IMAGE_TOKEN_CEILING, highDetailImageTokens } from "./image-tokens.js";
+import { INPUT_IMAGE_DATA_URL, highDetailImageTokens, imageTokenCeiling } from "./image-tokens.js";
 import { estimateAnalysisCost } from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
-import { MODEL_RATES } from "../run/pricing.js";
+import { modelRate } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { scanEncodedText } from "../evidence/encoded-text.js";
 import {
@@ -14,7 +14,7 @@ import {
   type AnalysisResult,
 } from "./types.js";
 import {
-  INPUT_IMAGE_DATA_URL,
+  type AnalysisApiVendor,
   type AnalysisFetch,
   createAnalysisProvider,
   type AnalysisProvider,
@@ -35,6 +35,7 @@ import {
 import {
   checkProviderAnalysis,
   codexWarnings,
+  httpStatusWarning,
   recordProviderUsage,
   type CheckedProviderAnalysis,
 } from "./responses.js";
@@ -53,8 +54,24 @@ export const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
   "gpt-5.6-luna",
 ]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_ANALYSIS_MODELS);
-export const isSupportedAnalysisModel = (model: string): boolean => SUPPORTED_MODELS.has(model);
-/** The OpenAI output limit when a study omits maxOutputTokens, and the most it may ask for. */
+/**
+ * Gemini models that take image input and JSON-schema output, from each model's page under
+ * ai.google.dev/gemini-api/docs/models, read 2026-10-21.
+ */
+export const GEMINI_ANALYSIS_MODELS = Object.freeze([
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-4-argon",
+]);
+const GEMINI_MODELS: ReadonlySet<string> = new Set(GEMINI_ANALYSIS_MODELS);
+/** Whether the API analyst `provider` (omitted is OpenAI) analyzes with `model`. */
+export const isSupportedAnalysisModel = (
+  model: string,
+  provider: AnalysisApiVendor = "openai",
+): boolean => (provider === "gemini" ? GEMINI_MODELS : SUPPORTED_MODELS).has(model);
+/** The API output limit when a study omits maxOutputTokens, and the most it may ask for. Gemini 4
+ * returns at most 32,768 output tokens from one generateContent request. */
 export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 export const MAX_ANALYSIS_OUTPUT_TOKENS = 32_768;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
@@ -240,9 +257,10 @@ function inputError(input: AnalysisInput): string | null {
  * Local admission estimate, not a provider-enforced billed-spend guarantee. No token-count API
  * call, credential, or network access. admission.ts holds the cost model: text at a calibrated
  * bytes-per-token ratio, the expected output, and the worst case that spends the whole output
- * allowance. Each high-detail image is priced from its PNG size by the vision guide's patch
- * formula (see image-tokens.ts), or at the 3,000-token ceiling when its size or the model's sizing
- * is unknown. Unknown models/rates fail closed rather than inheriting those assumptions.
+ * allowance. image-tokens.ts prices each image: on OpenAI from its PNG size by the vision guide's
+ * patch formula, or at the 3,000-token ceiling when its size or the model's sizing is unknown; on
+ * Gemini at the fixed high-resolution count. The rates are those of the day admission runs.
+ * Unknown models/rates fail closed rather than inheriting those assumptions.
  * Known-sensitive decoded text denies admission with analysis_input_sensitive or
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
@@ -265,8 +283,10 @@ export function estimateAnalysisAdmission(
   if (
     (config.provider === "codex"
       ? !validCodexAnalysisConfig(config)
-      : (config.provider !== undefined && config.provider !== "openai") ||
-        !SUPPORTED_MODELS.has(config.model) ||
+      : (config.provider !== undefined &&
+          config.provider !== "openai" &&
+          config.provider !== "gemini") ||
+        !isSupportedAnalysisModel(config.model, config.provider) ||
         !Number.isFinite(config.maxCostUsd) ||
         config.maxCostUsd <= 0 ||
         config.maxCostUsd > 1000 ||
@@ -299,7 +319,7 @@ export function estimateAnalysisAdmission(
       ratesAsOf: null,
       requests,
     };
-  const rate = MODEL_RATES[config.model];
+  const rate = modelRate(config.model);
   if (
     !rate ||
     rate.placeholder ||
@@ -411,7 +431,7 @@ export function analysisCostRange(
   preferLargerOutput = false,
 ): AnalysisCostRange | undefined {
   if (config.provider === "codex") return undefined;
-  const rate = MODEL_RATES[config.model];
+  const rate = modelRate(config.model);
   if (!rate || rate.placeholder) return undefined;
   const covered = Math.min(participants, EVIDENCE_LIMITS.participants);
   const cohorts = analysisCohorts(Array.from({ length: covered })).map((cohort) => cohort.length);
@@ -434,7 +454,7 @@ export function analysisCostRange(
         textBytes:
           cohortPrompt +
           share * (EVIDENCE_LIMITS.textBytes + EVIDENCE_LIMITS.evidence * ENTRY_STRUCTURE_BYTES),
-        imageTokens: share * EVIDENCE_LIMITS.captures * HIGH_DETAIL_IMAGE_TOKEN_CEILING,
+        imageTokens: share * EVIDENCE_LIMITS.captures * imageTokenCeiling(config.model),
       })),
       mergeTextBytes: mergePrompt + share * covered * ENTRY_STRUCTURE_BYTES,
     });
@@ -591,6 +611,7 @@ async function analysisProvider(
           cliVersion: config.identity.cliVersion,
         }))
     : createAnalysisProvider({
+        vendor: config.provider ?? "openai",
         apiKey: options.apiKey!,
         ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),
       });
@@ -737,8 +758,9 @@ export async function runAnalysis(
     });
     responses.push(response);
     recordProviderUsage(artifact, config, responses);
-    for (const warning of codexWarnings(config, response))
-      if (!options.warnings?.includes(warning)) options.warnings?.push(warning);
+    for (const warning of [...codexWarnings(config, response), httpStatusWarning(config, response)])
+      if (warning !== undefined && !options.warnings?.includes(warning))
+        options.warnings?.push(warning);
     if (response.status !== "completed")
       return {
         ok: false,

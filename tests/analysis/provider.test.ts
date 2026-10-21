@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   createAnalysisProvider,
-  parseAnalysisResponse,
   type AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
+import { parseAnalysisResponse } from "../../src/analysis/openai-wire.js";
 
 // Transport envelope/usage derive from the retained live closing-report response. See that
 // fixture's provenance readme. Analysis content is synthetic; negative cases mutate that wire.

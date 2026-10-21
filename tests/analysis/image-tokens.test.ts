@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { highDetailImageTokens } from "../../src/analysis/image-tokens.js";
+import { highDetailImageTokens, imageTokenCeiling } from "../../src/analysis/image-tokens.js";
 
 /** The first 33 bytes of a PNG: signature, then an IHDR chunk carrying the size. */
 function pngBytes(width: number, height: number): Buffer {
@@ -45,5 +45,18 @@ describe("high-detail image tokens", () => {
     expect(highDetailImageTokens("gpt-6-astra", "data:image/png;base64,iVBORw0K")).toBe(3000);
     // The guide lists no sizing for a plain gpt-5.6 id.
     expect(highDetailImageTokens("gpt-5.6", pngUrl(1024, 1024))).toBe(3000);
+  });
+});
+
+describe("Gemini high-resolution image tokens", () => {
+  it("prices every image at the 1,120 tokens of MEDIA_RESOLUTION_HIGH, whatever its size", () => {
+    const jpeg = `data:image/jpeg;base64,${Buffer.alloc(40, 1).toString("base64")}`;
+    for (const model of ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-4-argon"]) {
+      expect(highDetailImageTokens(model, pngUrl(1440, 950))).toBe(1120);
+      expect(highDetailImageTokens(model, pngUrl(16, 16))).toBe(1120);
+      expect(highDetailImageTokens(model, jpeg)).toBe(1120);
+      expect(imageTokenCeiling(model)).toBe(1120);
+    }
+    expect(imageTokenCeiling("gpt-6-astra")).toBe(3000);
   });
 });
