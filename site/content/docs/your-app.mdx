@@ -128,6 +128,45 @@ npx humanish verify --run latest --json
 
 For signup flows, point your test app's outgoing mail at the [local captured inbox](/docs/comms-inbox#local-browser-studies). It accepts HTTP mail or optional SMTP and never receives mail sent to a real mailbox.
 
+## Test phone, tablet and desktop in one study
+
+To see how one flow works at several screen sizes, give the study one participant per size. They run at the same time, the Observer shows them side by side, and the findings compare them. Separate studies per size cannot be compared that way, and a device frame drawn inside the page still renders at desktop width.
+
+```yaml title="humanish/studies/devices.yaml"
+schema: humanish.study.v3
+id: devices
+title: First project on phone, tablet and desktop
+route: computer-use
+mode: live
+subject:
+  source: app-url
+  appUrl: "http://127.0.0.1:3000"
+actor:
+  type: local-agent
+  localAgent: codex
+  persona: synthetic-new-user
+  mission: >-
+    Create a project named Weekend plan, then find it again. Say what was hard to
+    read or reach on your screen.
+participants:
+  - id: phone
+    device: mobile
+  - id: tablet
+    device: tablet
+  - id: desktop
+    device: desktop
+execution:
+  target: local
+  timeoutMs: 600000
+  desktop:
+    fidelity:
+      mobileEmulation: true
+```
+
+`device` sizes each participant's screen and browser window: `mobile` is 414×896, `tablet` 820×1180 and `desktop` 1440×950. [Device presets](/docs/computer-use#device-presets) lists the rest. `fidelity.mobileEmulation` gives phone participants a mobile viewport, pixel ratio, touch input and a mobile user agent in Chromium; tablet and desktop participants are unchanged.
+
+For a preview URL on hosted desktops, set `execution.target: e2b-desktop`, put the URL in `subject.appUrl`, and add `policies.allowPublicTargets: true`. Participants on one public app share its data, so each entry also needs a `target`: the same URL when each participant creates its own account, or a separate test account or seeded URL per participant.
+
 ## Give the participant a background
 
 `humanish init` writes editable profiles under `humanish/personas/`. Set the actor's `persona` to a profile's id. A profile you keep only on your machine can live in the ignored `.humanish/local/personas/`; a committed profile with the same id wins. A profile can be a few sentences or a longer account of who this person is:
