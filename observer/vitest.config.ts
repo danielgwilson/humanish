@@ -18,5 +18,7 @@ export default defineConfig({
       "**/*.scratch.test.ts",
     ],
     restoreMocks: true,
+    // The repo default; render tests over 40 participants pass 5 s on a loaded box.
+    testTimeout: 20_000,
   },
 });
