@@ -11,7 +11,7 @@
 //        GH_TOKEN     <- `gh auth token` (the gh CLI's credential chain);
 //   4. the humanish user-level store `$XDG_CONFIG_HOME/humanish/keys.env`, written only by
 //      `humanish keys set` (0600, prompted or --stdin), the fallback for vendors that ship
-//      no machine chain of their own (OpenAI, Anthropic).
+//      no machine chain of their own (OpenAI, Anthropic, Gemini).
 //
 // Every fill is announced by key name + source, never by value. The subject app's own
 // `.env`/`.env.local` are never read: those hold product credentials, a different class
@@ -64,7 +64,8 @@ interface ProviderKey {
  * full-file load). ANTHROPIC_API_KEY is not listed, and doctor does not report it: a Claude Code
  * participant runs on its own login and never receives it. CODEX_API_KEY is an alternative spelling
  * of the OpenAI key for terminal studies. Doctor reports AGENTMAIL_API_KEY only under `--study`, for
- * a study whose email connection names it, since a connection may name another variable.
+ * a study whose email connection names it, since a connection may name another variable, and
+ * GEMINI_API_KEY only for a study whose analysis runs on Gemini.
  */
 const PROVIDER_KEYS: readonly ProviderKey[] = [
   {
@@ -99,10 +100,40 @@ const PROVIDER_KEYS: readonly ProviderKey[] = [
   { name: "GITHUB_TOKEN", spellingOf: "GH_TOKEN" },
   { name: "CODEX_API_KEY", doctor: true },
   { name: "AGENTMAIL_API_KEY", vendor: "agentmail", listed: { order: 4, use: "email in studies" } },
+  { name: "GEMINI_API_KEY", vendor: "gemini", listed: { order: 5, use: "analysis on Gemini" } },
+  // Google's client libraries also read GOOGLE_API_KEY, and prefer it when both are set. humanish
+  // reads GEMINI_API_KEY first: a GOOGLE_API_KEY exported for Maps or Firebase must not take the
+  // place of the key `humanish keys set gemini` stored.
+  { name: "GOOGLE_API_KEY", spellingOf: "GEMINI_API_KEY" },
 ];
 const PROVIDER_KEY_SET = new Set(PROVIDER_KEYS.map((key) => key.name));
 const providerKey = (name: string): ProviderKey | undefined =>
   PROVIDER_KEYS.find((key) => key.name === name);
+
+/**
+ * Every env name of the key `name` is a spelling of, in the order humanish reads them: the key's
+ * own name, then its second spellings. Discovery treats them as one key.
+ */
+function keyNames(name: string): readonly string[] {
+  const own = providerKey(name)?.spellingOf ?? name;
+  return [own, ...PROVIDER_KEYS.filter((key) => key.spellingOf === own).map((key) => key.name)];
+}
+
+/** The key each API analyst reads, under its first spelling. */
+const ANALYSIS_KEYS = { openai: "OPENAI_API_KEY", gemini: "GEMINI_API_KEY" } as const;
+
+/** The env names an API analyst's key may have, in the order they are read. */
+export const analysisKeyNames = (vendor: keyof typeof ANALYSIS_KEYS): readonly string[] =>
+  keyNames(ANALYSIS_KEYS[vendor]);
+
+/** An API analyst's key from `env`: the first of its names with a non-blank value, else "". */
+export function analysisApiKey(
+  vendor: keyof typeof ANALYSIS_KEYS,
+  env: Readonly<Record<string, string | undefined>>,
+): string {
+  for (const name of analysisKeyNames(vendor)) if (env[name]?.trim()) return env[name]!;
+  return "";
+}
 
 /** The vendor aliases `humanish keys set` accepts. A raw ENV_NAME is also accepted. */
 export const KEY_VENDORS = PROVIDER_KEYS.flatMap((key) =>
@@ -283,8 +314,12 @@ export async function discoverProviderKeys(args: {
   const ignored: string[] = [];
   // Fill-only means presence wins, including an explicitly-set empty value: an operator who
   // exported OPENAI_API_KEY="" said "off", and a rung that "fixes" that has overridden them.
-  // Only a truly-unset name is fillable.
-  const fillable = (name: string): boolean => env[name] === undefined;
+  // Only a truly-unset name is fillable, and only while no spelling of its key was set before
+  // discovery: a repo overlay's GOOGLE_API_KEY must not stand beside, and outrank, an exported
+  // GEMINI_API_KEY. Spellings that discovery itself fills may stand together.
+  const explicit = new Set(Object.keys(env).filter((name) => env[name] !== undefined));
+  const fillable = (name: string): boolean =>
+    env[name] === undefined && keyNames(name).every((spelling) => !explicit.has(spelling));
   const fill = (name: string, value: string, source: string): void => {
     env[name] = value;
     fills.push({ name, source });
@@ -332,7 +367,7 @@ export async function discoverProviderKeys(args: {
   // Rung 3c: the gh CLI's credential chain. Only consulted when neither GitHub env name is
   // present; fills GH_TOKEN (the name humanish reads first). gh runs without any provider key in
   // its environment, so the keys the rungs above just filled stay in this process.
-  if (fillable("GH_TOKEN") && fillable("GITHUB_TOKEN")) {
+  if (keyNames("GH_TOKEN").every((name) => env[name] === undefined)) {
     const exec = deps.execText ?? defaultExecText;
     const token = await exec("gh", ["auth", "token"], 3_000, withoutProviderKeys(env));
     if (token !== null) fill("GH_TOKEN", token, "gh auth token");

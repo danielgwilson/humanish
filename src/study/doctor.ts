@@ -34,6 +34,7 @@ import {
 } from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 import { cli } from "../cli/invocation.js";
+import { analysisKeyNames } from "../keys/key-resolution.js";
 
 type Check = DoctorCheckDraft;
 /**
@@ -516,7 +517,7 @@ function subjectEnvChecks(names: readonly string[], args: StudySetupCheckArgs): 
   }));
 }
 
-/** The post-run analysis: the Codex account, or the OpenAI key and the analysis cost limit. */
+/** The post-run analysis: the Codex account, or the OpenAI or Gemini key and the cost limit. */
 async function analysisCheck(
   analysis: AnalysisBudget,
   args: StudySetupCheckArgs,
@@ -539,6 +540,18 @@ async function analysisCheck(
             readiness,
           )
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,
+    };
+  }
+  if (analysis.provider === "gemini") {
+    const names = analysisKeyNames("gemini");
+    const geminiKeyed = names.some(args.keyPresent);
+    return {
+      name: "post-run analysis",
+      ok: true,
+      ...(geminiKeyed ? {} : { status: "note" as const }),
+      message: geminiKeyed
+        ? `A Gemini API key is present for the separate automatic analysis request, which sends the evidence and captures to Google; model access and quota are not tested. The analysis is refused before it starts if ${admissionRule(`$${analysis.maxCostUsd}`)}; this is not a billing cap. Participant readiness is independent.`
+        : `Will be skipped: ${names.join(" and ")} are missing. The participant may run, but there will be no automatic findings report. Add it with ${cli("keys set gemini")}, or set review.analysis: false deliberately.`,
     };
   }
   const keyed = args.keyPresent("OPENAI_API_KEY");

@@ -533,7 +533,10 @@ describe("one analysis of a run with more than 16 participants", () => {
       error: "analysis_provider_http_error",
       usage: { inputTokens: 27_086, outputTokens: 442, dispatched: true, usageComplete: false },
     });
-    expect(warnings).toHaveLength(1);
+    expect(warnings).toEqual([
+      expect.stringMatching(/^The OpenAI API answered HTTP 500 /),
+      expect.stringMatching(/^The participants were analysed in 3 cohorts/),
+    ]);
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
@@ -611,7 +614,10 @@ describe("the requests of an analysis in cohorts", () => {
       error: "analysis_provider_http_error",
       usage: { inputTokens: 27_086, usageComplete: false },
     });
-    expect(warnings).toHaveLength(1);
+    expect(warnings).toEqual([
+      expect.stringMatching(/^The OpenAI API answered HTTP 500 /),
+      expect.stringMatching(/^The participants were analysed in 2 cohorts/),
+    ]);
   });
 
   it("sends no merge request after a cancellation during the cohort requests", async () => {

@@ -15,6 +15,9 @@ import type { AnalysisConfig } from "./types.js";
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
 export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
+/** The model a Gemini analysis uses when the study or command names none: Google's current
+ * stable Flash model. */
+export const DEFAULT_GEMINI_ANALYSIS_MODEL = "gemini-3.8-flash";
 
 interface StudyAnalysisSettings {
   model?: string;
@@ -24,7 +27,7 @@ interface StudyAnalysisSettings {
 /** The study's review.analysis: a provider selection for a separate review after a live run. */
 export type StudyAnalysis = StudyAnalysisSettings &
   (
-    | { provider?: "openai"; maxCostUsd: number; maxOutputTokens?: number }
+    | { provider?: "openai" | "gemini"; maxCostUsd: number; maxOutputTokens?: number }
     | { provider: "codex"; maxCostUsd?: null; maxOutputTokens?: null }
   );
 
@@ -99,8 +102,13 @@ export function resolveAutomaticAnalysis(
     };
   }
   const value = raw as Record<string, unknown>;
-  if (value.provider !== undefined && value.provider !== "openai" && value.provider !== "codex") {
-    return { ok: false, message: "review.analysis.provider must be openai or codex." };
+  if (
+    value.provider !== undefined &&
+    value.provider !== "openai" &&
+    value.provider !== "gemini" &&
+    value.provider !== "codex"
+  ) {
+    return { ok: false, message: "review.analysis.provider must be openai, gemini or codex." };
   }
   if (value.provider === "codex") {
     const model = value.model === undefined ? CODEX_ANALYSIS_MODEL : value.model;
@@ -134,7 +142,13 @@ export function resolveAutomaticAnalysis(
     };
   }
   const { maxCostUsd } = value;
-  const model = value.model === undefined ? DEFAULT_ANALYSIS_MODEL : value.model;
+  const vendor = value.provider === "gemini" ? "gemini" : "openai";
+  const model =
+    value.model !== undefined
+      ? value.model
+      : vendor === "gemini"
+        ? DEFAULT_GEMINI_ANALYSIS_MODEL
+        : DEFAULT_ANALYSIS_MODEL;
   const question = value.question === undefined ? null : value.question;
   const timeoutMs = value.timeoutMs === undefined ? DEFAULT_ANALYSIS_TIMEOUT_MS : value.timeoutMs;
   const maxOutputTokens =
@@ -147,7 +161,7 @@ export function resolveAutomaticAnalysis(
     maxCostUsd <= 0 ||
     maxCostUsd > 1000 ||
     typeof model !== "string" ||
-    !isSupportedAnalysisModel(model) ||
+    !isSupportedAnalysisModel(model, vendor) ||
     !validTimeout(timeoutMs) ||
     typeof maxOutputTokens !== "number" ||
     !Number.isSafeInteger(maxOutputTokens) ||
@@ -157,14 +171,15 @@ export function resolveAutomaticAnalysis(
   ) {
     return {
       ok: false,
-      message: `review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
+      message: `review.analysis requires a positive maxCostUsd up to 1000, a supported ${vendor === "gemini" ? "Gemini" : "OpenAI"} analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
   if (question !== null && scanEncodedText(question as string).sensitive) return SENSITIVE_QUESTION;
   return {
     ok: true,
     config: {
-      ...(value.provider === undefined ? {} : { provider: "openai" as const }),
+      // An omitted provider stays omitted: it is the OpenAI contract, and its hash predates the field.
+      ...(value.provider === undefined ? {} : { provider: vendor }),
       model,
       maxCostUsd,
       timeoutMs,
@@ -176,7 +191,7 @@ export function resolveAutomaticAnalysis(
 }
 
 export interface AutomaticAnalysisBudget {
-  provider?: "openai" | "codex";
+  provider?: "openai" | "gemini" | "codex";
   billing?: "api-estimate" | "account-unknown";
   model: string;
   maxCostUsd: number | null;
@@ -213,7 +228,9 @@ export function automaticAnalysisBudget(
   return {
     ...(config.provider === "codex"
       ? { provider: "codex" as const, billing: "account-unknown" as const }
-      : {}),
+      : config.provider === "gemini"
+        ? { provider: "gemini" as const }
+        : {}),
     model: config.model,
     maxCostUsd: config.maxCostUsd,
     trigger: raw === undefined ? "default" : "explicit",
@@ -251,5 +268,7 @@ export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): 
     budget.refusedFromUsd === undefined || who === undefined
       ? `refused before it starts if ${rule}`
       : `refused before it starts for ${who} even with no evidence (expected $${budget.refusedFromUsd.toFixed(2)}), since ${rule}`;
-  return `After live runs: ${budget.trigger} analysis · ${budget.model}${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
+  const where =
+    budget.provider === "gemini" ? " on Gemini, which sends the evidence to Google" : "";
+  return `After live runs: ${budget.trigger} analysis${where} · ${budget.model}${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
 }

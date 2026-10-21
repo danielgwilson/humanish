@@ -2,6 +2,7 @@
 // warning. normalizeRunStudyOptions (run-study-options.ts) builds the emitter and hands it to the
 // route hook bags it maps; the event values are built here.
 
+import { analysisKeyNames } from "../keys/key-resolution.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { RunSecrets } from "../run/secrets.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
@@ -57,7 +58,7 @@ export type StudyEvent =
 /**
  * The literal values to scrub from an onEvent warning: the provider keys and the declared subject
  * env from every env the run could read (the `env` option and process.env), and the
- * analysis API key. A callback can hold any of them, and its warning is appended after the route
+ * analysis API keys, OpenAI's and Gemini's. A callback can hold any of them, and its warning is appended after the route
  * sanitized its own.
  */
 export function knownSecrets(
@@ -66,7 +67,13 @@ export function knownSecrets(
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): RunSecrets {
   const sources = [forwardedEnv, options.env, process.env];
-  const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
+  const names = [
+    "OPENAI_API_KEY",
+    "E2B_API_KEY",
+    "CODEX_API_KEY",
+    ...analysisKeyNames("gemini"),
+    ...(config.subject.env ?? []),
+  ];
   const secrets = new RunSecrets([]);
   for (const env of sources) for (const name of names) secrets.add([env?.[name]?.trim() ?? ""]);
   return secrets;

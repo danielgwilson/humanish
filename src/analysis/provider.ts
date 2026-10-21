@@ -1,5 +1,15 @@
+// The analysis provider seam and the HTTP transport its API adapters share. Each API vendor owns
+// only its wire format (gemini-wire.ts, openai-wire.ts): the endpoint, the request body, and how a
+// response becomes a result. The transport owns what must hold for every vendor: one fixed endpoint
+// per vendor, request and response byte caps, the caller's wall-clock deadline, no retry, and a
+// closed error vocabulary that never carries provider error prose. The Codex account analyst is
+// the third adapter at the same seam (restricted-codex.ts).
+
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
-import { OPENAI_RESPONSES_URL } from "../actors/openai-endpoint.js";
+import { isRecord } from "../run/type-guards.js";
+import { INPUT_IMAGE_DATA_URL } from "./image-tokens.js";
+import { geminiWire } from "./gemini-wire.js";
+import { openaiWire } from "./openai-wire.js";
 
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
 export interface AnalysisProviderRequest {
@@ -13,7 +23,7 @@ export interface AnalysisProviderRequest {
   signal?: AbortSignal;
 }
 
-interface AnalysisTokenUsage {
+export interface AnalysisTokenUsage {
   input: number;
   output: number;
   cachedInput?: number;
@@ -75,14 +85,7 @@ export type AnalysisProvider = (
 ) => Promise<AnalysisProviderResult>;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
-/** An input image the provider accepts; the groups are the image type and its base64 bytes. */
-export const INPUT_IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
-const record = (value: unknown): Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-const count = (value: unknown): value is number =>
-  Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1e12;
+const record = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
 
 /** Undici's fetch has a separate response-header deadline. The caller's wall-clock
  * deadline must govern this one request, including uploads and body reads, without
@@ -121,78 +124,6 @@ function networkErrorCode(error: unknown): AnalysisProviderResult["errorCode"] {
   return "provider_network_error";
 }
 
-function usageOf(raw: unknown): AnalysisTokenUsage | null {
-  const usage = record(record(raw).usage);
-  const details = record(usage.input_tokens_details);
-  const input = usage.input_tokens;
-  const output = usage.output_tokens;
-  const cachedInput = details.cached_tokens;
-  const cacheWriteInput = details.cache_write_tokens;
-  if (
-    !count(input) ||
-    !count(output) ||
-    (cachedInput !== undefined && !count(cachedInput)) ||
-    (cacheWriteInput !== undefined && !count(cacheWriteInput)) ||
-    ((cachedInput as number | undefined) ?? 0) + ((cacheWriteInput as number | undefined) ?? 0) >
-      input
-  )
-    return null;
-  return {
-    input,
-    output,
-    ...(cachedInput === undefined ? {} : { cachedInput: cachedInput as number }),
-    ...(cacheWriteInput === undefined ? {} : { cacheWriteInput: cacheWriteInput as number }),
-  };
-}
-
-/** Text and usage wire shapes reuse the captured closing-report contract; refusal fails closed. */
-export function parseAnalysisResponse(raw: unknown): AnalysisProviderResult {
-  const root = record(raw);
-  const usage = usageOf(raw);
-  const output = Array.isArray(root.output) ? root.output : [];
-  const contents = output
-    .filter((item) => record(item).type === "message")
-    .flatMap((item) =>
-      Array.isArray(record(item).content) ? (record(item).content as unknown[]) : [],
-    );
-  const base = { output: null, usage, dispatched: true };
-  if (contents.some((item) => record(item).type === "refusal")) {
-    return { ...base, status: "refused", errorCode: "refusal" };
-  }
-  if (root.status === "incomplete")
-    return { ...base, status: "incomplete", errorCode: "output_incomplete" };
-  if (
-    root.status !== "completed" ||
-    output.some((item) => !["message", "reasoning"].includes(String(record(item).type)))
-  ) {
-    return { ...base, status: "failed", errorCode: "invalid_response" };
-  }
-  // A single JSON answer is expected. Do not concatenate multiple answer objects or expose a
-  // refusal, reasoning item, or incomplete message as the report's prose.
-  const messages = output.filter((item) => record(item).type === "message");
-  const texts = contents.filter((item) => record(item).type === "output_text");
-  if (
-    messages.length !== 1 ||
-    record(messages[0]).status !== "completed" ||
-    record(messages[0]).role !== "assistant" ||
-    texts.length !== 1 ||
-    contents.length !== 1 ||
-    typeof record(texts[0]).text !== "string"
-  ) {
-    return { ...base, status: "failed", errorCode: "invalid_response" };
-  }
-  try {
-    return {
-      ...base,
-      status: "completed",
-      output: JSON.parse(record(texts[0]).text as string) as unknown,
-      errorCode: null,
-    };
-  } catch {
-    return { ...base, status: "failed", errorCode: "invalid_response" };
-  }
-}
-
 /** The part of fetch this provider uses; undici's fetch and test doubles both satisfy it. */
 export type AnalysisFetch = (
   url: string,
@@ -211,12 +142,33 @@ export type AnalysisFetch = (
   },
 ) => Promise<{ ok: boolean; status: number; body: ReadableStream<Uint8Array> | null }>;
 
-/** No alternate endpoint or env-derived base URL: evidence and credentials have one destination. */
+/** The analysts humanish calls over HTTP with an API key. Codex runs through its own CLI. */
+export type AnalysisApiVendor = "openai" | "gemini";
+
+/** One vendor's wire format. The transport sends `body` to `url` with `headers` and gives `parse`
+ * the response JSON only after a 2xx status, within the byte cap and the deadline. */
+export interface AnalysisWire {
+  /** A fixed endpoint: never derived from env, so evidence and credentials have one destination. */
+  url(model: string): string;
+  headers(apiKey: string): Record<string, string>;
+  body(request: AnalysisProviderRequest): unknown;
+  parse(raw: unknown): AnalysisProviderResult;
+}
+
+const WIRES: Readonly<Record<AnalysisApiVendor, AnalysisWire>> = {
+  openai: openaiWire,
+  gemini: geminiWire,
+};
+
+/** One request to the vendor's fixed endpoint, never retried and never sent elsewhere. */
 export function createAnalysisProvider(options: {
   apiKey: string;
+  /** Omitted is OpenAI, the analyst humanish has always called. */
+  vendor?: AnalysisApiVendor;
   fetchFn?: AnalysisFetch;
 }): AnalysisProvider {
   const fetchFn = options.fetchFn ?? undiciFetch;
+  const wire = WIRES[options.vendor ?? "openai"];
   return async (request) => {
     const failure = (
       errorCode: AnalysisProviderResult["errorCode"],
@@ -245,33 +197,7 @@ export function createAnalysisProvider(options: {
     ) {
       return failure("invalid_request", false);
     }
-    const content = [
-      { type: "input_text", text: request.evidence },
-      ...request.images.flatMap((image) => [
-        { type: "input_text", text: JSON.stringify({ captureEvidenceId: image.evidenceId }) },
-        { type: "input_image", image_url: image.dataUrl, detail: "high" },
-      ]),
-    ];
-    const body = JSON.stringify({
-      model: request.model,
-      instructions: request.instructions,
-      input: [{ role: "user", content }],
-      store: false,
-      tools: [],
-      tool_choice: "none",
-      truncation: "disabled",
-      service_tier: "default",
-      reasoning: { effort: "high" },
-      max_output_tokens: request.maxOutputTokens,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "study_analysis",
-          strict: true,
-          schema: request.schema,
-        },
-      },
-    });
+    const body = JSON.stringify(wire.body(request));
     if (Buffer.byteLength(body) > MAX_REQUEST_BYTES) return failure("invalid_request", false);
     const controller = new AbortController();
     let timedOut = false;
@@ -286,11 +212,11 @@ export function createAnalysisProvider(options: {
     try {
       if (request.signal?.aborted) return failure("cancelled", false, "cancelled");
       dispatched = true;
-      const response = await fetchFn(OPENAI_RESPONSES_URL, {
+      const response = await fetchFn(wire.url(request.model), {
         method: "POST",
         redirect: "error",
         signal: controller.signal,
-        headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
+        headers: wire.headers(options.apiKey),
         body,
         dispatcher,
         timeout: false,
@@ -325,7 +251,7 @@ export function createAnalysisProvider(options: {
           timedOut ? "timed_out" : "cancelled",
         );
       try {
-        return parseAnalysisResponse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
+        return wire.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
       } catch {
         return failure("invalid_response", true);
       }

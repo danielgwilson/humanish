@@ -5,7 +5,7 @@ import {
 import { costRefusal, refusedCost } from "../analysis/admission.js";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
-import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
+import { analysisKeyNames, discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import type { UpdateCheckContext } from "./update-check.js";
@@ -440,6 +440,7 @@ export function wantsJson(command: Command): boolean {
 const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
   AUTOMATIC_ANALYSIS_DRY_RUN: "skipped for dry runs",
   AUTOMATIC_ANALYSIS_KEY_MISSING: "skipped because OPENAI_API_KEY is not set",
+  AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING: `skipped because ${analysisKeyNames("gemini").join(" and ")} are not set`,
   AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE: "skipped because no participant left evidence",
   AUTOMATIC_ANALYSIS_ACTOR_CANCELLED:
     "skipped because the run stopped before its participants finished",

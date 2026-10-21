@@ -2,6 +2,7 @@ import type {
   LoadedAnalysis,
   AnalysisArtifact,
   AnalysisCorrection,
+  AnalysisProviderName,
 } from "../../src/analysis/types";
 import {
   ANALYSIS_LIMITS,
@@ -173,14 +174,14 @@ function parseSpend(value: unknown): LoadedAnalysis["spend"] {
     !(Number.isInteger(value.requests) && (value.requests as number) > 0) ||
     !(value.estimatedUsd === null || (number(value.estimatedUsd) && value.estimatedUsd >= 0)) ||
     typeof value.complete !== "boolean" ||
-    !list(value.providers, (provider) => provider === "openai" || provider === "codex", 2)
+    !list(value.providers, (provider) => enumeration(provider, ["openai", "gemini", "codex"]), 3)
   )
     return undefined;
   return {
     requests: value.requests as number,
     estimatedUsd: value.estimatedUsd as number | null,
     complete: value.complete,
-    providers: value.providers as Array<"openai" | "codex">,
+    providers: value.providers as AnalysisProviderName[],
   };
 }
 
@@ -211,7 +212,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
     !(a.captureVersion === undefined || a.captureVersion === 2) ||
     !enumeration(a.status, ["complete", "partial", "failed", "cancelled"]) ||
     !strings(a, ["createdAt", "completedAt", "promptVersion"]) ||
-    !enumeration(a.provider, ["openai", "codex"]) ||
+    !enumeration(a.provider, ["openai", "gemini", "codex"]) ||
     ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) ||
     !nullableText(a.error) ||
     !object(a.config) ||
@@ -220,7 +221,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
     !number(a.config.timeoutMs) ||
     (a.provider === "codex"
       ? !accountConfig(a.config)
-      : (a.config.provider !== undefined && a.config.provider !== "openai") ||
+      : (a.config.provider ?? "openai") !== a.provider ||
         ![a.config.maxCostUsd, a.config.maxOutputTokens].every(number)) ||
     !object(a.usage) ||
     ![
@@ -673,7 +674,11 @@ export function projectStudyAnalysis(
                 `Qualified Codex account profile · ${a.config.identity.reasoningEffort} effort · CLI ${a.config.identity.cliVersion} · ${a.config.identity.toolPolicy}. Remote inference; dollar cost and output-token ceiling unknown.`,
                 `Observed token usage ${a.usage.usageComplete ? "complete" : "incomplete"}: ${a.usage.inputTokens ?? "unknown"} input, ${a.usage.outputTokens ?? "unknown"} output.`,
               ]
-            : ["OpenAI API analysis · high reasoning effort."]),
+            : a.config.provider === "gemini"
+              ? [
+                  "Gemini API analysis · high thinking level. The evidence and captures were sent to Google.",
+                ]
+              : ["OpenAI API analysis · high reasoning effort."]),
           `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
           "This independent interpretation does not change the participant account or recorded completion evidence.",
           ...(a.config.question ? [`Additional review question: ${a.config.question}`] : []),

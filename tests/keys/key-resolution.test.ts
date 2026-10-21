@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  analysisApiKey,
   describeMissingKeys,
   discoverProviderKeys,
   listUserKeys,
@@ -353,6 +354,54 @@ describe("provider-key discovery", () => {
     expect(githubFromGh?.source).toBeNull();
   });
 
+  it("never lets a project overlay's GOOGLE_API_KEY replace an exported GEMINI_API_KEY", async () => {
+    await writeOverlay(["GOOGLE_API_KEY=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GEMINI_API_KEY: "synthetic-operator-exported" };
+    const fills = await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(fills).toEqual([]);
+    expect(env.GOOGLE_API_KEY).toBeUndefined();
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-operator-exported");
+  });
+
+  it("never lets a project overlay's GEMINI_API_KEY replace an exported GOOGLE_API_KEY", async () => {
+    await writeOverlay(["GEMINI_API_KEY=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GOOGLE_API_KEY: "synthetic-operator-exported" };
+    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(env.GEMINI_API_KEY).toBeUndefined();
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-operator-exported");
+  });
+
+  it("never fills GITHUB_TOKEN from an overlay over an exported GH_TOKEN", async () => {
+    await writeOverlay(["GITHUB_TOKEN=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GH_TOKEN: "synthetic-operator-exported" };
+    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(env.GITHUB_TOKEN).toBeUndefined();
+  });
+
+  it("reads GEMINI_API_KEY ahead of GOOGLE_API_KEY when both are set", () => {
+    const env = { GOOGLE_API_KEY: "synthetic-google", GEMINI_API_KEY: "synthetic-gemini" };
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-gemini");
+    expect(analysisApiKey("openai", { OPENAI_API_KEY: "synthetic-openai", ...env })).toBe(
+      "synthetic-openai",
+    );
+  });
+
+  it("reports GOOGLE_API_KEY in the env as the source of GEMINI_API_KEY", async () => {
+    const [gemini] = await probeKeySources(["GEMINI_API_KEY"], {
+      cwd,
+      env: { GOOGLE_API_KEY: "synthetic-google-value" },
+      deps: deps(),
+    });
+    expect(gemini?.source).toBe("process env (GOOGLE_API_KEY)");
+  });
+
+  it("fills GEMINI_API_KEY from the user store that `keys set gemini` writes", async () => {
+    await writeUserStore(["GEMINI_API_KEY=synthetic-gemini-value"]);
+    const env: NodeJS.ProcessEnv = {};
+    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(env.GEMINI_API_KEY).toBe("synthetic-gemini-value");
+  });
+
   it("names the vendor login and the `keys set` argument that fill each key", () => {
     expect(
       [
@@ -363,6 +412,8 @@ describe("provider-key discovery", () => {
         "GITHUB_TOKEN",
         "CODEX_API_KEY",
         "AGENTMAIL_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
         "EXAMPLE_CONNECTION_KEY",
       ].map((name) => `${name}: ${missingKeyHint(name)}`),
     ).toEqual([
@@ -373,6 +424,8 @@ describe("provider-key discovery", () => {
       "GITHUB_TOKEN: run `gh auth login`, or `humanish keys set github`",
       "CODEX_API_KEY: run `humanish keys set CODEX_API_KEY`",
       "AGENTMAIL_API_KEY: run `humanish keys set agentmail`",
+      "GEMINI_API_KEY: run `humanish keys set gemini`",
+      "GOOGLE_API_KEY: run `humanish keys set gemini`",
       "EXAMPLE_CONNECTION_KEY: run `humanish keys set EXAMPLE_CONNECTION_KEY`",
     ]);
   });
@@ -432,6 +485,7 @@ describe("the user key store (`humanish keys`)", () => {
     expect(resolveKeyName("anthropic")).toBe("ANTHROPIC_API_KEY");
     expect(resolveKeyName("github")).toBe("GH_TOKEN");
     expect(resolveKeyName("agentmail")).toBe("AGENTMAIL_API_KEY");
+    expect(resolveKeyName("gemini")).toBe("GEMINI_API_KEY");
     expect(resolveKeyName("gh")).toBe("gh");
     expect(resolveKeyName("MY_CUSTOM_KEY")).toBe("MY_CUSTOM_KEY");
     expect(resolveKeyName("not a name")).toBeNull();
@@ -452,7 +506,7 @@ describe("the user key store (`humanish keys`)", () => {
       /provider keys only/,
     );
     expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(
-      "The store holds provider keys only (OPENAI_API_KEY, E2B_API_KEY, MODAL_TOKEN_ID, MODAL_TOKEN_SECRET, MODAL_ENVIRONMENT, ANTHROPIC_API_KEY, GH_TOKEN, GITHUB_TOKEN, CODEX_API_KEY, AGENTMAIL_API_KEY). For anything else, use an explicit --dotenv.",
+      "The store holds provider keys only (OPENAI_API_KEY, E2B_API_KEY, MODAL_TOKEN_ID, MODAL_TOKEN_SECRET, MODAL_ENVIRONMENT, ANTHROPIC_API_KEY, GH_TOKEN, GITHUB_TOKEN, CODEX_API_KEY, AGENTMAIL_API_KEY, GEMINI_API_KEY, GOOGLE_API_KEY). For anything else, use an explicit --dotenv.",
     );
   });
 

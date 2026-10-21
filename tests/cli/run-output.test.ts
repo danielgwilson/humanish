@@ -188,6 +188,9 @@ describe("the automatic analysis line", () => {
     expect(analysisOutcomeText({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" })).toBe(
       "skipped for dry runs",
     );
+    expect(
+      analysisOutcomeText({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING" }),
+    ).toBe("skipped because GEMINI_API_KEY and GOOGLE_API_KEY are not set");
     // An unmapped reason still prints, with its state.
     expect(analysisOutcomeText({ state: "failed", reason: "SOMETHING_NEW" })).toBe(
       "failed (SOMETHING_NEW)",

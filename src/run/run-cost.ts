@@ -1,6 +1,7 @@
 import type { RunCostSummary } from "./bundle.js";
 import type { AnalysisAccounting } from "./costs.js";
 import type { RunIndexEntry } from "./run-index.js";
+import type { AnalysisProviderName } from "../analysis/types.js";
 
 // What a run cost a person: participants and desktops from run.json's `cost`, plus every
 // analysis request the run sent, which bill separately after the run and are not in that
@@ -21,7 +22,7 @@ export interface RunAnalysisCost {
   /** True when every request has a complete price and the history was read whole. */
   complete: boolean;
   /** Who billed the requests that recorded usage. */
-  providers: Array<"openai" | "codex">;
+  providers: AnalysisProviderName[];
 }
 
 /** Complete, a lower bound, or unknown (`null`) when only the subtotal's dollars are at hand. */
@@ -145,10 +146,14 @@ function analysesNoun(requests: number): string {
   return requests === 1 ? "analysis" : `${requests} analyses`;
 }
 
+const BILLED_BY: Readonly<Record<AnalysisProviderName, string>> = {
+  openai: "OpenAI API key",
+  gemini: "Gemini API key",
+  codex: "Codex account",
+};
+
 function billedBy(providers: RunAnalysisCost["providers"]): string {
-  const names = providers.map((provider) =>
-    provider === "openai" ? "OpenAI API key" : "Codex account",
-  );
+  const names = providers.map((provider) => BILLED_BY[provider]);
   return names.length === 0 ? "" : ` (${names.join(" and ")})`;
 }
 

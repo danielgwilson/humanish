@@ -165,6 +165,10 @@ interface OpenAIAnalysisConfig {
   timeoutMs: number;
   maxOutputTokens: number;
 }
+/** The Gemini API analyst: the same billed, capped request as OpenAI's, sent to Google. */
+interface GeminiAnalysisConfig extends Omit<OpenAIAnalysisConfig, "provider"> {
+  provider: "gemini";
+}
 /** Required, qualified execution profile, confirmed by the launcher before a turn.
  * A failed pre-dispatch artifact does not prove this CLI/model was observed.
  * These settings participate in cache and immutable attempt identity. */
@@ -188,7 +192,9 @@ export interface CodexAnalysisConfig {
   identity: CodexAnalysisIdentity;
 }
 /** Omitted provider remains the historical OpenAI API contract, including its exact hash. */
-export type AnalysisConfig = OpenAIAnalysisConfig | CodexAnalysisConfig;
+export type AnalysisConfig = OpenAIAnalysisConfig | GeminiAnalysisConfig | CodexAnalysisConfig;
+/** Who analyzed: an API billed by key (openai, gemini) or the restricted Codex account. */
+export type AnalysisProviderName = "openai" | "gemini" | "codex";
 export interface AnalysisUsage {
   inputTokens: number | null;
   outputTokens: number | null;
@@ -213,7 +219,7 @@ export interface AnalysisArtifact {
   configDigest: string;
   config: AnalysisConfig;
   promptVersion: string;
-  provider: "openai" | "codex";
+  provider: AnalysisProviderName;
   usage: AnalysisUsage;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;

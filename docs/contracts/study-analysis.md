@@ -5,7 +5,8 @@ It is separate from the participant's account, recorded outcome, and the run's
 deterministic review verdict. Opening an Observer never starts a provider request.
 Supported live runs request analysis on completion by default. A study that declares no analyst
 gets the Codex account analyst when its participant is a Codex `local-agent`, and the OpenAI
-analyst with a separate $10 cap on its expected cost otherwise. Set `review.analysis: false` to
+analyst with a separate $10 cap on its expected cost otherwise. A study can also select the
+[Gemini API analyst](#gemini-api-analysis). Set `review.analysis: false` to
 disable that request; see [automatic analysis](../product/automatic-analysis.md).
 
 ## Invocation
@@ -116,6 +117,49 @@ citations resolved in the run's packet. A second analysis of the same run, with
 the current merge instructions, billed $1.92, most of its input served from the
 provider's prompt cache, and each of its 466 citations resolved. Two runs do not
 calibrate the merge request's estimate.
+
+## Gemini API analysis
+
+`review.analysis.provider: gemini`, or `analyze --provider gemini`, sends the same request to
+Google's Gemini API:
+
+```bash
+humanish keys set gemini
+humanish analyze --run latest --provider gemini --max-cost 2 --dry-run --json
+humanish analyze --run latest --provider gemini --model gemini-3.8-flash --max-cost 2 --json
+```
+
+The request goes to `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
+with the key in the `x-goog-api-key` header. It carries the same instructions, packet and
+captures, with each capture at `MEDIA_RESOLUTION_HIGH`, thinking level `HIGH`, one candidate,
+the standard service tier, no tools and `store: false`. The key is `GEMINI_API_KEY` when set,
+else `GOOGLE_API_KEY`. Google's client libraries prefer `GOOGLE_API_KEY`; humanish does not, so a
+`GOOGLE_API_KEY` exported for another Google API never replaces the stored Gemini key. Key
+discovery fills neither name while the other is already in the environment. Without either, the attempt ends with
+`ANALYSIS_API_KEY_MISSING` and nothing is sent; the OpenAI key is never used.
+
+The supported model is `gemini-3.8-flash`, the one with a completed live analysis. The other
+Gemini models whose pages list image input and structured output join once a live analysis on
+each completes. `--max-cost` is required, and admission, the cost cap, `--max-output-tokens`
+(at most 32,768) and the partial result for a bill above the worst case work as on OpenAI.
+Admission prices each capture at 1,120 tokens, the media-resolution guide's figure for a
+high-resolution image, and expects twice the output it expects from OpenAI: one
+`gemini-3.8-flash` analysis of one participant wrote 24,246 output tokens. Usage maps
+`promptTokenCount` to input, `candidatesTokenCount` plus `thoughtsTokenCount` to output, and
+`cachedContentTokenCount` to cached input; a usage record whose `totalTokenCount` disagrees
+with those parts is kept as unknown. Rates are Google's paid standard tier. `gemini-3.8-flash`
+has a published price change on 2027-01-01, and each request is priced at the rates of the day
+it is sent. A free-tier key bills nothing, and Google's terms
+let it use free-tier content to improve its products.
+
+Gemini refuses the analysis schemas while they carry `maxItems`, so the request leaves those
+array limits out of the schema and states them, by field path, at the end of the system
+instruction. The response is still checked against the full schema. A `STOP` candidate
+whose only non-thought part is the JSON answer completes. `MAX_TOKENS` and `CONTINUATION` end
+as `output_incomplete`. A blocked prompt and the `SAFETY`, `RECITATION`, `LANGUAGE`,
+`BLOCKLIST`, `PROHIBITED_CONTENT`, `SPII`, `ESCALATION` and image-safety finish reasons end as
+`refusal`. Any other finish reason or answer shape ends as `invalid_response`. An HTTP error
+keeps only its status code, which the attempt's warnings name.
 
 ## Codex account analysis
 
@@ -492,11 +536,15 @@ The states without findings:
   `analyze --max-cost 10`, which runs an analysis anyway. For a skip without `OPENAI_API_KEY`
   on a machine where Codex is signed in with a ChatGPT account (read when the view is built),
   `next` is `analyze --provider codex` and the message names `review.analysis.provider: codex`
-  in the run's study file; otherwise the message says to set the key. For an analysis refused for its
+  in the run's study file; otherwise the message says to set the key. A study analyzed on Gemini
+  is skipped with `AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`; its message names `keys set gemini`,
+  and `next` is `analyze --provider gemini --model <model> --max-cost 10`.
+  For an analysis refused for its
   cost, the message gives the expected cost, the worst case and the cap, and `next` sets
   `--max-cost` to the worst case rounded up.
 - `failed`: the latest attempt failed or was cancelled and no usable version exists. `next`
-  reruns it with the same analyst, `--provider codex` for the Codex account analyst.
+  reruns it with the same analyst: `--provider codex` for the Codex account analyst, and
+  `--provider gemini --model <model>` for a Gemini one.
 - `none`: no analysis ran for this live run and nothing records why, for example a run that
   started from a library call, or one whose study file has moved or changed id.
 - `dry_run`: a dry run has no participant evidence to analyze. `next` is `run` with the run's own
