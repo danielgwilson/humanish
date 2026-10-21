@@ -33,6 +33,9 @@ the status code in its warnings.
   and every participant, found by the run's tags. The runner receives only the keys the study's
   plan reads. It takes computer-use studies on `e2b-desktop` or `modal-desktop` with a model API
   key and a public `app-url` subject, and refuses others before creating anything.
+- `humanish observe --run <id>` on a remote run that has not been copied back reconnects to its
+  runner: it serves the live Observer again, follows the run to its end, copies it back and stops
+  the runner, as the launching command would have.
 
 ### Fixed
 

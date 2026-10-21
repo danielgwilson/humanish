@@ -401,8 +401,10 @@ same humanish in it and starts the run there. While it runs:
   process;
 - Ctrl-C stops the run as it stops a local one: the runner's run reclaims its participants, its
   evidence is copied here and the runner is stopped;
-- closing the terminal leaves the run going; `npx humanish reclaim --run YOUR_RUN_ID` stops it and
-  every sandbox it made, found by the run's tags even when the runner is gone.
+- closing the terminal leaves the run going. `npx humanish observe --run YOUR_RUN_ID` reconnects:
+  it serves the live Observer again, follows the run to its end and copies it back, as the first
+  command would have. `npx humanish reclaim --run YOUR_RUN_ID` stops it instead, with every
+  sandbox it made, found by the run's tags even when the runner is gone.
 
 When the run ends, its bundle is copied into `.humanish/runs/YOUR_RUN_ID`, each file checked
 against the runner's digest, and `verify`, `review` and `analyze` work on it as on a local run.

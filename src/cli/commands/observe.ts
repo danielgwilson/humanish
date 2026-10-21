@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { Command, Option } from "commander";
 import { openTarget, renderObserver, serveObserver } from "../../observer/render.js";
 import type { ObserverResult } from "../../observer/render.js";
@@ -7,10 +8,13 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan, ExposureResult } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/results.js";
+import { reattachRemoteRun, remoteRunHere, type RemoteRunHere } from "../../remote/reattach.js";
+import { reportRemoteOutcome } from "./study-remote.js";
 import {
   type CliIo,
   collectRepeated,
   CWD_OPTION_DESCRIPTION,
+  discoverCliKeys,
   formatRunHuman,
   freePortOption,
   JSON_OPTION_DESCRIPTION,
@@ -189,6 +193,14 @@ async function observeRun(
     };
     writeResult(command, io, result, formatRunHuman);
     io.setExitCode(2);
+    return;
+  }
+
+  // A remote run that is not copied back yet has no bundle here: follow it on its runner.
+  const remote =
+    options.run === "latest" ? undefined : await remoteRunHere(options.cwd, options.run);
+  if (remote !== undefined) {
+    await observeRemoteRun(io, command, options.cwd, remote, port);
     return;
   }
 
@@ -572,4 +584,26 @@ function formatServeHuman(result: ServeResult): HumanOutput {
     lines.push(`warning: ${warning}`);
   }
   return lines.join("\n") + "\n";
+}
+
+async function observeRemoteRun(
+  io: CliIo,
+  command: Command,
+  cwd: string,
+  remote: RemoteRunHere,
+  port: number,
+): Promise<void> {
+  await discoverCliKeys({ io, cwd });
+  const say = (line: string) => io.writeErr(`${line}\n`);
+  let outcome;
+  try {
+    outcome = await reattachRemoteRun({ cwd: resolve(cwd), env: process.env, say }, remote, port);
+  } catch (error) {
+    outcome = {
+      runId: remote.runId,
+      exitCode: 2,
+      error: `could not reach its runner: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  reportRemoteOutcome(command, io, resolve(cwd), outcome);
 }
