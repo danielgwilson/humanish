@@ -67,6 +67,7 @@ import { runAdmitted, runSharedWorld } from "../../helpers/route-run.js";
 import { formatConcurrentSharedWorldStudyHuman } from "../../../src/cli/commands/study-format.js";
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -89,13 +90,14 @@ function makeFakeSandbox(
   commandHandler: (command: string) => { stdout?: string } | undefined,
 ): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
+  const x11vnc = x11vncRemote();
   const sandbox = {
     calls,
     sandboxId: id,
     commands: {
       run: async (command: string) => {
         calls.push(["commands.run", command]);
-        return commandHandler(command) ?? { exitCode: 0, stdout: "" };
+        return commandHandler(command) ?? x11vnc(command) ?? { exitCode: 0, stdout: "" };
       },
     },
     files: {

@@ -494,15 +494,36 @@ export async function openDesktopTerminal(
 export async function startDesktopStream(
   desktop: E2BDesktopSandbox,
   browserWindowId: string | undefined,
+  requestTimeoutMs: number,
 ): Promise<void> {
   if (!browserWindowId) {
     await desktop.stream.start({ requireAuth: true });
-    return;
+  } else {
+    try {
+      await desktop.stream.start({ requireAuth: true, windowId: browserWindowId });
+    } catch {
+      await desktop.stream.start({ requireAuth: true });
+    }
   }
+  await makeStreamViewOnly(desktop, requestTimeoutMs);
+}
 
-  try {
-    await desktop.stream.start({ requireAuth: true, windowId: browserWindowId });
-  } catch {
-    await desktop.stream.start({ requireAuth: true });
+/**
+ * Switches the stream's VNC server to view-only and confirms it. Both providers start x11vnc
+ * without `-viewonly`, and the URL's `view_only` is a noVNC client setting, so anyone holding the
+ * URL could otherwise type into the participant's desktop. x11vnc takes the change over its X
+ * property channel and answers the query with `ans=viewonly:1`; anything else throws, and the
+ * caller treats the stream as unavailable.
+ */
+async function makeStreamViewOnly(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+): Promise<void> {
+  const shell = e2bShell(desktop);
+  const options = { timeoutMs: 20_000, requestTimeoutMs };
+  await shell.run("x11vnc -display :0 -sync -R viewonly", options);
+  const query = await shell.run("x11vnc -display :0 -Q viewonly", options);
+  if (!/^ans=viewonly:1$/m.test(query.stdout)) {
+    throw new Error("the live stream could not be made view-only");
   }
 }
