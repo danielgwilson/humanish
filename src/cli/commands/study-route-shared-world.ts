@@ -118,6 +118,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+      ...(args.options.ownerKey === undefined ? {} : { ownerKey: args.options.ownerKey }),
     },
     onRunError: async (error) => {
       await server?.close().catch((cleanupError: unknown) => {

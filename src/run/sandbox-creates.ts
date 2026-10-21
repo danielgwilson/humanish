@@ -8,9 +8,10 @@
 // sandbox as soon as its id arrives. The tags let `humanish reclaim` find a sandbox whose id
 // never reached this process at all.
 import { createHash } from "node:crypto";
+import { closeSync, constants, openSync, readSync } from "node:fs";
 import path from "node:path";
 
-import type { PreparedOutputRoot } from "./contained-output.js";
+import { createContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 import type { SandboxOwnerTags, SandboxProviderId } from "./sandbox-receipts.js";
 
 /** Refuses a sandbox create for a run directory whose process is stopping. */
@@ -89,20 +90,61 @@ function idle(entry: DirectoryCreates): boolean {
   );
 }
 
+/** The file in a run directory that holds a run key its launcher chose. */
+const OWNER_KEY_FILE = "owner-key";
+const OWNER_KEY = /^[0-9a-f]{16}$/;
+
 /**
  * The E2B metadata that ties a sandbox to the directory that journals it. `runId` is the
  * directory's name: the run id, or a preflight probe's id. `runKey` is a digest of the directory's
  * inode and creation time, so two projects that both use `--run-id smoke` never match each other's
- * sandboxes, and a renamed project directory still matches its own. `tool` is the owner tag every
- * route already sets.
+ * sandboxes, and a renamed project directory still matches its own. A directory whose run was given
+ * a key (pinRunOwnerKey) uses that key instead, so two directories on different machines, a remote
+ * run's and its launcher's, name the same sandboxes. `tool` is the owner tag every route already
+ * sets.
  */
 export function sandboxOwnerTags(root: PreparedOutputRoot): SandboxOwnerTags {
   const { where, identity } = identityOf(root);
-  const runKey = createHash("sha256")
-    .update(`${identity.ino}:${identity.birthtimeNs}`)
-    .digest("hex")
-    .slice(0, 16);
+  const runKey =
+    pinnedOwnerKey(where) ??
+    createHash("sha256")
+      .update(`${identity.ino}:${identity.birthtimeNs}`)
+      .digest("hex")
+      .slice(0, 16);
   return { tool: "humanish", runId: path.basename(where), runKey };
+}
+
+/**
+ * The key pinned in the run directory at `where`, if any. The file is opened without following a
+ * link, as every other file in a run directory is; a missing or malformed file pins nothing.
+ */
+function pinnedOwnerKey(where: string): string | undefined {
+  let fd: number;
+  try {
+    fd = openSync(path.join(where, OWNER_KEY_FILE), constants.O_RDONLY | constants.O_NOFOLLOW);
+  } catch {
+    return undefined;
+  }
+  try {
+    const buffer = Buffer.alloc(64);
+    const length = readSync(fd, buffer, 0, buffer.length, 0);
+    const key = buffer.subarray(0, length).toString("utf8").trim();
+    return OWNER_KEY.test(key) ? key : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * Give a new run directory the run key `key` (16 lowercase hex characters) before it creates any
+ * sandbox. The file is created once and never replaced.
+ */
+export async function pinRunOwnerKey(root: PreparedOutputRoot, key: string): Promise<void> {
+  if (!OWNER_KEY.test(key))
+    throw new Error("A run's owner key is 16 lowercase hexadecimal characters.");
+  await createContainedOutputFile(root, OWNER_KEY_FILE, `${key}\n`);
 }
 
 /** A create in progress; the acquire step in src/substrates/e2b/sandbox.ts holds one per create. */
