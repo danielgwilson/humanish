@@ -18,6 +18,7 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
+import { x11vncRemote } from "./x11vnc-remote.js";
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill by id and exposes
@@ -55,13 +56,14 @@ function makeFakeSandbox(
   commandHandler: (command: string) => { stdout?: string } | undefined,
 ): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
+  const x11vnc = x11vncRemote();
   const sandbox = {
     calls,
     sandboxId: id,
     commands: {
       run: async (command: string) => {
         calls.push(["commands.run", command]);
-        return commandHandler(command) ?? { exitCode: 0, stdout: "" };
+        return commandHandler(command) ?? x11vnc(command) ?? { exitCode: 0, stdout: "" };
       },
     },
     files: {
