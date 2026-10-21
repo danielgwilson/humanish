@@ -2930,10 +2930,10 @@ hx run crowd-101 --dry-run --no-open >"$work/logs/crowd-101.out" 2>"$work/logs/c
 c101_run=$?
 c17_sims=$(json_field "$project/.humanish/runs/crowd-17/run.json" 'd.simCount')
 rm -f "$project/humanish/studies/crowd-17.yaml" "$project/humanish/studies/crowd-101.yaml"
-c17_line="After live runs: default analysis · gpt-6-astra · expected \$4.60 to \$9.24 for 17 participants in 2 cohort requests of at most 16 participants and one merge request, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap. Set review.analysis: false to disable."
+c17_line="After live runs: default analysis · gpt-6-astra · expected \$4.61 to \$9.24 for 17 participants in 2 cohort requests of at most 16 participants and one merge request, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap. Set review.analysis: false to disable."
 if [ "$c17_run" = 0 ] && [ "$c17_sims" = 17 ] && [ "$c17_check" = 0 ] && grep -qxF "$c17_line" "$work/logs/crowd-17-check.out" &&
   [ "$c101_run" = 2 ] && grep -qF "at most 100 participants" "$work/logs/crowd-101.out" "$work/logs/crowd-101.err" && grep -qF "has 101" "$work/logs/crowd-101.out" "$work/logs/crowd-101.err"; then
-  record "run: 17 participants plan, cohort analysis admitted at the default cap; 101 refused" PASS "17: dry run exit 0, simCount 17, study check names 2 cohort requests and one merge request at \$4.60 to \$9.24 under \$10; 101: exit 2, at most 100" "#1739, #1742"
+  record "run: 17 participants plan, cohort analysis admitted at the default cap; 101 refused" PASS "17: dry run exit 0, simCount 17, study check names 2 cohort requests and one merge request at \$4.61 to \$9.24 under \$10; 101: exit 2, at most 100" "#1739, #1742"
 else
   record "run: 17 participants plan, cohort analysis admitted at the default cap; 101 refused" FAIL "17 run exit $c17_run simCount '${c17_sims}', check exit $c17_check; 101 exit $c101_run '$(grep -ho 'at most [0-9]* participants[^.]*' "$work/logs/crowd-101.out" "$work/logs/crowd-101.err" | head -n 1)'; see logs/crowd-*" "#1739, #1742"
 fi
@@ -3203,8 +3203,8 @@ cj17_exit=$?
 cj17=$(json_field "$work/logs/crowd-17-json.json" 'd.analysis && [d.analysis.participants, d.analysis.expectedCostUsd.low.toFixed(2), d.analysis.expectedCostUsd.high.toFixed(2), d.analysis.refusedFromUsd === undefined].join(" ")')
 rm -f "$project/humanish/studies/crowd-17-cap.yaml" "$project/humanish/studies/crowd-17-json.yaml"
 if [ "$cc17_exit" = 0 ] && grep -qF 'After live runs: explicit analysis · gpt-6-astra · refused before it starts for 17 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence (expected $3.15)' "$work/logs/crowd-17-cap.out" &&
-  [ "$ccj17" = "17 3.150188 true" ] && [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 4.60 9.24 true" ]; then
-  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "default cap: expected \$4.60 to \$9.24 for 2 cohort requests and one merge request; cap 3: refusedFromUsd 3.150188" "#1742"
+  [ "$ccj17" = "17 3.153475 true" ] && [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 4.61 9.24 true" ]; then
+  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "default cap: expected \$4.61 to \$9.24 for 2 cohort requests and one merge request; cap 3: refusedFromUsd 3.153475" "#1742"
 else
   record "study check: 17 participants analysed in 2 cohort requests and a merge request" FAIL "cap 3 exit $cc17_exit '$(grep -ho 'After live runs[^·]*·[^·]*·[^·]*' "$work/logs/crowd-17-cap.out" | head -n 1 | cut -c1-160)'; json exit $cj17_exit '${cj17}'; see logs/crowd-17-*" "#1742"
 fi

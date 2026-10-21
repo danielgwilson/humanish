@@ -2,7 +2,9 @@
 // participant's steps live in prepare.ts, start.ts and teardown.ts beside this file, and fill the state
 // record in state.ts in the order below.
 import type { SubjectPhaseEvent } from "../../../subject/steps.js";
+import { externalHandoffReader } from "../../../substrates/e2b/desktop-handoff.js";
 import { createE2BDesktopExecutor } from "../../../substrates/e2b/desktop-executor.js";
+import { e2bShell } from "../../../substrates/e2b/shell.js";
 import type { ParticipantDesktop, ReadyParticipantDesktop } from "../participant-desktop.js";
 import { participantInbox, planParticipantComms } from "./comms.js";
 import { participantBrowserStateObserver } from "./fidelity.js";
@@ -92,9 +94,14 @@ export function createE2BParticipantDesktop(
     });
     // Capture that started pairs each checkpoint with the time of the read before it.
     const network = networkHooks(state.network);
-    const executor = createE2BDesktopExecutor(
-      desktop,
-      state.launchedBrowserFamily === "chromium"
+    // A web target's browser launch installs the stand-ins that write handed-off links down
+    // (desktop-handoff.ts). Without them the log is absent and every read is empty.
+    const readExternalHandoffs = state.browserLaunched
+      ? externalHandoffReader(e2bShell(desktop), { requestTimeoutMs: deps.requestTimeoutMs })
+      : undefined;
+    const executor = createE2BDesktopExecutor(desktop, {
+      ...(readExternalHandoffs === undefined ? {} : { readExternalHandoffs }),
+      ...(state.launchedBrowserFamily === "chromium"
         ? {
             observeBrowserState: participantBrowserStateObserver({
               desktop,
@@ -108,8 +115,8 @@ export function createE2BParticipantDesktop(
               ...(network === undefined ? {} : { onClock: network.onClock }),
             }),
           }
-        : {},
-    );
+        : {}),
+    });
     return {
       executor: allocation.open(state.speech?.wrap(executor) ?? executor).executor,
       ...(inbox === undefined ? {} : { inbox }),

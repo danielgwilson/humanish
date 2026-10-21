@@ -2,6 +2,7 @@ import { PNG } from "pngjs";
 import { z } from "zod";
 import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
+import { EXTERNAL_HANDOFF_LIMITS } from "../actors/computer-use/external-handoff.js";
 import {
   ComputerUseExecutorError,
   CUA_REJECTION_REASONS,
@@ -174,6 +175,19 @@ const heardSpeechListSchema = z
   .min(1)
   .max(BROWSER_CONTROL_LIMITS.heardSpeech)
   .refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length);
+// The guest sends a handoff as externalHandoffOf made it: a scheme and a mailto link's recipients.
+const externalHandoffListSchema = z
+  .array(
+    z.strictObject({
+      scheme: z.string().regex(/^[a-z][a-z0-9+.-]{0,31}$/),
+      recipients: z
+        .array(z.string().min(3).max(EXTERNAL_HANDOFF_LIMITS.addressLength))
+        .max(EXTERNAL_HANDOFF_LIMITS.recipients)
+        .optional(),
+    }),
+  )
+  .min(1)
+  .max(EXTERNAL_HANDOFF_LIMITS.perObservation);
 const observationSchema = z.strictObject({
   png: z
     .string()
@@ -187,6 +201,7 @@ const observationSchema = z.strictObject({
   text: text.optional(),
   scrollY: coordinate.optional(),
   heardSpeech: heardSpeechListSchema.optional(),
+  externalHandoffs: externalHandoffListSchema.optional(),
 });
 type WireObservation = z.infer<typeof observationSchema>;
 const common = {
@@ -378,6 +393,9 @@ export function encodeBrowserControlObservation(observation: CuaObservation): Wi
     ...(observation.text !== undefined ? { text: observation.text } : {}),
     ...(observation.scrollY !== undefined ? { scrollY: observation.scrollY } : {}),
     ...(observation.heardSpeech !== undefined ? { heardSpeech: observation.heardSpeech } : {}),
+    ...(observation.externalHandoffs !== undefined
+      ? { externalHandoffs: observation.externalHandoffs }
+      : {}),
   });
   if (!parsed.success) throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   return parsed.data;
@@ -398,6 +416,13 @@ export function decodeBrowserControlObservation(value: unknown): CuaObservation 
     ...(state.text !== undefined ? { text: state.text } : {}),
     ...(state.scrollY !== undefined ? { scrollY: state.scrollY } : {}),
     ...(state.heardSpeech !== undefined ? { heardSpeech: state.heardSpeech } : {}),
+    ...(state.externalHandoffs !== undefined
+      ? {
+          externalHandoffs: state.externalHandoffs.map(({ scheme, recipients }) =>
+            recipients === undefined ? { scheme } : { scheme, recipients },
+          ),
+        }
+      : {}),
   };
 }
 export function safeBrowserControlFailure(

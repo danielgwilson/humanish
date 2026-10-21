@@ -158,6 +158,13 @@ vi.mock("../../src/guest/desktop-executor.js", () => ({
     return { executor: "base" };
   },
 }));
+// tests/guest/external-links.test.ts covers the stand-ins' log and the profile; this setup keeps
+// its executor and file system fakes.
+vi.mock("../../src/guest/external-links.js", () => ({
+  GUEST_EXTERNAL_LINK_BIN: "/opt/humanish/control/bin",
+  prepareGuestBrowserProfile: async () => {},
+  withExternalHandoffs: (executor: unknown) => executor,
+}));
 vi.mock("../../src/guest/desktop-media.js", () => ({
   startDesktopMedia: async (options: Record<string, unknown>) => {
     h.mediaOptions = options;

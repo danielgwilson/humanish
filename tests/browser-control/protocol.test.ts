@@ -172,6 +172,30 @@ describe("browser control closed v1 protocol", () => {
       original,
     );
   });
+  it("carries a guest's handed-off links to the host, and refuses one that holds more than they keep", () => {
+    const original = {
+      ...observation(),
+      externalHandoffs: [
+        { scheme: "mailto", recipients: ["help@example.test"] },
+        { scheme: "tel" },
+      ],
+    };
+    expect(decodeBrowserControlObservation(encodeBrowserControlObservation(original))).toEqual(
+      original,
+    );
+    for (const externalHandoffs of [
+      [],
+      [{ scheme: "mailto", recipients: ["help@example.test"], body: "order 42" }],
+      [{ scheme: "Mailto:" }],
+      Array.from({ length: 21 }, () => ({ scheme: "tel" })),
+    ])
+      expect(() =>
+        decodeBrowserControlObservation({
+          ...encodeBrowserControlObservation(observation()),
+          externalHandoffs,
+        }),
+      ).toThrow(ComputerUseExecutorError);
+  });
   it.each([
     "signature",
     "crc",

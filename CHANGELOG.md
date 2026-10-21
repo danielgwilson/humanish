@@ -8,6 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A participant on a hosted desktop (E2B or Modal) who clicks a `mailto:` link no longer gets
+  XFCE's "Choose Preferred Application" dialog, and a `tel:` or `sms:` link on the study's own
+  site no longer opens Chrome's "Open xdg-open?" prompt. Participants had reported both as faults
+  of the app under test. On the local browser route a `mailto:` link did nothing and a `tel:`
+  link opened the same prompt; a runtime image built from this release records both instead. The desktop has no email, phone or messaging app, so it now writes the
+  link down. The trace records a `link opened another app` notice with the scheme and, for an
+  email link, only the recipient addresses. The participant's next turn says the link worked,
+  that the app is not shown and that nothing was sent, and automatic analysis is told the missing
+  app window belongs to the study desktop.
+
 ## 0.140.0: One local study can test phone, tablet and desktop, and every run ends with findings (2026-10-21)
 
 humanish 0.140.0 lets a local browser study give each participant its own device. One study with

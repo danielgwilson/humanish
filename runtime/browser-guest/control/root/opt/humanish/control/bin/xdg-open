@@ -1,0 +1,17 @@
+#!/bin/sh
+# Installed by humanish for a study participant's browser: this desktop has no app for this
+# link, so the link is written down for the study instead of opening a chooser dialog.
+bin='/opt/humanish/control/bin'
+url=
+for arg in "$@"; do case "$arg" in -*) ;; *) url=$arg; break ;; esac; done
+case "$url" in
+  [Hh][Tt][Tt][Pp]:*|[Hh][Tt][Tt][Pp][Ss]:*|[Ff][Ii][Ll][Ee]:*) ;;
+  [A-Za-z]*:*)
+    printf '%s\n' "$(printf '%s' "$url" | tr -d '\r\n' | cut -c 1-4096)" >> "$XDG_RUNTIME_DIR/humanish-links.log"
+    exit 0 ;;
+esac
+set -f
+real=
+IFS=:
+for entry in $PATH; do [ "$entry" = "$bin" ] || real=${real:+$real:}$entry; done
+PATH=$real exec "${0##*/}" "$@"

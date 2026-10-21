@@ -1,5 +1,6 @@
 import { evaluateStopWhen, type StopConditionObservation } from "../../stop-conditions.js";
 import { ComputerUseExecutorError, isComputerUseExecutorError } from "../executor-error.js";
+import { externalHandoffNote, externalHandoffSummary } from "../external-handoff.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../speech.js";
 import { tracePage } from "../../../evidence/trace-page.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
@@ -50,6 +51,8 @@ export class DesktopObserver {
   heardNewSpeech = false;
   private readonly seenSpeechIds = new Set<string>();
   private pendingHeardSpeech: HeardSpeech[] = [];
+  /** Notes about links handed to another app, for the next turn the participant takes. */
+  private pendingHandoffNotes: string[] = [];
   private dwellDone = false;
 
   constructor(private readonly session: LoopSession) {}
@@ -107,7 +110,9 @@ export class DesktopObserver {
     if (match) {
       return { stop: stopWhenMatched(match, observation, (text) => session.redactNarration(text)) };
     }
-    return { observation, hint };
+    const notes = [...this.pendingHandoffNotes, ...(hint === undefined ? [] : [hint])];
+    this.pendingHandoffNotes = [];
+    return { observation, hint: notes.length === 0 ? undefined : notes.join(" ") };
   }
 
   /**
@@ -205,11 +210,29 @@ export class DesktopObserver {
   private async observeBounded(label: string): Promise<CuaObservation> {
     const observation = await this.observeOrRetry(label);
     const { session } = this;
+    this.noteHandoffs(observation);
     session.finalPage =
       session.settings.recordPages === false
         ? undefined
         : tracePage(observation.url, (text) => session.redactNarration(text));
     return observation;
+  }
+
+  /**
+   * Record each link the browser handed to another app, and keep its note for the next turn. The
+   * desktop showed nothing for it, so without the note the participant reads a dead link.
+   */
+  private noteHandoffs(observation: CuaObservation): void {
+    for (const handoff of observation.externalHandoffs ?? []) {
+      this.session.trace.record("notice", () =>
+        notice(
+          "ok",
+          "link opened another app",
+          this.session.redactNarration(externalHandoffSummary(handoff)),
+        ),
+      );
+      this.pendingHandoffNotes.push(externalHandoffNote(handoff));
+    }
   }
 
   // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe.
