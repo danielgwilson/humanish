@@ -27,7 +27,10 @@ import {
   RUN_STATUS_FILE,
   runAnalysisPhase,
   type RunAnalysisPhase,
+  type RunStatusRecord,
 } from "../run/status.js";
+import type { RunBundle } from "../run/bundle.js";
+import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
 import { formatDuration } from "../run/projection.js";
 import { resolvePhysicalCwd, runIdOf } from "../run/paths.js";
 import { studyProvenanceOf, type RunStudyProvenance } from "../run/study-provenance.js";
@@ -175,6 +178,8 @@ interface FindingsSource {
    */
   progress?:
     | { stage: "participants" }
+    /** The run ended while a participant stream was still running: nothing complete to analyze. */
+    | { stage: "cut-off"; running: number; streams: number }
     | {
         stage: "analysis";
         phase: RunAnalysisPhase;
@@ -413,6 +418,14 @@ function pendingFindings(
         : "Participants are still running in this run. Analysis is turned off in its study, so none starts when they finish.",
       again,
     );
+  if (progress?.stage === "cut-off" && job === undefined)
+    return withoutFindings(
+      source,
+      "skipped",
+      "ANALYSIS_RUN_INCOMPLETE",
+      `This run ended while ${progress.running} of ${progress.streams} participant streams were still running, so its recording is incomplete and no analysis ran. Run the study again with the next command.`,
+      cli(`run ${source.study?.id ?? "<study>"}${source.cwdFlag}`),
+    );
   const phase = progress?.stage === "analysis" ? progress.phase : undefined;
   const jobPending = job?.state === "queued" || job?.state === "running";
   if (jobPending || (job === undefined && phase?.state === "running")) {
@@ -440,6 +453,27 @@ function pendingFindings(
     `The automatic analysis stopped before it wrote findings: the process running it stopped updating its record${at === undefined ? "" : ` at ${at}`}, most likely because it ended. Analyze the run again with the next command. If it says another analysis holds the lock, confirm no humanish process is still running for this run first.`,
     analyzeCommand(source, progress?.stage === "analysis" ? progress.provider : undefined),
   );
+}
+
+/**
+ * A run that ended, by a signal, a process that left without publishing, or a heartbeat that
+ * stopped, while some participant stream was still running. Undefined for any other run.
+ */
+function cutOff(
+  bundle: Pick<RunBundle, "outcome" | "streams"> | undefined,
+  record: RunStatusRecord | null,
+  nowMs: number,
+): { stage: "cut-off"; running: number; streams: number } | undefined {
+  if (bundle === undefined || bundle.outcome?.state === "finished") return undefined;
+  if (
+    bundle.outcome === undefined &&
+    (record === null || classifyRunStatus(record, nowMs) !== "interrupted")
+  )
+    return undefined;
+  const running = bundle.streams.filter(
+    (stream) => !TERMINAL_SIMULATION_STATUSES.has(stream.status) || stream.liveActor !== undefined,
+  ).length;
+  return running === 0 ? undefined : { stage: "cut-off", running, streams: bundle.streams.length };
 }
 
 /** The analyst the run's study gets, when its file still names the same study. */
@@ -656,7 +690,7 @@ export async function readRunAnalysis(
           record !== null &&
           classifyRunStatus(record, nowMs) === "running"
         ? { stage: "participants" as const }
-        : undefined;
+        : cutOff(bundle?.bundle, record, nowMs);
   const codexSignedIn =
     loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
       ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)

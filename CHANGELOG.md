@@ -43,7 +43,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   it started, before findings exist. Before, it said "No analysis has run for this run." An
   analysis whose process stopped before it finished gets its own message
   (`AUTOMATIC_ANALYSIS_STOPPED`) and the `analyze` command that runs it again, instead of "records
-  could not be read or checked".
+  could not be read or checked". A run that ended while a participant was still running says so and names
+  `humanish run <study>`.
 - Email and desktop cleanup messages no longer call the step "finalization".
 - A participant on a hosted desktop (E2B or Modal) who clicks a `mailto:` link no longer gets
   XFCE's "Choose Preferred Application" dialog, and a `tel:` or `sms:` link on the study's own

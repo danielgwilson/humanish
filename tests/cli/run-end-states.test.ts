@@ -147,6 +147,17 @@ describe("review before the findings exist", () => {
     expect(analysis.message).not.toMatch(/No analysis has run/);
   });
 
+  it("says an interrupted run cut off mid-participant has nothing to analyze and how to rerun", async () => {
+    const { cwd } = await liveRun({
+      participants: "running",
+      status: { state: "interrupted", reason: "reclaimed", completedAt: iso(-1_000) },
+    });
+    const analysis = await review(cwd);
+    expect(analysis.state).toBe("skipped");
+    expect(analysis.message).not.toMatch(/No analysis has run/);
+    expect(analysis.next).toMatch(/run signup/);
+  });
+
   it("says analysis is running and when it started, before the job is claimed", async () => {
     const startedAt = iso(-90_000);
     const { cwd } = await liveRun({
