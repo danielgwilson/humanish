@@ -143,9 +143,36 @@ function defaultAnalysisOverBudget(result: AutomaticAnalysisResult): boolean {
   );
 }
 
+/**
+ * Codex refusals that stop the analyst before any request: the account or CLI cannot start it here.
+ * A hosted Codex participant can run where the analyst cannot, for example with a keyring-only
+ * login, since the analyst reads auth.json from a private home.
+ */
+const CODEX_ANALYST_SETUP_CODES = [
+  "analysis_codex_unavailable",
+  "analysis_codex_unsupported_version",
+  "analysis_codex_incompatible_release",
+  "analysis_codex_unsupported_platform",
+  "analysis_codex_login_required",
+  "analysis_codex_unsupported_auth",
+  "analysis_codex_busy",
+];
+
+/** True when a default Codex analyst could not start, so the study's author never asked for it. */
+function defaultCodexAnalystUnavailable(result: AutomaticAnalysisResult): boolean {
+  const value = result.automaticAnalysis;
+  return (
+    result.automaticAnalysisTrigger === "default" &&
+    value?.state === "failed" &&
+    value.reason === "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE" &&
+    CODEX_ANALYST_SETUP_CODES.includes(value.result?.error?.code ?? "")
+  );
+}
+
 export function automaticAnalysisSucceeded(result: AutomaticAnalysisResult): boolean {
   const value = result.automaticAnalysis;
   if (value === undefined) return true;
+  if (defaultCodexAnalystUnavailable(result)) return true;
   if (value.state === "skipped")
     return (
       value.reason === "AUTOMATIC_ANALYSIS_DRY_RUN" ||

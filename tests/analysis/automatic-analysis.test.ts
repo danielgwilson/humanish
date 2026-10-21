@@ -665,6 +665,33 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(cleanup).toHaveBeenCalledOnce();
     expect(automaticAnalysisEnvelope(result)).toMatchObject({ ok: false, runOk: true });
   });
+  it("a default Codex analyst that cannot start leaves the run passing; an explicit one fails it", () => {
+    const unavailable = (trigger: "default" | "explicit", code: string) => ({
+      automaticAnalysisTrigger: trigger,
+      automaticAnalysis: {
+        state: "failed" as const,
+        reason: "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE",
+        result: {
+          schema: "humanish.analyze-result.v1" as const,
+          run: "codex-unavailable",
+          dryRun: false,
+          reused: false,
+          ok: false,
+          warnings: [],
+          error: { code, message: "synthetic" },
+        },
+      },
+    });
+    expect(
+      automaticAnalysisSucceeded(unavailable("default", "analysis_codex_login_required")),
+    ).toBe(true);
+    expect(
+      automaticAnalysisSucceeded(unavailable("explicit", "analysis_codex_login_required")),
+    ).toBe(false);
+    expect(automaticAnalysisSucceeded(unavailable("default", "analysis_codex_tool_call"))).toBe(
+      false,
+    );
+  });
   it("partial status cannot turn an analysis error into CLI success", () => {
     expect(
       automaticAnalysisSucceeded({
