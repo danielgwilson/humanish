@@ -1,6 +1,6 @@
 // The per-run-directory create registry the signal handler reads: a stop refuses later creates
 // and reports every id a create in flight returns, however many other directories come and go.
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,8 +9,10 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedOutputRoot,
 } from "../../src/run/contained-output.js";
+import { createRunArtifactPaths } from "../../src/run/paths.js";
 import {
   beginSandboxCreate,
+  pinRunOwnerKey,
   recordSandboxOwnerOnce,
   sandboxOwnerTags,
   stopSandboxCreates,
@@ -61,6 +63,52 @@ describe("the sandbox create registry", () => {
     expect(sandboxOwnerTags(root("smoke", 43)).runKey).not.toBe(tags.runKey);
     // A renamed directory keeps its inode, so it keeps its key.
     expect(sandboxOwnerTags(root("renamed", 42)).runKey).toBe(tags.runKey);
+  });
+
+  it("names a run directory by the key its launcher pinned, on any machine", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-owner-key-"));
+    try {
+      const made = await Promise.all(
+        ["launcher", "remote"].map(async (side) => {
+          await mkdir(path.join(cwd, side));
+          const created = await createRunArtifactPaths(path.join(cwd, side), "cua-remote-run");
+          if (!created.ok) throw new Error("run directory not created");
+          return created.paths;
+        }),
+      );
+      const [launcher, remote] = made as [PreparedOutputRoot, PreparedOutputRoot];
+      expect(sandboxOwnerTags(launcher)).not.toEqual(sandboxOwnerTags(remote));
+      for (const paths of made) await pinRunOwnerKey(paths, "1111222233334444");
+      expect(sandboxOwnerTags(launcher)).toEqual({
+        tool: "humanish",
+        runId: "cua-remote-run",
+        runKey: "1111222233334444",
+      });
+      expect(sandboxOwnerTags(remote)).toEqual(sandboxOwnerTags(launcher));
+      // Pinned once: a second key is refused, and the first stays.
+      await expect(pinRunOwnerKey(launcher, "5555666677778888")).rejects.toMatchObject({
+        code: "EEXIST",
+      });
+      expect(sandboxOwnerTags(launcher).runKey).toBe("1111222233334444");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a malformed key and ignores a pinned key that is a link", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-owner-key-"));
+    try {
+      const created = await createRunArtifactPaths(cwd, "cua-linked");
+      if (!created.ok) throw new Error("run directory not created");
+      const derived = sandboxOwnerTags(created.paths).runKey;
+      await expect(pinRunOwnerKey(created.paths, "NOT-A-KEY")).rejects.toThrow("16 lowercase");
+      const outside = path.join(cwd, "elsewhere");
+      await writeFile(outside, "1111222233334444\n");
+      await symlink(outside, path.join(created.paths.physicalRunRoot, "owner-key"));
+      expect(sandboxOwnerTags(created.paths).runKey).toBe(derived);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("writes the owner line once per directory, and again after a failed write", async () => {

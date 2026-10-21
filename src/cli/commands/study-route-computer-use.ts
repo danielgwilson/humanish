@@ -244,6 +244,7 @@ function cuaRunOptions(
         }
       : {}),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    ...(args.options.ownerKey === undefined ? {} : { ownerKey: args.options.ownerKey }),
     ...(args.options.rerunFailedFrom === undefined
       ? {}
       : {

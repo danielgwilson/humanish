@@ -18,6 +18,8 @@ export interface ScriptedRunInput {
   cwd: string;
   open?: boolean;
   runId?: string;
+  /** The run key its sandboxes carry; see InternalRunStudyOptions.ownerKey. */
+  ownerKey?: string;
   /** Keys and subject env for the run. Defaults to process.env. Values are scrubbed; names persist. */
   env?: Readonly<Record<string, string | undefined>>;
   /** Runs after a clone subject's sandbox exists and before provisioning. */

@@ -116,6 +116,8 @@ export interface ComputerUseRunInput {
   cwd: string;
   open?: boolean;
   runId?: string;
+  /** The run key its sandboxes carry; see InternalRunStudyOptions.ownerKey. */
+  ownerKey?: string;
   /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `participants`
    *  list is declared; a roster's length is authoritative). */
   countOverride?: number;

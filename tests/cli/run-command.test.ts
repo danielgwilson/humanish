@@ -179,6 +179,23 @@ describe("run takes the rerun and scorer flags", () => {
   });
 });
 
+describe("the owner key a remote run's launcher passes", () => {
+  it.each([
+    [["--owner-key", "1111222233334444"], "--owner-key needs --run-id."],
+    [
+      ["--owner-key", "NOT-A-KEY", "--run-id", "cua-remote"],
+      "--owner-key is 16 lowercase hexadecimal characters.",
+    ],
+  ])("refuses %j before reading the study", async (flags, message) => {
+    const result = await runCli(["run", "no-such-study", ...flags, "--cwd", tmpdir(), "--json"]);
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout).error).toEqual({
+      code: "HUMANISH_RUN_OPTION_CONFLICT",
+      message,
+    });
+  });
+});
+
 describe("one runner", () => {
   it("gives run and watch the same run flags, with the same help text", () => {
     const flags = (names: string[]) =>

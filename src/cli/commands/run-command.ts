@@ -1,6 +1,6 @@
 // The one runner. `run` and `watch` register a run's flags through addRunOptions, so the two
 // commands cannot drift apart.
-import type { Command } from "commander";
+import { Option, type Command } from "commander";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runStudyCommand } from "./study-run.js";
@@ -53,7 +53,16 @@ export function addRunOptions(command: Command): Command {
       "--run-id <id>",
       "Explicit run id for deterministic fixture tests; refused when that run already exists.",
     )
+    .addOption(ownerKeyOption())
     .option("--json", JSON_OPTION_DESCRIPTION);
+}
+
+/**
+ * Hidden: set by the process that launches a run on a remote machine, so that machine's run
+ * directory and the launcher's own name the same sandboxes.
+ */
+function ownerKeyOption(): Option {
+  return new Option("--owner-key <key>").hideHelp();
 }
 
 /** The flags that only a study file can use, as typed on the command line, when they are set. */
