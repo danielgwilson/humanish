@@ -31,6 +31,11 @@ import type {
 } from "../evidence/desktop-recording-types.js";
 import { startDesktopRecorder, type DesktopRecorderHandle } from "../evidence/desktop-recorder.js";
 import { createGuestProcesses, setupFailed, type GuestProcesses } from "./runtime-processes.js";
+import {
+  GUEST_EXTERNAL_LINK_BIN,
+  prepareGuestBrowserProfile,
+  withExternalHandoffs,
+} from "./external-links.js";
 
 /** The guest image's fixed layout. Tests derive guest paths from it rather than spelling them. */
 export const GUEST_RUNTIME_PATHS = Object.freeze({
@@ -39,7 +44,8 @@ export const GUEST_RUNTIME_PATHS = Object.freeze({
   home: "/home/humanish",
 });
 const GUEST_RUNTIME_ENV = Object.freeze({
-  PATH: "/usr/bin:/bin",
+  // The stand-ins come first, so the browser hands a mailto: or tel: link to them.
+  PATH: `${GUEST_EXTERNAL_LINK_BIN}:/usr/bin:/bin`,
   HOME: "/home/humanish",
   USER: "humanish",
   LOGNAME: "humanish",
@@ -534,6 +540,7 @@ export async function createGuestRuntimeDesktop(options: {
     progress("layout");
     check();
     await verifyGuestLayout(check);
+    await prepareGuestBrowserProfile(`${GUEST_RUNTIME_PATHS.home}/browser`, options.initialUrl);
     progress("xauthority");
     await authorizeDisplay(processes, check);
     progress("display");
@@ -595,7 +602,10 @@ export async function createGuestRuntimeDesktop(options: {
       await openGuestFixture(browser.page, check);
     }
     return {
-      executor: state.media?.wrap(executor) ?? executor,
+      executor: withExternalHandoffs(
+        state.media?.wrap(executor) ?? executor,
+        `${GUEST_RUNTIME_ENV.XDG_RUNTIME_DIR}/humanish-links.log`,
+      ),
       close,
       ...(options.recording === undefined
         ? {}

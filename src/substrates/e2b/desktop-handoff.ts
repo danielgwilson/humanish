@@ -23,9 +23,12 @@ const EXTERNAL_LINK_DIR = "/tmp/humanish-external-links";
 
 const LINK_LENGTH = 4096;
 
-/** One stand-in. `$0` names the command it stands in for. */
-function standIn(dir: string): string {
-  const bin = `${dir}/bin`;
+/**
+ * One stand-in, installed in `bin`, appending to `log` (a shell word). `$0` names the command it
+ * stands in for. The local guest image ships the same script
+ * (runtime/browser-guest/control/root/opt/humanish/control/bin/xdg-open).
+ */
+export function externalLinkStandIn(bin: string, log: string): string {
   return [
     "#!/bin/sh",
     "# Installed by humanish for a study participant's browser: this desktop has no app for this",
@@ -36,7 +39,7 @@ function standIn(dir: string): string {
     'case "$url" in',
     "  [Hh][Tt][Tt][Pp]:*|[Hh][Tt][Tt][Pp][Ss]:*|[Ff][Ii][Ll][Ee]:*) ;;",
     "  [A-Za-z]*:*)",
-    `    printf '%s\\n' "$(printf '%s' "$url" | tr -d '\\r\\n' | cut -c 1-${LINK_LENGTH})" >> ${shellQuote(`${dir}/links.log`)}`,
+    `    printf '%s\\n' "$(printf '%s' "$url" | tr -d '\\r\\n' | cut -c 1-${LINK_LENGTH})" >> ${log}`,
     "    exit 0 ;;",
     "esac",
     // Anything else goes to the desktop's own command, found on the search path without this
@@ -59,7 +62,7 @@ export function externalLinkHandlerSetup(dir: string = EXTERNAL_LINK_DIR): strin
   return [
     `mkdir -p ${shellQuote(bin)}`,
     `touch ${shellQuote(`${dir}/links.log`)}`,
-    `printf '%s' ${shellQuote(standIn(dir))} > ${shellQuote(`${bin}/xdg-open`)}`,
+    `printf '%s' ${shellQuote(externalLinkStandIn(bin, shellQuote(`${dir}/links.log`)))} > ${shellQuote(`${bin}/xdg-open`)}`,
     `cp ${shellQuote(`${bin}/xdg-open`)} ${shellQuote(`${bin}/xdg-email`)}`,
     `chmod 755 ${shellQuote(`${bin}/xdg-open`)} ${shellQuote(`${bin}/xdg-email`)}`,
     `export PATH=${shellQuote(bin)}:"$PATH"`,

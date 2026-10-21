@@ -63,20 +63,30 @@ const EXTERNAL_APP_SCHEMES = [
 ] as const;
 
 /**
- * The profile's Preferences file. With a web `targetUrl`, its origin may open the external app
- * schemes without Chrome's prompt: the "always allow" choice Chrome stores per origin, which
- * needs no root and no managed policy. Links from other origins still prompt.
+ * The profile preference that lets a web `targetUrl`'s origin open the external app schemes
+ * without Chrome's prompt: the "always allow" choice Chrome stores per origin, which needs no root
+ * and no managed policy. Links from other origins still prompt. Undefined for any other target.
  */
-export function chromiumEvidenceProfilePreferencesJson(targetUrl?: string): string {
-  const origin = targetUrl === undefined ? undefined : URL.parse(targetUrl);
-  if (origin === null || origin === undefined || !/^https?:$/.test(origin.protocol))
-    return JSON.stringify(CHROMIUM_EVIDENCE_PROFILE_PREFERENCES);
-  return JSON.stringify({
-    ...CHROMIUM_EVIDENCE_PROFILE_PREFERENCES,
+export function externalAppPreferences(
+  targetUrl: string | undefined,
+):
+  | { protocol_handler: { allowed_origin_protocol_pairs: Record<string, Record<string, true>> } }
+  | undefined {
+  const target = targetUrl === undefined ? null : URL.parse(targetUrl);
+  if (target === null || !/^https?:$/.test(target.protocol)) return undefined;
+  return {
     protocol_handler: {
       allowed_origin_protocol_pairs: {
-        [origin.origin]: Object.fromEntries(EXTERNAL_APP_SCHEMES.map((scheme) => [scheme, true])),
+        [target.origin]: Object.fromEntries(EXTERNAL_APP_SCHEMES.map((scheme) => [scheme, true])),
       },
     },
+  };
+}
+
+/** The profile's Preferences file, with externalAppPreferences for a web `targetUrl`. */
+export function chromiumEvidenceProfilePreferencesJson(targetUrl?: string): string {
+  return JSON.stringify({
+    ...CHROMIUM_EVIDENCE_PROFILE_PREFERENCES,
+    ...externalAppPreferences(targetUrl),
   });
 }

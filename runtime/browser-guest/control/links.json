@@ -4,5 +4,6 @@
   "etc/systemd/system/apt-daily.timer": "/dev/null",
   "etc/systemd/system/apt-daily-upgrade.timer": "/dev/null",
   "etc/systemd/system/dpkg-db-backup.timer": "/dev/null",
-  "etc/systemd/system/fstrim.timer": "/dev/null"
+  "etc/systemd/system/fstrim.timer": "/dev/null",
+  "opt/humanish/control/bin/xdg-email": "xdg-open"
 }
