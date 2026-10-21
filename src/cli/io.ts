@@ -5,7 +5,7 @@ import {
 import { costRefusal, refusedCost } from "../analysis/admission.js";
 import { Command, Option } from "commander";
 import { loadEnvFile, recordDotenvNames } from "../keys/env-file.js";
-import { discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
+import { analysisKeyNames, discoverProviderKeys, type DotenvLoad } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import type { UpdateCheckContext } from "./update-check.js";
@@ -80,8 +80,14 @@ export interface StudyCommandOptions {
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
+  /** Run the study in a runner sandbox on its participants' provider. */
+  remote?: boolean | undefined;
   /** Hidden: the run key the run's sandboxes carry, chosen by a remote run's launcher. */
   ownerKey?: string | undefined;
+  /** Hidden, watch only: bind the served Observer on every interface (a remote run's runner). */
+  allInterfaces?: boolean | undefined;
+  /** Hidden, watch only: also write the run's result and exit code to this file as JSON. */
+  resultFile?: string | undefined;
   /** watch only: serve and follow the Observer even without an interactive terminal. */
   serve?: boolean | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
@@ -440,6 +446,7 @@ export function wantsJson(command: Command): boolean {
 const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
   AUTOMATIC_ANALYSIS_DRY_RUN: "skipped for dry runs",
   AUTOMATIC_ANALYSIS_KEY_MISSING: "skipped because OPENAI_API_KEY is not set",
+  AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING: `skipped because ${analysisKeyNames("gemini").join(" and ")} are not set`,
   AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE: "skipped because no participant left evidence",
   AUTOMATIC_ANALYSIS_ACTOR_CANCELLED:
     "skipped because the run stopped before its participants finished",

@@ -380,16 +380,43 @@ selected participant ids, and previous participant statuses; the source run's ve
 This is intentionally not automatic retry; a passing rerun is evidence of a
 nondeterminism candidate and does not license erasing the original red participant.
 
-## Keep the machine awake for a long study
+## Keep a long study going when your machine sleeps
 
-Each participant's desktop runs on E2B or Modal, but its decisions (the screenshot, the model
-call, the next action) run in the `humanish` process on your machine. If that machine sleeps,
-the participants stop deciding and the run fails; its bundle records a `host.suspended` event
-with when and how long. The sandboxes keep running until their lifetime ends or
-`humanish reclaim` stops them.
+Each participant's desktop runs on E2B or Modal, but by default its decisions (the screenshot,
+the model call, the next action) run in the `humanish` process on your machine. If that machine
+sleeps, the participants stop deciding and the run fails; its bundle records a `host.suspended`
+event with when and how long.
 
-For a study that outlasts how long you can keep a laptop awake, run it on a machine that stays
-on, such as a cloud VM with Node and your provider keys, inside `tmux`:
+`--remote` moves that process to a sandbox on the participants' provider, the runner:
+
+```bash
+npx humanish run humanish/studies/YOUR_STUDY.yaml --remote
+```
+
+humanish plans the study here, so a refusal costs nothing, then creates the runner, installs this
+same humanish in it and starts the run there. While it runs:
+
+- the command prints an Observer address on 127.0.0.1 that shows the run live, desktops included;
+  the provider's own port authentication guards the runner, and the credential stays in this
+  process;
+- Ctrl-C stops the run as it stops a local one: the runner's run reclaims its participants, its
+  evidence is copied here and the runner is stopped;
+- closing the terminal leaves the run going; `npx humanish reclaim --run YOUR_RUN_ID` stops it and
+  every sandbox it made, found by the run's tags even when the runner is gone.
+
+When the run ends, its bundle is copied into `.humanish/runs/YOUR_RUN_ID`, each file checked
+against the runner's digest, and `verify`, `review` and `analyze` work on it as on a local run.
+The command exits with the run's own code.
+
+The runner receives the study file, the persona files and each `participants[].files` entry, and
+only the keys its plan reads, in its run's environment, in your own E2B or Modal account. It costs
+one more sandbox for the length of the study, and on E2B it counts against your concurrent
+sandboxes. `--remote` takes a computer-use study whose participants use `e2b-desktop` or
+`modal-desktop`, a model API key (not a local agent) and an `app-url` subject on the public
+internet; it refuses anything else before it creates the runner, and says why.
+
+For any other study, run it on a machine that stays on, such as a cloud VM with Node and your
+provider keys, inside `tmux`:
 
 ```bash
 tmux new -s study
@@ -398,9 +425,9 @@ npx humanish run humanish/studies/YOUR_STUDY.yaml
 
 Detach with Ctrl-b then d, and reattach later with `tmux attach -t study`. On that machine,
 `npx humanish observe --run latest --serve --port 8732` serves the Observer on 127.0.0.1:8732;
-`ssh -L 8732:127.0.0.1:8732 YOUR_VM` lets you watch it from your laptop. On a Mac
-that stays plugged in, `caffeinate -i npx humanish run humanish/studies/YOUR_STUDY.yaml` keeps
-it awake for the run.
+`ssh -L 8732:127.0.0.1:8732 YOUR_VM` lets you watch it from your laptop. On a Mac that stays
+plugged in, `caffeinate -i npx humanish run humanish/studies/YOUR_STUDY.yaml` keeps it awake for
+the run.
 
 ## Run-owned cleanup
 

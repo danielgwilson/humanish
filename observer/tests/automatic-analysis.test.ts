@@ -96,6 +96,11 @@ describe("independent automatic analysis metadata", () => {
   it.each([
     ["AUTOMATIC_ANALYSIS_KEY_MISSING", "Set OPENAI_API_KEY", "humanish analyze"],
     [
+      "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING",
+      "humanish keys set gemini",
+      "humanish analyze --provider gemini",
+    ],
+    [
       "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
       "No participant activity",
       "setup and failure records remain available",

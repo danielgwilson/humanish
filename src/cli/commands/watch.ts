@@ -79,6 +79,11 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     // Hidden: watch rejects --safe with a pointer to the library filter and to edge auth, which
     // a bare "unknown option" would lose.
     .addOption(new Option("--safe").hideHelp())
+    // Hidden: a remote run's launcher starts its runner's watch with these. The runner's Observer
+    // is reached only through the provider's authenticated proxy, and the launcher reads the
+    // result from the file while the Observer keeps serving.
+    .addOption(new Option("--all-interfaces").hideHelp())
+    .addOption(new Option("--result-file <path>").hideHelp())
     .addHelpText(
       "after",
       [

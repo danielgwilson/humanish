@@ -54,6 +54,9 @@ export interface RunResult {
       | "HUMANISH_WATCH_SAFE_NOT_APPLICABLE"
       | "HUMANISH_RUN_OPTION_CONFLICT"
       | "HUMANISH_OBSERVE_OPTION_CONFLICT"
+      // --remote: refused before a runner exists, or the remote run failed.
+      | "HUMANISH_REMOTE_REFUSED"
+      | "HUMANISH_REMOTE_FAILED"
       // CLI-loadable adopter scorer: fail-closed at load, pre-spend.
       | "HUMANISH_STUDY_SCORER_BAD_REF"
       | "HUMANISH_STUDY_SCORER_NOT_FOUND"

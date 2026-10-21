@@ -50,7 +50,8 @@ allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance
 includes reasoning as well as the report; exhausting it does not produce a usable
 report and never starts an automatic retry. Analysis
-sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.
+sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`, or to Google with
+`provider: gemini`.
 Analysis runs in the humanish runner using its credentials. This setting adds no
 credential channel to the target application; each participant's route keeps
 its existing authentication boundary. Review the separate analysis budget before running a manifest live; an actor's
@@ -77,6 +78,27 @@ an explicit failed analysis state and the original recording intact. Use
 remain untested until a request. An omitted provider means this analyst for a Codex
 `local-agent` participant on any target, and OpenAI for every other participant. This setting
 does not enable managed local desktops.
+
+To use Google's Gemini API for the separate analyst:
+
+```yaml
+review:
+  analysis:
+    provider: gemini
+    model: gemini-3.8-flash
+    maxCostUsd: 2
+```
+
+Gemini analysis sends the same evidence packet and captures to Google, at high thinking level,
+with each capture at high media resolution. It reads `GEMINI_API_KEY`, which `humanish keys set
+gemini` stores, and `GOOGLE_API_KEY` only when `GEMINI_API_KEY` is unset. Key discovery treats
+the two names as one key: a project's `.humanish/local/provider.env` or the user store never adds
+one while the other is already in the environment. A missing Gemini key skips the analysis
+(`AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`); the OpenAI key is never used in its place. Admission,
+`maxCostUsd`, `maxOutputTokens` and priced usage work as they do on OpenAI, at the paid-tier
+rates in `src/run/pricing.ts`; requests made with a free-tier key bill nothing, and Google's
+terms let it use free-tier content to improve its products. The supported model is
+`gemini-3.8-flash`, the one with a completed live analysis.
 
 The same configuration works through `humanish run <study>`,
 `watch <study>`, and TUI live starts. Direct library calls to the five recording
@@ -147,7 +169,8 @@ run's own result is ok, the first line of the human output reads
 command: with Codex signed in with a ChatGPT account it is `humanish analyze --run <id>
 --provider codex`, and the message names `review.analysis.provider: codex` as the setting that
 makes that analyst the study's; otherwise it says to set the key and names `humanish analyze
---run <id> --max-cost 10`. So does a
+--run <id> --max-cost 10`. A study analyzed on Gemini names `humanish keys set gemini` and
+`humanish analyze --run <id> --provider gemini --model <model> --max-cost 10`. So does a
 default analysis whose expected cost, plus the margin, is over the default $10 cap:
 it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` and the run exits 0. For
 any analysis refused for its cost, the job records the expected cost, the worst
@@ -197,6 +220,7 @@ JSON also has `findings`:
 | `AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE`       | `skipped`                 | This invocation published no run to analyze, or the run id is invalid |
 | `AUTOMATIC_ANALYSIS_SOURCE_CHANGED`           | `failed`                  | The run directory changed after the run published its bundle          |
 | `AUTOMATIC_ANALYSIS_KEY_MISSING`              | `skipped`                 | No OpenAI API key                                                     |
+| `AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`       | `skipped`                 | No Gemini API key for a study analyzed on Gemini                      |
 | `AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE`  | `skipped`                 | A default analysis found no participant evidence                      |
 | `AUTOMATIC_ANALYSIS_ACTOR_CANCELLED`          | `skipped`                 | The harness cancelled the participants, or a signal stopped the run   |
 | `AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED`      | `skipped`                 | A local VM study could not confirm its cleanup; the command exits 2   |

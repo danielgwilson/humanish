@@ -6,8 +6,8 @@
 // key (`key-one-of`) stays with buildRuntimeAuth at run time, which also picks its placement.
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../actors/local-agent/readiness.js";
-import { describeMissingKeys } from "../keys/key-resolution.js";
-import { MODEL_RATES, unpricedCapMessage } from "../run/pricing.js";
+import { analysisKeyNames, describeMissingKeys } from "../keys/key-resolution.js";
+import { participantRate, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
@@ -66,7 +66,7 @@ export function requiredSubjectEnv(requirements: readonly Requirement[]): string
 /**
  * The provider keys a live run of `plan` is known to read: its `key` and `key-one-of` names, its
  * subject env, the external catch's token variable, ANTHROPIC_API_KEY for a Claude Code
- * participant, and OPENAI_API_KEY when automatic analysis runs on OpenAI. `run` prints a
+ * participant, and the analyst's key when automatic analysis runs on OpenAI or Gemini. `run` prints a
  * key-source line for these only. Discovery still fills every key it finds: other readers, such as
  * a declared scorer's host code, are not in the plan.
  */
@@ -81,8 +81,9 @@ export function keyNamesOf(plan: StudyPlan): ReadonlySet<string> {
   }
   const catchToken = plan.residual.comms?.email?.external?.authTokenEnv;
   if (catchToken !== undefined) names.add(catchToken);
-  if (plan.analysis !== undefined && plan.analysis.config.provider !== "codex")
-    names.add("OPENAI_API_KEY");
+  const analyst = plan.analysis?.config.provider;
+  if (plan.analysis !== undefined && analyst !== "codex")
+    for (const name of analysisKeyNames(analyst ?? "openai")) names.add(name);
   return names;
 }
 
@@ -194,6 +195,6 @@ export function unpricedCapCheck<C extends string>(args: {
 }): LiveRefusal<C> | undefined {
   const { caps, model } = args;
   if (caps.maxUsd === undefined && caps.maxTotalUsd === undefined) return undefined;
-  if (MODEL_RATES[model.trim().toLowerCase()]) return undefined;
+  if (participantRate(model)) return undefined;
   return { code: args.code, message: unpricedCapMessage(model) };
 }

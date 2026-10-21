@@ -244,6 +244,16 @@ const analysisParticipantProvenanceSchema = z
   })
   .strict();
 
+/** The configuration of an analyst billed by API key. Stored artifacts keep the bounds of every
+ * release that wrote them; admission checks the current ones before a request. */
+const apiAnalysisConfigSchema = z.object({
+  model: label,
+  question: text(4000).nullable(),
+  maxCostUsd: z.number().positive().max(1000),
+  timeoutMs: z.number().int().positive().max(3600000),
+  maxOutputTokens: z.number().int().positive().max(128000),
+});
+
 const analysisArtifactSchema = z
   .object({
     schema: z.literal(ANALYSIS_SCHEMA),
@@ -257,16 +267,8 @@ const analysisArtifactSchema = z
     inputDigest: digest,
     configDigest: digest,
     config: z.union([
-      z
-        .object({
-          provider: z.literal("openai").optional(),
-          model: label,
-          question: text(4000).nullable(),
-          maxCostUsd: z.number().positive().max(1000),
-          timeoutMs: z.number().int().positive().max(3600000),
-          maxOutputTokens: z.number().int().positive().max(128000),
-        })
-        .strict(),
+      apiAnalysisConfigSchema.extend({ provider: z.literal("openai").optional() }).strict(),
+      apiAnalysisConfigSchema.extend({ provider: z.literal("gemini") }).strict(),
       z
         .object({
           provider: z.literal("codex"),
@@ -291,7 +293,7 @@ const analysisArtifactSchema = z
         .strict(),
     ]),
     promptVersion: label,
-    provider: z.enum(["openai", "codex"]),
+    provider: z.enum(["openai", "gemini", "codex"]),
     usage: z
       .object({
         cacheWriteInputTokens: z.number().int().min(0).max(1e12).nullable(),
@@ -658,7 +660,7 @@ export function validateAnalysisExecutionReceipt(value: unknown): AnalysisExecut
   if (!parsed.success || Date.parse(parsed.data.completedAt) < Date.parse(parsed.data.createdAt))
     throw new Error("ANALYSIS_RECEIPT_INVALID");
   if (
-    (parsed.data.provider === "openai" && parsed.data.maxCostUsd === null) ||
+    (parsed.data.provider !== "codex" && parsed.data.maxCostUsd === null) ||
     (parsed.data.provider === "codex" &&
       (parsed.data.maxCostUsd !== null ||
         parsed.data.usage.estimatedCostUsd !== null ||

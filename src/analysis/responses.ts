@@ -224,6 +224,29 @@ export function recordProviderUsage(
   usage.ratesAsOf = priced.ratesAsOf;
 }
 
+/** What an HTTP status from an analysis API most likely means, by status. */
+const HTTP_STATUS_MEANINGS: Readonly<Record<number, string>> = {
+  400: "it refused the request as invalid",
+  401: "it refused the key",
+  403: "the key has no access to this model",
+  404: "it does not know this model",
+  429: "a rate or quota limit of the key's plan was reached",
+  500: "a server error; a later attempt can succeed",
+  503: "the model is overloaded or unavailable; a later attempt can succeed",
+};
+
+/** The HTTP status an API analyst answered, for the attempt's warnings. The status code is the only
+ * part of the answer kept: the provider's error text may echo evidence or credentials. */
+export function httpStatusWarning(
+  config: AnalysisConfig,
+  response: AnalysisProviderResult,
+): string | undefined {
+  if (response.httpStatus === undefined) return undefined;
+  const api = config.provider === "gemini" ? "Gemini" : "OpenAI";
+  const meaning = HTTP_STATUS_MEANINGS[response.httpStatus];
+  return `The ${api} API answered HTTP ${response.httpStatus}${meaning === undefined ? "" : ` (${meaning})`}. humanish does not retry an analysis request; run the command again to retry.`;
+}
+
 /** The warnings a Codex response carries about its CLI release and protocol. */
 export function codexWarnings(config: AnalysisConfig, response: AnalysisProviderResult): string[] {
   if (config.provider !== "codex") return [];

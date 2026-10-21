@@ -8,7 +8,9 @@ import {
   estimateActorCost,
   estimateAggregatedTurnCost,
   estimateDesktopCost,
+  participantRate,
   round6,
+  unpricedCapMessage,
   type DesktopRate,
   type ModelRate,
 } from "../../src/run/pricing.js";
@@ -371,5 +373,38 @@ describe("estimateAggregatedTurnCost", () => {
       expect(estimate.estimatedCostUsd).toBeNull();
       expect(estimate.basis).toBeUndefined();
     }
+  });
+});
+
+describe("estimateActorCost: a dated price change", () => {
+  const DATED: Record<string, ModelRate> = {
+    "dated-model": {
+      inputUsdPerToken: 1e-6,
+      cachedInputUsdPerToken: 0.1e-6,
+      outputUsdPerToken: 4e-6,
+      until: "2026-12-31",
+      after: { inputUsdPerToken: 2e-6, cachedInputUsdPerToken: 0.2e-6, outputUsdPerToken: 8e-6 },
+      asOf: "2026-10-21",
+      source: "fake-sheet://dated",
+    },
+  };
+  const usage = { input: 1_000_000, cachedInput: 500_000, output: 100_000 };
+
+  it("prices at the published rate through its last day", () => {
+    const at = new Date("2026-12-31T23:59:59Z");
+    expect(estimateActorCost(usage, "dated-model", DATED, at).estimatedCostUsd).toBe(0.95);
+  });
+
+  it("prices at the next published rate from the day after", () => {
+    const at = new Date("2027-01-01T00:00:00Z");
+    expect(estimateActorCost(usage, "dated-model", DATED, at).estimatedCostUsd).toBe(1.9);
+  });
+});
+
+describe("participant cap pricing", () => {
+  it("never offers an analysis-only model to a participant", () => {
+    expect(participantRate("gpt-6-astra")).toBeDefined();
+    expect(participantRate("gemini-3.8-flash")).toBeUndefined();
+    expect(unpricedCapMessage("unpriced-model")).not.toMatch(/gemini/);
   });
 });

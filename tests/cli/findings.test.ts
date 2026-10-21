@@ -345,6 +345,28 @@ describe("a run skipped for a missing OpenAI key", () => {
   });
 });
 
+describe("a run skipped for a missing Gemini key", () => {
+  it("names the Gemini key and the Gemini command, never the OpenAI key or Codex", () => {
+    const missing = none(job("skipped", "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING"));
+    const view = analysisFindings({
+      ...source(missing),
+      analyst: { provider: "gemini", model: "gemini-3.8-flash" },
+    });
+    expect(view).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING",
+      next: "humanish analyze --run synthetic-study --provider gemini --model gemini-3.8-flash --max-cost 10",
+    });
+    expect(view.message).toMatch(/GEMINI_API_KEY and GOOGLE_API_KEY are not set/);
+    expect(view.message).toMatch(/humanish keys set gemini/);
+    expect(view.message).not.toMatch(/OPENAI_API_KEY|codex/i);
+    // Without the study file the reason alone still names Gemini.
+    expect(analysisFindings(source(missing)).next).toBe(
+      "humanish analyze --run synthetic-study --provider gemini --max-cost 10",
+    );
+  });
+});
+
 describe("a run without findings", () => {
   const cases: Array<[string, LoadedAnalysis, string | undefined, string, string | null]> = [
     ["a dry run with no live study to name", none(), "dry-run", "dry_run", "humanish study list"],

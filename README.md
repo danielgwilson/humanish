@@ -242,6 +242,8 @@ beside Participants in Observer, with evidence links and separate participant
 feedback. You can explicitly select a restricted Codex account analyst with
 `npx humanish analyze --run latest --provider codex`; it uses remote inference,
 requires the qualified CLI and account login, and reports dollar cost as unknown.
+`npx humanish analyze --run latest --provider gemini --max-cost 2` sends the same
+evidence to Google's Gemini API instead, with the key from `npx humanish keys set gemini`.
 A study whose participant is a Codex `local-agent` uses that analyst by default. See the [analysis contract](docs/contracts/study-analysis.md) for
 coverage limits, estimated cost controls, corrections and sharing behavior.
 

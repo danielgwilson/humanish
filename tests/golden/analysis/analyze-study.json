@@ -9,7 +9,7 @@
       "warnings": [],
       "error": {
         "code": "ANALYSIS_CONFIG_INVALID",
-        "message": "OpenAI analysis needs a supported model, positive USD admission limit and 256–32768 output tokens. Codex account analysis uses its qualified model and null dollar/output-token caps. Both require timeout 1–600000 ms."
+        "message": "OpenAI and Gemini analysis need a supported model of that provider, a positive USD admission limit and 256–32768 output tokens. Codex account analysis uses its qualified model and null dollar/output-token caps. All require timeout 1–600000 ms."
       }
     },
     "requests": [],
@@ -773,7 +773,9 @@
         "ratesAsOf": "2026-09-03",
         "requests": 1
       },
-      "warnings": [],
+      "warnings": [
+        "The OpenAI API answered HTTP 503 (the model is overloaded or unavailable; a later attempt can succeed). humanish does not retry an analysis request; run the command again to retry."
+      ],
       "ok": false,
       "analysisId": "analysis-golden-1",
       "status": "failed",

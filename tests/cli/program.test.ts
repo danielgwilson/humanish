@@ -1932,6 +1932,7 @@ describe("provider-key discovery at the CLI seam", () => {
         "OPENAI_API_KEY",
         "GH_TOKEN",
         "AGENTMAIL_API_KEY",
+        "GEMINI_API_KEY",
       ]);
       const human = await runCli(["keys"]);
       expect(human.exitCode).toBe(0);

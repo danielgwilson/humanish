@@ -18,6 +18,15 @@ const FRAMING_TOKENS = 2048;
  */
 const EXPECTED_OUTPUT_TOKENS = 12_000;
 const EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT = 1_000;
+/**
+ * How many times that expectation an API analyst writes. The OpenAI figures above come from its
+ * billed analyses. A gemini-3.8-flash analysis of one participant at high thinking wrote 24,246
+ * output tokens against 13,000 expected, so Gemini's expectation is doubled. That rests on one run.
+ */
+export const EXPECTED_OUTPUT_SCALE: Readonly<Record<"openai" | "gemini", number>> = {
+  openai: 1,
+  gemini: 2,
+};
 /** Admission compares the expected cost times this margin with the cap. */
 const ADMISSION_MARGIN = 1.1;
 const MARGIN_PERCENT = Math.round((ADMISSION_MARGIN - 1) * 100);
@@ -48,6 +57,8 @@ interface AnalysisRequestSize {
 export interface AnalysisRequests {
   cohorts: readonly AnalysisRequestSize[];
   mergeTextBytes: number;
+  /** The analyst's EXPECTED_OUTPUT_SCALE; 1 when omitted. */
+  outputScale?: number;
 }
 
 export interface AnalysisCostEstimate {
@@ -79,7 +90,12 @@ function requestCost(rate: ModelRate, inputTokens: number, outputTokens: number)
 }
 
 /** One request's input and costs. `reportTokens` are earlier requests' reports it reads. */
-function estimateRequest(rate: ModelRate, size: AnalysisRequestSize, reportTokens = 0) {
+function estimateRequest(
+  rate: ModelRate,
+  size: AnalysisRequestSize,
+  outputScale: number,
+  reportTokens = 0,
+) {
   const inputTokens =
     Math.ceil(size.textBytes / BYTES_PER_INPUT_TOKEN) +
     FRAMING_TOKENS +
@@ -87,7 +103,8 @@ function estimateRequest(rate: ModelRate, size: AnalysisRequestSize, reportToken
     reportTokens;
   const expectedOutputTokens = Math.min(
     size.outputAllowance,
-    EXPECTED_OUTPUT_TOKENS + EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT * size.participants,
+    outputScale *
+      (EXPECTED_OUTPUT_TOKENS + EXPECTED_OUTPUT_TOKENS_PER_PARTICIPANT * size.participants),
   );
   return {
     inputTokens,
@@ -107,7 +124,8 @@ export function estimateAnalysisCost(
   requests: AnalysisRequests,
 ): AnalysisCostEstimate {
   const { cohorts } = requests;
-  const estimates = cohorts.map((size) => estimateRequest(rate, size));
+  const scale = requests.outputScale ?? 1;
+  const estimates = cohorts.map((size) => estimateRequest(rate, size, scale));
   if (cohorts.length > 1)
     estimates.push(
       estimateRequest(
@@ -118,6 +136,7 @@ export function estimateAnalysisCost(
           participants: cohorts.reduce((total, size) => total + size.participants, 0),
           outputAllowance: Math.max(...cohorts.map((size) => size.outputAllowance)),
         },
+        scale,
         cohorts.reduce((total, size) => total + size.outputAllowance, 0),
       ),
     );

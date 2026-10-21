@@ -42,6 +42,11 @@ export interface ModelRate {
     inputMultiplier: number;
     outputMultiplier: number;
   };
+  /** The last day (`YYYY-MM-DD`, UTC) these rates apply, when the sheet already publishes the
+   *  rates that follow. A request is priced at the rates of the day it is sent. */
+  until?: string;
+  /** The rates the sheet publishes from the day after `until`. */
+  after?: Pick<ModelRate, "inputUsdPerToken" | "outputUsdPerToken" | "cachedInputUsdPerToken">;
   /** The `YYYY-MM-DD` date the entry was last checked against `source`. */
   asOf: string;
   /** Public pricing page the number came from (a comment/URL, never a secret). */
@@ -49,6 +54,8 @@ export interface ModelRate {
   /** true = a stand-in that was not copied from a live sheet; the estimate carries this flag so a
    *  placeholder rate is never mistaken for a confirmed one. */
   placeholder?: boolean;
+  /** true = priced for study analysis only: no participant route runs this model. */
+  analysisOnly?: true;
 }
 
 export interface DesktopRate {
@@ -164,6 +171,30 @@ function rateWithLongContextTier(
   };
 }
 
+/** Gemini prices per 1M tokens: input, cached input and output (thinking included). */
+function geminiPrices(inPer1M: number, cachedPer1M: number, outPer1M: number) {
+  return {
+    inputUsdPerToken: inPer1M * 1e-6,
+    cachedInputUsdPerToken: cachedPer1M * 1e-6,
+    outputUsdPerToken: outPer1M * 1e-6,
+  };
+}
+
+function geminiRate(
+  inPer1M: number,
+  cachedPer1M: number,
+  outPer1M: number,
+  change: Pick<ModelRate, "until" | "after"> = {},
+): ModelRate {
+  return {
+    ...geminiPrices(inPer1M, cachedPer1M, outPer1M),
+    ...change,
+    analysisOnly: true,
+    asOf: "2026-10-21",
+    source: "ai.google.dev/gemini-api/docs/pricing (paid tier, standard)",
+  };
+}
+
 // gpt-5.6-sol promotional rates (live sheet 2026-09-03: $4 / $0.40 cached / $5 write / $20 out,
 // "available at least through November 21, 2026"). Re-verify against the sheet after Nov 21.
 const GPT56_SOL_PROMO_AS_OF = "2026-09-03";
@@ -230,6 +261,13 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     GPT6_SOL_LUNA_AS_OF,
     GPT6_SOL_LUNA_SOURCE,
   ),
+  // Gemini analysis models, paid standard tier. Thinking tokens bill as output. No long-context
+  // tier is published for them. Cached input is the implicit context-cache rate. On the free tier
+  // these requests bill nothing, so the estimate is the paid-tier cost.
+  "gemini-3.8-flash": geminiRate(0.75, 0.075, 3.75, {
+    until: "2026-12-31",
+    after: geminiPrices(1.5, 0.15, 7.5),
+  }),
 };
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated
@@ -265,7 +303,14 @@ export const MODAL_SANDBOX_RESOURCE_RATE: DesktopResourceRate = {
  * since an npm install cannot edit this file.
  */
 export function unpricedCapMessage(model: string): string {
-  return `caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${Object.keys(MODEL_RATES).sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+  const priced = Object.keys(MODEL_RATES).filter((id) => participantRate(id) !== undefined);
+  return `caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${priced.sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+}
+
+/** A participant model's rate; undefined for a model without one or priced for analysis only. */
+export function participantRate(model: string): ModelRate | undefined {
+  const rate = MODEL_RATES[model.trim().toLowerCase()];
+  return rate?.analysisOnly ? undefined : rate;
 }
 
 export const DESKTOP_RATE: DesktopRate = {
@@ -377,10 +422,25 @@ export function estimateAggregatedTurnCost(
     : { ...estimate, basis: "aggregated_turns_base_rate" };
 }
 
+/** A model's rates on the day of `at` (UTC), or undefined when the table has none. Lookup is
+ *  case-insensitive on a trimmed id. */
+export function modelRate(
+  modelId: string,
+  at: Date = new Date(),
+  rates: Record<string, ModelRate> = MODEL_RATES,
+): ModelRate | undefined {
+  const rate = rates[modelId.trim().toLowerCase()];
+  if (rate?.until === undefined || at.toISOString().slice(0, 10) <= rate.until) return rate;
+  const { until: _until, after, cachedInputUsdPerToken: _cached, ...rest } = rate;
+  // Past its last day with no published successor, the entry no longer prices anything.
+  return after === undefined ? undefined : { ...rest, ...after };
+}
+
 export function estimateActorCost(
   tokenUsage: ActorTokenUsage | undefined,
   modelId: string | undefined,
   rates: Record<string, ModelRate> = MODEL_RATES,
+  at: Date = new Date(),
 ): ActorEstimatedCost {
   if (!tokenUsage || (tokenUsage.input === undefined && tokenUsage.output === undefined)) {
     return {
@@ -390,7 +450,7 @@ export function estimateActorCost(
       ratesAsOf: null,
     };
   }
-  const rate = modelId ? rates[modelId.trim().toLowerCase()] : undefined;
+  const rate = modelId ? modelRate(modelId, at, rates) : undefined;
   if (!rate) {
     return {
       schema: ACTOR_ESTIMATED_COST_SCHEMA,
