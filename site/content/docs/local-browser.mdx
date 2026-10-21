@@ -113,9 +113,8 @@ Later participant actions and observations do not use this startup wait.
   preset or `execution.desktop.resolution` sets each participant's screen, from 500 to 1920
   pixels wide and 480 to 1200 high, and `execution.desktop.fidelity.mobileEmulation` emulates
   phones as on hosted desktops. A local mobile participant's bundle records the emulation it
-  applied without the page's own read-back. The runtime this release downloads predates
-  per-participant screens, so a study that sets a device runs only on a runtime built from
-  current source until a release pins a newer one. Docker's
+  applied without the page's own read-back. A runtime installed before humanish 0.140.0
+  starts every participant at 960×720; `humanish runtime setup` installs the current one. Docker's
   enclosing limit is 3 GiB and 2 CPUs per desktop; the memory limit sets how many
   participants run at once. See [How many participants fit](#how-many-participants-fit).
 - Typing works only while the study's original tab is the browser's only tab. With a
