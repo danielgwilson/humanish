@@ -97,10 +97,13 @@ CLI version, analysis id, state, estimated spend and wall time, and scoring read
 analysis id. A second `--reanalyze` of the same work directory appends to the matrix and numbers
 repeats after the ones already recorded.
 
-Up to `--analysis-concurrency` analyses run at once. They start in a fixed order: the first
-repeat of every run and model, then the second, with runs in manifest order and models in
-`--analysis-models` order. Repeat numbers are fixed by that order before any analysis starts, and
-the manifest lists analyses in that order whatever order they finish in. The benchmark writes the
+Up to `--analysis-concurrency` analyses run at once, and never two of one run: `humanish analyze`
+locks the run it analyzes and refuses a second analysis of it with `ANALYSIS_BUSY`. Within each
+repeat, a model's analyses start one run after another, model by model, so analyses in flight are
+on different runs; one whose run is still busy waits for it. More analyses in flight than recorded
+runs gains nothing. Repeat numbers are fixed before any analysis starts, and the manifest lists
+analyses by repeat, then run in manifest order, then model in `--analysis-models` order, whatever
+order they finish in. The benchmark writes the
 manifest after each analysis is recorded, to a temporary file it then renames over
 `manifest.json`. The first Ctrl-C stops new analyses. Each analysis runs in its own process group,
 so the ones in flight finish and are recorded.

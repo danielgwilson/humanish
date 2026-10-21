@@ -53,11 +53,14 @@ export interface MatrixOptions {
  * an earlier analysis with the same configuration is reused.
  *
  * The plan orders analyses by repeat, then run, then model, and fixes each repeat number up front.
- * Up to `concurrency` analyses run at once and start in plan order. Each model's spend goes
- * through its own SpendLedger, which decides that model's analyses in plan order, so a budget stop
- * cuts each repeat at the same point in the run order, and the arms stay within one run of each
- * other, as with one analysis at a time. Records land in plan order whatever order the analyses
- * finish in, and `onRecord` is the one place a caller saves them.
+ * `humanish analyze` holds a lock on the run it analyzes and refuses a second analysis of that run
+ * with ANALYSIS_BUSY, so two analyses of one run never overlap: they start by repeat, then model,
+ * then run, which puts different runs side by side, and an analysis whose run is busy waits for
+ * it. Up to `concurrency` analyses run at once. Each model's spend goes through its own
+ * SpendLedger, which decides that model's analyses in run order, so a budget stop cuts each repeat
+ * at the same point in the run order, and the arms stay within one run of each other, as with one
+ * analysis at a time. Records land in plan order whatever order the analyses finish in, and
+ * `onRecord` is the one place a caller saves them.
  */
 export async function runAnalysisMatrix(
   manifest: Manifest,
@@ -70,19 +73,39 @@ export async function runAnalysisMatrix(
   const runIds = manifest.runs.flatMap((run) => (run.runId === null ? [] : [run.runId]));
   const recorded = (runId: string, spec: string): number =>
     matrix.filter((prior) => prior.runId === runId && prior.spec === spec).length;
-  const plan = Array.from({ length: options.repeats }, (_, pass) =>
-    runIds.flatMap((runId) =>
-      options.specs.map((spec) => ({ runId, spec, repeat: recorded(runId, spec.label) + pass + 1 })),
+  // Records keep plan order (repeat, run, model); `index` is each analysis's place in it.
+  const runCount = runIds.length;
+  const modelCount = options.specs.length;
+  const startOrder = Array.from({ length: options.repeats }, (_, pass) =>
+    options.specs.flatMap((spec, model) =>
+      runIds.map((runId, run) => ({
+        runId,
+        spec,
+        repeat: recorded(runId, spec.label) + pass + 1,
+        index: (pass * runCount + run) * modelCount + model,
+      })),
     ),
   ).flat();
+  const runFree = new Map<string, Promise<unknown>>();
   const position = new Map<MatrixAnalysis, number>();
-  await mapWithConcurrency(plan, options.concurrency, async ({ runId, spec, repeat }, index) => {
-    if (options.stopped()) return;
-    const ledger = ledgers.get(spec.label) as SpendLedger;
-    const { analysis } = await analyzeWithinBudget(
-      { ...options, runId, spec, ledger, rerun: true, detached: true },
-      analyze,
-    );
+  await mapWithConcurrency(startOrder, options.concurrency, async ({ runId, spec, repeat, index }) => {
+    const previous = runFree.get(runId);
+    const turn = (async () => {
+      await previous;
+      if (options.stopped()) return null;
+      const ledger = ledgers.get(spec.label) as SpendLedger;
+      return {
+        ledger,
+        ...(await analyzeWithinBudget(
+          { ...options, runId, spec, ledger, rerun: true, detached: true },
+          analyze,
+        )),
+      };
+    })();
+    runFree.set(runId, turn.catch(() => undefined));
+    const outcome = await turn;
+    if (outcome === null) return;
+    const { ledger, analysis } = outcome;
     if (analysis.state === "not_run") return;
     const record: MatrixAnalysis = { runId, spec: spec.label, repeat, humanish: options.cliVersion, ...analysis };
     position.set(record, index);

@@ -77,6 +77,7 @@ function fakeCli(
 ): typeof runCli {
   let made = 0;
   let running = 0;
+  const analyzing = new Set<string>();
   return async (_cli, args) => {
     calls.push([...args]);
     const model = flag(args, "--model") ?? "unset";
@@ -96,11 +97,17 @@ function fakeCli(
       };
     }
     const model_ = model;
+    // humanish analyze holds a lock on its run and refuses a second analysis of it.
+    const runId = flag(args, "--run") ?? "";
+    if (analyzing.has(runId))
+      return { code: 2, timedOut: false, json: { ok: false, error: { code: "ANALYSIS_BUSY" } } };
+    analyzing.add(runId);
     running++;
     if (timing.inFlight) timing.inFlight[model_] = Math.max(timing.inFlight[model_] ?? 0, running);
     if (timing.inFlight) timing.inFlight.all = Math.max(timing.inFlight.all ?? 0, running);
     await sleep(timing.delayMs?.(flag(args, "--run") ?? "") ?? 5);
     running--;
+    analyzing.delete(runId);
     made++;
     return {
       code: 0,
@@ -162,18 +169,13 @@ it("analyzes every recorded run once per model and repeat, each as a new analysi
   expect(analyses).toHaveLength(8);
   for (const args of analyses) expect(args).toContain("--rerun");
   expect(
-    analyses.map((args) => [flag(args, "--provider") ?? null, flag(args, "--model")]).slice(0, 2),
-  ).toEqual([
-    [null, "gpt-5.6-luna"],
-    ["gemini", "gemini-3.8-flash"],
-  ]);
+    new Set(analyses.map((args) => `${flag(args, "--provider") ?? "-"} ${flag(args, "--model")}`)),
+  ).toEqual(new Set(["- gpt-5.6-luna", "gemini gemini-3.8-flash"]));
   // The admission check runs on the model it admits.
-  expect(
-    calls
-      .filter((args) => args.includes("--dry-run"))
-      .map((args) => flag(args, "--model"))
-      .slice(0, 2),
-  ).toEqual(["gpt-5.6-luna", "gemini-3.8-flash"]);
+  calls.forEach((args, i) => {
+    if (!args.includes("--dry-run"))
+      expect(flag(calls[i - 1]!, "--model")).toBe(flag(args, "--model"));
+  });
   for (const analysis of manifest.analysisMatrix ?? [])
     expect(analysis.wallMs).toBeGreaterThanOrEqual(4);
 });
@@ -250,10 +252,10 @@ it("names the analysis models the CLI refuses before anything is spent", async (
   for (const args of calls) expect(args).toContain("--dry-run");
 });
 
-it("runs up to the concurrency at once and records in plan order, whatever order they finish in", async () => {
+it("runs up to the concurrency at once, never two on one run, and records in plan order", async () => {
   const calls: string[][] = [];
   const inFlight: Record<string, number> = {};
-  const manifest = manifestOf(["run-a", "run-b", "run-c"]);
+  const manifest = manifestOf(["run-a", "run-b", "run-c", "run-d"]);
   // The first run's analyses are the slowest, so they finish last.
   const delayMs = (runId: string): number => ({ "run-a": 60, "run-b": 30 })[runId] ?? 5;
   await runAnalysisMatrix(
@@ -273,13 +275,18 @@ it("runs up to the concurrency at once and records in plan order, whatever order
     "run-b gemini:gemini-3.8-flash 1",
     "run-c gpt-5.6-luna 1",
     "run-c gemini:gemini-3.8-flash 1",
+    "run-d gpt-5.6-luna 1",
+    "run-d gemini:gemini-3.8-flash 1",
     "run-a gpt-5.6-luna 2",
     "run-a gemini:gemini-3.8-flash 2",
     "run-b gpt-5.6-luna 2",
     "run-b gemini:gemini-3.8-flash 2",
     "run-c gpt-5.6-luna 2",
     "run-c gemini:gemini-3.8-flash 2",
+    "run-d gpt-5.6-luna 2",
+    "run-d gemini:gemini-3.8-flash 2",
   ]);
+  expect(manifest.analysisMatrix?.every((analysis) => analysis.state === "complete")).toBe(true);
 });
 
 it("keeps a model's analyses in flight within its cap when they run at once", async () => {
