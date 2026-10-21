@@ -1,5 +1,5 @@
 import { numberField, objectField, runCli, stringField } from "./humanish-cli.js";
-import { canStartAnalysis, type BudgetSettings } from "./plan.js";
+import type { BudgetSettings, SpendLedger } from "./plan.js";
 import type { AnalysisRecord, AnalysisSpec } from "./report.js";
 
 const SHORT_TIMEOUT_MS = 5 * 60_000;
@@ -64,12 +64,23 @@ export async function admissionFor(target: AnalyzeTarget, analyze: typeof runCli
  * request with no recorded estimate is charged its worst case. `spec` selects the analyst for both
  * the admission check and the analysis; without it the CLI's default model runs. `rerun` makes a
  * new analysis version even when a saved one has the same input and configuration.
+ *
+ * The analysis's worst case is reserved on `ledger` before it starts and settled to its charge
+ * when it ends. When `stopped` turns true before the analysis starts, it returns `not_run`.
+ * `detached` runs the CLI in its own process group, so a Ctrl-C at the terminal leaves it to finish
+ * and record.
  */
 export async function analyzeWithinBudget(
-  options: AnalyzeTarget & { spentUsd: number; analyzeNodeArgs: string[]; rerun?: boolean },
+  options: AnalyzeTarget & {
+    ledger: SpendLedger;
+    analyzeNodeArgs: string[];
+    rerun?: boolean;
+    stopped?: () => boolean;
+    detached?: boolean;
+  },
   analyze: typeof runCli = runCli,
 ): Promise<{ analysis: AnalysisRecord; chargeUsd: number }> {
-  const { spentUsd, budget, logFile, analyzeNodeArgs } = options;
+  const { ledger, budget, logFile, analyzeNodeArgs } = options;
   const { error, admissionUsd, admittedUsd, worstCaseUsd, ok } = await admissionFor(options, analyze);
   const sized = budget.analysisAutoCap && ok && admittedUsd !== null && admittedUsd > 0;
   const maxCostUsd = sized ? admittedUsd : budget.analysisMaxUsd;
@@ -78,19 +89,27 @@ export async function analyzeWithinBudget(
   if ((budget.analysisAutoCap && !sized) || worstCaseUsd === null) {
     return { analysis: { ...base, state: "refused", error: "analysis_estimate_unavailable" }, chargeUsd: 0 };
   }
-  if (!canStartAnalysis(spentUsd, budget, worstCaseUsd)) {
+  if (options.stopped?.()) return { analysis: { ...base, state: "not_run", error: null }, chargeUsd: 0 };
+  if (!(await ledger.reserve(worstCaseUsd))) {
     return { analysis: { ...base, state: "skipped_budget", error: null }, chargeUsd: 0 };
+  }
+  if (options.stopped?.()) {
+    ledger.settle(worstCaseUsd, 0);
+    return { analysis: { ...base, state: "not_run", error: null }, chargeUsd: 0 };
   }
   const started = performance.now();
   const result = await analyze(options.cliPath, [...analyzeArgs(options, maxCostUsd), ...(options.rerun ? ["--rerun"] : [])], {
     logFile,
     timeoutMs: ANALYSIS_TIMEOUT_MS,
     nodeArgs: analyzeNodeArgs,
+    ...(options.detached ? { detached: true } : {}),
   });
   const wallMs = Math.round(performance.now() - started);
   const usage = objectField(result.json, "usage");
   const estimated = numberField(usage, "estimatedCostUsd");
   const dispatched = usage?.dispatched === true;
+  const chargeUsd = estimated ?? (dispatched ? worstCaseUsd : 0);
+  ledger.settle(worstCaseUsd, chargeUsd);
   return {
     analysis: {
       ...base,
@@ -101,7 +120,7 @@ export async function analyzeWithinBudget(
       wallMs,
       error: stringField(objectField(result.json, "error"), "code"),
     },
-    chargeUsd: estimated ?? (dispatched ? worstCaseUsd : 0),
+    chargeUsd,
   };
 }
 

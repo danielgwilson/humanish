@@ -2,7 +2,7 @@
 // docs/evidence/benchmark/README.md explains the flags, the scores and the budget rules.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -23,6 +23,7 @@ import {
   BRAINS,
   analysisCostFor,
   canStartParticipant,
+  SpendLedger,
   capThatFits,
   isBrainId,
   participantBoundUsd,
@@ -66,6 +67,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --rescore <work-dir>     score an earlier invocation's bundles again; no spend
   --analysis-models <list> analyze every recorded run once per model: model or provider:model, comma-separated
   --analysis-repeats <n>   analyses of each run per model (default 1)
+  --analysis-concurrency <n> analyses in flight at once across the models (default 4)
   --reanalyze <work-dir>   run only the analysis models on an earlier invocation's recordings; no participant spend
 `;
 
@@ -102,6 +104,7 @@ const { values } = parseArgs({
     rescore: { type: "string" },
     "analysis-models": { type: "string" },
     "analysis-repeats": { type: "string" },
+    "analysis-concurrency": { type: "string", default: "4" },
     reanalyze: { type: "string" },
     help: { type: "boolean", default: false },
   },
@@ -183,6 +186,25 @@ if (values["analysis-models"] !== undefined) {
 }
 const repeats = Number(values["analysis-repeats"] ?? "1");
 if (!Number.isSafeInteger(repeats) || repeats < 1) fail(`--analysis-repeats must be a whole number of at least 1.`);
+const concurrency = Number(values["analysis-concurrency"]);
+if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+  fail(`--analysis-concurrency must be a whole number of at least 1.`);
+}
+
+/** Replace the manifest whole, so a reader or a crash never sees a partly written file. */
+function writeManifest(file: string, manifest: Manifest): void {
+  writeFileSync(`${file}.tmp`, `${JSON.stringify(manifest, null, 2)}\n`);
+  renameSync(`${file}.tmp`, file);
+}
+
+/** The first Ctrl-C stops new analyses; detached analyses in flight finish and are recorded. */
+function onInterrupt(stop: () => void): void {
+  process.on("SIGINT", () => {
+    stop();
+    interruptActive();
+    process.stdout.write("Interrupted: no new run or analysis starts; analyses in flight finish and are recorded.\n");
+  });
+}
 
 const SPEC_REFUSED =
   "Remove the refused analysis models, or pass --cli with a humanish build that supports them. Nothing was spent.";
@@ -238,7 +260,7 @@ async function runMatrix(
   const runOf = (analysis: MatrixAnalysis): RunRecord | undefined =>
     manifest.runs.find((run) => run.runId === analysis.runId);
   await runAnalysisMatrix(manifest, {
-    specs, repeats, budget, cliPath, cliVersion: version, ...paths, analyzeNodeArgs, stopped,
+    specs, repeats, concurrency, budget, cliPath, cliVersion: version, ...paths, analyzeNodeArgs, stopped,
     onRecord: (analysis, spentUsd) => {
       save();
       const run = runOf(analysis);
@@ -288,11 +310,10 @@ if (values.reanalyze !== undefined) {
     process.stdout.write("Dry run: no analysis ran and nothing was spent.\n");
     process.exit(0);
   }
-  process.on("SIGINT", () => {
+  onInterrupt(() => {
     interrupted = true;
-    interruptActive();
   });
-  const save = (): void => writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const save = (): void => writeManifest(manifestPath, manifest);
   await runMatrix(manifest, budget, { projectDir, logFile }, save, () => interrupted);
   save();
   writeResults(projectDir, manifest, path.resolve(values.out ?? workDir));
@@ -417,13 +438,12 @@ const manifest: Manifest = {
   runs: [],
 };
 const saveManifest = (): void =>
-  writeFileSync(path.join(workDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  writeManifest(path.join(workDir, "manifest.json"), manifest);
 saveManifest();
 process.stdout.write(`Work dir: ${workDir}\n`);
 
-process.on("SIGINT", () => {
+onInterrupt(() => {
   interrupted = true;
-  interruptActive();
 });
 
 const spent: Partial<Record<BrainId, number>> = {};
@@ -517,7 +537,7 @@ for (const planned of planRuns(brains, runsPerArm)) {
   else if (interrupted) record.analysis.state = "not_run";
   else {
     const { analysis, chargeUsd } = await analyzeWithinBudget({
-      runId: record.runId, spentUsd: afterRun, budget, cliPath, projectDir, logFile, analyzeNodeArgs,
+      runId: record.runId, ledger: new SpendLedger(budget, afterRun), budget, cliPath, projectDir, logFile, analyzeNodeArgs,
     });
     record.analysis = analysis;
     spent[planned.brain] = round(afterRun + chargeUsd);

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 
-import { analyzeWithinBudget } from "../../bench/lib/analyze.js";
+import { analyzeWithinBudget as analyzeWithLedger } from "../../bench/lib/analyze.js";
 import type { CliResult, runCli } from "../../bench/lib/humanish-cli.js";
+import { SpendLedger, type BudgetSettings } from "../../bench/lib/plan.js";
 
 // Captured `humanish analyze --dry-run --json` outputs for one 0.114.0 benchmark run
 // (tests/fixtures/bench/analyze-dry-run/README.md): expected cost $1.182375, admitted cost
@@ -34,6 +35,12 @@ const options = {
   logFile: "unused-log",
   analyzeNodeArgs: [],
 };
+
+/** Analyze after `spentUsd` of the budget is already spent. */
+const analyzeWithinBudget = (
+  { spentUsd, ...target }: typeof options & { budget: BudgetSettings },
+  analyze: typeof runCli,
+) => analyzeWithLedger({ ...target, ledger: new SpendLedger(target.budget, spentUsd) }, analyze);
 
 function response(json: Record<string, unknown>): CliResult {
   return { code: json.ok ? 0 : 1, timedOut: false, json };

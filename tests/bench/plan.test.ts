@@ -12,6 +12,7 @@ import {
   planRuns,
   projectAnalyses,
   projectBrain,
+  SpendLedger,
   type BudgetSettings,
 } from "../../bench/lib/plan.js";
 import { studyYaml } from "../../bench/lib/project.js";
@@ -148,6 +149,51 @@ describe("the analysis model projection", () => {
       capThatFits: 5,
     });
     expect(projectAnalyses(Array(6).fill(astra), 4)).toMatchObject({ fit: 4, typicalUsd: 2.8 });
+  });
+});
+
+describe("the spend ledger shared by concurrent analyses", () => {
+  const capOf2 = budget({ maxUsdPerBrain: 2 });
+  // The captured gpt-6-astra worst case is $1.351575; two of them need $2.70315.
+  const worst = 1.351575;
+
+  it("never lets two in-flight analyses together pass a cap that fits only one", async () => {
+    const ledger = new SpendLedger(capOf2);
+    expect(await ledger.reserve(worst)).toBe(true);
+    let second: boolean | undefined;
+    const pending = ledger.reserve(worst).then((started) => {
+      second = started;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(second).toBeUndefined();
+    ledger.settle(worst, 0.87955);
+    await pending;
+    // $0.87955 billed plus the next worst case is $2.231125, over $2.
+    expect(second).toBe(false);
+    expect(ledger.spentUsd).toBeCloseTo(0.87955, 4);
+  });
+
+  it("starts a waiting analysis once the one in flight settles below its worst case", async () => {
+    const ledger = new SpendLedger(capOf2);
+    await ledger.reserve(worst);
+    const second = ledger.reserve(worst);
+    ledger.settle(worst, 0.5);
+    expect(await second).toBe(true);
+  });
+
+  it("decides reservations in the order they were asked for", async () => {
+    const ledger = new SpendLedger(budget({ maxUsdPerBrain: 1 }));
+    await ledger.reserve(0.6);
+    const order: string[] = [];
+    const first = ledger.reserve(0.6).then((started) => order.push(`first ${started}`));
+    const second = ledger.reserve(0.3).then((started) => order.push(`second ${started}`));
+    ledger.settle(0.6, 0.6);
+    await Promise.all([first, second]);
+    expect(order).toEqual(["first false", "second true"]);
+  });
+
+  it("starts nothing when analysis is off", async () => {
+    expect(await new SpendLedger(budget({ analysis: false })).reserve(0.01)).toBe(false);
   });
 });
 

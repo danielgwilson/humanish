@@ -39,6 +39,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--rescore <work-dir>`     | none                  | Score an earlier invocation's bundles again with the current rubric; no spend |
 | `--analysis-models <list>` | none                  | Analyze every recorded run once per model, after all participants ran (below) |
 | `--analysis-repeats <n>`   | 1                     | Analyses of each run per model                                                |
+| `--analysis-concurrency <n>` | 4                   | Analyses in flight at once, across every model                                |
 | `--reanalyze <work-dir>`   | none                  | Run only the analysis models on an earlier invocation's recordings            |
 
 The runner never reads a key. `humanish run` and `humanish reclaim` load `--dotenv` themselves;
@@ -96,6 +97,14 @@ CLI version, analysis id, state, estimated spend and wall time, and scoring read
 analysis id. A second `--reanalyze` of the same work directory appends to the matrix and numbers
 repeats after the ones already recorded.
 
+Up to `--analysis-concurrency` analyses run at once. They start in a fixed order: the first
+repeat of every run and model, then the second, with runs in manifest order and models in
+`--analysis-models` order. Repeat numbers are fixed by that order before any analysis starts, and
+the manifest lists analyses in that order whatever order they finish in. The benchmark writes the
+manifest after each analysis is recorded, to a temporary file it then renames over
+`manifest.json`. The first Ctrl-C stops new analyses. Each analysis runs in its own process group,
+so the ones in flight finish and are recorded.
+
 Before any spend, the benchmark asks the CLI to dry-run each model against a run id that does
 not exist. `analyze` checks the analyst before it looks for the run, so a model or provider that
 build does not support stops the benchmark with the CLI's reason.
@@ -103,7 +112,8 @@ build does not support stops the benchmark with the CLI's reason.
 The summary adds an analysis models table per brain: one column per model, with recall per
 defect, total recall with its 95% interval, false assurance, invented claims on each arm,
 harness-caused and unresolved findings, the analyses not scored and why, estimated spend and the
-wall time of the `humanish analyze` calls, in total and per analysis. A table of every analysis and
+wall time of the `humanish analyze` calls, in total and per analysis. The wall time total adds
+up the calls, so with concurrency it is longer than the elapsed time. A table of every analysis and
 a list of each model's invented and unresolved findings follow it. Results files of an invocation
 with the matrix end in `-analysis-models`.
 
@@ -125,7 +135,11 @@ Each step starts only when the spend so far plus that step's worst case fits und
   analysis starts only when that model's spend in this invocation plus the worst case
   `analyze --dry-run` reports for that run and model fits under the cap. A skipped analysis is
   recorded as `skipped_budget` and later, cheaper ones can still start. Participants keep the
-  per-brain cap.
+  per-brain cap. When analyses run at once, each one reserves its worst case against its model's
+  cap before it starts and settles to its charge when it ends, so the analyses in flight can never
+  together pass the cap. An analysis that fits only once one in flight settles waits for it, and
+  each model's analyses are admitted in the fixed order above, so a budget stop leaves the arms
+  within one run of each other in each repeat, as it does one analysis at a time.
 - A `local-agent` participant's model spend has no price. It is recorded as unknown, and the cap
   bounds only its desktop and analysis spend.
 

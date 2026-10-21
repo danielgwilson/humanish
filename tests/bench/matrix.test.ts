@@ -70,8 +70,13 @@ const flag = (args: readonly string[], name: string): string | undefined =>
  * A humanish CLI whose analyst bills `billedUsd` per model. Its dry run reports the captured
  * gpt-6-astra admission (worst case $1.351575) for gpt-6-astra and a $0.03 worst case otherwise.
  */
-function fakeCli(calls: string[][], billedUsd: Record<string, number>): typeof runCli {
+function fakeCli(
+  calls: string[][],
+  billedUsd: Record<string, number>,
+  timing: { delayMs?: (runId: string) => number; inFlight?: Record<string, number> } = {},
+): typeof runCli {
   let made = 0;
+  let running = 0;
   return async (_cli, args) => {
     calls.push([...args]);
     const model = flag(args, "--model") ?? "unset";
@@ -90,7 +95,12 @@ function fakeCli(calls: string[][], billedUsd: Record<string, number>): typeof r
         },
       };
     }
-    await sleep(5);
+    const model_ = model;
+    running++;
+    if (timing.inFlight) timing.inFlight[model_] = Math.max(timing.inFlight[model_] ?? 0, running);
+    if (timing.inFlight) timing.inFlight.all = Math.max(timing.inFlight.all ?? 0, running);
+    await sleep(timing.delayMs?.(flag(args, "--run") ?? "") ?? 5);
+    running--;
     made++;
     return {
       code: 0,
@@ -117,6 +127,7 @@ const options = (
   projectDir: "unused-project",
   logFile: "unused-log",
   analyzeNodeArgs: [],
+  concurrency: 1,
   onRecord,
   stopped: () => false,
 });
@@ -237,4 +248,78 @@ it("names the analysis models the CLI refuses before anything is spent", async (
     },
   ]);
   for (const args of calls) expect(args).toContain("--dry-run");
+});
+
+it("runs up to the concurrency at once and records in plan order, whatever order they finish in", async () => {
+  const calls: string[][] = [];
+  const inFlight: Record<string, number> = {};
+  const manifest = manifestOf(["run-a", "run-b", "run-c"]);
+  // The first run's analyses are the slowest, so they finish last.
+  const delayMs = (runId: string): number => ({ "run-a": 60, "run-b": 30 })[runId] ?? 5;
+  await runAnalysisMatrix(
+    manifest,
+    { ...options("gpt-5.6-luna,gemini:gemini-3.8-flash", 2), concurrency: 4 },
+    fakeCli(calls, {}, { delayMs, inFlight }),
+  );
+  expect(inFlight.all).toBe(4);
+  expect(
+    manifest.analysisMatrix?.map(
+      (analysis) => `${analysis.runId} ${analysis.spec} ${analysis.repeat}`,
+    ),
+  ).toEqual([
+    "run-a gpt-5.6-luna 1",
+    "run-a gemini:gemini-3.8-flash 1",
+    "run-b gpt-5.6-luna 1",
+    "run-b gemini:gemini-3.8-flash 1",
+    "run-c gpt-5.6-luna 1",
+    "run-c gemini:gemini-3.8-flash 1",
+    "run-a gpt-5.6-luna 2",
+    "run-a gemini:gemini-3.8-flash 2",
+    "run-b gpt-5.6-luna 2",
+    "run-b gemini:gemini-3.8-flash 2",
+    "run-c gpt-5.6-luna 2",
+    "run-c gemini:gemini-3.8-flash 2",
+  ]);
+});
+
+it("keeps a model's analyses in flight within its cap when they run at once", async () => {
+  // At a $2 cap only one $1.351575 gpt-6-astra worst case fits, so its analyses never overlap and
+  // the outcome matches one analysis at a time.
+  const inFlight: Record<string, number> = {};
+  const manifest = manifestOf(["run-a", "run-b", "run-c"]);
+  await runAnalysisMatrix(
+    manifest,
+    { ...options("gpt-6-astra,gpt-5.6-luna", 1), concurrency: 4 },
+    fakeCli([], { "gpt-6-astra": 0.87955, "gpt-5.6-luna": 0.02 }, { inFlight }),
+  );
+  expect(inFlight["gpt-6-astra"]).toBe(1);
+  expect(manifest.analysisMatrix?.map((analysis) => `${analysis.spec} ${analysis.state}`)).toEqual([
+    "gpt-6-astra complete",
+    "gpt-5.6-luna complete",
+    "gpt-6-astra skipped_budget",
+    "gpt-5.6-luna complete",
+    "gpt-6-astra skipped_budget",
+    "gpt-5.6-luna complete",
+  ]);
+});
+
+it("starts nothing new after an interrupt and records the analyses already running", async () => {
+  let interrupted = false;
+  const calls: string[][] = [];
+  const cli = fakeCli(calls, {}, { delayMs: () => 30 });
+  const manifest = manifestOf(["run-a", "run-b", "run-c"]);
+  await runAnalysisMatrix(
+    manifest,
+    { ...options("gpt-5.6-luna", 1), concurrency: 2, stopped: () => interrupted },
+    async (cliPath, args, runOptions) => {
+      const result = cli(cliPath, args, runOptions);
+      if (!args.includes("--dry-run")) interrupted = true;
+      return result;
+    },
+  );
+  const started = calls.filter((args) => !args.includes("--dry-run"));
+  expect(started).toHaveLength(1);
+  expect(manifest.analysisMatrix?.map((analysis) => `${analysis.runId} ${analysis.state}`)).toEqual(
+    ["run-a complete"],
+  );
 });

@@ -7,6 +7,7 @@ import { analyzeWithinBudget } from "../../bench/lib/analyze.js";
 import type { AnalysisArtifact } from "../../bench/lib/bundle.js";
 import type { runCli } from "../../bench/lib/humanish-cli.js";
 import { parseAnalysisSpecs, runAnalysisMatrix } from "../../bench/lib/matrix.js";
+import { SpendLedger } from "../../bench/lib/plan.js";
 import { fixtureDigests } from "../../bench/lib/project.js";
 import {
   buildResult,
@@ -27,7 +28,7 @@ it("reports a forced cost refusal separately and excludes it from recall", async
   const refused = await analyzeWithinBudget(
     {
       runId: "run-refused",
-      spentUsd: 0.3,
+      ledger: new SpendLedger(budget, 0.3),
       budget,
       cliPath: "unused",
       projectDir: "unused",
@@ -243,6 +244,7 @@ it("scores each analysis model's own analysis of the same recorded runs", async 
       {
         specs: parseAnalysisSpecs("gpt-6-astra,gpt-5.6-luna,gemini:gemini-3.8-flash"),
         repeats: 1,
+        concurrency: 4,
         budget,
         cliPath: "unused-cli",
         cliVersion: "0.0.0",

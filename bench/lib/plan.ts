@@ -243,3 +243,52 @@ export function canStartAnalysis(
 export function round(value: number): number {
   return Math.round(value * 10000) / 10000;
 }
+
+/**
+ * One cap shared by analyses that run at the same time. Each analysis reserves its worst case
+ * before it starts and settles to its charge when it ends, so the analyses in flight can never
+ * together bill more than the cap. A request that fits only once an analysis in flight settles
+ * waits for it; one that does not fit the settled spend is refused, the same answer one analysis
+ * at a time would give. Requests are decided in the order they arrive.
+ */
+export class SpendLedger {
+  spentUsd: number;
+  private reservedUsd = 0;
+  private readonly queue: { worstCaseUsd: number; decide: (started: boolean) => void }[] = [];
+
+  constructor(
+    private readonly settings: BudgetSettings,
+    spentUsd = 0,
+  ) {
+    this.spentUsd = spentUsd;
+  }
+
+  /** True when the analysis may start; its worst case then counts against the cap until `settle`. */
+  reserve(worstCaseUsd: number): Promise<boolean> {
+    return new Promise((decide) => {
+      this.queue.push({ worstCaseUsd, decide });
+      this.decide();
+    });
+  }
+
+  /** Release a started analysis's reservation and count what it was charged. */
+  settle(worstCaseUsd: number, chargeUsd: number): void {
+    this.reservedUsd = round(this.reservedUsd - worstCaseUsd);
+    this.spentUsd = round(this.spentUsd + chargeUsd);
+    this.decide();
+  }
+
+  private decide(): void {
+    for (let next = this.queue[0]; next !== undefined; next = this.queue[0]) {
+      if (!canStartAnalysis(this.spentUsd, this.settings, next.worstCaseUsd)) {
+        next.decide(false);
+      } else if (canStartAnalysis(this.spentUsd + this.reservedUsd, this.settings, next.worstCaseUsd)) {
+        this.reservedUsd = round(this.reservedUsd + next.worstCaseUsd);
+        next.decide(true);
+      } else {
+        return;
+      }
+      this.queue.shift();
+    }
+  }
+}
