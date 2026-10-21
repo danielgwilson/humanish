@@ -2,20 +2,20 @@ import type { LocalRuntimeRelease } from "./runtime.js";
 
 /** Updated with the verified, public runtime artifact before release. */
 const LOCAL_RUNTIME_RELEASE: LocalRuntimeRelease = {
-  url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.10.21.1/runtime-linux-amd64.tar.gz",
-  sha256: "1de53db000f661e91ff6ea9a2eb8198b08b850621cf63d8ce7c1b046f5035faf",
-  bytes: 597029770,
-  image: "sha256:c805c310b7b086276efa74ea5735e8b559457c7edba85c5c9e3ac7934e8760f2",
+  url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.10.21.3/runtime-linux-amd64.tar.gz",
+  sha256: "6fc19792e9b8f414165a73470526cc414c98d0ad368210c5e95daf29469b8dbd",
+  bytes: 597049520,
+  image: "sha256:4672388737bd7d136910fca6f8b6d99e09fbe96c13e1b100491c05444e7d267a",
 };
 
 /** Architecture-specific artifacts; each retains matching sources and notices. */
 export const LOCAL_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {
   amd64: LOCAL_RUNTIME_RELEASE,
   arm64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.10.21.2/runtime-linux-arm64.tar.gz",
-    sha256: "ea7a42e12eae3b4d9140fff41e4e3512930202f9ccbb688497b146634d1cef10",
-    bytes: 583555960,
-    image: "sha256:e21c33b4745afdb3bac6a69c76606814348032ee661228c9bfdd9c7d06591a28",
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.10.21.4/runtime-linux-arm64.tar.gz",
+    sha256: "d590de49a86eabe1cd09d7556aa75b2ebd62bc2c88fe37122e2af315c478c901",
+    bytes: 583551803,
+    image: "sha256:4606122520504f7f587f52b872165e6ab900be0ba3eca933b2f6dd3b9dcde723",
   },
 };
 

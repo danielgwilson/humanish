@@ -60,6 +60,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   email link, only the recipient addresses. The participant's next turn says the link worked,
   that the app is not shown and that nothing was sent, and automatic analysis is told the missing
   app window belongs to the study desktop.
+- A local browser participant's `mailto:`, `tel:` and `sms:` links are recorded the same way. This
+  release pins `runtime-2026.10.21.3` (amd64) and `runtime-2026.10.21.4` (arm64), which carry the
+  stand-ins; `humanish runtime setup` installs them. An older local runtime keeps the old
+  behavior: Chrome's prompt for `tel:`, and nothing for `mailto:`.
 
 ## 0.140.0: One local study can test phone, tablet and desktop, and every run ends with findings (2026-10-21)
 
