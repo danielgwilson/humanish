@@ -8,36 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.140.0: One local study can test phone, tablet and desktop, and every run ends with findings (2026-10-21)
 
-- A study that declares no `review.analysis` gets its analyst from its participant. A Codex
-  `local-agent` participant's run is now analyzed by the same Codex account on a hosted desktop
-  too, so a study run on a signed-in Codex ends with findings and needs no `OPENAI_API_KEY`.
-  Before, only a local browser study did this. Other participants, Claude Code included, keep the
-  OpenAI analyst. `doctor --study` and `study check` show the analyst the run will use. When a
-  default Codex analyst cannot start, for example with a keyring-only Codex login, the analysis is
-  recorded as failed with its reason and the run still passes.
-- The default cap on the OpenAI analysis's expected cost is $10, up from $3. A one-request
-  analysis is admitted at the evidence limits, and 17 to 40 participants are admitted from $4.60
-  to $7.05 with no evidence. Set `review.analysis.maxCostUsd` to choose another cap.
-- `run --json` and `watch --json` say what the analysis left. `automaticAnalysis.message` says what
-  happened and `automaticAnalysis.nextCommand` is the command that gets findings, or `humanish
-  review --run <id>` when there are some. A run whose analysis left findings has `findings`: the
-  count, the top five (title, headline, impact, confidence, participant ids), the `review`
-  command and the Observer page that opens on the findings.
-- The humanish skill tells agents to read and report a live run's findings next to the run
-  commands, and no longer suggests copying `review.analysis: false` from the scripted demo. The
-  `humanish/README.md` that `init` writes says a live run ends with findings and that `humanish
-  review --run latest` shows them.
+humanish 0.140.0 lets a local browser study give each participant its own device. One study with
+`mobile`, `tablet` and `desktop` participants runs them side by side on your machine, with mobile
+emulation for the phone, as hosted desktops already did; `humanish runtime setup` installs the new
+local runtime. A study with a Codex participant is now analyzed by the same Codex account on every
+target, so a run ends with findings without an OpenAI key; the default OpenAI analysis cap is $10;
+a skipped analysis names the command that runs it; and `run --json` carries the findings.
 
-### Fixed
-
-- An analysis skipped or refused after a live run names the next command in the human output, on a
-  `next:` line. Without `OPENAI_API_KEY`, the command is `humanish analyze --run <id> --provider
-  codex` when Codex is signed in with a ChatGPT account, and the message names
-  `review.analysis.provider: codex` as the study setting; otherwise it says to set the key.
-  `humanish review` gives the same next step. Before, the run printed `analysis: skipped because
-  OPENAI_API_KEY is not set` with no command, and `review` suggested only `--max-cost 3`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.140.0)
 
 ## 0.139.1: Hosted Codex participants work with an AGENTS.md in the Codex home (2026-10-21)
 
