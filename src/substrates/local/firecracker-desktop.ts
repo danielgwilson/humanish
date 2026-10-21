@@ -18,6 +18,7 @@ import {
 import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
+import { guestDisplayConfigSchema, type GuestDisplayConfig } from "../../guest/display-config.js";
 import { cli } from "../../cli/invocation.js";
 import { DESKTOP_RESERVATION } from "./capacity.js";
 
@@ -33,6 +34,8 @@ export interface LocalFirecrackerAssets {
   image: string;
   runtimeRevision: string;
   media?: boolean;
+  /** The guest starts the screen and emulation a bootstrap names; older images are 960×720 only. */
+  displaySizes?: boolean;
 }
 
 export interface LocalFirecrackerDesktop extends DesktopSession {
@@ -81,6 +84,8 @@ interface LocalFirecrackerOptions {
   signal?: AbortSignal;
   media?: GuestMediaConfig;
   recording?: DesktopRecordingConfig;
+  /** The participant's screen and mobile emulation; absent is the guest's 960×720 default. */
+  display?: GuestDisplayConfig;
   inboxUrl?: string;
 }
 
@@ -117,6 +122,13 @@ function checkDesktopOptions(options: LocalFirecrackerOptions): { url: URL; inbo
     if (options.assets.media !== true)
       throw new Error(
         `This runtime does not include the recorder. Run ${cli("runtime setup --media")}.`,
+      );
+  }
+  if (options.display !== undefined) {
+    const { width, height } = guestDisplayConfigSchema.parse(options.display);
+    if (options.assets.displaySizes !== true)
+      throw new Error(
+        `This local runtime starts every participant at 960×720, so it cannot start the ${width}×${height} screen this participant needs. Omit device and resolution, use a hosted desktop, or set HUMANISH_LOCAL_RUNTIME_IMAGE to a runtime built from current source.`,
       );
   }
   let url: URL;
@@ -363,6 +375,7 @@ async function bootstrapGuest(
       url.href,
       options.media,
       options.recording,
+      options.display,
     );
   } catch (error) {
     signal.throwIfAborted();

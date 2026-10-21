@@ -17,6 +17,7 @@
 
 import { shellQuote } from "../shell.js";
 import { NETWORK_CAPTURE_PY, type ChromeNetworkCaptureRequest } from "./cdp-network-capture.js";
+import type { MobileEmulationRequest } from "../../study/mobile-emulation.js";
 
 /** Which target to attribute when the endpoint lists several pages. */
 export type ChromeCdpPagePreference = "pinned" | "active";
@@ -58,12 +59,7 @@ export interface ChromeCdpProbeArgs {
 }
 
 /** Mobile emulation request: the CDP Emulation domain applied to one page target. */
-export interface ChromeMobileEmulationRequest {
-  width: number;
-  height: number;
-  deviceScaleFactor: number;
-  touch: boolean;
-  userAgent: string;
+export interface ChromeMobileEmulationRequest extends MobileEmulationRequest {
   platform?: string;
 }
 

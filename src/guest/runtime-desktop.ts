@@ -4,6 +4,12 @@ import { lstat, mkdir, open, rm } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import type { Readable } from "node:stream";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
+import { DEFAULT_GUEST_SCREEN, type GuestDisplayConfig } from "./display-config.js";
+import {
+  mobileEmulationCommands,
+  mobileEmulationLaunchFlags,
+  type MobileEmulationRequest,
+} from "../study/mobile-emulation.js";
 import { createGuestDesktopNativeTools, type GuestDesktopNativeTools } from "./desktop-native.js";
 import { createGuestChromiumText, type GuestChromiumText } from "./chromium-text.js";
 import { createGuestBrowserTools } from "./browser-tools.js";
@@ -47,16 +53,20 @@ const GUEST_RUNTIME_ENV = Object.freeze({
   TMPDIR: "/tmp",
 });
 const CONFIG_SHA = "4ae1c52eab748a3624b3948ce792647be258caba70c8c72038b9a43be6459552";
-const XVFB_ARGS = Object.freeze([
-  ":0",
-  "-screen",
-  "0",
-  "960x720x24",
-  "-nolisten",
-  "tcp",
-  "-auth",
-  GUEST_RUNTIME_ENV.XAUTHORITY,
-]);
+/** The participant's screen; a bootstrap without one gets the default desktop. */
+type GuestScreen = Pick<GuestDisplayConfig, "width" | "height">;
+function xvfbArgs(screen: GuestScreen): string[] {
+  return [
+    ":0",
+    "-screen",
+    "0",
+    `${screen.width}x${screen.height}x24`,
+    "-nolisten",
+    "tcp",
+    "-auth",
+    GUEST_RUNTIME_ENV.XAUTHORITY,
+  ];
+}
 const SANDBOX_FEATURES = ["PID namespaces", "Network namespaces", "Seccomp-BPF sandbox"];
 const RECORDING_PATH = `${GUEST_RUNTIME_PATHS.home}/desktop-recording.mp4`;
 export type GuestRuntimePhase =
@@ -68,6 +78,7 @@ export type GuestRuntimePhase =
   | "recording"
   | "browser"
   | "sandbox"
+  | "emulation"
   | "focus"
   | "fixture"
   | "navigation";
@@ -135,10 +146,19 @@ export function isAdequatelySandboxed(report: string): boolean {
   );
 }
 
-export function chromiumLaunchArgs(media: GuestMediaConfig | undefined): string[] {
+/**
+ * The window leaves 20 pixels above and below it on the participant's screen. A mobile participant's
+ * user agent and touch flags reach every page and worker; CDP emulation sets the viewport.
+ */
+export function chromiumLaunchArgs(
+  media: GuestMediaConfig | undefined,
+  display?: GuestDisplayConfig,
+): string[] {
+  const screen = display ?? DEFAULT_GUEST_SCREEN;
   return [
-    "--window-size=960,680",
+    `--window-size=${screen.width},${screen.height - 40}`,
     "--window-position=0,20",
+    ...mobileEmulationLaunchFlags(display?.mobileEmulation),
     "--disable-background-networking",
     "--disable-component-update",
     "--no-first-run",
@@ -243,14 +263,15 @@ async function waitForDisplay(
 async function startGuestRecorder(
   recording: DesktopRecordingConfig,
   media: GuestMediaConfig | undefined,
+  screen: GuestScreen,
   env: Readonly<Record<string, string>>,
   signal: AbortSignal,
 ): Promise<DesktopRecorderHandle | undefined> {
   try {
     return await startDesktopRecorder({
       display: ":0",
-      width: 960,
-      height: 720,
+      width: screen.width,
+      height: screen.height,
       outputPath: RECORDING_PATH,
       env,
       signal,
@@ -264,6 +285,7 @@ async function startGuestRecorder(
 async function launchGuestBrowser(
   state: GuestDesktopState,
   media: GuestMediaConfig | undefined,
+  display: GuestDisplayConfig | undefined,
   check: () => void,
 ): Promise<{ context: BrowserContext; page: Page }> {
   state.pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, {
@@ -273,7 +295,7 @@ async function launchGuestBrowser(
     viewport: null,
     env: state.recorder?.env ?? state.media?.env ?? GUEST_RUNTIME_ENV,
     timeout: 25_000,
-    args: chromiumLaunchArgs(media),
+    args: chromiumLaunchArgs(media, display),
   });
   // A browser that finishes launching after the stop is closed here; teardown may not see it.
   void state.pendingContext.then(
@@ -309,6 +331,35 @@ async function verifyBrowserSandbox(
   return report;
 }
 
+/** Sends the emulation commands over a page session that stays attached, so they hold. */
+async function emulateOn(
+  context: BrowserContext,
+  page: Page,
+  request: MobileEmulationRequest,
+): Promise<void> {
+  const session = await context.newCDPSession(page);
+  for (const { method, params } of mobileEmulationCommands(request))
+    // Playwright types send by protocol method; these names come from the fixed list.
+    await session.send(method as "Emulation.setDeviceMetricsOverride", params as never);
+}
+
+/**
+ * Emulate a phone on the launch page before it navigates, so the first document loads with the
+ * phone's viewport, touch and user agent. Tabs opened later get the same overrides when they open;
+ * a tab that closes before that is left alone.
+ */
+async function emulateMobile(
+  browser: { context: BrowserContext; page: Page },
+  request: MobileEmulationRequest,
+  check: () => void,
+): Promise<void> {
+  await emulateOn(browser.context, browser.page, request);
+  check();
+  browser.context.on("page", (page) => {
+    void emulateOn(browser.context, page, request).catch(() => {});
+  });
+}
+
 /** Text actions run only while the browser window that setup saw still has focus. */
 function focusGuard(
   native: GuestDesktopNativeTools,
@@ -323,6 +374,7 @@ function focusGuard(
 async function createGuestExecutorFor(
   state: GuestDesktopState,
   browser: { context: BrowserContext; page: Page },
+  screen: GuestScreen,
   signal: AbortSignal,
   onTerminal: () => void,
   check: () => void,
@@ -339,8 +391,8 @@ async function createGuestExecutorFor(
     assertFocusedWindow: focusGuard(native, window),
   });
   return createGuestDesktopExecutor({
-    width: 960,
-    height: 720,
+    width: screen.width,
+    height: screen.height,
     tools: createGuestBrowserTools(native, state.content),
     authoritySignal: signal,
     onTerminal,
@@ -432,7 +484,7 @@ function closeGuestRuntimeDesktop(
   return state.closing;
 }
 
-/** Fixed guest layout with an optional admitted initial loopback app URL. */
+/** Fixed guest layout with an optional admitted initial loopback app URL and participant screen. */
 export async function createGuestRuntimeDesktop(options: {
   signal: AbortSignal;
   onTerminal(): void;
@@ -440,6 +492,7 @@ export async function createGuestRuntimeDesktop(options: {
   initialUrl?: string;
   media?: GuestMediaConfig;
   recording?: DesktopRecordingConfig;
+  display?: GuestDisplayConfig;
 }): Promise<
   GuestRuntimeDesktop & {
     readonly owner: {
@@ -451,6 +504,7 @@ export async function createGuestRuntimeDesktop(options: {
   }
 > {
   if (options.initialUrl !== undefined) validateGuestInitialUrl(options.initialUrl);
+  const screen: GuestScreen = options.display ?? DEFAULT_GUEST_SCREEN;
   const controller = new AbortController();
   const signal = AbortSignal.any([options.signal, controller.signal]);
   const state: GuestDesktopState = { stopping: false };
@@ -483,7 +537,7 @@ export async function createGuestRuntimeDesktop(options: {
     progress("xauthority");
     await authorizeDisplay(processes, check);
     progress("display");
-    processes.spawn("/usr/bin/Xvfb", XVFB_ARGS, undefined, true);
+    processes.spawn("/usr/bin/Xvfb", xvfbArgs(screen), undefined, true);
     await waitForDisplay(processes, signal, check);
     progress("window_manager");
     processes.spawn(
@@ -506,17 +560,28 @@ export async function createGuestRuntimeDesktop(options: {
     if (options.recording !== undefined) {
       progress("recording");
       const env = state.media?.env ?? GUEST_RUNTIME_ENV;
-      state.recorder = await startGuestRecorder(options.recording, options.media, env, signal);
+      state.recorder = await startGuestRecorder(
+        options.recording,
+        options.media,
+        screen,
+        env,
+        signal,
+      );
       check();
     }
     progress("browser");
-    const browser = await launchGuestBrowser(state, options.media, check);
+    const browser = await launchGuestBrowser(state, options.media, options.display, check);
     progress("sandbox");
     const sandboxReport = await verifyBrowserSandbox(browser.context, browser.page, check);
+    if (options.display?.mobileEmulation !== undefined) {
+      progress("emulation");
+      await emulateMobile(browser, options.display.mobileEmulation, check);
+    }
     progress("focus");
     const executor = await createGuestExecutorFor(
       state,
       browser,
+      screen,
       signal,
       options.onTerminal,
       check,

@@ -172,6 +172,46 @@ describe("fixed canonical guest bootstrap", () => {
       ).toThrow();
     }
   });
+  it("carries one participant's screen and mobile emulation to the guest", async () => {
+    const p = pair(true),
+      reader = new GuestBootstrapReader(
+        p.right,
+        identity.runtimeRevision,
+        new AbortController().signal,
+      );
+    const display = {
+      width: 500,
+      height: 896,
+      mobileEmulation: {
+        width: 414,
+        height: 896,
+        deviceScaleFactor: 3,
+        touch: true,
+        userAgent: "Mozilla/5.0 (Synthetic Phone) Mobile",
+      },
+    };
+    p.left.write(encodeGuestBootstrap(identity, false, undefined, undefined, undefined, display));
+    await reader.identity;
+    expect(reader.display).toEqual(display);
+    expect(() =>
+      encodeGuestBootstrap(identity, true, undefined, undefined, undefined, display),
+    ).toThrow("Desktop executor protocol does not match.");
+    reader.close();
+    p.left.destroy();
+    for (const invalid of [
+      { width: 2560, height: 1440 },
+      { width: 400, height: 896 },
+      { width: 820, height: 1180, command: "echo unsafe" },
+      { ...display, mobileEmulation: { ...display.mobileEmulation, userAgent: "Phone\u00e9" } },
+    ]) {
+      expect(() =>
+        parseGuestBootstrap(
+          Buffer.from(JSON.stringify({ version: 1, identity, display: invalid })),
+          identity.runtimeRevision,
+        ),
+      ).toThrow("Desktop executor protocol does not match.");
+    }
+  });
   it.each([
     "http://example.com:3000/",
     "http://localhost/",
