@@ -10,7 +10,7 @@ import {
   RUBRIC_ID,
   RUBRIC_VERSION,
   type Arm,
-  type DefectId,
+  type EvidenceFacts,
 } from "../taskly/answer-key.js";
 import { MISSIONS, type MissionId } from "../taskly/missions.js";
 import {
@@ -30,9 +30,9 @@ import {
   scoreAnalysis,
   scoreReport,
   type AnalysisScore,
-  type Mechanism,
   type ReportScore,
 } from "./score.js";
+import { summarizeAnalyses, summarizeReports, type Count, type StageSummary } from "./summary.js";
 
 export const MANIFEST_SCHEMA = "humanish.bench-manifest.v1";
 export const RESULT_SCHEMA = "humanish.bench-result.v1";
@@ -46,6 +46,13 @@ export type AnalysisState =
   | "skipped_no_run"
   | "not_run";
 
+/** One analysis model of the matrix: `model`, or `provider:model` passed as `--provider`. */
+export interface AnalysisSpec {
+  label: string;
+  provider: string | null;
+  model: string;
+}
+
 export interface RunRecord {
   brain: BrainId;
   arm: Arm;
@@ -56,17 +63,32 @@ export interface RunRecord {
   error: string | null;
   startedAt: string;
   finishedAt: string | null;
-  analysis: {
-    state: AnalysisState;
-    analysisId: string | null;
-    estimatedUsd: number | null;
-    /** The CLI's `admission.estimatedCostUsd`: the expected cost since 0.114.0, the worst case before. */
-    admissionUsd: number | null;
-    /** The applied per-analysis cap; older manifests use budget.analysisMaxUsd. */
-    maxCostUsd?: number;
-    error: string | null;
-  };
+  analysis: AnalysisRecord;
   cleanup: CleanupRecord | null;
+}
+
+export interface AnalysisRecord {
+  state: AnalysisState;
+  analysisId: string | null;
+  estimatedUsd: number | null;
+  /** The CLI's `admission.estimatedCostUsd`: the expected cost since 0.114.0, the worst case before. */
+  admissionUsd: number | null;
+  /** The applied per-analysis cap; older manifests use budget.analysisMaxUsd. */
+  maxCostUsd?: number;
+  /** Wall time of the `humanish analyze` call, null when none was made; absent in older manifests. */
+  wallMs?: number | null;
+  error: string | null;
+}
+
+/** One analysis of the matrix: a recorded run analyzed by one analysis model. */
+export interface MatrixAnalysis extends AnalysisRecord {
+  runId: string;
+  /** The analysis model's `--analysis-models` label. */
+  spec: string;
+  /** 1 for the run's first analysis with this model, counting earlier invocations. */
+  repeat: number;
+  /** The version of the humanish CLI that analyzed it. */
+  humanish: string;
 }
 
 /**
@@ -96,24 +118,8 @@ export interface Manifest {
   fixture: FixtureDigests;
   stopped: Partial<Record<BrainId, string>>;
   runs: RunRecord[];
-}
-
-interface Count {
-  hits: number;
-  of: number;
-}
-
-export interface StageSummary {
-  plantedUnits: number;
-  cleanUnits: number;
-  recall: Record<DefectId, Count> & { total: Count & { wilson95: [number, number] | null } };
-  d2Mechanism: Record<Mechanism, number>;
-  falseAssurance: { claims: number; unitsWith: number };
-  invented: { planted: number; clean: number; unitsWith: number };
-  harness: number;
-  unresolved: number;
-  supported: number;
-  engaged?: Record<DefectId, Count>;
+  /** Present when `--analysis-models`, `--analysis-repeats` or `--reanalyze` ran the matrix. */
+  analysisMatrix?: MatrixAnalysis[];
 }
 
 export interface ScoredRun {
@@ -154,6 +160,38 @@ export interface BrainResult {
   spentUsd: { participant: number; desktop: number; analysis: number; total: number; unpricedRuns: number };
   runs: ScoredRun[];
   summary: { report: StageSummary; analysis: StageSummary };
+  /** One entry per analysis model of the matrix, in `--analysis-models` order. */
+  analysisModels?: ModelResult[];
+}
+
+/** One analysis model's analyses of a brain's recorded runs, scored like the run analyses. */
+export interface ModelResult {
+  spec: string;
+  /** The analyst the saved analyses record, null when none completed. */
+  provider: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  states: Partial<Record<AnalysisState, number>>;
+  /** Complete analyses only. */
+  summary: StageSummary;
+  /** Estimated spend of every analysis call; `unpriced` counts dispatched calls with no estimate. */
+  spentUsd: { total: number; perAnalysis: number | null; unpriced: number };
+  /** Wall time of every `humanish analyze` call that ran. */
+  wallMs: { total: number; perAnalysis: number | null };
+  analyses: ScoredMatrixAnalysis[];
+}
+
+export interface ScoredMatrixAnalysis {
+  arm: Arm;
+  index: number;
+  runId: string;
+  repeat: number;
+  state: AnalysisState;
+  analysisId: string | null;
+  estimatedUsd: number | null;
+  wallMs: number | null;
+  error: string | null;
+  analysis: AnalysisScore | null;
 }
 
 export interface BenchResult {
@@ -166,119 +204,6 @@ export interface BenchResult {
   runsPerArm: number;
   budget: BudgetSettings;
   brains: BrainResult[];
-}
-
-/** Wilson score interval at 95 %. */
-export function wilson95(hits: number, of: number): [number, number] | null {
-  if (of === 0) return null;
-  const z = 1.96;
-  const p = hits / of;
-  const denominator = 1 + (z * z) / of;
-  const center = (p + (z * z) / (2 * of)) / denominator;
-  const half = (z * Math.sqrt((p * (1 - p)) / of + (z * z) / (4 * of * of))) / denominator;
-  return [round(Math.max(0, center - half)), round(Math.min(1, center + half))];
-}
-
-const zeroCounts = (): Record<DefectId, Count> => ({
-  D1: { hits: 0, of: 0 },
-  D2: { hits: 0, of: 0 },
-  D3: { hits: 0, of: 0 },
-  D4: { hits: 0, of: 0 },
-  D5: { hits: 0, of: 0 },
-});
-
-const zeroMechanisms = (): Record<Mechanism, number> => ({
-  data_loss: 0,
-  display: 0,
-  ambiguous: 0,
-  unspecified: 0,
-});
-
-/** Aggregate participant reports, one unit per participant. */
-export function summarizeReports(units: readonly { arm: Arm; score: ReportScore }[]): StageSummary {
-  const recall = zeroCounts();
-  const engaged = zeroCounts();
-  const mechanisms = zeroMechanisms();
-  const summary = emptySummary(recall, mechanisms);
-  for (const { arm, score } of units) {
-    countArm(summary, arm);
-    if (arm === "planted") {
-      for (const defect of DEFECT_IDS) {
-        recall[defect].of++;
-        engaged[defect].of++;
-        if (score.detected[defect]) recall[defect].hits++;
-        if (score.engaged[defect]) engaged[defect].hits++;
-      }
-      if (score.d2Mechanism) mechanisms[score.d2Mechanism]++;
-      summary.falseAssurance.claims += score.falseAssurance.length;
-      if (score.falseAssurance.length > 0) summary.falseAssurance.unitsWith++;
-    }
-    summary.invented[arm] += score.invented.length;
-    if (score.invented.length > 0) summary.invented.unitsWith++;
-    summary.harness += score.harness.length;
-    summary.unresolved += score.unresolved.length;
-    summary.supported += score.supported.length;
-  }
-  return finish(summary, recall, engaged);
-}
-
-/** Aggregate analyses, one unit per analysis. */
-export function summarizeAnalyses(units: readonly { arm: Arm; score: AnalysisScore }[]): StageSummary {
-  const recall = zeroCounts();
-  const mechanisms = zeroMechanisms();
-  const summary = emptySummary(recall, mechanisms);
-  for (const { arm, score } of units) {
-    countArm(summary, arm);
-    if (arm === "planted") {
-      for (const defect of DEFECT_IDS) {
-        recall[defect].of++;
-        if (score.listed[defect]) recall[defect].hits++;
-      }
-      if (score.d2Mechanism) mechanisms[score.d2Mechanism]++;
-      summary.falseAssurance.claims += score.falseAssurance.length;
-      if (score.falseAssurance.length > 0) summary.falseAssurance.unitsWith++;
-    }
-    const invented = score.findings.filter((finding) => finding.verdict === "invented").length;
-    summary.invented[arm] += invented;
-    if (invented > 0) summary.invented.unitsWith++;
-    summary.harness += score.findings.filter((finding) => finding.verdict === "harness").length;
-    summary.unresolved += score.findings.filter((finding) => finding.verdict === "unresolved").length;
-    summary.supported += score.findings.filter((finding) => finding.verdict === "supported").length;
-  }
-  return finish(summary, recall, undefined);
-}
-
-function emptySummary(recall: Record<DefectId, Count>, mechanisms: Record<Mechanism, number>): StageSummary {
-  return {
-    plantedUnits: 0,
-    cleanUnits: 0,
-    recall: { ...recall, total: { hits: 0, of: 0, wilson95: null } },
-    d2Mechanism: mechanisms,
-    falseAssurance: { claims: 0, unitsWith: 0 },
-    invented: { planted: 0, clean: 0, unitsWith: 0 },
-    harness: 0,
-    unresolved: 0,
-    supported: 0,
-  };
-}
-
-function countArm(summary: StageSummary, arm: Arm): void {
-  if (arm === "planted") summary.plantedUnits++;
-  else summary.cleanUnits++;
-}
-
-function finish(
-  summary: StageSummary,
-  recall: Record<DefectId, Count>,
-  engaged: Record<DefectId, Count> | undefined,
-): StageSummary {
-  const hits = DEFECT_IDS.reduce((total, defect) => total + recall[defect].hits, 0);
-  const of = DEFECT_IDS.reduce((total, defect) => total + recall[defect].of, 0);
-  return {
-    ...summary,
-    recall: { ...recall, total: { hits, of, wilson95: wilson95(hits, of) } },
-    ...(engaged ? { engaged } : {}),
-  };
 }
 
 function scoreRun(projectDir: string, record: RunRecord, missionText: string, budget: BudgetSettings): ScoredRun {
@@ -344,6 +269,74 @@ function scoreRun(projectDir: string, record: RunRecord, missionText: string, bu
   return base;
 }
 
+/** Score the matrix's analyses of one brain's runs, grouped by analysis model. */
+function scoreAnalysisModels(projectDir: string, manifest: Manifest, brain: BrainId, missionText: string): ModelResult[] {
+  const runs = new Map(
+    manifest.runs.flatMap((run) => (run.brain === brain && run.runId !== null ? [[run.runId, run] as const] : [])),
+  );
+  const facts = new Map<string, EvidenceFacts | null>();
+  const factsOf = (runId: string): EvidenceFacts | null => {
+    if (!facts.has(runId)) {
+      try {
+        const participants = participantsOf(readRunBundle(projectDir, runId), missionText);
+        facts.set(runId, combineFacts(participants.map((participant) => participant.facts), missionText));
+      } catch {
+        facts.set(runId, null);
+      }
+    }
+    return facts.get(runId) ?? null;
+  };
+  const analyses = (manifest.analysisMatrix ?? []).filter((analysis) => runs.has(analysis.runId));
+  const specs = [...new Set(analyses.map((analysis) => analysis.spec))];
+  return specs.map((spec): ModelResult => {
+    const artifacts: AnalysisArtifact[] = [];
+    const scored = analyses.filter((analysis) => analysis.spec === spec).map((analysis): ScoredMatrixAnalysis => {
+      const run = runs.get(analysis.runId) as RunRecord;
+      const artifact = analysis.state === "complete" && analysis.analysisId !== null
+        ? readAnalysis(projectDir, analysis.runId, analysis.analysisId)
+        : null;
+      const input = artifact ? analysisInputOf(artifact) : null;
+      const runFacts = input ? factsOf(analysis.runId) : null;
+      if (artifact) artifacts.push(artifact);
+      return {
+        arm: run.arm,
+        index: run.index,
+        runId: analysis.runId,
+        repeat: analysis.repeat,
+        state: analysis.state,
+        analysisId: analysis.analysisId,
+        estimatedUsd: analysis.estimatedUsd,
+        wallMs: analysis.wallMs ?? null,
+        error: analysis.error,
+        analysis: input && runFacts ? scoreAnalysis(input, run.arm, runFacts) : null,
+      };
+    });
+    const states: Partial<Record<AnalysisState, number>> = {};
+    for (const analysis of scored) states[analysis.state] = (states[analysis.state] ?? 0) + 1;
+    const priced = scored.flatMap((analysis) => (analysis.estimatedUsd === null ? [] : [analysis.estimatedUsd]));
+    const timed = scored.flatMap((analysis) => (analysis.wallMs === null ? [] : [analysis.wallMs]));
+    const total = (values: number[]): number => values.reduce((sum, value) => sum + value, 0);
+    const first = artifacts[0];
+    return {
+      spec,
+      provider: first?.provider ?? null,
+      model: first?.config?.model ?? null,
+      promptVersion: first?.promptVersion ?? null,
+      states,
+      summary: summarizeAnalyses(
+        scored.flatMap((analysis) => (analysis.analysis ? [{ arm: analysis.arm, score: analysis.analysis }] : [])),
+      ),
+      spentUsd: {
+        total: round(total(priced)),
+        perAnalysis: priced.length === 0 ? null : round(total(priced) / priced.length),
+        unpriced: scored.filter((analysis) => analysis.estimatedUsd === null && analysis.wallMs !== null).length,
+      },
+      wallMs: { total: total(timed), perAnalysis: timed.length === 0 ? null : Math.round(total(timed) / timed.length) },
+      analyses: scored,
+    };
+  });
+}
+
 /** Score every run the manifest records. */
 export function buildResult(projectDir: string, manifest: Manifest): BenchResult {
   const mission = MISSIONS[manifest.mission];
@@ -394,6 +387,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
           runs.flatMap((run) => (run.analysis ? [{ arm: run.arm, score: run.analysis }] : [])),
         ),
       },
+      ...(manifest.analysisMatrix ? { analysisModels: scoreAnalysisModels(projectDir, manifest, brain, mission.text) } : {}),
     };
   });
   return {
@@ -423,6 +417,70 @@ export function analysisRefusalLines(brain: BrainResult): string[] {
       `(estimate ${usd(refusal.admissionUsd)}, cap ${usd(refusal.maxCostUsd)}); excluded from analysis recall`,
     ] : [];
   });
+}
+
+const interval = (summary: StageSummary): string => {
+  const bounds = summary.recall.total.wilson95;
+  return bounds ? ` (95% interval ${bounds[0].toFixed(2)} to ${bounds[1].toFixed(2)})` : "";
+};
+const mechanism = (summary: StageSummary): string =>
+  `${summary.d2Mechanism.data_loss} data loss, ${summary.d2Mechanism.display} display, ` +
+  `${summary.d2Mechanism.ambiguous} ambiguous, ${summary.d2Mechanism.unspecified} unspecified`;
+const duration = (ms: number | null): string =>
+  ms === null ? "unknown" : ms < 120_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60_000).toFixed(1)} min`;
+
+/** The analysis models table: one column per model, the same rows as the run analyses. */
+function modelLines(models: readonly ModelResult[]): string[] {
+  const row = (label: string, cell: (model: ModelResult) => string): string =>
+    `| ${label} | ${models.map(cell).join(" | ")} |`;
+  const lines = [
+    "### Analysis models",
+    "",
+    "Each model analyzed the same recorded runs. Spend is the CLI's estimate and wall time is the " +
+      "`humanish analyze` call, per model and per analysis.",
+    "",
+    `| | ${models.map((model) => code(model.spec)).join(" | ")} |`,
+    `|---|${models.map(() => "---").join("|")}|`,
+    row("Recorded model, prompt", (model) =>
+      model.model ? `${code(model.model)}, ${model.promptVersion ? code(model.promptVersion) : "unknown"}` : "none completed"),
+    row("Scored analyses", (model) => `${model.summary.plantedUnits} planted, ${model.summary.cleanUnits} clean`),
+    row("Not scored", (model) =>
+      Object.entries(model.states).filter(([state]) => state !== "complete").map(([state, count]) => `${count} ${state}`).join(", ") || "none"),
+    ...PLANTED.map((defect) => row(`${defect.id} ${defect.label}`, (model) => ratio(model.summary.recall[defect.id]))),
+    row("Recall, all defects", (model) => `${ratio(model.summary.recall.total)}${interval(model.summary)}`),
+    row("False assurance", (model) => String(model.summary.falseAssurance.claims)),
+    row("Invented, planted arm", (model) => String(model.summary.invented.planted)),
+    row("Invented, clean arm", (model) => String(model.summary.invented.clean)),
+    row("Harness-caused", (model) => String(model.summary.harness)),
+    row("Other true claims", (model) => String(model.summary.supported)),
+    row("Unresolved, for a person", (model) => String(model.summary.unresolved)),
+    row("D2 mechanism", (model) => mechanism(model.summary)),
+    row("Estimated spend", (model) =>
+      `${usd(model.spentUsd.total)}, ${usd(model.spentUsd.perAnalysis)} an analysis` +
+      `${model.spentUsd.unpriced > 0 ? `, ${model.spentUsd.unpriced} unpriced` : ""}`),
+    row("Wall time", (model) => `${duration(model.wallMs.total)}, ${duration(model.wallMs.perAnalysis)} an analysis`),
+    "",
+    "| model | arm | run | repeat | state | spend | wall time |",
+    "|---|---|---|---|---|---|---|",
+  ];
+  for (const model of models) {
+    for (const analysis of model.analyses) {
+      lines.push(
+        `| ${code(model.spec)} | ${analysis.arm} ${analysis.index} | \`${analysis.runId}\` | ${analysis.repeat} | ` +
+          `${analysis.state}${analysis.error ? ` (${analysis.error})` : ""} | ${usd(analysis.estimatedUsd)} | ${duration(analysis.wallMs)} |`,
+      );
+    }
+  }
+  const claims = models.flatMap((model) =>
+    model.analyses.flatMap((analysis) =>
+      (analysis.analysis?.findings ?? [])
+        .filter((finding) => finding.verdict === "unresolved" || finding.verdict === "invented")
+        .map((finding) =>
+          `${model.spec} ${analysis.arm} ${analysis.index} repeat ${analysis.repeat} ${finding.verdict}: ${code(finding.title)}`),
+    ),
+  );
+  if (claims.length > 0) lines.push("", "Analysis model claims to check by hand:", "", ...claims.map((line) => `- ${line}`));
+  return lines;
 }
 
 /** The short Markdown summary committed next to the results file. */
@@ -458,13 +516,6 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
         `| ${defect.id} ${defect.label} | ${ratio(report.recall[defect.id])} | ${ratio(analysis.recall[defect.id])} |`,
       );
     }
-    const interval = (summary: StageSummary): string => {
-      const bounds = summary.recall.total.wilson95;
-      return bounds ? ` (95% interval ${bounds[0].toFixed(2)} to ${bounds[1].toFixed(2)})` : "";
-    };
-    const mechanism = (summary: StageSummary): string =>
-      `${summary.d2Mechanism.data_loss} data loss, ${summary.d2Mechanism.display} display, ` +
-      `${summary.d2Mechanism.ambiguous} ambiguous, ${summary.d2Mechanism.unspecified} unspecified`;
     lines.push(
       `| Recall, all defects | ${ratio(report.recall.total)}${interval(report)} | ${ratio(analysis.recall.total)}${interval(analysis)} |`,
       `| False assurance | ${report.falseAssurance.claims} | ${analysis.falseAssurance.claims} |`,
@@ -512,6 +563,7 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
     if (unresolved.length > 0) {
       lines.push("", "Claims to check by hand:", "", ...unresolved.map((line) => `- ${line}`));
     }
+    if (brain.analysisModels) lines.push("", ...modelLines(brain.analysisModels));
     lines.push("");
   }
   return `${lines.join("\n")}\n`;
