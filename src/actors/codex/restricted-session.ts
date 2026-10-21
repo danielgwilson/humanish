@@ -295,6 +295,10 @@ export interface RestrictedCodexSession {
   readonly protocolIncompatibilities?: readonly string[] | undefined;
   /** Schema values beyond the baseline humanish knows, recorded at launch. */
   readonly protocolAdditions?: readonly string[] | undefined;
+  /** What in the operator's Codex setup the launch refused, without paths or values. */
+  readonly refusalReason?: string | undefined;
+  /** The instruction file names Codex added from the operator's Codex home. */
+  readonly operatorInstructionFiles?: readonly string[] | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -571,6 +575,8 @@ export function createRestrictedCodexSession(
     unknownNotifications: new Map<string, number>(),
     protocolIncompatibilities: undefined,
     protocolAdditions: undefined,
+    refusalReason: undefined,
+    operatorInstructionFiles: undefined,
     activeDeadline: undefined,
     interrupt: undefined,
     closed: false,
@@ -616,6 +622,12 @@ export function createRestrictedCodexSession(
     },
     get protocolAdditions() {
       return state.protocolAdditions;
+    },
+    get refusalReason() {
+      return state.refusalReason;
+    },
+    get operatorInstructionFiles() {
+      return state.operatorInstructionFiles;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  admitsRestrictedCodexConfig,
   restrictedCodexConfig,
+  restrictedCodexConfigViolation,
   restrictedCodexRequestError,
   toolPolicyViolation,
   type RestrictedCodexRequest,
@@ -15,7 +15,7 @@ const captured = JSON.parse(
   ),
 );
 const admitted = (raw: unknown) =>
-  admitsRestrictedCodexConfig(raw, "/private/probe/home/config.toml", "gpt-6-astra");
+  restrictedCodexConfigViolation(raw, "/private/probe/home/config.toml", "gpt-6-astra") === null;
 const request: RestrictedCodexRequest = {
   model: "gpt-6-astra",
   instructions: "Synthetic instructions",
@@ -111,12 +111,12 @@ describe("restricted Codex effective policy", () => {
     value.config.mcp_servers = { inherited_synthetic: { command: "synthetic-command" } };
     value.config.openai_base_url = "https://operator-provider.invalid";
     expect(
-      admitsRestrictedCodexConfig(value, "/unused/operator/config.toml", undefined, mode),
-    ).toBe(true);
+      restrictedCodexConfigViolation(value, "/unused/operator/config.toml", undefined, mode),
+    ).toBeNull();
     value.config.features.shell_tool = true;
     expect(
-      admitsRestrictedCodexConfig(value, "/unused/operator/config.toml", undefined, mode),
-    ).toBe(false);
+      restrictedCodexConfigViolation(value, "/unused/operator/config.toml", undefined, mode),
+    ).toBe("features.shell_tool is not the value humanish sets");
   });
 });
 

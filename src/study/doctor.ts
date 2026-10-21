@@ -20,6 +20,7 @@ import {
   protocolAdditionsWarning,
   protocolIncompatibilityMessage,
 } from "../actors/codex/protocol-compat.js";
+import { operatorInstructionsWarning } from "../actors/codex/operator-instructions.js";
 import type { DoctorCheckDraft } from "../cli/doctor.js";
 import { admissionRule } from "../analysis/admission.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -50,6 +51,8 @@ type CodexReadiness = {
   protocolIncompatibilities?: readonly string[];
   /** Schema values beyond the baseline, recorded by a launch that passed. */
   protocolAdditions?: readonly string[];
+  /** What in the operator's Codex setup the launch refused, without paths or values. */
+  refusalReason?: string;
 };
 
 /** A ready row's message, with the schema values the launch recorded. */
@@ -94,6 +97,7 @@ async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadi
 /** What doctor's hosted Codex participant check found: a readiness result and what it admitted. */
 type HostedCodexReadiness = CodexReadiness & {
   cliVersion?: string;
+  operatorInstructionFiles?: readonly string[];
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
 };
@@ -160,6 +164,8 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
       return codexVersionRecovery(readiness.detectedCliVersion, readiness.installation);
     case "codex_incompatible_release":
       return `${protocolIncompatibilityMessage(readiness.detectedCliVersion, readiness.protocolIncompatibilities ?? [])} ${codexInstallAdvice(readiness.installation)} Then sign in with a ChatGPT account (\`codex login\`).`;
+    case "codex_unsafe_configuration":
+      return unsafeConfigurationRecovery(readiness.refusalReason, fallback);
     case "codex_login_required":
       return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
     case "codex_unsupported_auth":
@@ -177,6 +183,12 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
     default:
       return fallback;
   }
+}
+
+/** What the refused setting is and how to change it; the fallback when no reason was recorded. */
+function unsafeConfigurationRecovery(reason: string | undefined, fallback: string): string {
+  if (reason === undefined) return fallback;
+  return `humanish stopped the Codex launch because ${reason}. Change that setting in the Codex config (~/.codex/config.toml, a profile, or a system config) if you want hosted participants to use it, then rerun doctor.`;
 }
 
 /** Shared read-only Codex account check for local participants in doctor and the TUI. */
@@ -458,6 +470,7 @@ async function hostedCodexParticipantCheck(
   const readiness: HostedCodexReadiness = await (
     args.codexParticipantReadiness ?? hostedCodexReadiness
   )(args.env, declared).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  const operatorNote = operatorInstructionsWarning(readiness.operatorInstructionFiles);
   const account =
     readiness.authentication === "api-key"
       ? "an API key, which bills its usage to that key"
@@ -467,7 +480,7 @@ async function hostedCodexParticipantCheck(
     ok: readiness.ready,
     message: readiness.ready
       ? readyMessage(
-          `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.`,
+          `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.${operatorNote === undefined ? "" : ` ${operatorNote}`}`,
           readiness,
         )
       : `Hosted Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Check `codex login status` and the operator's Codex configuration, then rerun doctor.")} No API fallback is used.`,

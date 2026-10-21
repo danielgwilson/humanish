@@ -132,6 +132,27 @@ describe("doctor's hosted Codex participant check", () => {
     expect(row.message).toContain("the operator's Codex configuration");
   });
 
+  it("names a refused setting, and notes an admitted Codex home instruction file", async () => {
+    const setting = await participantRow(hostedLab(), async () => ({
+      ready: false,
+      errorCode: "codex_unsafe_configuration",
+      refusalReason: "in the effective Codex config, skills.config is set",
+    }));
+    expect(setting.message).toContain(
+      "because in the effective Codex config, skills.config is set",
+    );
+    expect(setting.message).toContain("~/.codex/config.toml");
+    const instructions = await participantRow(hostedLab(), async () => ({
+      ready: true,
+      errorCode: null,
+      cliVersion: "0.163.0",
+      resolvedModel: "gpt-6-astra",
+      operatorInstructionFiles: ["AGENTS.md"],
+    }));
+    expect(instructions.ok).toBe(true);
+    expect(instructions.message).toContain("Codex also gave this participant AGENTS.md");
+  });
+
   it("keeps the sign-in row for a signed-out Codex and skips the handshake", async () => {
     const readiness = vi.fn<NonNullable<StudySetupCheckArgs["codexParticipantReadiness"]>>();
     const row = await participantRow(hostedLab(), readiness, [codex("unauthenticated")]);
