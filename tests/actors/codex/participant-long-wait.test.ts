@@ -198,7 +198,7 @@ describe("a Codex participant that asks for a long wait", () => {
         `A call whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask under ${shortest} ms counts as ${shortest} ms, and named ms count up to ${watched} ms`,
       );
       expect(native.descriptions[0]).toContain(
-        "contextHint says how long it waited and why it returned.",
+        "contextHint says how long it waited and why it returned, and what happened outside the browser",
       );
       expect(native.descriptions[0]).not.toMatch(/screen changes|reload|longer than/);
       expect(native.descriptions[0]).toContain(`lasts its ms, at most ${perWait} ms`);

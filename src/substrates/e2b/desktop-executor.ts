@@ -4,6 +4,7 @@ import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
+import type { ExternalHandoff } from "../../actors/computer-use/external-handoff.js";
 import { CUA_WAIT_LIMITS } from "../../actors/computer-use/wait.js";
 import { xdotoolChord, xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 
@@ -108,6 +109,12 @@ export interface E2BDesktopExecutorOptions {
    * never persists raw URL/title/text; it only uses them in memory to decide whether to stop.
    */
   observeBrowserState?: () => Promise<Pick<CuaObservation, "url" | "title" | "text" | "scrollY">>;
+  /**
+   * Optional read of the links the browser handed to another app since the last read
+   * (desktop-handoff.ts). It runs beside the browser probe and the screenshot; a read that fails
+   * leaves its links for the next one.
+   */
+  readExternalHandoffs?: () => Promise<readonly ExternalHandoff[]>;
 }
 
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
@@ -282,10 +289,13 @@ export function createE2BDesktopExecutor(
       // Probe browser state before the screenshot so a deterministic stopWhen match
       // and its persisted frame describe the same settled surface as closely as the
       // desktop substrate allows.
+      const handoffs = options.readExternalHandoffs?.().catch(() => []);
       const browserState = await options.observeBrowserState?.().catch(() => undefined);
       const raw = await desktop.screenshot();
       const screenshot = toBuffer(raw);
+      const externalHandoffs = (await handoffs) ?? [];
       return {
+        ...(externalHandoffs.length === 0 ? {} : { externalHandoffs }),
         screenshot,
         stateSignature: perceptualSignature(screenshot),
         ...(browserState?.url === undefined ? {} : { url: browserState.url }),

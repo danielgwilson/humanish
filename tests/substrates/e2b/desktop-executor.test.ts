@@ -326,6 +326,27 @@ describe("createE2BDesktopExecutor.observe", () => {
     expect(obs.url).toBe("https://example.test/dashboard");
   });
 
+  it("carries the links the desktop handed to another app, and observes on when the read fails", async () => {
+    const { desktop } = makeFakeDesktop(SHOT);
+    const reads = [
+      async () => [{ scheme: "mailto", recipients: ["help@example.test"] }],
+      async () => [],
+      async () => {
+        throw new Error("sandbox did not answer");
+      },
+    ];
+    const executor = createE2BDesktopExecutor(desktop, {
+      readExternalHandoffs: () => reads.shift()!(),
+    });
+    expect((await executor.observe()).externalHandoffs).toEqual([
+      { scheme: "mailto", recipients: ["help@example.test"] },
+    ]);
+    expect((await executor.observe()).externalHandoffs).toBeUndefined();
+    const afterFailure = await executor.observe();
+    expect(afterFailure.externalHandoffs).toBeUndefined();
+    expect(afterFailure.screenshot).toBeDefined();
+  });
+
   it("coerces a Uint8Array screenshot result to a Buffer", async () => {
     const u8 = new Uint8Array(SHOT);
     const { desktop } = makeFakeDesktop(u8);

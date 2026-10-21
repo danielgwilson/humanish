@@ -11,6 +11,7 @@ import { runDetachedStep } from "../detached.js";
 import { shellQuote } from "../shell.js";
 import type { E2BDesktopSandbox } from "./sdk.js";
 import type { DesktopMediaEvidence } from "./desktop-media.js";
+import { externalLinkHandlerSetup } from "./desktop-handoff.js";
 import { e2bShell } from "./shell.js";
 
 // Settle after opening the browser or the terminal, before the first screenshot: long enough for
@@ -286,7 +287,8 @@ export async function openDesktopBrowserTarget(
       `target_url=${shellQuote(targetUrl)}`,
       `browser_preference=${shellQuote(requestedBrowser)}`,
       "profile_dir=",
-      `chrome_preferences_json=${shellQuote(chromiumEvidenceProfilePreferencesJson())}`,
+      `chrome_preferences_json=${shellQuote(chromiumEvidenceProfilePreferencesJson(targetUrl))}`,
+      externalLinkHandlerSetup(),
       "prepare_profile() {",
       '  profile_dir="$(mktemp -d /tmp/humanish-chrome-profile.XXXXXX)"',
       '  mkdir -p "$profile_dir/Default"',

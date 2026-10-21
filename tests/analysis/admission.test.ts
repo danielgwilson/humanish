@@ -255,7 +255,7 @@ describe("analysis admission estimate", () => {
     // admits it while that worst case is at most $3: an expected $2.8308. Six are expected to write
     // all 16,384, so the worst case is the expected cost and admission admits up to $3.
     const one = automaticAnalysisBudget({ maxCostUsd: 3 }, "computer-use", 1)?.expectedCostUsd;
-    expect(one?.low).toBe(0.7532);
+    expect(one?.low).toBe(0.7543);
     expect(one?.high).toBeCloseTo(2.8308, 4);
     const six = automaticAnalysisBudget({ maxCostUsd: 3 }, "computer-use", 6)?.expectedCostUsd;
     expect(six?.high).toBeCloseTo(3, 4);
@@ -274,11 +274,11 @@ describe("analysis admission estimate", () => {
 
   it("admits a one-request analysis at the evidence limits under the default cap", () => {
     // At most 16 participants make one request. The default $10 cap admits the packet at the
-    // evidence limits, so the range ends there: $3.7892 for one participant, $4.5392 for 16.
+    // evidence limits, so the range ends there: $3.7903 for one participant, $4.5403 for 16.
     const one = automaticAnalysisBudget(undefined, "computer-use", 1)?.expectedCostUsd;
-    expect(one).toEqual({ low: 0.7532, high: 3.7892 });
+    expect(one).toEqual({ low: 0.7543, high: 3.7903 });
     const sixteen = automaticAnalysisBudget(undefined, "computer-use", 16)?.expectedCostUsd;
-    expect(sixteen?.high).toBeCloseTo(4.5392, 4);
+    expect(sixteen?.high).toBeCloseTo(4.5403, 4);
     const limits = packet({
       participants: 6,
       entries: 800,
@@ -294,7 +294,7 @@ describe("analysis admission estimate", () => {
   it("says when admission refuses an analysis even with no evidence", () => {
     const budget = automaticAnalysisBudget({ maxCostUsd: 0.5 }, "computer-use", 1)!;
     expect(budget.expectedCostUsd).toBeUndefined();
-    expect(budget.refusedFromUsd).toBe(0.7532);
+    expect(budget.refusedFromUsd).toBe(0.7543);
     expect(formatAutomaticAnalysisBudget(budget)).toBe(
       "After live runs: explicit analysis · gpt-6-astra · refused before it starts for 1 participant even with no evidence (expected $0.75), since both its worst case and its expected cost plus a 10% margin are over $0.5; this is not a billing cap. Set review.analysis: false to disable.",
     );

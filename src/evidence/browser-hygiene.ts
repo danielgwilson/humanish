@@ -39,6 +39,44 @@ const CHROMIUM_EVIDENCE_PROFILE_PREFERENCES = {
   },
 } as const;
 
-export function chromiumEvidenceProfilePreferencesJson(): string {
-  return JSON.stringify(CHROMIUM_EVIDENCE_PROFILE_PREFERENCES);
+/**
+ * Schemes whose links Chrome hands to another app after asking "Open xdg-open?". The desktop's
+ * stand-ins answer them (src/substrates/e2b/desktop-handoff.ts), so the prompt is browser chrome
+ * a person on their own computer would not see for that app. Chrome never asks for mailto.
+ */
+const EXTERNAL_APP_SCHEMES = [
+  "callto",
+  "facetime",
+  "facetime-audio",
+  "geo",
+  "maps",
+  "mms",
+  "msteams",
+  "sip",
+  "skype",
+  "slack",
+  "sms",
+  "tel",
+  "webcal",
+  "whatsapp",
+  "zoommtg",
+] as const;
+
+/**
+ * The profile's Preferences file. With a web `targetUrl`, its origin may open the external app
+ * schemes without Chrome's prompt: the "always allow" choice Chrome stores per origin, which
+ * needs no root and no managed policy. Links from other origins still prompt.
+ */
+export function chromiumEvidenceProfilePreferencesJson(targetUrl?: string): string {
+  const origin = targetUrl === undefined ? undefined : URL.parse(targetUrl);
+  if (origin === null || origin === undefined || !/^https?:$/.test(origin.protocol))
+    return JSON.stringify(CHROMIUM_EVIDENCE_PROFILE_PREFERENCES);
+  return JSON.stringify({
+    ...CHROMIUM_EVIDENCE_PROFILE_PREFERENCES,
+    protocol_handler: {
+      allowed_origin_protocol_pairs: {
+        [origin.origin]: Object.fromEntries(EXTERNAL_APP_SCHEMES.map((scheme) => [scheme, true])),
+      },
+    },
+  });
 }

@@ -1,3 +1,4 @@
+import type { ExternalHandoff } from "../external-handoff.js";
 import type { HeardSpeech } from "../speech.js";
 import type {
   ActorCapabilities,
@@ -109,6 +110,11 @@ export interface CuaObservation {
   text?: string;
   /** Finalized speech captured from the participant's speaker sink. */
   heardSpeech?: HeardSpeech[];
+  /**
+   * Links the browser handed to another app since the previous observation, oldest first. The
+   * desktop opens no app for them; the loop records each and tells the participant on its next turn.
+   */
+  externalHandoffs?: readonly ExternalHandoff[];
 }
 
 /**

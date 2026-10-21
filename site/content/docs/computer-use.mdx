@@ -275,6 +275,26 @@ browser-state probe as URL stop conditions: a Firefox participant, or one whose 
 unavailable, has screenshots without pages. Shared-world studies and the local browser route
 record no pages.
 
+## Email, phone and message links
+
+A hosted desktop (E2B or Modal) has no email, phone or messaging app. When a participant clicks a
+`mailto:`, `tel:`, `sms:` or other link that Chrome hands to another app, the desktop writes the
+link down and opens no app chooser. The trace records a `link opened another app` notice with the
+link's scheme and, for an email link, the recipient addresses from its address, `to`, `cc` and
+`bcc`. The subject, body and phone number are not kept. Addresses go through the trace's
+redaction as narration does, so an address that is not one of the study's secrets stays; review
+the bundle before sharing it. The participant's next turn says the link worked, that the app is
+not shown and that nothing was sent.
+
+```bash
+jq -r '.items[] | select(.title == "link opened another app") | .text' \
+  .humanish/runs/<run-id>/actor.json
+```
+
+Chrome asks before it hands a `tel:` or `sms:` link to another app. The participant's browser
+starts with that permission for the study's own origin, so the same link on another site still
+shows Chrome's prompt. Firefox participants and the local browser route are not covered.
+
 ## Requests a participant's browser made
 
 With `execution.network: true`, each hosted computer-use participant in Chrome or Chromium records
