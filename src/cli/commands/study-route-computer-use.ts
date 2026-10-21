@@ -1,3 +1,4 @@
+import { rename, writeFile } from "node:fs/promises";
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { type InternalRunStudyOptions } from "../../run-study.js";
@@ -92,6 +93,8 @@ interface CuaRunSettings {
   dryRun: boolean;
   port: number;
   wantsFollow: boolean;
+  /** Bind the served Observer on every interface (hidden `--all-interfaces`). */
+  allInterfaces: boolean;
 }
 
 interface CuaWatchPlan {
@@ -170,7 +173,16 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     );
     return undefined;
   }
-  return { wantsMachine, shouldOpen, participantIds, count, dryRun, port, wantsFollow };
+  return {
+    wantsMachine,
+    shouldOpen,
+    participantIds,
+    count,
+    dryRun,
+    port,
+    wantsFollow,
+    allInterfaces: args.options.allInterfaces === true,
+  };
 }
 
 /** Validates exposure and plans the finished-run Observer, or returns undefined after refusing. */
@@ -305,6 +317,7 @@ async function attachLiveObserver(
       open: settings.shouldOpen && !exposure.exposed,
       port: settings.port,
       exposed: exposure.exposed,
+      allInterfaces: settings.allInterfaces,
     });
     // A signal that stops the run closes the server and any tunnel before the process exits.
     live.releaseShutdown ??= onRunShutdown(() => closeLiveAttachment(io, live));
@@ -361,7 +374,10 @@ async function reportCuaRun(
   await writeRunResult(args.command, args.io, args.options.cwd, output, (value) =>
     formatCuaStudyHuman(value, args.config.subject),
   );
-  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+  const exitCode = result.ok && automaticAnalysisSucceeded(result) ? 0 : 2;
+  args.io.setExitCode(exitCode);
+  if (args.options.resultFile !== undefined)
+    await writeResultFile(args.options.resultFile, { exitCode, result: output });
 
   if (server && (result.observer?.ok || attachedObserver)) {
     const followResult = output.observer?.ok
@@ -384,4 +400,14 @@ async function reportCuaRun(
       rendered: result.observer,
     });
   }
+}
+
+/**
+ * Write `value` to `file` as JSON in one rename, so a reader polling for it never sees it half
+ * written. A remote run's launcher reads it while this process keeps serving the Observer.
+ */
+async function writeResultFile(file: string, value: unknown): Promise<void> {
+  const partial = `${file}.partial`;
+  await writeFile(partial, `${JSON.stringify(value)}\n`, { mode: 0o600 });
+  await rename(partial, file);
 }
