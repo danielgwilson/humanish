@@ -42,16 +42,20 @@ const START_DEADLINE_MS = 3 * 60_000;
 /** How long a stopped run has to end and write its result. */
 const STOP_DEADLINE_MS = 2 * 60_000;
 
-export interface RemoteLaunch {
+/** What following a remote run needs from its caller: the project, its env and a progress line. */
+export interface RemoteContext {
   cwd: string;
+  env: Readonly<Record<string, string | undefined>>;
+  /** Progress lines for a person, on stderr. */
+  say: (line: string) => void;
+}
+
+export interface RemoteLaunch extends RemoteContext {
   /** The study file, relative to cwd. */
   study: string;
   remote: RemotePlan;
-  env: Readonly<Record<string, string | undefined>>;
   /** Local Observer port; 0 picks a free one. */
   port: number;
-  /** Progress lines for a person, on stderr. */
-  say: (line: string) => void;
 }
 
 /** What a remote run ended as, for the command's result and exit code. */
@@ -165,8 +169,8 @@ async function acquireRunner(launch: RemoteLaunch, paths: PreparedRunArtifactPat
 }
 
 /** Follows the run until it ends, is stopped, detaches or stops answering. */
-async function followRemoteRun(args: {
-  launch: RemoteLaunch;
+export async function followRemoteRun(args: {
+  launch: RemoteContext;
   runner: Runner;
   paths: PreparedRunArtifactPaths;
   runId: string;
@@ -184,7 +188,7 @@ async function followRemoteRun(args: {
     const run = await readRemoteRun(runner, runId).catch(() => undefined);
     unanswered = run === undefined ? unanswered + 1 : 0;
     if (run?.state !== undefined && state === undefined) {
-      say(`Run ${runId} started. Watch it live at ${args.proxyUrl}`);
+      say(`Run ${runId} is running. Watch it live at ${args.proxyUrl}`);
       say("Closing this terminal leaves the study running; Ctrl-C stops it.");
     }
     if (run?.state !== undefined && run.state !== state) {
@@ -300,7 +304,7 @@ export function joinJournals(...journals: string[]): string {
  * come back clean as an error and a failing exit code.
  */
 async function endRun(
-  launch: RemoteLaunch,
+  launch: RemoteContext,
   runId: string,
   outcome: Omit<RemoteOutcome, "runId">,
 ): Promise<RemoteOutcome> {
@@ -342,7 +346,7 @@ async function writeRemoteRecord(
   );
 }
 
-interface Signals {
+export interface Signals {
   readonly requested: "stop" | "detach" | undefined;
   /** The exit code a local run gives for the stop signal received: 130 for SIGINT, 143 for SIGTERM. */
   readonly exitCode: number;
@@ -353,7 +357,7 @@ interface Signals {
  * Ctrl-C and SIGTERM stop the run, as they stop a local one. A closed terminal (SIGHUP) leaves it
  * running; the runner ends it at its deadline.
  */
-function watchSignals(): Signals {
+export function watchSignals(): Signals {
   let requested: "stop" | "detach" | undefined;
   let exitCode = 130;
   const interrupt = () => {
