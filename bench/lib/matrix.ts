@@ -8,20 +8,24 @@ import { SpendLedger, type BudgetSettings } from "./plan.js";
 import type { AnalysisSpec, Manifest, MatrixAnalysis } from "./report.js";
 
 const PROVIDER = /^[a-z][a-z0-9-]*$/;
+const EFFORT = /^[a-z]+$/;
 
-/** `--analysis-models`: comma-separated, each `model` or `provider:model`. */
+/**
+ * `--analysis-models`: comma-separated, each `model` or `provider:model`, with an optional
+ * `@effort` that `humanish analyze` checks against the model.
+ */
 export function parseAnalysisSpecs(raw: string): AnalysisSpec[] {
   const specs = raw.split(",").map((part): AnalysisSpec => {
     const label = part.trim();
     const colon = label.indexOf(":");
     const provider = colon === -1 ? null : label.slice(0, colon);
-    const model = label.slice(colon + 1);
-    if (model === "" || (provider !== null && !PROVIDER.test(provider))) {
+    const [model = "", effort] = label.slice(colon + 1).split("@");
+    if (model === "" || (provider !== null && !PROVIDER.test(provider)) || (effort !== undefined && !EFFORT.test(effort))) {
       throw new Error(
-        `--analysis-models takes a comma-separated list of model or provider:model, such as gpt-6-astra,gemini:gemini-3.8-flash. Got ${JSON.stringify(raw)}.`,
+        `--analysis-models takes a comma-separated list of model or provider:model, each with an optional @effort, such as gpt-6-astra,gpt-6-luna@medium,gemini:gemini-3.8-flash@low. Got ${JSON.stringify(raw)}.`,
       );
     }
-    return { label, provider, model };
+    return { label, provider, model, ...(effort === undefined ? {} : { reasoningEffort: effort }) };
   });
   const repeated = specs.find((spec, index) => specs.findIndex((other) => other.label === spec.label) !== index);
   if (repeated) throw new Error(`--analysis-models names ${repeated.label} twice. Use --analysis-repeats to analyze a run more than once with one model.`);

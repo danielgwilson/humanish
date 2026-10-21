@@ -4,8 +4,9 @@ import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
   MAX_ANALYSIS_OUTPUT_TOKENS,
   analysisCostRange,
-  isSupportedAnalysisModel,
 } from "./execute.js";
+import { analysisEfforts, isSupportedAnalysisModel } from "./models.js";
+import { isReasoningEffort, type ReasoningEffort } from "../actors/reasoning-effort.js";
 import { admissionRule } from "./admission.js";
 import { analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
 import { plural } from "../run/text.js";
@@ -27,8 +28,13 @@ interface StudyAnalysisSettings {
 /** The study's review.analysis: a provider selection for a separate review after a live run. */
 export type StudyAnalysis = StudyAnalysisSettings &
   (
-    | { provider?: "openai" | "gemini"; maxCostUsd: number; maxOutputTokens?: number }
-    | { provider: "codex"; maxCostUsd?: null; maxOutputTokens?: null }
+    | {
+        provider?: "openai" | "gemini";
+        maxCostUsd: number;
+        maxOutputTokens?: number;
+        reasoningEffort?: ReasoningEffort;
+      }
+    | { provider: "codex"; maxCostUsd?: null; maxOutputTokens?: null; reasoningEffort?: never }
   );
 
 const FIELDS = new Set([
@@ -38,6 +44,7 @@ const FIELDS = new Set([
   "question",
   "timeoutMs",
   "maxOutputTokens",
+  "reasoningEffort",
 ]);
 
 const validTimeout = (value: unknown): value is number =>
@@ -98,7 +105,7 @@ export function resolveAutomaticAnalysis(
     return {
       ok: false,
       message:
-        "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens.",
+        "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs, maxOutputTokens and reasoningEffort.",
     };
   }
   const value = raw as Record<string, unknown>;
@@ -111,6 +118,12 @@ export function resolveAutomaticAnalysis(
     return { ok: false, message: "review.analysis.provider must be openai, gemini or codex." };
   }
   if (value.provider === "codex") {
+    if (value.reasoningEffort !== undefined)
+      return {
+        ok: false,
+        message:
+          "Codex account analysis runs at its fixed low reasoning effort, so it takes no reasoningEffort. Omit it, or choose provider openai or gemini to set one.",
+      };
     const model = value.model === undefined ? CODEX_ANALYSIS_MODEL : value.model;
     const timeoutMs = value.timeoutMs === undefined ? DEFAULT_ANALYSIS_TIMEOUT_MS : value.timeoutMs;
     const question = value.question === undefined ? null : value.question;
@@ -174,17 +187,29 @@ export function resolveAutomaticAnalysis(
       message: `review.analysis requires a positive maxCostUsd up to 1000, a supported ${vendor === "gemini" ? "Gemini" : "OpenAI"} analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
+  const { reasoningEffort } = value;
+  const efforts = analysisEfforts(model, vendor);
+  if (
+    reasoningEffort !== undefined &&
+    (!isReasoningEffort(reasoningEffort) || !efforts.includes(reasoningEffort))
+  )
+    return {
+      ok: false,
+      message: `review.analysis.reasoningEffort for ${model} must be ${efforts.slice(0, -1).join(", ")} or ${efforts.at(-1)}, the efforts its provider documents for it.`,
+    };
   if (question !== null && scanEncodedText(question as string).sensitive) return SENSITIVE_QUESTION;
   return {
     ok: true,
     config: {
-      // An omitted provider stays omitted: it is the OpenAI contract, and its hash predates the field.
+      // An omitted provider or effort stays omitted, so the configuration keeps the hash it had
+      // before the field existed. An omitted provider is the OpenAI contract.
       ...(value.provider === undefined ? {} : { provider: vendor }),
       model,
       maxCostUsd,
       timeoutMs,
       maxOutputTokens,
       question: question as string | null,
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     },
     ...(value.maxOutputTokens === undefined ? { preferLargerOutput: true } : {}),
   };

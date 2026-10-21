@@ -74,11 +74,13 @@ Every child process gets `DO_NOT_TRACK=1`.
 
 Participant sessions vary more from run to run than analysis models differ, so a model comparison
 holds the recordings fixed and varies only the analyst. `--analysis-models` takes a comma-separated
-list; each entry is a model id, or `provider:model` to pass `--provider` as well:
+list; each entry is a model id, or `provider:model` to pass `--provider` as well. An `@effort`
+suffix passes `--reasoning-effort`, and the entry keeps it as its label, so `gpt-6-luna` and
+`gpt-6-luna@medium` are separate columns:
 
 ```bash
 pnpm bench --dotenv path/to/.env --no-analysis --work-dir /tmp/taskly
-pnpm bench --reanalyze /tmp/taskly --analysis-models gpt-6-astra,gpt-5.6-luna --dry-run
+pnpm bench --reanalyze /tmp/taskly --analysis-models gpt-6-astra,gpt-6-luna@medium --dry-run
 pnpm bench --reanalyze /tmp/taskly --dotenv path/to/.env --analysis-models gpt-6-astra,gpt-5.6-luna \
   --analysis-repeats 2 --out docs/evidence/benchmark
 ```
@@ -89,10 +91,10 @@ times, and spends nothing on participants. `--analysis-models` or `--analysis-re
 invocation does the same after the last participant run, in place of each run's own analysis. With
 `--analysis-repeats` or `--reanalyze` alone, the model is the CLI's default analysis model.
 
-Each analysis is `humanish analyze --run <id> --model <model> --rerun`, with `--provider` when the
-entry names one. `--rerun` makes every analysis a new version, so no analysis is satisfied by an
-earlier one with the same input and configuration; a different model already has a different
-configuration. The manifest's `analysisMatrix` records each analysis's run, model, repeat number,
+Each analysis is `humanish analyze --run <id> --model <model> --rerun`, with `--provider` and
+`--reasoning-effort` when the entry names them. `analyze` refuses an effort the model does not
+take, and the dry run below stops the benchmark on that refusal before any spend. `--rerun` makes every analysis a new version, so no analysis is satisfied by an
+earlier one with the same input and configuration; a different model or effort already has a different configuration. The manifest's `analysisMatrix` records each analysis's run, model, repeat number,
 CLI version, analysis id, state, estimated spend and wall time, and scoring reads that exact
 analysis id. A second `--reanalyze` of the same work directory appends to the matrix and numbers
 repeats after the ones already recorded.

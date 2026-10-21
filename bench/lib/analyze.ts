@@ -8,7 +8,10 @@ const ANALYSIS_TIMEOUT_MS = 12 * 60_000;
 /** The `humanish analyze` flags that select the spec's analyst. */
 export function analysisSpecArgs(spec: AnalysisSpec | undefined): string[] {
   if (spec === undefined) return [];
-  return [...(spec.provider === null ? [] : ["--provider", spec.provider]), "--model", spec.model];
+  return [
+    ...(spec.provider === null ? [] : ["--provider", spec.provider]), "--model", spec.model,
+    ...(spec.reasoningEffort === undefined ? [] : ["--reasoning-effort", spec.reasoningEffort]),
+  ];
 }
 
 interface AnalyzeTarget {

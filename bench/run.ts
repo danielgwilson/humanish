@@ -65,7 +65,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --work-dir <dir>         where the throwaway project and bundles go (default: a new temp dir)
   --out <dir>              where the results JSON and summary go (default: the work dir)
   --rescore <work-dir>     score an earlier invocation's bundles again; no spend
-  --analysis-models <list> analyze every recorded run once per model: model or provider:model, comma-separated
+  --analysis-models <list> analyze every recorded run once per model: model or provider:model, each with an optional @effort, comma-separated
   --analysis-repeats <n>   analyses of each run per model (default 1)
   --analysis-concurrency <n> analyses in flight at once across the models (default 4)
   --reanalyze <work-dir>   run only the analysis models on an earlier invocation's recordings; no participant spend

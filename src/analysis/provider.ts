@@ -6,6 +6,7 @@
 // the third adapter at the same seam (restricted-codex.ts).
 
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
+import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { isRecord } from "../run/type-guards.js";
 import { INPUT_IMAGE_DATA_URL } from "./image-tokens.js";
 import { geminiWire } from "./gemini-wire.js";
@@ -19,6 +20,9 @@ export interface AnalysisProviderRequest {
   images: { evidenceId: string; dataUrl: string }[];
   schema: Record<string, unknown>;
   maxOutputTokens: number | null;
+  /** The effort the analysis runs at (models.ts analysisEffort). The Codex account analyst runs
+   * its fixed low effort, which this then names. */
+  reasoningEffort: ReasoningEffort;
   timeoutMs: number;
   signal?: AbortSignal;
 }

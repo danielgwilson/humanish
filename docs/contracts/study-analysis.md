@@ -25,7 +25,8 @@ study's input and admission estimate without credentials, a provider request,
 or a new analysis artifact. It prints the expected cost, the worst case and the
 cap; a refused dry run says why, and names the `--max-cost` that admits it.
 
-The default provider is `openai`; its default model is `gpt-6-astra`, with high reasoning effort. A request sends selected retained text and
+The default provider is `openai`; its default model is `gpt-6-astra`, with high reasoning effort
+([reasoning effort](#reasoning-effort)). A request sends selected retained text and
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
 participant assignment. For OpenAI API analysis, `--max-cost` is required, including for dry-run
@@ -118,6 +119,34 @@ the current merge instructions, billed $1.92, most of its input served from the
 provider's prompt cache, and each of its 466 citations resolved. Two runs do not
 calibrate the merge request's estimate.
 
+## Reasoning effort
+
+`review.analysis.reasoningEffort`, or `analyze --reasoning-effort <level>`, sets how long an API
+analyst reasons before it answers. OpenAI receives it as `reasoning.effort`, and Gemini as
+`generationConfig.thinkingConfig.thinkingLevel` in capitals. Each model takes the levels its
+provider documents for it (OpenAI's model pages and Gemini's thinking guide, read 2026-10-21):
+
+| Model                                                                   | Levels                                          |
+| ----------------------------------------------------------------------- | ----------------------------------------------- |
+| `gpt-6-astra`, `gpt-6.1-sol`                                            | `low`, `medium`, `high`, `xhigh`, `max`         |
+| `gpt-6-luna`, `gpt-5.6`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` | `none`, `low`, `medium`, `high`, `xhigh`, `max` |
+| `gpt-5.5`                                                               | `none`, `low`, `medium`, `high`, `xhigh`        |
+| `gemini-3.8-flash`                                                      | `low`, `medium`, `high`                         |
+
+Any other level is refused before a request, with a message naming the levels the model takes.
+The Codex account analyst runs at its fixed low effort, and a declared effort with
+`provider: codex` is refused.
+
+An analysis that declares no effort runs at `high` on every model, and its configuration has no
+`reasoningEffort` field, so its configuration hash, and with it reuse of an earlier analysis, is
+what it was before the field existed. A declared effort is stored in the analysis artifact's
+`config`, `high` included, and gives the configuration its own hash. An artifact whose config has
+no `reasoningEffort` ran at `high`.
+
+Admission expects the same output at every effort, from analyses billed at `high`. No billed
+analysis at a lower effort calibrates a smaller expectation yet, so a lower effort's expected cost
+is likely over its bill. The worst case spends the whole output allowance at any effort.
+
 ## Gemini API analysis
 
 `review.analysis.provider: gemini`, or `analyze --provider gemini`, sends the same request to
@@ -131,7 +160,8 @@ humanish analyze --run latest --provider gemini --model gemini-3.8-flash --max-c
 
 The request goes to `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
 with the key in the `x-goog-api-key` header. It carries the same instructions, packet and
-captures, with each capture at `MEDIA_RESOLUTION_HIGH`, thinking level `HIGH`, one candidate,
+captures, with each capture at `MEDIA_RESOLUTION_HIGH`, the analysis's reasoning effort as its
+thinking level (`HIGH` unless declared), one candidate,
 the standard service tier, no tools and `store: false`. The key is `GEMINI_API_KEY` when set,
 else `GOOGLE_API_KEY`. Google's client libraries prefer `GOOGLE_API_KEY`; humanish does not, so a
 `GOOGLE_API_KEY` exported for another Google API never replaces the stored Gemini key. Key

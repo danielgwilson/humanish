@@ -36,6 +36,7 @@ const request = {
     required: ["summary"],
   },
   maxOutputTokens: 8192,
+  reasoningEffort: "high" as const,
   timeoutMs: 1000,
 };
 

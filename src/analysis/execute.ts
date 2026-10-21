@@ -13,8 +13,8 @@ import {
   type AnalysisInput,
   type AnalysisResult,
 } from "./types.js";
+import { analysisEffort, analysisEfforts, isSupportedAnalysisModel } from "./models.js";
 import {
-  type AnalysisApiVendor,
   type AnalysisFetch,
   createAnalysisProvider,
   type AnalysisProvider,
@@ -43,30 +43,6 @@ import { mapWithConcurrency } from "../run/concurrency.js";
 import type { RejectedAnalysisOutput } from "./diagnostics.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-8";
-export const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
-  "gpt-6-astra",
-  "gpt-6.1-sol",
-  "gpt-6-luna",
-  "gpt-5.5",
-  "gpt-5.6",
-  "gpt-5.6-sol",
-  "gpt-5.6-terra",
-  "gpt-5.6-luna",
-]);
-const SUPPORTED_MODELS = new Set(SUPPORTED_ANALYSIS_MODELS);
-/**
- * Gemini models that completed a live analysis. Each model's page under
- * ai.google.dev/gemini-api/docs/models (read 2026-10-21) also lists image input and JSON-schema
- * output for gemini-3.5-flash-lite, gemini-3-flash-preview and gemini-4-argon; they join this list
- * once a live analysis on each completes.
- */
-export const GEMINI_ANALYSIS_MODELS = Object.freeze(["gemini-3.8-flash"]);
-const GEMINI_MODELS: ReadonlySet<string> = new Set(GEMINI_ANALYSIS_MODELS);
-/** Whether the API analyst `provider` (omitted is OpenAI) analyzes with `model`. */
-export const isSupportedAnalysisModel = (
-  model: string,
-  provider: AnalysisApiVendor = "openai",
-): boolean => (provider === "gemini" ? GEMINI_MODELS : SUPPORTED_MODELS).has(model);
 /** The API output limit when a study omits maxOutputTokens, and the most it may ask for. Gemini 4
  * returns at most 32,768 output tokens from one generateContent request. */
 export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
@@ -284,6 +260,8 @@ export function estimateAnalysisAdmission(
           config.provider !== "openai" &&
           config.provider !== "gemini") ||
         !isSupportedAnalysisModel(config.model, config.provider) ||
+        (config.reasoningEffort !== undefined &&
+          !analysisEfforts(config.model, config.provider).includes(config.reasoningEffort)) ||
         !Number.isFinite(config.maxCostUsd) ||
         config.maxCostUsd <= 0 ||
         config.maxCostUsd > 1000 ||
@@ -752,6 +730,7 @@ export async function runAnalysis(
       images: request.images,
       schema: request.schema,
       maxOutputTokens: config.maxOutputTokens,
+      reasoningEffort: analysisEffort(config),
       timeoutMs: config.timeoutMs,
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });

@@ -27,6 +27,7 @@ const request: AnalysisProviderRequest = {
     required: ["summary"],
   },
   maxOutputTokens: 8192,
+  reasoningEffort: "high",
   timeoutMs: 1000,
 };
 const response = (body: unknown = captured, status = 200): Response =>

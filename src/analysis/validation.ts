@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
 import { CUA_ENDPOINT_SOURCES } from "../actors/goal-source.js";
+import { REASONING_EFFORTS } from "../actors/reasoning-effort.js";
 import {
   ANALYSIS_LIMITS,
   EVIDENCE_LIMITS,
@@ -252,6 +253,7 @@ const apiAnalysisConfigSchema = z.object({
   maxCostUsd: z.number().positive().max(1000),
   timeoutMs: z.number().int().positive().max(3600000),
   maxOutputTokens: z.number().int().positive().max(128000),
+  reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
 const analysisArtifactSchema = z
@@ -433,10 +435,7 @@ export function checkAnalysisResult(
       refs.some((ref) => !ref || !included.has(ref.streamId))
     )
       errors.add("ANALYSIS_OBSERVATION_REFERENCE_INVALID");
-    if (
-      observation.basis === "visual" &&
-      !refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined)
-    )
+    if (observation.basis === "visual" && !refs.some((ref) => ref?.capture))
       errors.add("ANALYSIS_VISUAL_WITHOUT_CAPTURE");
     if (
       observation.basis === "action" &&
@@ -474,8 +473,7 @@ export function checkAnalysisResult(
     const refs = finding.evidenceIds.map((ref) => evidence.get(ref));
     if (!distinct(finding.evidenceIds) || refs.some((ref) => !ref || !included.has(ref.streamId)))
       errors.add("ANALYSIS_DESIGN_REFERENCE_INVALID");
-    if (!refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined))
-      errors.add("ANALYSIS_DESIGN_WITHOUT_CAPTURE");
+    if (!refs.some((ref) => ref?.capture)) errors.add("ANALYSIS_DESIGN_WITHOUT_CAPTURE");
     // Seen by means a cited capture of that participant shows the problem.
     const captured = new Set(refs.flatMap((ref) => (ref?.capture ? [ref.streamId] : [])));
     if (
